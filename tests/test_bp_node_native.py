@@ -53,11 +53,13 @@ class NativeBpNodeTests(unittest.TestCase):
         self.request_path = self.tmp / "request.adu"
         self.msgid = b"<bp-node-a3@example.invalid>"
         self.article = (
+            b"Path: sender.bp.gate.invalid!not-for-mail\r\n"
             b"From: sender@example.invalid\r\n"
             b"Newsgroups: fn.test\r\n"
             b"Subject: native BP node A3\r\n"
             b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
-            b"Message-ID: " + self.msgid + b"\r\n\r\nA3 body\r\n"
+            b"Message-ID: " + self.msgid + b"\r\n"
+            b"Xref: sender.bp.gate.invalid fn.test:1\r\n\r\nA3 body\r\n"
         )
         for store in (self.receiver_store, self.sender_store):
             initialized = self.invoke("store", store, "init", "fn.test")
@@ -136,7 +138,8 @@ class NativeBpNodeTests(unittest.TestCase):
             result = self.invoke(*args)
             self.assertEqual(result.returncode, 0, result.stderr)
 
-    def start_node(self, receiver, *, once=True, extra_env=None, trust=True):
+    def start_node(self, receiver, *, once=True, extra_env=None, trust=True,
+                   inbound=True):
         node = "dtn://receiver/" if receiver else "dtn://sender/"
         peer = "dtn://sender/" if receiver else "dtn://receiver/"
         journal = self.receiver_journal if receiver else self.sender_journal
@@ -148,9 +151,16 @@ class NativeBpNodeTests(unittest.TestCase):
         config.write_text(f'[store]\npath = "{store}"\n', encoding="ascii")
         admitted_name = "sender-boundary" if receiver else "receiver-boundary"
         if trust:
+            local_path = "receiver.bp.gate.invalid" if receiver else "sender.bp.gate.invalid"
+            remote_path = "sender.bp.gate.invalid" if receiver else "receiver.bp.gate.invalid"
+            policy = self.invoke(
+                "operator", config, "policy", "set", "path-identity", local_path,
+            )
+            self.assertEqual(policy.returncode, 0, policy.stderr)
             installed = self.invoke(
                 "operator", config, "bp-boundary", "add", admitted_name,
-                "bp.gate.invalid", peer, listen_port,
+                remote_path, peer, listen_port,
+                *(["fn.test", "32768", "16"] if inbound else []),
             )
             self.assertEqual(installed.returncode, 0, installed.stderr)
         receipts = self.receiver_receipts if receiver else self.tmp / "sender-fnrj"
@@ -258,6 +268,16 @@ class NativeBpNodeTests(unittest.TestCase):
         )
         self.assertEqual(self.receiver_counts()[1], 1,
                          "the second carrier must not accept a second article")
+        store, bridge, _ = run_bp_ingress.open_live_bp_store(
+            self.receiver_store, False)
+        try:
+            relayed = bridge.lookup(self.msgid)
+            self.assertNotEqual(relayed, self.article)
+            self.assertIn(b"Path: receiver.bp.gate.invalid", relayed)
+            self.assertNotIn(b"Xref:", relayed)
+        finally:
+            bridge.close()
+            store.close()
 
         sender, port = self.start_node(False, once=False)
         self.relay.route(port)
@@ -277,6 +297,16 @@ class NativeBpNodeTests(unittest.TestCase):
     def test_absent_bp_trust_keeps_custody_but_refuses_request_application(self):
         receiver, port = self.start_node(True, trust=False)
         sent = self.send_request(port, "untrusted-request")
+        out, err = receiver.communicate(timeout=120)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(receiver.returncode, 0, err)
+        self.assertIn(b"BP node delivery request-refused", out)
+        self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+
+    def test_admitted_channel_without_inbound_scope_refuses_store_request(self):
+        receiver, port = self.start_node(True, inbound=False)
+        sent = self.send_request(port, "no-inbound-scope")
         out, err = receiver.communicate(timeout=120)
         self.assertEqual(sent.returncode, 0, sent.stderr)
         self.assertEqual(receiver.returncode, 0, err)

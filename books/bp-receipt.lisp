@@ -306,13 +306,10 @@
               (fn-record-content-subject record))
        (equal (fn-bpa-request-article request) (fn-record-payload record))))
 
-; Result tags: :accepted, :duplicate, :conflict, :refused.  The context is
-; retained only after actual Store durable acceptance and a local A-POLICY.
-(defun fn-bpr-accept-request (st store record request policy-authorizedp)
-  (if (not (and (fn-bpr-statep st) (not (consp (fn-bpr-state-pending st)))
-                (fn-bpr-request-acceptablep store (fn-bpr-state-config st)
-                                             record request policy-authorizedp)))
-      (list :refused st)
+; The identity/conflict transition is shared by historical raw-byte contexts
+; and the transit context.  Only their Store-payload admission predicates
+; differ; both preserve the original request for receipt construction.
+(defun fn-bpr-bind-request-context (st record request)
     (let* ((context (fn-bpr-context-from-request record request))
            (prior (fn-bpr-find-context (fn-bpr-context-work-id context)
                                        (fn-bpr-state-contexts st)))
@@ -326,7 +323,36 @@
                 (fn-bpr-make-state
                  (fn-bpr-state-config st)
                  (cons context (fn-bpr-state-contexts st))
-                 (fn-bpr-state-receipts st) nil)))))))
+                 (fn-bpr-state-receipts st) nil))))))
+
+; Result tags: :accepted, :duplicate, :conflict, :refused.  The context is
+; retained only after actual Store durable acceptance and a local A-POLICY.
+(defun fn-bpr-accept-request (st store record request policy-authorizedp)
+  (if (not (and (fn-bpr-statep st) (not (consp (fn-bpr-state-pending st)))
+                (fn-bpr-request-acceptablep store (fn-bpr-state-config st)
+                                             record request policy-authorizedp)))
+      (list :refused st)
+    (fn-bpr-bind-request-context st record request)))
+
+(defun fn-bpr-projected-request-acceptablep
+    (store config record request stored-octets policy-authorizedp)
+  (and (equal policy-authorizedp t) (fn-bpr-configp config)
+       (fn-bpa-requestp request) (fn-record-p record)
+       (fn-bpr-store-record-acceptedp store record)
+       (equal (fn-bpa-request-destination-eid request)
+              (fn-bpr-config-destination config))
+       (equal (fn-bpa-request-policy-id request)
+              (fn-bpr-config-policy-id config))
+       (equal stored-octets (fn-record-payload record))))
+
+(defun fn-bpr-accept-projected-request
+    (st store record request stored-octets policy-authorizedp)
+  (if (not (and (fn-bpr-statep st) (not (consp (fn-bpr-state-pending st)))
+                (fn-bpr-projected-request-acceptablep
+                 store (fn-bpr-state-config st) record request
+                 stored-octets policy-authorizedp)))
+      (list :refused st)
+    (fn-bpr-bind-request-context st record request)))
 
 (defun fn-bpr-receipt-for (context config receipt-id)
   (fn-bpa-make-receipt receipt-id (fn-bpr-context-work-id context)

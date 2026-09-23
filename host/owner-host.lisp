@@ -549,6 +549,24 @@
                                state)))
     (value result)))
 
+(defun fn-owner-bp-transit-submit
+    (peer msgid-octets payload id subject state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (cfg (fn-owner-config state))
+         (result (fn-own-bp-transit-submit-result
+                  owner cfg peer msgid-octets payload id subject))
+         (state (fn-owner-step
+                 (list :bp-transit-submit cfg peer msgid-octets payload
+                       id subject) state)))
+    (value result)))
+
+(defun fn-owner-bp-transit-raw (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((sub (fn-own-inflight (fn-owner-core state))))
+    (value (and (fn-own-bp-transit-submissionp sub)
+                (fn-peer-submission-octets (fn-own-sub-decision sub))))))
+
 ; `fn operator CONFIG post': the operator is a posting agent and this node
 ; its injecting agent (RFC 5537 section 3.5).  books/owner.lisp
 ; fn-own-operator-submit injects the payload under the owner's posting
@@ -1001,6 +1019,13 @@
          (state (f-put-global 'fn-owner-log-line
                               (fn-olog-control-post-line owner word) state))
          (state (fn-owner-step (list :control-outcome word) state)))
+    (value result)))
+
+(defun fn-owner-bp-transit-outcome (word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (result (fn-own-bp-transit-outcome-result owner word))
+         (state (fn-owner-step (list :bp-transit-outcome word) state)))
     (value result)))
 
 ; The allocation domain the owner's live node carries (every name ever

@@ -363,6 +363,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-native-app-tests \
 	books/bp-native-app-fast \
 	tests/acl2/bp-native-app-fast-tests \
+	books/bp-transit-join \
+	tests/acl2/bp-transit-join-tests \
 	books/bp-receiver-store-invariants \
 	books/bp-receiver-context-invariants \
 	books/bp-receiver-journal-invariants \

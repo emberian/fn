@@ -1933,6 +1933,30 @@ Contract, by case:
 - `:refuse`: `(:refused reason)`. `:defer`, or the join's `:blocked`:
   `(:busy)`, which reaches the machine as `:busy` (§4.2).
 
+The finite A3 `:request-intent`/`:request-context-v2` join binds the Store
+record to the request's raw article octets. That is correct for the historical
+control-submission path but is not the general transit rule above:
+`fn-peer-injection-arguments` stores `fn-peer-relayed-octets`, which may update
+Path and remove Xref. The transit form therefore needs a new, versioned
+intent **before** the Store attempt. `:request-transit-intent` (FNRJ code 7)
+pins the immutable raw request ADU, admitted peer name, owner configuration
+generation, local and expected peer Path identities, and ACL2-computed stored
+projection. Replay checks that the projection is exactly
+`fn-pu-relay-article` of the raw article under those pinned identities;
+an arbitrary journal blob cannot choose Store bytes. `:request-transit-context`
+(code 8) binds an exact accepted Store record to that pinned projection and
+carries the original request unchanged for receipt content. The request's
+original subject is a digest of the raw article; the Store record's content
+subject is a digest of its Path/Xref projection, and they need not be equal.
+The live `fn-peer-decide-transfer` decision and peer generation must be checked
+before creating the intent or retrying an uncommitted Store attempt. Recovery
+uses the persisted projection and Path identities, never later peer policy to
+reinterpret old bytes. Existing intents and v2 contexts retain their raw-byte
+binding and historical receipt replay; they are not reinterpreted as transit
+records. The BP-only loopback trust command grants no inbound groups; an
+explicit inbound profile and local path-identity policy are prerequisites to
+`:want` under `fn-peer-decide-transfer`.
+
 The theorems, in `books/bp-native-app-invariants.lisp` (new), soundness
 first:
 

@@ -21,9 +21,13 @@
 
 (defun fnn-bpapp-request-intent (journal inbound-id request generation txid result)
   (let ((record
-          (fnn-bpapp-core-record
-           'fn-bprj-request-intent-record inbound-id (fnn-octet-list request)
-           generation txid result)))
+          (if (fnn-global 'fn-owner-app-transitp)
+              (fnn-bpapp-core-record
+               'fn-bprj-request-transit-intent-record
+               (fnn-global 'fn-owner-app-intent-v3))
+            (fnn-bpapp-core-record
+             'fn-bprj-request-intent-record inbound-id (fnn-octet-list request)
+             generation txid result))))
     (fnn-app-publish journal record)))
 
 (defun fnn-bpapp-bind-context (journal request application-result)
@@ -52,10 +56,16 @@
                  (integerp record-generation) (>= record-generation 0))
       (fnn-fault "BP application result disagrees with durable request intent"))
     (let ((context
-            (fnn-bpapp-core-record
-             'fn-bprj-request-context-v2-record
-             inbound-id (fnn-octet-list request) record generation txid
-             record-generation application-result)))
+            (if (eq (fnn-core-state 'fn-bprj-request-transitp
+                                     (fnn-octet-list request)) t)
+                (fnn-bpapp-core-record
+                 'fn-bprj-request-transit-context-record
+                 inbound-id (fnn-octet-list request) record generation txid
+                 record-generation application-result)
+              (fnn-bpapp-core-record
+               'fn-bprj-request-context-v2-record
+               inbound-id (fnn-octet-list request) record generation txid
+               record-generation application-result))))
       (fnn-app-publish journal context))))
 
 (defun fnn-bpapp-receipt (journal request)
@@ -73,13 +83,14 @@
 
 (defun fnn-bpapp-accept-locked
     (service journal inbound-id request node-id bundle-identity
-             bundle-source bundle-destination)
+             ingress bundle-source bundle-destination)
   "Run one request through FNRJ, owner Store, FNFD, and receipt decision.
 The caller holds SERVICE's mutex for this whole function."
   (fnn-bpapp-bind-owner-store)
   (unless (eq (fnn-owner-action
                'fn-owner-app-plan inbound-id (fnn-octet-list request) node-id
-               (fnn-octet-list bundle-identity) bundle-source bundle-destination)
+               (fnn-octet-list bundle-identity) ingress bundle-source
+               bundle-destination)
               :ready)
     (return-from fnn-bpapp-accept-locked (values :refused nil)))
   (let ((generation (fnn-nat (fnn-global 'fn-owner-app-generation)))
@@ -93,7 +104,9 @@ The caller holds SERVICE's mutex for this whole function."
       ;; before asking for its next action; a stale pre-commit snapshot would
       ;; incorrectly ask to submit the request a second time.
       (fnn-bpapp-bind-owner-store)
-      (let ((action (fnn-bpapp-action journal request generation)))
+      (let ((action (fnn-bpapp-action
+                     journal request
+                     (fnn-owner-core 'fn-owner-app-current-generation))))
         (case (first action)
           (:persist-intent
            (fnn-bpapp-request-intent journal inbound-id request generation
@@ -101,6 +114,7 @@ The caller holds SERVICE's mutex for this whole function."
           (:submit
            (let ((msgid (fnn-octets (fnn-global 'fn-owner-app-msgid)))
                  (payload (fnn-octets (fnn-global 'fn-owner-app-article)))
+                 (transitp (fnn-global 'fn-owner-app-transitp))
                  (groups (mapcar #'fnn-octets
                                  (fnn-global 'fn-owner-app-groups)))
                  (evidence (fnn-octets (fnn-global 'fn-owner-app-evidence))))
@@ -112,10 +126,19 @@ The caller holds SERVICE's mutex for this whole function."
                (return-from fnn-bpapp-accept-locked
                  (values :clock-unusable nil)))
              (setq application-result
-                   (fnn-owner-complete-bound-submission
-                    service
-                    (lambda () (fnn-owner-action 'fn-owner-app-submit))
-                    msgid payload groups evidence generation txid))
+                   (if transitp
+                       (fnn-owner-complete-bp-transit-submission
+                        service
+                        (lambda () (fnn-owner-action 'fn-owner-app-submit))
+                        msgid payload
+                        (fnn-octets (fnn-global 'fn-owner-app-stored))
+                        groups evidence generation txid
+                        (fnn-global 'fn-owner-app-obligation-id)
+                        (fnn-global 'fn-owner-app-stored-subject))
+                     (fnn-owner-complete-bound-submission
+                      service
+                      (lambda () (fnn-owner-action 'fn-owner-app-submit))
+                      msgid payload groups evidence generation txid)))
              (unless (member application-result '(:accepted :duplicate))
                (return-from fnn-bpapp-accept-locked
                  (values application-result nil)))))
