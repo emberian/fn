@@ -696,12 +696,12 @@ the current connection."
 
 (defun fnn-owner-attempt (service msgid payload groups evidence)
   "One Store attempt under the owner callbacks; return its observed word."
-  (let* ((store (fnn-owner-service-store service))
-         (charge (fnn-charge (length payload))))
+  (let ((store (fnn-owner-service-store service)))
     (handler-case
         (let ((codes (fnn-owner-core
                       'fn-owner-group-codes
-                      (mapcar #'fnn-octet-list groups))))
+                      (mapcar #'fnn-octet-list groups)))
+              (charge (fnn-charge (length payload))))
           (when (or (keywordp codes) (not (listp codes))
                     (/= (length codes) (length groups)))
             (fnn-refuse "unknown or duplicate configured group"))
