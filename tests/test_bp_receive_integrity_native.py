@@ -60,13 +60,13 @@ class NativeBpReceiveIntegrityTests(unittest.TestCase):
             time.sleep(0.02)
         self.fail("receiver did not publish a port")
 
-    def send(self, port, payload, name):
+    def send(self, port, payload, name, *, segment_mru=1024):
         source = self.tmp / f"{name}.bundle"
         source.write_bytes(payload)
         return subprocess.run(
             [str(self.image), "--fn", "tcpcl", "send", "127.0.0.1", str(port),
              str(source), str(self.tmp / f"{name}-peer"), "dtn://fn-a/", "-",
-             "4", "1024", "1048576", "0", "-"],
+             "4", str(segment_mru), "1048576", "0", "-"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, timeout=30, check=False, text=True,
         )
@@ -114,6 +114,18 @@ class NativeBpReceiveIntegrityTests(unittest.TestCase):
         )
         output = receiver._fn_log_path.read_text(errors="replace")
         self.assertEqual(output.count("BP refused xfer=0"), 2, output)
+
+    def test_refusal_after_partial_segments_has_no_successful_end_ack(self):
+        receiver, port = self.spawn_receive("partial-refusal")
+        wire = b"malformed bundle across three or more segments"
+        sent = self.send(port, wire, "partial", segment_mru=16)
+        receiver.wait(timeout=20)
+        output = receiver._fn_log_path.read_text(errors="replace")
+        self.assertEqual(sent.returncode, 1, sent.stdout + sent.stderr)
+        self.assertIn("refused outbound xfer=0", sent.stdout)
+        self.assertNotIn("accepted outbound xfer=0", sent.stdout)
+        self.assertIn("BP refused xfer=0", output)
+        self.assertEqual(self.wait_for_wire_count(1)[0].read_bytes(), wire)
 
     def test_uncertain_publication_exits_and_prevents_next_session_mutation(self):
         fault_env = dict(self.env)
