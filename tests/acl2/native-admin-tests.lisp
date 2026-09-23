@@ -463,3 +463,26 @@
 (assert-event (equal (fn-native-admin-result-status *fn-na-peer-remove-long*) :accepted))
 (assert-event (equal (fn-native-admin-result-kind *fn-na-peer-remove-long*) :remove-peer))
 (assert-event (not (fn-cfg-delta-listp (fn-native-admin-plan-deltas *fn-na-peer-remove-long*))))
+
+; The BP boundary is a durable peer delta with every originator in the
+; loopback process boundary named; no received EID can create these rows.
+(defconst *fn-na-bp-boundary*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("bp-boundary" "add" "dtn-peer"
+                       "peer.example.invalid" "dtn://peer/" "4556"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-bp-boundary*)
+                     :accepted))
+(assert-event
+ (and (fn-cfg-delta-listp (fn-native-admin-plan-deltas *fn-na-bp-boundary*))
+      (member-equal
+       (fn-cfg-row-make "dtn-peer" "bp-boundary-originators"
+                        "all-co-resident" 0)
+       (fn-cfg-delta-rows (car (fn-native-admin-plan-deltas
+                                *fn-na-bp-boundary*))))))
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan
+          (fn-na-test-argv '("bp-boundary" "add" "dtn-peer"
+                              "peer.example.invalid" "dtn://peer/"
+                              "999999999999999999999999"))))
+        :refused))
