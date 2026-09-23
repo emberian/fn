@@ -456,9 +456,8 @@ reopen predicate, writer-lock observation and observed final namespace."
       ; applies (books/node-config).
       (if (not (fn-cnode-selection-servedp (f-get-global 'fn-store-cfg state) groups))
           (value :refused)
-      (let* ((node (fn-sn-node s))
-             (msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-store-article-match msgid payload groups node)))
+      (let* ((msgid (fn-store-octets->string msgid-octets))
+             (existing (fn-sn-existing-action msgid payload groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -579,9 +578,9 @@ reopen predicate, writer-lock observation and observed final namespace."
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-store-article-match
+      (let ((action (fn-sn-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
-                     (fn-sn-node (f-get-global 'fn-store-sn state)))))
+                     (f-get-global 'fn-store-sn state))))
         (value (if action action :absent))))))
 
 (defun fn-store-sn-group-next (code state)

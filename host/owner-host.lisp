@@ -309,9 +309,8 @@
       ; group) is refused by the predicate fn-cnode-prepare applies.
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
-      (let* ((node (fn-sn-node s))
-             (msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-store-article-match msgid payload groups node)))
+      (let* ((msgid (fn-store-octets->string msgid-octets))
+             (existing (fn-sn-existing-action msgid payload groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -996,9 +995,9 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-store-article-match
+      (let ((action (fn-sn-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
-                     (fn-owner-node state))))
+                     (fn-owner-store state))))
         (value (if action action :absent))))))
 
 ; -----------------------------------------------------------------------------
