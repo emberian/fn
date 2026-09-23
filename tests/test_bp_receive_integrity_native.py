@@ -154,7 +154,8 @@ class NativeBpReceiveIntegrityTests(unittest.TestCase):
         after_restart = b"new transfer after authoritative recovery"
         sent = self.send(restarted_port, after_restart, "after-restart-input")
         restarted.wait(timeout=20)
-        self.assertEqual(sent.returncode, 0, sent.stdout + sent.stderr)
+        self.assertEqual(sent.returncode, 1, sent.stdout + sent.stderr)
+        self.assertIn("refused outbound xfer=0", sent.stdout)
         self.assertIn(restarted.returncode, (0, 1))
         wires = self.wait_for_wire_count(2)
         self.assertEqual(

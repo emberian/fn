@@ -49,3 +49,18 @@ source-matched native image has run this callback path yet. RFC 9174 §5.2.3
 requires cumulative ACKs for processed segments, while §5.2.4 permits a
 transfer refusal and names No Resources and Not Acceptable. fn's stronger
 local policy holds the final END ACK until the durable disposition is known.
+
+The first source packet above was strengthened after review of coalesced
+`fn-tcl-drive` output. A single read can emit a partial ACK for transfer 0,
+then XFER_REFUSE for transfer 0, then a final ACK and `:bundle-received` for
+transfer 1. The planner now preserves that earlier output exactly and rejects
+any earlier END ACK. `tests/acl2/tcpcl-delivery-tests.lisp` evaluates this
+reachable drive trace. The final exact-source hbox run
+`run-20260923T185810Z-def9`, manifest
+`planning/evidence/manifests/certify-20260923T185812Z-4118399.json`, passed
+all three roots with jobs 2 and one cached origin. The three book/test source
+SHA-256 values are `de710829578d60c37ae89e9dfd3177dd022478566efe09a87425b77535590c8c`,
+`7a3d24c424927658080eff2fbb0475eb63f6801dc5770c6a39b971b749a32204`,
+and `eed0d6cb115e6259daf16dafdf05f852456b651c3f7a50e8f077bb34fb0eabc7`.
+This final run supersedes the earlier proof packet for the broadened held-list
+premise; the native image limit remains.
