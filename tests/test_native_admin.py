@@ -115,10 +115,10 @@ class NativeAdminTests(unittest.TestCase):
 
     def test_create_capacity_retire_reopen_preserves_history(self):
         created = self.operator("group", "create", "fn.admin")
-        self.assertIn(b"configured generation=2 record=00000002.cfg verification=verified",
+        self.assertIn(b"configured generation=2 record=00000002.cfg verification=VERIFIED",
                       created.stdout)
         capacity = self.operator("capacity", "2048")
-        self.assertIn(b"configured generation=3 record=00000003.cfg verification=verified",
+        self.assertIn(b"configured generation=3 record=00000003.cfg verification=VERIFIED",
                       capacity.stdout)
 
         message_id = "<native-admin-retained@example.invalid>"
@@ -127,7 +127,7 @@ class NativeAdminTests(unittest.TestCase):
                       self.payload, "--group", "fn.admin")
         self.stop_owner(owner)
         retired = self.operator("group", "retire", "fn.admin")
-        self.assertIn(b"configured generation=4 record=00000004.cfg verification=verified",
+        self.assertIn(b"configured generation=4 record=00000004.cfg verification=VERIFIED",
                       retired.stdout)
 
         report = self.config_report()
@@ -143,7 +143,7 @@ class NativeAdminTests(unittest.TestCase):
         # `:set-policy` record like a group or a peer, so the owner's replay
         # sees it at open and `fn-peer-local-identity` stops reading "".
         written = self.operator("policy", "set", "path-identity", "a.gate.example.invalid")
-        self.assertIn(b"configured generation=2 record=00000002.cfg verification=verified",
+        self.assertIn(b"configured generation=2 record=00000002.cfg verification=VERIFIED",
                       written.stdout)
         self.assertIn("generation=2", self.config_report())
         refused = self.operator("policy", "set", "path-identity", ".not.an.identity",
@@ -162,11 +162,11 @@ class NativeAdminTests(unittest.TestCase):
         added = self.operator("peer", "add", "far", "far.example.invalid",
                               "192.0.2.44", "1119", "fn.*", "fn.*",
                               "192.0.2.44", "true")
-        self.assertIn(b"configured generation=2 record=00000002.cfg verification=verified",
+        self.assertIn(b"configured generation=2 record=00000002.cfg verification=VERIFIED",
                       added.stdout)
         self.assertIn("generation=2", self.config_report())
         removed = self.operator("peer", "remove", "far")
-        self.assertIn(b"configured generation=3 record=00000003.cfg verification=verified",
+        self.assertIn(b"configured generation=3 record=00000003.cfg verification=VERIFIED",
                       removed.stdout)
         self.assertIn("generation=3", self.config_report())
 
@@ -237,7 +237,7 @@ class NativeAdminTests(unittest.TestCase):
         # lock.  The earlier durable result has already returned success and
         # is never reclassified against this later generation.
         later = self.operator("capacity", "8192")
-        self.assertIn(b"verification=verified", later.stdout)
+        self.assertIn(b"verification=VERIFIED", later.stdout)
         self.assertNotIn(b"generation differs", first_stderr + second_stderr)
 
 
