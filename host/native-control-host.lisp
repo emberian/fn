@@ -1,6 +1,27 @@
 ; ACL2-facing boundary for the native local-control transport.
 (in-package "ACL2")
 (include-book "../books/native-control")
+(include-book "../books/topic-history-local-control")
+
+(defun fn-native-control-host-topic-request-encode (operation sequence quota)
+  (declare (xargs :mode :program))
+  (fn-thlc-request-encode operation sequence quota))
+
+(defun fn-native-control-host-topic-request-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-thlc-request-decode octets))
+
+(defun fn-native-control-host-topic-reply-encode (status)
+  (declare (xargs :mode :program))
+  (fn-thlc-reply-encode status))
+
+(defun fn-native-control-host-topic-reply-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-thlc-reply-decode octets))
+
+(defun fn-native-control-host-topic-cli-plan (command argv)
+  (declare (xargs :mode :program))
+  (fn-thlc-cli-plan command argv))
 
 (defun fn-native-control-host-max-frame ()
   (declare (xargs :mode :program))
