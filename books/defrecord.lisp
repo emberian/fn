@@ -206,6 +206,14 @@
 ; transaction against the state that holds it.  The record variable stays `x'
 ; and stays last, so field types and `:extra' are unaffected.
 ;
+; `<recognizer>-forward-shape' is proved in `minimal-theory': the recognizer
+; is expanded once and `<shape>-forward-shape' is used, so no field predicate
+; and no `:extra' function is opened.  The fact needs only the recognizer's
+; first conjunct; a proof over the current theory opened every enabled field
+; predicate in the hypothesis and split on each (1 460 subgoals and 120 s
+; for one record in `books/bp-node-machine', 2026-09-23).  The teeth are
+; section 5 of tests/acl2/defrecord-tests.lisp.
+;
 ; `:recognizer-guard' is the recognizer's guard, `t' unless the extra formals
 ; need one (`fn-node-stagep' reads a `fn-retain-statep'), and
 ; `:recognizer-verify-guards nil' leaves the verification to the book, for a
@@ -295,7 +303,12 @@
            (implies (,recp ,@recognizer-formals x)
                     (and (,shapep x) (consp x) (true-listp x)))
            :rule-classes :forward-chaining
-           :hints (("Goal" :in-theory (enable ,shapep)))))))))))
+           :hints (("Goal"
+                    :in-theory (theory 'minimal-theory)
+                    :expand ((,recp ,@recognizer-formals x))
+                    :use ((:instance
+                           ,(fn-defrecord-name (list shapep "-FORWARD-SHAPE")
+                                               name)))))))))))))
 
 ; -----------------------------------------------------------------------------
 ; fn-defrecord-export

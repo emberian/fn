@@ -34,6 +34,7 @@
 (include-book "../../books/acceptance-alloc")
 (include-book "../../books/defrecord")
 (include-book "../../books/deftransition")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; 1. A three-field untagged record, the `fn-sched-result' shape.
@@ -94,6 +95,55 @@
   (implies (fn-drt-pinp budget p) (and (consp p) (true-listp p)))
   :rule-classes nil
   :hints (("Goal" :use (:instance fn-drt-pinp-forward-shape (x p)))))
+
+; -----------------------------------------------------------------------------
+; 5. `<recognizer>-forward-shape' is proved with every field predicate closed.
+;
+; The fact needs only the recognizer's first conjunct, `(<shape> x)', and
+; `<shape>-forward-shape' just above it.  The macro proves it in
+; `minimal-theory', expanding the recognizer once and using the shape fact, so
+; a field predicate that splits is never opened.  Until 2026-09-23 the hint was
+; `(enable <shape>)' over the current theory: every enabled field predicate
+; opened in the hypothesis, and in `books/bp-node-machine' two records paid
+; 128.6 s and 120.1 s for it (about 1 460 subgoals each;
+; planning/evidence/bp-books-cost-2026-09-23.md).
+;
+; `fn-drt-code' reproduces that shape small: six fields, each an ENABLED
+; ten-way disjunction.  The whole `fn-defrecord' form, every proof and guard
+; verification in it, must admit in 5 000 prover steps (it takes about 2 800;
+; the forward fact itself about 100).  The same statement under the old hint
+; must fail under 100 000 steps; unlimited, it closes in 27.7 million steps and 49.9 s on
+; a 158-way split at `Goal'' (Mac session, 2026-09-23).
+
+(defun fn-drt-digitp (c)
+  (declare (xargs :guard t))
+  (or (equal c 0) (equal c 1) (equal c 2) (equal c 3) (equal c 4)
+      (equal c 5) (equal c 6) (equal c 7) (equal c 8) (equal c 9)))
+
+(with-prover-step-limit
+ 5000
+ (fn-defrecord fn-drt-code
+   :tag :fn-drt-code
+   :constructor (fn-drt-code d0 d1 d2 d3 d4 d5)
+   :fields ((fn-drt-code-d0 fn-drt-digitp)
+            (fn-drt-code-d1 fn-drt-digitp)
+            (fn-drt-code-d2 fn-drt-digitp)
+            (fn-drt-code-d3 fn-drt-digitp)
+            (fn-drt-code-d4 fn-drt-digitp)
+            (fn-drt-code-d5 fn-drt-digitp))))
+
+(must-fail
+ (with-prover-step-limit
+  100000
+  (defthm fn-drt-codep-forward-shape-with-the-fields-open
+    (implies (fn-drt-codep x)
+             (and (fn-drt-code-shapep x) (consp x) (true-listp x)))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable fn-drt-code-shapep))))))
+
+; The record is reachable and the recognizer reads its fields.
+(assert-event (fn-drt-codep (fn-drt-code 1 2 3 4 5 6)))
+(assert-event (not (fn-drt-codep (fn-drt-code 1 2 3 4 5 10))))
 
 ; -----------------------------------------------------------------------------
 ; The generated names exist and say what section 1 says they say.  Each of

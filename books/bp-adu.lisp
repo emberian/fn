@@ -393,11 +393,25 @@
   :hints (("Goal" :in-theory (enable fn-bpa-receiptp
                                       fn-bpa-requestp))))
 
+;; The encoding is thirteen constant header octets consed onto an append of
+;; the field encodings.  With `len' open, each of the thirteen unfoldings
+;; re-derived the type of the whole append nest: 5.3 million tries of the
+;; `binary-append' and `true-listp-append' type prescriptions and 16 million
+;; frames under `(:definition len)', 16.8 s for 45 thousand prover steps
+;; (accumulated-persistence, 2026-09-23).  `len' of a `cons' is all the
+;; header needs; the appends are `fn-record-length-append''s.
+(local
+ (defthm fn-bpa-len-of-cons
+   (equal (len (cons a x)) (+ 1 (len x)))))
+
+(local (in-theory (disable fn-bpa-len-of-cons)))
+
 (defthm fn-bpa-encoding-bound
   (implies (fn-bpa-messagep message)
            (<= (len (fn-bpa-encode message)) *fn-bpa-max-octets*))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-cbor-encode))))
+  :hints (("Goal" :in-theory (e/d (fn-bpa-len-of-cons)
+                                  (fn-cbor-encode len)))))
 
 (defthm fn-bpa-read-request-fields-encoded
   (implies
