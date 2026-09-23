@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 540 |
-| Certification roots in the Makefile | 534 |
-| Books inside the root closure | 539 |
+| Books read | 542 |
+| Certification roots in the Makefile | 536 |
+| Books inside the root closure | 541 |
 | `defthm` and `defthmd` events | 8153 |
-| `defun` events | 6075 |
+| `defun` events | 6087 |
 | Functions with verified guards | 1985 |
-| Functions declared `:verify-guards nil` and never verified | 325 |
+| Functions declared `:verify-guards nil` and never verified | 331 |
 | Functions left at the default with an explicit guard | 2985 |
-| Functions left at the default with no guard | 780 |
-| `assert-event` checks | 8827 |
+| Functions left at the default with no guard | 786 |
+| `assert-event` checks | 8868 |
 | `must-fail` checks | 426 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 74 |
 | Export-hygiene warnings | 101 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 33 |
-| Include-hygiene warnings | 412 |
-| Host-names warnings | 772 |
+| Include-hygiene warnings | 414 |
+| Host-names warnings | 793 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -199,6 +199,7 @@ that `make certify` requests.
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 14 | 30 | 30/0/0/0 | 0 | 0 | 0 |
+| `books/checkpoint-auxiliary.lisp` | root | 0 | 11 | 0/6/0/5 | 0 | 0 | 0 |
 | `books/checkpoint-codec.lisp` | root | 110 | 36 | 13/1/21/1 | 0 | 0 | 1 |
 | `books/checkpoint-compaction.lisp` | root | 5 | 19 | 0/15/4/0 | 0 | 0 | 0 |
 | `books/checkpoint-publish.lisp` | root | 65 | 63 | 13/1/49/0 | 0 | 0 | 0 |
@@ -486,6 +487,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-txn-name-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
 | `tests/acl2/cbor-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/cbor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 38 | 0 | 0 |
+| `tests/acl2/checkpoint-auxiliary-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 0 | 0 |
 | `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 80 | 1 | 0 |
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
 | `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 85 | 0 | 0 |
