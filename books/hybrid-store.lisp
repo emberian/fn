@@ -207,7 +207,12 @@
 ; publication; the source identity above remains separate from this received
 ; article identity.
 (defun fn-hsig-carried-record-metadatap (source received record)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :in-theory
+                    (disable fn-hsig-authored-source-fields
+                             fn-id-subject-of-payload
+                             fn-id-obligation-of)))))
   (if (not (and (fn-record-p record)
                 (fn-cbor-octet-listp received)
                 (<= (len received) *fn-cbor-max-uint*)))
@@ -215,9 +220,16 @@
     (let* ((fields (fn-hsig-authored-source-fields source))
            (subject (fn-id-subject-of-payload received))
            (msgid (fn-record-msgid record))
-           (msgid-octets (fn-record-string-octets msgid)))
+           (msgid-octets (fn-record-string-octets msgid))
+           (obligation (if (and (fn-cbor-octet-listp msgid-octets)
+                                (<= (len msgid-octets) *fn-cbor-max-uint*)
+                                (fn-cbor-octet-listp subject)
+                                (<= (len subject) *fn-cbor-max-uint*))
+                           (fn-id-obligation-of msgid-octets subject)
+                         nil)))
       (and fields
            (fn-cbor-octet-listp subject)
+           (fn-cbor-octet-listp obligation)
            (equal msgid (car fields))
            (equal (fn-record-groups record) (cadr fields))
            (equal (fn-record-payload record) received)
@@ -227,7 +239,7 @@
                   (fn-record-octets-string (fn-id-text subject)))
            (equal (fn-record-obligation-id record)
                   (fn-record-octets-string
-                   (fn-id-text (fn-id-obligation-of msgid-octets subject))))))))
+                   (fn-id-text obligation)))))))
 
 ; Native construction stores the received carrier article as the transport
 ; payload, while the version-1 parent separately retains the exact signed
