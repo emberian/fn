@@ -78,3 +78,40 @@ does not exercise torn or lost dirty writes. The seven other served post cuts,
 recovery deaths and a combined image after acceptance-stamp/profile changes
 remain to be checked. ZFS process death does not qualify media durability or
 power loss.
+
+## Scanner projection theorem extension
+
+`fn-bso-served-agreement-preserves-scan` in
+`books/byte-store-observation-scan.lisp` is a real ACL2 theorem over
+`fn-bs-scan-store`: visible image agreement, identical **ordered** transaction
+names, and a successful model scan imply identical physical and model scan
+values. It uses `fn-bs-lookup`/`fn-bs-content` at visible names, so physical
+inode IDs can be renamed and unlinked unreachable model inodes are hidden.
+Its test book evaluates two actual framed records under distinct physical
+inode IDs; `must-fail` cases remove, in turn, visible agreement (damaged
+frame), ordered transaction names (reversed alist), and successful model scan
+(malformed duplicate-name root). The last case shows why set/count agreement
+alone is insufficient at malformed roots. The theorem is about scanner input
+and result; it does not prove full recovery transition equivalence or a
+converse for every physical crash image.
+`fn-bso-served-agreement-preserves-open-by-scan` is an explicit congruence
+corollary for the `fn-sn-open-observed` call with the same groups and capacity:
+equal scan results supply equal frontier and record inputs. The scan theorem
+is the keystone; this corollary does not simulate the recovery program.
+
+The exact hbox ACL2 selected-root run was `run-20260923T145139Z-50e1`, with
+manifest `planning/evidence/manifests/certify-20260923T145142Z-3880387.json`.
+It certified the new theorem book and its test at toolchain identity
+`d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0`;
+the final run installed 70 of 72 closure books and certified both changed
+roots. Both passed. The served runtime
+test evaluates these premises and exact scan equality at all six post cuts
+and five recovery-barrier cuts. On hbox, `python3 -m unittest
+tests.test_native_served_crash_model` passed all eleven named cuts in 29.764
+seconds, using the self-contained developer image at source
+`f0b8b166a3d5d56124ba45114bda0bd34affa5b8` with core SHA-256
+`66115e4374e71d107dc94f9f214cc0aeb68ac933334b83ee46d777944c958747`.
+The image's source predates this theorem book but its native served fault
+hooks are the same; ACL2 in the source tree loads the new book for the check.
+The raw native crash suite also passed its thirteen post cuts (six unittest
+methods, 36.269 seconds) with the new scanner premises and equality checked.

@@ -77,7 +77,7 @@ class NativeCampaignMixin:
         bridge = model_images.ModelBridge()
         try:
             bridge.call('(include-book "books/byte-store-keystones")')
-            bridge.call('(include-book "books/byte-store-observation")')
+            bridge.call('(include-book "books/byte-store-observation-scan")')
             bridge.call('(include-book "books/codec-attach")')
             bridge.call('(include-book "books/byte-store-frame")')
             bridge.call('(include-book "books/byte-store-txn-name")')
@@ -157,13 +157,17 @@ class NativeCampaignMixin:
                 " (fn-bs-crash-choicesp choices (fn-bs-pending cut-bs) (fn-bs-unit cut-bs))"
                 " (fn-bs-scan-okp scan) (fn-sn-open-okp opened)"
                 " (fn-bso-served-image-agree model-image observed)"
+                " (equal (fn-bs-names model-image :transactions)"
+                "        (fn-bs-names observed :transactions))"
+                " (fn-bs-scan-okp (fn-bs-scan-store model-image))"
+                " (equal (fn-bs-scan-store model-image) scan)"
                 " (list (fn-bso-directory-agree model-image observed :root)"
                 "       (fn-bso-directory-agree model-image observed :transactions)"
                 "       (fn-bso-directory-agree model-image observed :staging)"
                 "       (fn-bs-names model-image :staging)"
                 "       (fn-bs-names observed :staging))))".format(
                     " ".join(bindings)))
-            self.assertRegex(observed, r"\(T\s+T\s+T\s+T\s+\(T\s+T\s+T",
+            self.assertRegex(observed, r"\(T\s+T\s+T\s+T\s+T\s+T\s+T\s+\(T\s+T\s+T",
                              "{}: {}".format(cut.name, observed))
         finally:
             bridge.close()
