@@ -14,8 +14,9 @@ parser's, never a second table.
 With `FN_HOST=native` in the environment, `tools/run_store.py` and
 `tools/run_reader.py` delegate here after parsing, so the existing tests run
 against either host without edits.  `FN_NATIVE_HOST` overrides the image path.
-The default production image supports the store diagnostic but refuses raw
-reader startup.  Reader component tests set it to the explicitly built
+The default production image supports Store inspection and recovery but refuses
+raw Store posting and reader startup.  Raw Store and reader component tests set
+it to the explicitly built
 `build/fn-host-developer`; the public production reader starts through
 `packaging/fn-native operator CONFIG run`.
 """

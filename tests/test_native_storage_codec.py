@@ -10,7 +10,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", str(ROOT / "build" / "fn-host")))
+IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", str(ROOT / "build" / "fn-host-developer")))
 sys.path.insert(0, str(ROOT / "tools"))
 import frame_bridge  # noqa: E402
 import run_store  # noqa: E402
@@ -63,7 +63,7 @@ class NativeTransactionNamespaceSourceTests(unittest.TestCase):
 
 
 @unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "build/fn-host is required")
+                     "build/fn-host-developer is required for raw Store fixtures")
 class NativeStorageCodecTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-metadata-")
