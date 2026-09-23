@@ -14,6 +14,17 @@ explicit resource accounting; it is not a current qualification claim.
 The central questions are: what does this node have, why does it keep it, what
 has it undertaken to do, and what evidence permits it to release that obligation?
 
+For Robigalia/dregg coordination, the selected first experiment exchanges an
+immutable report or receipt and a reply between sleeping agents in separately
+administered stores with trusted transport peers. fn preserves the source,
+authorship evidence and delivery undertakings; the consumer verifies the
+application receipt and owns its durable inbox/outbox and processing transaction.
+A transport acknowledgement, a retention receipt and an application outcome
+have separate meanings. The proposed fn cursor/ack interface must name a store
+history and view, and cannot infer processing from printed output. This
+[experiment](../planning/experiments/e1-e2-agent-exchange.md) guides the next
+application boundary without adding an executor or changing the selected v0 gate.
+
 ## Composition
 
 ```mermaid
