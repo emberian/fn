@@ -212,6 +212,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-publish-tests \
 	books/checkpoint-compaction \
 	tests/acl2/checkpoint-compaction-tests \
+	books/checkpoint-auxiliary \
+	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
 	tests/acl2/hybrid-signature-invariants-tests \
 	books/index \

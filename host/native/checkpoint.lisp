@@ -487,7 +487,13 @@
                   (unless differential
                     (fnn-checkpoint-corrupt
                      "checkpoint plus suffix differs from full replay"))
-                  (list :ok generation sequence differential)))))))
+                  (let ((auxiliary
+                         (fnn-core-state
+                          'fn-store-checkpoint-auxiliary-differential)))
+                    (unless (equal auxiliary '(:ok 1))
+                      (fnn-checkpoint-corrupt
+                       "full replay auxiliary state differs: ~s" auxiliary))
+                    (list :ok generation sequence differential :equal-v1))))))))
     (fnn-checkpoint-corruption (e)
       (list :corrupt (fnn-checkpoint-corruption-reason e)))))
 
