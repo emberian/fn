@@ -39,8 +39,8 @@ POST_CUTS = (
 )
 # Recovery writes no record, so the candidate column is n/a: the prior is
 # unchanged and a staging orphan is either swept or left for the next open.
-# `recover-barrier' names five sites of fn-bs-recover-program; a store fault
-# fires at the first one reached.  The staging sweep runs only after
+# Each `recover-barrier-N' selects its ordinal site of fn-bs-recover-program.
+# The staging sweep runs only after
 # fn-bs-recover-program's fifth barrier has reached :ready (host/native/io.lisp
 # `fnn-recover'), once per orphan, so `recovery-stage-unlinked' is at the end
 # of fn-bs-recover-program followed by one fn-bs-recover-stage-cleanup-program.

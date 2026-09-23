@@ -39,11 +39,16 @@ class NativeCutTableTests(unittest.TestCase):
 
     def test_the_recovery_program_cuts_are_selectable(self):
         self.assertEqual([cut.name for cut in native_cuts.RECOVERY_CUTS],
-                         ["recover-replayed", "recover-barrier",
+                         ["recover-replayed", "recover-barrier-1",
+                          "recover-barrier-2", "recover-barrier-3",
+                          "recover-barrier-4", "recover-barrier-5",
                           "recovery-stage-unlinked"])
-        self.assertEqual({cut.program for cut in native_cuts.RECOVERY_CUTS[:2]},
+        self.assertEqual({cut.program for cut in native_cuts.RECOVERY_CUTS[:-1]},
                          {"fn-bs-recover-program"})
-        unlinked = native_cuts.RECOVERY_CUTS[2]
+        self.assertEqual([(cut.model_name, cut.occurrence)
+                          for cut in native_cuts.RECOVERY_CUTS[1:-1]],
+                         [("recover-barrier", i) for i in range(1, 6)])
+        unlinked = native_cuts.RECOVERY_CUTS[-1]
         self.assertEqual(unlinked.follows, "fn-bs-recover-program")
 
     def test_every_developer_selector_is_registered(self):
