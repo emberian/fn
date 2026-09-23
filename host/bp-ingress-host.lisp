@@ -39,7 +39,6 @@
   ; DTN epoch are converted here, not in Python.  A wall reading before the
   ; DTN epoch, or a host that claims no wall clock, yields has-wall nil, which
   ; `fn-clock-expiry-decision` answers :uncertain for.
-  (declare (xargs :mode :program))
   (let* ((monotonic (if (natp monotonic-ns) (floor monotonic-ns 1000000) 0))
          (unix-ms (if (natp wall-ns) (floor wall-ns 1000000) 0))
          (usable (and has-wall (natp wall-ns)
