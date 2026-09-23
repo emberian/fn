@@ -245,7 +245,11 @@
                             (generation
                              (fn-record-generation (fn-sn-completion-record s)))
                             (completion-status :durable)))
-           :in-theory (e/d (fn-stxk-context fn-stxk-fault)
+           :in-theory (e/d (fn-stxk-context fn-stxk-fault
+                            ; withdrawn at store-node's export since
+                            ; 2026-09-23; the identity arm's snapshot list
+                            ; is read through it.
+                            fn-sn-identity-context)
                            (fn-record-shape-vocabulary
                             fn-stxe-p fn-stxk-p fn-stxa-p
                             fn-replay-apply-record
@@ -889,6 +893,18 @@
                          (sequence 0)))
            :in-theory (enable fn-replay))))
 
+;; The two prepared-* lemmas below step the node through prepare and
+;; complete.  Each step's body tests `fn-statep' of the acceptance it is
+;; handed; this field fact answers that test with the whole-node recognizer
+;; closed.  Opening `fn-node-statep', `fn-statep' and the core definitions
+;; instead rewrote the full recognizer in every case to prove facts about one
+;; or two fields (29 s and 60 s on the 2026-09-23 seam run,
+;; planning/evidence/store-cluster-cost-2026-09-23.md).
+(local
+ (defthm fn-snx-node-state-acceptance-is-state
+   (implies (fn-node-statep s) (fn-statep (fn-node-acceptance s)))
+   :hints (("Goal" :in-theory (enable fn-node-statep)))))
+
 (defthm fn-snt-prepared-abort-is-frontier-advance
   (implies (and (fn-replay-advance-okp node (fn-record-txid record))
                 (fn-node-pending-matchesp (fn-sn-prepare-node node record)
@@ -896,10 +912,16 @@
            (equal (fn-node-complete (fn-sn-prepare-node node record)
                     (fn-record-txid record) (fn-record-generation record) :aborted)
                   (fn-replay-advance-txid node (1+ (fn-record-txid record)))))
-  :hints (("Goal" :in-theory (enable fn-sn-prepare-node fn-node-prepare
-    fn-node-complete fn-replay-advance-txid fn-node-statep fn-statep fn-snx-core-definitions
-       fn-state-pending
-    ))))
+  :hints (("Goal" :use ((:instance fn-snx-node-state-acceptance-is-state
+                         (s (fn-sn-prepare-node node record)))
+                        (:instance fn-sn-prepare-node-preserves-state))
+           :in-theory (e/d (fn-sn-prepare-node fn-node-prepare fn-node-complete
+                            fn-replay-advance-txid fn-accept-prepare
+                            fn-accept-complete fn-clear-pending
+                            fn-pending-matchesp)
+                           (fn-node-statep fn-statep fn-retain-admissiblep
+                            fn-retain-admit fn-selection-validp
+                            fn-record-record-vocabulary)))))
 
 (defthm fn-snt-prepared-durable-is-idle-at-successor
   (implies (and (fn-replay-advance-okp node (fn-record-txid record))
@@ -917,11 +939,17 @@
                         (s (fn-sn-prepare-node node record))
                         (txid (fn-record-txid record))
                         (generation (fn-record-generation record))
-                        (completion-status :durable)))
-           :in-theory (enable fn-sn-prepare-node fn-node-prepare
-    fn-node-complete fn-replay-advance-txid fn-node-statep fn-statep fn-snx-core-definitions
-       fn-state-pending
-    ))))
+                        (completion-status :durable))
+                 (:instance fn-snx-node-state-acceptance-is-state
+                            (s (fn-sn-prepare-node node record)))
+                 (:instance fn-sn-prepare-node-preserves-state))
+           :in-theory (e/d (fn-sn-prepare-node fn-node-prepare fn-node-complete
+                            fn-replay-advance-txid fn-accept-prepare
+                            fn-accept-complete fn-install-pending
+                            fn-pending-matchesp)
+                           (fn-node-statep fn-statep fn-retain-admissiblep
+                            fn-retain-admit fn-selection-validp
+                            fn-record-record-vocabulary)))))
 
 ;------------------------------------------------------------------------------
 ; The carried statement index (decision D21)
@@ -1095,28 +1123,138 @@
 ; the article `fn-install-pending' publishes and `(fn-record-payload
 ; (fn-replay-composite-record record))', which is the octet string
 ; `fn-sn-composite-delta' hands to `fn-stx-delta'.
+;; fn-sn-finish-preserves-indexedp, one arm at a time.  The theorem below
+;; dispatches on the finish arm; with `fn-sn-finish', `fn-sn-completion-
+;; enabledp' and `fn-sn-record-bindsp' open it split 5249 ways at Goal'' on
+;; the record codec, the replay steps and the store-transaction recognizers
+;; (118.8 s, 50.8 million steps, 13 734 subgoals on the 2026-09-23 seam run,
+;; planning/evidence/store-cluster-cost-2026-09-23.md).  What it needs from
+;; each arm is three fields of the result, stated here once per arm with the
+;; replay steps and the recognizers closed; the theorem is then a `:cases' on
+;; the arm; the disabled branch is `fn-sn-finish-disabled-is-no-op' above.
+;; They are enabled only in that theorem's hint.
+(local
+ (defthmd fn-sn-finish-retention-arm-keeps-the-store-and-index
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-store-retention-event-p (fn-sn-completion-record s)))
+            (and (equal (fn-sn-index (fn-sn-finish s)) (fn-sn-index s))
+                 (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
+                 (equal (fn-stx-store (fn-sn-node (fn-sn-finish s)))
+                        (fn-stx-store (fn-sn-node s)))))
+   :hints (("Goal" :in-theory (e/d (fn-sn-finish fn-sn-completion-enabledp)
+                                   (fn-sn-statep fn-stx-store
+                                    fn-replay-apply-retention-event
+                                    fn-replay-apply-record
+                                    fn-replay-identity-step fn-sn-identity-context
+                                    fn-sf-core-completion fn-sf-emit-success
+                                    fn-sn-completion-record fn-sn-record-bindsp
+                                    fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-node-complete fn-sn-accepted-delta
+                                    fn-record-shape-vocabulary
+                                    fn-record-record-vocabulary))))))
+(local
+ (defthmd fn-sn-finish-identity-arm-keeps-the-store-and-index
+   (implies (and (fn-sn-completion-enabledp s)
+                 (not (fn-store-retention-event-p (fn-sn-completion-record s)))
+                 (or (fn-stxe-p (fn-sn-completion-record s))
+                     (fn-stxk-p (fn-sn-completion-record s)))
+                 (not (fn-stxa-p (fn-sn-completion-record s))))
+            (and (equal (fn-sn-index (fn-sn-finish s)) (fn-sn-index s))
+                 (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
+                 (equal (fn-stx-store (fn-sn-node (fn-sn-finish s)))
+                        (fn-stx-store (fn-sn-node s)))))
+   :hints (("Goal" :in-theory (e/d (fn-sn-finish fn-sn-completion-enabledp)
+                                   (fn-sn-statep fn-stx-store
+                                    fn-replay-apply-retention-event
+                                    fn-replay-apply-identity-neutral
+                                    fn-replay-composite-record
+                                    fn-replay-identity-step fn-sn-identity-context
+                                    fn-sf-core-completion fn-sf-emit-success
+                                    fn-sn-completion-record fn-sn-record-bindsp
+                                    fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-node-complete fn-sn-accepted-delta
+                                    fn-record-shape-vocabulary
+                                    fn-record-record-vocabulary))))))
+(local
+ (defthmd fn-sn-finish-acceptance-arm-fields
+   (implies (and (fn-sn-completion-enabledp s)
+                 (not (fn-store-retention-event-p (fn-sn-completion-record s)))
+                 (not (fn-stxe-p (fn-sn-completion-record s)))
+                 (not (fn-stxk-p (fn-sn-completion-record s)))
+                 (not (fn-stxa-p (fn-sn-completion-record s))))
+            (and (equal (fn-sn-index (fn-sn-finish s))
+                        (fn-stx-index-add (fn-sn-index s)
+                                          (fn-sn-accepted-delta s)))
+                 (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
+                 (equal (fn-sn-node (fn-sn-finish s))
+                        (fn-node-complete
+                         (fn-sn-node s)
+                         (fn-record-txid (fn-sn-completion-record s))
+                         (fn-record-generation (fn-sn-completion-record s))
+                         :durable))
+                 (fn-node-pending-matchesp
+                  (fn-sn-node s)
+                  (fn-record-txid (fn-sn-completion-record s))
+                  (fn-record-generation (fn-sn-completion-record s)))))
+   :hints (("Goal" :in-theory (e/d (fn-sn-finish fn-sn-completion-enabledp
+                                    fn-sn-record-bindsp)
+                                   (fn-sn-statep fn-stx-store
+                                    fn-replay-apply-retention-event
+                                    fn-replay-apply-record
+                                    fn-replay-identity-step fn-sn-identity-context
+                                    fn-sf-core-completion fn-sf-emit-success
+                                    fn-sn-completion-record
+                                    fn-node-pending-matchesp fn-sn-pending-record
+                                    fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-node-complete fn-sn-accepted-delta
+                                    fn-stx-index-add
+                                    fn-record-shape-vocabulary
+                                    fn-record-record-vocabulary))))))
+
 (defthm fn-sn-finish-preserves-indexedp
   (implies (and (fn-sn-indexedp s)
                 (not (fn-stxa-p (fn-sn-completion-record s))))
            (fn-sn-indexedp (fn-sn-finish s)))
   :hints (("Goal"
-           ; `fn-stx-index-invariantp' is opened so the two non-acceptance
-           ; arms reduce to the store equations above; the store, the index
-           ; and the replay steps stay closed so the equations are what the
-           ; goal sees.
-           :in-theory (e/d (fn-sn-completion-enabledp fn-sn-record-bindsp
-                            fn-stx-index-invariantp
-                            fn-stxk-context fn-stxk-fault)
-                           (fn-sf-core-completion fn-sf-emit-success
+           ; One case per arm of `fn-sn-finish'; each closes by its arm lemma
+           ; above.  `fn-stx-index-invariantp' is opened so the two
+           ; non-acceptance arms reduce to the store equations; the store, the
+           ; index, the replay steps and the recognizers stay closed.
+           :cases ((not (fn-sn-completion-enabledp s))
+                   (and (fn-sn-completion-enabledp s)
+                        (fn-store-retention-event-p (fn-sn-completion-record s)))
+                   (and (fn-sn-completion-enabledp s)
+                        (not (fn-store-retention-event-p
+                              (fn-sn-completion-record s)))
+                        (or (fn-stxe-p (fn-sn-completion-record s))
+                            (fn-stxk-p (fn-sn-completion-record s))))
+                   (and (fn-sn-completion-enabledp s)
+                        (not (fn-store-retention-event-p
+                              (fn-sn-completion-record s)))
+                        (not (fn-stxe-p (fn-sn-completion-record s)))
+                        (not (fn-stxk-p (fn-sn-completion-record s)))))
+           :in-theory (e/d (fn-stx-index-invariantp
+                            fn-sn-finish-retention-arm-keeps-the-store-and-index
+                            fn-sn-finish-identity-arm-keeps-the-store-and-index
+                            fn-sn-finish-acceptance-arm-fields)
+                           (fn-sn-finish fn-sn-completion-enabledp
+                            fn-sn-completion-record fn-sn-record-bindsp
+                            fn-store-retention-event-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-replay-apply-record fn-replay-identity-step
+                            fn-sn-identity-context
+                            fn-sf-core-completion fn-sf-emit-success
                             fn-node-statep fn-node-complete
                             fn-stx-index-of-store fn-stx-store
                             fn-stx-index-add
-                            fn-replay-apply-retention-event
-                            fn-replay-apply-identity-neutral
-                            fn-replay-advance-txid
+                            fn-node-pending-matchesp
                             fn-record-shape-vocabulary
-                            fn-sn-completion-record fn-node-pending-matchesp))
+                            fn-record-record-vocabulary))
            :use ((:instance fn-sn-finish-preserves-state)
+                 (:instance fn-sn-finish-disabled-is-no-op)
                  (:instance fn-stx-durable-completion-is-an-acceptance
                             (s (fn-sn-node s))
                             (txid (fn-record-txid (fn-sn-completion-record s)))
@@ -1640,11 +1778,15 @@
                      (fn-node-prepare s generation msgid payload groups
                                       obligation-id subject evidence charge)))
                    (1+ (fn-state-next-txid (fn-node-acceptance s)))))
+   ; The recognizers stay closed: the conclusion is one field, and
+   ; `fn-snx-node-state-acceptance-is-state' answers the one `fn-statep'
+   ; test `fn-accept-prepare' makes (95 s with them open, 2026-09-23).
    :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-accept-prepare
-                                    fn-node-pending-matchesp
-                                    fn-node-statep fn-statep
-                                    fn-snx-core-definitions)
-                                   (fn-state-next-txid fn-state-pending
+                                    fn-node-pending-matchesp)
+                                   (fn-node-statep fn-statep
+                                    fn-retain-admissiblep fn-retain-admit
+                                    fn-selection-validp
+                                    fn-state-next-txid fn-state-pending
                                     fn-node-stage fn-state-fenced
                                     fn-record-shape-vocabulary))))))
 

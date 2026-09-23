@@ -585,13 +585,27 @@
                (fn-sn-keyring s) (fn-sn-keyring-generation s)))))))
     s))
 
+; The guard obligations are type facts about the state's fields, the
+; completion record's shape and the kernel step; none needs the completion
+; gate or the record opened.  With `fn-sn-completion-enabledp',
+; `fn-sn-record-bindsp', the store-transaction recognizers and the record
+; codec open (they are enabled at this point of the book), the hypothesis
+; unfolded into the codec and the goal split 5744 ways at Goal' (305 s,
+; 23.4 million steps, 2026-09-23 seam run;
+; planning/evidence/store-cluster-cost-2026-09-23.md).  Closed, the shape
+; comes from the recognizers' forward-chaining rules.
 (verify-guards fn-sn-finish
   :hints (("Goal" :in-theory
            (e/d (fn-sn-statep)
                 (fn-sf-statep fn-node-statep fn-sn-completion-record
                  fn-node-pending-matchesp fn-sn-pending-record
                  fn-sn-prepare-node fn-sf-core-completion
-                 fn-sn-accepted-delta)))))
+                 fn-sn-accepted-delta
+                 fn-sn-completion-enabledp fn-sn-record-bindsp
+                 fn-sn-identity-context fn-replay-identity-step
+                 fn-replay-apply-retention-event fn-replay-apply-record
+                 fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
+                 fn-record-record-vocabulary fn-record-shape-vocabulary)))))
 
 ; The I/O surface cannot inject a core-completion observation or emit success.
 ; There is deliberately no :core-completion operation here: the kernel's
@@ -765,9 +779,16 @@
 ; lemmas, fn-sn-update and fn-sn-find-record (glue and induction vocabulary)
 ; and fn-sn-prepare-node-preserves-state.  Withdrawn: the recognizer, the
 ; initial state and every transition; store-node-invariants opens them
-; locally.
+; locally.  The two deferred preparations and the identity context joined
+; the list on 2026-09-23: they postdate it, and left enabled they opened in
+; every goal that dispatched on a store event, carrying the replay steps and
+; the record codec in with them (store-node-resolution-cost-2026-09-23.md,
+; store-cluster-cost-2026-09-23.md).  A proof about one of them opens it in
+; its hint.
 (in-theory (disable fn-sn-statep fn-sn-initial fn-sn-pending-record
                     fn-sn-record-bindsp fn-sn-prepare-node fn-sn-prepare
+                    fn-sn-prepare-retention fn-sn-prepare-identity
+                    fn-sn-identity-context
                     fn-sn-completion-record fn-sn-completion-enabledp
                     fn-sn-accepted-delta
                     fn-sn-finish fn-sn-file-step fn-sn-io fn-sn-crash
