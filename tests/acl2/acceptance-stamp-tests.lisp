@@ -44,6 +44,10 @@
 (assert-event (fn-record-p *ast-legacy*))
 (assert-event (equal (fn-sn-prepare *sn-reserved* *ast-legacy*)
                      *sn-reserved*))
+; Direct replay of a staged node must not complete a different pending
+; article that happens to share the record's transaction coordinates.
+(assert-event (null (fn-replay-apply-record (fn-sn-node *sn-prepared*)
+                                            *sn-record*)))
 (must-fail
  (defthm ast-prepare-refusal-without-legacy-hypothesis-fails
    (equal (fn-sn-prepare *sn-reserved* *ast-built*) *sn-reserved*)

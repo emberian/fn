@@ -482,7 +482,13 @@
 (defun fn-replay-apply-record (node record)
   (declare (xargs :guard (and (fn-node-statep node) (true-listp record))
                   :verify-guards nil))
-  (if (fn-store-retention-event-p record)
+  ; Unreachable-in-composition: journal replay enters with no pending transaction.
+  ; Refuse a standalone
+  ; call on a staged node too: otherwise a record sharing the pending txid and
+  ; generation could complete that different article, including its stamp.
+  (if (consp (fn-node-stage node))
+      nil
+    (if (fn-store-retention-event-p record)
       (fn-replay-apply-retention-event node record)
     (if (or (fn-stxe-p record) (fn-stxk-p record))
         (fn-replay-apply-identity-neutral node record)
@@ -513,7 +519,7 @@
             (fn-node-complete prepared
                               (fn-record-txid article)
                               (fn-record-generation article)
-                              :durable)))))))))
+                              :durable))))))))))
 
 ; From here down the event recognizers and the composite article decoder are
 ; closed.  `fn-record-shape-vocabulary' is enabled for this book (above), so an
