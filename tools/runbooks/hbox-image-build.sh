@@ -14,14 +14,27 @@ FN_OPENSSL_PREFIX=${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}
 export FN_OPENSSL_PREFIX
 cd "$ROOT"
 mkdir -p build/freeze
+# POSIX sh has no pipefail: piping a failed acquisition/validation through tee
+# would allow the build to continue. Preserve the command's failure status.
+run_logged() {
+    log_path=$1
+    shift
+    if "$@" >"$log_path" 2>&1; then
+        cat "$log_path"
+    else
+        command_status=$?
+        cat "$log_path" >&2
+        return "$command_status"
+    fi
+}
 echo "== acquire default"
-python3 tools/proof_artifacts.py acquire --profile default --root "$ROOT" --cache "$CACHE" --acl2 "$ACL2" | tee build/freeze/acquire-default.txt
+run_logged build/freeze/acquire-default.txt python3 tools/proof_artifacts.py acquire --profile default --root "$ROOT" --cache "$CACHE" --acl2 "$ACL2"
 echo "== acquire dtn"
-python3 tools/proof_artifacts.py acquire --profile dtn --root "$ROOT" --cache "$CACHE" --acl2 "$ACL2" | tee build/freeze/acquire-dtn.txt
+run_logged build/freeze/acquire-dtn.txt python3 tools/proof_artifacts.py acquire --profile dtn --root "$ROOT" --cache "$CACHE" --acl2 "$ACL2"
 echo "== validate default"
-FN_ACL2=$ACL2 python3 tools/proof_artifacts.py validate --profile default --acl2 "$ACL2" | tee build/freeze/validate-default.txt
+FN_ACL2=$ACL2 run_logged build/freeze/validate-default.txt python3 tools/proof_artifacts.py validate --profile default --acl2 "$ACL2"
 echo "== validate dtn"
-FN_ACL2=$ACL2 python3 tools/proof_artifacts.py validate --profile dtn --acl2 "$ACL2" | tee build/freeze/validate-dtn.txt
+FN_ACL2=$ACL2 run_logged build/freeze/validate-dtn.txt python3 tools/proof_artifacts.py validate --profile dtn --acl2 "$ACL2"
 echo "== build production"
 FN_ACL2=$ACL2 FN_NATIVE_PROFILE=production FN_NATIVE_BUILD=host/native/build.lisp FN_NATIVE_IMAGE=build/fn-host FN_NATIVE_LOG=build/freeze/native-build-production.log swarm-build sh tools/build_native_host.sh
 echo "== build developer"
@@ -34,7 +47,7 @@ echo "== freeze"
 IMG="$ROOT/build/images/$REV"
 sh packaging/freeze-native-image.sh "$ROOT/build" "$IMG" "$FN_OPENSSL_PREFIX"
 find books host Makefile tools/build_native_host.sh -type f \( -name '*.lisp' -o -name Makefile -o -name '*.sh' \) | sort | xargs sha256sum > "$IMG/build-source.sha256"
-(cd "$IMG" && sha256sum -c image.sha256) | tee build/freeze/image-validation.txt
+run_logged build/freeze/image-validation.txt sh -c 'cd "$1" && sha256sum -c image.sha256' sh "$IMG"
 sha256sum "$IMG"/*.core "$IMG"/runtime/sbcl "$IMG"/openssl/lib/*.so.3 "$IMG"/lib/libsodium.so.23 "$ACL2" | tee build/freeze/image-hashes.txt
 ls -la "$IMG"
 echo "== done"
