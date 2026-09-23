@@ -64,6 +64,26 @@
 
 ; -----------------------------------------------------------------------------
 ; Acceptance into the node's durable state
+;
+; The transitions below test an anchor -- is it one, does its chain verify,
+; does it cover one nonce, is its server pinned -- and never look inside it.
+; With the vocabulary open, every one of those tests unfolded into the ten
+; field widths of `fn-anchor-p' and the octets the signatures cover, and the
+; goals spent most of their time outside the rewriter (150 000 to 300 000
+; steps a second; the monotone keystone below took 85 s and the book 174 s;
+; planning/evidence/chain-remainder-cost-2026-09-23.md).  The tests stay
+; closed from here on; the one theorem that relates two of them opens them
+; in its own hint.
+(local (in-theory (disable fn-anchor-p fn-anchor-verifiedp
+                           fn-anchor-signatures-okp fn-anchor-window-okp
+                           fn-anchor-one-nonce-p fn-anchor-pinnedp)))
+
+; A pinned server's response is an anchor (the pin test's first conjunct).
+(local
+ (defthm fn-anchor-pinned-anchor-is-an-anchor
+   (implies (fn-anchor-pinnedp a pinned) (fn-anchor-p a))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-anchor-pinnedp)))))
 
 (defthm fn-anchor-node-accept-preserves-nodep
   (implies (fn-anchor-nodep node)
@@ -326,7 +346,10 @@
 (defthm fn-anchor-verifiedp-observed-is-verifiedp
   (implies (equal (and verdict t) (fn-anchor-signatures-okp a))
            (equal (fn-anchor-verifiedp-observed a verdict)
-                  (fn-anchor-verifiedp a))))
+                  (fn-anchor-verifiedp a)))
+  :hints (("Goal" :in-theory (enable fn-anchor-p fn-anchor-verifiedp
+                                     fn-anchor-signatures-okp
+                                     fn-anchor-window-okp))))
 
 (defthm fn-anchor-node-accept-observed-is-node-accept
   (implies (and (equal (and verdict t) (fn-anchor-signatures-okp a))
