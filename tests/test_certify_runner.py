@@ -121,7 +121,15 @@ class FakeRepository:
         self.acl2.chmod(self.acl2.stat().st_mode | stat.S_IXUSR)
         self.events = self.root / "events.log"
         self.cache = self.root / "cert-cache"
+        # Archived manifests the scheduler reads walls from; empty unless a
+        # test writes one, so no real run's timings reach a unit test.
+        self.history = self.root / "planning" / "evidence" / "manifests"
         self.runs = 0
+
+    def archive_walls(self, walls: dict[str, float]) -> None:
+        self.history.mkdir(parents=True, exist_ok=True)
+        (self.history / "certify-20260101T000000Z-1.json").write_text(
+            json.dumps({"book_wall_seconds": walls}))
 
     def certify(self, books: list[str], jobs: int, fail: str = "",
                 slots: int = 16, extra: list[str] | None = None,
@@ -150,6 +158,7 @@ class FakeRepository:
         with mock.patch.object(runner, "ROOT", self.root), \
                 mock.patch.object(runner.ledger, "ROOT", self.root), \
                 mock.patch.object(runner, "BUILD_ROOT", build), \
+                mock.patch.object(runner, "WALL_HISTORY", self.history), \
                 mock.patch.dict(os.environ, environment, clear=True), \
                 mock.patch.object(runner.sys, "argv", argv), \
                 contextlib.redirect_stdout(io.StringIO()), \
@@ -541,6 +550,101 @@ class ClosureTests(unittest.TestCase):
             self.assertEqual(sorted(set(repository.event_log())),
                              ["books/base", "books/leaf-a", "books/mid",
                               "end", "start"])
+
+
+class CriticalPathScheduleTests(unittest.TestCase):
+    """Ready books start longest-remaining-chain first, by archived walls.
+
+    The DAG is three small independent books listed first and a chain of
+    three large ones listed last, the shape of the seam run on 2026-09-23:
+    requested order spends the first slots on the small books while the
+    chain that bounds the run waits.
+    """
+
+    BOOKS = {
+        "books/free-a": [], "books/free-b": [], "books/free-c": [],
+        "books/chain-1": [], "books/chain-2": ["chain-1"],
+        "books/chain-3": ["chain-2"],
+    }
+    ORDER = ["books/free-a", "books/free-b", "books/free-c",
+             "books/chain-1", "books/chain-2", "books/chain-3"]
+    WALLS = {"books/free-a": 1.0, "books/free-b": 1.0, "books/free-c": 1.0,
+             "books/chain-1": 10.0, "books/chain-2": 10.0, "books/chain-3": 10.0}
+    GRAPH = {"books/free-a": set(), "books/free-b": set(), "books/free-c": set(),
+             "books/chain-1": set(), "books/chain-2": {"books/chain-1"},
+             "books/chain-3": {"books/chain-2"}}
+
+    def test_priority_is_own_wall_plus_the_longest_chain_above(self):
+        priority = runner.critical_path_priority(self.ORDER, self.GRAPH, self.WALLS)
+        self.assertEqual(priority["books/chain-1"], 30.0)
+        self.assertEqual(priority["books/chain-2"], 20.0)
+        self.assertEqual(priority["books/chain-3"], 10.0)
+        self.assertEqual(priority["books/free-a"], 1.0)
+
+    def test_the_chain_starts_first_and_dependencies_still_hold(self):
+        started: list[str] = []
+        priority = runner.critical_path_priority(self.ORDER, self.GRAPH, self.WALLS)
+        runner.run_schedule(self.ORDER, self.GRAPH, 1, started.append, priority)
+        self.assertEqual(started, ["books/chain-1", "books/chain-2",
+                                   "books/chain-3", "books/free-a",
+                                   "books/free-b", "books/free-c"])
+        started.clear()
+        runner.run_schedule(self.ORDER, self.GRAPH, 1, started.append)
+        self.assertEqual(started, self.ORDER, "no priority keeps requested order")
+
+    def test_the_runner_orders_by_archived_walls_and_says_so(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, self.BOOKS)
+            repository.archive_walls(self.WALLS)
+            code, manifest = repository.certify(self.ORDER, jobs=2)
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            # chain-1 takes a first slot (requested order would start it
+            # third); chain-2 is not ready yet, so the other slot goes to the
+            # first small book.  The two start concurrently, so their
+            # recorded order is a race and only the pair is checked.
+            self.assertCountEqual(manifest["start_order"][:2],
+                                  ["books/chain-1", "books/free-a"])
+            self.assertGreater(repository.index("start", "books/chain-2"),
+                               repository.index("end", "books/chain-1"))
+            self.assertEqual(manifest["schedule"],
+                             {"policy": "critical-path-first",
+                              "books_with_archived_wall": 6,
+                              "predicted_critical_path_seconds": 30.0})
+
+    def test_one_job_keeps_requested_order_whatever_the_walls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, self.BOOKS)
+            repository.archive_walls(self.WALLS)
+            _, manifest = repository.certify(self.ORDER, jobs=1)
+            self.assertEqual(manifest["start_order"], self.ORDER)
+            self.assertEqual(manifest["schedule"], {"policy": "requested-order"})
+
+    def test_a_list_schedule_of_the_seam_shape_is_shorter(self):
+        # run_schedule's policy on a virtual clock at two jobs: whenever a
+        # slot is free, start the first ready book in queue order.  Requested
+        # order finishes at 31 s (the chain starts at 1 s, behind two small
+        # books); the chain first finishes at 30 s, its own length, which no
+        # order can beat.
+        def makespan(priority):
+            queue = list(self.ORDER)
+            if priority is not None:
+                queue.sort(key=lambda book: -priority[book])
+            running: dict[str, float] = {}
+            done: set[str] = set()
+            clock = 0.0
+            while queue or running:
+                for book in list(queue):
+                    if len(running) < 2 and self.GRAPH[book] <= done:
+                        queue.remove(book)
+                        running[book] = clock + self.WALLS[book]
+                clock = min(running.values())
+                for book in [b for b, end in running.items() if end == clock]:
+                    del running[book]
+                    done.add(book)
+            return clock
+        priority = runner.critical_path_priority(self.ORDER, self.GRAPH, self.WALLS)
+        self.assertEqual(makespan(None), 31.0)
+        self.assertEqual(makespan(priority), 30.0)
 
 
 class SlotTests(unittest.TestCase):
