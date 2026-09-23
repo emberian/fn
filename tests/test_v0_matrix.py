@@ -256,6 +256,32 @@ def make_gate(home):
     return gate
 
 
+class NativeEnvironmentTests(unittest.TestCase):
+    def test_pinned_openssl_reaches_probe_and_public_operator(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = v0_matrix.V0Matrix(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/tmp/fn-host",
+                native_openssl_prefix="/tank/fn/OpenSSL 3.5.8")
+            command = gate.native_command("/tmp/fn.toml", "run")
+            self.assertIn("FN_OPENSSL_PREFIX='/tank/fn/OpenSSL 3.5.8'", command)
+            self.assertIn("FN_NATIVE_HOST=/tmp/fn-host", command)
+
+            seen = []
+            def record(title, script, **_kwargs):
+                seen.append(script)
+                return Step(title, script, 0,
+                            "\n".join("{} sha".format(name) for name in (
+                                "NATIVE-LAUNCHER-DIGEST", "NATIVE-IMAGE-DIGEST",
+                                "NATIVE-RUNTIME-DIGEST", "NATIVE-CORE-DIGEST")), 0.0)
+            gate.sh = record
+            gate.probe_native_subject()
+            self.assertEqual(len(seen), 1)
+            self.assertIn("FN_OPENSSL_PREFIX='/tank/fn/OpenSSL 3.5.8' "
+                          "FN_NATIVE_HOST=\"$image\"", seen[0])
+
+
+
 class EmitTests(unittest.TestCase):
     """The only way a row is created, and what it refuses to create."""
 

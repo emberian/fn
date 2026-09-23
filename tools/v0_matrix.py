@@ -1724,7 +1724,8 @@ class V0Matrix(twonode_gate.TwoNodeGate):
                  backend=DEVELOPMENT_BACKEND, native_image=None,
                  native_configs=None, native_group=GROUPS[0],
                  native_image_source=None, native_runtime=None,
-                 native_developer_image=None, **kwargs):
+                 native_developer_image=None, native_openssl_prefix=None,
+                 **kwargs):
         super().__init__(*args, **kwargs)
         if backend not in BACKENDS:
             raise GateError("unknown execution backend {!r}".format(backend))
@@ -1736,6 +1737,7 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         # an owner built with the developer profile.  Nothing else in this
         # slice runs on it.
         self.native_developer_image = native_developer_image
+        self.native_openssl_prefix = native_openssl_prefix
         self.native_configs = dict(native_configs or {})
         self.native_group = native_group
         self.native_image_source = native_image_source
@@ -1898,6 +1900,12 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         were.
         """
 
+    def native_openssl_env(self):
+        """Environment for every saved-image entry in this native slice."""
+        return ("FN_OPENSSL_PREFIX={} ".format(
+            shlex.quote(self.native_openssl_prefix))
+            if self.native_openssl_prefix else "")
+
     def native_command(self, config, *words, image=None, env=None) -> str:
         """The packaged public native command against one named configuration.
 
@@ -1908,9 +1916,12 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         """
         def word(one):
             return one if isinstance(one, self.Raw) else shlex.quote(one)
+        variables = dict(env or {})
+        if self.native_openssl_prefix:
+            variables["FN_OPENSSL_PREFIX"] = self.native_openssl_prefix
         return "env {}FN_NATIVE_HOST={} packaging/fn-native operator {} {}".format(
             "".join("{}={} ".format(name, shlex.quote(value))
-                    for name, value in sorted((env or {}).items())),
+                    for name, value in sorted(variables.items())),
             shlex.quote(image or self.native_image), word(config),
             " ".join(word(one) for one in words))
 
@@ -3936,8 +3947,9 @@ else
   echo "NATIVE-RUNTIME-DIGEST unmeasured"
 fi
 echo "NATIVE-CORE-DIGEST $(digest "$image.core")"
-FN_NATIVE_HOST="$image" packaging/fn-native operator /not-opened help run
-""".format(image=image, runtime=shlex.quote(self.native_runtime or ""))), timeout=300, expect=None)
+{openssl}FN_NATIVE_HOST="$image" packaging/fn-native operator /not-opened help run
+""".format(image=image, runtime=shlex.quote(self.native_runtime or ""),
+           openssl=self.native_openssl_env())), timeout=300, expect=None)
         markers = {line.split(" ", 1)[0]: line.split(" ", 1)[1]
                    for line in step.output.splitlines()
                    if line.startswith("NATIVE-") and " " in line}
@@ -3979,7 +3991,7 @@ test -x "$runtime_path" || exit 4
 runtime_expected=$(digest "$runtime_path")
 echo "NATIVE-PEERING-EXPECTED-RUNTIME $runtime_expected"
 echo "NATIVE-PEERING-EXPECTED-CORE $core_before"
-FN_NATIVE_HOST="$image" FN_NATIVE_IMAGE_SOURCE_SHA={source} \
+{openssl}FN_NATIVE_HOST="$image" FN_NATIVE_IMAGE_SOURCE_SHA={source} \
 FN_NATIVE_LAUNCHER_SHA256="$runtime_before" FN_NATIVE_CORE_SHA256="$core_before" \
 FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
   python3 -m unittest \
@@ -3993,7 +4005,8 @@ test "$launcher_before" = "$launcher_after" && test "$runtime_before" = "$runtim
   && test "$core_before" = "$core_after" || exit 4
 exit "$rc"
 """.format(image=image, source=source,
-             runtime=shlex.quote(self.native_runtime or ""))), timeout=900, expect=None)
+             runtime=shlex.quote(self.native_runtime or ""),
+             openssl=self.native_openssl_env())), timeout=900, expect=None)
         witnesses = []
         for line in step.output.splitlines():
             if line.startswith("NATIVE-PEERING-WITNESS "):
@@ -4137,7 +4150,7 @@ fi
 echo "NATIVE-PROTECTED-EXPECTED-RUNTIME $runtime_expected"
 echo "NATIVE-PROTECTED-EXPECTED-CORE $core_before"
 echo "NATIVE-PROTECTED-EXPECTED-DEVELOPER-CORE $dev_core"
-FN_ACL2={acl2} FN_NATIVE_HOST="$image" FN_NATIVE_IMAGE_SOURCE_SHA={source} \
+{openssl}FN_ACL2={acl2} FN_NATIVE_HOST="$image" FN_NATIVE_IMAGE_SOURCE_SHA={source} \
 FN_NATIVE_LAUNCHER_SHA256="$(digest "$image")" FN_NATIVE_CORE_SHA256="$core_before" \
 FN_NATIVE_RUNTIME_SHA256="$runtime_expected" FN_NATIVE_DEVELOPER_HOST="$dev" \
 FN_NATIVE_DEVELOPER_LAUNCHER_SHA256="$dev_launcher" \
@@ -4147,6 +4160,7 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
              runtime=shlex.quote(self.native_runtime or ""),
              acl2=shlex.quote(self.acl2),
              developer=shlex.quote(self.native_developer_image or ""),
+             openssl=self.native_openssl_env(),
              tests=" ".join(self.PROTECTED_TESTS))), timeout=900, expect=None)
         expected, witnesses = {}, []
         for line in step.output.splitlines():
@@ -4566,9 +4580,10 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
         # Every path here is a `$HOME/...` shell expression by construction
         # (see `Raw`), so none of them is quoted.
         init = self.sh("node {} capacity scratch store".format(node.upper), self.cd(
-            "mkdir -p {scratch} && env FN_NATIVE_HOST={image} packaging/fn-native store "
+            "mkdir -p {scratch} && env {openssl}FN_NATIVE_HOST={image} packaging/fn-native store "
             "{store} init {group} && printf '[store]\\npath = \"%s\"\\n' \"{store}\" > {config}"
             .format(scratch=scratch, image=shlex.quote(self.native_image),
+                    openssl=self.native_openssl_env(),
                     store=store, group=shlex.quote(self.native_group),
                     config=config)), timeout=900, expect=None)
         if init.rc != 0:
@@ -4807,11 +4822,12 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
         # Every path here is a `$HOME/...` shell expression by construction
         # (see `Raw`), so none of them is quoted.
         init = self.sh("node {} auth-required scratch store".format(node.upper), self.cd(
-            "mkdir -p {scratch} && env FN_NATIVE_HOST={image} packaging/fn-native store "
+            "mkdir -p {scratch} && env {openssl}FN_NATIVE_HOST={image} packaging/fn-native store "
             "{store} init {group} && printf '[store]\\npath = \"%s\"\\n[listener]\\n"
             "host = \"127.0.0.1\"\\nport = %s\\n[auth]\\nrequired = true\\n[control]\\n"
             "path = \"%s\"\\n' \"{store}\" {port} \"{scratch}/control.sock\" > {config}"
             .format(scratch=scratch, image=shlex.quote(self.native_image), store=store,
+                    openssl=self.native_openssl_env(),
                     group=shlex.quote(self.native_group), port=port, config=config)),
             timeout=900, expect=None)
         enrol = self.sh("node {} auth-required scratch credential".format(node.upper),
@@ -4899,11 +4915,12 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
         store = "{}/store".format(root)
         config = "{}/fn.toml".format(root)
         init = self.sh("loopback refusal: scratch store", self.cd(
-            "mkdir -p {root} && env FN_NATIVE_HOST={image} packaging/fn-native store "
+            "mkdir -p {root} && env {openssl}FN_NATIVE_HOST={image} packaging/fn-native store "
             "{store} init {group} && printf '[store]\\npath = \"%s\"\\n[listener]\\n"
             "host = \"0.0.0.0\"\\nport = %s\\n[control]\\npath = \"%s\"\\n' "
             "\"{store}\" {port} \"{root}/control.sock\" > {config}".format(
                 root=root, image=shlex.quote(self.native_image), store=store,
+                openssl=self.native_openssl_env(),
                 group=shlex.quote(self.native_group),
                 port=self.LOOPBACK_DECLARED_PORT, config=config)),
             timeout=900, expect=None)
@@ -4955,13 +4972,14 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
         log = "{}/service.log".format(scratch)
         msgid = "<profile-{}@example.invalid>".format(node.name)
         init = self.sh("node {} profile scratch store".format(node.upper), self.cd(
-            "mkdir -p {scratch} && rm -f {log} && env FN_NATIVE_HOST={image} "
+            "mkdir -p {scratch} && rm -f {log} && env {openssl}FN_NATIVE_HOST={image} "
             "packaging/fn-native store {store} init {group} && printf '[store]\\npath = "
             "\"%s\"\\n[listener]\\nhost = \"127.0.0.1\"\\nport = %s\\n[log]\\npath = "
             "\"%s\"\\n[control]\\npath = \"%s\"\\n' \"{store}\" {port} \"{log}\" "
             "\"{scratch}/control.sock\" > {config} && printf '[store]\\npath = \"%s\"\\n"
             "[posting]\\nagent = \"%s\"\\n' \"{store}\" {agent} > {agent_config}".format(
                 scratch=scratch, log=log, image=shlex.quote(self.native_image),
+                openssl=self.native_openssl_env(),
                 store=store, group=shlex.quote(self.native_group),
                 port=self.PROFILE_OWNER_PORT, config=config,
                 agent=shlex.quote(self.PROFILE_AGENT), agent_config=agent_config)),
@@ -6192,6 +6210,8 @@ def main(argv=None) -> int:
                              "without it the native peering witness is not exercised")
     parser.add_argument("--native-runtime", default=None,
                         help="execution-host SBCL runtime path used to build/run the native image")
+    parser.add_argument("--native-openssl-prefix", default=None,
+                        help="execution-host OpenSSL prefix required by the saved image")
     parser.add_argument("--scale", action="store_true",
                         help="run tools/scale_gate.py for the scale row (hours)")
     parser.add_argument("--inn", action="store_true",
@@ -6273,7 +6293,8 @@ def main(argv=None) -> int:
                     native_group=args.native_group,
                     native_image_source=args.native_image_source,
                     native_runtime=args.native_runtime,
-                    native_developer_image=args.native_developer_image)
+                    native_developer_image=args.native_developer_image,
+                    native_openssl_prefix=args.native_openssl_prefix)
     try:
         gate._evidence_name = str(target.resolve().relative_to(repo))
     except ValueError:
