@@ -53,7 +53,22 @@
                                fn-bpb-encode fn-bpp-blockp))))
 (verify-guards fn-bpn-report-step)
 (verify-guards fn-bpn-report-outbox-work)
-(verify-guards fn-bpn-report-outbox-view)
+(local
+ (defthm fn-bpnrg-deleted-match-has-heldp
+   (implies (fn-bpn-report-deleted-record-matches-heldp record held)
+            (fn-bpnf-heldp held))
+   :rule-classes nil
+   :hints (("Goal" :in-theory
+            (e/d (fn-bpn-report-deleted-record-matches-heldp)
+                 (fn-bpnf-heldp fn-bpn-report-delete-recordp))))))
+(verify-guards fn-bpn-report-outbox-view
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnrg-deleted-match-has-heldp
+                            (record (fn-bpn-nth 14 held)))
+                 (:instance fn-bpn-report-held-bundle-for-guard))
+           :in-theory (union-theories
+                       '(fn-bpn-bundle-primary-true-list-for-guard)
+                       (theory 'minimal-theory)))))
 (verify-guards fn-bpn-report-bundle
   :hints (("Goal" :in-theory (enable fn-bpn-configp))))
 (verify-guards fn-bpn-report-job-matchp)
