@@ -1,0 +1,6 @@
+test_enroll_author_refuse_tamper_and_restart_query (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_enroll_author_refuse_tamper_and_restart_query) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.687s
+
+OK
