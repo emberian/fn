@@ -1327,8 +1327,10 @@ part of K0.
 ; is now derived at pairs 8 and 12. Pair 12 has a quiet durable root and
 ; its frontier pathname contains exactly the supplied octets, decoding to
 ; the candidate successor under fn-bs-frontier-inputp. This is independent
-; of an assumed post-fence scan or relation. The logical attempted state,
-; pair-12/pair-14 relation and error cuts remain K0 obligations.
+; of an assumed post-fence scan or relation. The logical attempted state at pair 12 and candidate equality are now
+; derived from the actual interpreter suffix; they establish the committed
+; byte/candidate premise of the directory callback theorem. Full relation
+; at pair 12/pair 14 and error cuts remain K0 obligations.
 ; fn-bs-k0-record-prepare-preserves-relation and its fn-sn-prepare lift now
 ; carry an already related reserved state through ACL2 article preparation
 ; without changing bytes. fn-bs-k0-served-article-prepare-to-attempted-relation

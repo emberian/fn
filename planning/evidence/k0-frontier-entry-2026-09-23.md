@@ -120,3 +120,21 @@ The logical `:frontier-attempted` state at pair 12, full relation there,
 `:reserved` callback relation at pair 14, all failure outcomes and physical
 barrier qualification remain open. This is an exact physical model prefix,
 not a whole-program K0 claim.
+
+The logical counterpart at that same physical pair 12 is now proved from
+the successful interpreter suffix starting at pair 6:
+`fn-bs-k0-frontier-dir-cut-kernel-is-replace-observation` equates it to
+the host-called ACL2 `:frontier-replace :ok` callback, and
+`fn-bs-k0-frontier-dir-cut-kernel-candidate-and-phase` gives
+`:frontier-attempted` with that exact successor candidate. The derived
+`fn-bs-k0-frontier-dir-cut-committedp` establishes the concrete byte/candidate
+premise of the existing directory-observation theorem, without assuming
+post-fence relation. The retained-article fixture witnesses byte and kernel
+frontiers equal at the cut. The remaining proof must carry the full relation
+across the root rename/fence before applying the `:frontier-dir :ok`
+callback theorem; these logical suffix facts alone do not supply it.
+
+The book and test roots passed selected hbox certification under
+`run-20260923T235542Z-5b7a`; the original requested-root results and
+source/closure/toolchain digests are archived in
+`planning/evidence/manifests/certify-20260923T235544Z-548014.json`.

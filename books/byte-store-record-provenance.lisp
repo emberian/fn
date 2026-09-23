@@ -3794,3 +3794,164 @@
            :in-theory (e/d (fn-bs-dir-quietp)
                            (fn-bs-run fn-bs-frontier-program
                             fn-bs-fence-dir fn-bs-rename)))))
+
+(local
+ (defthm fn-bs-k0-frontier-suffix-kernel
+  (implies (and (fn-sf-statep fileks)
+                (equal (fn-sf-phase fileks) :frontier-data-durable)
+                (fn-bs-inop (fn-bs-lookup file :staging stage)))
+           (equal (cdr (nth 5 (fn-bs-run
+                               file fileks
+                               (nthcdr 7 (fn-bs-frontier-program stage octets))
+                               nil groups capacity)))
+                  (fn-sf-frontier-replace-result fileks :ok)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-frontier-program fn-bs-run fn-bs-step
+                            fn-sf-dispatch fn-bs-rename fn-bs-fsync-dir)
+                           (fn-bs-lookup fn-sf-statep
+                            fn-sf-frontier-replace-result fn-bs-fence-dir))))))
+
+(local
+ (defthm fn-bs-k0-frontier-suffix-starts-at-file-observation
+  (implies (and (fn-bs-statep bs) (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage)) (true-listp octets))
+           (equal (nth 12 (fn-bs-run bs ks
+                                      (fn-bs-frontier-program stage octets)
+                                      nil groups capacity))
+                  (nth 5 (fn-bs-run
+                          (car (nth 6 (fn-bs-run bs ks
+                                                (fn-bs-frontier-program stage octets)
+                                                nil groups capacity)))
+                          (cdr (nth 6 (fn-bs-run bs ks
+                                                (fn-bs-frontier-program stage octets)
+                                                nil groups capacity)))
+                          (nthcdr 7 (fn-bs-frontier-program stage octets))
+                          nil groups capacity))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-k0-frontier-file-cut-is-write-fence
+                 fn-bs-k0-frontier-file-cut-source-is-new-inode
+                 (:instance fn-bs-k6-write-created-inode-returns-ok-without-namep
+                            (frame octets)))
+           :in-theory (e/d (fn-bs-frontier-program fn-bs-run fn-bs-step
+                            fn-bs-fsync-file)
+                           (fn-bs-statep fn-bs-create fn-bs-write
+                            fn-bs-fence-file fn-bs-lookup
+                            fn-bs-fsync-dir fn-bs-rename))))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-callback-is-durable-phase
+  (implies (and (fn-sf-statep ks)
+                (equal (fn-sf-phase ks) :ready)
+                (< (fn-sf-frontier ks) *fn-sf-max-uint*))
+           (equal (fn-sf-phase
+                   (fn-sf-frontier-file-result
+                    (fn-sf-start-frontier ks) :ok))
+                  :frontier-data-durable))
+  :hints (("Goal" :use ((:instance fn-sf-start-frontier-preserves-state (s ks)))
+           :in-theory (enable fn-sf-start-frontier
+                              fn-sf-frontier-file-result)))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-observation-source-is-new-inode
+  (implies (and (fn-bs-statep bs) (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage)) (true-listp octets))
+           (equal (fn-bs-lookup
+                   (car (nth 6 (fn-bs-run bs ks
+                             (fn-bs-frontier-program stage octets)
+                             nil groups capacity)))
+                   :staging stage)
+                  (fn-bs-next-ino bs)))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-bs-k0-frontier-file-cut-source-is-new-inode
+                        fn-bs-k0-frontier-file-observation-keeps-byte-state)
+           :in-theory (disable fn-bs-run fn-bs-frontier-program
+                               fn-bs-lookup)))))
+
+(defthm fn-bs-k0-frontier-dir-cut-kernel-is-replace-observation
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal (cdr (nth 12 (fn-bs-run bs ks
+                                         (fn-bs-frontier-program stage octets)
+                                         nil groups capacity)))
+                  (fn-sf-frontier-replace-result
+                   (fn-sf-frontier-file-result
+                    (fn-sf-start-frontier ks) :ok)
+                   :ok)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-frontier-suffix-starts-at-file-observation
+                 (:instance fn-bs-k0-frontier-suffix-kernel
+                            (file (car (nth 6 (fn-bs-run bs ks
+                                              (fn-bs-frontier-program stage octets)
+                                              nil groups capacity))))
+                            (fileks (cdr (nth 6 (fn-bs-run bs ks
+                                               (fn-bs-frontier-program stage octets)
+                                               nil groups capacity)))))
+                 fn-bs-k0-frontier-file-cut-kernel-is-file-observation
+                 fn-bs-k0-frontier-file-observation-source-is-new-inode
+                 fn-bs-k0-frontier-file-callback-is-durable-phase
+                 (:instance fn-sf-start-frontier-preserves-state (s ks))
+                 (:instance fn-sf-frontier-file-result-preserves-state
+                            (s (fn-sf-start-frontier ks)) (result :ok))
+                 (:instance fn-bs-k6-state-next-ino-is-inop))
+           :in-theory (e/d (fn-bs-frontier-inputp)
+                           (fn-bs-run fn-bs-frontier-program fn-bs-store-relation
+                            fn-bs-statep fn-bs-lookup
+                            fn-sf-start-frontier fn-sf-frontier-file-result
+                            fn-sf-frontier-replace-result)))))
+
+(defthm fn-bs-k0-frontier-dir-cut-kernel-candidate-and-phase
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (and (equal (fn-sf-phase
+                        (cdr (nth 12 (fn-bs-run bs ks
+                                        (fn-bs-frontier-program stage octets)
+                                        nil groups capacity))))
+                       :frontier-attempted)
+                (equal (fn-sf-frontier-candidate
+                        (cdr (nth 12 (fn-bs-run bs ks
+                                        (fn-bs-frontier-program stage octets)
+                                        nil groups capacity))))
+                       (1+ (fn-sf-frontier ks)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-frontier-dir-cut-kernel-is-replace-observation
+                 (:instance fn-sf-start-frontier-preserves-state (s ks))
+                 (:instance fn-sf-frontier-file-result-preserves-state
+                            (s (fn-sf-start-frontier ks)) (result :ok)))
+           :in-theory (e/d (fn-bs-frontier-inputp fn-sf-start-frontier
+                            fn-sf-frontier-file-result
+                            fn-sf-frontier-replace-result)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-store-relation fn-bs-statep)))))
+
+; This supplies the concrete byte/candidate premise of the existing
+; frontier-directory callback theorem.  Its remaining pre-callback relation
+; premise is an actual K0 obligation, not silently assumed here.
+(defthm fn-bs-k0-frontier-dir-cut-committedp
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-frontier-directory-committedp
+            (car (nth 12 (fn-bs-run bs ks
+                      (fn-bs-frontier-program stage octets)
+                      nil groups capacity)))
+            (cdr (nth 12 (fn-bs-run bs ks
+                      (fn-bs-frontier-program stage octets)
+                      nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-frontier-dir-cut-decodes-candidate
+                 fn-bs-k0-frontier-dir-cut-root-quiet
+                 fn-bs-k0-frontier-dir-cut-kernel-candidate-and-phase)
+           :in-theory (e/d (fn-bs-frontier-directory-committedp
+                            fn-bs-frontier-inputp)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-durable-frontier fn-bs-dir-quietp)))))
