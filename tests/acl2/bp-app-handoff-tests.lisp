@@ -52,7 +52,11 @@
 (defconst *bpah-receipt-cfg*
   (fn-cfg-make 7
     (fn-cfg-value-make nil 0 nil nil nil
-      (list (fn-cfg-row-make "receiver-peer" "bp-trust" "network" 0)
+      (list (fn-cfg-row-make "receiver-peer" "path-identity"
+                             "receiver.example.invalid" 0)
+            (fn-cfg-row-make "receiver-peer" "auth-principal"
+                             "bp-only-no-nntp-principal" 0)
+            (fn-cfg-row-make "receiver-peer" "bp-trust" "network" 0)
             (fn-cfg-row-make "receiver-peer" "transport-bp"
                              "dtn://receiver/" 0)) nil)))
 (defconst *bpah-request-view*
@@ -63,7 +67,11 @@
 (defconst *bpah-request-cfg*
   (fn-cfg-make 7
     (fn-cfg-value-make nil 0 nil nil nil
-      (list (fn-cfg-row-make "sender-peer" "bp-trust" "network" 0)
+      (list (fn-cfg-row-make "sender-peer" "path-identity"
+                             "sender.example.invalid" 0)
+            (fn-cfg-row-make "sender-peer" "auth-principal"
+                             "bp-only-no-nntp-principal" 0)
+            (fn-cfg-row-make "sender-peer" "bp-trust" "network" 0)
             (fn-cfg-row-make "sender-peer" "transport-bp"
                              "dtn://sender/" 0)) nil)))
 (assert-event

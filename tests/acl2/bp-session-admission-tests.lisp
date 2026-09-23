@@ -7,7 +7,9 @@
 (defconst *bpat-other-eid* (cons :dtn (fn-record-string-octets "//other/")))
 (defconst *bpat-channel* (list :tcp4 '(127 0 0 1) 4556 '(127 0 0 1)))
 (defconst *bpat-rows*
-  (list (fn-cfg-row-make "peer" "transport-bp" "dtn://peer/" 0)
+  (list (fn-cfg-row-make "peer" "path-identity" "peer.example.invalid" 0)
+        (fn-cfg-row-make "peer" "auth-principal" "bp-only-no-nntp-principal" 0)
+        (fn-cfg-row-make "peer" "transport-bp" "dtn://peer/" 0)
         (fn-cfg-row-make "peer" "bp-trust" "network" 0)
         (fn-cfg-row-make "peer" "bp-boundary-listener" "127.0.0.1" 4556)
         (fn-cfg-row-make "peer" "bp-boundary-source" "127.0.0.1" 0)
@@ -18,8 +20,8 @@
   (fn-cfg-make 7 (fn-cfg-value-make nil 0 nil nil nil *bpat-rows* nil)))
 (defconst *bpat-no-trust*
   (fn-cfg-make 7 (fn-cfg-value-make nil 0 nil nil nil
-                                  (cons (car *bpat-rows*)
-                                        (cddr *bpat-rows*)) nil)))
+                                  (append (take 3 *bpat-rows*)
+                                          (cddddr *bpat-rows*)) nil)))
 
 (assert-event (fn-cfgp *bpat-cfg*))
 (assert-event (fn-bpp-eidp *bpat-eid*))
@@ -33,6 +35,14 @@
 (assert-event
  (equal (fn-bpaj-admitted-principal
          (fn-bpaj-session-principal *bpat-no-trust* *bpat-channel* *bpat-eid*))
+        nil))
+(assert-event
+ (equal (fn-bpaj-admitted-principal
+         (fn-bpaj-session-principal
+          (fn-cfg-make 7
+            (fn-cfg-value-make nil 0 nil nil nil
+              (cddr *bpat-rows*) nil))
+          *bpat-channel* *bpat-eid*))
         nil))
 (assert-event
  (equal (fn-bpaj-admitted-principal
@@ -56,7 +66,11 @@
           (fn-cfg-make 7
             (fn-cfg-value-make nil 0 nil nil nil
               (append *bpat-rows*
-                (list (fn-cfg-row-make "other" "transport-bp" "dtn://other/" 0)
+                (list (fn-cfg-row-make "other" "path-identity"
+                                       "other.example.invalid" 0)
+                      (fn-cfg-row-make "other" "auth-principal"
+                                       "bp-only-no-nntp-principal" 0)
+                      (fn-cfg-row-make "other" "transport-bp" "dtn://other/" 0)
                       (fn-cfg-row-make "other" "bp-trust" "network" 0)
                       (fn-cfg-row-make "other" "bp-boundary-listener"
                                        "127.0.0.1" 4556)
@@ -74,7 +88,11 @@
           (fn-cfg-make 7
             (fn-cfg-value-make nil 0 nil nil nil
               (append *bpat-rows*
-                (list (fn-cfg-row-make "other" "transport-bp" "dtn://peer/" 0)
+                (list (fn-cfg-row-make "other" "path-identity"
+                                       "other.example.invalid" 0)
+                      (fn-cfg-row-make "other" "auth-principal"
+                                       "bp-only-no-nntp-principal" 0)
+                      (fn-cfg-row-make "other" "transport-bp" "dtn://peer/" 0)
                       (fn-cfg-row-make "other" "bp-trust" "network" 0)
                       (fn-cfg-row-make "other" "bp-boundary-listener"
                                        "127.0.0.1" 4556)
