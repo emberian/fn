@@ -1,5 +1,32 @@
 # Current work — 2026-09-23
 
+## Current integration checkpoint — 21:33 UTC
+
+The frozen `86323c89` developer and production images passed the targeted
+[topic, indexed-reader and live-configuration checks](evidence/native-topic-handoff-86323c89-2026-09-23.md);
+the developer image also passed all nine BP application tests, including
+ambiguous receipt-outbox publication. This is the trusted-local BP profile;
+channel admission, held-bundle expiry and fragment assembly are subsequent
+work, not covered by that result. The live service remains unchanged.
+The full Makefile-root ACL2 run at `f38c90a6` passed with 521 cached roots and
+two newly certified books in 11.646 seconds; `86323c89` changes only its ledger.
+The preceding broad topic-envelope run exposed one stale article-work test;
+its repaired boundary/cost witnesses passed in the incremental retry. Both
+original manifests are retained.
+
+The real [Mini portable-consumer experiment](evidence/dregg-e1-portable-consumer-p2.md)
+now joins native hybrid verification to the existing Mini durable reply path.
+Exact reopen and a separately signed conflicting source are tested. fn polling,
+acknowledgement and reply publication remain separate open joins.
+
+Consumer Store integration `98996532` and native publisher `944916e6` add the
+maintained consumer projection and strict replay to the current Store. Their
+combined full certification is running as `run-20260923T213308Z-9bef` against
+snapshot `38d4905c`; no successful combined result is claimed yet. Consumer
+scenario **SCN-033** avoids the existing SCN-031 native authorship scenario;
+CNS-001 and PRF-064 retain their IDs. The actual publisher-to-physical-recovery
+composition and complete authenticated poll/ack workflow remain open.
+
 The active goal is concurrent v0/v1 development of fn as high-assurance
 communication infrastructure for humans, agents and the systems in
 `/Users/ember/dev/breadstuffs` and `/Users/ember/dev/minidregg`. The completed
