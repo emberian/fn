@@ -113,10 +113,36 @@
           (push part chunks))))))
 
 (defun fnn-control-reply-octets (status)
-  (let ((reply (fnn-core 'fn-native-control-host-reply-encode status)))
+  (let ((reply (if (and (consp status)
+                        (eq (first status) :consumer-reply))
+                   (fnn-core 'fn-native-control-host-consumer-reply-encode
+                             (second status) (third status))
+                 (fnn-core 'fn-native-control-host-reply-encode status))))
     (unless (fnn-octet-list-p reply)
       (fnn-fault "ACL2 refused a local-control reply status"))
     (fnn-octets reply)))
+
+(defun fnn-control-peer-is-owner-p (socket)
+  "Bind the local-control principal to the process's effective UID.
+
+Darwin's getpeereid observes credentials on the connected Unix socket; a
+failed observation refuses.  The current native production image is Darwin.
+Other host ports must supply an equivalent peer-credential observation before
+enabling this owner-only control profile."
+  #+darwin
+  (sb-alien:with-alien ((peer-uid sb-alien:unsigned-int)
+                        (peer-gid sb-alien:unsigned-int))
+    (let ((result
+            (sb-alien:alien-funcall
+             (sb-alien:extern-alien
+              "getpeereid"
+              (function sb-alien:int sb-alien:int
+                        (* sb-alien:unsigned-int)
+                        (* sb-alien:unsigned-int)))
+             (fnn-socket-fd socket)
+             (sb-alien:addr peer-uid) (sb-alien:addr peer-gid))))
+      (and (zerop result) (= peer-uid (sb-posix:geteuid)))))
+  #-darwin (let ((ignored socket)) (declare (ignore ignored)) nil))
 
 (defun fnn-control-stop-cut-armed-p ()
   "Whether FN_NATIVE_CONTROL_TEST_STOP arms the developer stop cut.
@@ -206,10 +232,20 @@ joins it before the process exits."
                       (admin
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-admin-decode
+                                       (fnn-octet-list frame))))
+                      (consumer
+                        (and (typep frame 'fnn-octets)
+                             (fnn-core 'fn-native-control-host-consumer-request-decode
                                        (fnn-octet-list frame)))))
                  (cond
                    ((and *fnn-hybrid-control-handler*
                          (funcall *fnn-hybrid-control-handler* service frame)))
+                   ((and (consp consumer) (eq (car consumer) :consumer))
+                    (if (fnn-control-peer-is-owner-p socket)
+                        (fnn-owner-consumer-local-serialized
+                         service (second consumer) (third consumer)
+                         (fourth consumer))
+                      (list :consumer-reply :refused nil)))
                    ((and (consp request) (eq (car request) :request))
                     (let ((msgid (second request))
                          (groups (third request))
@@ -243,7 +279,9 @@ joins it before the process exits."
     ;; A peer that disappears here creates no uncertainty for the owner: the
     ;; status already records its durable observation.  The client, which did
     ;; not receive it, conservatively reports :uncertain.
-    (fnn-control-test-after-submit status)
+    (fnn-control-test-after-submit
+     (if (and (consp status) (eq (first status) :consumer-reply))
+         (second status) status))
     (fnn-control-send-reply socket status)))
 
 (defun fnn-control-client-done (control socket)
@@ -457,6 +495,53 @@ joins it before the process exits."
                        status
                      (fnn-control-transport-outcome stage)))))
            (error () (fnn-control-transport-outcome stage)))
+      (when socket (fnn-socket-shut socket)))))
+
+(defun fnn-control-consumer-local (path-octets operation first second)
+  "Exchange one ACL2-framed consumer command with the 0600 owner socket."
+  (let ((request-list
+          (fnn-core 'fn-native-control-host-consumer-request-encode
+                    operation first second))
+        (socket nil) (stage :before-submission))
+    (unless (fnn-octet-list-p request-list)
+      (fnn-fault "ACL2 refused local consumer request"))
+    (unwind-protect
+         (handler-case
+             (progn
+               (setq socket (fnn-control-connect
+                             (fnn-octets-string path-octets)))
+               (let ((fd (fnn-socket-fd socket)))
+                 (setq stage :after-submission)
+                 (fnn-send-all fd (fnn-octets request-list)
+                               +fnn-control-io-seconds+)
+                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
+                 (let* ((frame (fnn-control-read-frame
+                                socket (fnn-core
+                                        'fn-native-control-host-max-frame)))
+                        (reply (and (typep frame 'fnn-octets)
+                                    (fnn-core
+                                     'fn-native-control-host-consumer-reply-decode
+                                     (fnn-octet-list frame))))
+                        (ordinary-status
+                          (and (typep frame 'fnn-octets)
+                               (fnn-core 'fn-native-control-host-reply-decode
+                                         (fnn-octet-list frame)))))
+                   (if (and (consp reply)
+                            (eq (first reply) :consumer-reply)
+                            (member (second reply)
+                                    '(:accepted :refused :uncertain :fault))
+                            (fnn-octet-list-p (third reply)))
+                       reply
+                     (list :consumer-reply
+                           (if (member ordinary-status
+                                       '(:refused :uncertain :fault :busy))
+                               (if (eq ordinary-status :busy)
+                                   :refused ordinary-status)
+                             (fnn-control-transport-outcome stage))
+                           nil)))))
+           (error ()
+             (list :consumer-reply
+                   (fnn-control-transport-outcome stage) nil)))
       (when socket (fnn-socket-shut socket)))))
 
 (defun fnn-control-submit (path-octets msgid-octets group-octets payload-path-octets)

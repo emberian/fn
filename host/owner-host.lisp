@@ -44,6 +44,7 @@
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
 ; be a book both sessions include.  See books/frame-trailer.lisp.
 (include-book "../books/feed-journal")
+(include-book "../books/consumer-owner-local")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -396,6 +397,25 @@
       (let ((state (fn-owner-step
                     (list :store (list :prepare-consumer event)) state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+
+; The local-control socket binds its one OS owner to fn-col's fixed principal.
+; These ACL2 calls alone choose the operation, current cursor scope and Store
+; coordinates.  No request may provide qver, view, principal or event bytes.
+(defun fn-owner-consumer-local-register (consumer group state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-register (fn-owner-core state) consumer group)))
+
+(defun fn-owner-consumer-local-ack (cursor-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-ack (fn-owner-core state) cursor-octets)))
+
+(defun fn-owner-consumer-local-position (consumer state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-position (fn-owner-core state) consumer)))
+
+(defun fn-owner-consumer-local-unregister (consumer state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-unregister (fn-owner-core state) consumer)))
 
 (defun fn-owner-known-abort (state)
   (declare (xargs :stobjs state :mode :program))

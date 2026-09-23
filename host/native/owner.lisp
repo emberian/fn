@@ -806,6 +806,63 @@ the current connection."
           (fnn-refuse "canonical Store refused consumer event")))
       (fnn-owner-publish-prepared service "consumer"))))
 
+(defun fnn-owner-consumer-local-serialized (service operation first second)
+  "Run one 0600 local-control consumer declaration under the owner mutex.
+
+The ACL2 owner wrapper pins the local principal, query/view profile, epoch,
+cursor scope and Store coordinates.  Raw Lisp transports only decoded octets
+and publishes the exact ACL2 event.  A lost reply remains uncertain to the
+client, which can issue POSITION after reconnecting."
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let* ((proposal
+              (case operation
+                (:register
+                 (fnn-owner-core 'fn-owner-consumer-local-register first second))
+                (:ack
+                 (fnn-owner-core 'fn-owner-consumer-local-ack first))
+                (:position
+                 (fnn-owner-core 'fn-owner-consumer-local-position first))
+                (:unregister
+                 (fnn-owner-core 'fn-owner-consumer-local-unregister first))
+                (otherwise '(:refused :operation))))
+            (kind (and (consp proposal) (first proposal))))
+       (case kind
+         (:refused (list :consumer-reply :refused nil))
+         (:position
+          (let ((token (second proposal)))
+            (unless (fnn-octet-list-p token)
+              (fnn-fault "ACL2 returned malformed consumer position"))
+            (list :consumer-reply :accepted token)))
+         (:no-op
+          (let ((token (fnn-core 'fn-cp-cursor-encode (second proposal))))
+            (unless (fnn-octet-list-p token)
+              (fnn-fault "ACL2 returned malformed idempotent cursor"))
+            (list :consumer-reply :accepted token)))
+         (:write
+          (unless (eq (fnn-owner-consumer-commit service (second proposal))
+                      :durable)
+            (fnn-fault "consumer publication lacked durable completion"))
+          (let ((token
+                  (case operation
+                    (:register
+                     (let ((position
+                             (fnn-owner-core 'fn-owner-consumer-local-position
+                                             first)))
+                       (unless (and (consp position)
+                                    (eq (first position) :position))
+                         (fnn-fault "durable registration has no position"))
+                       (second position)))
+                    (:ack first)
+                    (:unregister nil)
+                    (otherwise
+                     (fnn-fault "unexpected consumer write operation")))))
+            (unless (fnn-octet-list-p token)
+              (fnn-fault "ACL2 returned malformed durable cursor"))
+            (list :consumer-reply :accepted token)))
+         (otherwise (fnn-fault "ACL2 returned malformed consumer decision")))))))
+
 (defun fnn-owner-drain-one (service)
   "Take and complete at most one queued served submission; return cid/reply."
   (let ((taken (fnn-owner-action 'fn-owner-take)))
