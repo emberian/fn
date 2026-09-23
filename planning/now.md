@@ -2,9 +2,11 @@
 
 The active goal is concurrent v0/v1 development of fn as high-assurance
 communication infrastructure for humans, agents and the systems in
-`/Users/ember/dev/breadstuffs` and `/Users/ember/dev/minidregg`. The specialized
-Astra lane is grounding OS integration in those repositories' actual execution,
-persistence and authority models. The [swarm board](swarm-board.md) names the
+`/Users/ember/dev/breadstuffs` and `/Users/ember/dev/minidregg`. The completed
+[Astra repository study](dregg-os-integration-2026-09-23.md) grounds OS
+integration in those repositories' actual execution, persistence and authority
+models. A Sol lane now implements bounded native Mini evidence export and
+read-only verification in an isolated Mini worktree using a public fixture. The [swarm board](swarm-board.md) names the
 active implementation lanes and coordination boundaries. Image cuts identify
 reproducible experiments and do not stop project-wide development.
 

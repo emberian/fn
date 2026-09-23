@@ -43,12 +43,15 @@ freeze. Preserve the live `da5fd8cb` node and existing shared compute pools.
 | `crash_differential` | K8 directory-fence to exact crash scan bridge, then K6, with K0 prerequisites explicit; K5 conditional stable-prefix packet landed. |
 | `fragment_refinement` | Saved-image foreign-library relocation, copied-image TLS/hybrid and missing-bundle negatives, then actual cross-host exchange. |
 | `store_semantics` | Small separate human reader/composer using real native NNTP and durable submission, with bounded rendering and explicit outcomes. |
-| `dregg_os_architect` | Fresh specialized Astra study of actual Bread/Mini execution, persistence, authority and topic autonomy; external repositories remain read-only. |
+| `mini_evidence_bridge` | Bounded native Mini evidence export and read-only verification, real public fixture and payload/work measurements; isolated Mini worktree, no shared-main edits. |
 
 Root integrates finite source commits, regenerates ledgers, checks concrete
 proof/runtime regressions and maintains evidence. No lane is a permanent file
 owner. Announce interface changes and coordinate combined patches directly.
-The older scholar-architect lane is complete; it is not the new OS study.
+The specialized Astra OS study is complete in
+[dregg-os-integration-2026-09-23.md](dregg-os-integration-2026-09-23.md).
+It grounds P0/P1/P2 in Mini's real resource receiver and distinguishes Bread's destructive mailbox and ambient owner authority from the selected E2 contract.
+The P0 implementation now occupies that free parallel slot.
 
 ## Qualification underway alongside implementation
 
@@ -65,9 +68,9 @@ core retained the hbox OpenSSL absolute path. The relocation lane is building
 one isolated `329a51a2` plus host/test fixes image, not another full feature
 freeze. The failed two-host attempt is recorded and is not peering evidence.
 
-Root's BP merge qualification is `run-20260923T184236Z-0991` on hbox,
+Root's BP merge qualification passed and landed as `a093a6b2`: `run-20260923T184236Z-0991` on hbox,
 `/tank/fn/gates/integrate-bp-a2-2009-current`, twenty changed/dependent roots,
-two jobs and the existing pool. The lane's source certificate set differs in
+two jobs and the existing pool, 33.293 seconds. The lane's source certificate set differed in
 shared dependency bytes from current dev, so this is a real integration check.
 T8b and authorship have their own announced coherent/affected runs; do not
 start duplicate runs merely because a wait expired.
