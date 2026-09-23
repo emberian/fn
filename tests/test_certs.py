@@ -13,6 +13,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -479,7 +480,22 @@ class ArtifactSetTests(unittest.TestCase):
         certs.publish(source, cache, [manifest], books, origin=origin,
                       origin_kind="run")
 
-    def test_two_individually_current_origins_do_not_make_one_set(self):
+    def age(self, cache: Path, source: Path, origin: str, when: str) -> None:
+        """Back-date every entry ``origin`` published."""
+        for meta_path in cache.glob("*/*/meta.json"):
+            meta = json.loads(meta_path.read_text())
+            if meta.get("origin_root") == origin:
+                meta["published_at"] = when
+                meta_path.write_text(json.dumps(meta))
+
+    def test_two_snapshot_origins_compose_one_set(self):
+        """Each book current in a different snapshot origin: one composed set.
+
+        Measured on persvati 2026-09-23 (certificate-cache-2026-09-23.md):
+        ACL2 accepts a parent from one origin over a child from another,
+        because it compares sub-books by familiar name, annotations and
+        book-hash, never by full-book-name.
+        """
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
                 tempfile.TemporaryDirectory() as destination:
             cache = Path(destination) / "cache"
@@ -490,18 +506,28 @@ class ArtifactSetTests(unittest.TestCase):
             target = worktree(destination + "/target")
             report = certs.install_artifact_set(
                 target, cache, ["books/mid"], self.TOOLCHAIN)
-            self.assertIsNone(report.artifact_set)
-            self.assertCountEqual(report.uncached, ["books/base"])
-            self.assertFalse((target / "books/base.cert").exists())
-            self.assertFalse((target / "books/mid.cert").exists())
+            self.assertIsNotNone(report.artifact_set)
+            self.assertEqual(report.artifact_origin, certs.COMPOSED)
+            self.assertEqual(report.origins, {"/farm/run-a": 1, "/farm/run-b": 1})
+            self.assertEqual((report.installed, report.uncached), (2, []))
+            self.assertEqual((target / "books/base.cert").read_bytes(),
+                             (first / "books/base.cert").read_bytes())
+            self.assertEqual((target / "books/mid.cert").read_bytes(),
+                             (second / "books/mid.cert").read_bytes())
+            line = report.lines()[1]
+            self.assertIn("origin composed", line)
+            self.assertIn("; origins /farm/run-a=1,/farm/run-b=1", line)
 
-    def test_source_identical_parent_and_child_from_different_absolute_origins_refuse(self):
-        """Regression for the full-book-name conflict seen in the farm logs.
+    def test_each_pair_keeps_the_bytes_its_own_origin_wrote(self):
+        """The case the single-origin rule was written for, now composed.
 
-        Both source trees have byte-identical books.  Their certificate bytes
-        model ACL2's absolute post-alist: the parent from B requires B's child,
-        while the only cached child is from A.  The legacy per-book installer
-        assembles that invalid pair; set installation refuses it before ACL2.
+        The certificate bytes model ACL2's post-alist: the parent from B names
+        B's child, while the only cached child is from A.  On 2026-09-21 two
+        farm runs failed with messages naming exactly such paths, and the
+        rule was read off those messages; ACL2 prints them only after a
+        book-hash or annotation mismatch, and lists every entry by name when
+        the names differ.  A mixture of current pairs includes cleanly
+        (certificate-cache-2026-09-23.md, cases 1 to 3 and the extension).
         """
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
                 tempfile.TemporaryDirectory() as destination:
@@ -515,21 +541,115 @@ class ArtifactSetTests(unittest.TestCase):
             self.publish(first, cache, ["books/base"], "/farm/run-a")
             self.publish(second, cache, ["books/mid"], "/farm/run-b")
             target = worktree(destination + "/target")
-
-            legacy = certs.install(target, cache, ["books/base", "books/mid"])
-            self.assertEqual(legacy.installed, 2)
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual(report.artifact_origin, certs.COMPOSED)
             self.assertIn(b"/farm/run-a/books/base.lisp",
                           (target / "books/base.cert").read_bytes())
             self.assertIn(b"/farm/run-b/books/base.lisp",
                           (target / "books/mid.cert").read_bytes())
 
-            (target / "books/base.cert").unlink()
-            (target / "books/mid.cert").unlink()
-            refused = certs.install_artifact_set(
+    def test_a_single_complete_origin_is_preferred_to_a_composition(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            whole = worktree(one, certified=["books/base", "books/mid"])
+            self.publish(whole, cache, ["books/base", "books/mid"], "/farm/whole")
+            newer = worktree(two, certified=["books/base"])
+            (newer / "books/base.cert").write_bytes(SERIALIZED + b" newer base")
+            self.publish(newer, cache, ["books/base"], "/farm/newer")
+            self.age(cache, whole, "/farm/whole", "2026-01-01T00:00:00+00:00")
+            target = worktree(destination + "/target")
+            report = certs.install_artifact_set(
                 target, cache, ["books/mid"], self.TOOLCHAIN)
-            self.assertIsNone(refused.artifact_set)
+            self.assertEqual(report.artifact_origin, "/farm/whole")
+            self.assertEqual(report.origins, {"/farm/whole": 2})
+
+    def test_the_newest_pair_is_taken_for_each_book(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as three, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            old = worktree(one, certified=["books/base"])
+            (old / "books/base.cert").write_bytes(SERIALIZED + b" old base")
+            self.publish(old, cache, ["books/base"], "/farm/old")
+            new = worktree(two, certified=["books/base"])
+            (new / "books/base.cert").write_bytes(SERIALIZED + b" new base")
+            self.publish(new, cache, ["books/base"], "/farm/new")
+            mid = worktree(three, certified=["books/mid"])
+            self.publish(mid, cache, ["books/mid"], "/farm/mid")
+            self.age(cache, old, "/farm/old", "2026-01-01T00:00:00+00:00")
+            self.age(cache, new, "/farm/new", "2026-09-01T00:00:00+00:00")
+            target = worktree(destination + "/target")
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual(report.origins, {"/farm/new": 1, "/farm/mid": 1})
+            self.assertIn(b"new base", (target / "books/base.cert").read_bytes())
+
+    def test_a_live_worktree_still_on_disk_is_not_composed(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            live = worktree(one, certified=["books/base"])
+            certs.publish(live, cache, [manifest_for(live, ["books/base"], write=False)],
+                          ["books/base"], origin=str(live), origin_kind="worktree")
+            snapshot = worktree(two, certified=["books/mid"])
+            self.publish(snapshot, cache, ["books/mid"], "/farm/run-b")
+            target = worktree(destination + "/target")
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertIsNone(report.artifact_set)
+            self.assertEqual(report.uncached, ["books/base"])
             self.assertFalse((target / "books/base.cert").exists())
             self.assertFalse((target / "books/mid.cert").exists())
+
+    def test_a_snapshot_origin_whose_directory_is_gone_still_installs(self):
+        """ACL2 never opens the origin's files (the experiment's case 2)."""
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            gone = Path(one) / "gate"
+            gate = worktree(str(gone), certified=["books/base"])
+            certs.publish(gate, cache, [manifest_for(gate, ["books/base"], write=False)],
+                          ["books/base"], origin=str(gate), origin_kind="gate")
+            snapshot = worktree(two, certified=["books/mid"])
+            self.publish(snapshot, cache, ["books/mid"], "/farm/run-b")
+            shutil.rmtree(gone)
+            target = worktree(destination + "/target")
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual(report.origins, {str(gate): 1, "/farm/run-b": 1})
+            self.assertTrue((target / "books/base.cert").is_file())
+
+    def test_require_origin_keeps_the_single_origin_rule(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            first = worktree(one, certified=["books/base"])
+            second = worktree(two, certified=["books/mid"])
+            self.publish(first, cache, ["books/base"], "/farm/run-a")
+            self.publish(second, cache, ["books/mid"], "/farm/run-b")
+            target = worktree(destination + "/target")
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN,
+                require_origin="/farm/run-b")
+            self.assertIsNone(report.artifact_set)
+            self.assertEqual(report.uncached, ["books/base"])
+
+    def test_a_composition_never_mixes_toolchains(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            first = worktree(one, certified=["books/base"])
+            manifest = manifest_for(first, ["books/base"], write=False)
+            manifest["acl2_compatibility"] = dict(TEST_COMPATIBILITY, core_sha256="9" * 64)
+            certs.publish(first, cache, [manifest], ["books/base"],
+                          origin="/farm/run-a", origin_kind="run")
+            second = worktree(two, certified=["books/mid"])
+            self.publish(second, cache, ["books/mid"], "/farm/run-b")
+            target = worktree(destination + "/target")
+            report = certs.install_artifact_set(target, cache, ["books/mid"])
+            self.assertIsNone(report.artifact_set)
 
     def test_one_complete_origin_is_installed_as_a_unit(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
@@ -639,6 +759,7 @@ class StatusAndRemoteTests(unittest.TestCase):
             self.assertCountEqual(report.uncached,
                                   ["books/base", "tests/acl2/mid-tests"])
             self.assertTrue(any("in the cache" in line for line in report.lines()))
+            self.assertEqual(report.origins, {str(root): 1})
 
     def test_remote_target_uses_this_projects_farm_paths(self):
         self.assertEqual(certs.remote_target("hbox"), "hbox:/tank/fn/certcache")

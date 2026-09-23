@@ -239,17 +239,25 @@ is the SHA-256 of the sorted `<path>:<sha256>` listing of the book and its
 whole local include closure, resolved as ACL2 resolves `include-book` and
 ignoring `:dir :system`. Same book bytes over a changed dependency is a
 different key, not a hit ACL2 would then refuse; the listing is recorded in
-the entry's metadata. A third rule decides *where* a pair may be installed. An ACL2
-certificate's post-alist names every sub-book by its **absolute**
-full-book-name, so a pair made in worktree X and installed in worktree Y on
-one machine makes Y include X's books -- X's paths still resolve -- and Y's
-own later certificates then conflict with them (`its certificate requires
-.../X/books/acceptance.lisp, but .../Y/books/acceptance.lisp has been
-included`). Each entry therefore records the `origin_root` it was produced in,
-taken from its manifest's evidence path, and `install` takes this worktree's
-own entry, else one whose origin does not exist on this machine, and otherwise
-refuses and reports `foreign-local`. A pair whose bytes match a refused entry
-is removed, so a worktree an earlier origin-blind install poisoned recovers.
+the entry's metadata. A third rule decides *where* a pair may be installed.
+An ACL2 certificate's post-alist names every sub-book by the **absolute**
+full-book-name it was certified at, and this project once read that as
+making a pair from worktree X unusable in worktree Y. Measured on persvati on
+2026-09-23 ([the record](../planning/evidence/certificate-cache-2026-09-23.md)),
+it is not: with checksum book-hashes ACL2 compares sub-books by familiar
+name, annotations and book-hash, never by full-book-name, and include-book
+opens only the files beside the including book, so a closure assembled from
+several origins includes cleanly, with those origins on disk, removed or
+edited. The messages that looked like a path conflict (`its certificate
+requires .../X/books/acceptance.lisp, but .../Y/books/acceptance.lisp has
+been included`) are printed only after a book-hash or annotation mismatch,
+and name every entry of the post-alist whose path differs. Each entry still
+records the `origin_root` it was produced in: `install-set` takes one
+complete origin when one exists and otherwise composes the closure from the
+newest usable pair per book, never from a live worktree still on this
+machine, and `install` keeps the per-book rule and reports `foreign-local`.
+A pair whose bytes match a refused entry is removed, so a worktree an
+earlier origin-blind install poisoned recovers.
 Farm runs are the reusable case: `farm.py submit --remote-root` runs under a
 path that does not exist here, and `wait` publishes with that path as the
 origin, so those pairs install into any local worktree. `install` computes the
@@ -273,10 +281,8 @@ also records `origin_kind` -- `worktree`, `gate` or `run` -- and `install`
 takes a snapshot entry wherever it finds it, after this worktree's own entry
 and after a relocatable one, while a `worktree` origin that exists here is
 refused exactly as before. An entry with no recorded kind predates the rule
-and counts as a live worktree. The risk this accepts is bounded and loud: if a
-snapshot origin is later overwritten with different books, ACL2 refuses the
-installed pair at include time on the sub-book content, rather than proving
-anything with it. [`tools/gate_publish.sh`](../tools/gate_publish.sh) is the
+and counts as a live worktree. A snapshot origin later overwritten or removed
+changes nothing for a pair already installed elsewhere: ACL2 never reads it. [`tools/gate_publish.sh`](../tools/gate_publish.sh) is the
 one line a gate script runs after `make certify`
 (`sh tools/gate_publish.sh`); it publishes that gate directory with
 `--origin-kind gate` into `$FN_CERT_CACHE`, `~/fn-certcache` on persvati and
