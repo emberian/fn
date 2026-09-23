@@ -119,7 +119,7 @@ def article_stamp(msgid: str) -> str:
     This used to be `datetime.now()` on every call, so building the same
     article twice gave different octets whenever the second build crossed a
     second boundary. An fn node compares a resubmission against the octets it
-    already holds (`fn-store-article-match`, `host/store-host.lisp`, over
+    already holds (`fn-sn-existing-action`, `books/store-node.lisp`, over
     `fn-article-payload`), so the varying Date made one row -- a second
     submission of one Message-ID -- answer `DUPLICATE` with exit 0 or
     `REFUSED` with exit 1 depending on the clock. That reads as a violation

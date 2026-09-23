@@ -38,7 +38,22 @@ The existing node invariant establishes that the pending archive pin is true.
 No field parsing, membership allocation, retention admission, or acceptance
 rule has been duplicated in host code or in this composition.
 
+## Existing article decision
+
+The live duplicate decision is `fn-sn-existing-action` in `books/store-node`.
+For a submitted exact Message-ID, payload octets and ordered selected groups,
+it looks up the article in the composed Store's live node. It returns
+`:duplicate` exactly when a held article has both equal payload and groups,
+`:conflict` exactly when the ID is held and either differs, and `nil` when
+the ID is missing. The standalone Store and configured owner host prepare
+and query wrappers call this function after converting bounded octets and
+group codes. The function does not infer a durable acceptance or allocate a
+local article number. `books/store-node-existing-invariants.lisp` states the
+three exact outcomes; `tests/acl2/store-node-existing-tests.lisp` exercises
+them after a reachable commit and flips payload, groups and binding.
+
 ## Actual completion and acknowledgement
+
 
 `fn-sn-io` supplies only file-kernel operations: allocator stages, record stages,
 and recovery barriers. An operation named `:core-completion` or `:emit-success`

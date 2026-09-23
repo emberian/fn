@@ -55,7 +55,8 @@
       ],
       "steps": [
         "Prepare a two-group acceptance and observe before/after commit.",
-        "Retry the same identity and attempt a conflicting binding."
+        "Retry the same identity and attempt a conflicting binding.",
+        "On the committed Store, compare an identical payload and ordered groups, then change payload, groups, and Message-ID separately."
       ],
       "expected": [
         "No partial membership is visible.",
@@ -66,9 +67,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "books/store-node-existing-invariants.lisp",
+        "tests/acl2/store-node-existing-tests.lisp"
       ],
-      "execution_scope": "Validated for abstract atomic acceptance and now a real CLI cross-post/reopen path: one article, two local numbers, one charged pin. Full signed/network POST service remains outside this scenario evidence."
+      "execution_scope": "Validated for abstract atomic acceptance and now a real CLI cross-post/reopen path: one article, two local numbers, one charged pin. Full signed/network POST service remains outside this scenario evidence. The ACL2 Store decision is exercised on a reachable committed state with duplicate, each conflict factor, and missing binding; the actual host prepare/query wrappers call that decision. A newly built combined native image is still required to remeasure the changed host path."
     },
     {
       "id": "SCN-003",
