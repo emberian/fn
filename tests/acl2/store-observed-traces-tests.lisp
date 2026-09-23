@@ -13,7 +13,7 @@
 (assert-event (fn-snt-relation (fn-sn-open-state *fn-so-empty*)))
 (defconst *fn-so-record0*
   (fn-record-make 0 0 0 "<observed@example>" '(65) *fn-so-groups*
-                  "observed-pin" "observed-content" "observed-release" 1))
+                  "observed-pin" "observed-content" "observed-release" 1 841000000))
 (defconst *fn-so-replayed*
   (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-record0*)))
 (assert-event (fn-sn-open-okp *fn-so-replayed*))
@@ -25,7 +25,7 @@
 ; fn-sn-open-observed-succeeds-on-recoverable-image.
 (defconst *fn-so-alien*
   (fn-record-make 0 0 0 "<alien@example>" '(65) '("fn.other")
-                  "alien-pin" "alien-content" "alien-release" 1))
+                  "alien-pin" "alien-content" "alien-release" 1 841000000))
 (assert-event (fn-sn-observed-historyp 1 (list *fn-so-alien*)))
 (assert-event (not (fn-sf-history-recoverablep *fn-so-groups* 10 (list *fn-so-alien*) 1)))
 (assert-event (equal (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*))
@@ -45,11 +45,11 @@
 (defconst *fn-so-live-groups* '("fn.letters" "fn.test"))
 (defconst *fn-so-first*
   (fn-record-make 0 0 0 "<first@example>" '(65) *fn-so-live-groups*
-                  "first-pin" "first-content" "first-release" 1))
+                  "first-pin" "first-content" "first-release" 1 841000000))
 ; txid 1 was consumed without a record before this image was taken.
 (defconst *fn-so-second*
   (fn-record-make 1 2 2 "<second@example>" '(66) '("fn.test")
-                  "second-pin" "second-content" "second-release" 1))
+                  "second-pin" "second-content" "second-release" 1 841000000))
 ; txid 3 was also consumed: the image frontier is 4.
 (defconst *fn-so-gap-open*
   (fn-sn-open-observed *fn-so-live-groups* 10 4 (list *fn-so-first* *fn-so-second*)))
@@ -75,13 +75,13 @@
 ; published and acknowledged; txid 7 is linked with an uncertain result.
 (defconst *fn-so-third*
   (fn-record-make 2 5 5 "<third@example>" '(67) *fn-so-live-groups*
-                  "third-pin" "third-content" "third-release" 1))
+                  "third-pin" "third-content" "third-release" 1 841000000))
 (defconst *fn-so-fourth*
   (fn-record-make 2 6 6 "<fourth@example>" '(68) '("fn.letters")
-                  "fourth-pin" "fourth-content" "fourth-release" 1))
+                  "fourth-pin" "fourth-content" "fourth-release" 1 841000000))
 (defconst *fn-so-fifth*
   (fn-record-make 3 7 7 "<fifth@example>" '(69) '("fn.test")
-                  "fifth-pin" "fifth-content" "fifth-release" 1))
+                  "fifth-pin" "fifth-content" "fifth-release" 1 841000000))
 
 (defconst *fn-so-acked*
   (fn-snrt-run *fn-so-gap-opened*
@@ -192,7 +192,7 @@
 ; (fn-snrt-acknowledged-record-retained-across-observed-reopen).
 (defconst *fn-so-sixth*
   (fn-record-make 4 8 8 "<sixth@example>" '(70) *fn-so-live-groups*
-                  "sixth-pin" "sixth-content" "sixth-release" 1))
+                  "sixth-pin" "sixth-content" "sixth-release" 1 841000000))
 (defconst *fn-so-after-reopen*
   (fn-snrt-run (fn-sn-open-state *fn-so-reopen-present*)
                (append *fn-so-barriers*

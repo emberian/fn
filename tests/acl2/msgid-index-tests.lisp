@@ -4,13 +4,13 @@
 
 (defconst *fn-midx-a*
   (fn-make-article "<a@example.invalid>" '(1 2) '("fn.test")
-                   '(("fn.test" . 1)) t))
+                   '(("fn.test" . 1)) t 841000000))
 (defconst *fn-midx-b*
   (fn-make-article "<b@example.invalid>" '(3 4) '("fn.test")
-                   '(("fn.test" . 2)) t))
+                   '(("fn.test" . 2)) t 841000000))
 (defconst *fn-midx-a-conflict*
   (fn-make-article "<a@example.invalid>" '(9 9) '("fn.test")
-                   '(("fn.test" . 3)) t))
+                   '(("fn.test" . 3)) t 841000000))
 
 (assert-event
  (equal (fn-midx-lookup "<b@example.invalid>"

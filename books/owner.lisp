@@ -1561,7 +1561,8 @@
 ; consumes the actual fn-sn-finish, fn-own-completion-consumed-once); a host
 ; word of :durable without one is :uncertain, never 240.  :refused is the
 ; host's typed refusal (nothing was staged, or the reservation was consumed
-; by a refusal); everything else is :uncertain.
+; by a refusal); :clock-unusable remains a distinct owner-clock refusal,
+; and all other words are :uncertain.
 (defun fn-own-outcome-completion (o word)
   (declare (xargs :guard t))
   (let ((sub (fn-own-inflight o)))
@@ -1570,6 +1571,7 @@
                 (natp (fn-own-sub-mark sub))
                 (< (fn-own-sub-mark sub) (len (fn-own-ledger o))))
            :durable)
+          ((equal word :clock-unusable) :clock-unusable)
           ((member-equal word '(:refused :duplicate)) :refused)
           (t :uncertain))))
 
@@ -1582,7 +1584,8 @@
   (let* ((sub (fn-own-inflight o))
          (completion (fn-own-outcome-completion o word))
          (kind (cond ((equal completion :durable) :feed-commit)
-                     ((equal completion :refused) :feed-abort)
+                     ((member-equal completion '(:refused :clock-unusable))
+                      :feed-abort)
                      (t nil))))
     (if (or (null sub) (null kind))
         nil
@@ -1652,6 +1655,7 @@
         :duplicate
       (case (fn-own-outcome-completion o word)
         (:durable :accepted)
+        (:clock-unusable :clock-unusable)
         (:refused :refused)
         (otherwise :uncertain)))))
 

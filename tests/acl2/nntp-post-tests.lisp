@@ -10,7 +10,7 @@
 (defconst *fn-tp-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *fn-tp-groups*) 1
-                      "<seed@example.invalid>" *fn-tp-seed* *fn-tp-groups*)
+                      "<seed@example.invalid>" *fn-tp-seed* *fn-tp-groups* 841000000)
    0 1 :durable))
 (defconst *fn-tp-agent* '(102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100))
 (defconst *fn-tp-cfg*
@@ -135,6 +135,13 @@
                (fn-nntp-crlf
                 (fn-nntp-string-octets
                  "441 posting failed; the article was refused"))))))
+(assert-event
+ (equal (fn-post-result-effects
+         (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :clock-unusable))
+        (list (fn-nntp-reply-effect
+               (fn-nntp-crlf
+                (fn-nntp-string-octets
+                 "441 posting failed; this server has no usable clock reading"))))))
 (assert-event
  (equal (fn-post-result-effects
          (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :uncertain))

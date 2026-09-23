@@ -23,6 +23,11 @@
     (fnn-owner-serialized
      service nil
      (lambda ()
+       (unless (eq (fnn-owner-advance-clock) :observed)
+         (return-from fnn-hybrid-control-author :clock-unusable))
+       (unless (integerp (fnn-core 'fn-record-stamp-of-observation
+                                   (fnn-owner-core 'fn-owner-clock-observation)))
+         (return-from fnn-hybrid-control-author :clock-unusable))
        (let* ((snapshot
                (fnn-owner-core 'fn-owner-keyring-snapshot keyring-generation))
               (enrollment
@@ -54,7 +59,8 @@
                   (fnn-octets-string obligation)
                   (fnn-octets-string subject)
                   (fnn-octets-string release) charge
-                  principal keys signatures (fnn-octets-string ml-path))))
+                  principal keys signatures (fnn-octets-string ml-path)
+                  (fnn-owner-core 'fn-owner-clock-observation))))
            (if event
                (let* ((evidence (fnn-octets (fnn-owner-core 'fn-owner-prov-post)))
                       (generation
@@ -102,7 +108,7 @@
                         (status (and (typep reply 'fnn-octets)
                                      (fnn-core 'fn-native-control-host-reply-decode
                                                (fnn-octet-list reply)))))
-                   (if (member status '(:accepted :duplicate :refused :busy
+                   (if (member status '(:accepted :duplicate :refused :clock-unusable :busy
                                         :uncertain :fault)) status
                      (fnn-control-transport-outcome stage)))))
            (error () (fnn-control-transport-outcome stage)))

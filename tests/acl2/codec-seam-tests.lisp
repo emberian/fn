@@ -29,13 +29,13 @@
 ; The record seam, attached, against the implementation.
 
 (defconst *cst-record*
-  (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4))
+  (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy))
 
 (defconst *cst-record-inputs*
   (list *fn-record-schema0-golden-octets*
         '(88 4 102 110 45 114 0)                                 ; :noncanonical
         '(68 102 110 45 115 0)                                   ; :magic
-        '(68 102 110 45 114 1)                                   ; :unknown-version
+        '(68 102 110 45 114 2)                                   ; :unknown-version
         '(68 102 110 45 114 0 1 2 3 65 97 64 17)                 ; :groups-limit
         '(68 102 110 45 114 0 65 97)                             ; :field-type
         (append *fn-record-schema0-golden-octets* '(0))          ; :trailing

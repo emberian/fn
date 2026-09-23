@@ -16,6 +16,7 @@
 (include-book "../../books/owner-fault")
 (include-book "../../books/crypto-attach")
 (include-book "../../books/codec-attach")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: the served port and the connection events are total in
@@ -63,7 +64,7 @@
                   (concatenate 'string "own-pin:" msgid)
                   (concatenate 'string "own-content:" msgid)
                   (concatenate 'string "own-release:" msgid)
-                  2))
+                  2 841000000))
 
 (defun own-post-events (record)
   (list '(:store (:io :start-frontier nil))
@@ -799,6 +800,18 @@
                      :refused))
 (assert-event (equal (fn-own-control-outcome-result *own-control-taken* :refused)
                      :refused))
+(assert-event (equal (fn-own-control-outcome-result *own-control-taken*
+                                                   :clock-unusable)
+                     :clock-unusable))
+(assert-event (equal (fn-own-outcome-completion *own-control-taken*
+                                               :clock-unusable)
+                     :clock-unusable))
+(must-fail
+ (defthm own-clock-refusal-cannot-be-flattened-to-three-words
+   (member-equal (fn-own-outcome-completion *own-control-taken*
+                                           :clock-unusable)
+                 '(:durable :refused :uncertain))
+   :rule-classes nil))
 
 ; Teeth: without a control submission in flight there is no outcome; without
 ; exact valid boundary values nothing is queued; without a consumed

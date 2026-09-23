@@ -9,7 +9,7 @@
 (defconst *stxa-subject* "subject-v1-exact-source-binding")
 (defconst *stxa-record*
   (fn-record-make 4 9 12 *stxa-msgid* *stxa-payload* '("local.test")
-                  "obligation" *stxa-subject* "local" 17))
+                  "obligation" *stxa-subject* "local" 17 841000000))
 (defconst *stxa-verdict*
   (fn-stxe-make 4 9 12 *stxa-msgid* :unverified
                 *fn-stx-token-signature* 3 *stxa-profile*))
@@ -88,7 +88,7 @@
 
 (defconst *stxa-wrong-subject-record*
   (fn-record-make 4 9 12 *stxa-msgid* *stxa-payload* '("local.test")
-                  "obligation" "wrong-subject" "local" 17))
+                  "obligation" "wrong-subject" "local" 17 841000000))
 (assert-event
  (not (fn-stxa-bindsp
        (fn-stxa-make 4 9 12 3 *stxa-profile*

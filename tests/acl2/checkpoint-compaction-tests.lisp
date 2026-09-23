@@ -5,7 +5,7 @@
 
 (defconst *cc-a0*
   (fn-record-make 0 0 0 "<compact@example.invalid>" '(65 13 10)
-                  '("fn.letters") "archive-0" "subject-0" "evidence-0" 3))
+                  '("fn.letters") "archive-0" "subject-0" "evidence-0" 3 841000000))
 (defconst *cc-e1*
   (fn-store-retention-event-make :undertake 1 1 1
                                  "forward-1" "subject-1" "evidence-1" 2))
@@ -29,13 +29,13 @@
 (defconst *cc-large-payload* (cc-repeat-octet 24000))
 (make-event `(defconst *cc-large-b0* ',(fn-store-event-encode
    (fn-record-make 0 0 0 "<large-0@example.invalid>" *cc-large-payload*
-                   '("fn.letters") "archive-0" "subject-0" "evidence-0" 1))))
+                   '("fn.letters") "archive-0" "subject-0" "evidence-0" 1 841000000))))
 (make-event `(defconst *cc-large-b1* ',(fn-store-event-encode
    (fn-record-make 1 1 1 "<large-1@example.invalid>" *cc-large-payload*
-                   '("fn.letters") "archive-1" "subject-1" "evidence-1" 1))))
+                   '("fn.letters") "archive-1" "subject-1" "evidence-1" 1 841000000))))
 (make-event `(defconst *cc-large-b2* ',(fn-store-event-encode
    (fn-record-make 2 2 2 "<large-2@example.invalid>" *cc-large-payload*
-                   '("fn.letters") "archive-2" "subject-2" "evidence-2" 1))))
+                   '("fn.letters") "archive-2" "subject-2" "evidence-2" 1 841000000))))
 (defconst *cc-large-summary*
   (fn-cc-make 3 3 (list *cc-large-b0* *cc-large-b1* *cc-large-b2*)))
 (assert-event (< *fn-cbor-max-input* (len (fn-cc-encode *cc-large-summary*))))

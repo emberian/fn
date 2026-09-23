@@ -163,7 +163,8 @@
 (assert-event (fn-memberships-below-nextsp '(("x" . #c(0 -1))) nil))
 (assert-event (not (fn-memberships-below-nextsp '(("x" . #c(0 1))) nil)))
 (assert-event (fn-pendingp '("fn.test") '(("fn.test" . 1)) #c(0 1)
-                           '(0 0 "m" nil ("fn.test") (("fn.test" . 1)) t)))
+                           '(0 0 "m" nil ("fn.test") (("fn.test" . 1)) t
+                             :legacy)))
 
 ; The :logic bodies of the transitions are total: a non-state is returned
 ; unchanged.  These calls are outside the guard, so they run in the logic.
@@ -176,7 +177,7 @@
 (assert-event (not (fn-statep 7)))
 (assert-event
  (with-guard-checking :none
-  (equal (fn-accept-prepare *ag-bad-pending* 0 "m" nil '("fn.test"))
+  (equal (fn-accept-prepare *ag-bad-pending* 0 "m" nil '("fn.test") 841000000)
          *ag-bad-pending*)))
 (assert-event
  (with-guard-checking :none
@@ -186,7 +187,7 @@
   (equal (fn-accept-recover *ag-bad-pending* 0 0 :committed) *ag-bad-pending*)))
 (assert-event
  (with-guard-checking :none
-  (equal (fn-accept-prepare *ag-bad-article-tail* 0 "m" nil '("fn.test"))
+  (equal (fn-accept-prepare *ag-bad-article-tail* 0 "m" nil '("fn.test") 841000000)
          *ag-bad-article-tail*)))
 (assert-event
  (with-guard-checking :none (equal (fn-accept-complete 7 0 0 :durable) 7)))
@@ -213,18 +214,18 @@
 ; Input policy rejects the entire local cross-post.
 (assert-event
  (equal (fn-accept-prepare *test-empty* 7 *test-id-a* *test-payload*
-                           '("fn.letters" "unknown"))
+                           '("fn.letters" "unknown") 841000000)
         *test-empty*))
 (assert-event
  (equal (fn-accept-prepare *test-empty* 7 *test-id-a* *test-payload*
-                           '("fn.letters" "fn.letters"))
+                           '("fn.letters" "fn.letters") 841000000)
         *test-empty*))
 (assert-event
- (equal (fn-accept-prepare *test-empty* 7 *test-id-a* '(256) *test-groups*)
+ (equal (fn-accept-prepare *test-empty* 7 *test-id-a* '(256) *test-groups* 841000000)
         *test-empty*))
 
 (defconst *test-prepared*
-  (fn-accept-prepare *test-empty* 7 *test-id-a* *test-payload* *test-groups*))
+  (fn-accept-prepare *test-empty* 7 *test-id-a* *test-payload* *test-groups* 841000000))
 (assert-event (fn-statep *test-prepared*))
 (assert-event (equal (fn-state-articles *test-prepared*) nil))
 (assert-event (equal (fn-state-nexts *test-prepared*)
@@ -269,17 +270,17 @@
 
 ; A lost response/retry and a conflicting payload cannot overwrite or allocate.
 (assert-event
- (equal (fn-accept-prepare *test-committed* 7 *test-id-a* *test-payload* *test-groups*)
+ (equal (fn-accept-prepare *test-committed* 7 *test-id-a* *test-payload* *test-groups* 841000000)
         *test-committed*))
 (assert-event
- (equal (fn-accept-prepare *test-committed* 7 *test-id-a* '(69 118 105 108) *test-groups*)
+ (equal (fn-accept-prepare *test-committed* 7 *test-id-a* '(69 118 105 108) *test-groups* 841000000)
         *test-committed*))
 (assert-event
- (equal (fn-accept-prepare *test-committed* 7 *test-id-a* *test-payload* '("fn.test"))
+ (equal (fn-accept-prepare *test-committed* 7 *test-id-a* *test-payload* '("fn.test") 841000000)
         *test-committed*))
 
 (defconst *test-second-prepared*
-  (fn-accept-prepare *test-committed* 7 *test-id-b* *test-payload* '("fn.letters")))
+  (fn-accept-prepare *test-committed* 7 *test-id-b* *test-payload* '("fn.letters") 841000000))
 (assert-event (fn-statep *test-second-prepared*))
 (assert-event
  (equal (fn-accept-complete *test-second-prepared* 0 7 :durable)
@@ -303,7 +304,7 @@
 (assert-event
  (equal (fn-state-pending *test-fenced*) (fn-state-pending *test-second-prepared*)))
 (assert-event
- (equal (fn-accept-prepare *test-fenced* 7 "<c@example.invalid>" '(1) '("fn.test"))
+ (equal (fn-accept-prepare *test-fenced* 7 "<c@example.invalid>" '(1) '("fn.test") 841000000)
         *test-fenced*))
 (assert-event (equal (fn-accept-complete *test-fenced* 1 7 :durable) *test-fenced*))
 (assert-event (equal (fn-accept-complete *test-fenced* 1 7 :aborted) *test-fenced*))
@@ -315,7 +316,7 @@
 (assert-event (equal *test-recovered-committed* *test-second-committed*))
 (assert-event (fn-statep *test-recovered-committed*))
 (assert-event
- (equal (fn-accept-prepare *test-recovered-committed* 7 *test-id-b* *test-payload* '("fn.letters"))
+ (equal (fn-accept-prepare *test-recovered-committed* 7 *test-id-b* *test-payload* '("fn.letters") 841000000)
         *test-recovered-committed*))
 
 (defconst *test-recovered-absent* (fn-accept-recover *test-fenced* 1 7 :absent))
@@ -324,7 +325,7 @@
  (equal (fn-state-articles *test-recovered-absent*) (fn-state-articles *test-committed*)))
 (assert-event (equal (fn-state-next-txid *test-recovered-absent*) 2))
 (defconst *test-after-absent*
-  (fn-accept-prepare *test-recovered-absent* 7 *test-id-b* *test-payload* '("fn.letters")))
+  (fn-accept-prepare *test-recovered-absent* 7 *test-id-b* *test-payload* '("fn.letters") 841000000))
 (assert-event (fn-statep *test-after-absent*))
 (assert-event (equal (fn-pending-txid (fn-state-pending *test-after-absent*)) 2))
 (assert-event
@@ -336,7 +337,7 @@
 (assert-event (equal (fn-state-next-txid *test-aborted*) 1))
 (assert-event (equal (fn-state-articles *test-aborted*) nil))
 (defconst *test-after-abort*
-  (fn-accept-prepare *test-aborted* 7 *test-id-b* *test-payload* '("fn.test")))
+  (fn-accept-prepare *test-aborted* 7 *test-id-b* *test-payload* '("fn.test") 841000000))
 (assert-event (fn-statep *test-after-abort*))
 (assert-event (equal (fn-pending-txid (fn-state-pending *test-after-abort*)) 1))
 (assert-event
@@ -350,7 +351,7 @@
 
 ; Case in a Message-ID is significant, including its domain-looking part.
 (defconst *test-case-prepared*
-  (fn-accept-prepare *test-committed* 7 "<a@EXAMPLE.invalid>" *test-payload* '("fn.test")))
+  (fn-accept-prepare *test-committed* 7 "<a@EXAMPLE.invalid>" *test-payload* '("fn.test") 841000000))
 (assert-event (fn-statep *test-case-prepared*))
 (assert-event (consp (fn-state-pending *test-case-prepared*)))
 (defconst *test-case-committed* (fn-accept-complete *test-case-prepared* 1 7 :durable))
@@ -382,12 +383,12 @@
 
 (defconst *acc-teeth-prepared-a*
   (fn-accept-prepare *acc-teeth-empty* 7 *acc-teeth-id-a*
-                     *acc-teeth-payload-a* *acc-teeth-groups*))
+                     *acc-teeth-payload-a* *acc-teeth-groups* 841000000))
 (defconst *acc-teeth-committed-a*
   (fn-accept-complete *acc-teeth-prepared-a* 0 7 :durable))
 (defconst *acc-teeth-prepared-b*
   (fn-accept-prepare *acc-teeth-committed-a* 8 *acc-teeth-id-b*
-                     *acc-teeth-payload-b* *acc-teeth-groups*))
+                     *acc-teeth-payload-b* *acc-teeth-groups* 841000000))
 (defconst *acc-teeth-committed-b*
   (fn-accept-complete *acc-teeth-prepared-b* 1 8 :durable))
 
@@ -465,7 +466,7 @@
 ; watermark, but a stale allocation claims 1 again.
 (defconst *acc-teeth-held-test*
   (list (fn-make-article *acc-teeth-id-a* *acc-teeth-payload-a*
-                         '("fn.test") '(("fn.test" . 1)) t)))
+                         '("fn.test") '(("fn.test" . 1)) t 841000000)))
 (defconst *acc-teeth-stale-claim* '(("fn.test" . 1)))
 (assert-event
  (not (fn-memberships-at-watermarkp *acc-teeth-stale-claim* '(("fn.test" . 2)))))
@@ -478,7 +479,7 @@
 ; published at the watermark rather than below it, so it collides.
 (defconst *acc-teeth-held-letters*
   (list (fn-make-article *acc-teeth-id-b* *acc-teeth-payload-b*
-                         '("fn.letters") '(("fn.letters" . 5)) t)))
+                         '("fn.letters") '(("fn.letters" . 5)) t 841000000)))
 (defconst *acc-teeth-fresh-claim* '(("fn.letters" . 5)))
 (assert-event
  (fn-memberships-at-watermarkp *acc-teeth-fresh-claim* '(("fn.letters" . 5))))

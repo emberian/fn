@@ -12,10 +12,10 @@
 (defconst *cpc-groups* '("fn.letters" "fn.test"))
 (defconst *cpc-r0*
   (fn-record-make 0 0 0 "<cp0@example.invalid>" '(65 13 10)
-                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2))
+                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2 841000000))
 (defconst *cpc-r1*
   (fn-record-make 1 4 4 "<cp1@example.invalid>" '(66 13 10)
-                  '("fn.test") "cp-pin-1" "cp-content-1" "cp-release-1" 3))
+                  '("fn.test") "cp-pin-1" "cp-content-1" "cp-release-1" 3 841000000))
 (defconst *cpc-prefix* (list *cpc-r0*))
 (defconst *cpc-capture* (fn-checkpoint-capture *cpc-groups* 10 *cpc-prefix* 3))
 (defconst *cpc-value* (fn-checkpoint-capture-value *cpc-capture*))
@@ -92,7 +92,7 @@
 (assert-event (equal (fn-cpc-decode-tree '(24 0) 2) '(:error :noncanonical)))
 ; Symbol codes outside the table.
 (assert-event (equal (fn-cpc-decode-tree '(3 0) 2) '(:error :symbol)))
-(assert-event (equal (fn-cpc-decode-tree '(3 4) 2) '(:error :symbol)))
+(assert-event (equal (fn-cpc-decode-tree '(3 5) 2) '(:error :symbol)))
 (assert-event (equal (fn-cpc-decode-tree '(3 2) 2)
                      (fn-record-parse-ok :archive nil)))
 (assert-event (equal (fn-cpc-decode-tree '(3 1) 2) (fn-record-parse-ok t nil)))
@@ -204,7 +204,7 @@
 ; FN-CHECKPOINT-CAPTURE refuses the one-record prefix as :history.
 (defconst *cpc-r0-bad-generation*
   (fn-record-make 0 0 1 "<cp0@example.invalid>" '(65 13 10)
-                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2))
+                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2 841000000))
 (defconst *cpc-bad-prefix* (list *cpc-r0-bad-generation*))
 (assert-event (not (equal (fn-store-event-generation *cpc-r0-bad-generation*)
                           (fn-store-event-txid *cpc-r0-bad-generation*))))

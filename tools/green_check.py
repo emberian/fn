@@ -328,6 +328,10 @@ def dependents(root: Path, report: dict, changed: list[str]) -> dict[str, list[s
     wanted = set(changed)
     found: dict[str, list[str]] = {}
     for book in report["books_by_verdict"]:
+        # Host include files contribute dependency bytes to a certifiable
+        # book, but certify_books cannot request them as independent roots.
+        if not book.startswith(("books/", "tests/acl2/")):
+            continue
         if book in wanted:
             continue
         reached = sorted(wanted & set(certs.closure(root, book)))

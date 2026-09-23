@@ -6,7 +6,7 @@
 (defconst *sn-groups* '("fn.letters" "fn.test"))
 (defconst *sn-record*
   (fn-record-make 0 0 0 "<sn@example>" '(65 66) *sn-groups*
-                  "sn-pin" "sn-content" "sn-release" 2))
+                  "sn-pin" "sn-content" "sn-release" 2 841000000))
 (defun fn-sn-test-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
                                 :frontier-file :ok)
@@ -48,7 +48,7 @@
 (defun fn-sn-test-mismatched-pending (payload groups id subject evidence charge)
   (fn-sn-update *sn-completing* (fn-sn-files *sn-completing*)
     (fn-node-prepare (fn-sn-node *sn-initial*) 0 "<sn@example>" payload groups
-                     id subject evidence charge)))
+                     id subject evidence charge 841000000)))
 (assert-event (let ((s (fn-sn-test-mismatched-pending
                         '(99) *sn-groups* "sn-pin" "sn-content" "sn-release" 2)))
                 (and (fn-sn-statep s) (equal (fn-sn-finish s) s))))

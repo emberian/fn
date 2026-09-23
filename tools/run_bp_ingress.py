@@ -45,7 +45,7 @@ class BpDeletePending(BpIngressError):
 
 @dataclass(frozen=True)
 class IngressResult:
-    outcome: str  # accepted | duplicate | rejected
+    outcome: str  # accepted | duplicate | rejected | refused-clock-unusable
     bid: str
     staged_path: Path
 
@@ -96,31 +96,43 @@ class Acl2BpIngress(run_store.Acl2Store):
 
     def ingress_prepare(self, destination: bytes, source_eid: bytes, bid: bytes,
                         lifetime: int, archive_id: bytes, subject: bytes,
-                        evidence: bytes, charge: int, adu: bytes) -> str:
+                        evidence: bytes, charge: int, adu: bytes,
+                        observation=None) -> str:
         if not isinstance(lifetime, int) or isinstance(lifetime, bool) or not 0 <= lifetime <= 0xffffffff:
             raise BpIngressError("BP lifetime is not a uint32")
         form = "(fn-bpi-host-prepare '" + self.literal(destination)
         form += " '" + self.literal(source_eid) + " '" + self.literal(bid)
         form += " " + str(lifetime) + " '" + self.literal(archive_id)
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
-        form += " " + str(charge) + " '" + self.literal(adu) + " state)"
+        monotonic_ns, wall_ns, error_ms, has_wall = (
+            bundle_bridge.observation() if observation is None else observation)
+        form += " " + str(charge) + " '" + self.literal(adu)
+        form += " {} {} {} {} state)".format(
+            monotonic_ns, wall_ns, error_ms, "t" if has_wall else "nil")
         value = run_store.acl2_result(self.call(form)).upper()
         if value == b":PREPARED":
             return "prepared"
         if value == b":REJECTED":
             return "rejected"
+        if value == b":CLOCK-UNUSABLE":
+            return "clock-unusable"
         if value == b":INVALID":
             return "invalid"
         raise BpIngressError("unexpected ACL2 BP ingress result")
 
     def already_durable(self, destination: bytes, source_eid: bytes, bid: bytes,
                         lifetime: int, archive_id: bytes, subject: bytes,
-                        evidence: bytes, charge: int, adu: bytes) -> bool:
+                        evidence: bytes, charge: int, adu: bytes,
+                        observation=None) -> bool:
         form = "(fn-bpi-host-already-durablep '" + self.literal(destination)
         form += " '" + self.literal(source_eid) + " '" + self.literal(bid)
         form += " " + str(lifetime) + " '" + self.literal(archive_id)
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
-        form += " " + str(charge) + " '" + self.literal(adu) + " state)"
+        monotonic_ns, wall_ns, error_ms, has_wall = (
+            bundle_bridge.observation() if observation is None else observation)
+        form += " " + str(charge) + " '" + self.literal(adu)
+        form += " {} {} {} {} state)".format(
+            monotonic_ns, wall_ns, error_ms, "t" if has_wall else "nil")
         return run_store.acl2_boolean(self.call(form))
 
 
@@ -242,6 +254,7 @@ def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path:
             return IngressResult("refused-expired", bid, None)
         if report.decision == "uncertain":
             return IngressResult("uncertain-expiry", bid, None)
+        observation = bundle_bridge.observation(wall_error_ms)
         staged_path = _staged_item(journal, workflow, bid, report.identity,
                                    inventory, download)
         _staged_bid, staged_identity, adu = workflow.decode_inbound(
@@ -261,7 +274,8 @@ def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path:
         archive_id, subject, evidence = run_store.metadata(msgid, adu)
         charge = run_store.conservative_charge(adu)
         if bridge.already_durable(destination_bytes, source_bytes, bid_bytes, lifetime,
-                                  archive_id, subject, evidence, charge, adu):
+                                  archive_id, subject, evidence, charge, adu,
+                                  observation):
             try:
                 delete(bid)
             except Exception as error:
@@ -272,10 +286,12 @@ def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path:
             raise BpIngressError("Store transaction capacity reached")
         store.advance_frontier(bridge, bridge.next_txid())
         action = bridge.ingress_prepare(destination_bytes, source_bytes, bid_bytes, lifetime,
-                                        archive_id, subject, evidence, charge, adu)
+                                        archive_id, subject, evidence, charge, adu,
+                                        observation)
         if action != "prepared":
             _consume_reserved_refusal(store, bridge)
-            return IngressResult("rejected", bid, staged_path)
+            return IngressResult("refused-clock-unusable" if action == "clock-unusable"
+                                 else "rejected", bid, staged_path)
         _publish_accepted(store, bridge, records, bridge.pending_record())
         try:
             delete(bid)

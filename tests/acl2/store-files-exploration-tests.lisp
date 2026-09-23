@@ -26,11 +26,11 @@
 (defconst *sfe-record-0*
   (fn-record-make 0 0 0 "<zero@example.invalid>" '(90)
                   '("fn.letters") "archive-zero" "content-zero"
-                  "release-zero" 1))
+                  "release-zero" 1 841000000))
 (defconst *sfe-record-1*
   (fn-record-make 1 1 1 "<one@example.invalid>" '(79)
                   '("fn.test") "archive-one" "content-one"
-                  "release-one" 1))
+                  "release-one" 1 841000000))
 ; A txid-gap record: sequence 0 at txid 1.  It is preparable only after
 ; reservation 0 was consumed without a record (refusal or known abort) and
 ; reservation 1 was made durable, so its presence in the graph shows the gap
@@ -38,7 +38,7 @@
 (defconst *sfe-record-0-gap*
   (fn-record-make 0 1 1 "<gap@example.invalid>" '(71)
                   '("fn.letters") "archive-gap" "content-gap"
-                  "release-gap" 1))
+                  "release-gap" 1 841000000))
 
 ; The event dispatcher calls the storage kernel directly.  It deliberately
 ; carries no alternate phase or acceptance semantics.  fn-sf-lose-success is

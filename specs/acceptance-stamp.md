@@ -1,8 +1,9 @@
 # The acceptance stamp (T2)
 
-Status: design. Every ACL2 form below is a proposed definition or a proposed
-theorem *statement*; none has been submitted to ACL2, and nothing here licenses
-a claim under the [assurance rules](../AGENTS.md). It is the design note for
+Status: T2a implementation in progress; T2b remains design. The forms below
+state the contract; certification evidence, rather than this note, determines
+which statements have been proved under the [assurance rules](../AGENTS.md).
+It is the design note for
 step T2 of [the trajectory plan](../planning/plan-2026-09-22-trajectory.md)
 (§0 decision 6, §3 row T2, §3.1 "T2", §4.1), written against `dev` `3373f935`
 and against the T1 lane's working tree as it stood on 2026-09-22 (its
@@ -372,33 +373,45 @@ are T4's to state.
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
                 (not (fn-stxa-p (fn-sn-completion-record s))))
-           (equal (fn-article-stamp
-                   (fn-find-article
+           (and
+            (consp (fn-find-article
                     (fn-record-msgid (fn-sn-completion-record s))
                     (fn-state-articles
                      (fn-node-acceptance (fn-sn-node (fn-sn-finish s))))))
-                  (fn-record-stamp (fn-sn-completion-record s)))))
+            (equal (fn-article-stamp
+                    (fn-find-article
+                     (fn-record-msgid (fn-sn-completion-record s))
+                     (fn-state-articles
+                      (fn-node-acceptance (fn-sn-node (fn-sn-finish s))))))
+                   (fn-record-stamp (fn-sn-completion-record s))))))
 
 ; The accepted-statement composite arm: the article is the fn-r child.
 (defthm fn-sn-finish-installs-the-stamp-the-composite-carries
   (implies (and (fn-sn-completion-enabledp s)
                 (fn-stxa-p (fn-sn-completion-record s)))
-           (equal (fn-article-stamp
-                   (fn-find-article
+           (and
+            (consp (fn-find-article
                     (fn-record-msgid
                      (fn-replay-composite-record (fn-sn-completion-record s)))
                     (fn-state-articles
                      (fn-node-acceptance (fn-sn-node (fn-sn-finish s))))))
-                  (fn-record-stamp
-                   (fn-replay-composite-record (fn-sn-completion-record s))))))
+            (equal (fn-article-stamp
+                    (fn-find-article
+                     (fn-record-msgid
+                      (fn-replay-composite-record (fn-sn-completion-record s)))
+                     (fn-state-articles
+                      (fn-node-acceptance (fn-sn-node (fn-sn-finish s))))))
+                   (fn-record-stamp
+                    (fn-replay-composite-record (fn-sn-completion-record s)))))))
 ```
 
 `fn-sn-committed-recordp` (`books/store-node-invariants.lisp:399`) gains the
 conjunct `(equal (fn-article-stamp article) (fn-record-stamp record))`, so
 `fn-sn-finish-installs-exact-article-and-archive-pin` carries the stamp as
-well; the stamp theorems above are proved from
-`fn-sn-finish-is-actual-durable-completion` and the node's install, not from
-that predicate, so that each is a keystone of its own and not an unfolding.
+well. The article stamp projection is a corollary of that substantive theorem
+and `fn-sn-actual-durable-completion-installs-record`; the composite projection
+uses the one-record replay theorem on the actual finish arm. The composite
+conclusion includes presence so that the event-kind premise has real teeth.
 
 Teeth (article arm): the witness is a state driven from `fn-sn-initial`
 through the reservation, `fn-sn-prepare` of an `fn-sn-article-record` built
@@ -424,19 +437,23 @@ reaches through `fn-sf-replay-node` at every open (`fn-store-sn-recover`,
   (let ((article (if (fn-stxa-p record)
                      (fn-replay-composite-record record)
                    record)))
-    (implies (and (fn-node-statep node)
-                  (fn-store-event-p record)
-                  (not (fn-store-retention-event-p record))
+    (implies (and (not (fn-store-retention-event-p record))
                   (not (fn-stxe-p record))
                   (not (fn-stxk-p record))
                   (consp (fn-replay-apply-record node record)))
-             (equal (fn-article-stamp
-                     (fn-find-article
+             (and
+              (consp (fn-find-article
                       (fn-record-msgid article)
                       (fn-state-articles
                        (fn-node-acceptance
                         (fn-replay-apply-record node record)))))
-                    (fn-record-stamp article)))))
+              (equal (fn-article-stamp
+                      (fn-find-article
+                       (fn-record-msgid article)
+                       (fn-state-articles
+                        (fn-node-acceptance
+                         (fn-replay-apply-record node record)))))
+                     (fn-record-stamp article))))))
 
 ; The journal-level statement.  fn-replay-journal-article-stamps is a
 ; specification: the (msgid . stamp) pair of every article record of RECORDS,
@@ -460,13 +477,21 @@ pairs are `((m0 . :legacy) (m1 . s1) (m3 . s3))`, and the witness asserts
 `fn-replay-okp` first. `must-fail` for the journal theorem: drop
 `fn-replay-okp`, the same journal with record 2's sequence number wrong (the
 fault node holds `m0` and `m1`, the journal lists `m3` too). For the one-record
-theorem: one per hypothesis, each with a record of the excluded kind or a node
-for which the apply is `nil`.
+theorem, a retention event tests the article-arm premise and a refused article
+tests the non-NIL step premise. A successful article step itself entails a
+valid node and an article Store event, so those redundant hypotheses were
+removed from the final statement.
 
 **Why the mixed journal needs no extra hypothesis.** Replay never sees bytes:
 the Store event decoder hands it records, and the codec has already mapped a
 schema-0 record to stamp `:legacy` (§2.1). The mixed case is therefore the
 general case of both theorems, and the witness is what shows it is not vacuous.
+
+The article arm of `fn-replay-apply-record` refuses a node with a staged
+transaction before preparing the record. The journal replay loop enters that
+arm idle; the direct-call guard prevents a different pending article with the
+same transaction coordinates from being completed under the incoming record's
+identity or stamp.
 
 ### 2.6 NEWNEWS answers from the stamp
 
@@ -662,6 +687,11 @@ the clock's reason:
   for an uncertain transfer, never 437 or 439; a control or BP submission
   answers `:refused` with reason `:clock-unusable`. A BP ADU refused for the
   clock stays staged: it is not a bundle rejection (§7 question 10).
+
+  The local control reply carries `:clock-unusable` as a distinct status word
+  in the existing sealed reply grammar; its ACL2 status class is `:refused`
+  and its CLI exit code is 1. Existing status words retain their octets and
+  meanings, and clients built for the new image still decode every old reply.
 - Teeth: an owner witness whose clock was dropped by a contradicted reading
   (D10-a's own witness) with a queued POST; the take and attempt produce the
   clock line and no record, and a `must-fail` shows the same submission with a

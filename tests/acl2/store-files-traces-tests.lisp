@@ -9,19 +9,19 @@
   (fn-record-make 0 0 0 "<trace-zero@example.invalid>" '(90)
                   '("fn.letters" "fn.test")
                   "trace-archive-zero" "trace-content-zero"
-                  "trace-release-zero" 2))
+                  "trace-release-zero" 2 841000000))
 
 (defconst *sf-trace-record-1*
   (fn-record-make 1 1 1 "<trace-one@example.invalid>" '(79)
                   '("fn.letters")
                   "trace-archive-one" "trace-content-one"
-                  "trace-release-one" 1))
+                  "trace-release-one" 1 841000000))
 
 (defconst *sf-trace-record-2*
   (fn-record-make 2 2 2 "<trace-two@example.invalid>" '(84)
                   '("fn.test")
                   "trace-archive-two" "trace-content-two"
-                  "trace-release-two" 1))
+                  "trace-release-two" 1 841000000))
 
 ; Establish one emitted success.  Configuration is stored once in the trace;
 ; prepare and recovery events carry no alternate groups or capacity.

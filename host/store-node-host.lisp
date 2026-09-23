@@ -440,7 +440,7 @@ reopen predicate, writer-lock observation and observed final namespace."
       (value (fn-sf-phase (fn-sn-files next))))))
 
 (defun fn-store-sn-prepare (msgid-octets payload group-codes id-octets
-                             subject-octets evidence-octets charge state)
+                             subject-octets evidence-octets charge observation state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((s (f-get-global 'fn-store-sn state))
          (groups (fn-store-groups-from-codes group-codes (fn-store-sn-domain state))))
@@ -461,24 +461,26 @@ reopen predicate, writer-lock observation and observed final namespace."
              (existing (fn-store-article-match msgid payload groups node)))
         (if existing
             (value existing)
-          (let* ((record (fn-record-make (fn-sn-identity-next s)
-                                         (fn-state-next-txid (fn-node-acceptance node))
-                                         (fn-state-next-txid (fn-node-acceptance node))
-                                         msgid payload groups
-                                         (fn-store-octets->string id-octets)
-                                         (fn-store-octets->string subject-octets)
-                                         (fn-store-octets->string evidence-octets)
-                                         charge))
+          (let* ((record (fn-sn-article-record
+                          s observation msgid payload groups
+                          (fn-store-octets->string id-octets)
+                          (fn-store-octets->string subject-octets)
+                          (fn-store-octets->string evidence-octets)
+                          charge))
                  ; The host-called prepare is the executable projection from
                  ; books/store-prepare-correspondence.  Its keystone
                  ; fn-spc-prepare-equals-specification-under-relation equates
                  ; this call to fn-sn-prepare for every state reachable from
                  ; successful observed open through the actual mutators.
-                 (next (fn-spc-prepare s record)))
-            (if (equal next s)
+                 (next (if (equal record :clock-unusable)
+                           s
+                         (fn-spc-prepare s record))))
+            (if (equal record :clock-unusable)
+                (value :clock-unusable)
+              (if (equal next s)
                 (value :refused)
                 (let ((state (f-put-global 'fn-store-sn next state)))
-                  (value :prepared))))))))))
+                  (value :prepared)))))))))))
 
 ; A semantic refusal consumes the already durable allocator reservation using
 ; the proved composition transition, which advances the same live node to the

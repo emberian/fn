@@ -5,6 +5,7 @@
 (include-book "stx-accept-records")
 (include-book "injection")
 (include-book "identity")
+(include-book "records-stamp")
 
 (defun fn-hsig-octet-fields-to-strings (fields)
   (declare (xargs :guard t))
@@ -172,14 +173,15 @@
     (sequence txid generation keyring-generation enrolled-snapshot
               msgid source groups obligation-id content-subject
               release-evidence charge principal keys signatures observed-ml-key
-              ed25519-observation ml-dsa-65-observation)
+              ed25519-observation ml-dsa-65-observation observation)
   "Construct the legacy article record and atomic kind-4 event in ACL2."
   (declare (xargs :guard t))
   (let* ((fields (fn-hsig-authored-source-fields source))
+         (stamp (fn-record-stamp-of-observation observation))
          (record
          (fn-record-make sequence txid generation msgid source groups
-                         obligation-id content-subject release-evidence charge)))
-    (if (and fields
+                         obligation-id content-subject release-evidence charge stamp)))
+    (if (and (natp stamp) fields
              (equal msgid (car fields))
              (equal groups (cadr fields))
              (equal charge (fn-charge-for-payload (len source)))

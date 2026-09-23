@@ -341,16 +341,16 @@
 (defthm fn-bprv-staged-prepare-facts
   (implies (and (fn-node-statep s) (fn-bprv-node-idlep s)
                 (consp (fn-node-stage (fn-node-prepare s generation msgid payload groups
-                                                       obligation-id subject evidence charge))))
+                                                       obligation-id subject evidence charge stamp))))
            (let ((prepared (fn-node-prepare s generation msgid payload groups
-                                            obligation-id subject evidence charge)))
+                                            obligation-id subject evidence charge stamp)))
              (and (equal (fn-node-stage-msgid (fn-node-stage prepared)) msgid)
                   (equal (fn-node-stage-subject (fn-node-stage prepared)) subject)
                   (equal (fn-node-stage-id (fn-node-stage prepared)) obligation-id)
                   (equal (fn-node-acceptance prepared)
-                         (fn-accept-prepare (fn-node-acceptance s) generation msgid payload groups))
+                         (fn-accept-prepare (fn-node-acceptance s) generation msgid payload groups stamp))
                   (equal (fn-node-bindings prepared) (fn-node-bindings s))
-                  (not (equal (fn-accept-prepare (fn-node-acceptance s) generation msgid payload groups)
+                  (not (equal (fn-accept-prepare (fn-node-acceptance s) generation msgid payload groups stamp)
                               (fn-node-acceptance s))))))
   :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons fn-node-prepare fn-bprv-node-idlep fn-node-stage
                                 fn-node-acceptance fn-node-bindings fn-node-make-state
@@ -361,11 +361,11 @@
 ; fn-accept-prepare that changed the state staged exactly the proposal.
 (defthm fn-bprv-changed-accept-prepare-facts
   (implies (and (fn-statep s)
-                (not (equal (fn-accept-prepare s generation msgid payload groups) s)))
-           (let ((next (fn-accept-prepare s generation msgid payload groups)))
+                (not (equal (fn-accept-prepare s generation msgid payload groups stamp) s)))
+           (let ((next (fn-accept-prepare s generation msgid payload groups stamp)))
              (and (equal (fn-state-pending next)
                          (fn-make-pending (fn-state-next-txid s) generation msgid payload groups
-                                          (fn-allocate-memberships groups (fn-state-nexts s)) t))
+                                          (fn-allocate-memberships groups (fn-state-nexts s)) t stamp))
                   (equal (fn-state-fenced next) nil)
                   (equal (fn-state-articles next) (fn-state-articles s)))))
   :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons fn-accept-prepare fn-make-state fn-state-pending
@@ -426,13 +426,13 @@
                               (theory 'minimal-theory)))))
 (defthm fn-bprv-make-pending-fields
   (and (equal (fn-pending-msgid (fn-make-pending txid generation msgid payload groups
-                                                 memberships pin))
+                                                 memberships pin stamp))
               msgid)
        (equal (fn-pending-payload (fn-make-pending txid generation msgid payload groups
-                                                   memberships pin))
+                                                   memberships pin stamp))
               payload)
        (equal (fn-pending-groups (fn-make-pending txid generation msgid payload groups
-                                                  memberships pin))
+                                                  memberships pin stamp))
               groups))
   :hints (("Goal" :in-theory (union-theories
                               '(car-cons cdr-cons fn-make-pending fn-pending-msgid
@@ -490,7 +490,7 @@
                    m (fn-state-articles
                       (fn-node-acceptance
                        (fn-node-prepare s generation msgid payload groups
-                                        obligation-id subject evidence charge))))
+                                        obligation-id subject evidence charge stamp))))
                   (fn-find-article m (fn-state-articles (fn-node-acceptance s)))))
   :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons fn-node-prepare fn-bprv-node-make-state-fields
                                 fn-prepare-preserves-existing-message-id-binding
@@ -526,7 +526,8 @@
                             (obligation-id (fn-record-obligation-id record2))
                             (subject (fn-record-content-subject record2))
                             (evidence (fn-record-release-evidence record2))
-                            (charge (fn-record-charge record2)))
+                            (charge (fn-record-charge record2))
+                            (stamp (fn-record-stamp record2)))
                  (:instance fn-replay-apply-record-non-nil-is-node-state (record record2))
                  (:instance fn-node-complete-preserves-existing-binding
                             (s (fn-node-prepare
@@ -536,7 +537,7 @@
                                 (fn-record-obligation-id record2)
                                 (fn-record-content-subject record2)
                                 (fn-record-release-evidence record2)
-                                (fn-record-charge record2)))
+                                (fn-record-charge record2) (fn-record-stamp record2)))
                             (msgid (fn-record-msgid record))
                             (txid (fn-record-txid record2))
                             (generation (fn-record-generation record2))
@@ -604,7 +605,7 @@
                                    (fn-record-obligation-id article)
                                    (fn-record-content-subject article)
                                    (fn-record-release-evidence article)
-                                   (fn-record-charge article))))
+                                   (fn-record-charge article) (fn-record-stamp article))))
     (implies (and (fn-bpi-node-record-committedp node record)
                   (fn-node-statep (fn-node-complete prepared (fn-record-txid article)
                                                     (fn-record-generation article) :durable)))
@@ -623,7 +624,8 @@
                             (obligation-id (fn-record-obligation-id article))
                             (subject (fn-record-content-subject article))
                             (evidence (fn-record-release-evidence article))
-                            (charge (fn-record-charge article)))
+                            (charge (fn-record-charge article))
+                            (stamp (fn-record-stamp article)))
                  (:instance fn-node-complete-preserves-existing-binding
                             (s (fn-node-prepare
                                 (fn-replay-advance-txid node txid)
@@ -632,7 +634,7 @@
                                 (fn-record-obligation-id article)
                                 (fn-record-content-subject article)
                                 (fn-record-release-evidence article)
-                                (fn-record-charge article)))
+                                (fn-record-charge article) (fn-record-stamp article)))
                             (msgid (fn-record-msgid record))
                             (txid (fn-record-txid article))
                             (generation (fn-record-generation article))
