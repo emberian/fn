@@ -41,4 +41,7 @@ modified core before service stop. `sh tests/test_native_distribution.sh` and
 `make check` passed. The fixture runtime models the launch and profile result,
 not native article service behavior. A live service upgrade, crash during the
 symlink switch, power loss, or compatibility of a future Store schema was not
-tested. The actual hbox node continues running its earlier versioned unit.
+tested. The upgrade tool now requires an operator compatibility assertion
+because a new image may commit Store bytes before a failed health check;
+rollback of the executable cannot undo those writes. The fixture confirms
+staged service templates name their final release path. The actual hbox node continues running its earlier versioned unit.

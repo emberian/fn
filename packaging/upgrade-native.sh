@@ -1,12 +1,16 @@
 #!/bin/sh
 # Switch an already managed node to a staged native image. Linux only.
 # Control hook: HOOK stop|start|check NODE; the service must use NODE/current/bin/fn.
+# FN_UPGRADE_STORE_COMPATIBLE=yes asserts the old binary can read any Store writes
+# the candidate might commit before a failed health check.
 set -eu
 [ "$#" -eq 3 ] && [ -n "${FN_UPGRADE_CONTROL:-}" ] || {
   echo 'usage: FN_UPGRADE_CONTROL=/path/to/hook upgrade-native.sh NODE FROZEN_IMAGE REV' >&2; exit 2; }
 node=$1 image=$2 rev=$3
 case $node in /*) ;; *) echo 'upgrade-native: NODE must be absolute' >&2; exit 2;; esac
 case $rev in ''|*[!A-Za-z0-9._-]*) echo 'upgrade-native: invalid revision' >&2; exit 2;; esac
+[ "${FN_UPGRADE_STORE_COMPATIBLE:-}" = yes ] || {
+  echo 'upgrade-native: Store compatibility must be established before rollback can be safe' >&2; exit 4; }
 [ -x "$FN_UPGRADE_CONTROL" ] && [ -x "$image/fn-host" ] || { echo 'upgrade-native: missing hook or image' >&2; exit 4; }
 [ -L "$node/current" ] && [ -d "$node/store" ] && [ -s "$node/fn.toml" ] || {
   echo 'upgrade-native: existing managed node required' >&2; exit 4; }
@@ -18,7 +22,7 @@ old=$(readlink "$node/current")
 case $old in "$node"/releases/*) ;; *) echo 'upgrade-native: current target is outside releases' >&2; exit 4;; esac
 [ -d "$old" ] || { echo 'upgrade-native: current target missing' >&2; exit 4; }
 next=$node/releases/$rev
-[ ! -e "$next" ] && [ ! -e "$node/releases/.$rev.pending" ] || {
+[ ! -e "$next" ] && [ ! -e "$node/releases/.$rev.stage" ] || {
   echo 'upgrade-native: revision already staged' >&2; exit 4; }
 state_before=$(sha256sum "$node/fn.toml" "$node/tls/cert.pem" "$node/tls/key.pem" "$node/credentials.txt")
 store_identity() { stat -c '%d:%i' "$1" 2>/dev/null || stat -f '%d:%i' "$1"; }
@@ -26,9 +30,11 @@ store_before=$(store_identity "$node/store")
 replace_link() {
   if ! mv -Tf "$1" "$2" 2>/dev/null; then mv -fh "$1" "$2"; fi
 }
-pending=$node/releases/.$rev.pending
+stage=$node/releases/.$rev.stage
+pending=$stage$next
+# DESTDIR stages files while PREFIX renders service paths for the final release.
 # The installer verifies the production profile and all frozen hashes before service stop.
-PREFIX="$pending" FN_NATIVE_HOST="$image/fn-host" FN_NATIVE_CORE="$image/fn-host.core" \
+DESTDIR="$stage" PREFIX="$next" FN_NATIVE_HOST="$image/fn-host" FN_NATIVE_CORE="$image/fn-host.core" \
   FN_NATIVE_SOURCE_REVISION="$rev" sh "$(dirname "$0")/install-native.sh"
 rollback() {
   ln -s "$old" "$node/.current.rollback" || return 1
