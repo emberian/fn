@@ -1341,6 +1341,11 @@ coverage, and current view under that invariant. Its live-created-group witness
 checks that an old connection can advance to the refreshed archive and then
 select the new group. This does not establish Store I/O or crash/reopen
 preservation.
+`fn-ocari-advance-preserves-historical-reader-relation` carries the connected
+reader's wire validity, recorded verdicts, and index correspondence with its
+newly pinned archive across the same called step. The owner starts with no
+open IDs; the full historical-relation preservation results for called open,
+read, close and durable completion retain unique IDs before advance.
 The called reader-open function `fn-ocfg-open` has the focused theorem
 `fn-ocl-open-pins-current-physical-configuration`; a new connection pins
 the installed configuration even when existing connections retain older

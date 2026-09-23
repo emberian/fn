@@ -470,6 +470,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-owner-live \
 	books/config-owner-advance-invariants \
 	tests/acl2/config-owner-advance-invariants-tests \
+	books/config-owner-advance-reader-invariants \
+	tests/acl2/config-owner-advance-reader-invariants-tests \
 	books/config-owner-read-invariants \
 	tests/acl2/config-owner-read-invariants-tests \
 	tests/acl2/config-owner-live-tests \

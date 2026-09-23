@@ -6,6 +6,15 @@
 (in-package "ACL2")
 (include-book "config-owner-live")
 
+; The native recovery caller starts with no open connection IDs.  Ordinary
+; open/read/close/complete preserve the strengthened relation in the base
+; book, hence carry uniqueness into this advance step.
+(defthm fn-ocl-start-has-unique-connection-ids
+  (fn-ocl-unique-conn-idsp (fn-own-conns (fn-own-start store max-conns)))
+  :hints (("Goal" :in-theory (enable fn-own-start fn-own-refresh
+                                      fn-own-make fn-own-conns
+                                      fn-ocl-unique-conn-idsp))))
+
 (defthm fn-ocl-advance-result-keeps-owner-control
   (implies (fn-own-shapep (fn-ocfg-owner oc))
    (let* ((o (fn-ocfg-owner oc))
