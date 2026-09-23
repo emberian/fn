@@ -18,7 +18,20 @@
  (equal (fn-bpnf-receive-wire-event-value *bpnrb-ready*)
         (list :receive-bundle *bpnf-bundle* *bpnf-wire* *bpnf-ingress-p*)))
 (assert-event
- (fn-bpnf-host-eventp (fn-bpnf-receive-wire-event-value *bpnrb-ready*)))
+ (equal (fn-bpnf-host-eventp
+         (fn-bpnf-receive-wire-event-value *bpnrb-ready*)) t))
+(assert-event
+ (equal (fn-bpnf-host-eventp
+         (list :base (list :clock *bpnf-obs*))) t))
+(assert-event
+ (equal (fn-bpnf-host-eventp '(:persist-result 1 0 :durable)) t))
+(assert-event
+ (equal (fn-bpnf-host-eventp '(:persist-result 1 0 :refused)) t))
+(assert-event
+ (equal (fn-bpnf-host-eventp '(:persist-result 1 0 :uncertain)) t))
+(assert-event
+ (equal (fn-bpnf-host-eventp
+         '(:recover-fnbs 1 nil :ready (:ready nil nil))) t))
 (assert-event
  (equal (car (fn-bpnf-receive-wire-event
               *bpnf-config* '(1 2 3) *bpnf-obs* *bpnf-ingress-p*))
