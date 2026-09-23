@@ -37,12 +37,12 @@ freeze. Preserve the live `da5fd8cb` node and existing shared compute pools.
 | `stamp_review` | Historical recorded-verdict pin threaded through served NNTP and HDR; coordinate carried reader shape with index lane. |
 | `store_invariants` | Actual served Message-ID index and maintained correspondence; share reader view shape with verdict lane rather than waiting for all reader work. |
 | `consumer_contract` | Durable consumer bootstrap/events/Store projection, registration/ack/recovery and restore fencing; coordinate shared Store constructors with historical config and authored records. |
-| `bp_foundation` | One native FNBS service authority, typed receive/publish/recovery and actual caller switch; coherent A1/A2 packet `2009cedd` is being integrated by root. |
+| `bp_foundation` | One native FNBS service authority, typed receive/publish/recovery and actual caller switch; native A2/contact/TCPCL packet integrated at `66bf9e55`; qualify one coherent saved image. |
 | `feed_replay` | ACL2 TCPCL accepted/refused/uncertain completion so final ACK requires the matched durable receive result; coordinate callback contract with BP foundation. |
 | `status_codec` | Native contact planning, interruption/expiry/backpressure and receipt progression through that same service; do not import the old scheduler's assumed durable completion. |
 | `crash_differential` | K8 directory-fence to exact crash scan bridge, then K6, with K0 prerequisites explicit; K5 conditional stable-prefix packet landed. |
-| `fragment_refinement` | Saved-image foreign-library relocation, copied-image TLS/hybrid and missing-bundle negatives, then actual cross-host exchange. |
-| `store_semantics` | Small separate human reader/composer using real native NNTP and durable submission, with bounded rendering and explicit outcomes. |
+| `fragment_refinement` | Relocation and actual cross-host exchange passed; next isolated physical filesystem fault feasibility and campaign, coordinated with crash-model lane. |
+| `store_semantics` | Reader/composer and exact retry handling integrated; browser and native POST/readback passed; bounded in-memory submission registry, no durable client spool. |
 | `mini_evidence_bridge` | Bounded native Mini evidence export and read-only verification, real public fixture and payload/work measurements; isolated Mini worktree, no shared-main edits. |
 
 Root integrates finite source commits, regenerates ledgers, checks concrete
@@ -60,13 +60,12 @@ Its scoped runtime campaign passed migration (including selected old checkpoint)
 checkpoint/admin, protected peering and raw/served process-death tests. Corrected
 OpenSSL harness selection passed both real hybrid author tests. The NEWNEWS
 harness was corrected to the conservative no-clock legacy policy. The receipt
-fault selector had missed the canonical Store release path; source fix is
-landed and awaits the relocation image's developer test.
+fault selector repair passed the rebuilt developer image's unchanged BP suite.
 
 Copying that image to persvati exposed an actual portability defect: the saved
-core retained the hbox OpenSSL absolute path. The relocation lane is building
-one isolated `329a51a2` plus host/test fixes image, not another full feature
-freeze. The failed two-host attempt is recorded and is not peering evidence.
+core retained the hbox OpenSSL absolute path. The source fix now passes on isolated `1836ed01` production/developer images:
+copied-image TLS/hybrid, missing-bundle refusal and actual two-host protected
+exchange. The earlier failed attempt remains recorded separately.
 
 Root's BP merge qualification passed and landed as `a093a6b2`: `run-20260923T184236Z-0991` on hbox,
 `/tank/fn/gates/integrate-bp-a2-2009-current`, twenty changed/dependent roots,
@@ -74,3 +73,10 @@ two jobs and the existing pool, 33.293 seconds. The lane's source certificate se
 shared dependency bytes from current dev, so this is a real integration check.
 T8b and authorship have their own announced coherent/affected runs; do not
 start duplicate runs merely because a wait expired.
+
+Root integrated native A2/contact and the TCPCL coalesced-output repair at
+`66bf9e55`. Current-Store dependency roots passed in hbox
+`run-20260923T190525Z-2d0f`; all six changed roots have current evidence.
+Foundation assembles one image with its exact kind-5 payload inspection
+regression, then exercises restart/integrity/contacts. Do not substitute
+file size or logged payload length for retained byte equality.
