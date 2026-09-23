@@ -624,15 +624,17 @@ re-anchoring. These three are the vocabulary of T6.
 verified `mbe` executable arm calls `fn-bpn-dispatch` directly. The guard is
 `fn-bpn-machine-statep` together with `fn-bpn-machine-eventp`; ACL2 guard
 verification proves agreement of the logical and executable arms under that
-guard. The current native adapter calls this exact `fn-bpn-step` subject;
-before relying on the fast arm, the host must establish and carry those guard
-premises across calls. The audit extends past `fn-bpn-step`:
-`fn-bpn-existing-sequence` (`bp-node-machine.lisp:284`) also evaluates
-`fn-bpn-machine-statep` (D8) and is replaced by the carrier lookup of §4.4;
-slice A lists every `fnn-core` call in `host/native/bp-service.lisp`,
-`host/bp-node-machine-host.lisp` and the new loop book whose subject runs a
-whole-state recognizer, and each gets a fast twin with its equation or is
-removed.
+guard. Both saved-image profiles include `bp-node-machine-guards`.
+`fnn-bps-open` checks the initial machine invariant once, and `fnn-bps-step`
+validates `fn-bpn-machine-eventp` before calling this exact `fn-bpn-step`.
+Only initialization and step answers write the service's state;
+`fn-bpn-step-preserves-machine-invariant` carries the state premise between
+calls. The native image containing this wiring has not yet been built or
+exercised in this packet. The audit extends past `fn-bpn-step`:
+`fn-bpn-existing-sequence` has a guard-verified `mbe` executable arm that
+omits the whole-state recognizer, and the ready-peers host projection uses
+the maintained state directly. §4.4's carrier lookup remains future work
+for stronger dispatch bounds.
 
 ## 3. Events, effects, records
 

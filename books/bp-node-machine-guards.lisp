@@ -7,6 +7,9 @@
 
 (verify-guards fn-bpn-eventp)
 (verify-guards fn-bpn-machine-eventp)
+(verify-guards fn-bpn-existing-sequence
+  :hints (("Goal" :in-theory
+           (disable fn-bpn-machine-statep fn-bpn-machine-recordp))))
 
 (verify-guards fn-bpn-replay-records
   :hints (("Goal"
