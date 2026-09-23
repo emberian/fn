@@ -869,9 +869,12 @@
       (let* ((view (fn-own-view o))
              (archive (fn-own-view-archive view))
              (id (fn-own-next-id o))
-             (opened (fn-served-open archive *fn-nntp-max-initial-line-octets*
-                                     (fn-own-body-limit o) (fn-own-config o)
-                                     (fn-own-clock o) (fn-own-clock o) acfg))
+             (opened (fn-served-open-indexed
+                      archive (fn-own-view-index view)
+                      (fn-own-view-verdicts view)
+                      *fn-nntp-max-initial-line-octets*
+                      (fn-own-body-limit o) (fn-own-config o)
+                      (fn-own-clock o) (fn-own-clock o) acfg))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make-indexed id (fn-own-view-version view)
                                      (fn-own-view-frontier view)
@@ -926,7 +929,9 @@
              ; connection the owner resolved to a peer record met no
              ; credential, no protected-only bit and no certificate --
              ; and on one box every client is resolved that way.
-             (opened (fn-served-open-peer archive
+             (opened (fn-served-open-peer-indexed archive
+                                          (fn-own-view-index view)
+                                          (fn-own-view-verdicts view)
                                           *fn-nntp-max-initial-line-octets*
                                           limit (fn-own-config o) (fn-own-clock o)
                                           (fn-own-clock o)
