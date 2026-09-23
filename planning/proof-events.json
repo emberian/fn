@@ -1639,6 +1639,96 @@
           "name": "fn-fc-decoded-profile-renders-verbatim-in-every-state"
         }
       ]
+    },
+    {
+      "id": "PRF-056",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-operator-submission-is-an-injection-of-the-payload",
+          "note": "Over fn-own-operator-submit (host/owner-host.lisp fn-owner-operator-submit; host/native/owner.lisp fnn-owner-control-submit-serialized): a :submitted answer queues one control submission whose octets are a re-injection of the payload. One hypothesis with a must-fail and a refuting value (tests/acl2/owner-operator-tests.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-operator-decision-is-an-injection-of-the-payload",
+          "note": "The decision underneath, for any configuration, clock and node. One hypothesis with a must-fail and a refuting value (`From: yue`, refused :from-invalid)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-operator-submit-without-a-clock-refuses-and-changes-nothing",
+          "note": "D10-a over fn-own-operator-submit. One hypothesis with a must-fail; the clocked owner is the refuting value."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-operator-retry-resubmits-the-stored-injection",
+          "note": "A retry under any later usable clock is the stored injection. Five hypotheses, each with a must-fail through a macro that first admits the full statement, and refuting values."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-inj-injected-article-is-a-reinjection-of-its-source",
+          "note": "The keystone the three above rest on, over fn-inj-decide. One hypothesis with a must-fail (tests/acl2/injection-tests.lisp)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-057",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mbx-mailbox-list-names-an-address",
+          "note": "Over fn-mbx-mailbox-listp, which fn-inj-decide calls through fn-inj-mandatory-reason. One hypothesis with a must-fail; ` yue` refutes it."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-inj-injected-proto-article-has-a-mailbox-list-from",
+          "note": "Over fn-inj-decide (books/nntp-post.lisp fn-nntp-post-step; books/owner.lisp fn-own-operator-decision). One hypothesis with a must-fail; `From: yue` refutes it."
+        }
+      ]
+    },
+    {
+      "id": "PRF-058",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-peer-relayed-octets-change-only-path-and-xref",
+          "note": "Over fn-peer-relayed-octets (host/owner-host.lisp fn-owner-take). No hypothesis; the stronger `the relay changes nothing` is a must-fail refuted by innfeed's own octets (tests/acl2/peer-inbound-tests.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-relayed-octets-are-idempotent",
+          "note": "No hypothesis; a pass by another node is a must-fail refuted by a second identity."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-relayed-octets-carry-no-xref",
+          "note": "No hypothesis; `every article is Xref-free` is a must-fail refuted by what innfeed sent."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-relayed-octets-name-this-node-in-every-path",
+          "note": "One hypothesis (the node has a path identity) with a must-fail; a node with none is the refuting value."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pu-relay-article-changes-only-path-and-xref",
+          "note": "The article-level keystone doing the work (books/path-update.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pu-relay-article-is-idempotent",
+          "note": "The article-level keystone doing the work."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pu-relay-article-leaves-no-xref",
+          "note": "The article-level keystone doing the work."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pu-relay-article-names-the-agent-in-every-path",
+          "note": "The article-level keystone doing the work."
+        }
+      ]
     }
   ]
 }
