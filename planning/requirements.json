@@ -1631,6 +1631,29 @@
         "planning/experiments/e1-e2-v1-traces.json"
       ],
       "note": "Selected v1 experiment, not a v0 gate. The finite cursor/event kernel and Store completed-prefix model are certified. Authenticated native register/poll/ack/rebase and bounded metadata charge, checkpoint/clone integration, consumer-owned database, and the executed two-store exchange remain open; the adversarial E2 traces are specifications awaiting a runner."
+    },
+    {
+      "id": "TOP-002",
+      "title": "Experimental root-only local topic anchor and report admission",
+      "specification": "specs/topic-history.md#experimental-root-only-admission-component",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-066"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/topic-history-admission.lisp",
+        "tests/acl2/topic-history-admission-tests.lisp",
+        "planning/evidence/topic-history-admission-component-p3-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T214858Z-589315.json",
+        "planning/evidence/manifests/certify-20260923T215046Z-608772.json"
+      ],
+      "implementation_note": "A bounded ACL2 root-only prepare/commit component uses historical T10 accepted sources, an explicit local administrator identity, selected active root policy, verified author roster, same-topic earlier parents and finite report quota. The component does not yet publish or replay physical topic events.",
+      "note": "The experimental fixed-controller profile is not a universal governance contract. Store union/replay, owner publication, retention pins and native qualification remain open before any durable admission status."
     }
   ]
 }

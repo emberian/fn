@@ -1,0 +1,56 @@
+# Experimental P3 root-only admission component
+
+`fn-th-prepare-anchor` receives an actual completed T10 schema-1 article
+event and historical keyring snapshot, not a caller-supplied verified flag. It
+uses `fn-th-select-accepted-event`, requires the root controller and keyset
+declaration to match the retained verified context, compares the caller ID to
+an installed local administrator ID, rejects an existing root identity, and
+requires a quota of 1 through 64 within a 16-anchor projection. It returns a
+proposed topic event with the caller ID and T10 source reference. The local
+projection remains unchanged until `fn-th-commit-anchor` recomputes the same
+event against the historical inputs and adds the anchor.
+
+`fn-th-prepare-report` likewise uses T10's bound source and key context. Its
+fresh branch requires an active selected root, an exact verified author-ref in
+the roster, all named parents earlier admitted within that same topic, and
+remaining quota. A prior exact source/reference returns
+`:replayed-historical` before current checks; conflicting source context is
+refused. `fn-th-commit-report` recomputes the proposal before appending an
+immutable historical admission and decrementing the finite quota. The
+theorem `fn-th-fresh-report-is-grounded-in-current-root` proves the positive
+branch's policy, roster, parent and quota conjuncts over this executable
+preparation function. The commit theorems establish that a successful local
+projection change requires equality with the recomputed proposal, and
+`fn-th-replace-anchor-preserves-distinct-topic` shows a different topic's
+anchor is untouched by replacement.
+
+The test book constructs a T10-accepted root and signed carrier-backed report
+using the existing ACL2 constructor. It executes anchor preparation and
+commit, report preparation and commit, exact retry after a one-report quota is
+exhausted, changed historical enrollment, wrong administrator, a separate
+verified principal outside the roster, an unadmitted parent, and exhausted
+quota. `must-fail` forms show that removing administrator, anchor, roster,
+parent or quota premises changes outcomes. The `:contested` and
+`:stale-policy` branches reserve future control-selection behavior and are
+unreachable in this root-only composition.
+
+Persvati certified the book in
+[`certify-20260923T214858Z-589315.json`](manifests/certify-20260923T214858Z-589315.json)
+and the final test bytes in
+[`certify-20260923T215046Z-608772.json`](manifests/certify-20260923T215046Z-608772.json).
+The invocations selected explicit roots, jobs 2, default persvati ACL2
+`/home/ember/fn-gates/toolchains/w25/acl2-literal`, without `--closure`.
+The toolchain identity is
+`1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286`;
+the book and final test source SHA-256 digests are
+`2c64009ea499647ea330666f7ac950fdbe57307450b99deb40df306029dad7b7`
+and `0aa66e70b28eb5ac7194e28f1f482e9fa18af0a746e2fb63146399e1fb657092`.
+The first two proof attempts exposed a guard proof opening the source codec;
+replacing a partial `member-equal` call with total bounded author membership
+kept that guard closed. The interrupted attempts are not cited as passing.
+
+This packet has no physical topic Store event, same-journal publication,
+replay/index relation, retention dependency pin, historical administrator
+configuration lookup, native command or source-matched native test. It cannot
+claim durable admission, a served topic view, or Mini authorization. Those are
+the next P3 joins before a release claim.

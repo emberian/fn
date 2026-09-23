@@ -480,8 +480,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \
+	books/topic-history-admission \
 	tests/acl2/topic-history-metadata-tests \
 	tests/acl2/topic-history-authorship-tests \
+	tests/acl2/topic-history-admission-tests \
 	tests/acl2/hybrid-store-tests \
 	books/crypto-attach \
 	books/auth-secret \

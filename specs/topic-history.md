@@ -71,6 +71,40 @@ bytes, and no external data is passed to a Lisp reader.
 
 The source and host-called projection are covered by PRF-062 and SCN-030;
 the verified and historical authorship binding is PRF-065 and SCN-032.
+
+## Experimental root-only admission component
+
+TOP-002: A local root-only topic admission proposal must use a previously
+accepted T10-bound exact source, finite topic budget and historical author
+context. Only a completed, validated topic event may change the local anchor
+or report-admission projection.
+
+`books/topic-history-admission.lisp` now defines the first bounded local
+transition for the proposed fixed-controller profile. It prepares an anchor
+only from a T10-bound retained root whose declared controller and exact keyset
+identity match the historical verifier context, an installed 32-octet local
+administrator ID equal to the authenticated caller ID, a fresh root source
+identity, and a finite quota of 1 through 64 report admissions. At most 16
+anchors fit the local projection. The administrator ID travels in the proposed
+anchor event so recovery can compare it with historical local configuration.
+
+A report proposal resolves the retained T10 event/snapshot again. It requires
+the selected root policy to be active, the verified author reference in the
+root roster, all declared parents to have earlier admissions in that same
+topic, and a remaining quota. Exact historical retry returns the old admission
+before current policy checks and consumes no quota. A conflicting T10 source
+reference under a prior report identity is refused. Preparation returns a
+proposed topic event; the projection changes only through `fn-th-commit-anchor`
+or `fn-th-commit-report`, which recompute and compare the proposal against the
+bound source/context before changing bounded state. The report record retains
+its topic, policy, T10 source reference, parent list and committed sequence.
+
+This is a certified executable component, not a durable Store or native owner
+path yet: no physical topic event codec, Store union/replay join, owner
+publication, historical administrator configuration lookup or retention pin has
+landed. It is root-only. No control successor, fork healing, automatic policy
+adoption, alias rewrite or Mini application operation is inferred. PRF-066 and
+SCN-034 track the component and the remaining joined boundary.
 Store topic events, durable admission and current-policy status remain the
 next P3 composition steps and need their own host-called theorems and physical
 evidence. RFC 5536 header syntax comes from the article parser. The one-field,

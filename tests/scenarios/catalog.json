@@ -1050,6 +1050,31 @@
         "planning/evidence/manifests/certify-20260923T211422Z-167141.json"
       ],
       "execution_scope": "ACL2 constructor, selector, historical event and negative teeth tests certify on hbox at the lane source. The updated native CLI awaits a source-matched combined saved image; no durable topic admission, fork choice, roster adoption or general signature primitive proof is claimed."
+    },
+    {
+      "id": "SCN-034",
+      "title": "Experimental root anchor and report proposal respects T10, roster, parents and quota",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "TOP-002"
+      ],
+      "steps": [
+        "From an already accepted schema-1 root and historical key snapshot, prepare and commit a finite local anchor under the installed administrator ID. Repeat with a different caller, changed snapshot and the same already anchored root.",
+        "Construct an accepted report signed by a roster author, propose and commit its admission, then retry the exact source after the finite quota is consumed.",
+        "Construct separate accepted reports under a non-roster signer, with an unadmitted same-topic parent and after quota exhaustion. Compare the projection before preparation and after completion."
+      ],
+      "expected": [
+        "Only the matching administrator/root context yields a proposed anchor; the same root cannot be anchored twice.",
+        "The report receives one historical admission, exact retry returns that record without another charge, and proposal alone does not change state.",
+        "Non-roster author, missing parent and no remaining quota each refuse fresh admission; no ordinary article acceptance is undone."
+      ],
+      "evidence": [
+        "tests/acl2/topic-history-admission-tests.lisp",
+        "planning/evidence/topic-history-admission-component-p3-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T215046Z-608772.json"
+      ],
+      "execution_scope": "The ACL2 component and T10 constructor fixtures certify on persvati. This is not a same-journal native Store scenario; event codec, publication, recovery and retention pins remain unimplemented."
     }
   ]
 }
