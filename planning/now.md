@@ -50,9 +50,18 @@ through native NNTP and a browser. Repeated form submissions preserve exact
 source and Message-ID in bounded process memory; they are not a durable client
 spool. See [the client contract](../docs/human-web-client.md).
 
+The295 image also passed the [ordinary INN exchange lab](evidence/inn-lab-295bbe35-2026-09-23.md).
+A separate authored-carrier peering test exposed a missing local injection
+Path in the native authored submission route; its independent relay signature
+and restart assertions were not reached. The [failure record](evidence/native-hybrid-peering-295-2026-09-23.md)
+tracks the ACL2 projection/caller repair separately from the passing ordinary
+interop scope.
+
 The K5 prefix result and corrected K8 issued-link post-fence crash-scan
 theorem are integrated with explicit hypotheses and negative witnesses.
-K6 raw-write provenance and general K0 call-trace establishment remain open.
+K6 now proves exact raw-frame bytes at the actual P-RECORD file-fence cut;
+its final-link/crash-scanner join and general K0 call-trace establishment
+remain open.
 An isolated ext4 device-EIO campaign observed actual directory-fsync failure,
 native uncertainty and successful recovery; this does not qualify physical
 power loss or production ZFS. The BP native campaign also exposed process-
@@ -61,5 +70,7 @@ actual monotonic expiry tests are in progress. Release scope still follows
 [the trajectory](plan-2026-09-22-trajectory.md) and
 [takeover contracts](takeover-2026-09-23.md), with wider concurrent execution
 under [how we work](how-we-work.md). Independently governed topic histories
-are part of the revised goal, with their concrete integration contract being
-designed from Mini/Bread rather than inferred from local NNTP numbering.
+are part of the revised goal. The [P3 design proposal](topic-history-p3-2026-09-23.md)
+grounds their identity, policy histories and application boundary in Mini/Bread.
+A bounded metadata codec and native inspection slice proceeds while portable
+succession and legitimate governance-fork policy remain proposals.
