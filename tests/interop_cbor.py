@@ -120,7 +120,7 @@ class ACL2:
         try:
             read_prompt(self.proc)
             self.call('(include-book "books/cbor")')
-            self.call('(include-book "books/records")')
+            self.call('(include-book "books/records-attach")')
             self.version = self.call('(@ acl2-version)').strip().strip('"')
         except BaseException:
             self.close()
