@@ -41,8 +41,14 @@ gates passed on [frozen image 24a5df6b](evidence/four-profile-image-24a5df6b-202
 That image's wider suites exposed concrete runtime gaps; it is not a v0 gate.
 The shared `f0b8b166` image batch now exercises the TLS polling repair,
 reclaim-plan include, forwarding-pin call binding and distinct recovery cuts.
-Checkpoint and BP obligation suites passed on its default pair; receipt workflow
-constructors remain absent. The node still runs `da5fd8cb`.
+Checkpoint, BP obligation and full admin suites passed on its default pair.
+The [protected peering suite](evidence/matrix-protected-f0b8b166-2026-09-23.md)
+passed reciprocal TLS/authentication, rejection controls, acknowledged restart
+and a sender death after durable `:feed-sent`, with one recipient article after
+retry. This was an isolated two-node exercise on hbox, not the separate
+hbox-to-persvati release gate. Receipt workflow constructors remain absent.
+The [image record](evidence/four-profile-image-f0b8b166-2026-09-23.md) names its
+source and the separately revised harnesses. The deployed node still runs `da5fd8cb`.
 
 The selected [sleeping-agent experiment](experiments/e1-e2-agent-exchange.md)
 has report/receipt plus reply, consumer-owned durable inbox/outbox and a fn
