@@ -403,9 +403,6 @@ may or may not be durable."
         (fnn-bps-receive service ingress octets)
       (case (first result)
         (:accepted
-         ;; Keep the existing operator evidence namespace after FNBS custody
-         ;; commits.  Its path is not the TCPCL acceptance authority.
-         (fnn-bp-evidence-publish tally :accepted octets adu)
          (incf (fnn-bp-tally-accepted tally))
          (setf (fnn-bp-tally-last-adu tally) adu
                (fnn-bp-tally-last-reason tally) :stored)
