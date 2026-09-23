@@ -1,7 +1,7 @@
 ; Bounded canonical Store payload for experimental topic anchor/admission.
 ; Distinct magic avoids colliding with fn-e and consumer fnce envelopes.
 (in-package "ACL2")
-(include-book "topic-history-admission")
+(include-book "topic-history-local-admin")
 
 (defconst *fn-th-topic-magic* '(102 110 116 111)) ; "fnto"
 (defconst *fn-th-topic-version* 1)
@@ -21,7 +21,8 @@
 (defun fn-th-topic-eventp (event)
   (declare (xargs :guard t))
   (and (true-listp event)
-       (or (and (equal (len event) 8)
+       (or (fn-th-local-admin-eventp event)
+           (and (equal (len event) 8)
                 (equal (fn-th-at 0 event) :topic-anchor)
                 (fn-th-source-id-p (fn-th-at 4 event))
                 (fn-th-auth-ref-p (fn-th-at 5 event))
@@ -43,9 +44,10 @@
        (fn-record-uint32p (fn-th-at 1 event))
        (fn-record-uint32p (fn-th-at 2 event))
        (fn-record-uint32p (fn-th-at 3 event))
-       (< (fn-th-at 0 (if (equal (fn-th-at 0 event) :topic-anchor)
-                            (fn-th-at 5 event) (fn-th-at 7 event)))
-          (fn-th-at 1 event))))
+       (or (fn-th-local-admin-eventp event)
+           (< (fn-th-at 0 (if (equal (fn-th-at 0 event) :topic-anchor)
+                                (fn-th-at 5 event) (fn-th-at 7 event)))
+              (fn-th-at 1 event)))))
 
 (defun fn-th-topic-auth-items (ref)
   (declare (xargs :guard t))
@@ -60,23 +62,29 @@
   (append
    (list (cons :bytes *fn-th-topic-magic*)
          (cons :uint *fn-th-topic-version*)
-         (cons :uint (if (equal (fn-th-at 0 event) :topic-anchor) 0 1))
+         (cons :uint (case (fn-th-at 0 event)
+                       (:topic-anchor 0) (:topic-admit 1)
+                       (otherwise 2)))
          (cons :uint (fn-th-at 1 event))
          (cons :uint (fn-th-at 2 event))
          (cons :uint (fn-th-at 3 event)))
-   (if (equal (fn-th-at 0 event) :topic-anchor)
+   (cond
+    ((equal (fn-th-at 0 event) :topic-admin-install)
+     (list (cons :uint (fn-th-at 4 event))
+           (cons :bytes (fn-th-at 5 event))))
+    ((equal (fn-th-at 0 event) :topic-anchor)
        (append
         (list (cons :bytes (fn-th-at 4 event)))
         (fn-th-topic-auth-items (fn-th-at 5 event))
         (list (cons :uint (fn-th-at 6 event))
-              (cons :bytes (fn-th-at 7 event))))
-     (append
+              (cons :bytes (fn-th-at 7 event)))))
+    (t (append
       (list (cons :bytes (fn-th-at 4 event))
             (cons :bytes (fn-th-at 5 event))
             (cons :bytes (fn-th-at 6 event)))
       (fn-th-topic-auth-items (fn-th-at 7 event))
       (list (cons :uint (len (fn-th-at 8 event))))
-      (fn-th-parent-items (fn-th-at 8 event))))))
+      (fn-th-parent-items (fn-th-at 8 event)))))))
 
 (defun fn-th-topic-event-encode (event)
   (declare (xargs :guard t))
@@ -135,6 +143,16 @@
                    (fn-stmt-okp read) (null (fn-stmt-rest read))
                    (fn-th-topic-eventp event))
               (fn-stmt-ok event) (fn-stmt-error :shape))))
+       ((and (equal kind 2) (equal (len items) 8))
+        (let ((event
+               (list :topic-admin-install
+                     (fn-cbor-ag-cdr (fn-th-at 3 items))
+                     (fn-cbor-ag-cdr (fn-th-at 4 items))
+                     (fn-cbor-ag-cdr (fn-th-at 5 items))
+                     (fn-cbor-ag-cdr (fn-th-at 6 items))
+                     (fn-cbor-ag-cdr (fn-th-at 7 items)))))
+          (if (fn-th-topic-eventp event) (fn-stmt-ok event)
+            (fn-stmt-error :shape))))
        (t (fn-stmt-error :kind))))))
 
 (defun fn-th-topic-event-decode-exact (octets)

@@ -3,12 +3,12 @@
 (in-package "ACL2")
 (include-book "store-events")
 
-; (:ok next snapshots accepted anchors) or (:fault next snapshots accepted
-; anchors reason). The caller's installed administrator is independent of
-; the topic event's own claimed administrator.
-(defun fn-th-prefix-state (status next snapshots accepted anchors tail)
+; (:ok next snapshots accepted anchors installed-admin nil), or :fault with
+; a reason in the last slot. Historical installation comes from a preceding
+; Store event, never from a replay caller-supplied ID.
+(defun fn-th-prefix-state (status next snapshots accepted anchors installed tail)
   (declare (xargs :guard t))
-  (list status next snapshots accepted anchors tail))
+  (list status next snapshots accepted anchors installed tail))
 (defun fn-th-prefix-find-ref (ref accepted)
   (declare (xargs :guard t))
   (if (consp accepted)
@@ -18,24 +18,33 @@
         (fn-th-prefix-find-ref ref (cdr accepted)))
     nil))
 
-(defun fn-th-prefix-step (projection event installed-admin)
+(defun fn-th-prefix-step (projection event)
   (declare (xargs :guard t))
   (let ((status (fn-th-at 0 projection))
         (next (fn-th-at 1 projection))
         (snapshots (fn-th-at 2 projection))
         (accepted (fn-th-at 3 projection))
-        (anchors (fn-th-at 4 projection)))
+        (anchors (fn-th-at 4 projection))
+        (installed (fn-th-at 5 projection)))
     (cond
      ((not (equal status :ok)) projection)
      ((or (not (fn-store-event-p event))
           (not (equal next (fn-store-event-sequence event))))
-      (fn-th-prefix-state :fault next snapshots accepted anchors :sequence))
+      (fn-th-prefix-state :fault next snapshots accepted anchors installed
+                          :sequence))
      ((fn-stxk-p event)
       (fn-th-prefix-state :ok (1+ (nfix next)) (cons event snapshots)
-                          accepted anchors nil))
+                          accepted anchors installed nil))
      ((fn-stxa-p event)
       (fn-th-prefix-state :ok (1+ (nfix next)) snapshots
-                          (cons event accepted) anchors nil))
+                          (cons event accepted) anchors installed nil))
+     ((fn-th-local-admin-eventp event)
+      (let ((updated (fn-th-local-admin-commit event installed)))
+        (if (fn-stmt-okp updated)
+            (fn-th-prefix-state :ok (1+ (nfix next)) snapshots accepted
+                                anchors (fn-stmt-value updated) nil)
+          (fn-th-prefix-state :fault next snapshots accepted anchors installed
+                              :administrator-install))))
      ((fn-th-topic-eventp event)
       (let* ((ref (if (eq (fn-th-at 0 event) :topic-anchor)
                       (fn-th-at 5 event) (fn-th-at 7 event)))
@@ -47,35 +56,37 @@
               (if (and source snapshot)
                   (if (eq (fn-th-at 0 event) :topic-anchor)
                       (fn-th-commit-anchor event source snapshot
-                                           installed-admin anchors)
+                                           (fn-th-at 5 installed) anchors)
                     (fn-th-commit-report event source snapshot anchors))
                 (fn-stmt-error :missing-historical-authorship))))
         (if (fn-stmt-okp updated)
             (fn-th-prefix-state :ok (1+ (nfix next)) snapshots accepted
-                                (fn-stmt-value updated) nil)
-          (fn-th-prefix-state :fault next snapshots accepted anchors
+                                (fn-stmt-value updated) installed nil)
+          (fn-th-prefix-state :fault next snapshots accepted anchors installed
                               (fn-stmt-value updated)))))
-     (t (fn-th-prefix-state :ok (1+ (nfix next)) snapshots accepted anchors nil)))))
+     (t (fn-th-prefix-state :ok (1+ (nfix next)) snapshots accepted anchors
+                            installed nil)))))
 
-(defun fn-th-prefix-loop (projection records installed-admin)
+(defun fn-th-prefix-loop (projection records)
   (declare (xargs :guard t :measure (len records)))
   (if (consp records)
       (fn-th-prefix-loop
-       (fn-th-prefix-step projection (car records) installed-admin)
-       (cdr records) installed-admin)
+       (fn-th-prefix-step projection (car records))
+       (cdr records))
     (if (null records) projection
       (fn-th-prefix-state :fault (fn-th-at 1 projection) (fn-th-at 2 projection)
                           (fn-th-at 3 projection) (fn-th-at 4 projection)
+                          (fn-th-at 5 projection)
                           :improper-prefix))))
 
-(defun fn-th-prefix-project (records installed-admin)
+(defun fn-th-prefix-project (records)
   (declare (xargs :guard t))
-  (fn-th-prefix-loop (fn-th-prefix-state :ok 0 nil nil nil nil)
-                     records installed-admin))
+  (fn-th-prefix-loop (fn-th-prefix-state :ok 0 nil nil nil nil nil)
+                     records))
 
 (defthm fn-th-prefix-step-failure-sticks
   (implies (not (equal (fn-th-at 0 projection) :ok))
-           (equal (fn-th-prefix-step projection event installed-admin) projection))
+           (equal (fn-th-prefix-step projection event) projection))
   :hints (("Goal" :in-theory (enable fn-th-prefix-step))))
 
 (defthm fn-th-prefix-step-topic-success-uses-prior-authorship
@@ -84,9 +95,10 @@
                 (fn-th-topic-eventp event)
                 (not (fn-stxk-p event))
                 (not (fn-stxa-p event))
+                (not (fn-th-local-admin-eventp event))
                 (equal (fn-store-event-sequence event) (fn-th-at 1 projection))
                 (equal (fn-th-at 0
-                         (fn-th-prefix-step projection event installed-admin))
+                         (fn-th-prefix-step projection event))
                        :ok))
            (fn-th-prefix-find-ref
             (if (eq (fn-th-at 0 event) :topic-anchor)
@@ -95,7 +107,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-th-prefix-step)
                 (fn-store-event-p fn-th-topic-eventp
-                 fn-stxk-p fn-stxa-p
+                 fn-stxk-p fn-stxa-p fn-th-local-admin-eventp
                  fn-th-commit-anchor fn-th-commit-report
                  fn-th-prefix-find-ref
                  fn-th-prepare-anchor fn-th-prepare-report)))))

@@ -806,6 +806,25 @@ the current connection."
           (fnn-refuse "canonical Store refused consumer event")))
       (fnn-owner-publish-prepared service "consumer"))))
 
+(defun fnn-owner-topic-commit (service event)
+  "Publish one ACL2-constructed topic event through the Store durability gate."
+  (let ((store (fnn-owner-service-store service)))
+    (when (>= (fnn-owner-service-records service)
+              (fnn-config-max-transactions store))
+      (fnn-refuse "Store transaction capacity exhausted"))
+    (fnn-owner-preflight-publication service
+                                     (fnn-core 'fn-store-event-kind event))
+    (let ((*fnn-observe-callback* #'fnn-owner-observe)
+          (*fnn-finish-callback* #'fnn-owner-finish))
+      (fnn-advance-frontier store
+                            (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
+      (let ((prepared (fnn-owner-action 'fn-owner-prepare-topic event)))
+        (unless (eq prepared :prepared)
+          (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
+            (fnn-indeterminate "owner could not consume refused topic reservation"))
+          (fnn-refuse "canonical Store refused topic event")))
+      (fnn-owner-publish-prepared service "topic"))))
+
 (defun fnn-owner-drain-one (service)
   "Take and complete at most one queued served submission; return cid/reply."
   (let ((taken (fnn-owner-action 'fn-owner-take)))

@@ -495,8 +495,10 @@
                   :verify-guards nil))
   (if (fn-store-retention-event-p record)
       (fn-replay-apply-retention-event node record)
-    (if (or (fn-stxe-p record) (fn-stxk-p record) (fn-cpe-eventp record))
-        (if (and (fn-cpe-eventp record) (not (null (fn-node-stage node))))
+    (if (or (fn-stxe-p record) (fn-stxk-p record) (fn-cpe-eventp record)
+            (fn-th-topic-eventp record))
+        (if (and (or (fn-cpe-eventp record) (fn-th-topic-eventp record))
+                 (not (null (fn-node-stage node))))
             nil
           (fn-replay-apply-identity-neutral node record))
       ; Unreachable-in-composition: journal replay enters with no pending

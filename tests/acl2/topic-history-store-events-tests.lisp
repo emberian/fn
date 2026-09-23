@@ -1,15 +1,24 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-store-events")
 (include-book "topic-history-admission-tests")
+(include-book "topic-history-local-admin-tests")
 (include-book "std/testing/must-fail" :dir :system)
 
 (assert-event (fn-th-topic-eventp *thad-anchor-event*))
 (assert-event (fn-th-topic-eventp *thad-report-event*))
+(assert-event (fn-th-topic-eventp *thla-install*))
+(make-event `(defconst *thae-admin-octets*
+               ',(fn-th-topic-event-encode *thla-install*)))
 (make-event `(defconst *thae-anchor-octets*
                ',(fn-th-topic-event-encode *thad-anchor-event*)))
 (make-event `(defconst *thae-report-octets*
                ',(fn-th-topic-event-encode *thad-report-event*)))
 (assert-event (and *thae-anchor-octets* *thae-report-octets*))
+(assert-event (and *thae-admin-octets*
+                   (<= (len *thae-admin-octets*) *fn-th-topic-max-octets*)))
+(assert-event
+ (equal (fn-th-topic-event-decode-exact *thae-admin-octets*)
+        (fn-stmt-ok *thla-install*)))
 (assert-event (<= (len *thae-anchor-octets*) *fn-th-topic-max-octets*))
 (assert-event (<= (len *thae-report-octets*) *fn-th-topic-max-octets*))
 (assert-event

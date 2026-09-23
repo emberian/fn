@@ -252,6 +252,8 @@
                             fn-sn-identity-context)
                            (fn-record-shape-vocabulary
                             fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-th-topic-eventp fn-th-prefix-step
+                            fn-th-local-admin-eventp
                             fn-replay-apply-record
                             fn-replay-apply-retention-event
                             fn-node-complete
@@ -282,7 +284,8 @@
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
                 (not (fn-stxa-p (fn-sn-completion-record s)))
-                (not (fn-cpe-eventp (fn-sn-completion-record s))))
+                (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (equal
             (fn-sn-verdict-lookup
              (fn-sn-finish s)
@@ -295,6 +298,7 @@
            :in-theory (e/d (fn-sn-verdict-lookup fn-sn-verdict-lookup-list)
                            (fn-record-shape-vocabulary
                             fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-th-topic-eventp fn-th-prefix-step
                             fn-replay-apply-record
                             fn-replay-apply-retention-event
                             fn-node-complete
@@ -464,7 +468,8 @@
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
                 (not (fn-stxa-p (fn-sn-completion-record s)))
-                (not (fn-cpe-eventp (fn-sn-completion-record s))))
+                (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (equal (fn-sn-node (fn-sn-finish s))
                   (fn-node-complete (fn-sn-node s)
                     (fn-record-txid (fn-sn-completion-record s))
@@ -480,6 +485,7 @@
                                       fn-sn-completion-record
                                       fn-record-shape-vocabulary
                                       fn-stxe-p fn-stxk-p fn-stxa-p
+                                      fn-th-topic-eventp
                                       fn-replay-apply-record
                                       fn-replay-apply-retention-event
                                       fn-node-complete
@@ -492,7 +498,8 @@
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
                 (not (fn-stxa-p (fn-sn-completion-record s)))
-                (not (fn-cpe-eventp (fn-sn-completion-record s))))
+                (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (fn-sn-committed-recordp (fn-sn-node (fn-sn-finish s))
                                     (fn-sn-completion-record s)))
   :hints (("Goal" :use (fn-sn-finish-is-actual-durable-completion
@@ -507,6 +514,7 @@
                                fn-sn-record-bindsp fn-sn-completion-record
                                fn-record-shape-vocabulary
                                fn-stxe-p fn-stxk-p fn-stxa-p
+                               fn-th-topic-eventp
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-identity-step
@@ -559,7 +567,9 @@
                       (not (fn-stxe-p (fn-sn-completion-record s)))
                       (not (fn-stxk-p (fn-sn-completion-record s)))
                       (not (fn-stxa-p (fn-sn-completion-record s)))
-                      (not (fn-cpe-eventp (fn-sn-completion-record s))))
+                      (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                      (not (fn-th-topic-eventp
+                            (fn-sn-completion-record s))))
                  (and (fn-sn-record-bindsp (fn-sn-node s)
                                            (fn-sn-completion-record s))
                       (equal (fn-sn-node (fn-sn-finish s))
@@ -576,6 +586,7 @@
            :cases ((fn-sn-completion-enabledp s))
            :in-theory (disable fn-record-shape-vocabulary
                                fn-stxe-p fn-stxk-p fn-stxa-p
+                               fn-th-topic-eventp
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-identity-step
@@ -600,6 +611,7 @@
                  (not (fn-stxe-p record))
                  (not (fn-stxk-p record))
                  (not (fn-stxa-p record))
+                 (not (fn-th-topic-eventp record))
                  (not (fn-cpe-eventp record))))
    :hints (("Goal"
             :in-theory (e/d ((:d fn-record-p) (:d fn-record-shapep)
@@ -607,7 +619,9 @@
                              (:d fn-stxe-p) (:d fn-stxe-shapep)
                              (:d fn-stxk-p) (:d fn-stxk-shapep)
                              (:d fn-stxa-p) (:d fn-stxa-shapep)
-                             (:d fn-cpe-eventp))
+                             (:d fn-cpe-eventp)
+                             (:d fn-th-topic-eventp)
+                             (:d fn-th-local-admin-eventp))
                             ((:d fn-stxe-bounded-octetsp)
                              (:d fn-record-uint32p) (:d fn-record-msgidp)
                              (:d fn-record-payloadp)
@@ -1163,12 +1177,23 @@
    :hints (("Goal" :in-theory (enable fn-replay-advance-txid)))))
 
 (local
+ (defthm fn-sn-composite-is-not-topic-event
+   (implies (fn-stxa-p event)
+            (not (fn-th-topic-eventp event)))
+   :hints (("Goal" :in-theory
+            (e/d (fn-stxa-p fn-stxa-shapep
+                  fn-th-topic-eventp fn-th-local-admin-eventp)
+                 (fn-stxe-bounded-octetsp fn-th-auth-ref-p
+                  fn-th-source-id-p fn-th-parents-p))))))
+
+(local
  (defthm fn-sn-composite-replay-article-typed
    (implies (and (fn-stxa-p event)
                  (consp (fn-replay-apply-record node event)))
             (fn-record-p (fn-replay-composite-record event)))
    :hints (("Goal" :in-theory (e/d (fn-replay-apply-record)
                                    (fn-stxa-p fn-stxe-p fn-stxk-p
+                                    fn-th-topic-eventp
                                     fn-store-retention-event-p
                                     fn-replay-advance-txid fn-node-prepare
                                     fn-node-complete fn-record-shape-vocabulary
@@ -1429,13 +1454,65 @@
             :use (fn-snx-consumer-completion-node-idle-by-definition
                   fn-snx-consumer-completion-replay-non-nil-by-definition)))))
 (local
+ (defthm fn-snx-topic-no-other-event
+   (implies (fn-th-topic-eventp event)
+            (and (not (fn-store-retention-event-p event))
+                 (not (fn-stxe-p event))
+                 (not (fn-stxk-p event))
+                 (not (fn-stxa-p event))
+                 (not (fn-cpe-eventp event))))
+   :hints (("Goal" :in-theory
+            (enable fn-th-topic-eventp fn-th-local-admin-eventp
+                    fn-store-retention-event-p fn-stxe-shapep
+                    fn-stxk-shapep fn-stxa-shapep fn-cpe-eventp)))))
+(local
+ (defthm fn-snx-topic-completion-node-idle-by-definition
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-th-topic-eventp (fn-sn-completion-record s)))
+            (null (fn-node-stage (fn-sn-node s))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-completion-enabledp fn-replay-apply-record)
+                 (fn-th-topic-eventp fn-cpe-eventp
+                  fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
+                  fn-replay-apply-identity-neutral))))))
+(local
+ (defthm fn-snx-topic-completion-replay-non-nil-by-definition
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-th-topic-eventp (fn-sn-completion-record s)))
+            (consp (fn-replay-apply-identity-neutral
+                    (fn-sn-node s) (fn-sn-completion-record s))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-completion-enabledp fn-replay-apply-record)
+                 (fn-th-topic-eventp fn-cpe-eventp
+                  fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
+                  fn-replay-apply-identity-neutral))))))
+(local
+ (defthmd fn-sn-finish-topic-arm-keeps-the-store-and-index
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-th-topic-eventp (fn-sn-completion-record s)))
+            (and (equal (fn-sn-index (fn-sn-finish s)) (fn-sn-index s))
+                 (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
+                 (equal (fn-stx-store (fn-sn-node (fn-sn-finish s)))
+                        (fn-stx-store (fn-sn-node s)))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-finish fn-stx-store fn-replay-apply-record)
+                 (fn-sn-completion-enabledp fn-sn-completion-record
+                  fn-th-topic-eventp fn-cpe-eventp
+                  fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
+                  fn-replay-apply-identity-neutral
+                  fn-replay-apply-retention-event fn-sf-core-completion
+                  fn-sf-emit-success fn-record-shape-vocabulary)
+            :use (fn-snx-topic-completion-node-idle-by-definition
+                  fn-snx-topic-completion-replay-non-nil-by-definition))))))
+(local
  (defthmd fn-sn-finish-acceptance-arm-fields
    (implies (and (fn-sn-completion-enabledp s)
                  (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                  (not (fn-stxe-p (fn-sn-completion-record s)))
                  (not (fn-stxk-p (fn-sn-completion-record s)))
                  (not (fn-stxa-p (fn-sn-completion-record s)))
-                 (not (fn-cpe-eventp (fn-sn-completion-record s))))
+                 (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                 (not (fn-th-topic-eventp (fn-sn-completion-record s))))
             (and (equal (fn-sn-index (fn-sn-finish s))
                         (fn-stx-index-add (fn-sn-index s)
                                           (fn-sn-accepted-delta s)))
@@ -1461,6 +1538,7 @@
                                     fn-node-pending-matchesp fn-sn-pending-record
                                     fn-store-retention-event-p
                                     fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-th-topic-eventp
                                     fn-node-complete fn-sn-accepted-delta
                                     fn-stx-index-add
                                     fn-record-shape-vocabulary
@@ -1488,22 +1566,27 @@
                    (and (fn-sn-completion-enabledp s)
                         (fn-cpe-eventp (fn-sn-completion-record s)))
                    (and (fn-sn-completion-enabledp s)
+                        (fn-th-topic-eventp (fn-sn-completion-record s)))
+                   (and (fn-sn-completion-enabledp s)
                         (not (fn-store-retention-event-p
                               (fn-sn-completion-record s)))
                         (not (fn-stxe-p (fn-sn-completion-record s)))
                         (not (fn-stxk-p (fn-sn-completion-record s)))
                         (not (fn-stxa-p (fn-sn-completion-record s)))
-                        (not (fn-cpe-eventp (fn-sn-completion-record s)))))
+                        (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                        (not (fn-th-topic-eventp (fn-sn-completion-record s)))))
            :in-theory (e/d (fn-stx-index-invariantp
                             fn-sn-finish-retention-arm-keeps-the-store-and-index
                             fn-sn-finish-identity-arm-keeps-the-store-and-index
                             fn-sn-finish-composite-arm-fields
                             fn-sn-finish-consumer-arm-keeps-the-store-and-index
+                            fn-sn-finish-topic-arm-keeps-the-store-and-index
                             fn-sn-finish-acceptance-arm-fields)
                            (fn-sn-finish fn-sn-completion-enabledp
                             fn-sn-completion-record fn-sn-record-bindsp
                             fn-store-retention-event-p
                             fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                            fn-th-topic-eventp
                             fn-replay-apply-record fn-replay-identity-step
                             fn-sn-identity-context
                             fn-sf-core-completion fn-sf-emit-success
