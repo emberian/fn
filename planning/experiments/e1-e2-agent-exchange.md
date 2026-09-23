@@ -32,8 +32,10 @@ dependency is reported to the consumer, never chased without a work bound.
 Message-ID identifies the NNTP article, the source identity identifies exact
 bytes, the application operation ID identifies a logical retry, and each BP
 bundle/attempt has its own transport identity. None substitutes for another.
-A repeated operation ID with different source bytes is preserved as a
-conflict, not selected by arrival time or silently executed twice.
+A repeated operation ID with different source bytes is preserved as an
+application-level conflict by the consumer, not selected by arrival time or
+silently executed twice. fn's existing article deduplication does not inspect
+this opaque operation ID.
 
 Only the selected exact-source dual-signature profile, Ed25519 **and**
 ML-DSA-65 over the profile's domain, principal, ordered keyset and authored
@@ -80,7 +82,7 @@ does not silently split R into independently accepted application operations.
 | Relay changes one authored payload octet but keeps Message-ID | Source/verdict mismatch or explicit conflict; B does not treat it as R. |
 | Relay changes only Path/Xref projection | R's authored source and application bytes still agree; provenance changes remain visible. |
 | Q names R's Message-ID but the wrong source identity or operation ID | No correlation to R; preserve Q as attributable evidence if article policy admits it. |
-| Duplicate BP attempt carries R; second bundle identity differs | At most one B article/charge for the same fn application identity, while attempts remain distinguishable. |
+| Duplicate BP attempt carries R with the same Message-ID and source; second bundle identity differs | Article duplicate handling preserves one B article/charge under its proved identity contract, while attempts remain distinguishable; application retries under different Message-IDs still require consumer deduplication. |
 | Unknown payload/profile, malformed length or oversized dependency list | Bounded preserve/refuse outcome with no dregg authority or unbounded parse work. |
 | Valid fn signature on a false dregg receipt | Author attribution may succeed; dregg verification fails independently. |
 
