@@ -1,0 +1,218 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "tests/acl2/bp-fragment-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-gates/takeover-fragment-refinement/build/acl2/certify-20260923T145120Z-820946",
+  "book_failures": {},
+  "book_provenance": {
+    "books/bp-fragment": "installed",
+    "books/bp-fragment-invariants": "installed",
+    "books/bp-primary": "installed",
+    "books/bp-primary-cbor": "installed",
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "tests/acl2/bp-fragment-tests": "certified"
+  },
+  "book_results": {
+    "tests/acl2/bp-fragment-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "tests/acl2/bp-fragment-tests": 0.614
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 1800,
+  "cache_install": {
+    "directory": "/home/ember/fn-certcache",
+    "installed": 0,
+    "kept": 6,
+    "origins": {
+      "/home/ember/fn-gates/dev-head": 4,
+      "/home/ember/fn-gates/takeover-fragment-refinement": 2
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286"
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "tests/acl2/bp-fragment-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "tests/acl2/bp-fragment-tests": "f8538154b20aa36bc0aca89bc5ba3ddc96e3406426056b9feec33d9407345272"
+  },
+  "certify_wall_seconds": 0.618,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "driver_digests_sha256": {
+    "tests/acl2/bp-fragment-tests": "b2ecd7ac8c76030fdfccde7d2e86a8a849a9451aeab2704a9f5764134e719cfc"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS e5194725e6170624e90e2dc0a15a4d68 92454dd2bb29"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T14:51:21+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "incremental": true,
+  "installed_books": {
+    "books/bp-fragment": "/home/ember/fn-gates/takeover-fragment-refinement",
+    "books/bp-fragment-invariants": "/home/ember/fn-gates/takeover-fragment-refinement",
+    "books/bp-primary": "/home/ember/fn-gates/dev-head",
+    "books/bp-primary-cbor": "/home/ember/fn-gates/dev-head",
+    "books/cbor": "/home/ember/fn-gates/dev-head",
+    "books/cbor-invariants": "/home/ember/fn-gates/dev-head"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS e5194725e6170624e90e2dc0a15a4d68 92454dd2bb29"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "tests/acl2/bp-fragment-tests"
+  ],
+  "requested_books": [
+    "tests/acl2/bp-fragment-tests"
+  ],
+  "roots": [
+    "tests/acl2/bp-fragment-tests"
+  ],
+  "run_id": "certify-20260923T145120Z-820946",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "tests/acl2/bp-fragment-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/bp-fragment-invariants.lisp": "cface3ed7f30ffcfa14fc391286698c25cd3819978cda11406c9a7de54dd074b",
+    "books/bp-fragment.lisp": "46416a3ba97b35e78b5320be4f917a7222af43330ef13ed5c70b3870f95e099d",
+    "books/bp-primary-cbor.lisp": "6391e304623c67447b21b998228d0ec55d1e0b652ba2d3f32cedfdca6f888095",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "tests/acl2/bp-fragment-tests.lisp": "bb3d34e9c49259ba9e028bee7a3301bf56bfb493e95e2b665967c16e76d32d60"
+  },
+  "source_digests_sha256_after": {
+    "books/bp-fragment-invariants.lisp": "cface3ed7f30ffcfa14fc391286698c25cd3819978cda11406c9a7de54dd074b",
+    "books/bp-fragment.lisp": "46416a3ba97b35e78b5320be4f917a7222af43330ef13ed5c70b3870f95e099d",
+    "books/bp-primary-cbor.lisp": "6391e304623c67447b21b998228d0ec55d1e0b652ba2d3f32cedfdca6f888095",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "tests/acl2/bp-fragment-tests.lisp": "bb3d34e9c49259ba9e028bee7a3301bf56bfb493e95e2b665967c16e76d32d60"
+  },
+  "start_order": [
+    "tests/acl2/bp-fragment-tests"
+  ],
+  "started_utc": "2026-09-23T14:51:20+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/home/ember/fn-gates/takeover-fragment-refinement"
+}

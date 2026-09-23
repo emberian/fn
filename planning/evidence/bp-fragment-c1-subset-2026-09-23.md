@@ -69,7 +69,31 @@ and also fails. The successful-cut statement
 keystone. There is no impossible negative fixture for the re-fragmentation
 helper's redundant whole-parent exclusion.
 
+The inverse and consumed-fragment agreement extension was certified on the
+same persvati ACL2 8.7 / SBCL 2.6.8 toolchain with two affected roots. The
+invariant root passed in `run-20260923T145023Z-08fa`; its test root initially
+stopped on a negative-index tooth evaluated under `nth`'s guard. After making
+that out-of-guard logical test explicit, `run-20260923T145116Z-91e2` passed
+the test root. The final manifest is
+[`certify-20260923T145120Z-820946.json`](manifests/certify-20260923T145120Z-820946.json),
+whose cache provenance identifies the matching invariant certificate; the
+first manifest is
+[`certify-20260923T145027Z-812592.json`](manifests/certify-20260923T145027Z-812592.json).
+
+`fn-bpf-fragment-then-reassemble-is-identity` states that every successful
+fragmentation of an octet payload at valid boundaries reassembles to that
+payload, and uses the complete agreeing-cover keystone through proved input
+shape and coverage lemmas. The test has a successful three-fragment witness and a
+malformed terminal-cut counterexample when success is dropped.
+`fn-bpf-reassemble-ok-agrees-with-every-fragment` proves that every byte of
+every member fragment equals the corresponding byte of a successful output.
+Its proof carries member shape, common total, index bound and octet facts to
+the pointwise canvas argument; the test uses an actual overlapping cover and
+counterexamples for dropping each of `:ok`, membership, natural index, and
+index within the fragment. These are reference-function theorems; the
+all-input fast/reference equality transports their results to the fast
+implementation.
+
 The host does not call either new fast function. Principal/coherence
-active-set partitioning, machine-level N09/N10, native malformed-input
-behavior, the fragment-then-reassemble inverse and consumed-fragment
-agreement remain open for C1/C2. This record makes no DTN readiness claim.
+active-set partitioning, machine-level N09/N10, and native malformed-input
+behavior remain open for C2. This record makes no DTN readiness claim.
