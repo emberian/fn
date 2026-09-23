@@ -653,7 +653,7 @@
                  (:instance fn-auth-step-pinned-preserves-the-config
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
-                            (index (fn-served-conn-index conn))
+                            (index (fn-served-conn-pinned-index conn))
                             (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -662,7 +662,7 @@
                  (:instance fn-auth-fold-auth-step-no-posters-preserves-no-post-awaiting
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
-                            (index (fn-served-conn-index conn))
+                            (index (fn-served-conn-pinned-index conn))
                             (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -689,7 +689,7 @@
                  (:instance fn-auth-step-pinned-effects-well-formed
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
-                            (index (fn-served-conn-index conn))
+                            (index (fn-served-conn-pinned-index conn))
                             (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -698,7 +698,7 @@
                  (:instance fn-auth-fold-auth-step-no-local-submission
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
-                            (index (fn-served-conn-index conn))
+                            (index (fn-served-conn-pinned-index conn))
                             (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -710,7 +710,7 @@
                               (fn-auth-step-pinned
                                (fn-served-conn-session conn)
                                (fn-served-conn-archive conn)
-                               (fn-served-conn-index conn)
+                               (fn-served-conn-pinned-index conn)
                                (fn-served-conn-verdicts conn)
                                (fn-served-conn-config conn)
                                (fn-served-conn-observation conn)
@@ -738,7 +738,7 @@
 
 (defun fn-auth-fold-fed-conn (conn byte)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-served-make-conn-indexed
+  (fn-served-make-conn-group-indexed
    (fn-wire-result-state
     (fn-wire-feed-byte (fn-served-conn-wire conn) byte))
    (fn-served-conn-session conn)
@@ -747,7 +747,8 @@
    (fn-served-conn-observation conn)
    (fn-served-conn-injection conn)
    (fn-served-conn-verdicts conn)
-   (fn-served-conn-index conn)))
+   (fn-served-conn-index conn)
+   (fn-served-conn-group-index conn)))
 
 (defthm fn-auth-fold-fed-conn-is-a-connection
   (implies (fn-served-connp conn)
