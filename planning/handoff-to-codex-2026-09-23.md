@@ -2,8 +2,7 @@
 
 Draft written by the fn root coordinator (Claude) while the last four lanes
 of the night finish; the "State" section is updated when they land. Read
-[how we work](how-we-work.md) and `AGENTS.md` first, and
-[the letter](letter-2026-09-23.md) for what the rules cost to learn: they are the rules,
+[how we work](how-we-work.md) and `AGENTS.md` first: they are the rules,
 this file is the work. Everything here is briefed from
 [the trajectory plan](plan-2026-09-22-trajectory.md) §3 and, for DTN,
 [the BP node-machine contract](../specs/bp-node-machine.md) §11 together
