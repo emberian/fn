@@ -692,6 +692,48 @@
                             (n (fn-own-next-id (fn-ocfg-owner oc)))))
            :in-theory (enable fn-ocl-relation))))
 
+(defthm fn-ocl-related-missing-connection-has-no-pin
+  (implies (and (fn-ocl-relation oc)
+                (not (fn-own-find-conn
+                      id (fn-own-conns (fn-ocfg-owner oc)))))
+           (not (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
+  :hints (("Goal"
+           :use ((:instance fn-ocl-pin-is-open
+                            (pins (fn-ocfg-pins oc))
+                            (conns (fn-own-conns (fn-ocfg-owner oc)))))
+           :in-theory (enable fn-ocl-relation))))
+
+(defthm fn-ocl-pins-okp-implies-true-listp
+  (implies (fn-ocfg-pins-okp pins)
+           (true-listp pins))
+  :hints (("Goal" :induct (fn-ocfg-pins-okp pins)
+           :in-theory (enable fn-ocfg-pins-okp))))
+
+(defthm fn-ocl-missing-connection-pin-remove-is-unchanged
+  (implies (and (fn-ocl-relation oc)
+                (not (fn-own-find-conn
+                      id (fn-own-conns (fn-ocfg-owner oc)))))
+           (equal (fn-ocfg-pin-remove id (fn-ocfg-pins oc))
+                  (fn-ocfg-pins oc)))
+  :hints (("Goal"
+           :use ((:instance fn-ocl-related-missing-connection-has-no-pin)
+                 (:instance fn-ocl-pins-okp-implies-true-listp
+                            (pins (fn-ocfg-pins oc))))
+           :in-theory (enable fn-ocl-relation))))
+
+(defthm fn-ocl-find-after-remove-same
+  (not (fn-own-find-conn id (fn-own-remove-conn id conns)))
+  :hints (("Goal" :induct (fn-own-remove-conn id conns)
+           :in-theory (enable fn-own-remove-conn fn-own-find-conn))))
+
+(defthm fn-ocl-read-removal-uses-requested-id
+  (implies (fn-own-find-conn id conns)
+           (not (fn-own-find-conn
+                 id (fn-own-remove-conn
+                     (fn-own-conn-id (fn-own-find-conn id conns))
+                     conns))))
+  :hints (("Goal" :use ((:instance fn-own-find-conn-id)))))
+
 (local
  (defthm fn-ocl-auth-with-new-reader-base-is-session
    (implies (fn-auth-sessionp as)
