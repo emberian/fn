@@ -157,6 +157,8 @@
     "books/byte-store-scan",
     "books/byte-store-stable-prefix",
     "tests/acl2/byte-store-stable-prefix-tests",
+    "books/byte-store-record-fence",
+    "tests/acl2/byte-store-record-fence-tests",
     "books/byte-store-keystones",
     "books/byte-store-observation",
     "tests/acl2/byte-store-observation-tests",
@@ -470,25 +472,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 471,
-    "books_in_root_closure": 470,
-    "roots": 466,
-    "theorems": 7439,
-    "functions": 5707,
-    "assert_events": 8268,
-    "must_fails": 332,
+    "books": 473,
+    "books_in_root_closure": 472,
+    "roots": 468,
+    "theorems": 7452,
+    "functions": 5709,
+    "assert_events": 8269,
+    "must_fails": 333,
     "encapsulates": 26,
     "guards": {
       "verified": 1850,
       "declared-off": 307,
       "default-guarded": 2803,
-      "default-unguarded": 747
+      "default-unguarded": 749
     },
     "suspect_theorems": 70,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 24,
-    "include_hygiene_warnings": 323,
+    "include_hygiene_warnings": 326,
     "host_names_warnings": 668,
     "hand_written_record_warnings": 18
   },
@@ -2999,6 +3001,31 @@
       "includes": [
         "byte-store",
         "store-files-traces"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-record-fence.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-stable-prefix"
       ],
       "system_includes": [],
       "suspects": [],
@@ -9659,6 +9686,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/byte-store-record-fence-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 1,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-record-fence",
+        "byte-store-stable-prefix-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/byte-store-relation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -15109,6 +15164,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/byte-store-record-fence.lisp",
+        "line": 5,
+        "include": "byte-store-stable-prefix",
+        "included": "books/byte-store-stable-prefix.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/byte-store-txn-name.lisp",
         "line": 2,
         "include": "byte-store-frame",
@@ -16093,6 +16155,20 @@
         "line": 6,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-record-fence-tests.lisp",
+        "line": 4,
+        "include": "../../books/byte-store-record-fence",
+        "included": "books/byte-store-record-fence.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-record-fence-tests.lisp",
+        "line": 5,
+        "include": "byte-store-stable-prefix-tests",
+        "included": "tests/acl2/byte-store-stable-prefix-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -21286,35 +21362,35 @@
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 343,
+        "line": 344,
         "name": "fnn-octets",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 381,
+        "line": 382,
         "name": "fnn-now",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 385,
+        "line": 386,
         "name": "fnn-seconds-to-deadline",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 385,
+        "line": 386,
         "name": "*fnn-fd-waiter*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/tls.lisp",
-        "line": 438,
+        "line": 439,
         "name": "fnn-make-octets",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
