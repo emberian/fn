@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 552 |
 | Certification roots in the Makefile | 546 |
 | Books inside the root closure | 551 |
-| `defthm` and `defthmd` events | 8256 |
+| `defthm` and `defthmd` events | 8258 |
 | `defun` events | 6123 |
 | Functions with verified guards | 2006 |
 | Functions declared `:verify-guards nil` and never verified | 328 |
@@ -118,7 +118,7 @@ that `make certify` requests.
 | `books/bp-contact-service.lisp` | root | 3 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-byte-invariants.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-byte-publisher.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-codec-invariants.lisp` | root | 15 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-codec-invariants.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-codec.lisp` | root | 1 | 14 | 0/1/13/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-delivery-codec.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-delivery-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
