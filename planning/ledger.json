@@ -491,15 +491,15 @@
     "books": 489,
     "books_in_root_closure": 488,
     "roots": 484,
-    "theorems": 7548,
-    "functions": 5780,
-    "assert_events": 8416,
+    "theorems": 7558,
+    "functions": 5781,
+    "assert_events": 8425,
     "must_fails": 346,
     "encapsulates": 26,
     "guards": {
       "verified": 1876,
       "declared-off": 311,
-      "default-guarded": 2839,
+      "default-guarded": 2840,
       "default-unguarded": 754
     },
     "suspect_theorems": 70,
@@ -3530,12 +3530,12 @@
       "book": "books/config-owner-live.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
-      "functions": 8,
+      "theorems": 29,
+      "functions": 9,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 8,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -3556,7 +3556,7 @@
       "book": "books/config-physical-replay.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
+      "theorems": 6,
       "functions": 5,
       "guards": {
         "verified": 3,
@@ -10437,9 +10437,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 26,
+      "assert_events": 33,
       "must_fails": 0,
-      "defconsts": 9,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -10463,7 +10463,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 17,
       "must_fails": 0,
       "defconsts": 14,
       "defmacros": 0,
