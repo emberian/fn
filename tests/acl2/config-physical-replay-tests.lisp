@@ -4,7 +4,6 @@
 
 (in-package "ACL2")
 (include-book "../../books/config-physical-replay")
-(include-book "../../books/codec-attach")
 
 (defconst *cpr-t-stamp* *fn-cfg-default-stamp*)
 (defconst *cpr-t-undertake*
