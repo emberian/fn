@@ -83,6 +83,58 @@
                             fn-statep))))
   :rule-classes nil)
 
+(defthm fn-stamp-prepare-pending-fields-when-staged
+  (implies (and (fn-node-statep node)
+                (null (fn-node-stage node))
+                (fn-node-pending-matchesp
+                 (fn-node-prepare node generation msgid payload groups
+                                  obligation-id subject evidence charge stamp)
+                 txid generation))
+           (let ((pending (fn-state-pending
+                           (fn-node-acceptance
+                            (fn-node-prepare node generation msgid payload groups
+                                             obligation-id subject evidence charge stamp)))))
+             (and (equal (fn-pending-msgid pending) msgid)
+                  (equal (fn-pending-stamp pending) stamp))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-node-prepare fn-accept-prepare
+                              fn-node-pending-matchesp fn-pending-matchesp)))
+  :rule-classes nil)
+
+(defthm fn-replay-advance-keeps-idle-stage
+  (implies (null (fn-node-stage node))
+           (null (fn-node-stage (fn-replay-advance-txid node txid))))
+  :hints (("Goal" :in-theory (enable fn-replay-advance-txid))))
+
+(defthm fn-stamp-prepared-completion-installs-stamp
+  (implies
+   (and (fn-node-statep node)
+        (null (fn-node-stage node))
+        (fn-node-pending-matchesp
+         (fn-node-prepare node generation msgid payload groups
+                          obligation-id subject evidence charge stamp)
+         txid generation))
+   (equal
+    (fn-article-stamp
+     (fn-find-article
+      msgid
+      (fn-state-articles
+       (fn-node-acceptance
+        (fn-node-complete
+         (fn-node-prepare node generation msgid payload groups
+                          obligation-id subject evidence charge stamp)
+         txid generation :durable)))))
+    stamp))
+  :hints (("Goal"
+           :use (fn-stamp-prepare-pending-fields-when-staged
+                 (:instance fn-node-complete-installs-pending-stamp
+                            (node (fn-node-prepare node generation msgid payload groups
+                                                   obligation-id subject evidence charge stamp))))
+           :in-theory (disable fn-node-prepare fn-node-complete
+                               fn-node-pending-matchesp fn-node-statep fn-statep
+                               fn-find-article)))
+  :rule-classes nil)
+
 (defthm fn-replay-apply-record-installs-the-stamp
   (let ((article (fn-replay-article-record record)))
     (implies (and (fn-node-statep node)
@@ -97,12 +149,33 @@
                         (fn-replay-apply-record node record)))))
                     (fn-record-stamp article))))
   :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-stamp-prepared-completion-installs-stamp
+                            (node (fn-replay-advance-txid
+                                   node (fn-store-event-txid record)))
+                            (generation (fn-record-generation
+                                         (fn-replay-article-record record)))
+                            (msgid (fn-record-msgid
+                                    (fn-replay-article-record record)))
+                            (payload (fn-record-payload
+                                      (fn-replay-article-record record)))
+                            (groups (fn-record-groups
+                                     (fn-replay-article-record record)))
+                            (obligation-id (fn-record-obligation-id
+                                            (fn-replay-article-record record)))
+                            (subject (fn-record-content-subject
+                                      (fn-replay-article-record record)))
+                            (evidence (fn-record-release-evidence
+                                       (fn-replay-article-record record)))
+                            (charge (fn-record-charge
+                                     (fn-replay-article-record record)))
+                            (stamp (fn-record-stamp
+                                    (fn-replay-article-record record)))
+                            (txid (fn-record-txid
+                                   (fn-replay-article-record record)))))
            :in-theory
-           (e/d (fn-replay-apply-record
-                 fn-node-prepare fn-node-complete
-                 fn-accept-prepare fn-accept-complete fn-install-pending
-                 fn-article-from-pending fn-find-article)
+           (e/d (fn-replay-apply-record)
                 (fn-record-shape-vocabulary
+                 fn-node-prepare fn-node-complete
                  fn-stxe-p fn-stxk-p fn-stxa-p
                  fn-store-retention-event-p))))
   :rule-classes nil)
