@@ -51,3 +51,27 @@ source in `/tank/fn/gates/reader-clone-poll-native-a8e4-20260923`, but no
 image build or native result is claimed here. Planned scenarios cover
 historical LISTGROUP ranges, signed poll/report binding, advancing ACK with
 reply loss, and clone process-death/old-cursor rejection.
+
+## Repaired combined qualification
+
+Source `bc9be7ec` contains the four proof repairs and historical READ/TLS
+relation, including runtime pin cleanup when a read closes a connection and
+session bounds against its pinned archive. It also adds ACL2-owned clone path
+preflight and the exact public Mini E1 source option in the native poll test.
+The original unbuilt `a8e4b17e` image snapshot is superseded.
+
+Full incremental hbox run `run-20260923T230009Z-f41e`, gate
+`/tank/fn/gates/reader-clone-poll-repair-20260923`, passed with 512 cached and
+37 newly certified books in 86.662 seconds at four jobs on the same toolchain.
+The [original manifest](manifests/certify-20260923T230027Z-407330.json) binds
+all input bytes, installed origins and results. No new red remains from the
+first run. The remaining slow roots include `owner-invariants` at 44.459
+seconds and `owner-config` at 15.265 seconds; this is not a claim that every
+individual proof is under ten seconds. `make check` passed.
+
+The new exact native source is staged in
+`/tank/fn/gates/reader-clone-poll-native-bc9-20260923`. Developer/production
+build and native qualification are authorized to proceed; no runtime result
+is inferred from the certificate closure. Later ADVANCE uniqueness,
+consumer index, Mini projection and BP fragment/report work are outside this
+image's scope.

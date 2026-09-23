@@ -1,6 +1,17 @@
 # Current work — 2026-09-23
 
-## Current integration checkpoint — 22:48 UTC
+## Current combined qualification — 23:03 UTC
+
+The repaired reader/consumer/clone source `bc9be7ec` passes its full
+incremental ACL2 run and static check: 512 cached plus 37 newly certified
+books, 86.662 seconds at four jobs. The
+[integration record](evidence/reader-consumer-clone-integration-2026-09-23.md)
+preserves the first failed run and each repair. The shared developer and
+production image build now proceeds at
+`/tank/fn/gates/reader-clone-poll-native-bc9-20260923`; runtime qualification
+is pending. This supersedes the staged but unbuilt a8e4 image.
+
+## Earlier integration checkpoint — 22:48 UTC
 
 Source `a8e4b17e` combines the pinned LISTGROUP bucket, local consumer poll,
 checkpoint auxiliary-state comparison and fenced cold clone with OS-generated
