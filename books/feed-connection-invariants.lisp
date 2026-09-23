@@ -73,24 +73,57 @@
                  (fn-fwi-statep input)
                  (fn-fc-phasep phase))
             (fn-fc-statep (fn-fc-with-input-phase st input phase)))
-   :hints (("Goal" :in-theory (enable fn-fc-statep
-                                      fn-fc-with-input-phase
-                                      fn-fc-make-state)))))
+   :hints (("Goal" :in-theory (e/d (fn-fc-statep
+                                    fn-fc-with-input-phase
+                                    fn-fc-make-state)
+                                   (fn-fwi-statep fn-wire-octet-listp
+                                    fn-wire-octetp fn-fap-tokenp))))))
 
 (local
  (defthm fn-fc-from-line-preserves-state
    (implies (and (fn-fc-statep st) (fn-fwi-statep input))
             (fn-fc-statep
              (fn-fc-next-state (fn-fc-from-line st input line))))
-   :hints (("Goal" :in-theory (enable fn-fc-from-line fn-fc-next-state
-                                      fn-fc-result fn-fc-phasep)))))
+   :hints (("Goal" :in-theory (e/d (fn-fc-from-line fn-fc-next-state
+                                    fn-fc-result fn-fc-phasep)
+                                   (fn-fc-statep fn-fc-with-input-phase
+                                    fn-fwi-statep))))))
 
+; What the step proof needs of a state and of a result, so that the state
+; recognizer, the phase update and the line handler stay closed there and
+; the two lemmas above do the work.
+(local
+ (defthm fn-fc-statep-input-and-phase
+   (implies (fn-fc-statep st)
+            (and (fn-fwi-statep (fn-fc-input st))
+                 (fn-fc-phasep (fn-fc-phase st))))
+   :hints (("Goal" :in-theory (e/d (fn-fc-statep)
+                                   (fn-fwi-statep fn-fc-phasep fn-fc-input
+                                    fn-fc-phase fn-wire-octet-listp
+                                    fn-fap-tokenp))))))
+
+(local
+ (defthm fn-fc-next-state-of-result
+   (equal (fn-fc-next-state (fn-fc-result kind st line)) st)
+   :hints (("Goal" :in-theory (enable fn-fc-next-state fn-fc-result)))))
+
+; The recognizers, the line handler and the phase update stay closed: this
+; goal dispatches on the wire event's kind and each arm is one of the lemmas
+; above.  Opened, ACL2 rewrote them inside out before those lemmas could
+; match and split the state recognizer, the input framer's recognizer and
+; the octet recognizers on every arm: 41.5 s and 12.0 M prover steps (t1-seam
+; certify-20260923T000250Z-1473169); closed, under 0.1 s.
 (defthm fn-fc-step-preserves-state
   (implies (fn-fc-statep st)
            (fn-fc-statep (fn-fc-next-state (fn-fc-step st octets))))
   :hints (("Goal" :cases ((fn-fwi-chunkp octets))
-                  :in-theory (enable fn-fc-step fn-fc-next-state
-                                     fn-fc-result))))
+                  :in-theory (e/d (fn-fc-step)
+                                  (fn-fc-next-state fn-fc-result
+                                   fn-fc-statep fn-fc-from-line
+                                   fn-fc-with-input-phase fn-fwi-statep
+                                   fn-fwi-step fn-fwi-chunkp fn-fc-input
+                                   fn-fc-phase fn-fwi-next-state fn-fwi-kind
+                                   fn-fwi-line)))))
 
 (defthm fn-fc-table-lookup-after-remove
   (equal (fn-fc-table-lookup peer (fn-fc-table-remove peer table)) nil)
@@ -141,8 +174,10 @@
   (implies (fn-fc-tablep table)
            (fn-fc-tablep (fn-fc-table-remove peer table)))
   :hints (("Goal" :induct (fn-fc-table-remove peer table)
-                  :in-theory (enable fn-fc-tablep fn-fc-table-remove
-                                     fn-fc-table-names))))
+                  :in-theory (e/d (fn-fc-tablep fn-fc-table-remove
+                                   fn-fc-table-names)
+                                  (fn-fc-statep fn-fwi-statep
+                                   fn-wire-octet-listp fn-wire-octetp)))))
 
 (local
  (defthm fn-fc-table-removed-name-absent
@@ -151,9 +186,11 @@
                   peer (fn-fc-table-names
                         (fn-fc-table-remove peer table)))))
    :hints (("Goal" :induct (fn-fc-table-remove peer table)
-                   :in-theory (enable fn-fc-table-remove fn-fc-table-names
-                                      fn-fc-table-memberp fn-fc-tablep
-                                      fn-fc-table-entryp)))))
+                   :in-theory (e/d (fn-fc-table-remove fn-fc-table-names
+                                    fn-fc-table-memberp fn-fc-tablep
+                                    fn-fc-table-entryp)
+                                   (fn-fc-statep fn-fwi-statep
+                                    fn-wire-octet-listp fn-wire-octetp))))))
 
 (local
  (defthm fn-fc-tablep-implies-unique-names

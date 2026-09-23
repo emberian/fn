@@ -177,6 +177,21 @@
   :hints (("Goal" :in-theory (disable fn-pol-policy-decode-exact
                                       fn-pol-policy-p))))
 
+; The shape every accessor guard below asks of a statement's policy, so the
+; decoder stays closed from here on.  Opened, the guards of
+; `fn-pol-candidatep' and `fn-pol-authorized-set' ran the CBOR item decoder
+; and the policy recognizer for 9.0 s and 5.5 s (727 k and 498 k steps,
+; t1-seam certify-20260923T000250Z-1473169) to learn that a policy is a list.
+(local
+ (defthm fn-pol-statement-policy-is-true-list
+   (true-listp (fn-pol-statement-policy s))
+   :hints (("Goal" :use fn-pol-statement-policy-is-policy
+                   :in-theory (e/d (fn-pol-policy-p)
+                                   (fn-pol-statement-policy
+                                    fn-pol-statement-policy-is-policy))))))
+
+(local (in-theory (disable fn-pol-statement-policy)))
+
 ; -----------------------------------------------------------------------------
 ; Candidates: the authority's verified policy statements for a group
 
@@ -205,6 +220,15 @@
       (and (fn-pol-candidatep (car xs) keyring group authority)
            (fn-pol-candidate-listp (cdr xs) keyring group authority))
     (null xs)))
+
+; The candidate test stays closed below this point.  Every proof here needs
+; only what `fn-pol-candidates-are-lace' says of the filtered list; opened,
+; the test carries the statement recognizer, the signature check and the
+; policy decoder into each step of the candidates recursion, and the guard
+; of `fn-pol-current' and `fn-pol-current-is-stmt-or-nil' spent 18 s and 49 s
+; there on 126 262 and 336 946 prover steps (t1-seam certify-20260923T000250Z-
+; 1473169); closed, each is under 0.1 s.
+(local (in-theory (disable fn-pol-candidatep)))
 
 ; Strict lexicographic order on (incarnation, sequence).  The fields are
 ; naturals for every statement; `nfix` makes the order total in the logic so
@@ -278,6 +302,7 @@
 (defthm fn-pol-authorized-set-is-true-list
   (true-listp (fn-pol-authorized-set p))
   :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-pol-statement-policy-is-policy (s p)))
            :in-theory (e/d (fn-pol-policy-p)
                            (fn-pol-policy-decode-exact fn-stmt-p
                             fn-stmt-creator fn-stmt-payload)))))

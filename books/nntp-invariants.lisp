@@ -28,8 +28,9 @@
 ; shape fact is exported back as a :forward-chaining rule instead
 ; (fn-article-header-bytes-p-forward-shape and its siblings,
 ; docs/proof-style.md section 1).  The book-wide withdrawal that used to
-; stand here is therefore gone; the one proof that genuinely wants the consp
-; rule enables it in its own hint, below.
+; stand here is therefore gone.  No proof here enables the consp rule now:
+; the one that did, the NEXT/LAST theorem, keeps the session recognizer
+; closed and so never meets the true-listp it answered.
 
 ; -----------------------------------------------------------------------------
 ; The session relation
@@ -796,6 +797,36 @@
                                    fn-nntp-decimal-field
                                    fn-nntp-crlf fn-nntp-stuff-lines)))))
 
+;; What the number, NEXT and LAST retrievals need of a consistent session
+;; with a group selected: the group is a string and one of the archive's
+;; groups.  With these the session recognizers stay closed in those proofs.
+;; Opened, each :use instance carried `fn-nntp-session-consistentp' and
+;; `fn-nntp-sessionp' into the goal and the splitter multiplied their cases:
+;; NEXT/LAST split 624 ways at Goal'' (4991 subgoals, 61.8 s, 17.5 M prover
+;; steps) and the number retrieval 343 ways (5.0 s, 1.8 M steps) (t1-seam
+;; certify-20260923T000250Z-1473169); closed, each is under 0.1 s.
+(local
+ (defthm fn-nntp-consistent-session-group-is-a-group
+   (implies (and (fn-nntp-session-consistentp session archive)
+                 (fn-nntp-session-group session))
+            (member-equal (fn-nntp-session-group session)
+                          (fn-state-groups archive)))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-session-consistentp)
+                                   (fn-nntp-sessionp fn-nntp-cursor-validp
+                                    fn-nntp-group-nonemptyp
+                                    fn-nntp-projectionp))))))
+
+(local
+ (defthm fn-nntp-consistent-session-group-is-a-string
+   (implies (and (fn-nntp-session-consistentp session archive)
+                 (fn-nntp-session-group session))
+            (stringp (fn-nntp-session-group session)))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-session-consistentp
+                                    fn-nntp-sessionp)
+                                   (fn-nntp-cursor-validp
+                                    fn-nntp-group-nonemptyp
+                                    fn-nntp-projectionp))))))
+
 (defthm fn-nntp-number-retrieval-preserves-consistent-session
   (implies (and (fn-nntp-session-consistentp session archive)
                 (fn-nntp-projectionp archive))
@@ -821,7 +852,10 @@
                   (number (fn-nntp-decimal-value token))
                   (articles (fn-state-articles archive))))
            :in-theory (e/d (fn-nntp-number-retrieval)
-                           (fn-nntp-article-response
+                           (fn-nntp-session-consistentp fn-nntp-sessionp
+                            fn-nntp-session-group fn-nntp-session-current
+                            fn-nntp-cursor-validp
+                            fn-nntp-article-response
                             fn-nntp-found-article-with-identifier-is-available
                             fn-nntp-find-group-number
                             fn-nntp-result-session
@@ -893,11 +927,12 @@
                            (fn-state-articles archive)))
                   (kind :stat) (updatep t)
                   (group (fn-nntp-session-group session))))
-           :in-theory (e/d (fn-nntp-next-or-last
-                                   ; consp from true-listp inside fn-nntp-sessionp;
-                                   ; withdrawn book-wide at the top, needed here
-                                   fn-article-nonempty-true-list-is-consp)
-                           (fn-nntp-article-response
+           :in-theory (e/d (fn-nntp-next-or-last)
+                           (fn-nntp-session-consistentp fn-nntp-sessionp
+                            fn-nntp-session-group fn-nntp-session-current
+                            fn-nntp-cursor-validp fn-nntp-single
+                            fn-nntp-result-session
+                            fn-nntp-article-response
                             fn-nntp-group-next-number fn-nntp-group-last-number
                             fn-nntp-projectionp fn-statep
                             fn-state-groups fn-state-articles fn-state-nexts

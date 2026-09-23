@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 423 |
 | Certification roots in the Makefile | 421 |
 | Books inside the root closure | 422 |
-| `defthm` and `defthmd` events | 7067 |
+| `defthm` and `defthmd` events | 7074 |
 | `defun` events | 5421 |
 | Functions with verified guards | 1746 |
 | Functions declared `:verify-guards nil` and never verified | 288 |
@@ -186,7 +186,7 @@ that `make certify` requests.
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 40 | 43 | 34/0/9/0 | 0 | 0 | 1 |
 | `books/feed-auth-profile.lisp` | root | 4 | 8 | 8/0/0/0 | 0 | 0 | 0 |
-| `books/feed-connection-invariants.lisp` | root | 43 | 21 | 0/0/21/0 | 0 | 0 | 1 |
+| `books/feed-connection-invariants.lisp` | root | 45 | 21 | 0/0/21/0 | 0 | 0 | 1 |
 | `books/feed-connection.lisp` | root | 2 | 39 | 39/0/0/0 | 0 | 0 | 0 |
 | `books/feed-correspondence.lisp` | root | 26 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
@@ -228,9 +228,9 @@ that `make certify` requests.
 | `books/native-operator.lisp` | root | 0 | 58 | 0/0/58/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-auth.lisp` | root | 107 | 58 | 40/3/14/1 | 0 | 0 | 3 |
-| `books/nntp-effects.lisp` | root | 141 | 12 | 0/0/0/12 | 0 | 0 | 1 |
+| `books/nntp-effects.lisp` | root | 143 | 12 | 0/0/0/12 | 0 | 0 | 1 |
 | `books/nntp-index.lisp` | root | 33 | 25 | 25/0/0/0 | 0 | 0 | 0 |
-| `books/nntp-invariants.lisp` | root | 92 | 4 | 0/0/0/4 | 0 | 0 | 0 |
+| `books/nntp-invariants.lisp` | root | 94 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/nntp-legacy.lisp` | root | 23 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-newnews.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-overview.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
@@ -263,7 +263,7 @@ that `make certify` requests.
 | `books/peer-inbound-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/peer-inbound.lisp` | root | 60 | 59 | 7/4/48/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/policy.lisp` | root | 13 | 29 | 1/0/28/0 | 0 | 0 | 0 |
+| `books/policy.lisp` | root | 14 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/principal.lisp` | root | 6 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/provenance-codec.lisp` | root | 27 | 25 | 1/0/24/0 | 0 | 0 | 1 |
@@ -550,7 +550,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 653 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
 | `fn-inj-instantp-opens` | `books/injection-invariants.lisp` | 278 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp |
 | `fn-lace-cross-canonical-self` | `books/lace-invariants.lisp` | 289 | definition-restated: the conclusion is the body of fn-lace-canonicalp; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-nntp-block-scan-start-without-a-dot` | `books/nntp-effects.lisp` | 449 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value |
+| `fn-nntp-block-scan-start-without-a-dot` | `books/nntp-effects.lisp` | 463 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value |
 | `fn-node-capacity-refusal-is-no-op` | `books/node.lisp` | 296 | branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value |
 | `fn-node-complete-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 159 | closed-theory-corollary: proved only by fn-node-complete-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
