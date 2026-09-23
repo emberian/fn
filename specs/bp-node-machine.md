@@ -100,8 +100,12 @@ nil or bounded canonical text octets. This checks replayable provenance shape;
 the host must still establish that the principal was admitted by the current
 session configuration. The foundation delegates outbound events to
 `fn-bpn-step` and is not the native service caller yet. The inherited
-`fn-bpn-step`, its bounded restart replay, and `fn-bpnf-step` have verified
-guards in `bp-node-machine-guards.lisp`. A native caller of the foundation
+`fn-bpn-step`, its bounded restart replay, `fn-bpnf-recover-fnbs-step`, and
+`fn-bpnf-step` have verified guards in `bp-node-machine-guards.lisp`.
+Recovery validates whole held rows on the cold path; ordinary steps do not.
+The ACL2 mixed FNBS namespace plan partitions legacy and kind-5 final names
+before their respective byte decoders and rejects unknown names. A native
+caller of the foundation
 must carry the base-state invariant and validate delegated outbound events
 at the boundary; guard verification alone does not establish those facts for
 the current service adapter.
