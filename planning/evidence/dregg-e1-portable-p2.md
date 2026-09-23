@@ -53,7 +53,9 @@ caps stdout during reading and parses its exact six-token
 line below 70,000 characters, compares principal and both full public keys
 with independent pins, checks the claimed source ID, Message-ID and group
 text, then derives the base64 Mini package from the authenticated source in
-Lean. The caller cannot substitute package bytes. `FnEvidence.verify` then
+Lean. Here, group text means the signed `Newsgroups` header, not the fn
+Store's local membership set. The caller cannot substitute package bytes.
+`FnEvidence.verify` then
 re-admits the derived package against the independently selected Mini origin
 pin. The derived package is byte-identical to public `package.bin` (16,136
 bytes, SHA-256
