@@ -1,0 +1,372 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "books/stx-evidence-records": 0,
+    "tests/acl2/stx-evidence-records-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-gates/takeover-authorship-carrier/build/acl2/certify-20260923T142639Z-602195",
+  "book_failures": {},
+  "book_provenance": {
+    "books/acceptance": "installed",
+    "books/acceptance-alloc": "installed",
+    "books/article": "installed",
+    "books/article-fields": "installed",
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/clock": "installed",
+    "books/codec-attach": "installed",
+    "books/crypto-seam": "installed",
+    "books/defrecord": "installed",
+    "books/hybrid-carrier": "installed",
+    "books/hybrid-profile": "installed",
+    "books/hybrid-signature": "installed",
+    "books/injection": "installed",
+    "books/lace": "installed",
+    "books/lace-invariants": "installed",
+    "books/mailbox": "installed",
+    "books/node": "installed",
+    "books/principal": "installed",
+    "books/provenance": "installed",
+    "books/records": "installed",
+    "books/records-attach": "installed",
+    "books/records-canonicality": "installed",
+    "books/records-invariants": "installed",
+    "books/records-seam": "installed",
+    "books/records-shape": "installed",
+    "books/retention": "installed",
+    "books/statement": "installed",
+    "books/statement-attach": "installed",
+    "books/statement-codec": "installed",
+    "books/statement-invariants": "installed",
+    "books/statement-items": "installed",
+    "books/statement-seam": "installed",
+    "books/stx-carrier": "installed",
+    "books/stx-evidence-records": "certified",
+    "books/stx-lace": "installed",
+    "books/stx-verify": "installed",
+    "tests/acl2/hybrid-carrier-tests": "installed",
+    "tests/acl2/stx-evidence-records-tests": "certified"
+  },
+  "book_results": {
+    "books/stx-evidence-records": "passed",
+    "tests/acl2/stx-evidence-records-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/stx-evidence-records": 1.256,
+    "tests/acl2/stx-evidence-records-tests": 1.266
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 1800,
+  "cache_install": {
+    "directory": "/home/ember/fn-certcache",
+    "installed": 0,
+    "kept": 37,
+    "origins": {
+      "/home/ember/fn-gates/dev-head": 35,
+      "/home/ember/fn-gates/takeover-authorship-carrier": 2
+    },
+    "removed": 0,
+    "roots_installed": [
+      "books/hybrid-carrier",
+      "tests/acl2/hybrid-carrier-tests"
+    ],
+    "toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286"
+  },
+  "cert_cache": {
+    "already_cached": 2,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/stx-evidence-records",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/stx-evidence-records-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 2,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/stx-evidence-records": "60db2526e938bb8d410bd46f1b9ff3fd182923d4bbcb91d71ea517cc374d6da5",
+    "tests/acl2/stx-evidence-records-tests": "617c488f56b7afe8b34324add9ad3e5affa9a6556ee1c60b0fd90a200fa27397"
+  },
+  "certify_wall_seconds": 2.53,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "driver_digests_sha256": {
+    "books/stx-evidence-records": "b98b820845d93f416d461538a7c2dac17ab393190f2c4b2ddeea33450619816f",
+    "tests/acl2/stx-evidence-records-tests": "da357aef3749f20427e976df95185d680243121cc65e998a1d4b4df3289701bb"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 11cbe52190c9e615bf9933de61e58eeb 2bccc85710c6",
+    "FN_CERTIFY_SUCCESS 11cbe52190c9e615bf9933de61e58eeb 26d68ae53536"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T14:26:42+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "incremental": true,
+  "installed_books": {
+    "books/acceptance": "/home/ember/fn-gates/dev-head",
+    "books/acceptance-alloc": "/home/ember/fn-gates/dev-head",
+    "books/article": "/home/ember/fn-gates/dev-head",
+    "books/article-fields": "/home/ember/fn-gates/dev-head",
+    "books/cbor": "/home/ember/fn-gates/dev-head",
+    "books/cbor-invariants": "/home/ember/fn-gates/dev-head",
+    "books/clock": "/home/ember/fn-gates/dev-head",
+    "books/codec-attach": "/home/ember/fn-gates/dev-head",
+    "books/crypto-seam": "/home/ember/fn-gates/dev-head",
+    "books/defrecord": "/home/ember/fn-gates/dev-head",
+    "books/hybrid-carrier": "/home/ember/fn-gates/takeover-authorship-carrier",
+    "books/hybrid-profile": "/home/ember/fn-gates/dev-head",
+    "books/hybrid-signature": "/home/ember/fn-gates/dev-head",
+    "books/injection": "/home/ember/fn-gates/dev-head",
+    "books/lace": "/home/ember/fn-gates/dev-head",
+    "books/lace-invariants": "/home/ember/fn-gates/dev-head",
+    "books/mailbox": "/home/ember/fn-gates/dev-head",
+    "books/node": "/home/ember/fn-gates/dev-head",
+    "books/principal": "/home/ember/fn-gates/dev-head",
+    "books/provenance": "/home/ember/fn-gates/dev-head",
+    "books/records": "/home/ember/fn-gates/dev-head",
+    "books/records-attach": "/home/ember/fn-gates/dev-head",
+    "books/records-canonicality": "/home/ember/fn-gates/dev-head",
+    "books/records-invariants": "/home/ember/fn-gates/dev-head",
+    "books/records-seam": "/home/ember/fn-gates/dev-head",
+    "books/records-shape": "/home/ember/fn-gates/dev-head",
+    "books/retention": "/home/ember/fn-gates/dev-head",
+    "books/statement": "/home/ember/fn-gates/dev-head",
+    "books/statement-attach": "/home/ember/fn-gates/dev-head",
+    "books/statement-codec": "/home/ember/fn-gates/dev-head",
+    "books/statement-invariants": "/home/ember/fn-gates/dev-head",
+    "books/statement-items": "/home/ember/fn-gates/dev-head",
+    "books/statement-seam": "/home/ember/fn-gates/dev-head",
+    "books/stx-carrier": "/home/ember/fn-gates/dev-head",
+    "books/stx-lace": "/home/ember/fn-gates/dev-head",
+    "books/stx-verify": "/home/ember/fn-gates/dev-head",
+    "tests/acl2/hybrid-carrier-tests": "/home/ember/fn-gates/takeover-authorship-carrier"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 11cbe52190c9e615bf9933de61e58eeb 2bccc85710c6",
+    "FN_CERTIFY_SUCCESS 11cbe52190c9e615bf9933de61e58eeb 26d68ae53536"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/stx-evidence-records",
+    "books/hybrid-carrier",
+    "tests/acl2/stx-evidence-records-tests",
+    "tests/acl2/hybrid-carrier-tests"
+  ],
+  "requested_books": [
+    "books/stx-evidence-records",
+    "tests/acl2/stx-evidence-records-tests"
+  ],
+  "roots": [
+    "books/stx-evidence-records",
+    "books/hybrid-carrier",
+    "tests/acl2/stx-evidence-records-tests",
+    "tests/acl2/hybrid-carrier-tests"
+  ],
+  "run_id": "certify-20260923T142639Z-602195",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "books_with_archived_wall": 2,
+    "policy": "critical-path-first",
+    "predicted_critical_path_seconds": 2.514
+  },
+  "slot_wait_seconds": {
+    "books/stx-evidence-records": 0.0,
+    "tests/acl2/stx-evidence-records-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/article-fields.lisp": "99e7cf20e18f181bd2b3dcf35d7c1aabaed80a15329aa850c5fed44469dc98d6",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/codec-attach.lisp": "d26dacf4a14e32216acc4779ad007734120389815fba89585966761875fca252",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/hybrid-carrier.lisp": "8c20becd39f3e360d5791a71b40bfe1a40f35a8098f8f778bc369d0a2c486f78",
+    "books/hybrid-profile.lisp": "7e2f6086ee92ac982c1ecbca907c8dfb0d5d1381b2cd2edca43fbbd74ad9d9c3",
+    "books/hybrid-signature.lisp": "3754723a986d0363e58c7f0a0ce47a035733424be6c49a7e152790882cc4c8ff",
+    "books/injection.lisp": "b419f7e7bdeb414a4265936b20bd0e83d4286b62270b3d0ec0ae378c990c992b",
+    "books/lace-invariants.lisp": "0b9727b4ebb931e8ccda00f8c3ec9a9952e7226f51e700c5b997ddcec119fc43",
+    "books/lace.lisp": "729437d01cfb19363cc0f1c654e732101d4013faaf77072181642e4ae85be1d4",
+    "books/mailbox.lisp": "9e3bad61d82cd15077ba149af647701f8bdf179adef06119787485ff4be3baac",
+    "books/node.lisp": "fa0e368bdbbb99aba595fb5fbbb962f525011499ba81d35861f3e857f54792cd",
+    "books/principal.lisp": "d0350c22cf626c99821e7458070107609eae03bf14d5123981d97bf267515d92",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-attach.lisp": "dfd7681d95190fa9704a936e0e6b34d929b1bc69b8bb4d2e303a7ecbb29abbe1",
+    "books/records-canonicality.lisp": "cbc87fbd2167779e66be164658874448ba0e13aa2383ab1f5a6cb381f9f9ad0c",
+    "books/records-invariants.lisp": "fa9b5871ec15966ca5a1f374a83f7a2ad3863998dd913898f54c6055022b37c3",
+    "books/records-seam.lisp": "e1e62329922c67475b5d29318e63f9ae25817557340c3b6bb23095aa443de570",
+    "books/records-shape.lisp": "eda424ad4def1b5be467652b4766d2f7c1cb7d78319fcbcfd89857dc9a0c4eae",
+    "books/records.lisp": "e9b5394a5f01dc64a12921057c750a5f0a706b03f58c3a69cd90bb9e65f47bfc",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/statement-attach.lisp": "0ca7a4dd3a18036585791cc5eec9171f34b7bb12cccb25b472699a0095b4489e",
+    "books/statement-codec.lisp": "1d74adc060854fcca78b634d86d8256aa2662df0bb0f50f7ba83cc90997030b2",
+    "books/statement-invariants.lisp": "9989ee8c43c6c1b41df938e90cbc77d9e7d239af61a5bc42718815ce708afa87",
+    "books/statement-items.lisp": "d276c25e727687d2a0d81511dac307fca0ce21dcd138088449256edb089dea6e",
+    "books/statement-seam.lisp": "632414aa7641096c9a571804d0c45b225315119600051a9c251dae00c908874c",
+    "books/statement.lisp": "ae18fbadc0c28f134cf565a28bc984685e7f997e2ac8e403792ff19fca50a87c",
+    "books/stx-carrier.lisp": "1dd4ad390544ddc2efbd9427cada1bfa41d542c9f2c61e4fde94beb7edbdf343",
+    "books/stx-evidence-records.lisp": "602d5955039dbb4384940db4423c34f29d7fd6b14c43d55c1046b00d7e65ee00",
+    "books/stx-lace.lisp": "4c99cb0e29945f53a551f9b8c88c2c550c8a015ba698542cc6eb1aef08f4cc5e",
+    "books/stx-verify.lisp": "25e0b53b8e0e502de8c78f5433849f5f3d67c7c4293ccba9ddcdcaa59eeec38f",
+    "tests/acl2/hybrid-carrier-tests.lisp": "f57fb2f98c1a630ae307b187a8d81b926a4d4fd18a2ab85173adc0c71c45a607",
+    "tests/acl2/stx-evidence-records-tests.lisp": "795840f139fa8ca58821bf1d3f7de0d59042fca9380ff3d005ef94f0c6d982e1"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/article-fields.lisp": "99e7cf20e18f181bd2b3dcf35d7c1aabaed80a15329aa850c5fed44469dc98d6",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/codec-attach.lisp": "d26dacf4a14e32216acc4779ad007734120389815fba89585966761875fca252",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/hybrid-carrier.lisp": "8c20becd39f3e360d5791a71b40bfe1a40f35a8098f8f778bc369d0a2c486f78",
+    "books/hybrid-profile.lisp": "7e2f6086ee92ac982c1ecbca907c8dfb0d5d1381b2cd2edca43fbbd74ad9d9c3",
+    "books/hybrid-signature.lisp": "3754723a986d0363e58c7f0a0ce47a035733424be6c49a7e152790882cc4c8ff",
+    "books/injection.lisp": "b419f7e7bdeb414a4265936b20bd0e83d4286b62270b3d0ec0ae378c990c992b",
+    "books/lace-invariants.lisp": "0b9727b4ebb931e8ccda00f8c3ec9a9952e7226f51e700c5b997ddcec119fc43",
+    "books/lace.lisp": "729437d01cfb19363cc0f1c654e732101d4013faaf77072181642e4ae85be1d4",
+    "books/mailbox.lisp": "9e3bad61d82cd15077ba149af647701f8bdf179adef06119787485ff4be3baac",
+    "books/node.lisp": "fa0e368bdbbb99aba595fb5fbbb962f525011499ba81d35861f3e857f54792cd",
+    "books/principal.lisp": "d0350c22cf626c99821e7458070107609eae03bf14d5123981d97bf267515d92",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-attach.lisp": "dfd7681d95190fa9704a936e0e6b34d929b1bc69b8bb4d2e303a7ecbb29abbe1",
+    "books/records-canonicality.lisp": "cbc87fbd2167779e66be164658874448ba0e13aa2383ab1f5a6cb381f9f9ad0c",
+    "books/records-invariants.lisp": "fa9b5871ec15966ca5a1f374a83f7a2ad3863998dd913898f54c6055022b37c3",
+    "books/records-seam.lisp": "e1e62329922c67475b5d29318e63f9ae25817557340c3b6bb23095aa443de570",
+    "books/records-shape.lisp": "eda424ad4def1b5be467652b4766d2f7c1cb7d78319fcbcfd89857dc9a0c4eae",
+    "books/records.lisp": "e9b5394a5f01dc64a12921057c750a5f0a706b03f58c3a69cd90bb9e65f47bfc",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/statement-attach.lisp": "0ca7a4dd3a18036585791cc5eec9171f34b7bb12cccb25b472699a0095b4489e",
+    "books/statement-codec.lisp": "1d74adc060854fcca78b634d86d8256aa2662df0bb0f50f7ba83cc90997030b2",
+    "books/statement-invariants.lisp": "9989ee8c43c6c1b41df938e90cbc77d9e7d239af61a5bc42718815ce708afa87",
+    "books/statement-items.lisp": "d276c25e727687d2a0d81511dac307fca0ce21dcd138088449256edb089dea6e",
+    "books/statement-seam.lisp": "632414aa7641096c9a571804d0c45b225315119600051a9c251dae00c908874c",
+    "books/statement.lisp": "ae18fbadc0c28f134cf565a28bc984685e7f997e2ac8e403792ff19fca50a87c",
+    "books/stx-carrier.lisp": "1dd4ad390544ddc2efbd9427cada1bfa41d542c9f2c61e4fde94beb7edbdf343",
+    "books/stx-evidence-records.lisp": "602d5955039dbb4384940db4423c34f29d7fd6b14c43d55c1046b00d7e65ee00",
+    "books/stx-lace.lisp": "4c99cb0e29945f53a551f9b8c88c2c550c8a015ba698542cc6eb1aef08f4cc5e",
+    "books/stx-verify.lisp": "25e0b53b8e0e502de8c78f5433849f5f3d67c7c4293ccba9ddcdcaa59eeec38f",
+    "tests/acl2/hybrid-carrier-tests.lisp": "f57fb2f98c1a630ae307b187a8d81b926a4d4fd18a2ab85173adc0c71c45a607",
+    "tests/acl2/stx-evidence-records-tests.lisp": "795840f139fa8ca58821bf1d3f7de0d59042fca9380ff3d005ef94f0c6d982e1"
+  },
+  "start_order": [
+    "books/stx-evidence-records",
+    "tests/acl2/stx-evidence-records-tests"
+  ],
+  "started_utc": "2026-09-23T14:26:39+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/home/ember/fn-gates/takeover-authorship-carrier"
+}

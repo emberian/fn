@@ -1,0 +1,32 @@
+# Bounded FN-Authorship v1 carrier, 2026-09-23
+
+Scope: `books/hybrid-carrier.lisp`, `books/stx-evidence-records.lisp`, and their ACL2 test books, from base `df5097b6` on `implement/authorship-carrier`. The exact source digests, dependencies, toolchain, and per-book results are in [carrier manifest](manifests/certify-20260923T142748Z-612433.json) and [evidence manifest](manifests/certify-20260923T142639Z-602195.json). Both ran on persvati with ACL2 8.7, toolchain identity `1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286`, via `python3 tools/farm.py submit persvati` for the named book/test roots, `--jobs 2 --remote-root /home/ember/fn-gates/takeover-authorship-carrier --acl2 /home/ember/fn-gates/toolchains/w25/acl2-literal --cache /home/ember/fn-certcache`. Both passed. Carrier/test certification took 1.447/1.434 s and evidence/test 1.256/1.266 s, with zero slot wait. The earlier 50.5 s carrier pass was diagnosed to unrestricted expansion of `fn-hc-native-plan-preserves-source`; a local hint kept the parser closed and reduced the current proof to 1.447 s without changing its statement.
+
+`fn-hc-native-plan-preserves-source` says a successful admission returns the exact supplied authored source as its first value; its test book has a reachable successful source and a `must-fail` case with the success premise removed. `fn-hc-encode-is-bounded-when-emitted` and `fn-hc-field-encode-is-bounded-when-emitted` state the executable emission caps of 5405 binary and 8192 field octets. The decoder checks those caps before the nine-item parse and base64 decode. Ground vectors fix the emitted binary/base64 lengths at 5405/7208 for the selected component widths, and exercise round trip, mutable Path/Xref/gateway projection, reserved-field refusal, missing Date, malformed carrier, unsupported version, nonminimal CBOR, overlimit input, changed source/keyset preimages, and missing or refused signature components. The existing `fn-hsig-subject-body-injective` remains the subject framing keystone; this run does not re-certify its unchanged source closure.
+
+`fn-stxe-profile-supportedp` recognizes exactly `fn-hybrid-v1`; unknown tags remain opaque and unsupported. The known tag alone returns `:requires-binding` from `fn-stxe-authority-verdict`, since arbitrary persisted detail bytes cannot be promoted to a verified author. `host/native/signatures.lisp` now offers a verification entry that obtains ACL2's received plan and canonical preimage, observes both actual primitives, then calls ACL2's both-required authorization function. It has no Store or reader caller yet and was not exercised in this certification. The later T10 join must bind the kind-4 event, keyring snapshot, dual primitive observations and reader verdict to the actual accepted article. No primitive unforgeability, host library correctness, Date syntax, or full article size guarantee is claimed here.
+
+The native component harness `tests/native_hybrid_signatures.lisp` was run
+locally on macOS with SBCL 2.6.8 and OpenSSL 3.6.4, after generating two
+independent temporary ML-DSA-65 PEM keypairs with `openssl genpkey` and
+`openssl pkey -pubout`. It exited 0 and printed
+`FN_NATIVE_HYBRID_SIGNATURE_TEST passed`. The added cases exercise the new
+received-carrier entry with real Ed25519 and ML-DSA-65 verification, a
+substituted ML key/signature, and a malformed carrier plan. This component
+test stubs `fnn-core` using the production scalar convention, so it does not
+test the saved image's ACL2-to-native bridge or the Store integration.
+
+The affected closure of `books/stx-evidence-records.lisp` was then certified
+with `python3 tools/farm.py submit persvati --affected-by
+books/stx-evidence-records.lisp --jobs 2` (the same remote root, pinned ACL2
+and cache as above), using the selector fix that removes three host wrappers
+from Makefile book roots. [Affected manifest](manifests/certify-20260923T143134Z-646146.json)
+records run `run-20260923T143127Z-1770`, 157 selected roots, 263 books in
+their include closure, 102 matching cached/kept books from three origins, and
+161 newly certified books. All 161 passed at the selected stxe source digest
+`602d5955039dbb4384940db4423c34f29d7fd6b14c43d55c1046b00d7e65ee00`.
+Elapsed certification was 223.73 s; the longest book, `owner-invariants`,
+took 13.383 s, with no individual proof event over 10 s (its include-book
+and book overhead accounted for the rest). The Makefile selector fix is
+already root commit `defe3626` and was applied temporarily in this lane for
+the run; the carrier commits do not duplicate it.

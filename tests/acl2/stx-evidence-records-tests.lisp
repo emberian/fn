@@ -16,7 +16,7 @@
         *stxe-evidence*))
 
 ; An unknown algorithm profile is retained byte-exact but never interpreted
-; as authority while D09 remains open.
+; as authority.
 (assert-event
  (equal (fn-stxe-profile
          (fn-stmt-value
@@ -24,6 +24,17 @@
         *stxe-profile-unknown*))
 (assert-event (equal (fn-stxe-authority-verdict *stxe-evidence*)
                      :unsupported-profile))
+(defconst *stxe-hybrid-evidence*
+  (fn-stxe-make 4 8 12 "<hybrid@example.invalid>" :verified
+                '(1) 6 *fn-hsig-profile-tag*))
+(assert-event (fn-stxe-profile-supportedp *fn-hsig-profile-tag*))
+(assert-event (equal (fn-stxe-authority-verdict *stxe-hybrid-evidence*)
+                     :requires-binding))
+(assert-event
+ (equal (fn-stxe-authority-verdict
+         (fn-stmt-value
+          (fn-stxe-decode-exact (fn-stxe-encode *stxe-hybrid-evidence*))))
+        :requires-binding))
 
 ; Envelope kind and bounds have teeth.
 (assert-event

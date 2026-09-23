@@ -58,6 +58,37 @@ Books: `books/crypto-seam.lisp`, `books/hybrid-signature.lisp`,
 `tests/acl2/principal-tests.lisp`. The [decision packet](../planning/decision-packet-d09-d11.md)
 carries the proposals this profile assumes.
 
+## Portable FN-Authorship v1 carrier (bounded precursor)
+
+`books/hybrid-carrier.lisp` defines a distinct `FN-Authorship` field for the
+exact-source hybrid signature. Its canonical binary value is nine ordered CBOR
+items: version 1, suite 1, 32-octet principal, Ed25519 algorithm 1 and
+32-octet public key, ML-DSA-65 algorithm 2 and 1952-octet public key, then
+64-octet Ed25519 and 3309-octet ML-DSA-65 signatures. The encoded binary is
+bounded to 5405 octets before emission and before parsing; the base64 field is
+bounded to 8192 octets before emission and before decoding. A fixed nine-item
+budget and the bounded article parser constrain work before any carrier value
+can become a verification subject. A future version or suite is a separate
+profile: these v1 bytes keep their meaning, and unknown bounded evidence may
+be retained without gaining authority.
+`fn-stxe-profile-supportedp` recognizes exactly `fn-hybrid-v1`. The evidence
+record's `fn-stxe-authority-verdict` returns `:requires-binding` for that tag:
+a tag and stored token alone cannot upgrade arbitrary detail bytes to a
+verified author. The T10 Store join must bind the accepted event, keyring
+snapshot and both primitive observations before presenting a verdict.
+
+The authored source contains the signed Date, Message-ID, Newsgroups, From and
+Subject fields. `fn-hc-native-plan` refuses the mutable namespace in native
+source. `fn-hc-received-plan` requires one valid FN-Authorship field, projects
+Path, Xref, Injection-Date and Injection-Info outside the signed source, and
+retains original received octets on refusal. It also refuses other reserved
+fn fields rather than guessing an authored source. This carrier does not give
+FN-Statement's content-id signature the semantics of exact-source authorship.
+`host/native/signatures.lisp` has a ready verification entry that calls the
+ACL2 projection and preimage, asks libsodium and OpenSSL for independent
+observations, and calls ACL2's both-required `fn-hsig-authorize`. The actual
+Store verdict and reader exposure join remains T10 work.
+
 ## The seam
 
 `fn-digest` (any object to 32 octets) and the triple `fn-sig-public-key`,
