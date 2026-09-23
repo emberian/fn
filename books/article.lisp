@@ -13,9 +13,9 @@
 (include-book "std/lists/rev" :dir :system)
 
 (defconst *fn-article-max-octets* 32768)
-(defconst *fn-article-max-header-octets* 8192)
+(defconst *fn-article-max-header-octets* 16384)
 (defconst *fn-article-max-line-octets* 998)
-(defconst *fn-article-max-header-lines* 128)
+(defconst *fn-article-max-header-lines* 256)
 (defconst *fn-article-max-fields* 64)
 
 ; -----------------------------------------------------------------------------

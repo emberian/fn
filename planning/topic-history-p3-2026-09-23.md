@@ -113,6 +113,13 @@ consumption. Physical folding remains governed by ordinary article parsing;
 the signature binds the actual authored folding and source bytes. Do not
 normalize/rewrite the original article during projection.
 
+The executable envelope refinement keeps the exact signed physical bytes and
+adds a canonical 72-base64-octet fold with one HTAB per continuation. Its
+projector strips continuation whitespace only as a candidate, then compares
+the original raw lines with the ACL2 renderer. The decoded base64 has no
+whitespace. This permits the full bounded root profile under the article's
+998-octet physical-line limit without treating arbitrary folding as valid.
+
 The decoded payload is a restricted canonical CBOR item sequence using the
 existing byte-string/unsigned-integer primitives, with no maps, floating values,
 indefinite lengths, strings or executable forms. Logical encodings are:

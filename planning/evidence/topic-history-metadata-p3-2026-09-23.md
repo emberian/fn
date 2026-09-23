@@ -20,6 +20,13 @@ Path, Xref and a competing FN-Topic is an executed separation witness: the
 authored source remains a root candidate while projecting the whole received
 article refuses its duplicate field. Invalid duplicate-author constructors
 and duplicate authored fields provide must-fail teeth for the hypotheses.
+The decoder applies the topic-specific 1,536-octet whole-input preflight
+before calling `fn-stmt-decode-items` with 39-item fuel. That statement seam
+uses its standard 65,538/65,535 internal profile budgets, not 1,536-octet
+internal budgets. Its declared-length checks compare against the remaining
+prechecked input before taking bytes, so the smaller external preflight bounds
+actual allocation and work while the standard seam inverse theorem supplies
+the constructor roundtrip.
 
 Hbox certified the changed codec (`f44975a4206b18a65c19cf0cba40c8d70fc2b01483e67df5b21a7345305e4e36`),
 new invariant book (`ac76677c92057c98b3ae20d344f368c8f566f278700c9d288285c43e9cea27ec`),
@@ -53,13 +60,60 @@ has SHA-256 `fddfe257926a17f7a712195893acfd92ab2ab508da07ad9b5910d46e804b6349`.
 This is a test-driver correction against the frozen image, not a rebuilt
 image at the follow-up assurance source digest.
 
-The maximum 2,047-octet field value also exceeds the article parser's
-998-octet physical-line limit when emitted on one line. The current decoder
-rejects folding whitespace, so the full bounded component profile is not yet
-realizable through a portable carrier. The next envelope batch must define
-ACL2-owned bounded folding/normalization and raise the header budget from a
-measured combined profile; the current native gate does not cover the maximum
-constructor.
+At that frozen image, the maximum 2,047-octet field value also exceeded the
+998-octet physical-line limit when emitted on one line. The following
+envelope batch resolves the source-level limit; the frozen native gate did
+not cover the maximum constructor.
+
+The envelope batch keeps the 998-octet physical-line and 32,768-octet
+complete-source limits while raising the article parser's local header cap
+to 16,384 octets and physical-header-line cap to 256. ACL2 now renders
+FN-Topic base64 in 72-octet chunks with exactly one HTAB continuation. The
+projector strips whitespace only as a candidate and accepts a folded field
+only when the original raw lines equal the canonical ACL2 renderer; ordinary
+single-line values keep the previous no-whitespace rule. The certified
+`fn-th-field-lines-fit-85` theorem bounds every rendered physical line to
+85 octets, below 998. Tests alter a continuation HTAB to SP and observe
+`:folding` refusal.
+
+An ACL2 maximum root has 16 ordered authors and 64 domain octets. Its
+normalized value is 2,047 octets, canonical field uses 29 physical lines
+and 2,143 wire octets. With 143 ordinary header octets and the full 7,525
+octet FN-Authorship prefix, ACL2 measured an exact authored source of 2,289
+octets and received carrier of 9,814 octets: 9,811 header octets, 135
+physical header lines plus the separator. `fn-article-parse` accepts source
+and carrier, `fn-hc-received-plan` recovers the exact source byte-for-byte,
+and `fn-th-project-field` returns the maximum root. The binary fixture
+`tests/fixtures/topic-history/max-root-field.bin` is 2,143 octets, assembled
+from 64-octet chunks of ACL2's `fn-th-field-wire *th-max-root*` result; its
+SHA-256 is `8b9aeeb3311f313d5b0826f105faaa05e93f398017451442ed7c128d04584851`.
+The prepared native test signs this exact maximum source, inspects the
+carrier, repeats inspection after relay Path/Xref prefixes, and refuses an
+authored-byte mutation. A source-matched saved-image run of that maximum
+profile remains open for root's combined build.
+
+The envelope source and its tests were certified on hbox with ACL2 8.7,
+SBCL 2.6.8 and toolchain identity
+`d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0`.
+The [article and first envelope manifest](manifests/certify-20260923T205409Z-107337.json) records the changed
+`books/article.lisp` digest
+`8f81baba8e94b5db2bab12f7a12632bf01976b7d709f39faced1e35711df9155`
+and passing article invariant/test roots. The [final invariant manifest](manifests/certify-20260923T205651Z-114702.json) records
+`books/topic-history-metadata.lisp` digest
+`99707bb41409058e8e31089fb96b1a878c3d3a182955d814f5834f915d33737f`
+and `books/topic-history-metadata-invariants.lisp` digest
+`f368a08d60945174ef4b65e0f00e85b02f8702ae190bb161a091208940335844`.
+The [maximum-carrier source test manifest](manifests/certify-20260923T210021Z-121875.json) records final test digest
+`d515ca5fca4b62672f6f3ba54f1904bb0c8809238efe931eb22d1176b205ac28`.
+The scoped command was `python3 tools/farm.py submit hbox` with the named
+article and topic book/test roots, `--jobs 2`,
+`--acl2 /tank/fn/toolchains/w28/acl2-literal-4g`,
+`--cache /tank/fn/certcache`, and
+`--remote-root /tank/fn/gates/topic-envelope`, without `--closure`.
+The maximum-carrier test certificate took 1.933 seconds; the exact requests,
+source digests, and root results are in the manifests. The broad reverse
+closure after the article-envelope change and the new native image remain
+root's combined qualification work.
 
 On 2026-09-23, hbox certified the book at source SHA-256
 `7fafa6aec06cddafa4a15f510b8eb2f19c27c9954f4ce607813569d7d60a9477`

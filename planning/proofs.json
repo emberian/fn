@@ -2133,7 +2133,7 @@
     {
       "id": "PRF-062",
       "title": "Exact-source topic metadata candidate is bounded and canonical",
-      "statement": "The native topic-inspect-carrier command passes only the exact source returned after hybrid-carrier verification to fn-th-host-inspect-source. Successful inspection binds to exactly one FN-Topic field in that parsed source. For every valid root, control, or report constructor, encoding stays within 1,531 binary octets and 39 items and decoding the encoding recovers the constructor. Accepted decoder bytes are canonical. This establishes no topic anchor or admission.",
+      "statement": "The native topic-inspect-carrier command passes only the exact source returned after hybrid-carrier verification to fn-th-host-inspect-source. Successful inspection binds to exactly one FN-Topic field in that parsed source and its canonical raw physical lines. Every valid root, control, or report constructor encodes within 1,531 binary octets and 39 items; decoding its encoding recovers the constructor. The canonical folded field renderer emits lines of at most 85 octets. Accepted decoder bytes are canonical. This establishes no topic anchor or admission.",
       "milestone": "M3",
       "requirements": [
         "TOP-001",
@@ -2154,13 +2154,21 @@
         "planning/evidence/manifests/certify-20260923T200634Z-19239.json",
         "planning/evidence/manifests/certify-20260923T200855Z-21687.json",
         "books/topic-history-metadata-invariants.lisp",
-        "planning/evidence/manifests/certify-20260923T203140Z-48694.json"
+        "planning/evidence/manifests/certify-20260923T203140Z-48694.json",
+        "books/article.lisp",
+        "tests/acl2/article-tests.lisp",
+        "tests/fixtures/topic-history/max-root-field.bin",
+        "tests/test_native_topic_metadata.py",
+        "planning/evidence/manifests/certify-20260923T205409Z-107337.json",
+        "planning/evidence/manifests/certify-20260923T205651Z-114702.json",
+        "planning/evidence/manifests/certify-20260923T210021Z-121875.json"
       ],
-      "progress_note": "ACL2 8.7 certified the changed codec, general constructor bound and roundtrip, exact host-called source-field binding, and separating tests at exact source digests on hbox. Native saved-image verification remains pending in the combined gate; no topic admission claim is made.",
+      "progress_note": "ACL2 8.7 certified the codec, general constructor bound/inverse, host-called authored raw-line binding, canonical folded-field line bound, and max-profile/negative tests at exact digests on hbox. The full-envelope native saved-image max-profile gate remains pending; no topic admission claim is made.",
       "events": [
         "fn-th-host-inspect-source-binds-authored-field",
         "fn-th-constructor-encoding-bound",
-        "fn-th-constructor-roundtrip"
+        "fn-th-constructor-roundtrip",
+        "fn-th-field-lines-fit-85"
       ]
     }
   ]

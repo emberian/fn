@@ -1,0 +1,2 @@
+# Exact protocol-octet fixture: preserve CRLF and do not treat it as prose.
+tests/fixtures/topic-history/max-root-field.bin -text -diff
