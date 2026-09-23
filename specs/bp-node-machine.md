@@ -2102,9 +2102,15 @@ fields, not a nested pair. Whether an assertion carries a time is governed
 by the **subject's** "status time requested" flag, not by fn's own
 choice; fn's parser accepts timed assertions on incoming reports.
 `fn-bpn-report-decode` is bounded, exact and canonical in the pattern of
-`fn-bpa-decode-exact`; `fn-bpn-report-round-trip` and
-`fn-bpn-report-accepted-input-is-canonical` are its keystones, and the
-reason table is Table 1 codes 0 to 11.
+`fn-bpa-decode-exact`; `fn-bpn-report-decode-of-encode` and
+`fn-bpn-report-accepted-input-is-canonical` are its codec keystones, and the
+reason table is Table 1 codes 0 to 11. The decoder rejects inputs over
+4,096 octets before parsing. The current report recognizer limits a DTN SSP
+to 1,024 octets and the other fields to fixed counts and 64-bit integers;
+`fn-bpn-report-encode-length-bound` proves a valid report's encoding is at
+most 1,194 octets, so the round trip needs no separate size premise. D1a
+covers this codec and its exact wire vectors only; generation, correlation
+and consumption remain D1b/D2 work.
 
 Generation. `fn-bpn-policy-reports` defaults to nil in every image and every
 configuration (RFC 9171 §5.1: disabled by default); the lab and operator

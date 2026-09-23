@@ -168,6 +168,12 @@
            :in-theory (disable fn-bpn-report-read-status
                                fn-bpn-report-status-octets))))
 
+(defthm fn-bpn-reportp-reason-uintp
+  (implies (fn-bpn-reportp report)
+           (fn-bpn-report-uintp (nth 2 report)))
+  :hints (("Goal" :in-theory (e/d (fn-bpn-reportp fn-bpn-report-uintp)
+                                  (fn-bpn-report-statusp fn-bpp-eidp
+                                   fn-bpn-report-assertionp)))))
 (defthm fn-bpn-reportp-components
   (implies (fn-bpn-reportp report)
            (and (fn-bpn-report-statusp (nth 1 report))
@@ -179,8 +185,10 @@
                          (and (fn-bpn-report-uintp (car (nth 5 report)))
                               (fn-bpn-report-uintp (cdr (nth 5 report)))))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-bpn-reportp
-                                      fn-bpn-report-uintp))))
+  :hints (("Goal" :use ((:instance fn-bpn-reportp-reason-uintp))
+           :in-theory (e/d (fn-bpn-reportp)
+                           (fn-bpn-report-statusp fn-bpp-eidp
+                            fn-bpn-report-uintp fn-bpn-report-assertionp)))))
 
 (defthm fn-bpn-reportp-stamp-shape
   (implies (fn-bpn-reportp report)
@@ -762,7 +770,7 @@
                             fn-bpn-report-tail-octets
                             fn-cbor-at-mostp)))))
 
-(defthm fn-bpn-report-decode-of-encode
+(defthm fn-bpn-report-decode-of-encode-when-bounded
   (implies (and (fn-bpn-reportp report)
                 (fn-cbor-at-mostp (fn-bpn-report-encode report)
                                   *fn-bpn-report-max-input*))
@@ -790,3 +798,170 @@
                                fn-bpn-report-encode-octets
                                fn-bpn-report-at-most-is-length
                                fn-cbor-at-mostp))))
+
+; Every valid report is smaller than the decoder preflight.  Its broad
+; 1194-octet estimate counts maximal CBOR heads and the 1024-octet EID.
+(defthm fn-bpn-report-uint-octets-length-bound
+  (<= (len (fn-bpn-report-uint-octets n)) 9)
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-bpc-argument-length-bound
+                                   (major 0) (n n)))
+           :in-theory (e/d (fn-bpn-report-uint-octets fn-bpc-enc)
+                           (fn-bpc-argument fn-bpc-argument-length-bound)))))
+
+(defthm fn-bpn-report-assertion-octets-length-bound
+  (<= (len (fn-bpn-report-assertion-octets assertion)) 11)
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-bpn-report-uint-octets-length-bound
+                                   (n (cadr assertion))))
+           :in-theory (disable fn-bpn-report-uint-octets))))
+
+(defthm fn-bpn-report-status-octets-length-by-count
+  (<= (len (fn-bpn-report-status-octets status))
+      (* 11 (len status)))
+  :hints (("Goal" :induct (fn-bpn-report-status-octets status)
+           :in-theory (disable fn-bpn-report-assertion-octets
+                               fn-bpn-report-uint-octets))
+          ("Subgoal *1/1"
+           :use ((:instance fn-bpn-report-assertion-octets-length-bound
+                            (assertion (car status))))
+           :in-theory (e/d (fn-bpc-len-of-append)
+                           (fn-bpn-report-assertion-octets
+                            fn-bpn-report-uint-octets))))
+  :rule-classes :linear)
+
+(defthm fn-bpn-report-status-octets-length-bound
+  (implies (fn-bpn-report-statusp status)
+           (<= (len (fn-bpn-report-status-octets status)) 44))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-bpn-report-status-octets
+                                      fn-bpn-report-assertion-octets
+                                      fn-bpn-report-uint-octets))))
+
+(defthm fn-bpn-report-eid-octets-length-bound
+  (implies (fn-bpp-eidp eid)
+           (<= (len (fn-bpc-enc :item (fn-bpp-eid-value eid))) 1100))
+  :rule-classes :linear
+  :hints (("Goal"
+           :use ((:instance fn-bpc-argument-length-bound
+                            (major 4) (n 2))
+                 (:instance fn-bpc-argument-length-bound
+                            (major 0) (n 1))
+                 (:instance fn-bpc-argument-length-bound
+                            (major 0) (n 2))
+                 (:instance fn-bpc-argument-length-bound
+                            (major 3) (n (len (cdr eid))))
+                 (:instance fn-bpc-argument-length-bound
+                            (major 0) (n (nth 1 eid)))
+                 (:instance fn-bpc-argument-length-bound
+                            (major 0) (n (nth 2 eid))))
+           :in-theory (e/d (fn-bpp-eid-value fn-bpc-enc
+                             fn-bpp-eidp fn-bpp-dtn-sspp
+                             fn-bpc-len-of-append)
+                           (fn-bpc-argument fn-bpc-argument-length-bound
+                            fn-bpp-vchar-listp fn-bpp-name-delim-at)))))
+
+(defthm fn-bpn-report-after-stamp-length-bound
+  (<= (len (fn-bpn-report-after-stamp-octets report)) 18)
+  :hints (("Goal" :in-theory (e/d (fn-bpc-len-of-append)
+                                  (fn-bpn-report-uint-octets))))
+  :rule-classes :linear)
+
+(defthm fn-bpn-report-after-source-length-bound
+  (<= (len (fn-bpn-report-after-source-octets report)) 37)
+  :hints (("Goal" :in-theory (e/d (fn-bpc-len-of-append)
+                                  (fn-bpn-report-uint-octets
+                                   fn-bpn-report-after-stamp-octets))))
+  :rule-classes :linear)
+
+(defthm fn-bpn-report-after-reason-length-bound
+  (implies (fn-bpn-reportp report)
+           (<= (len (fn-bpn-report-after-reason-octets report)) 1137))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-report-eid-octets-length-bound
+                            (eid (nth 3 report)))
+                 (:instance fn-bpn-reportp-components))
+           :in-theory (e/d (fn-bpc-len-of-append)
+                           (fn-bpn-reportp fn-bpp-eidp
+                            fn-bpn-report-statusp fn-bpn-report-uintp
+                            fn-bpn-report-assertionp
+                            fn-bpn-report-after-source-octets
+                            fn-bpc-enc fn-bpp-eid-value))))
+  :rule-classes :linear)
+
+(defthm fn-bpn-report-tail-length-bound
+  (implies (fn-bpn-reportp report)
+           (<= (len (fn-bpn-report-tail-octets report)) 1146))
+  :hints (("Goal" :in-theory (e/d (fn-bpc-len-of-append)
+                                  (fn-bpn-reportp fn-bpn-report-statusp
+                                   fn-bpn-report-uintp fn-bpp-eidp
+                                   fn-bpn-report-uint-octets
+                                   fn-bpn-report-after-reason-octets))))
+  :rule-classes :linear)
+
+(defthm fn-bpn-report-after-header-length-bound
+  (implies (fn-bpn-reportp report)
+           (<= (len (fn-bpn-report-after-header-octets report)) 1190))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-reportp-components)
+                 (:instance fn-bpn-report-status-octets-length-bound
+                            (status (nth 1 report))))
+           :in-theory (e/d (fn-bpc-len-of-append)
+                           (fn-bpn-reportp fn-bpn-report-statusp
+                            fn-bpn-report-uintp fn-bpp-eidp
+                            fn-bpn-report-tail-octets
+                            fn-bpn-report-status-octets))))
+  :rule-classes :linear)
+
+(defthm fn-bpn-report-encode-length-bound
+  (implies (fn-bpn-reportp report)
+           (<= (len (fn-bpn-report-encode report)) 1194))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-report-encode-structure)
+                 (:instance fn-bpn-report-after-header-length-bound))
+           :in-theory (e/d (fn-bpc-len-of-append
+                             fn-bpn-report-after-header-octets)
+                           (fn-bpn-reportp fn-bpn-report-encode
+                            fn-bpn-report-encode-structure
+                            fn-bpn-report-status-octets
+                            fn-bpn-report-tail-octets))))
+  :rule-classes :linear)
+
+(defthm fn-bpn-report-encode-fits-public-bound
+  (implies (fn-bpn-reportp report)
+           (fn-cbor-at-mostp (fn-bpn-report-encode report)
+                             *fn-bpn-report-max-input*))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-report-encode-length-bound)
+                 (:instance fn-bpn-report-encode-octets)
+                 (:instance fn-cbor-octet-listp-implies-true-listp
+                            (xs (fn-bpn-report-encode report)))
+                 (:instance fn-cbor-at-mostp-from-length
+                            (xs (fn-bpn-report-encode report))
+                            (bound *fn-bpn-report-max-input*)))
+           :in-theory (disable fn-bpn-reportp fn-bpn-report-encode
+                               fn-bpn-report-encode-length-bound
+                               fn-bpn-report-encode-octets
+                               fn-bpn-report-encode-structure
+                               fn-bpn-report-tail-octets
+                               fn-bpn-report-after-reason-octets
+                               fn-bpn-report-after-source-octets
+                               fn-bpn-report-after-stamp-octets
+                               fn-bpn-report-status-octets
+                               fn-bpn-report-uint-octets
+                               fn-bpc-enc fn-bpp-eid-value
+                               fn-bpn-report-at-most-is-length
+                               fn-cbor-at-mostp-from-length
+                               fn-cbor-at-mostp))))
+
+(defthm fn-bpn-report-decode-of-encode
+  (implies (fn-bpn-reportp report)
+           (equal (fn-bpn-report-decode (fn-bpn-report-encode report))
+                  (fn-cbor-ok report nil)))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-report-decode-of-encode-when-bounded)
+                 (:instance fn-bpn-report-encode-fits-public-bound))
+           :in-theory (disable fn-bpn-reportp fn-bpn-report-encode
+                               fn-bpn-report-decode
+                               fn-bpn-report-decode-of-encode-when-bounded
+                               fn-bpn-report-encode-fits-public-bound))))
