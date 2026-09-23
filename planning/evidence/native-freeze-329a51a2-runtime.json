@@ -1,0 +1,111 @@
+{
+  "source": "329a51a23f08e42904d4e0894c94ef5dc243d17e",
+  "result": "scoped runtime qualification with original failures retained; not a release verdict",
+  "results": [
+    {
+      "module": "tests.test_native_stamp_migration",
+      "exit": 0,
+      "seconds": 3.827,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_native_stamp_migration.log",
+      "log_sha256": "8c9bc06a130c19ee9599939aac78528f20b03d7407d56fa91fc8998195455d51",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_native_stamp_migration.log"
+    },
+    {
+      "module": "tests.test_native_newnews_migration",
+      "exit": 1,
+      "seconds": 0.366,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_native_newnews_migration.log",
+      "log_sha256": "0642ea71dc9e5c33dd39df7cd6ba55aa5cbf58bbc0cdf174cfcbff8c2a0adb52",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_native_newnews_migration.log"
+    },
+    {
+      "module": "tests.test_native_hybrid_author",
+      "exit": 1,
+      "seconds": 0.416,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_native_hybrid_author.log",
+      "log_sha256": "22e0fdf616eb1c1ac819f27488ae3233a0e89df0ef74a94561f7580d21a16bcf",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_native_hybrid_author.log"
+    },
+    {
+      "module": "tests.test_bp_app_native",
+      "exit": 1,
+      "seconds": 17.162,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_bp_app_native.log",
+      "log_sha256": "68fefda740a1aca4f3ddae91fab4790ce08840ee9c35bbc384aad4ffe918dbcf",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_bp_app_native.log"
+    },
+    {
+      "module": "tests.test_native_app_journal",
+      "exit": 0,
+      "seconds": 4.529,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_native_app_journal.log",
+      "log_sha256": "06b4b21b92b3f4606b11b2b816f19356768b2a9a5c6e7758a99093be5f403fb5",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_native_app_journal.log"
+    },
+    {
+      "module": "tests.test_native_checkpoint",
+      "exit": 0,
+      "seconds": 17.459,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_native_checkpoint.log",
+      "log_sha256": "995ef2c513729adcf5a1f8912d8eef40b71f86ba8ed2c0b1844ee87dd0574aad",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_native_checkpoint.log"
+    },
+    {
+      "module": "tests.test_native_admin",
+      "exit": 0,
+      "seconds": 3.323,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_native_admin.log",
+      "log_sha256": "e9e8259f62f4f383763f0c6eef69947b7c03a67ac3a824733004bc773ad31b6d",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_native_admin.log"
+    },
+    {
+      "module": "tests.test_bp_obligation_native",
+      "exit": 0,
+      "seconds": 1.318,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_bp_obligation_native.log",
+      "log_sha256": "13513ffda4bfe2ba95fc9b25ccdbce24669be931b0e41d85b531a9cf793110d0",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_bp_obligation_native.log"
+    },
+    {
+      "module": "tests.test_native_protected_peering",
+      "exit": 0,
+      "seconds": 24.131,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_native_protected_peering.log",
+      "log_sha256": "4055c894b1895b84e8750b2ac9d03728a198c7fe95fe9a3b82b57e228108cce2",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_native_protected_peering.log"
+    },
+    {
+      "module": "tests.test_native_served_crash_model",
+      "exit": 0,
+      "seconds": 25.983,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_native_served_crash_model.log",
+      "log_sha256": "edbd03fa0f3e273b1b45414be86b0f48f3f5dc87afae8d6092fefe3d62551f91",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_native_served_crash_model.log"
+    },
+    {
+      "module": "tests.test_native_crash_model",
+      "exit": 0,
+      "seconds": 16.261,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/test_native_crash_model.log",
+      "log_sha256": "cd809d5ce42a8dc0ce5353004edde9b0d6c9c34b31be2d5e8a1d0603bb4067ed",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/test_native_crash_model.log"
+    },
+    {
+      "module": "checkpoint-migration-probe",
+      "exit": 0,
+      "seconds": 3.633,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/checkpoint-migration-probe.log",
+      "log_sha256": "4be62185164431df6d6ca45420a7e7cc6f8518c64d0c9c335e1d5c8b64d5752a",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/checkpoint-migration-probe.log"
+    },
+    {
+      "module": "tests.test_native_hybrid_author",
+      "exit": 0,
+      "seconds": 3.173,
+      "log": "/tank/fn/gates/takeover-v0-image-329a51a2/build/freeze/hybrid-retry/test_native_hybrid_author.log",
+      "log_sha256": "b272d20d6761bd1c3ee02d9006ecc776c12b6d6ea1155c676f7f5ec82ba943ea",
+      "archived_log": "planning/evidence/native-freeze-329a51a2-logs/corrected-openssl-test_native_hybrid_author.log",
+      "harness_correction": "FN_TEST_OPENSSL selects toolchain3.5.8 CLI with frozen image library pair"
+    }
+  ]
+}

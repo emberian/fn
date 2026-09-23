@@ -1,0 +1,27 @@
+test_enroll_author_refuse_tamper_and_restart_query (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_enroll_author_refuse_tamper_and_restart_query) ... FAIL
+test_portable_carrier_verifies_exact_source_and_keyset (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_portable_carrier_verifies_exact_source_and_keyset) ... FAIL
+
+======================================================================
+FAIL: test_enroll_author_refuse_tamper_and_restart_query (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_enroll_author_refuse_tamper_and_restart_query)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/takeover-v0-image-329a51a2/tests/test_native_hybrid_author.py", line 56, in setUp
+    self.assertEqual(generated.returncode, 0,
+AssertionError: 1 != 0 : opted-in hybrid gate requires working ML-DSA-65: Error initializing ML-DSA-65 context
+40C74299B2790000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:355:Global default library context, Algorithm (ML-DSA-65 : 0), Properties (<null>)
+
+
+======================================================================
+FAIL: test_portable_carrier_verifies_exact_source_and_keyset (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_portable_carrier_verifies_exact_source_and_keyset)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/takeover-v0-image-329a51a2/tests/test_native_hybrid_author.py", line 56, in setUp
+    self.assertEqual(generated.returncode, 0,
+AssertionError: 1 != 0 : opted-in hybrid gate requires working ML-DSA-65: Error initializing ML-DSA-65 context
+40A702564B780000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:355:Global default library context, Algorithm (ML-DSA-65 : 0), Properties (<null>)
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.313s
+
+FAILED (failures=2)

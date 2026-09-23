@@ -1,0 +1,9 @@
+59a228c5deddae7a0be1f12732c360e686ad825d16ec50f411ac0dc6b62cd144  /tank/fn/gates/takeover-v0-image-329a51a2/build/images/329a51a23f08e42904d4e0894c94ef5dc243d17e/fn-host-developer.core
+3a768ace7de41368c61b6925e92934f2c96476bbca74eecd8f22993e9182a375  /tank/fn/gates/takeover-v0-image-329a51a2/build/images/329a51a23f08e42904d4e0894c94ef5dc243d17e/fn-host-dtn-developer.core
+44e5ff6e4ace503ad93b93c424507e3388a56e9bac904b8179bdc5095edf29ae  /tank/fn/gates/takeover-v0-image-329a51a2/build/images/329a51a23f08e42904d4e0894c94ef5dc243d17e/fn-host-dtn.core
+7b00b3bf568f88e7f87b2d1ef2d801d45c248758424685f14ea804d3da9d6320  /tank/fn/gates/takeover-v0-image-329a51a2/build/images/329a51a23f08e42904d4e0894c94ef5dc243d17e/fn-host.core
+b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5  /tank/fn/gates/takeover-v0-image-329a51a2/build/images/329a51a23f08e42904d4e0894c94ef5dc243d17e/runtime/sbcl
+14d40ec690d4d2e4d49f95d9509ec8b3112c39089f9ad11fa8bde42796b99190  /tank/fn/gates/takeover-v0-image-329a51a2/build/images/329a51a23f08e42904d4e0894c94ef5dc243d17e/openssl/lib/libcrypto.so.3
+bb2d12bec3c53f997b5edf5e4ac3ed24584412008070eb731830f29896004ed4  /tank/fn/gates/takeover-v0-image-329a51a2/build/images/329a51a23f08e42904d4e0894c94ef5dc243d17e/openssl/lib/libssl.so.3
+7de3e60f9f7df83a7299aa1b8b7a88013ace3233f70c9f63698dd331781d557e  /tank/fn/gates/takeover-v0-image-329a51a2/build/images/329a51a23f08e42904d4e0894c94ef5dc243d17e/lib/libsodium.so.23
+9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8  /tank/fn/toolchains/w28/acl2-literal-4g

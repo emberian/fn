@@ -1,0 +1,15 @@
+test_create_capacity_retire_reopen_preserves_history (tests.test_native_admin.NativeAdminTests.test_create_capacity_retire_reopen_preserves_history) ... ok
+test_live_uncertain_publication_fences_and_recovers (tests.test_native_admin.NativeAdminTests.test_live_uncertain_publication_fences_and_recovers) ... ok
+test_peer_add_and_remove_use_public_native_admin (tests.test_native_admin.NativeAdminTests.test_peer_add_and_remove_use_public_native_admin) ... ok
+test_policy_set_path_identity_is_a_durable_configuration_record (tests.test_native_admin.NativeAdminTests.test_policy_set_path_identity_is_a_durable_configuration_record) ... ok
+test_running_owner_applies_durable_administration (tests.test_native_admin.NativeAdminTests.test_running_owner_applies_durable_administration) ... ok
+test_running_owner_applies_policy_set_path_identity (tests.test_native_admin.NativeAdminTests.test_running_owner_applies_policy_set_path_identity) ... ok
+test_running_owner_applies_symmetric_peer_add_and_remove (tests.test_native_admin.NativeAdminTests.test_running_owner_applies_symmetric_peer_add_and_remove) ... ok
+test_two_administrators_have_no_post_publish_generation_race (tests.test_native_admin.NativeAdminTests.test_two_administrators_have_no_post_publish_generation_race) ... ok
+test_uncertain_publication_recovers_and_sweeps_admitted_stage_residue (tests.test_native_admin.NativeAdminTests.test_uncertain_publication_recovers_and_sweeps_admitted_stage_residue) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 3.028s
+
+OK
+native-admin launcher-sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505 core-sha256=7b00b3bf568f88e7f87b2d1ef2d801d45c248758424685f14ea804d3da9d6320 declared-source=329a51a23f08e42904d4e0894c94ef5dc243d17e

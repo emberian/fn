@@ -1,0 +1,17 @@
+test_legacy_horizon_and_new_stamp_on_reopened_store (tests.test_native_newnews_migration.NativeNewnewsMigrationTests.test_legacy_horizon_and_new_stamp_on_reopened_store) ... FAIL
+
+======================================================================
+FAIL: test_legacy_horizon_and_new_stamp_on_reopened_store (tests.test_native_newnews_migration.NativeNewnewsMigrationTests.test_legacy_horizon_and_new_stamp_on_reopened_store)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/takeover-v0-image-329a51a2/tests/test_native_newnews_migration.py", line 94, in test_legacy_horizon_and_new_stamp_on_reopened_store
+    old_only = self.newnews(store)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/takeover-v0-image-329a51a2/tests/test_native_newnews_migration.py", line 69, in newnews
+    self.assertTrue(reply.startswith(b"200 "), reply)
+AssertionError: False is not true : b'201 fn-nntp experimental reader ready\r\n230 list of new articles by message-id follows\r\n<old-newnews@example.invalid>\r\n.\r\n230 list of new articles by message-id follows\r\n<old-newnews@example.invalid>\r\n.\r\n205 closing connection\r\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.277s
+
+FAILED (failures=1)
