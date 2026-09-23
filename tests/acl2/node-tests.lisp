@@ -306,7 +306,7 @@
 
 (defconst *node-trace-first-prepare*
   '(:prepare 9 "<a@example.invalid>" (72 105 13 10)
-             ("fn.letters" "fn.test") "archive-a" "content-a" "release-a" 5))
+             ("fn.letters" "fn.test") "archive-a" "content-a" "release-a" 5 841000000))
 (defconst *node-trace-after-first-prepare*
   (fn-node-step *node-trace-empty* *node-trace-first-prepare*))
 
@@ -325,7 +325,7 @@
 (assert-event (not (fn-node-eventp '(:unknown 1 2 3))))
 (assert-event (not (fn-node-eventp '(:complete "not-a-txid" 0 :durable))))
 (assert-event (not (fn-node-eventp '(:prepare 0 "<bad>" (not-octets)
-                                     ("fn.letters") "id" "subject" "e" 1))))
+                                     ("fn.letters") "id" "subject" "e" 1 841000000))))
 (assert-event (equal (fn-node-step *node-trace-empty* '(:unknown 1 2 3))
                      *node-trace-empty*))
 (assert-event (equal (fn-node-step *node-trace-empty*
@@ -338,28 +338,28 @@
 ; old binding while later transactions exercise the remaining branches.
 (defconst *node-trace-events*
   '((:prepare 9 "<a@example.invalid>" (72 105 13 10)
-              ("fn.letters" "fn.test") "archive-a" "content-a" "release-a" 5)
+              ("fn.letters" "fn.test") "archive-a" "content-a" "release-a" 5 841000000)
     (:prepare 9 "<b@example.invalid>" (72 105 13 10)
-              ("fn.letters") "archive-b" "content-b" "release-b" 2)
+              ("fn.letters") "archive-b" "content-b" "release-b" 2 841000000)
     (:complete 99 9 :durable)
     (:complete 0 9 :durable)
     (:prepare 9 "<c@example.invalid>" (72 105 13 10)
-              ("fn.test") "archive-c" "content-c" "release-c" 1)
+              ("fn.test") "archive-c" "content-c" "release-c" 1 841000000)
     (:complete 1 9 :indeterminate)
     (:recover 1 9 :absent)
     (:prepare 9 "<b@example.invalid>" (72 105 13 10)
-              ("fn.letters") "archive-b" "content-b" "release-b" 2)
+              ("fn.letters") "archive-b" "content-b" "release-b" 2 841000000)
     (:complete 99 9 :durable)
     (:complete 2 9 :indeterminate)
     (:prepare 9 "<d@example.invalid>" (72 105 13 10)
-              ("fn.test") "archive-d" "content-d" "release-d" 1)
+              ("fn.test") "archive-d" "content-d" "release-d" 1 841000000)
     (:complete 99 9 :durable)
     (:recover 2 9 :committed)
     (:prepare 9 "<d@example.invalid>" (72 105 13 10)
-              ("fn.test") "archive-d" "content-d" "release-d" 1)
+              ("fn.test") "archive-d" "content-d" "release-d" 1 841000000)
     (:complete 3 9 :aborted)
     (:prepare 9 "<d@example.invalid>" (72 105 13 10)
-              ("fn.test") "archive-d" "content-d" "release-d" 1)
+              ("fn.test") "archive-d" "content-d" "release-d" 1 841000000)
     (:complete 4 9 :durable)))
 
 (defconst *node-trace-result*
@@ -403,15 +403,15 @@
 (defconst *node-trace-prefix*
   (fn-node-trace *node-trace-empty*
                  '((:prepare 9 "<a@example.invalid>" (72 105 13 10)
-                             ("fn.letters") "archive-a" "content-a" "release-a" 3)
+                             ("fn.letters") "archive-a" "content-a" "release-a" 3 841000000)
                    (:complete 0 9 :durable))))
 (defconst *node-trace-suffix*
   '((:bogus)
     (:complete 88 9 :durable)
     (:prepare 9 "<bad-group@example.invalid>" (72 105)
-              ("fn.missing") "archive-bad" "content-bad" "release-bad" 2)
+              ("fn.missing") "archive-bad" "content-bad" "release-bad" 2 841000000)
     (:prepare 9 "<b@example.invalid>" (72 105)
-              ("fn.test") "archive-b" "content-b" "release-b" 2)
+              ("fn.test") "archive-b" "content-b" "release-b" 2 841000000)
     (:complete 1 9 :indeterminate)
     (:recover 1 9 :absent)))
 (defconst *node-trace-prefix-suffix*

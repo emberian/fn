@@ -321,7 +321,7 @@
 ; this transaction, as it is for `fn-node-complete`.
 (defun fn-ct-publish-article (s a digest articles digests store profile
                                 generation groups evidence obligation-digest
-                                completion)
+                                completion stamp)
   (declare (xargs :guard (and (fn-node-statep s) (fn-ct-profilep profile)
                               (true-listp store))))
   (if (not (fn-ct-article-validp a digest articles digests store profile
@@ -336,7 +336,7 @@
              (prepared (fn-node-prepare s generation msgid
                                         (fn-ct-article-octets a) groups
                                         obligation-id subject evidence
-                                        (fn-ct-charge a))))
+                                        (fn-ct-charge a) stamp)))
         (if (equal prepared s)
             (list :refused s nil)
           (let ((done (fn-node-complete prepared txid generation completion)))
@@ -355,7 +355,7 @@
             (fn-ct-result-state
              (fn-ct-publish-article s a digest articles digests store profile
                                     generation groups evidence
-                                    obligation-digest completion))))
+                                    obligation-digest completion stamp))))
   :hints (("Goal" :in-theory (e/d (fn-ct-publish-article fn-ct-result-state
                                    fn-frame-item)
                                   (fn-ct-article-validp fn-node-prepare
@@ -368,7 +368,7 @@
 ; Result: (state outcomes) with one (msgid status receipt) per article.
 (defun fn-ct-publish-list (s candidates digests obligation-digests completions
                              articles all-digests store profile generation
-                             groups evidence)
+                             groups evidence stamp)
   ; The measure is named: ACL2's first guess is over the node state, and
   ; refuting it opens the acceptance and retention kernels inside the
   ; termination proof.
@@ -382,14 +382,14 @@
                    articles all-digests store profile generation groups
                    evidence
                    (if (consp obligation-digests) (car obligation-digests) nil)
-                   (if (consp completions) (car completions) nil)))
+                   (if (consp completions) (car completions) nil) stamp))
              (rest (fn-ct-publish-list
                     (fn-ct-result-state one) (cdr candidates)
                     (if (consp digests) (cdr digests) nil)
                     (if (consp obligation-digests) (cdr obligation-digests) nil)
                     (if (consp completions) (cdr completions) nil)
                     articles all-digests store profile generation groups
-                    evidence)))
+                    evidence stamp)))
         (list (fn-frame-item 0 rest)
               (cons (list (fn-ct-article-msgid (car candidates))
                           (fn-ct-result-status one)
@@ -400,7 +400,7 @@
 ; The container entry point.  Result: (:refused reason) for a container
 ; outside the profile, else (:ok state outcomes conflicts).
 (defun fn-ct-publish-container (s c digests obligation-digests completions
-                                  store profile generation groups evidence)
+                                  store profile generation groups evidence stamp)
   (declare (xargs :guard (and (fn-node-statep s) (fn-ct-profilep profile)
                               (true-listp store))))
   (if (not (fn-ct-containerp c profile))
@@ -408,7 +408,7 @@
     (let ((run (fn-ct-publish-list s (fn-ct-articles c) digests
                                    obligation-digests completions
                                    (fn-ct-articles c) digests store profile
-                                   generation groups evidence)))
+                                   generation groups evidence stamp)))
       (list :ok (fn-frame-item 0 run) (fn-frame-item 1 run)
             (fn-ct-conflict-evidence (fn-ct-articles c) (fn-ct-articles c))))))
 

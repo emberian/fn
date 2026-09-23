@@ -357,7 +357,7 @@
   (declare (xargs :mode :program))
   (fn-cnode-complete
    (fn-cnode-prepare cn 1 1 msgid *cn-t-payload* '("fn.test")
-                     (concatenate 'string "ob-" msgid) "subject" "ev" 1)
+                     (concatenate 'string "ob-" msgid) "subject" "ev" 1 841000000)
    txid 1 :durable))
 (defconst *cn-t-cn1b* (cn-t-post (cn-t-post *cn-t-cn1* "<a@t>" 0) "<b@t>" 1))
 (assert-event (fn-cnode-statep *cn-t-cn1b*))
@@ -368,14 +368,14 @@
 ; Witness: a staged prepare carries exactly the offered, served groups.
 (defconst *cn-t-staged*
   (fn-cnode-prepare *cn-t-cn1b* 1 1 "<c@t>" *cn-t-payload* '("fn.letters" "fn.test")
-                    "ob-c" "subject" "ev" 1))
+                    "ob-c" "subject" "ev" 1 841000000))
 (assert-event (not (equal *cn-t-staged* *cn-t-cn1b*)))
 (assert-event (equal (fn-pending-groups (fn-state-pending (fn-node-acceptance (fn-cnode-node *cn-t-staged*))))
                      '("fn.letters" "fn.test")))
 ; Tooth (the one hypothesis, "prepare staged"): a stale pin (generation 0) is
 ; refused, and then the pin is NOT the node's generation.
 (assert-event (equal (fn-cnode-prepare *cn-t-cn1b* 0 1 "<c@t>" *cn-t-payload* '("fn.test")
-                                       "ob-c" "subject" "ev" 1)
+                                       "ob-c" "subject" "ev" 1 841000000)
                      *cn-t-cn1b*))
 (assert-event (not (equal 0 (fn-cfg-generation (fn-cnode-config *cn-t-cn1b*)))))
 
@@ -398,7 +398,7 @@
 ; post into fn.test is refused by the configured node while the plain node,
 ; whose list is the domain, would still stage it.
 (assert-event (equal (fn-cnode-prepare *cn-t-cn2* 2 1 "<d@t>" *cn-t-payload* '("fn.test")
-                                       "ob-d" "subject" "ev" 1)
+                                       "ob-d" "subject" "ev" 1 841000000)
                      *cn-t-cn2*))
 (assert-event (not (equal (fn-node-prepare (fn-cnode-node *cn-t-cn2*) 1 "<d@t>" *cn-t-payload*
                                            '("fn.test") "ob-d" "subject" "ev" 1 841000000)
@@ -412,7 +412,7 @@
 (assert-event (equal (fn-cnode-served *cn-t-cn3*) '("fn.letters" "fn.test")))
 (defconst *cn-t-cn3b*
   (fn-cnode-complete
-   (fn-cnode-prepare *cn-t-cn3* 3 1 "<e@t>" *cn-t-payload* '("fn.test") "ob-<e@t>" "subject" "ev" 1)
+   (fn-cnode-prepare *cn-t-cn3* 3 1 "<e@t>" *cn-t-payload* '("fn.test") "ob-<e@t>" "subject" "ev" 1 841000000)
    2 1 :durable))
 (assert-event (equal (fn-article-memberships
                       (car (fn-state-articles (fn-node-acceptance (fn-cnode-node *cn-t-cn3b*)))))
