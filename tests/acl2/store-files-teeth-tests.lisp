@@ -32,7 +32,7 @@
 (defconst *sft-record*
   (fn-record-make 0 0 0 "<zero@example.invalid>" '(90)
                   '("fn.letters" "fn.test")
-                  "archive-zero" "content-zero" "release-zero" 2))
+                  "archive-zero" "content-zero" "release-zero" 2 841000000))
 
 (defconst *sft-frontier-staged* (fn-sf-start-frontier (fn-sf-initial-state)))
 (defconst *sft-frontier-durable*

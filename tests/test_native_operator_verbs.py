@@ -120,7 +120,7 @@ class NativeOperatorVerbCompositionTests(unittest.TestCase):
 
     def test_the_uncertain_word_is_acl2s_control_vocabulary(self):
         control = (ROOT / "books" / "native-control.lisp").read_text(encoding="ascii")
-        self.assertIn(":accepted :duplicate :refused :busy :uncertain :fault", control)
+        self.assertIn(":accepted :duplicate :refused :clock-unusable :busy :uncertain :fault", control)
         self.assertIn("(equal status :uncertain) :uncertain", control)
         owner_book = (ROOT / "books" / "owner.lisp").read_text(encoding="ascii")
         self.assertIn("(defun fn-own-control-outcome-result (o word)", owner_book)

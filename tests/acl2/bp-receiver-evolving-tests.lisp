@@ -26,7 +26,7 @@
 (assert-event (equal (nth 21 *bpr-adu*) 49))
 (assert-event (not (equal *bpre-adu2* *bpr-adu*)))
 (defconst *bpre-context2*
-  (fn-bpi-make-context "dtn://fn.lab/inbox" "dtn://other.lab" "local-bid-2" 300))
+  (fn-bpi-make-context "dtn://fn.lab/inbox" "dtn://other.lab" "local-bid-2" 300 (fn-clock-observation 1 841000000000 0 t)))
 ; A distinct archive obligation and subject: retention admits one obligation
 ; per identity, so the second article carries its own.
 (defconst *bpre-policy2*

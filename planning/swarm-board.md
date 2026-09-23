@@ -23,7 +23,35 @@ In the current Codex harness, use `collaboration.list_agents` and
 Share discoveries and failed attempts as well as successful commits. Name
 revision and theorem hypotheses when sharing a proof so its scope is clear.
 
-## Active efforts
+## Second convergence and resumed goal
+
+The user activated the v0/v1 and sleeping-agent exchange goal after the first
+convergence. Root is integrating T2a `6afec132`, scanner relation `2e2a82fe`,
+and fragment results `63fd3187`/`deb2e393`; the combined image is not built yet.
+
+- `acceptance_stamp`: repair actual caller findings from `stamp_review`,
+  classify old Store corruption fixtures, then brief T2b. Coordinate exact
+  migration assertions with root's image build. No independent image build.
+- `stamp_review`: bounded independent caller/schema/gate review. Found the
+  BP application's stale owner clock and lost control clock-refusal reason;
+  these are concrete repairs, not grounds for another whole-project review.
+- `crash_differential`: complete the seven outstanding served post cuts;
+  reuse frozen f0 for compatible tests and the next shared image for stamps.
+- `fragment_refinement`: C2 active-set principal/coherence work from integrated
+  C1, coordinating the foundation held-record representation directly.
+- `bp_foundation`: guards and actual native replacement interface. Keep one
+  owner (`fn-bpnf-step`) rather than introducing a third lifecycle machine;
+  FNBS A2 publication/recovery precedes the receive/ACK host switch.
+- `status_codec`: remove or separately prove the round-trip length premise,
+  finish D1a integration metadata; D1b generation/consumption remains open.
+- `consumer_contract`: specify the selected durable cursor/ack and inbox/outbox
+  exchange with adversarial scenarios; no inference of processing from output.
+
+Root owns the combined ledger, certification, image freeze and migration gate.
+Existing machine pools remain unchanged. Completed first-wave trees may have
+been removed; create a fresh tree from the announced base for new packets.
+
+## First-wave roster (historical)
 
 All branches below start at `df5097b6`; worktrees are under `build/lanes/`.
 This roster describes collaboration, not file reservations. Each lane has the

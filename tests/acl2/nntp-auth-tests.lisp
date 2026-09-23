@@ -43,7 +43,7 @@
 (defconst *au-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *au-groups*) 1 *au-id* *au-payload*
-                      *au-groups*)
+                      *au-groups* 841000000)
    0 1 :durable))
 (defconst *au-obs* (fn-clock-observation 1000000 843004800000 500 t))
 (defconst *au-agent* (fn-nntp-string-octets "fn.example.invalid"))

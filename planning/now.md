@@ -28,8 +28,23 @@ continue. [The swarm board](swarm-board.md) records their collaborations and
 shared runs. The completed [architectural reassessment](ambition-2026-09-23.md)
 recommends keeping the selected v0 finish line and exploring portable application
 evidence and durable consumers alongside later transport work. These experiments
-remain proposals, not new release requirements. No new autonomous goal has been
-activated.
+remain separate from the release requirements. The user has now activated an
+autonomous goal: complete the documented v0 readiness gates, make substantial
+integrated v1 progress, and establish the selected durable sleeping-agent
+exchange. Continue coordinated Sol implementation with root convergence,
+source-pinned evidence and bounded incremental proof work. This goal does not
+authorize replacing or exposing the live node.
+
+The second convergence is integrating T2a acceptance stamps with the stronger
+visible-image-to-scan theorem and fragmentation inverse/consumed-byte proofs.
+T2a's own affected closure certified; the combined source and carried-over
+Store migration still need their qualification. Independent caller review
+found that native BP application submission can use an old owner clock;
+that repair belongs to this batch before its image freezes. D1a's status-report
+codec has a bounded round-trip proof; its remaining bound premise is being
+examined before integration. Next lanes advance served crash cuts, BP guarded
+foundation/native joins, principal-partitioned fragment sets and the consumer
+contract. None of these source results changes the deployed image.
 
 Next: qualification of images/upgrades and served crash correspondence,
 alongside independent feed-replay, BP-foundation and authorship-carrier work.

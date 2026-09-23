@@ -11,10 +11,10 @@
 (defconst *cpp-groups* '("fn.letters" "fn.test"))
 (defconst *cpp-r0*
   (fn-record-make 0 0 0 "<cp0@example.invalid>" '(65 13 10)
-                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2))
+                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2 841000000))
 (defconst *cpp-r1*
   (fn-record-make 1 4 4 "<cp1@example.invalid>" '(66 13 10)
-                  '("fn.test") "cp-pin-1" "cp-content-1" "cp-release-1" 3))
+                  '("fn.test") "cp-pin-1" "cp-content-1" "cp-release-1" 3 841000000))
 (defconst *cpp-digest* (make-list 32 :initial-element 0))
 (defconst *cpp-prefix-0* (list *cpp-r0*))
 (defconst *cpp-prefix-1* (list *cpp-r0* *cpp-r1*))
@@ -343,7 +343,7 @@
 (defconst *cpp-stale*
   (fn-record-make 1 2 2 "<stale@example.invalid>" '(83 13 10)
                   '("fn.test") "cp-pin-stale" "cp-content-stale"
-                  "cp-release-stale" 1))
+                  "cp-release-stale" 1 841000000))
 (assert-event (not (fn-checkpoint-admissible-splitp *cpp-groups* 10 *cpp-prefix-0* 3
                                                     (list *cpp-stale*) 6)))
 (assert-event

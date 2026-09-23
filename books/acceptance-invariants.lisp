@@ -82,7 +82,7 @@
 (defthm fn-prepare-preserves-state
   (implies (fn-statep s)
            (fn-statep
-            (fn-accept-prepare s generation msgid payload groups))))
+            (fn-accept-prepare s generation msgid payload groups stamp))))
 
 (defthm fn-advance-preserves-nexts
   (implies (fn-nexts-for-p configured nexts)
@@ -213,7 +213,7 @@
            (equal (fn-find-article
                    existing-msgid
                    (fn-state-articles
-                    (fn-accept-prepare s generation msgid payload groups)))
+                    (fn-accept-prepare s generation msgid payload groups stamp)))
                   (fn-find-article existing-msgid (fn-state-articles s))))
   :hints (("Goal" :in-theory (disable fn-statep fn-accept-prepare
                                       fn-find-article))))
@@ -253,10 +253,10 @@
   (implies (fn-statep s)
            (fn-articles-freshp
             (fn-state-articles
-             (fn-accept-prepare s generation msgid payload groups))))
+             (fn-accept-prepare s generation msgid payload groups stamp))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-state-has-fresh-local-numbers
-                        (s (fn-accept-prepare s generation msgid payload groups))))
+                        (s (fn-accept-prepare s generation msgid payload groups stamp))))
            :in-theory (disable fn-statep fn-articles-freshp fn-accept-prepare))))
 
 (defthm fn-complete-preserves-local-number-uniqueness

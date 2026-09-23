@@ -73,7 +73,7 @@
 ; are the payload, which is what fn-stx-delta projects from.
 (defun fn-stxt-record (msgid octets)
   (declare (xargs :guard t))
-  (fn-make-article msgid octets nil nil t))
+  (fn-make-article msgid octets nil nil t 841000000))
 
 ; A node whose store is exactly `articles`.
 (defun fn-stxt-node (articles)
@@ -196,7 +196,7 @@
 
 (defconst *stxt-live-1*
   (fn-node-prepare *stxt-live-0* 9 "<1>" (fn-article-payload *stxt-r1*)
-                   '("fn.test") "archive-1" "content-1" "release-1" 5))
+                   '("fn.test") "archive-1" "content-1" "release-1" 5 841000000))
 (assert-event (fn-node-statep *stxt-live-1*))
 (assert-event (not (equal *stxt-live-1* *stxt-live-0*)))
 (assert-event (fn-node-pending-matchesp *stxt-live-1* 0 9))

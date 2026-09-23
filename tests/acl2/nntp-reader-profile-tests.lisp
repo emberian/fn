@@ -29,7 +29,7 @@
 (defconst *rp-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *rp-groups*) 1 *rp-id* *rp-payload*
-                      '("fn.letters"))
+                      '("fn.letters") 841000000)
    0 1 :durable))
 (defconst *rp-session0* (fn-nntp-open-session *rp-archive*))
 (assert-event (fn-nntp-projectionp *rp-archive*))
@@ -304,7 +304,7 @@
 (defconst *rp-fold-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *rp-groups*) 1 "<Fold@Id.invalid>"
-                      *rp-fold-payload* '("fn.letters"))
+                      *rp-fold-payload* '("fn.letters") 841000000)
    0 1 :durable))
 (defconst *rp-fold-over* (fn-nov-overview (car (fn-state-articles *rp-fold-archive*))))
 (assert-event (fn-nov-okp *rp-fold-over*))

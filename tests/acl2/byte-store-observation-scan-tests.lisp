@@ -7,7 +7,7 @@
 
 (defconst *bso-event-0*
   (fn-record-make 0 0 0 "<bso-0@example.invalid>" '(65)
-                  '("fn.letters") "archive" "subject" "evidence" 1))
+                  '("fn.letters") "archive" "subject" "evidence" 1 :legacy))
 (defconst *bso-event-1*
   (fn-store-retention-event-make :undertake 1 1 1
                                  "obligation-1" "article-0" "local" 1))

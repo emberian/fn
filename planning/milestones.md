@@ -1,8 +1,11 @@
 Current task (2026-09-23): T0 is complete and hbox runs the `da5fd8cb`
 image. The takeover's first convergence repaired and qualified protected
 peering/restart, native entry profiles, packaging, reclamation bindings and
-administration on isolated frozen images. Continue acceptance-stamp migration,
-served recovery correspondence, and the BP/authorship joins under the
+administration on isolated frozen images. The autonomous goal now covers the
+documented v0 gates, substantial integrated v1 work and the selected durable
+sleeping-agent exchange. Integrate acceptance-stamp migration and its native
+caller fixes, then qualify the combined image and carried-over Store. Continue
+served recovery correspondence and BP/authorship joins under the
 [takeover plan](takeover-2026-09-23.md).
 The [architectural reassessment](ambition-2026-09-23.md) proposes portable
 application-evidence and durable-consumer experiments while retaining the

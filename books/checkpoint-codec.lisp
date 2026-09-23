@@ -52,7 +52,7 @@
 (defconst *fn-cpc-magic* '(102 110 45 99))          ; "fn-c"
 (defconst *fn-cpc-schema-version* 0)
 (defconst *fn-cpc-header-uints* 5)
-(defconst *fn-cpc-symbols* '(t :archive :forward))
+(defconst *fn-cpc-symbols* '(t :archive :forward :legacy))
 (defconst *fn-cpc-max-groups* *fn-record-max-groups*)
 (defconst *fn-cpc-max-payload* *fn-frame-max-payload*)
 

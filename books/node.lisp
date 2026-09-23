@@ -178,7 +178,7 @@
 ; subject, and a positive abstract charge that includes retention's permanent
 ; history unit.  No cryptographic verification occurs in this machine.
 (defun fn-node-prepare (s generation msgid payload groups
-                          obligation-id subject evidence charge)
+                          obligation-id subject evidence charge stamp)
   (declare (xargs :guard (fn-node-statep s) :verify-guards nil))
   (if (mbe :logic (not (fn-node-statep s)) :exec nil)
       s
@@ -188,7 +188,7 @@
         s
       (let ((next-acceptance
              (fn-accept-prepare (fn-node-acceptance s)
-                                generation msgid payload groups)))
+                                generation msgid payload groups stamp)))
         ; The acceptance machine decides duplicates, groups, transaction
         ; serialization, and fencing.  Do not reserve if it refused to stage.
         (if (equal next-acceptance (fn-node-acceptance s))
@@ -299,7 +299,7 @@
                                              obligation-id subject :archive
                                              evidence charge)))
            (equal (fn-node-prepare s generation msgid payload groups
-                                   obligation-id subject evidence charge)
+                                   obligation-id subject evidence charge stamp)
                   s))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-node-prepare))))
@@ -309,11 +309,11 @@
            (and (equal (fn-state-articles
                         (fn-node-acceptance
                          (fn-node-prepare s generation msgid payload groups
-                                          obligation-id subject evidence charge)))
+                                          obligation-id subject evidence charge stamp)))
                        (fn-state-articles (fn-node-acceptance s)))
                 (equal (fn-node-retention
                         (fn-node-prepare s generation msgid payload groups
-                                         obligation-id subject evidence charge))
+                                         obligation-id subject evidence charge stamp))
                        (fn-node-retention s))))
   :hints (("Goal" :in-theory (enable fn-node-prepare fn-node-statep))))
 

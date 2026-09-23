@@ -15,26 +15,50 @@
 ; -----------------------------------------------------------------------------
 ; K1. Peering refines acceptance
 
+; An unusable observation makes the peer transfer defer before prepare; the
+; same invalid stamp makes the post path's prepare an identity transition.
+(local
+ (defthm fn-peer-invalid-stamp-prepare-is-no-op
+   (implies (not (fn-record-stampp stamp))
+            (equal (fn-node-prepare node generation msgid payload groups
+                                    obligation-id subject evidence charge stamp)
+                   node))
+   :hints (("Goal" :in-theory (enable fn-node-prepare fn-accept-prepare)))))
+
+(local
+ (defthm fn-peer-unusable-observation-gives-invalid-stamp
+   (implies (not (natp (fn-record-stamp-of-observation clock)))
+            (not (fn-record-stampp (fn-record-stamp-of-observation clock))))
+   :hints (("Goal" :use ((:instance
+                            fn-record-stamp-of-observation-is-natural-or-unusable
+                            (obs clock)))
+            :in-theory (enable fn-record-stampp)))))
+
+(local
+ (defthm fn-peer-injection-stamp-is-owner-observation
+   (equal (nth 8 (fn-peer-injection-arguments
+                  node cfg peer msgid octets generation id subject clock))
+          (fn-record-stamp-of-observation clock))
+   :hints (("Goal" :in-theory (e/d (fn-peer-injection-arguments)
+                                   (fn-article-parse
+                                    fn-af-relayed-article-check))))))
+
 ; The node a transit transfer produces is the node the post path produces on
-; the arguments ACL2 computes from the same octets.  No hypothesis: the
-; function is that call by construction, so the statement carries none, and
-; fn-node-statep enters only through fn-node-prepare's own refusal of a
-; non-state (fn-node-prepare-preserves-state, books/node-invariants.lisp).
+; the arguments ACL2 computes from the same octets, including clock refusal.
 (defthm fn-peer-transfer-is-the-post-path
   (implies (equal (fn-peer-decision-kind
                    (fn-peer-decide-transfer node cfg peer msgid octets clock
                                             id subject))
                   :want)
-           (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock
-                                              generation id subject))
-                  (let ((a (fn-peer-injection-arguments node cfg peer msgid octets
-                                                        generation id subject)))
+           (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
+                  (let ((a (fn-peer-injection-arguments node cfg peer msgid octets generation id subject clock)))
                     (fn-node-prepare node (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
-                                     (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a)))))
-  :hints (("Goal" :in-theory (e/d (fn-peer-transfer)
-                                  (fn-peer-decide-transfer
-                                   fn-peer-injection-arguments
-                                   fn-node-prepare)))))
+                                     (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a)))))
+  :hints (("Goal" :cases ((natp (fn-record-stamp-of-observation clock)))
+           :in-theory (e/d (fn-peer-transfer)
+                           (fn-peer-decide-transfer fn-node-prepare
+                            fn-peer-injection-arguments
+                            fn-record-stamp-of-observation)))))
 
 ; A transfer the decision refuses, defers or already has leaves the node
 ; exactly as it was.  -by-definition: the branch test is the hypothesis.
@@ -43,8 +67,7 @@
                         (fn-peer-decide-transfer node cfg peer msgid octets clock
                                                  id subject))
                        :want))
-           (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock
-                                              generation id subject))
+           (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
                   node))
   :hints (("Goal" :in-theory (e/d (fn-peer-transfer)
                                   (fn-peer-decide-transfer
@@ -62,16 +85,13 @@
                         (fn-peer-decide-transfer node cfg peer msgid octets clock
                                                  id subject))
                        :want)
-                (not (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets
-                                                        clock generation id subject))
+                (not (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
                             node)))
            (equal (fn-pending-groups
                    (fn-state-pending
                     (fn-node-acceptance
-                     (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock
-                                                 generation id subject)))))
-                  (nth 3 (fn-peer-injection-arguments node cfg peer msgid octets
-                                                      generation id subject))))
+                     (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject)))))
+                  (nth 3 (fn-peer-injection-arguments node cfg peer msgid octets generation id subject clock))))
   :hints (("Goal" :in-theory (e/d (fn-peer-transfer)
                                   (fn-peer-decide-transfer
                                    fn-peer-injection-arguments
@@ -79,29 +99,23 @@
            :use ((:instance fn-cnode-node-prepare-stages-the-offered-groups
                             (s node)
                             (generation (nth 0 (fn-peer-injection-arguments
-                                                node cfg peer msgid octets
-                                                generation id subject)))
+                                                node cfg peer msgid octets generation id subject clock)))
                             (msgid (nth 1 (fn-peer-injection-arguments
-                                           node cfg peer msgid octets
-                                           generation id subject)))
+                                           node cfg peer msgid octets generation id subject clock)))
                             (payload (nth 2 (fn-peer-injection-arguments
-                                             node cfg peer msgid octets
-                                             generation id subject)))
+                                             node cfg peer msgid octets generation id subject clock)))
                             (groups (nth 3 (fn-peer-injection-arguments
-                                            node cfg peer msgid octets
-                                            generation id subject)))
+                                            node cfg peer msgid octets generation id subject clock)))
                             (obligation-id (nth 4 (fn-peer-injection-arguments
-                                                   node cfg peer msgid octets
-                                                   generation id subject)))
+                                                   node cfg peer msgid octets generation id subject clock)))
                             (subject (nth 5 (fn-peer-injection-arguments
-                                             node cfg peer msgid octets
-                                             generation id subject)))
+                                             node cfg peer msgid octets generation id subject clock)))
                             (evidence (nth 6 (fn-peer-injection-arguments
-                                              node cfg peer msgid octets
-                                              generation id subject)))
+                                              node cfg peer msgid octets generation id subject clock)))
                             (charge (nth 7 (fn-peer-injection-arguments
-                                            node cfg peer msgid octets
-                                            generation id subject))))))))
+                                            node cfg peer msgid octets generation id subject clock)))
+                            (stamp (nth 8 (fn-peer-injection-arguments
+                                           node cfg peer msgid octets generation id subject clock))))))))
 
 ; Every group staged through transit is live at the configuration's
 ; generation: fn-peer-scope-groups admits nothing else.
@@ -125,8 +139,7 @@
             (fn-af-path-field-value
              (fn-article-result-article (fn-article-parse octets)))
             (fn-peer-local-identity cfg))
-           (and (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock
-                                                   generation id subject))
+           (and (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
                        node)
                 (member-equal (fn-peer-decision-kind
                                (fn-peer-decide-transfer node cfg peer msgid octets
@@ -182,8 +195,7 @@
 
 (defthm fn-peer-history-is-refused-at-transfer
   (implies (fn-peer-history-hasp (fn-record-octets-string msgid) node)
-           (and (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock
-                                                   generation id subject))
+           (and (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
                        node)
                 (member-equal (fn-peer-decision-kind
                                (fn-peer-decide-transfer node cfg peer msgid octets
@@ -215,8 +227,7 @@
                 (consp (fn-node-find-binding msgid (fn-node-bindings node))))
            (fn-peer-history-hasp
             msgid
-            (mv-nth 0 (fn-peer-transfer node cfg peer m octets clock
-                                        generation id subject))))
+            (mv-nth 0 (fn-peer-transfer node cfg peer m octets clock generation id subject))))
   :hints (("Goal" :in-theory (e/d (fn-peer-transfer fn-peer-history-hasp)
                                   (fn-node-prepare fn-peer-decide-transfer
                                    fn-peer-injection-arguments
@@ -380,8 +391,7 @@
 ; the correspondence the native drain checks at run time
 ; (fn-owner-transit-payload against fn-owner-submit-octets).
 (defthm fn-peer-injection-arguments-payload-unfolds
-  (equal (nth 2 (fn-peer-injection-arguments node cfg peer msgid octets
-                                             generation id subject))
+  (equal (nth 2 (fn-peer-injection-arguments node cfg peer msgid octets generation id subject clock))
          (fn-peer-relayed-octets cfg peer octets))
   :hints (("Goal" :in-theory (e/d (fn-peer-injection-arguments)
                                   (fn-peer-relayed-octets)))))

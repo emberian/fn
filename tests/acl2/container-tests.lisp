@@ -75,7 +75,7 @@
 (defconst *ct-run*
   (fn-ct-publish-container *ct-node* *ct-container* *ct-digests* *ct-obligations*
                            '(:durable :durable :durable) nil *ct-profile*
-                           1 *ct-groups* "release"))
+                           1 *ct-groups* "release" 841000000))
 (assert-event (equal (fn-frame-item 0 *ct-run*) :ok))
 (defconst *ct-final* (fn-frame-item 1 *ct-run*))
 (defconst *ct-outcomes* (fn-frame-item 2 *ct-run*))
@@ -101,7 +101,7 @@
  (equal (fn-ct-publish-container
          *ct-node* (fn-ct-make-container 1 (list *ct-t* *ct-a* *ct-b*) nil)
          *ct-digests* *ct-obligations* '(:durable :durable :durable) nil
-         *ct-profile* 1 *ct-groups* "release")
+         *ct-profile* 1 *ct-groups* "release" 841000000)
         *ct-run*))
 
 ; Refusals that never reach the node: version, missing dependency, cycles,
@@ -110,7 +110,7 @@
  (equal (fn-ct-publish-container
          *ct-node* (fn-ct-make-container 2 (list *ct-a*) nil) (list *ct-digest-a*)
          (list *ct-obligation-1*) '(:durable) nil *ct-profile* 1 *ct-groups*
-         "release")
+         "release" 841000000)
         '(:refused :container)))
 (defconst *ct-m* (fn-ct-make-article "<m@example.invalid>" *ct-id-c* '(77)
                                      (list *ct-id-d*)))
@@ -136,7 +136,7 @@
 (defconst *ct-aborted*
   (fn-ct-publish-article *ct-node* *ct-a* *ct-digest-a* (list *ct-a*)
                          (list *ct-digest-a*) nil *ct-profile* 1 *ct-groups*
-                         "release" *ct-obligation-1* :aborted))
+                         "release" *ct-obligation-1* :aborted 841000000))
 (assert-event (equal (fn-ct-result-status *ct-aborted*) :not-durable))
 (assert-event (equal (fn-ct-result-receipt *ct-aborted*) nil))
 (assert-event (not (fn-acceptedp "<a@example.invalid>"
@@ -150,7 +150,7 @@
   (fn-ct-publish-container
    *ct-node* (fn-ct-make-container 1 (list *ct-a* *ct-a-prime*) nil)
    (list *ct-digest-a* *ct-digest-c*) (list *ct-obligation-1* *ct-obligation-2*)
-   '(:durable :durable) nil *ct-profile* 1 *ct-groups* "release"))
+   '(:durable :durable) nil *ct-profile* 1 *ct-groups* "release" 841000000))
 (assert-event (equal (fn-frame-item 3 *ct-conflict-run*) (list *ct-a* *ct-a-prime*)))
 (assert-event (equal (fn-frame-item 1 (nth 0 (fn-frame-item 2 *ct-conflict-run*)))
                      :accepted))
@@ -163,7 +163,7 @@
 (defconst *ct-t-result*
   (fn-ct-publish-article *ct-node* *ct-t* *ct-digest-t* (fn-ct-articles *ct-container*)
                          *ct-digests* nil *ct-profile* 1 *ct-groups* "release"
-                         *ct-obligation-1* :durable))
+                         *ct-obligation-1* :durable 841000000))
 (assert-event (not (fn-ct-receiptp (fn-ct-result-receipt *ct-t-result*))))
 (assert-event (equal (fn-ct-result-receipt *ct-t-result*) nil))
 
@@ -175,7 +175,7 @@
               (fn-node-prepare *ct-node* 1 "<t@example.invalid>" '(72 105 33)
                                *ct-groups* (fn-ct-obligation-string *ct-obligation-1*)
                                (fn-ct-subject-string *ct-t*) "release"
-                               (fn-ct-charge *ct-t*))
+                               (fn-ct-charge *ct-t*) 841000000)
               0 1 :durable)
              *ct-node*)))
 (assert-event (equal (fn-ct-result-state *ct-t-result*) *ct-node*))
@@ -185,7 +185,7 @@
 (defconst *ct-a-result*
   (fn-ct-publish-article *ct-node* *ct-a* *ct-digest-a* (fn-ct-articles *ct-container*)
                          *ct-digests* nil *ct-profile* 1 *ct-groups* "release"
-                         *ct-obligation-2* :durable))
+                         *ct-obligation-2* :durable 841000000))
 (assert-event (equal (fn-ct-result-status *ct-a-result*) :accepted))
 (assert-event (not (equal (fn-ct-result-state *ct-a-result*) *ct-node*)))
 
@@ -263,14 +263,14 @@
                                 (list *ct-obligation-1* *ct-obligation-2*)
                                 '(:durable :durable)
                                 (list *ct-a* *ct-b*) (list *ct-digest-a* *ct-digest-b*)
-                                nil *ct-profile* 1 *ct-groups* "release"))
+                                nil *ct-profile* 1 *ct-groups* "release" 841000000))
              (fn-frame-item 0 (fn-ct-publish-list
                                 *ct-node* (list *ct-b*)
                                 (list *ct-digest-b*)
                                 (list *ct-obligation-2*)
                                 '(:durable)
                                 (list *ct-a* *ct-b*) (list *ct-digest-a* *ct-digest-b*)
-                                nil *ct-profile* 1 *ct-groups* "release")))))
+                                nil *ct-profile* 1 *ct-groups* "release" 841000000)))))
 
 ; Teeth for fn-ct-accepted-article-is-in-the-node: a node refusal (no
 ; retention capacity for the charge) is :refused, and the article is absent.
@@ -278,7 +278,7 @@
 (defconst *ct-refused*
   (fn-ct-publish-article *ct-tiny-node* *ct-a* *ct-digest-a* (list *ct-a*)
                          (list *ct-digest-a*) nil *ct-profile* 1 *ct-groups*
-                         "release" *ct-obligation-1* :durable))
+                         "release" *ct-obligation-1* :durable 841000000))
 (assert-event (equal (fn-ct-result-status *ct-refused*) :refused))
 (assert-event (equal (fn-ct-result-receipt *ct-refused*) nil))
 (assert-event (not (fn-acceptedp "<a@example.invalid>"
@@ -293,17 +293,17 @@
  (equal (fn-ct-publish-container
          *ct-node* (fn-ct-make-container 1 (list *ct-a*) (list *ct-big-unknown*))
          (list *ct-digest-a*) (list *ct-obligation-1*) '(:durable) nil
-         *ct-profile* 1 *ct-groups* "release")
+         *ct-profile* 1 *ct-groups* "release" 841000000)
         '(:refused :container)))
 (assert-event
  (not (equal (fn-ct-publish-container
               *ct-node* (fn-ct-make-container 1 (list *ct-a*) (list *ct-unknown*))
               (list *ct-digest-a*) (list *ct-obligation-1*) '(:durable) nil
-              *ct-profile* 1 *ct-groups* "release")
+              *ct-profile* 1 *ct-groups* "release" 841000000)
              (fn-ct-publish-container
               *ct-node* (fn-ct-make-container 1 (list *ct-a*) (list *ct-big-unknown*))
               (list *ct-digest-a*) (list *ct-obligation-1*) '(:durable) nil
-              *ct-profile* 1 *ct-groups* "release"))))
+              *ct-profile* 1 *ct-groups* "release" 841000000))))
 
 ; fn-ct-identity-okp-is-spec-okp: its one hypothesis has no ground witness.
 ; `fn-ct-identity-spec-okp` is stated against the constrained

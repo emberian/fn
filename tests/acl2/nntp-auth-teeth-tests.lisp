@@ -62,7 +62,7 @@
 (defconst *aut-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *aut-groups*) 1 *aut-id* *aut-payload*
-                      *aut-groups*)
+                      *aut-groups* 841000000)
    0 1 :durable))
 (defconst *aut-obs* (fn-clock-observation 1000000 843004800000 500 t))
 (defconst *aut-agent* (fn-nntp-string-octets "fn.example.invalid"))

@@ -70,7 +70,7 @@
     (let ((octets
            (append
             (fn-cbor-encode (cons :bytes *fn-record-magic*))
-            (fn-cbor-encode (cons :uint *fn-record-schema-version*))
+            (fn-cbor-encode (cons :uint (fn-record-schema-octet record)))
             (fn-cbor-encode (cons :uint (fn-record-sequence record)))
             (fn-cbor-encode (cons :uint (fn-record-txid record)))
             (fn-cbor-encode (cons :uint (fn-record-generation record)))
@@ -89,8 +89,14 @@
             (fn-cbor-encode (cons :bytes
                                   (fn-record-string-octets
                                    (fn-record-release-evidence record))))
-            (fn-cbor-encode (cons :uint (fn-record-charge record))))))
+            (fn-cbor-encode (cons :uint (fn-record-charge record)))
+            (if (equal (fn-record-stamp record) :legacy)
+                nil
+              (fn-cbor-encode (cons :uint (fn-record-stamp record)))))))
       (if (fn-cbor-at-mostp octets *fn-record-max-octets*) octets nil))))
+
+(defun fn-record-schema0-encode (record)
+  (fn-record-encode-impl (fn-record-with-stamp record :legacy)))
 
 
 (defun fn-record-read-uint (octets)
@@ -136,8 +142,9 @@
                    (cons name (fn-record-parse-value tail))
                    (fn-record-parse-rest tail)))))))))))
 
-(defun fn-record-decode-tail (sequence txid generation msgid payload octets)
-  (declare (xargs :guard (and (fn-record-uint32p sequence)
+(defun fn-record-decode-tail (schema sequence txid generation msgid payload octets)
+  (declare (xargs :guard (and (or (equal schema 0) (equal schema 1))
+                              (fn-record-uint32p sequence)
                               (fn-record-uint32p txid)
                               (fn-record-uint32p generation)
                               (fn-record-msgidp msgid)
@@ -173,7 +180,13 @@
                                   (fn-record-parse-rest evidence-result))))
                             (if (not (fn-record-parse-okp charge-result))
                                 charge-result
-                              (let* ((id (fn-record-octets-string
+                              (let* ((stamp-result
+                                      (if (equal schema 0)
+                                          (fn-record-parse-ok :legacy
+                                                              (fn-record-parse-rest charge-result))
+                                        (fn-record-read-uint
+                                         (fn-record-parse-rest charge-result))))
+                                     (id (fn-record-octets-string
                                           (fn-record-parse-value id-result)))
                                      (subject (fn-record-octets-string
                                                (fn-record-parse-value subject-result)))
@@ -184,15 +197,19 @@
                                        sequence txid generation msgid payload
                                        (fn-record-parse-value groups-result)
                                        id subject evidence
-                                       (fn-record-parse-value charge-result))))
-                                (if (not (null (fn-record-parse-rest charge-result)))
+                                       (fn-record-parse-value charge-result)
+                                       (fn-record-parse-value stamp-result))))
+                                (if (not (fn-record-parse-okp stamp-result))
+                                    stamp-result
+                                  (if (not (null (fn-record-parse-rest stamp-result)))
                                     (fn-record-parse-error :trailing)
                                   (if (fn-record-p record)
                                       (fn-record-parse-ok record nil)
-                                    (fn-record-parse-error :invalid)))))))))))))))))))
+                                    (fn-record-parse-error :invalid))))))))))))))))))))
 
-(defun fn-record-decode-after-header (octets)
-  (declare (xargs :guard (fn-cbor-octet-listp octets)
+(defun fn-record-decode-after-header (schema octets)
+  (declare (xargs :guard (and (or (equal schema 0) (equal schema 1))
+                              (fn-cbor-octet-listp octets))
                   :verify-guards nil))
   (let ((sequence-result (fn-record-read-uint octets)))
     (if (not (fn-record-parse-okp sequence-result))
@@ -223,6 +240,7 @@
                             (if (not (fn-record-payloadp payload))
                                 (fn-record-parse-error :payload)
                               (fn-record-decode-tail
+                               schema
                                (fn-record-parse-value sequence-result)
                                (fn-record-parse-value txid-result)
                                (fn-record-parse-value generation-result)
@@ -244,11 +262,12 @@
                    (fn-record-read-uint (fn-record-parse-rest magic-result))))
               (if (not (fn-record-parse-okp version-result))
                   version-result
-                (if (not (equal (fn-record-parse-value version-result)
-                                *fn-record-schema-version*))
+                (if (not (member-equal (fn-record-parse-value version-result)
+                                       '(0 1)))
                     (fn-record-parse-error :unknown-version)
                   (let ((parsed
                          (fn-record-decode-after-header
+                          (fn-record-parse-value version-result)
                           (fn-record-parse-rest version-result))))
                     (if (fn-record-parse-okp parsed)
                         (fn-record-result-ok (fn-record-parse-value parsed))
@@ -516,9 +535,9 @@
 (defthm fn-record-schema0-golden-round-trip
   (equal (fn-record-decode-exact-impl
           (fn-record-encode-impl
-           (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4)))
+           (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy)))
          (fn-record-result-ok
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4)))
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy)))
   :rule-classes nil)
 
 ; The same vector as exact wire octets: the concrete conformance fact the
@@ -535,14 +554,14 @@
 
 (defthm fn-record-schema0-golden-octets-are-the-encoding
   (equal (fn-record-encode-impl
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4))
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy))
          *fn-record-schema0-golden-octets*)
   :rule-classes nil)
 
 (defthm fn-record-schema0-golden-octets-decode
   (equal (fn-record-decode-exact-impl *fn-record-schema0-golden-octets*)
          (fn-record-result-ok
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4)))
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy)))
   :rule-classes nil)
 
 ; Grammar conformance at the header: a wrong magic octet and a version
@@ -550,8 +569,25 @@
 (defthm fn-record-schema0-golden-grammar-refusals
   (and (equal (fn-record-decode-exact-impl '(68 102 110 45 115 0))
               (fn-record-parse-error :magic))
-       (equal (fn-record-decode-exact-impl '(68 102 110 45 114 1))
+       (equal (fn-record-decode-exact-impl '(68 102 110 45 114 2))
               (fn-record-parse-error :unknown-version)))
+  :rule-classes nil)
+
+; Schema 1 preserves every schema-0 field byte and appends one canonical uint.
+(defconst *fn-record-schema1-golden-octets*
+  '(68 102 110 45 114 1 1 2 3 67 60 97 62 66 9 8 1 65 103
+    65 111 65 115 65 101 4 5))
+
+(defthm fn-record-schema1-golden-octets-are-the-encoding
+  (equal (fn-record-encode-impl
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5))
+         *fn-record-schema1-golden-octets*)
+  :rule-classes nil)
+
+(defthm fn-record-schema1-golden-octets-decode
+  (equal (fn-record-decode-exact-impl *fn-record-schema1-golden-octets*)
+         (fn-record-result-ok
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5)))
   :rule-classes nil)
 
 
@@ -606,4 +642,3 @@
                     fn-record-read-bytes-success-domain
                     fn-record-parse-groups-is-true-list
                     fn-record-parse-groups-success-domain))
-

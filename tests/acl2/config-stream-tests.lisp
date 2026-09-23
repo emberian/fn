@@ -30,7 +30,7 @@
 (defun cstr-t-article (seq txid msgid)
   (declare (xargs :mode :program))
   (fn-record-make seq txid 1 msgid *cstr-t-payload* '("fn.test")
-                  (concatenate 'string "ob-" msgid) "subject" "ev" 1))
+                  (concatenate 'string "ob-" msgid) "subject" "ev" 1 841000000))
 
 (defconst *cstr-t-a1* (cstr-t-article 1 0 "<a@t>"))
 (defconst *cstr-t-a2* (cstr-t-article 2 1 "<b@t>"))

@@ -160,7 +160,7 @@ the group stop itself, so no instruction after this call runs until SIGCONT."
 (defun fnn-control-test-after-submit (status)
   "Developer-only process-stop cut after owner completion, before the reply."
   (when (and (fnn-control-stop-cut-armed-p)
-             (member status '(:accepted :duplicate :refused)))
+             (member status '(:accepted :duplicate :refused :clock-unusable)))
     (fnn-out "CONTROL-SUBMITTED")
     (fnn-control-stop-calling-thread)))
 
@@ -452,7 +452,7 @@ joins it before the process exits."
                                      (fnn-core
                                       'fn-native-control-host-reply-decode
                                       (fnn-octet-list frame)))))
-                   (if (member status '(:accepted :duplicate :refused :busy
+                   (if (member status '(:accepted :duplicate :refused :clock-unusable :busy
                                         :uncertain :fault))
                        status
                      (fnn-control-transport-outcome stage)))))
@@ -491,7 +491,7 @@ joins it before the process exits."
                                  (fnn-core 'fn-native-control-host-reply-decode
                                            (fnn-octet-list frame)))))
                      (if (member status
-                                 '(:accepted :duplicate :refused :busy
+                                 '(:accepted :duplicate :refused :clock-unusable :busy
                                    :uncertain :fault))
                          status
                        (fnn-control-transport-outcome stage)))))

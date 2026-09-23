@@ -781,10 +781,33 @@ round policy."
                     (second value)))))
 (defun fnn-bridge-io (operation result)
   (fnn-action (fnn-core-state 'fn-store-sn-io operation result)))
+
+(defconstant +fnn-owner-wall-error-ms+ 1000)
+(defconstant +fnn-owner-unix-dtn-offset-seconds+
+  (- (encode-universal-time 0 0 0 1 1 2000 0)
+     (encode-universal-time 0 0 0 1 1 1970 0)))
+
+(defun fnn-owner-wall-milliseconds ()
+  "One gettimeofday reading since 2000-01-01; the second value says if usable."
+  (handler-case
+      (multiple-value-bind (seconds microseconds) (sb-ext:get-time-of-day)
+        (let ((wall (+ (* 1000 (- seconds +fnn-owner-unix-dtn-offset-seconds+))
+                       (floor microseconds 1000))))
+          (if (minusp wall) (values 0 nil) (values wall t))))
+    (error () (values 0 nil))))
+
+(defun fnn-store-prepare-observation ()
+  (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
+    (fnn-core 'fn-clock-observation
+              (floor (* (get-internal-real-time) 1000)
+                     internal-time-units-per-second)
+              wall +fnn-owner-wall-error-ms+ has-wall)))
+
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
   (fnn-action (fnn-core-state 'fn-store-sn-prepare (fnn-octet-list msgid) (fnn-octet-list payload)
                               codes (fnn-octet-list obligation) (fnn-octet-list subject)
-                              (fnn-octet-list evidence) charge)))
+                              (fnn-octet-list evidence) charge
+                              (fnn-store-prepare-observation))))
 (defun fnn-bridge-existing-action (msgid payload codes)
   (fnn-action (fnn-core-state 'fn-store-sn-existing-action (fnn-octet-list msgid)
                               (fnn-octet-list payload) codes)))

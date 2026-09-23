@@ -230,7 +230,7 @@
 ; `st`, not `state`: ACL2 reserves that symbol for the live state.
 (defun nn-accept (st msgid payload groups)
   (fn-accept-complete
-   (fn-accept-prepare st 1 msgid payload groups)
+   (fn-accept-prepare st 1 msgid payload groups 841000000)
    (fn-state-next-txid st) 1 :durable))
 
 (defconst *nn-archive*

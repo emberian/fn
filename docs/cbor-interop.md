@@ -55,12 +55,12 @@ shortest argument heads, a 65535-byte payload limit, a 65538-octet input limit,
 and exact single-item decoding. Therefore generic CBOR acceptance is not
 reported as fn-profile acceptance.
 
-The schema-0 fixture uses actual `fn-record-encode` and
+The schema-0 and schema-1 fixtures use the attached `fn-record-encode` and
 `fn-record-decode-exact` calls. cbor2 decodes the concatenated primitive items,
 re-encodes them, and supplies an independently encoded sequence back to ACL2.
-This checks primitive sequence interoperability for the provisional record; it
-does not establish a frozen native object schema, signature preimage, storage
-ABI, or complete schema-evolution contract.
+This checks primitive sequence interoperability for both exact record grammars;
+the separately certified codec seam establishes the general round-trip and
+canonicality claims.
 
 The ACL2 bridge sends only generated decimal octet-list literals to fixed calls
 to `fn-cbor-*` and `fn-record-*`; no external bytes are passed to the Lisp

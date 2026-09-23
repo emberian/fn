@@ -22,12 +22,12 @@
   (fn-node-complete
    (fn-node-prepare *sched-node-0* 9 "<small@fn.invalid>" *sched-payload-small*
                     *sched-groups* "archive-small" "subject-small"
-                    "release-small" 4)
+                    "release-small" 4 841000000)
    0 9 :durable))
 (defconst *sched-node-2*
   (fn-node-complete
    (fn-node-prepare *sched-node-1* 10 "<big@fn.invalid>" *sched-payload-big*
-                    *sched-groups* "archive-big" "subject-big" "release-big" 4)
+                    *sched-groups* "archive-big" "subject-big" "release-big" 4 841000000)
    1 10 :durable))
 
 (defconst *sched-config*

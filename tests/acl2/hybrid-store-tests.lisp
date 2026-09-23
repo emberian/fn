@@ -13,7 +13,7 @@
 (defconst *hst-source* '(65 13 10))
 (defconst *hst-record*
   (fn-record-make 2 3 4 "<hybrid@example.invalid>" *hst-source* '("example")
-                  "obligation" "subject" "release" 3))
+                  "obligation" "subject" "release" 3 841000000))
 (defconst *hst-record-octets* (fn-record-encode-impl *hst-record*))
 (make-event `(defconst *hst-snapshot* ',(fn-hsig-keyring-snapshot *hst-principal* *hst-keys*)))
 
@@ -44,21 +44,41 @@
    *hst-authored-source* '("example") "obligation" "subject" "release"
    (fn-charge-for-payload (len *hst-authored-source*))
    *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
-   :verified :verified)))
+   :verified :verified (fn-clock-observation 1 841000000000 0 t))))
+(assert-equal
+ (fn-record-stamp
+  (fn-record-result-record
+   (fn-record-decode-exact
+    (fn-stxa-article-record
+     (fn-hsig-authorized-submission-event
+      2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+      *hst-authored-source* '("example") "obligation" "subject" "release"
+      (fn-charge-for-payload (len *hst-authored-source*))
+      *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+      :verified :verified (fn-clock-observation 1 841000000000 0 t))))))
+ 841000000)
+(assert-equal
+ (fn-hsig-authorized-submission-event
+  2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+  *hst-authored-source* '("example") "obligation" "subject" "release"
+  (fn-charge-for-payload (len *hst-authored-source*))
+  *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+  :verified :verified (fn-clock-observation 1 0 0 nil))
+ nil)
 (assert-equal
  (fn-hsig-authorized-submission-event
   2 3 4 4 *hst-snapshot* "<conflict@example.invalid>"
   *hst-authored-source* '("example") "obligation" "subject" "release"
   (fn-charge-for-payload (len *hst-authored-source*))
   *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
-  :verified :verified)
+  :verified :verified (fn-clock-observation 1 841000000000 0 t))
  nil)
 (assert-equal
  (fn-hsig-authorized-submission-event
   2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
   *hst-authored-source* '("example") "obligation" "subject" "release" 1
   *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
-  :verified :verified)
+  :verified :verified (fn-clock-observation 1 841000000000 0 t))
  nil)
 
 (assert! (fn-stxk-p

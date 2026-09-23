@@ -486,6 +486,11 @@
       (fn-replay-apply-retention-event node record)
     (if (or (fn-stxe-p record) (fn-stxk-p record))
         (fn-replay-apply-identity-neutral node record)
+      ; Unreachable-in-composition: journal replay enters with no pending
+      ; transaction.  A standalone article step refuses a staged node, lest a
+      ; record with matching coordinates complete that different article.
+      (if (not (null (fn-node-stage node)))
+          nil
       (let* ((article (if (fn-stxa-p record)
                           (fn-replay-composite-record record)
                         record))
@@ -503,7 +508,8 @@
                                 (fn-record-obligation-id article)
                                 (fn-record-content-subject article)
                                 (fn-record-release-evidence article)
-                                (fn-record-charge article))))
+                                (fn-record-charge article)
+                                (fn-record-stamp article))))
           (if (not (fn-node-pending-matchesp
                     prepared
                     (fn-record-txid article)
@@ -512,7 +518,7 @@
             (fn-node-complete prepared
                               (fn-record-txid article)
                               (fn-record-generation article)
-                              :durable)))))))))
+                              :durable))))))))))
 
 ; From here down the event recognizers and the composite article decoder are
 ; closed.  `fn-record-shape-vocabulary' is enabled for this book (above), so an

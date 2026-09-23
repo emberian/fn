@@ -213,7 +213,8 @@
   (fn-record-make 0 0 0
                   "<inn-lab-fn-operator-8a5f502-20260922T212621Z@example.invalid>"
                   *opt-injected* '("fn.letters")
-                  "opt-pin" "opt-content" "opt-release" 2))
+                  "opt-pin" "opt-content" "opt-release" 2
+                  (fn-record-stamp-of-observation *opt-obs*)))
 (defconst *opt-taken* (fn-own-take-submission *opt-queued*))
 (assert-event (fn-own-control-submissionp (fn-own-inflight *opt-taken*)))
 (defconst *opt-done*

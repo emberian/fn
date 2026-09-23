@@ -224,12 +224,12 @@
 (in-theory (disable (:d fn-bpi-policy-shapep) (:d fn-bpi-policy-destination) (:d fn-bpi-policy-endpoint) (:d fn-bpi-policy-group-map) (:d fn-bpi-policy-archive-id) (:d fn-bpi-policy-subject) (:d fn-bpi-policy-evidence) (:d fn-bpi-policy-charge) (:d fn-bpi-policy-id) (:d fn-bpi-policy-terms-id) (:d fn-bpi-policy-issuer-eid)
                     (:d fn-bpi-make-policy)))
 
-; Transport context: (destination-eid source-eid bpa-bundle-id bp-lifetime).
+; Transport context: (destination-eid source-eid bpa-bundle-id bp-lifetime observation).
 ; It records what the host observed.  Source EID is deliberately not an
 ; author/signer input, and BPA bundle IDs remain local transport references.
 (defun fn-bpi-context-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 4)))
+  (and (true-listp x) (equal (len x) 5)))
 (defun fn-bpi-context-destination (x)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car x)
@@ -250,21 +250,28 @@
   (mbe :logic (car (cdr (cdr (cdr x))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
 (verify-guards fn-bpi-context-lifetime)
-(defun fn-bpi-make-context (destination source-eid bundle-id lifetime)
+(defun fn-bpi-context-observation (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
+(verify-guards fn-bpi-context-observation)
+(defun fn-bpi-make-context (destination source-eid bundle-id lifetime observation)
   (declare (xargs :guard t))
-  (list destination source-eid bundle-id lifetime))
+  (list destination source-eid bundle-id lifetime observation))
 (verify-guards fn-bpi-make-context)
 
 (defthm fn-bpi-context-shapep-of-fn-bpi-make-context
-  (fn-bpi-context-shapep (fn-bpi-make-context destination source-eid bundle-id lifetime)))
+  (fn-bpi-context-shapep (fn-bpi-make-context destination source-eid bundle-id lifetime observation)))
 (defthm fn-bpi-context-destination-of-fn-bpi-make-context
-  (equal (fn-bpi-context-destination (fn-bpi-make-context destination source-eid bundle-id lifetime)) destination))
+  (equal (fn-bpi-context-destination (fn-bpi-make-context destination source-eid bundle-id lifetime observation)) destination))
 (defthm fn-bpi-context-source-eid-of-fn-bpi-make-context
-  (equal (fn-bpi-context-source-eid (fn-bpi-make-context destination source-eid bundle-id lifetime)) source-eid))
+  (equal (fn-bpi-context-source-eid (fn-bpi-make-context destination source-eid bundle-id lifetime observation)) source-eid))
 (defthm fn-bpi-context-bundle-id-of-fn-bpi-make-context
-  (equal (fn-bpi-context-bundle-id (fn-bpi-make-context destination source-eid bundle-id lifetime)) bundle-id))
+  (equal (fn-bpi-context-bundle-id (fn-bpi-make-context destination source-eid bundle-id lifetime observation)) bundle-id))
 (defthm fn-bpi-context-lifetime-of-fn-bpi-make-context
-  (equal (fn-bpi-context-lifetime (fn-bpi-make-context destination source-eid bundle-id lifetime)) lifetime))
+  (equal (fn-bpi-context-lifetime (fn-bpi-make-context destination source-eid bundle-id lifetime observation)) lifetime))
+(defthm fn-bpi-context-observation-of-fn-bpi-make-context
+  (equal (fn-bpi-context-observation (fn-bpi-make-context destination source-eid bundle-id lifetime observation)) observation))
 (defthm fn-bpi-context-shapep-forward-shape
   (implies (fn-bpi-context-shapep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
@@ -272,7 +279,8 @@
   (and (implies (fn-bpi-context-destination x) (consp x))
        (implies (fn-bpi-context-source-eid x) (consp x))
        (implies (fn-bpi-context-bundle-id x) (consp x))
-       (implies (fn-bpi-context-lifetime x) (consp x)))
+       (implies (fn-bpi-context-lifetime x) (consp x))
+       (implies (fn-bpi-context-observation x) (consp x)))
   :rule-classes ((:forward-chaining :corollary (implies (fn-bpi-context-destination x) (consp x))
                                     :trigger-terms ((fn-bpi-context-destination x)))
                  (:forward-chaining :corollary (implies (fn-bpi-context-source-eid x) (consp x))
@@ -280,9 +288,11 @@
                  (:forward-chaining :corollary (implies (fn-bpi-context-bundle-id x) (consp x))
                                     :trigger-terms ((fn-bpi-context-bundle-id x)))
                  (:forward-chaining :corollary (implies (fn-bpi-context-lifetime x) (consp x))
-                                    :trigger-terms ((fn-bpi-context-lifetime x)))))
+                                    :trigger-terms ((fn-bpi-context-lifetime x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-context-observation x) (consp x))
+                                    :trigger-terms ((fn-bpi-context-observation x)))))
 (in-theory (disable (:d fn-bpi-context-shapep) (:d fn-bpi-context-destination) (:d fn-bpi-context-source-eid) (:d fn-bpi-context-bundle-id) (:d fn-bpi-context-lifetime)
-                    (:d fn-bpi-make-context)))
+                    (:d fn-bpi-context-observation) (:d fn-bpi-make-context)))
 
 (defun fn-bpi-group-map-entryp (entry)
   (declare (xargs :guard t :verify-guards nil))
@@ -402,7 +412,8 @@
        (fn-record-metadata-bytes-p (fn-bpi-context-destination context))
        (fn-record-metadata-bytes-p (fn-bpi-context-source-eid context))
        (fn-record-metadata-bytes-p (fn-bpi-context-bundle-id context))
-       (fn-record-uint32p (fn-bpi-context-lifetime context))))
+       (fn-record-uint32p (fn-bpi-context-lifetime context))
+       (fn-clock-observationp (fn-bpi-context-observation context))))
 (verify-guards fn-bpi-context-p)
 (defthm fn-bpi-context-p-forward-shape
   (implies (fn-bpi-context-p x) (and (consp x) (true-listp x)))
@@ -420,34 +431,19 @@
               (fn-sn-groups store))))
 (verify-guards fn-bpi-policy-appliesp)
 
-(defun fn-bpi-record-for (store policy msgid-octets group-octets adu)
+(defun fn-bpi-record-for (store policy context msgid-octets group-octets adu)
   (declare (xargs :guard t :verify-guards nil))
   ; fn-record-octets-string is exact for this validated ASCII Message-ID.  The
   ; original ADU itself remains the Store payload without reconstruction.
-  (mbe :logic
-(fn-record-make (fn-sn-identity-next store)
-                  (1- (fn-sf-frontier (fn-sn-files store)))
-                  (1- (fn-sf-frontier (fn-sn-files store)))
-                  (fn-record-octets-string msgid-octets)
-                  adu
-                  (car (cdr (fn-bpi-map-groups group-octets
-                                                (fn-bpi-policy-group-map policy))))
-                  (fn-bpi-policy-archive-id policy)
-                  (fn-bpi-policy-subject policy)
-                  (fn-bpi-policy-evidence policy)
-                  (fn-bpi-policy-charge policy))
-       :exec
-(fn-record-make (fn-sn-identity-next store)
-                  (fn-bpi-ag-dec (fn-sf-frontier (fn-sn-files store)))
-                  (fn-bpi-ag-dec (fn-sf-frontier (fn-sn-files store)))
-                  (fn-record-octets-string msgid-octets)
-                  adu
-                  (fn-ag-car (fn-ag-cdr (fn-bpi-map-groups group-octets
-                                                (fn-bpi-policy-group-map policy))))
-                  (fn-bpi-policy-archive-id policy)
-                  (fn-bpi-policy-subject policy)
-                  (fn-bpi-policy-evidence policy)
-                  (fn-bpi-policy-charge policy))))
+  (fn-sn-article-record
+   store (fn-bpi-context-observation context)
+   (fn-record-octets-string msgid-octets) adu
+   (car (cdr (fn-bpi-map-groups group-octets
+                                (fn-bpi-policy-group-map policy))))
+   (fn-bpi-policy-archive-id policy)
+   (fn-bpi-policy-subject policy)
+   (fn-bpi-policy-evidence policy)
+   (fn-bpi-policy-charge policy)))
 (verify-guards fn-bpi-record-for)
 
 ; Result: (:rejected reason) or (:prepared store record).  The caller must
@@ -494,7 +490,9 @@
                                  groups (fn-bpi-policy-group-map policy))))
                     (if (not (equal (car mapped) :ok))
                         (list :rejected (car (cdr mapped)))
-                      (let ((record (fn-bpi-record-for store policy msgid groups adu)))
+                      (let ((record (fn-bpi-record-for store policy context msgid groups adu)))
+                        (if (equal record :clock-unusable)
+                            (list :rejected :clock-unusable)
                         (if (and (fn-record-p record)
                                  (fn-selection-validp (fn-record-groups record)
                                                       (fn-sn-groups store)))
@@ -502,7 +500,7 @@
                               (if (equal next store)
                                   (list :rejected :store-refused)
                                 (list :prepared next record)))
-                          (list :rejected :groups-or-record)))))))))))))
+                          (list :rejected :groups-or-record))))))))))))))
        :exec
 (if (not (fn-bpi-policy-appliesp store policy context))
       (list :rejected :policy-or-destination)
@@ -525,7 +523,9 @@
                                  groups (fn-bpi-policy-group-map policy))))
                     (if (not (equal (fn-ag-car mapped) :ok))
                         (list :rejected (fn-ag-car (fn-ag-cdr mapped)))
-                      (let ((record (fn-bpi-record-for store policy msgid groups adu)))
+                      (let ((record (fn-bpi-record-for store policy context msgid groups adu)))
+                        (if (equal record :clock-unusable)
+                            (list :rejected :clock-unusable)
                         (if (and (fn-record-p record)
                                  (fn-selection-validp (fn-bpi-ag-record-groups record)
                                                       (fn-sn-groups store)))
@@ -533,7 +533,7 @@
                               (if (equal next store)
                                   (list :rejected :store-refused)
                                 (list :prepared next record)))
-                          (list :rejected :groups-or-record)))))))))))))))
+                          (list :rejected :groups-or-record))))))))))))))))
 (verify-guards fn-bpi-ingress-prepare)
 
 (defun fn-bpi-result-kind (result)
@@ -656,7 +656,7 @@
                   (and (equal (car mapped) :ok)
                        (fn-bpi-node-record-committedp
                         (fn-sn-node store)
-                        (fn-bpi-record-for store policy msgid groups adu)))))))))))
+                        (fn-bpi-record-for store policy context msgid groups adu)))))))))))
        :exec
 (if (not (and (fn-bpi-policy-appliesp store policy context)
                 (fn-cbor-octet-listp adu)
@@ -678,7 +678,7 @@
                   (and (equal (fn-ag-car mapped) :ok)
                        (fn-bpi-node-record-committedp
                         (fn-sn-node store)
-                        (fn-bpi-record-for store policy msgid groups adu)))))))))))))
+                        (fn-bpi-record-for store policy context msgid groups adu)))))))))))))
 (verify-guards fn-bpi-adu-durably-acceptedp)
 
 ; This is only an unsigned receipt-eligibility context.  Current records do

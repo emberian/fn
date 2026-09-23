@@ -121,17 +121,6 @@
 ;;; seconds and the sub-second part cannot come from two different instants;
 ;;; get-universal-time, which this used, has one-second resolution and gives
 ;;; every submission inside a second the same reading.
-(defconstant +fnn-owner-wall-error-ms+ 1000)
-(defconstant +fnn-owner-unix-dtn-offset-seconds+
-  (- (encode-universal-time 0 0 0 1 1 2000 0)
-     (encode-universal-time 0 0 0 1 1 1970 0)))
-
-(defun fnn-owner-wall-milliseconds ()
-  "One gettimeofday reading, as milliseconds since 2000-01-01T00:00:00Z."
-  (multiple-value-bind (seconds microseconds) (sb-ext:get-time-of-day)
-    (max 0 (+ (* 1000 (- seconds +fnn-owner-unix-dtn-offset-seconds+))
-              (floor microseconds 1000)))))
-
 (defun fnn-owner-advance-clock ()
   "Hand the owner one fresh reading of this host's clocks.
 
@@ -140,15 +129,15 @@ reading it cannot reconcile, not a host fault: a clock-less owner refuses to
 inject, refuses to declare a group and answers DATE 503, each with its own
 line, and the next reading is admitted whatever it says.  :invalid means this
 function supplied no observation at all, which is a defect here."
-  (let ((outcome (fnn-owner-action
-                  'fn-owner-observe
-                  (floor (* (get-internal-real-time) 1000)
-                         internal-time-units-per-second)
-                  (fnn-owner-wall-milliseconds)
-                  +fnn-owner-wall-error-ms+ t)))
-    (when (eq outcome :invalid)
-      (fnn-fault "owner was handed a malformed clock reading"))
-    outcome))
+  (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
+    (let ((outcome (fnn-owner-action
+                    'fn-owner-observe
+                    (floor (* (get-internal-real-time) 1000)
+                           internal-time-units-per-second)
+                    wall +fnn-owner-wall-error-ms+ has-wall)))
+      (when (eq outcome :invalid)
+        (fnn-fault "owner was handed a malformed clock reading"))
+      outcome)))
 
 (defun fnn-owner-finish ()
   (fnn-owner-action 'fn-owner-finish))
@@ -742,7 +731,8 @@ the current connection."
                               :refused)
                     (fnn-indeterminate "owner could not consume refused reservation"))
                   (setf (fnn-store-fenced store) nil)
-                  (return-from fnn-owner-attempt :refused))))
+                  (return-from fnn-owner-attempt
+                    (if (eq prepared :clock-unusable) :clock-unusable :refused)))))
             (fnn-owner-publish-prepared service "article")))
       (fnn-store-indeterminate () :uncertain)
       (fnn-store-fault (e)
@@ -929,7 +919,7 @@ Every other caller submits exact authored octets and names them."
           (let ((result (fnn-owner-action 'fn-owner-control-outcome word)))
             (fnn-owner-log)
             (unless (member result
-                            '(:accepted :duplicate :refused :uncertain))
+                            '(:accepted :duplicate :refused :clock-unusable :uncertain))
               (fnn-fault "owner bound completion returned ~a" result))
             (when (eq result :uncertain)
               (fnn-indeterminate "owner bound Store outcome is uncertain"))

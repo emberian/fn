@@ -32,7 +32,7 @@
 ; one while journal sequence zero remains available and can complete normally.
 (defconst *snr-stale-record*
   (fn-record-make 0 0 0 "<stale@example>" '(65) *snr-groups*
-                  "stale-pin" "stale-content" "stale-release" 1))
+                  "stale-pin" "stale-content" "stale-release" 1 841000000))
 (assert-event
  (equal (fn-sn-prepare *snr-refused-zero* *snr-stale-record*)
         *snr-refused-zero*))
@@ -40,7 +40,7 @@
 (defconst *snr-reserved-one* (fn-snr-reserve *snr-refused-zero*))
 (defconst *snr-record-one*
   (fn-record-make 0 1 1 "<one@example>" '(66) *snr-groups*
-                  "one-pin" "one-content" "one-release" 1))
+                  "one-pin" "one-content" "one-release" 1 841000000))
 (defconst *snr-prepared-one*
   (fn-sn-prepare *snr-reserved-one* *snr-record-one*))
 (defconst *snr-finished-one*
@@ -55,7 +55,7 @@
 ; is aborted at its exact txid/generation and the file reservation is consumed.
 (defconst *snr-abort-record*
   (fn-record-make 0 0 0 "<abort@example>" '(67) *snr-groups*
-                  "abort-pin" "abort-content" "abort-release" 1))
+                  "abort-pin" "abort-content" "abort-release" 1 841000000))
 (defconst *snr-abort-prepared*
   (fn-sn-prepare *snr-reserved-zero* *snr-abort-record*))
 (defconst *snr-aborted* (fn-sn-known-abort *snr-abort-prepared*))

@@ -398,7 +398,8 @@
                   (equal (fn-record-obligation-id record) (fn-node-stage-id stage))
                   (equal (fn-record-content-subject record) (fn-node-stage-subject stage))
                   (equal (fn-record-release-evidence record) (fn-node-stage-evidence stage))
-                  (equal (fn-record-charge record) (fn-node-stage-charge stage)))))
+                  (equal (fn-record-charge record) (fn-node-stage-charge stage))
+                  (equal (fn-record-stamp record) (fn-pending-stamp p)))))
   :rule-classes nil)
 
 (defun fn-sn-committed-recordp (node record)
@@ -412,6 +413,7 @@
          (equal (fn-article-msgid article) (fn-record-msgid record))
          (equal (fn-article-payload article) (fn-record-payload record))
          (equal (fn-article-groups article) (fn-record-groups record))
+         (equal (fn-article-stamp article) (fn-record-stamp record))
          (equal (fn-article-pin article) t)
          (equal binding (fn-node-make-binding
                          (fn-record-msgid record) (fn-record-content-subject record)
@@ -1689,7 +1691,7 @@
        (fn-state-next-txid
         (fn-node-acceptance
          (fn-node-prepare s generation msgid payload groups
-                          obligation-id subject evidence charge))))
+                          obligation-id subject evidence charge stamp))))
    :rule-classes :linear
    :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-accept-prepare
                                     fn-node-statep fn-statep
@@ -1771,12 +1773,12 @@
                  (equal (fn-state-pending (fn-node-acceptance s)) nil)
                  (fn-node-pending-matchesp
                   (fn-node-prepare s generation msgid payload groups
-                                   obligation-id subject evidence charge)
+                                   obligation-id subject evidence charge stamp)
                   txid gen))
             (equal (fn-state-next-txid
                     (fn-node-acceptance
                      (fn-node-prepare s generation msgid payload groups
-                                      obligation-id subject evidence charge)))
+                                      obligation-id subject evidence charge stamp)))
                    (1+ (fn-state-next-txid (fn-node-acceptance s)))))
    ; The recognizers stay closed: the conclusion is one field, and
    ; `fn-snx-node-state-acceptance-is-state' answers the one `fn-statep'

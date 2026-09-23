@@ -6,12 +6,12 @@
 (defconst *cp-groups* '("fn.letters" "fn.test"))
 (defconst *cp-r0*
   (fn-record-make 0 0 0 "<cp0@example.invalid>" '(65 13 10)
-                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2))
+                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2 841000000))
 ; Allocator txids 1, 2 and 3 do not occur in the journal.  They model known
 ; aborts before the suffix record at txid 4.
 (defconst *cp-r1*
   (fn-record-make 1 4 4 "<cp1@example.invalid>" '(66 13 10)
-                  '("fn.test") "cp-pin-1" "cp-content-1" "cp-release-1" 3))
+                  '("fn.test") "cp-pin-1" "cp-content-1" "cp-release-1" 3 841000000))
 
 (defconst *cp-capture*
   (fn-checkpoint-capture *cp-groups* 10 (list *cp-r0*) 3))
@@ -60,7 +60,7 @@
 (defconst *cp-wrong-sequence-record*
   (fn-record-make 2 4 4 "<seq@example.invalid>" '(81 13 10)
                   '("fn.test") "cp-pin-seq" "cp-content-seq"
-                  "cp-release-seq" 1))
+                  "cp-release-seq" 1 841000000))
 (assert-event
  (equal (fn-checkpoint-restore *cp-value* *cp-groups* 10
                                (list *cp-wrong-sequence-record*) 6)
@@ -75,7 +75,7 @@
 (defconst *cp-stale-txid*
   (fn-record-make 1 2 2 "<stale@example.invalid>" '(83 13 10)
                   '("fn.test") "cp-pin-stale" "cp-content-stale"
-                  "cp-release-stale" 1))
+                  "cp-release-stale" 1 841000000))
 (assert-event
  (equal (fn-checkpoint-restore *cp-value* *cp-groups* 10
                                (list *cp-stale-txid*) 6)
@@ -99,7 +99,7 @@
 (defconst *cp-over-capacity*
   (fn-record-make 1 4 4 "<large@example.invalid>" '(76 13 10)
                   '("fn.test") "cp-pin-large" "cp-content-large"
-                  "cp-release-large" 9))
+                  "cp-release-large" 9 841000000))
 (assert-event
  (equal (fn-checkpoint-restore *cp-value* *cp-groups* 10
                                (list *cp-over-capacity*) 6)
@@ -133,7 +133,7 @@
 ; and not the FN-CHECKPOINT-MAKE, and its value is not a checkpoint at all.
 (defconst *cp-r0-bad-generation*
   (fn-record-make 0 0 1 "<cp0@example.invalid>" '(65 13 10)
-                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2))
+                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2 841000000))
 (assert-event (not (fn-checkpoint-admissible-splitp
                     *cp-groups* 10 (list *cp-r0-bad-generation*) 3 nil 3)))
 (assert-event (not (equal (fn-checkpoint-capture *cp-groups* 10
