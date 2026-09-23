@@ -20,11 +20,13 @@
 
 (assert-event (fn-cst-relation *cpo-t-ready*))
 (assert-event (fn-ocl-relation *ocl-t-before*))
+(assert-event (fn-ocl-view-configp *ocl-t-before*))
 (assert-event
  (fn-ocl-conns-historyp *ocl-t-before*
                         (fn-own-conns (fn-ocfg-owner *ocl-t-before*))))
 (assert-event (null (fn-ocfg-staged *ocl-t-after*)))
 (assert-event (fn-ocl-relation *ocl-t-after*))
+(assert-event (fn-ocl-view-configp *ocl-t-after*))
 (assert-event
  (equal (fn-sn-capacity (fn-own-store (fn-ocfg-owner *ocl-t-after*))) 20))
 (assert-event
@@ -55,6 +57,7 @@
 (defconst *ocl-t-new-open* (cdr (fn-ocfg-open *ocl-t-created* nil)))
 (assert-event (null (fn-ocfg-staged *ocl-t-created*)))
 (assert-event (fn-ocl-relation *ocl-t-created*))
+(assert-event (fn-ocl-view-configp *ocl-t-created*))
 (assert-event
  (member-equal "fn.live"
                (fn-sn-groups (fn-own-store (fn-ocfg-owner *ocl-t-created*)))))
@@ -73,12 +76,32 @@
 (assert-event (not (member-equal "fn.live" (fn-ocfg-served *ocl-t-new-open* 0))))
 (assert-event (member-equal "fn.live" (fn-ocfg-served *ocl-t-new-open* 1)))
 (assert-event
+ (equal (fn-ocfg-conn-config *ocl-t-new-open* 1)
+        (fn-ocfg-config *ocl-t-created*)))
+; Without the historical owner's exact pin-table domain, a forged pin at
+; the not-yet-open identifier survives pin-add and makes a new open stale.
+(defconst *ocl-t-stale-next-pin*
+  (fn-ocfg-make (fn-ocfg-owner *ocl-t-created*)
+                (fn-ocfg-config *ocl-t-created*)
+                (cons (cons 1 *ocl-t-cfg*) (fn-ocfg-pins *ocl-t-created*))
+                nil))
+(assert-event (not (fn-ocl-relation *ocl-t-stale-next-pin*)))
+(assert-event
+ (not (equal (fn-ocfg-conn-config
+              (cdr (fn-ocfg-open *ocl-t-stale-next-pin* nil)) 1)
+             (fn-ocfg-config *ocl-t-stale-next-pin*))))
+(assert-event
  (member-equal
   "fn.live"
   (fn-state-groups
    (fn-own-conn-archive
     (fn-own-find-conn 1
      (fn-own-conns (fn-ocfg-owner *ocl-t-new-open*)))))))
+(assert-event
+ (fn-ocl-conn-historyp
+  *ocl-t-new-open*
+  (fn-own-find-conn 1
+   (fn-own-conns (fn-ocfg-owner *ocl-t-new-open*)))))
 (assert-event
  (fn-ocl-conns-historyp *ocl-t-new-open*
                         (fn-own-conns (fn-ocfg-owner *ocl-t-new-open*))))

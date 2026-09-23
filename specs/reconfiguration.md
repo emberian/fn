@@ -1320,7 +1320,16 @@ recovery. The historical relation reconstructs each connection at its pinned
 generation and Store-journal version, while the current view uses the full
 installed history. `fn-ocl-complete-preserves-full-historical-relation`
 proves this relation across successful ready-phase completion under a
-physical Store-history premise. The [T8b evidence](../planning/evidence/config-physical-replay-t8b-2026-09-23.md)
+physical Store-history premise. Successful physical replay also proves that
+the live configuration generation equals the number of configuration records;
+the owner relation carries this equality for new-connection pinning. The [T8b evidence](../planning/evidence/config-physical-replay-t8b-2026-09-23.md)
 records the selected certification and old/new connection witness. Native
 image execution and preservation across ordinary Store/owner transitions
 are still required before a live-service claim.
+The owner relation also ties the published configuration to physical replay
+at the current view's Store-event prefix, so a new connection's archive and
+configuration pin describe the same historical cut.
+The called reader-open function `fn-ocfg-open` has the focused theorem
+`fn-ocl-open-pins-current-physical-configuration`; a new connection pins
+the installed configuration even when existing connections retain older
+histories. Full owner-relation preservation across open remains open.
