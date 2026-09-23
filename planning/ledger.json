@@ -485,6 +485,7 @@
     "tests/acl2/topic-history-store-events-tests",
     "tests/acl2/topic-history-store-union-tests",
     "tests/acl2/topic-history-prefix-tests",
+    "tests/acl2/topic-history-local-admin-tests",
     "tests/acl2/hybrid-store-tests",
     "books/crypto-attach",
     "books/auth-secret",
@@ -534,25 +535,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 536,
-    "books_in_root_closure": 535,
-    "roots": 530,
-    "theorems": 7985,
-    "functions": 6035,
-    "assert_events": 8769,
-    "must_fails": 406,
+    "books": 538,
+    "books_in_root_closure": 537,
+    "roots": 531,
+    "theorems": 7986,
+    "functions": 6040,
+    "assert_events": 8777,
+    "must_fails": 407,
     "encapsulates": 26,
     "guards": {
       "verified": 1966,
       "declared-off": 322,
-      "default-guarded": 2992,
+      "default-guarded": 2997,
       "default-unguarded": 755
     },
     "suspect_theorems": 74,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 28,
-    "include_hygiene_warnings": 402,
+    "include_hygiene_warnings": 405,
     "host_names_warnings": 756,
     "hand_written_record_warnings": 18
   },
@@ -8359,6 +8360,31 @@
       "read_error": null
     },
     {
+      "book": "books/topic-history-local-admin.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "topic-history-admission"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/topic-history-metadata-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -14558,6 +14584,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/topic-history-local-admin-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 1,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/topic-history-local-admin",
+        "topic-history-admission-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/topic-history-metadata-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -17595,6 +17649,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/topic-history-local-admin.lisp",
+        "line": 6,
+        "include": "topic-history-admission",
+        "included": "books/topic-history-admission.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/topic-history-metadata-invariants.lisp",
         "line": 3,
         "include": "topic-history-metadata",
@@ -19328,6 +19389,20 @@
         "line": 3,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-local-admin-tests.lisp",
+        "line": 2,
+        "include": "../../books/topic-history-local-admin",
+        "included": "books/topic-history-local-admin.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-local-admin-tests.lisp",
+        "line": 3,
+        "include": "topic-history-admission-tests",
+        "included": "tests/acl2/topic-history-admission-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

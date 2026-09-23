@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 536 |
-| Certification roots in the Makefile | 530 |
-| Books inside the root closure | 535 |
-| `defthm` and `defthmd` events | 7985 |
-| `defun` events | 6035 |
+| Books read | 538 |
+| Certification roots in the Makefile | 531 |
+| Books inside the root closure | 537 |
+| `defthm` and `defthmd` events | 7986 |
+| `defun` events | 6040 |
 | Functions with verified guards | 1966 |
 | Functions declared `:verify-guards nil` and never verified | 322 |
-| Functions left at the default with an explicit guard | 2992 |
+| Functions left at the default with an explicit guard | 2997 |
 | Functions left at the default with no guard | 755 |
-| `assert-event` checks | 8769 |
-| `must-fail` checks | 406 |
+| `assert-event` checks | 8777 |
+| `must-fail` checks | 407 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 74 |
 | Export-hygiene warnings | 102 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 28 |
-| Include-hygiene warnings | 402 |
+| Include-hygiene warnings | 405 |
 | Host-names warnings | 756 |
 | Hand-written-record warnings | 18 |
 
@@ -378,6 +378,7 @@ that `make certify` requests.
 | `books/tcpcl-spool.lisp` | root | 2 | 18 | 0/0/18/0 | 0 | 0 | 0 |
 | `books/topic-history-admission.lisp` | root | 4 | 17 | 0/0/17/0 | 0 | 0 | 0 |
 | `books/topic-history-authorship.lisp` | root | 5 | 4 | 0/0/4/0 | 0 | 0 | 1 |
+| `books/topic-history-local-admin.lisp` | closure | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/topic-history-metadata-invariants.lisp` | root | 34 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/topic-history-metadata.lisp` | root | 6 | 26 | 0/0/26/0 | 0 | 0 | 1 |
 | `books/topic-history-prefix.lisp` | closure | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
@@ -610,6 +611,7 @@ that `make certify` requests.
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 139 | 0 | 0 |
 | `tests/acl2/topic-history-admission-tests.lisp` | root | 0 | 2 | 0/1/1/0 | 24 | 5 | 0 |
 | `tests/acl2/topic-history-authorship-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 13 | 3 | 0 |
+| `tests/acl2/topic-history-local-admin-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 1 | 0 |
 | `tests/acl2/topic-history-metadata-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 27 | 3 | 0 |
 | `tests/acl2/topic-history-prefix-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
 | `tests/acl2/topic-history-store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 1 | 0 |

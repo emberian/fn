@@ -104,6 +104,16 @@ succession operation. Reuse of the same OS account remains inside the local
 operator trust boundary; a later replacement or revocation must be explicit.
 This binding/event/native join is still open.
 
+`books/topic-history-local-admin.lisp` now defines the logical immutable
+install event and the caller-facing root proposal wrapper. Installation
+requires a finite OS-observed UID and an independent exact 32-octet entropy
+observation; an existing installation refuses replacement. The wrapper
+derives the caller ID only when the current authenticated UID matches the
+installed UID, then passes the installed ID to root preparation. Its theorem
+proves that successful root preparation requires that historical binding and
+UID match. The install event is not yet encoded into the Store journal, and
+the native owner does not yet call the wrapper.
+
 A report proposal resolves the retained T10 event/snapshot again. It requires
 the selected root policy to be active, the verified author reference in the
 root roster, all declared parents to have earlier admissions in that same
