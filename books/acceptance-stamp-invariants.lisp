@@ -55,3 +55,23 @@
                 (fn-replay-journal-article-stamps (cdr records)))
         (fn-replay-journal-article-stamps (cdr records)))
     nil))
+
+(defthm fn-replay-apply-record-installs-the-stamp
+  (let ((article (fn-replay-article-record record)))
+    (implies (and (fn-node-statep node)
+                  (fn-store-event-p record)
+                  (fn-replay-article-eventp record)
+                  (consp (fn-replay-apply-record node record)))
+             (equal (fn-article-stamp
+                     (fn-find-article
+                      (fn-record-msgid article)
+                      (fn-state-articles
+                       (fn-node-acceptance
+                        (fn-replay-apply-record node record)))))
+                    (fn-record-stamp article))))
+  :hints (("Goal" :in-theory
+           (disable fn-record-shape-vocabulary
+                    fn-record-decode-exact
+                    fn-stxe-p fn-stxk-p fn-stxa-p
+                    fn-store-retention-event-p)))
+  :rule-classes nil)
