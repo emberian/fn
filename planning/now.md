@@ -22,17 +22,22 @@ The proof-cost repairs and incremental cache/runner are landed. Their measured
 scope is the handoff's ITER table and the
 [cache experiment](evidence/certificate-cache-2026-09-23.md). No Claude lane
 remains active. The takeover's read-only audits are complete. Ten Sol
-implementation lanes and an Astra scholar/architect reassessment are now
-running; [the swarm board](swarm-board.md) records their collaborations and
-shared runs. No new autonomous goal has been activated.
+implementation lanes were dispatched; the first tooling and entry-profile
+packages have landed while native image qualification and the other lanes
+continue. [The swarm board](swarm-board.md) records their collaborations and
+shared runs. The completed [architectural reassessment](ambition-2026-09-23.md)
+recommends keeping the selected v0 finish line and exploring portable application
+evidence and durable consumers alongside later transport work. These experiments
+remain proposals, not new release requirements. No new autonomous goal has been
+activated.
 
 Next: qualification of images/upgrades and served crash correspondence,
 alongside independent feed-replay, BP-foundation and authorship-carrier work.
 Sequence the broad acceptance-stamp change and the shared Store joins as the
 takeover plan describes. The user selected developer-only raw `store post`;
 production uses normal submission. The decision, HST-001/SCN-015 contract,
-and first-batch obligation are recorded; the entry restriction is not yet
-implemented.
+and first-batch obligation are recorded; the entry restriction and DTN profile
+gates are implemented in source, with saved-image qualification still pending.
 
 Earlier dated progress is retained in the handoff, its evidence records, and
 [the archived work page](archive/now-2026-09-22.md).

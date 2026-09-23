@@ -27,8 +27,9 @@ five-lane limit and exclusive-file ownership; batched convergence remains.
 4. **Certify the changed behavior and its affected invariants.** Submit an
    incremental run with explicit changed/dependent book and test roots; reuse
    content/toolchain-matched cached dependencies. Do not pass `--closure` for
-   ordinary lane work. Until the known `--affected-by` host-root bug is fixed,
-   select the affected set explicitly. Use `green_check --changed-since <base>`
+   ordinary lane work. The `--affected-by` host-root selection defect was repaired
+   in `defe3626`; host wrappers remain covered by certifiable host-test roots.
+   Use `green_check --changed-since <base>`
    to inspect the resulting evidence, not just the edited book. Discovery
    attempts are bounded; a timeout is a finding to diagnose, not a reason to
    repeatedly rebuild dependencies. Behavior and invariants land together.

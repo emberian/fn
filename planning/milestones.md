@@ -1,6 +1,9 @@
 Current task (2026-09-23): T0 is complete and hbox runs the `da5fd8cb`
 image. Reconcile the final handoff and prepare qualification plus the next
 v0 batches under the [takeover plan](takeover-2026-09-23.md).
+The [architectural reassessment](ambition-2026-09-23.md) proposes portable
+application-evidence and durable-consumer experiments while retaining the
+selected v0 gate; these are not additional release requirements.
 [Current work](now.md) identifies the tested image and active/proposed work.
 Release scope and step contracts remain in
 [the trajectory plan](plan-2026-09-22-trajectory.md) §§2–3; the execution
