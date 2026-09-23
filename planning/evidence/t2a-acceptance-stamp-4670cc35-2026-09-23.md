@@ -1,9 +1,9 @@
 # T2a acceptance-stamp lane evidence, 2026-09-23
 
-Source: branch `implement/acceptance-stamp`, revision `a0afef07` (base
-`24a5df6b`). The ACL2 certification source ends at `cb00bc4b`; the following
-commit changes only `host/simulator.lisp`. T2b NEWNEWS date selection is not in
-this batch.
+Source: branch `implement/acceptance-stamp`, revision `4670cc35` (base
+`24a5df6b`). The ACL2 certification source ends at `cb00bc4b`; subsequent
+commits change the simulator and host clock adapters, not ACL2 books. T2b
+NEWNEWS date selection is not in this batch.
 
 An article prepared from a usable owner clock observation now carries its
 derived stamp in the pending article, accepted article, record schema 1, node,
@@ -43,6 +43,10 @@ The independent cbor2 6.1.4 probe passed 39/39 cases; its raw manifest is
 The BP ingress host tests passed 5/5. `python3 tools/run_simulator.py` passed
 `acceptance-durable` with an exact persisted-stamp assertion in
 `build/simulator/run-20260923T162147Z-13182`.
+Focused Store adapter tests passed 2/2 for pre-epoch and missing wall readings:
+both are passed to ACL2 with `has-wall` false, so the core can refuse them
+instead of writing a fabricated epoch-zero stamp. The native owner and Store
+adapters share the same wall reading and unusable flag.
 
 The native carried-over-store witness remains open until a T2 native image is
 built and `tests/test_native_stamp_migration.py` runs against the frozen
