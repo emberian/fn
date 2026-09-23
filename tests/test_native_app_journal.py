@@ -16,11 +16,12 @@ ROOT = Path(__file__).resolve().parent.parent
 class NativeApplicationJournalTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.image = ROOT / "build" / "fn-host-dtn"
+        cls.image = Path(os.environ.get("FN_NATIVE_DTN_DEVELOPER_HOST",
+                                        ROOT / "build" / "fn-host-dtn-developer"))
         if not os.access(cls.image, os.X_OK):
             raise unittest.SkipTest(
-                f"DTN native image missing: {cls.image} "
-                "(FN_NATIVE_BUILD=host/native/build-dtn.lisp "
+                f"DTN developer native image missing: {cls.image} "
+                "(FN_NATIVE_PROFILE=developer FN_NATIVE_BUILD=host/native/build-dtn.lisp "
                 "tools/build_native_host.sh)"
             )
 

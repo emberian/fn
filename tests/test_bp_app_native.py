@@ -15,7 +15,7 @@ from tools import run_bp_ingress, run_store
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
 
 ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
 
 
 def environment():

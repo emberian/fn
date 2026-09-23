@@ -60,7 +60,12 @@ class NativeAdminTests(unittest.TestCase):
         self.store = self.base / "store"
         self.config = self.base / "fn.toml"
         self.payload = self.base / "article"
-        self.payload.write_bytes(b"native admin retained article\r\n")
+        self.payload.write_bytes(
+            b"From: admin@example.invalid\r\n"
+            b"Newsgroups: fn.admin\r\n"
+            b"Subject: native admin retained article\r\n"
+            b"Message-ID: <native-admin-retained@example.invalid>\r\n"
+            b"\r\nnative admin retained article\r\n")
         self.env = dict(os.environ)
         self.env["ACL2_CUSTOMIZATION"] = "NONE"
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
@@ -117,8 +122,10 @@ class NativeAdminTests(unittest.TestCase):
                       capacity.stdout)
 
         message_id = "<native-admin-retained@example.invalid>"
-        self.native("store", self.store, "post", message_id, self.payload,
-                    "-", "-", "fn.admin")
+        owner = self.start_owner()
+        self.operator("post", "--message-id", message_id, "--payload",
+                      self.payload, "--group", "fn.admin")
+        self.stop_owner(owner)
         retired = self.operator("group", "retire", "fn.admin")
         self.assertIn(b"configured generation=4 record=00000004.cfg verification=verified",
                       retired.stdout)
