@@ -21,9 +21,10 @@ their integrated v0 qualification.
 The proof-cost repairs and incremental cache/runner are landed. Their measured
 scope is the handoff's ITER table and the
 [cache experiment](evidence/certificate-cache-2026-09-23.md). No Claude lane
-remains active. The takeover's three read-only Sol audits are complete;
-implementation assignments in that plan are proposed, not running. No new
-autonomous goal has been activated.
+remains active. The takeover's read-only audits are complete. Ten Sol
+implementation lanes and an Astra scholar/architect reassessment are now
+running; [the swarm board](swarm-board.md) records their collaborations and
+shared runs. No new autonomous goal has been activated.
 
 Next: qualification of images/upgrades and served crash correspondence,
 alongside independent feed-replay, BP-foundation and authorship-carrier work.
