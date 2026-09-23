@@ -20,7 +20,7 @@
 
 (defun fn-tcl-held-partial-acks (messages)
   (declare (xargs :guard t))
-  (if (consp (cdr messages))
+  (if (and (consp messages) (consp (cdr messages)))
       (cons (car messages) (fn-tcl-held-partial-acks (cdr messages)))
     nil))
 

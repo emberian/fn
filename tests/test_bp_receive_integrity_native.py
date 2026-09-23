@@ -99,8 +99,12 @@ class NativeBpReceiveIntegrityTests(unittest.TestCase):
 
         sent1 = self.send(port, first, "first")
         sent2 = self.send(port, second, "second")
-        self.assertEqual(sent1.returncode, 0, sent1.stdout + sent1.stderr)
-        self.assertEqual(sent2.returncode, 0, sent2.stdout + sent2.stderr)
+        self.assertEqual(sent1.returncode, 1, sent1.stdout + sent1.stderr)
+        self.assertEqual(sent2.returncode, 1, sent2.stdout + sent2.stderr)
+        self.assertIn("outbound xfer=0", sent1.stdout)
+        self.assertIn("outbound xfer=0", sent2.stdout)
+        self.assertNotIn("accepted outbound xfer=0", sent1.stdout)
+        self.assertNotIn("accepted outbound xfer=0", sent2.stdout)
 
         wires = self.wait_for_wire_count(2)
         self.assertEqual({path.read_bytes() for path in wires}, {first, second})
