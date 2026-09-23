@@ -177,6 +177,12 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
                     "anchor=none checkpoint=none")
         if name.endswith("configured store"):
             return "/srv/fn/a-store"
+        if name.endswith("profile agent refusal"):
+            return "usage operator run (UNSUPPORTED-PROFILE agent)"
+        if name.endswith("profile service log"):
+            return ("accepted reader connection=0 time=2026-09-22T20:00:00Z\n"
+                    "accepted post path=control message-id=<profile-a@example.invalid> "
+                    "time=2026-09-22T20:00:01Z")
         if "auth-required AUTHINFO gate" in name:
             return self.AUTH_PAYLOAD
         if "AUTHINFO session" in name:
@@ -202,6 +208,8 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
                  # A second `init` over a store that exists is refused, and
                  # the reinit-safety row is about what that refusal left.
                  "node A second operator init": 1,
+                 # `[posting] agent` is refused at run admission, by name.
+                 "node A profile agent refusal": v0_matrix.EXIT_USAGE,
                  "node B second operator init": 1}
 
     def sh(self, name, script, timeout=600, note="", expect=0):
@@ -598,6 +606,66 @@ class NativeSliceAccountingTests(unittest.TestCase):
             self.assertIn("run", row.invocation)
             self.assertIn("configuration admission", row.limit)
             self.assertIn("non-loopback IPv4", row.limit)
+
+    def profile_row(self, gate):
+        gate.execute_native_acceptance()
+        rows = [r for r in gate.rows if r.id == "V0-NODE-PROFILE"]
+        self.assertEqual(len(rows), 1)
+        return rows[0]
+
+    def test_the_profile_row_measures_the_log_file_and_the_named_refusal(self):
+        with tempfile.TemporaryDirectory() as home:
+            row = self.profile_row(self.structured_gate(home))
+            self.assertEqual(row.verdict, v0_matrix.ACCEPTED)
+            # Both configurations are in the invocation: the reader must see
+            # the `[log]` table and the refused `[posting] agent`.
+            self.assertIn("[log]", row.invocation)
+            self.assertIn("agent = ", row.invocation)
+            self.assertIn("agent.toml", row.invocation)
+            self.assertIn("packaging/fn-native operator", row.invocation)
+            self.assertIn("post --message-id", row.invocation)
+            self.assertIn("accepted post path=control "
+                          "message-id=<profile-a@example.invalid>", row.observed)
+            self.assertIn("UNSUPPORTED-PROFILE agent", row.observed)
+            self.assertIn("path-identity", row.limit)
+
+    def test_a_post_that_left_no_log_line_is_not_accepted(self):
+        class Silent(HarnessOnlyNativeGate):
+            def canned(self, name):
+                if name.endswith("profile service log"):
+                    return "NO-LOG-FILE"
+                return super().canned(name)
+        with tempfile.TemporaryDirectory() as home:
+            row = self.profile_row(Silent(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"}))
+            self.assertEqual(row.verdict, v0_matrix.REFUSED)
+            self.assertIn("left no line", row.limit)
+
+    def test_an_agent_the_run_accepts_is_not_accepted(self):
+        class Silent(HarnessOnlyNativeGate):
+            CANNED_RC = {k: v for k, v in HarnessOnlyNativeGate.CANNED_RC.items()
+                         if k != "node A profile agent refusal"}
+        with tempfile.TemporaryDirectory() as home:
+            row = self.profile_row(Silent(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"}))
+            self.assertEqual(row.verdict, v0_matrix.REFUSED)
+            self.assertIn("did not refuse `[posting] agent`", row.limit)
+
+    def test_a_failed_post_leaves_the_row_not_exercised_with_its_code(self):
+        class Failed(HarnessOnlyNativeGate):
+            CANNED_RC = dict(HarnessOnlyNativeGate.CANNED_RC,
+                             **{"node A profile post": 4})
+        with tempfile.TemporaryDirectory() as home:
+            row = self.profile_row(Failed(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"}))
+            self.assertEqual(row.verdict, v0_matrix.NOT_EXERCISED)
+            self.assertIn("exited 4", row.blocker)
 
     def test_the_independent_client_runs_on_the_native_backend(self):
         with tempfile.TemporaryDirectory() as home:

@@ -213,7 +213,7 @@
                       (fn-native-operator-run
                        *fn-nop-protected-without-tls-config*
                        (fn-nop-test-argv '("run"))))
-                     :unsupported-profile))
+                     '(:unsupported-profile "protected_only")))
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run
                        *fn-nop-protected-without-tls-config*
@@ -434,3 +434,34 @@
                       (fn-native-operator-run nil (fn-nop-test-argv '("help" "init"))))
                      '(:help "init" "usage: fn operator CONFIG init GROUP [GROUP...]")))
 (assert-event (not (fn-nop-help-subjectp "initialise")))
+
+; The run refusal names the key, and an admitted log path reaches the run
+; plan's projection.
+(defconst *fn-nop-agent-config*
+  (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""
+                       "[posting]" "agent = \"fn@hbox.ember.software\"")))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run *fn-nop-agent-config*
+                                              (fn-nop-test-argv '("run"))))
+                     '(:unsupported-profile "agent")))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-agent-config*
+                                              (fn-nop-test-argv '("run"))))
+                     :usage))
+; Offline actions do not consult owner availability.
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-agent-config*
+                                              (fn-nop-test-argv '("status"))))
+                     :accepted))
+(defconst *fn-nop-log-config*
+  (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""
+                       "[log]" "path = \"/var/log/fn/fn.log\"")))
+(assert-event (equal (fn-native-operator-result-run-log-path-octets
+                      (fn-native-operator-run *fn-nop-log-config*
+                                              (fn-nop-test-argv '("run"))))
+                     (fn-record-string-octets "/var/log/fn/fn.log")))
+(assert-event (equal (fn-native-operator-result-run-log-path-octets
+                      (fn-native-operator-run
+                       (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""))
+                       (fn-nop-test-argv '("run"))))
+                     nil))

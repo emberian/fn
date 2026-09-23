@@ -44,27 +44,39 @@ protected_only = false
 
 [posting]
 enabled = true
-# The injecting agent this node names for locally accepted articles.  It is
-# recorded in the operator log today; the durable injection record is the
-# store's, not this file's.
-agent = "fn-operator@localhost"
+# There is no `agent` key.  The injecting agent a served POST names in Path
+# and Injection-Info (RFC 5537 section 3.2.1, RFC 5536 section 3.2.8) is the
+# node's <path-identity>, which lives in ONE place: the store's replayed
+# `path-identity` policy, set with
+#   fn operator /etc/fn/fn.toml policy set path-identity news.example.org
+# and read by peer loop suppression too.  `run` refuses an `agent` here with
+# `UNSUPPORTED-PROFILE agent` rather than keep a second value that could
+# disagree with Path (books/native-config.lisp).
 
 [anchor]
 # A name from tools/roughtime_servers.json, used by `fn anchor` and by the
 # freshness check inside `fn recover`.  Omit the table to skip live queries.
+# The native image has no consumer for it yet: `fn operator CONFIG run`
+# refuses a configuration that sets it (`UNSUPPORTED-PROFILE anchor`).
 server = "int08h"
 
 [acl2]
 # The ACL2 executable (exported as FN_ACL2) and the machine-wide cap on
-# concurrent ACL2 processes (FN_ACL2_SLOTS, tools/acl2_slots.py).
+# concurrent ACL2 processes (FN_ACL2_SLOTS, tools/acl2_slots.py).  A saved
+# native image consumes neither: its `run` refuses the table
+# (`UNSUPPORTED-PROFILE acl2`).
 path = "acl2"
 slots = 4
 
 [log]
-# One line per post and per accepted connection, outcome word first; the
+# The service log: one line per post (served or control) and per accepted
+# connection, outcome word first and the same word the reply carries; the
 # connection lines say the ROLE the owner gave the connection at accept,
-# `reader` or `peer <name>`.  Remove
-# this table to log to stderr, which under systemd is the journal.
+# `reader` or `peer name=...`.  The path must be absolute.  `run` opens it
+# append-only (created 0640 if absent, never through a symlink) before it
+# opens the store; fn never truncates or rotates it, so give it to your log
+# rotation tool (copytruncate) if it must be bounded.  Remove this table to
+# log to stderr, which under systemd is the journal.
 path = "/var/log/fn/fn.log"
 
 [control]
