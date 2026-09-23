@@ -590,16 +590,16 @@
     "books": 589,
     "books_in_root_closure": 588,
     "roots": 583,
-    "theorems": 8383,
-    "functions": 6249,
-    "assert_events": 9122,
-    "must_fails": 477,
+    "theorems": 8390,
+    "functions": 6250,
+    "assert_events": 9123,
+    "must_fails": 478,
     "encapsulates": 26,
     "guards": {
       "verified": 2022,
       "declared-off": 369,
       "default-guarded": 3060,
-      "default-unguarded": 798
+      "default-unguarded": 799
     },
     "suspect_theorems": 76,
     "export_hygiene_warnings": 102,
@@ -3881,7 +3881,7 @@
       "book": "books/byte-store-record-provenance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 147,
+      "theorems": 154,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -12239,16 +12239,16 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 31,
+      "functions": 32,
       "guards": {
         "verified": 0,
         "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 30
+        "default-unguarded": 31
       },
       "verify_guards_events": 0,
-      "assert_events": 33,
-      "must_fails": 40,
+      "assert_events": 34,
+      "must_fails": 41,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,

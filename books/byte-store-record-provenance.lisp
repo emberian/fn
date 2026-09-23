@@ -3104,3 +3104,209 @@
                            (fn-bs-run fn-bs-frontier-program
                             fn-bs-store-relation fn-bs-durable-content
                             fn-bs-statep)))))
+
+; Retained-history preservation is pointwise first.  The new inode is not
+; any old transaction target (the relation's authority-known clause and
+; state next-ino bound establish that), so each old path keeps both inode
+; identity and exact raw octets through the allocator file fence.
+(local
+ (defthm fn-bs-k0-frontier-file-cut-txn-entry-is-input
+   (implies (and (fn-bs-statep bs)
+                 (fn-bs-namep stage)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (true-listp octets))
+            (equal
+             (fn-bs-durable-entry
+              (car (nth 5 (fn-bs-run bs ks
+                (fn-bs-frontier-program stage octets)
+                nil groups capacity))) :transactions name)
+             (fn-bs-durable-entry bs :transactions name)))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-bs-k0-frontier-file-cut-keeps-dirs)
+            :in-theory (e/d (fn-bs-durable-entry)
+                            (fn-bs-run fn-bs-frontier-program
+                             fn-bs-dirs))))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-cut-txn-content-is-input
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-frontier-inputp ks stage octets)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (let ((file (car (nth 5 (fn-bs-run bs ks
+                      (fn-bs-frontier-program stage octets)
+                      nil groups capacity)))))
+              (equal
+               (fn-bs-durable-content
+                file (fn-bs-durable-entry file :transactions name))
+               (fn-bs-durable-content
+                bs (fn-bs-durable-entry bs :transactions name)))))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-bs-store-relation-unfolds
+                  (:instance fn-bs-related-allocation-is-not-a-transaction-target
+                             (name name))
+                  fn-bs-k0-frontier-file-cut-txn-entry-is-input
+                  (:instance fn-bs-k0-frontier-file-cut-keeps-old-content
+                             (other (fn-bs-durable-entry
+                                     bs :transactions name))))
+            :in-theory (e/d (fn-bs-frontier-inputp)
+                            (fn-bs-run fn-bs-frontier-program
+                             fn-bs-store-relation fn-bs-durable-content
+                             fn-bs-durable-entry fn-bs-statep))))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-cut-durable-txn-lookup-is-input
+   (implies (and (fn-bs-statep bs)
+                 (fn-bs-namep stage)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (true-listp octets))
+            (let ((file (car (nth 5 (fn-bs-run bs ks
+                      (fn-bs-frontier-program stage octets)
+                      nil groups capacity)))))
+              (equal (fn-bs-lookup (fn-bs-durable file)
+                                    :transactions name)
+                     (fn-bs-lookup (fn-bs-durable bs)
+                                    :transactions name))))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-bs-k0-frontier-file-cut-txn-entry-is-input
+                  (:instance fn-bs-quiet-lookup-is-durable-entry
+                             (s (fn-bs-durable bs)) (dir :transactions))
+                  (:instance fn-bs-quiet-lookup-is-durable-entry
+                             (s (fn-bs-durable
+                              (car (nth 5 (fn-bs-run bs ks
+                                (fn-bs-frontier-program stage octets)
+                                nil groups capacity)))))
+                             (dir :transactions)))
+            :in-theory (e/d (fn-bs-durable fn-bs-durable-entry)
+                            (fn-bs-run fn-bs-frontier-program
+                             fn-bs-lookup fn-bs-view))))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-cut-durable-txn-content-is-input
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-frontier-inputp ks stage octets)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (let ((file (car (nth 5 (fn-bs-run bs ks
+                      (fn-bs-frontier-program stage octets)
+                      nil groups capacity)))))
+              (equal (fn-bs-content
+                      (fn-bs-durable file)
+                      (fn-bs-lookup (fn-bs-durable file)
+                                    :transactions name))
+                     (fn-bs-content
+                      (fn-bs-durable bs)
+                      (fn-bs-lookup (fn-bs-durable bs)
+                                    :transactions name)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use (fn-bs-store-relation-unfolds
+                  fn-bs-k0-frontier-file-cut-durable-txn-lookup-is-input
+                  fn-bs-k0-frontier-file-cut-txn-content-is-input
+                  (:instance fn-bs-durable-is-quiet (bs bs))
+                  (:instance fn-bs-durable-is-quiet
+                             (bs (car (nth 5 (fn-bs-run bs ks
+                               (fn-bs-frontier-program stage octets)
+                               nil groups capacity)))))
+                  (:instance fn-bs-quiet-lookup-is-durable-entry
+                             (s (fn-bs-durable bs)) (dir :transactions))
+                  (:instance fn-bs-quiet-lookup-is-durable-entry
+                             (s (fn-bs-durable
+                              (car (nth 5 (fn-bs-run bs ks
+                                (fn-bs-frontier-program stage octets)
+                                nil groups capacity)))))
+                             (dir :transactions))
+                  (:instance fn-bs-k0-durable-state-content-is-durable-content
+                             (bs bs)
+                             (ino (fn-bs-durable-entry bs :transactions name)))
+                  (:instance fn-bs-k0-durable-state-content-is-durable-content
+                             (bs (car (nth 5 (fn-bs-run bs ks
+                               (fn-bs-frontier-program stage octets)
+                               nil groups capacity))))
+                             (ino (fn-bs-durable-entry bs :transactions name))))
+            :in-theory (e/d (fn-bs-frontier-inputp fn-bs-durable-entry)
+                            (fn-bs-run fn-bs-frontier-program
+                             fn-bs-store-relation fn-bs-statep
+                             fn-bs-lookup fn-bs-content
+                             fn-bs-durable-content))))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-cut-prefix-agrees
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-frontier-inputp ks stage octets)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (fn-bs-txn-prefix-agreesp
+             (fn-bs-durable
+              (car (nth 5 (fn-bs-run bs ks
+                (fn-bs-frontier-program stage octets)
+                nil groups capacity))))
+             (fn-bs-durable bs) n count))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-bs-txn-prefix-agreesp
+               (fn-bs-durable
+                (car (nth 5 (fn-bs-run bs ks
+                  (fn-bs-frontier-program stage octets)
+                  nil groups capacity))))
+               (fn-bs-durable bs) n count)
+            :in-theory (e/d (fn-bs-txn-prefix-agreesp fn-bs-frontier-inputp)
+                            (fn-bs-run fn-bs-frontier-program
+                             fn-bs-store-relation fn-bs-lookup fn-bs-content)))
+           ("Subgoal *1/4"
+            :use (fn-bs-store-relation-unfolds
+                  (:instance fn-bs-k0-frontier-file-cut-durable-txn-lookup-is-input
+                             (name (fn-bs-txn-name n)))))
+           ("Subgoal *1/3"
+            :use (fn-bs-store-relation-unfolds
+                  (:instance fn-bs-k0-frontier-file-cut-durable-txn-content-is-input
+                             (name (fn-bs-txn-name n))))))))
+
+(defthm fn-bs-k0-frontier-file-cut-keeps-durable-records
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal
+            (fn-bs-durable-records
+             (car (nth 5 (fn-bs-run bs ks
+               (fn-bs-frontier-program stage octets)
+               nil groups capacity))))
+            (fn-bs-durable-records bs)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-frontier-file-cut-keeps-dirs
+                 (:instance fn-bs-k0-frontier-file-cut-prefix-agrees
+                            (n 0)
+                            (count (len (fn-bs-durable-names
+                                         bs :transactions))))
+                 (:instance fn-bs-read-records-under-agreement
+                            (a (fn-bs-durable
+                             (car (nth 5 (fn-bs-run bs ks
+                               (fn-bs-frontier-program stage octets)
+                               nil groups capacity)))))
+                            (b (fn-bs-durable bs)) (n 0)
+                            (count (len (fn-bs-durable-names
+                                         bs :transactions)))))
+           :in-theory (e/d (fn-bs-durable-records fn-bs-durable-names
+                             fn-bs-frontier-inputp)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-store-relation fn-bs-read-records
+                            fn-bs-txn-prefix-agreesp)))))
+
+; The allocator's file callback is observational only.  The interpreter
+; byte state at pair 6 is exactly the just-fenced pair 5 byte state.
+(defthm fn-bs-k0-frontier-file-observation-keeps-byte-state
+  (implies (and (fn-bs-statep bs)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal (car (nth 6 (fn-bs-run bs ks
+                                 (fn-bs-frontier-program stage octets)
+                                 nil groups capacity)))
+                  (car (nth 5 (fn-bs-run bs ks
+                                 (fn-bs-frontier-program stage octets)
+                                 nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-frontier-program fn-bs-run fn-bs-step
+                             fn-bs-fsync-file)
+                           (fn-bs-statep fn-bs-create fn-bs-write
+                            fn-bs-fence-file fn-bs-lookup)))))
