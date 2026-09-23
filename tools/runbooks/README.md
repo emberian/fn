@@ -7,6 +7,11 @@ session. None of them is a gate or a claim; each says what it does at the top.
   certifies, acquire and validate the artifact set, build the production,
   developer and DTN images under `swarm-build`, freeze them under
   `build/images/<rev>/` with a source manifest and hashes.
+- `persvati-acl2p.sh build | measure <book> <mode> [cpus]`: build ACL2(p)
+  8.7 into `/home/ember/fn-gates/toolchains/w25p` from the tarball w25 used,
+  certify its system books, and time one book's certification in the
+  `/home/ember/fn-gates/acl2p` gate under plain ACL2 or an ACL2(p) waterfall
+  mode. A measurement, not a toolchain: see `planning/evidence/acl2p-2026-09-23.md`.
 - `hbox-matrix-provision.sh <image>`: two clean loopback stores for
   `tools/v0_matrix.py --backend native-operator` (ports 11190/11191).
 - `hbox-node-deploy.sh <frozen-tree> <shortrev> <listen-ipv4>`: install the
