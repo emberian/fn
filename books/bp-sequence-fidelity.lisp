@@ -340,6 +340,36 @@
                                       fn-bpn-sequence-recovery-readyp
                                       fn-bpn-sequence-reservationp))))
 
+; From here the twelve-field recognizer and the observation recognizer stay
+; closed.  Each nonreuse arm below needs only that the state is a true list
+; whose frontier, confirmed frontier and (when present) pending sequence are
+; sequence frontiers, which is what the two lemmas that follow state.  With
+; `fn-bpn-sf-statep` open, the recover arm split 6 625 ways (37.6 s) and the
+; composed step 11 538 ways (72.9 s); see
+; planning/evidence/bp-books-cost-2026-09-23.md.
+(local
+ (defthm fn-bpn-sf-statep-numeric-fields
+   (implies (fn-bpn-sf-statep s)
+            (and (true-listp s)
+                 (fn-bpn-sequence-frontierp (nth 6 s))
+                 (natp (nth 6 s))
+                 (fn-bpn-sequence-frontierp (nth 7 s))
+                 (natp (nth 7 s))))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-bpn-sf-statep
+                                      fn-bpn-sequence-frontierp)))))
+
+(local
+ (defthm fn-bpn-sf-statep-pending-field
+   (implies (and (fn-bpn-sf-statep s) (nth 8 s))
+            (and (fn-bpn-sequence-frontierp (nth 8 s))
+                 (natp (nth 8 s))))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-bpn-sf-statep
+                                      fn-bpn-sequence-frontierp)))))
+
+(local (in-theory (disable fn-bpn-sf-statep fn-bpn-sf-observationp)))
+
 (local
  (defthm fn-bpn-sf-crash-preserves-nonreuse
    (implies (and (fn-bpn-sf-statep s) (fn-bpn-sf-nonreusep s))
@@ -349,7 +379,7 @@
                   (fn-bpn-sf-step s :power-loss))))
    :hints (("Goal" :in-theory
             (enable fn-bpn-sf-step fn-bpn-sf-crash
-                    fn-bpn-sf-nonreusep fn-bpn-sf-statep)))))
+                    fn-bpn-sf-nonreusep)))))
 
 (local
  (defthm fn-bpn-sf-parent-steps-preserve-nonreuse
@@ -361,8 +391,7 @@
                  (fn-bpn-sf-nonreusep
                   (fn-bpn-sf-step s :sequence-parent-old))))
    :hints (("Goal" :in-theory
-            (enable fn-bpn-sf-step fn-bpn-sf-nonreusep
-                    fn-bpn-sf-statep)))))
+            (enable fn-bpn-sf-step fn-bpn-sf-nonreusep)))))
 
 (local
  (defthm fn-bpn-sf-recover-step-preserves-nonreuse
@@ -376,7 +405,7 @@
             (enable fn-bpn-sf-step fn-bpn-sf-recover-eventp
                     fn-bpn-sf-recover-observation fn-bpn-sf-nonreusep
                     fn-bpn-sf-observation-admissiblep
-                    fn-bpn-sequence-recovery-readyp fn-bpn-sf-statep)))))
+                    fn-bpn-sequence-recovery-readyp)))))
 
 (local
  (defthm fn-bpn-sf-stage-step-preserves-nonreuse
@@ -390,7 +419,7 @@
                         (bound (fn-bpn-sf-confirmed s))
                         (n (fn-bpn-sf-frontier s))))
             :in-theory
-            (enable fn-bpn-sf-step fn-bpn-sf-nonreusep fn-bpn-sf-statep
+            (enable fn-bpn-sf-step fn-bpn-sf-nonreusep
                     fn-bpn-sf-host-reserve
                     fn-bpn-sequence-reservationp)))))
 
@@ -400,8 +429,7 @@
             (fn-bpn-sf-nonreusep
              (fn-bpn-sf-step s :frontier-name-published)))
    :hints (("Goal" :in-theory
-            (enable fn-bpn-sf-step fn-bpn-sf-nonreusep
-                    fn-bpn-sf-statep)))))
+            (enable fn-bpn-sf-step fn-bpn-sf-nonreusep)))))
 
 (local
  (defthm fn-bpn-sf-directory-step-preserves-nonreuse
@@ -414,16 +442,14 @@
                         (n (fn-bpn-sf-confirmed s))
                         (m (+ 1 (fn-bpn-sf-pending s)))))
             :in-theory
-            (enable fn-bpn-sf-step fn-bpn-sf-nonreusep
-                    fn-bpn-sf-statep fn-bpn-sf-returned-belowp)))))
+            (enable fn-bpn-sf-step fn-bpn-sf-nonreusep fn-bpn-sf-returned-belowp)))))
 
 (local
  (defthm fn-bpn-sf-return-step-preserves-nonreuse
    (implies (and (fn-bpn-sf-statep s) (fn-bpn-sf-nonreusep s))
             (fn-bpn-sf-nonreusep (fn-bpn-sf-step s :return)))
    :hints (("Goal" :in-theory
-            (enable fn-bpn-sf-step fn-bpn-sf-nonreusep
-                    fn-bpn-sf-statep fn-bpn-sf-returned-belowp)))))
+            (enable fn-bpn-sf-step fn-bpn-sf-nonreusep fn-bpn-sf-returned-belowp)))))
 
 (defthm fn-bpn-sf-step-preserves-nonreuse
   (implies (and (fn-bpn-sf-statep s)

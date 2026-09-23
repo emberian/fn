@@ -17,9 +17,15 @@
 (include-book "bp-primary")
 
 (local (include-book "arithmetic/top" :dir :system))
-; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
-; this book reasons under them, so open them here, locally.
-(local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19),
+; and this book keeps them withdrawn: each theorem that reads a CBOR result
+; opens `fn-cbor-record-vocabulary` in its own hint, and the CRC field's octet
+; lemma opens the two conversion lemmas it uses.  The CBOR codec itself
+; (`fn-cbor-codec-vocabulary`, which holds `fn-cbor-u16-bytes` and
+; `fn-cbor-u32-bytes`) is opened nowhere: no theorem here decodes a CBOR
+; head.  With the codec open book-wide, `fn-bpp-block-crc-width` split 726
+; ways on the floor/mod spelling of the CRC under an opened `fn-bpp-blockp`
+; and took 458 s (planning/evidence/bp-books-cost-2026-09-23.md).
 ; The identity projection is withdrawn at the end of `books/bp-primary.lisp`
 ; (CHANGE bundle-identity on the board); this book proves the theorems about
 ; it, so it opens it here and nowhere else.
@@ -113,15 +119,45 @@
   (<= (len (fn-bpp-zero-crc type)) 4)
   :rule-classes :linear)
 
+; The CRC field is a two- or four-octet conversion of a bounded checksum.
+; What these need is the conversion's octet and length facts and the
+; checksum's bounds, not the checksum's bit loop or the conversion's
+; floor/mod spelling, so both stay closed.
 (defthm fn-bpp-crc-octets-are-octets
   (implies (and (fn-bpp-crc-typep type) (fn-cbor-octet-listp octets))
-           (fn-cbor-octet-listp (fn-bpp-crc-octets type octets))))
+           (fn-cbor-octet-listp (fn-bpp-crc-octets type octets)))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-u16-bytes-are-octets
+                                   fn-cbor-u32-bytes-are-octets)
+                                  (fn-bpp-crc16 fn-bpp-crc32c
+                                   fn-cbor-u16-bytes fn-cbor-u32-bytes)))))
 
 (defthm fn-bpp-crc-octets-length
   (implies (fn-bpp-crc-typep type)
            (<= (len (fn-bpp-crc-octets type octets)) 4))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (enable fn-cbor-u16-bytes fn-cbor-u32-bytes))))
+  :hints (("Goal" :in-theory (e/d (fn-bpc-u16-bytes-have-length-two
+                                   fn-bpc-u32-bytes-have-length-four)
+                                  (fn-bpp-crc16 fn-bpp-crc32c
+                                   fn-cbor-u16-bytes fn-cbor-u32-bytes)))))
+
+; The width fact of the field, stated once for any CRC type, so that the
+; block-level theorems below never open the field or the block.
+(local
+ (defthm fn-bpp-crc-octets-width
+   (implies (fn-bpp-crc-typep type)
+            (equal (len (fn-bpp-crc-octets type octets))
+                   (fn-bpp-crc-width type)))
+   :hints (("Goal" :in-theory (e/d (fn-bpc-u16-bytes-have-length-two
+                                    fn-bpc-u32-bytes-have-length-four)
+                                   (fn-bpp-crc16 fn-bpp-crc32c
+                                    fn-cbor-u16-bytes fn-cbor-u32-bytes))))))
+
+; The one field of a valid block the CRC lemmas need, so that they can keep
+; `fn-bpp-blockp` closed instead of splitting on every field's recognizer.
+(local
+ (defthm fn-bpp-blockp-crc-type
+   (implies (fn-bpp-blockp b) (fn-bpp-crc-typep (fn-bpp-crc-type b)))
+   :rule-classes :forward-chaining))
 
 ; The computed CRC field, as the preflight and the round trip see it: an octet
 ; list of at most four octets.  Both follow from `fn-bpp-crc-octets` on the
@@ -129,15 +165,17 @@
 (defthm fn-bpp-block-crc-is-octets
   (implies (fn-bpp-blockp b)
            (fn-cbor-octet-listp (fn-bpp-block-crc b)))
-  :hints (("Goal" :in-theory (disable fn-bpp-crc-octets fn-bpc-enc
-                                      fn-bpp-block-value))))
+  :hints (("Goal" :in-theory (disable fn-bpp-blockp fn-bpp-crc-type
+                                      fn-bpp-crc-typep fn-bpp-crc-octets
+                                      fn-bpc-enc fn-bpp-block-value))))
 
 (defthm fn-bpp-block-crc-length
   (implies (fn-bpp-blockp b)
            (<= (len (fn-bpp-block-crc b)) 4))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-bpp-crc-octets fn-bpc-enc
-                                      fn-bpp-block-value))))
+  :hints (("Goal" :in-theory (disable fn-bpp-blockp fn-bpp-crc-type
+                                      fn-bpp-crc-typep fn-bpp-crc-octets
+                                      fn-bpc-enc fn-bpp-block-value))))
 
 (defthm fn-bpp-encoding-fits-the-preflight
   (implies (fn-bpp-blockp b)
@@ -202,7 +240,10 @@
   (implies (fn-bpp-blockp b)
            (equal (len (fn-bpp-block-crc b))
                   (fn-bpp-crc-width (fn-bpp-crc-type b))))
-  :hints (("Goal" :in-theory (disable fn-bpc-enc fn-bpp-block-value))))
+  :hints (("Goal" :in-theory (disable fn-bpp-blockp fn-bpp-crc-type
+                                      fn-bpp-crc-typep fn-bpp-crc-octets
+                                      fn-bpp-crc-width fn-bpc-enc
+                                      fn-bpp-block-value))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone: round trip.  Every valid primary block decodes back from its own
@@ -256,7 +297,8 @@
                             (crc-octets (fn-bpp-block-crc b)))
                  (:instance fn-bpp-value-crc-field-of-block-value
                             (crc-octets (fn-bpp-block-crc b))))
-           :in-theory (disable fn-bpc-value-round-trip
+           :in-theory (e/d (fn-cbor-record-vocabulary)
+                           (fn-bpc-value-round-trip
                                fn-bpp-block-value-is-shape
                                fn-bpp-block-value-cost
                                fn-bpp-block-value-fits-the-preflight
@@ -269,24 +311,33 @@
                                fn-bpp-encode fn-bpc-cost fn-bpc-encode
                                fn-bpc-enc fn-bpc-decode-exact fn-bpc-decode
                                fn-bpc-shapep fn-bpp-blockp fn-bpp-value-block
-                               fn-bpp-value-crc-field fn-bpp-crc-width))))
+                               fn-bpp-value-crc-field fn-bpp-crc-width)))))
 
+; The three theorems below only dispatch on the outcome of `fn-bpp-decode`
+; and read off its last arm.  `fn-bpp-encode-unfolds` (local, above) rewrites
+; the decoder's re-encoding check into the block value, and with it enabled
+; each proof opened `fn-bpp-block-value` and the EID values and split 217
+; ways (26 to 39 s each); it stays closed here.
 (defthm fn-bpp-accepted-input-is-canonical-by-construction
   (implies (fn-bpp-result-okp (fn-bpp-decode octets))
            (equal (fn-bpp-encode (fn-bpp-result-block (fn-bpp-decode octets)))
                   octets))
-  :hints (("Goal" :in-theory (disable fn-bpc-decode-exact fn-bpc-decode
-                                      fn-bpc-enc fn-bpp-encode
-                                      fn-bpp-value-block fn-bpp-block-crc
-                                      fn-bpp-blockp fn-bpp-value-crc-field))))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-record-vocabulary)
+                                  (fn-bpc-decode-exact fn-bpc-decode
+                                   fn-bpc-enc fn-bpp-encode
+                                   fn-bpp-encode-unfolds
+                                   fn-bpp-value-block fn-bpp-block-crc
+                                   fn-bpp-blockp fn-bpp-value-crc-field)))))
 
 (defthm fn-bpp-decode-yields-block
   (implies (fn-bpp-result-okp (fn-bpp-decode octets))
            (fn-bpp-blockp (fn-bpp-result-block (fn-bpp-decode octets))))
-  :hints (("Goal" :in-theory (disable fn-bpc-decode-exact fn-bpc-decode
-                                      fn-bpc-enc fn-bpp-encode
-                                      fn-bpp-value-block fn-bpp-block-crc
-                                      fn-bpp-blockp fn-bpp-value-crc-field))))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-record-vocabulary)
+                                  (fn-bpc-decode-exact fn-bpc-decode
+                                   fn-bpc-enc fn-bpp-encode
+                                   fn-bpp-encode-unfolds
+                                   fn-bpp-value-block fn-bpp-block-crc
+                                   fn-bpp-blockp fn-bpp-value-crc-field)))))
 
 ; A block accepted with a non-zero CRC type carries exactly the CRC that
 ; section 4.2.2 prescribes over its own zero-filled encoding.
@@ -299,10 +350,12 @@
                    (fn-cbor-result-value (fn-bpc-decode-exact octets)))
                   (fn-bpp-block-crc
                    (fn-bpp-result-block (fn-bpp-decode octets)))))
-  :hints (("Goal" :in-theory (disable fn-bpc-decode-exact fn-bpc-decode
-                                      fn-bpc-enc fn-bpp-encode
-                                      fn-bpp-value-block fn-bpp-block-crc
-                                      fn-bpp-blockp fn-bpp-value-crc-field))))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-record-vocabulary)
+                                  (fn-bpc-decode-exact fn-bpc-decode
+                                   fn-bpc-enc fn-bpp-encode
+                                   fn-bpp-encode-unfolds
+                                   fn-bpp-value-block fn-bpp-block-crc
+                                   fn-bpp-blockp fn-bpp-value-crc-field)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone: encoding is injective, so identity is determined by the canonical
@@ -415,12 +468,18 @@
 ;;            :in-theory (disable fn-bpc-value-round-trip fn-bpp-eid-value
 ;;                                fn-bpc-enc fn-bpc-shapep))))
 
+; The round trip is the instance of `fn-bpc-value-round-trip`; the decoder
+; stays closed so that the instance matches the goal's `fn-bpc-decode-exact`
+; call as it stands.  Opened, the decoder ran over the encoding and the proof
+; took 42 s for a four-way split.
 (defthm fn-bpp-bundle-age-round-trip
   (implies (fn-bpp-bundle-agep ms)
            (equal (fn-bpp-data-bundle-age (fn-bpp-bundle-age-data ms)) ms))
   :hints (("Goal"
            :use ((:instance fn-bpc-value-round-trip (x (cons :uint ms))))
-           :in-theory (disable fn-bpc-value-round-trip fn-bpc-enc))))
+           :in-theory (e/d (fn-cbor-record-vocabulary)
+                           (fn-bpc-value-round-trip fn-bpc-enc
+                            fn-bpc-decode-exact fn-bpc-decode)))))
 
 ;; OPEN, not certified: the `fn-bpc-value-round-trip` instance sinks
 ;; into preprocessing (zero prover time, a minute of other time) on some runs

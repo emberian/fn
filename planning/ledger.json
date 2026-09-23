@@ -428,11 +428,11 @@
     "books": 423,
     "books_in_root_closure": 422,
     "roots": 421,
-    "theorems": 7054,
+    "theorems": 7058,
     "functions": 5421,
     "assert_events": 7828,
     "must_fails": 282,
-    "encapsulates": 24,
+    "encapsulates": 26,
     "guards": {
       "verified": 1746,
       "declared-off": 288,
@@ -1375,7 +1375,7 @@
       "must_fails": 0,
       "defconsts": 4,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 2,
       "includes": [
         "bp-node",
         "defrecord",
@@ -1500,7 +1500,7 @@
       "book": "books/bp-primary-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 44,
+      "theorems": 46,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -1940,7 +1940,7 @@
       "book": "books/bp-sequence-fidelity.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
+      "theorems": 24,
       "functions": 31,
       "guards": {
         "verified": 2,
@@ -11817,7 +11817,7 @@
     {
       "theorem": "fn-bpn-sf-crash-preserves-nonreuse",
       "book": "books/bp-sequence-fidelity.lisp",
-      "line": 343,
+      "line": 373,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-bpn-sf-crash or a fn-bpn-sf-crash- transition"
       ]
@@ -11843,7 +11843,7 @@
     {
       "theorem": "fn-bpn-step-emits-no-release",
       "book": "books/bp-node-machine.lisp",
-      "line": 681,
+      "line": 700,
       "reasons": [
         "instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing"
       ]
@@ -12381,13 +12381,13 @@
       {
         "theorem": "fn-bpp-decode-of-encode",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 240,
+        "line": 281,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bpp-accepted-block-has-valid-crc",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 293,
+        "line": 344,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
