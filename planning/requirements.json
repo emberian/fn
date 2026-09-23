@@ -997,7 +997,8 @@
         "PRF-018",
         "PRF-038",
         "PRF-045",
-        "PRF-046"
+        "PRF-046",
+        "PRF-059"
       ],
       "verification": [
         "proof",
@@ -1015,9 +1016,14 @@
         "planning/evidence/bp-dtn7-w11-2026-09-21.md",
         "planning/evidence/bp-convergence-native-2026-09-21.md",
         "planning/evidence/native-bp-app-2026-09-21.md",
-        "tests/test_bp_app_native.py"
+        "tests/test_bp_app_native.py",
+        "books/bp-status-report.lisp",
+        "books/bp-status-report-invariants.lisp",
+        "tests/acl2/bp-status-report-tests.lisp",
+        "planning/evidence/manifests/certify-20260923T164648Z-1822489.json",
+        "planning/evidence/bp-status-report-d1a-2026-09-23.md"
       ],
-      "implementation_note": "Earlier pinned dtn7-rs and development workflow tests retain their recorded scope. Native carrier evidence covers durable allocation, queue/contact/restart/expiry, receive-loop fencing and cross-session evidence retention. The native BP application join now routes request intent through canonical owner Store acceptance, exact committed-record binding and durable receipt decision. Its crash-after-decision/before-receipt witness retries through a fresh process without a second article or retention pin. Full joined trace proof, all physical cuts, authenticated remote evidence, LTP, multi-relay and complete operator integration remain open. The native receipt-decision directory-barrier EIO test also distinguishes visible evidence from durability, fences without emitting a receipt, and replays after recovery barriers. Repeated fn-bpaj retained-state validation remains an active implementation defect; a maintained-invariant successor is assigned.",
+      "implementation_note": "Earlier pinned dtn7-rs and development workflow tests retain their recorded scope. Native carrier evidence covers durable allocation, queue/contact/restart/expiry, receive-loop fencing and cross-session evidence retention. The native BP application join now routes request intent through canonical owner Store acceptance, exact committed-record binding and durable receipt decision. Its crash-after-decision/before-receipt witness retries through a fresh process without a second article or retention pin. Full joined trace proof, all physical cuts, authenticated remote evidence, LTP, multi-relay and complete operator integration remain open. The native receipt-decision directory-barrier EIO test also distinguishes visible evidence from durability, fences without emitting a receipt, and replays after recovery barriers. Repeated fn-bpaj retained-state validation remains an active implementation defect; a maintained-invariant successor is assigned. D1a now provides a bounded canonical RFC 9171 status-report codec with whole/fragment and timed-assertion vectors; it does not generate, correlate or consume reports in the node machine.",
       "note": "Status remains specified for the full requirement. Implemented native application composition has focused runtime evidence; broader lifecycle/physical obligations remain PRF-045/046. An application receipt is distinct from carrier completion, and neither a scoped test nor an accepted-branch projection theorem establishes full transport independence."
     },
     {

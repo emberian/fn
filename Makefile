@@ -204,6 +204,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-primary \
 	books/bp-primary-invariants \
 	tests/acl2/bp-primary-tests \
+	books/bp-status-report \
+	books/bp-status-report-invariants \
+	tests/acl2/bp-status-report-tests \
 	books/bp-bundle \
 	books/bp-bundle-invariants \
 	tests/acl2/bp-bundle-tests \
