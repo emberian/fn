@@ -65,7 +65,7 @@
     (fn-own-tls-make-result
      (fn-own-tls-result-consumed result)
      (fn-own-tls-result-effects result)
-     (fn-ocfg-with-owner oc (fn-own-tls-result-owner result)))))
+     (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)))))
 
 (defthm fn-own-read-tls-prefix-consumed-is-bounded
   (<= (fn-own-tls-result-consumed

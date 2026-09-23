@@ -10,6 +10,13 @@
 (defconst *ocri-new-group*
   (append (fn-nntp-string-octets "GROUP fn.live") '(13 10)))
 (assert-event (fn-ocri-relation *ocri-live*))
+(defconst *ocri-third-open* (cdr (fn-ocfg-open *ocri-live* nil)))
+(assert-event (fn-ocri-relation *ocri-third-open*))
+(assert-event
+ (equal (fn-own-conn-index
+         (fn-own-find-conn 2
+                           (fn-own-conns (fn-ocfg-owner *ocri-third-open*))))
+        (fn-own-view-index (fn-own-view (fn-ocfg-owner *ocri-live*)))))
 (assert-event
  (not (equal (fn-own-conn-archive
               (fn-own-find-conn 0
@@ -30,6 +37,10 @@
 (assert-event
  (not (equal (fn-own-tls-result-effects *ocri-old-tls*)
              (fn-own-tls-result-effects *ocri-new-tls*))))
+(assert-event
+ (fn-ocri-conns-p
+  (fn-own-conns (fn-ocfg-owner
+                 (cdr (fn-ocfg-read *ocri-live* 0 *ocri-new-group*))))))
 
 ; The selected wire hypothesis has a real separator.  The forged wire has
 ; the fast spine but an invalid retained octet; the full read refuses it.
@@ -54,6 +65,11 @@
     (fn-own-replace-conn
      *ocri-bad-conn* (fn-own-conns (fn-ocfg-owner *ocri-live*))))))
 (assert-event (not (fn-ocri-relation *ocri-bad-oc*)))
+(assert-event
+ (not (fn-ocri-relation (cdr (fn-ocfg-open *ocri-bad-oc* nil)))))
+(must-fail
+ (defthm ocri-open-without-carried-wire-and-index
+   (fn-ocri-relation (cdr (fn-ocfg-open *ocri-bad-oc* nil)))))
 (assert-event
  (not (equal
        (fn-own-tls-result-owner

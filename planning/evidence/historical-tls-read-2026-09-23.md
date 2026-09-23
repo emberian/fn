@@ -19,9 +19,22 @@ wire premise is removed. The [qualified w25 book manifest](manifests/certify-202
 and [test manifest](manifests/certify-20260923T203201Z-3996161.json) cover
 this local source with two jobs on persvati.
 
-Preservation of the full historical relation across ordinary read remains
-open in this checkpoint. In the branch where `fn-own-finish-read` removes a
-connection for an invalid next session, the configured-owner wrapper retains
-the old pin. `fn-ocfg-read` and the TLS wrapper must remove that pin together
-before this relation can be claimed invariant. The proof-only relation is not
-an executable per-command validation.
+The later [qualified open/read book manifest](manifests/certify-20260923T204332Z-4118198.json)
+and [test manifest](manifests/certify-20260923T204501Z-4134528.json)
+cover `fn-ocri-open-preserves-historical-reader-relation` for the actual
+configured-owner open and `fn-ocri-own-read-preserves-reader-pins` for the
+actual owner read. The read theorem handles both replacement and removal of
+the selected connection. Its configured-owner composition is explicitly
+conditional on the base `fn-ocl-relation` after read. A reachable third open
+pins the current view trie, while an existing malformed wire remains malformed
+after an unrelated open; the test's failed theorem shows why carried reader
+validity is needed.
+
+The called `fn-ocfg-read` and `fn-ocfg-read-tls-prefix` now share
+`fn-ocfg-with-read-owner`: if a read closes its connection, the corresponding
+config pin is removed; otherwise it is retained. The direct outer equality
+and both test books pass in the [post-cleanup w25 manifest](manifests/certify-20260923T204844Z-4173382.json).
+Preservation of the base `fn-ocl-relation` across ordinary read is still being
+proved in the config lane, so this packet does not yet claim unconditional
+preservation of the full `fn-ocri-relation`. The proof-only relation is not an
+executable per-command validation.
