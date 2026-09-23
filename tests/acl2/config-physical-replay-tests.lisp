@@ -57,6 +57,31 @@
                     (list *cpr-t-undertake* *cpr-t-release*)))
         :fault))
 
+; A post immediately after the valid decrease observes the reduced, still
+; sufficient budget. The same history cannot replay at that final budget if
+; the historical undertaking is judged against it instead of the old budget.
+(defconst *cpr-t-decrease-to-five*
+  (fn-cfg-record-make 1 7 2 (list (fn-cfg-set-capacity 5)) *cpr-t-stamp*))
+(defconst *cpr-t-post-after-decrease*
+  (fn-cpr-replay
+   (list *fn-cfg-default-record* *cpr-t-decrease-to-five*)
+   (list *cpr-t-undertake* *cpr-t-release* *cpr-t-article*)))
+(assert-event
+ (equal (fn-replay-result-kind *cpr-t-post-after-decrease*) :ok))
+(assert-event
+ (equal (fn-cfg-capacity
+         (fn-cfg-value
+          (fn-cnode-config
+           (fn-replay-result-node *cpr-t-post-after-decrease*))))
+        5))
+(assert-event
+ (consp (fn-find-article
+         "<cpr@example.invalid>"
+         (fn-state-articles
+          (fn-node-acceptance
+           (fn-cnode-node
+            (fn-replay-result-node *cpr-t-post-after-decrease*)))))))
+
 ; A forged decrease *before* the release sees the high reservation and is
 ; refused even though config-only replay sees an empty node and accepts it.
 (defconst *cpr-t-premature-decrease*
