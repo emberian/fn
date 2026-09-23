@@ -152,6 +152,13 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
     })
 
     def canned(self, name):
+        if name in ("node A init scratch configuration",
+                    "node B init scratch configuration"):
+            node = self.a if "node A" in name else self.b
+            return "MATRIX-CONFIG-STORE {}/init/store".format(node.dir)
+        if name in ("node A operator init", "node B operator init"):
+            node = self.a if "node A" in name else self.b
+            return "initialized {}/init/store".format(node.dir)
         if name == "native public peering/restart witness":
             return self.witness_output()
         if name == "native AUTHINFO secret":
@@ -290,7 +297,9 @@ class NativeSliceAccountingTests(unittest.TestCase):
 
     @staticmethod
     def native_peering_rows(gate):
-        keys = gate.TRANSIT_KEYS + gate.FEED_KEYS
+        # FEED-ONCE belongs to the separate protected queue/restart witness.
+        keys = gate.TRANSIT_KEYS + tuple(
+            key for key in gate.FEED_KEYS if key != "V0-FEED-ONCE")
         return [row for row in gate.rows
                 if any(row.id == key or row.id.startswith(key + "-") for key in keys)]
 
@@ -399,8 +408,10 @@ class NativeSliceAccountingTests(unittest.TestCase):
             self.assertEqual(rows["V0-NODE-REINIT-A"].verdict, v0_matrix.REFUSED)
             self.assertEqual(rows["V0-NODE-REINIT-SAFE-A"].verdict, v0_matrix.ACCEPTED)
             self.assertIn("articles=1", rows["V0-NODE-REINIT-SAFE-A"].observed)
-            self.assertEqual(rows["V0-NODE-CONFIG-A"].verdict, v0_matrix.NOT_BUILT)
-            self.assertIn("[acl2]", rows["V0-NODE-CONFIG-A"].blocker)
+            self.assertEqual(rows["V0-NODE-CONFIG-A"].verdict, v0_matrix.ACCEPTED)
+            self.assertIn("/init/store", rows["V0-NODE-CONFIG-A"].observed)
+            self.assertEqual(v0_matrix.PLAN_BY_KEY["V0-NODE-CONFIG"].requirements,
+                             ("HST-003",))
             # The recovery row belongs to the phase with the better subject.
             order = [row.id for row in gate.rows]
             self.assertLess(order.index("V0-OUT-RECOVER-A"),
@@ -417,6 +428,27 @@ class NativeSliceAccountingTests(unittest.TestCase):
                             order.index("V0-PEER-ADD-A"))
             self.assertLess(order.index("V0-PEER-ADD-A"),
                             order.index("V0-NODE-START-A"))
+
+    def test_native_config_row_needs_the_exact_store_path(self):
+        class WrongStore(HarnessOnlyNativeGate):
+            def canned(self, name):
+                if name == "node A operator init":
+                    return "initialized /some/other/store"
+                return super().canned(name)
+
+        with tempfile.TemporaryDirectory() as home:
+            gate = WrongStore(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234",
+                "dev", backend=v0_matrix.NATIVE_BACKEND,
+                native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            self.assertEqual(rows["V0-NODE-CONFIG-A"].verdict,
+                             v0_matrix.NOT_EXERCISED)
+            self.assertIn("exact configured store path",
+                          rows["V0-NODE-CONFIG-A"].blocker)
+            self.assertEqual(rows["V0-NODE-CONFIG-B"].verdict, v0_matrix.ACCEPTED)
 
     def test_a_developer_image_makes_the_uncertain_outcome_a_measurement(self):
         """The one row the developer image is for, and the only thing it is for."""
@@ -1011,6 +1043,47 @@ class ProtectedTransitTests(unittest.TestCase):
         self.assertEqual(rows["V0-TRANSIT-AUTHINFO-WRONG"].verdict,
                          v0_matrix.NOT_EXERCISED)
         self.assertEqual(rows["V0-TRANSIT-TLS-WRONG-ANCHOR"].verdict, v0_matrix.REFUSED)
+
+    def test_feed_once_needs_replayed_done_and_no_new_offer_after_restart(self):
+        base = self.witness_lines()
+        one = {"kind": "feed-once", "security": "starttls", "auth": "authinfo",
+               "source_killed": True, "source_restarted": True,
+               "recipient_articles": 1, "identity": self.identity(),
+               "before": {"state_before_restart": "done",
+                          "state_after_restart": "done",
+                          "records": {"feed-offer": 1, "feed-sent": 1,
+                                      "feed-outcome": 1}},
+               "after": {"state_after_restart": "done",
+                         "records": {"feed-offer": 1, "feed-sent": 1,
+                                     "feed-outcome": 1}}}
+        line = "NATIVE-PROTECTED-WITNESS " + json.dumps(one)
+        rows = self.rows(base + "\n" + line)
+        self.assertEqual(rows["V0-FEED-ONCE"].verdict, v0_matrix.ACCEPTED)
+        one["after"]["records"]["feed-offer"] = 2
+        rows = self.rows(base + "\n" + "NATIVE-PROTECTED-WITNESS " + json.dumps(one))
+        self.assertEqual(rows["V0-FEED-ONCE"].verdict, v0_matrix.NOT_EXERCISED)
+        self.assertIn("settled owner queue", rows["V0-FEED-ONCE"].blocker)
+
+    def test_failed_protected_suite_cannot_turn_earlier_witnesses_green(self):
+        class FailedSuite(HarnessOnlyNativeGate):
+            def sh(self, name, script, timeout=600, note="", expect=0):
+                step = super().sh(name, script, timeout, note, expect)
+                if name == "native protected peering witness":
+                    step.rc = 1
+                return step
+
+        with tempfile.TemporaryDirectory() as home:
+            gate = FailedSuite(v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40,
+                               "abc1234", "dev", backend=v0_matrix.NATIVE_BACKEND,
+                               native_image="/opt/fn/fn-host",
+                               native_configs={"a": "/srv/fn/a.toml",
+                                               "b": "/srv/fn/b.toml"})
+            gate.witness_output = lambda: self.witness_lines()
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            for rid in self.IDS + ("V0-FEED-ONCE",):
+                self.assertEqual(rows[rid].verdict, v0_matrix.NOT_EXERCISED)
+                self.assertIn("did not finish cleanly", rows[rid].blocker)
 
 
 class AuthDriverTests(unittest.TestCase):

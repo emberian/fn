@@ -23,6 +23,8 @@ import time
 import unittest
 
 from tests import test_native_peering as peer
+from tests.test_feed_journal_live import BookBridge
+from tests.native_process import wait_for_announcement
 
 ACTUAL_CORE = peer.ACTUAL_CORE
 ACTUAL_LAUNCHER = peer.ACTUAL_LAUNCHER
@@ -36,7 +38,6 @@ free_port = peer.free_port
 @unittest.skipUnless(READY, "set explicit source-matched native image and hashes")
 class NativeProtectedPeeringTests(unittest.TestCase):
     command = peer.NativePeeringTests.command
-    start = peer.NativePeeringTests.start
     process_identity = peer.NativePeeringTests.process_identity
     verify_process_identity = peer.NativePeeringTests.verify_process_identity
     stop_all = peer.NativePeeringTests.stop_all
@@ -61,6 +62,25 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         self.env.pop("FN_HOST", None)
         self.processes = []
         self.addCleanup(self.stop_all)
+
+    def start(self, node):
+        # Absent-article TLS probes close many short lived connections.  The
+        # owner logs each unclean TLS close; an unread stderr PIPE fills and
+        # blocks the service itself.  Keep the diagnostic bytes in a regular
+        # file so the harness cannot create that failure.
+        stderr_path = node["root"] / "owner.stderr"
+        with stderr_path.open("ab") as stderr:
+            process = subprocess.Popen(
+                [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
+                cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=stderr)
+        self.processes.append(process)
+        node["process"] = process
+        node["stderr_path"] = stderr_path
+        line = wait_for_announcement(process, b"LISTENING ")
+        self.assertEqual(line, "LISTENING {}\n".format(node["port"]).encode(),
+                         "{} emitted an unexpected readiness line: {!r}".format(
+                             node["name"], line))
+        self.verify_process_identity(node)
 
     def make_certificate(self, root, name):
         certificate = root / (name + "-certificate.pem")
@@ -122,6 +142,45 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         while time.monotonic() < deadline:
             self.assertIsNone(self.article_from(node, message_id))
             time.sleep(0.1)
+
+    def capture_owner_failure(self, nodes, stage):
+        """Keep bounded process evidence before unittest cleanup stops owners."""
+        root = os.environ.get("FN_NATIVE_TEST_DIAGNOSTIC_DIR")
+        if not root:
+            return
+        report = {"stage": stage, "owners": {}}
+        for node in nodes:
+            process = node["process"]
+            proc = Path("/proc") / str(process.pid)
+            threads = {}
+            for task in (proc / "task").glob("*") if proc.is_dir() else ():
+                info = {}
+                for name in ("wchan", "stack", "status"):
+                    try:
+                        info[name] = (task / name).read_text(errors="replace")[:3000]
+                    except OSError as error:
+                        info[name] = type(error).__name__
+                threads[task.name] = info
+            pipes = {}
+            for name in ("stdout", "stderr"):
+                stream = getattr(process, name)
+                if stream is not None:
+                    os.set_blocking(stream.fileno(), False)
+                    try:
+                        pipes[name] = os.read(stream.fileno(), 16384).decode(
+                            "utf-8", "replace")
+                    except BlockingIOError:
+                        pipes[name] = ""
+            if node.get("stderr_path"):
+                pipes["stderr"] = node["stderr_path"].read_bytes()[-16384:].decode(
+                    "utf-8", "replace")
+            report["owners"][node["name"]] = {
+                "pid": process.pid, "exit": process.poll(),
+                "threads": threads, "pipes": pipes}
+        destination = Path(root) / (stage + ".json")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        print("NATIVE-PROTECTED-DIAGNOSTIC " + str(destination), flush=True)
 
     def article_from(self, node, message_id):
         """Observe through a fully protected reader; only 430 means absent."""
@@ -225,6 +284,69 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         self.witness({"kind": "protected-refusal", "case": "wrong-password",
                       "delivered": False, "source_alive": True, "target_alive": True,
                       "identity": {"a": a["identities"][-1], "b": b["identities"][-1]}})
+
+    def test_acknowledged_protected_feed_does_not_reoffer_after_source_death(self):
+        a = self.initialize("once-a", free_port(), "b-at-a", "b-secret")
+        b = self.initialize("once-b", free_port(), "a-at-b", "a-secret")
+        self.configure_peer(a, b, self.profile(a, b))
+        self.configure_peer(b, a, self.profile(b, a))
+        self.start(a)
+        self.start(b)
+        message_id = "<protected-feed-once@example.invalid>"
+        self.post(a, message_id, "feed-once")
+        try:
+            self.assertEqual(self.await_article(b, message_id),
+                             self.await_article(a, message_id))
+        except Exception:
+            self.capture_owner_failure((a, b), "feed-once-initial")
+            raise
+        journal = a["store"] / "feed" / "once-b.fnfd"
+        self.assertTrue(journal.is_file())
+
+        # The target has accepted the article.  Kill the sender, then let
+        # ACL2 replay its durable FNFD bytes, not a Python FNFD decoder.
+        # A bounded wait allows its acknowledged outcome to cross FNFD's
+        # durability barrier before the kill; an absent outcome fails below.
+        time.sleep(0.5)
+        source = a["process"]
+        source.kill()
+        source.wait(timeout=30)
+        source.stdout.close()
+        source.stderr.close()
+        self.processes.remove(source)
+        bridge = BookBridge(peer=b"once-b")
+        try:
+            before = bridge.inspect_file(journal, message_id)
+        finally:
+            bridge.close()
+        self.assertEqual(before["state_before_restart"], "done", before)
+        self.assertEqual(before["state_after_restart"], "done", before)
+        self.assertEqual(before["queue_length"], 1, before)
+        self.assertGreaterEqual(before["records"].get("feed-outcome", 0), 1, before)
+
+        self.start(a)
+        time.sleep(2)
+        self.assertEqual(self.await_article(b, message_id),
+                         self.await_article(a, message_id))
+        identity = {"a": self.verify_process_identity(a),
+                    "b": self.verify_process_identity(b)}
+        self.stop_all()
+        bridge = BookBridge(peer=b"once-b")
+        try:
+            after = bridge.inspect_file(journal, message_id)
+        finally:
+            bridge.close()
+        self.assertEqual(after["state_after_restart"], "done", after)
+        self.assertEqual(after["records"].get("feed-offer", 0),
+                         before["records"].get("feed-offer", 0), (before, after))
+        self.assertEqual(after["records"].get("feed-sent", 0),
+                         before["records"].get("feed-sent", 0), (before, after))
+        status = self.command([IMAGE, "--fn", "operator", b["config"], "status"])
+        self.assertIn(b"articles=1", status.stdout, status.stdout)
+        self.witness({"kind": "feed-once", "security": "starttls",
+                      "auth": "authinfo", "source_killed": True,
+                      "source_restarted": True, "recipient_articles": 1,
+                      "before": before, "after": after, "identity": identity})
 
     def test_untrusted_certificate_yields_430_and_feed_journal_evidence(self):
         a = self.initialize("bad-cert-a", free_port(), "b-at-a", "b-secret")
