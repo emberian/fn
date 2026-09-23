@@ -15973,7 +15973,7 @@
       {
         "theorem": "fn-oag-tls-served-conn-config",
         "book": "books/owner-agent.lisp",
-        "line": 400,
+        "line": 404,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

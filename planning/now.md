@@ -7,7 +7,12 @@ checkpoint auxiliary-state comparison and fenced cold clone with OS-generated
 incarnation rollover. The full incremental hbox run is
 `run-20260923T224556Z-1ba9` at
 `/tank/fn/gates/reader-clone-poll-a8e4-20260923`, four jobs: 425 compatible
-cached books and 122 to certify. Its result is pending. Static checking found
+cached books and 122 to certify. The run finished with 112 new passes and ten failures (four substantive
+proof roots plus dependents), in 168.027 seconds;
+[repairs and exact evidence](evidence/reader-consumer-clone-integration-2026-09-23.md)
+are recorded separately. Authentication and owner-agent repairs now pass
+their selected roots; the historical reader/configuration repair is in progress.
+Static checking found
 a missing archived clone manifest; `7fe09ab0` retains the unchanged original.
 The corresponding native image is staged, not yet built or qualified.
 
