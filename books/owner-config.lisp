@@ -674,10 +674,11 @@
   :rule-classes nil
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (enable (:d fn-ocfg-open) (:d fn-own-open)
+           :in-theory (e/d ((:d fn-ocfg-open) (:d fn-own-open)
                               (:d fn-own-reader-context) (:d fn-served-open) (:d fn-own-set-conns) (:d fn-auth-with-base)
                               (:d fn-auth-open-session)
-                              (:d fn-peer-open-session)))))
+                              (:d fn-peer-open-session))
+                             (fn-own-conn-make-group-indexed)))))
 
 ; KEYSTONE.  A RECONFIGURATION NEVER CHANGES WHAT AN OPEN CONNECTION SERVES.
 ; Staging and publishing a configuration record moves the owner's live

@@ -608,7 +608,8 @@
 (verify-guards fn-nntp-post-step-pinned)
 
 (defthm fn-post-step-pinned-preserves-consistent-session
-  (implies (fn-post-session-consistentp ps archive)
+  (implies (and (fn-post-session-consistentp ps archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-post-session-consistentp
             (fn-post-result-session
              (fn-nntp-post-step-pinned

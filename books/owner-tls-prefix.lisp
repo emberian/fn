@@ -28,14 +28,15 @@
 
 (defun fn-own-tls-served-conn (o conn)
   (declare (xargs :guard t))
-  (fn-served-make-conn-indexed (fn-own-conn-wire conn)
+  (fn-served-make-conn-group-indexed (fn-own-conn-wire conn)
                               (fn-own-conn-live-session o conn)
                               (fn-own-conn-archive conn)
                               (fn-own-conn-config conn)
                               (fn-own-conn-observation conn)
                               (fn-own-clock o)
                               (fn-own-conn-verdicts conn)
-                              (fn-own-conn-index conn)))
+                              (fn-own-conn-index conn)
+                              (fn-own-conn-group-index conn)))
 
 (defthm fn-own-tls-served-conn-keeps-reader-pins
   (and (equal (fn-served-conn-verdicts (fn-own-tls-served-conn o conn))
