@@ -1,6 +1,54 @@
 # Current work — 2026-09-23
 
-## Current integration checkpoint — 22:14 UTC
+## Current integration checkpoint — 22:48 UTC
+
+Source `a8e4b17e` combines the pinned LISTGROUP bucket, local consumer poll,
+checkpoint auxiliary-state comparison and fenced cold clone with OS-generated
+incarnation rollover. The full incremental hbox run is
+`run-20260923T224556Z-1ba9` at
+`/tank/fn/gates/reader-clone-poll-a8e4-20260923`, four jobs: 425 compatible
+cached books and 122 to certify. Its result is pending. Static checking found
+a missing archived clone manifest; `7fe09ab0` retains the unchanged original.
+The corresponding native image is staged, not yet built or qualified.
+
+The preceding source-matched developer image `c1bb050b` passed all eleven
+[BP admission/recovery scenarios](evidence/native-bp-admission-c1bb-2026-09-23.md).
+The earlier `4f66e6b0` image exposed a real raw-versus-parsed EID caller defect;
+[the failed run](evidence/native-e2-bp-4f66-2026-09-23.md) remains recorded.
+The correction passes the parsed endpoint to ACL2. This result does not cover
+the subsequent fragment, expiry, durable deletion/report or K6 v3 transit work.
+On `4f66e6b0`, local consumer controls and process-death recovery passed two
+normal cases plus the separately invoked different-UID case; positive poll and
+advancing ACK await the new image.
+
+The new consumer poll returns the exact historical event and a cursor while
+leaving ACK unchanged. It decodes at most sixteen events, but currently walks
+the preceding history to reach them; a carried sequence index is being built
+to remove that prefix cost. Native tests now cover signed source binding,
+advancing-ACK reply loss, exact fixture export for Mini and clone rejection of
+old cursors, but those tests have not yet run on this image.
+
+`fn-bs-k0-record-attempted-cut-establishes-relation` now proves the full
+byte/kernel relation at the actual successful P-RECORD pair-10 cut from a
+related staged input, typed frame/name and fresh stage. Served call-entry
+establishment, other programs/outcomes and physical barriers remain open.
+The BP recovery theorem cost repair reduced its whole book from 130.938 to
+3.971 seconds on the same hbox toolchain without changing its statement;
+the Store ready-phase proof repair reduces that book from 42.047 to 15.226
+seconds. Integrated timings remain a separate measurement.
+
+Mini's isolated [portable inbox experiment](evidence/dregg-e1-portable-inbox-p1.md)
+now retains exact carrier, operation binding and immutable reply in one native
+transaction, including relay and conflicting-source evidence. Same-fixture
+historical-repeat wall time fell from 218.30 to 83.15 seconds; 75.10 seconds
+remain in Mini replay, a practical gap. Its fn Store-report/cursor and durable
+ACK join is active work, not established by portable authorship alone.
+
+Parallel lanes continue the actual historical READ/ADVANCE relation, BP
+fragment/expiry/transit/report composition, durable topic Store admission and
+the consumer-to-Mini transaction. The live `da5fd8cb` service is unchanged.
+
+## Earlier integration checkpoint — 22:14 UTC
 
 The frozen `86323c89` developer and production images passed the targeted
 [topic, indexed-reader and live-configuration checks](evidence/native-topic-handoff-86323c89-2026-09-23.md);

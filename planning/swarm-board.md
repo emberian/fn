@@ -30,25 +30,25 @@ The user replaced the goal with concurrent v0/v1 development grounded in
 identify reproducible experiments; they are not a project-wide implementation
 freeze. Preserve the live `da5fd8cb` node and existing shared compute pools.
 
-Current coordination snapshot at source `0143f87e`; the later notes retain
-earlier evidence. Root's full incremental run is `run-20260923T221336Z-48f3`
-on hbox at `/tank/fn/gates/consumer-topic-bp-20260923`, four shared-pool jobs.
-Do not duplicate it; image preparation follows its result.
+Current coordination snapshot: root source `a8e4b17e` is in full incremental
+qualification on hbox, run `run-20260923T224556Z-1ba9`, at
+`/tank/fn/gates/reader-clone-poll-a8e4-20260923`. Stamp has staged its exact
+native image source and will build only after the root verdict. Live node unchanged.
 
 | Agent | Current substantive result and coordination |
 | --- | --- |
-| `acceptance_stamp` | Composes the full historical reader relation using certified survivor/pin lemmas from `store_invariants`. |
-| `store_invariants` | E2 constructor repair integrated; historical helper packet qualified on E2, final full relation shared with `acceptance_stamp`. |
-| `consumer_contract` | Production local commands, peer credentials and bootstrap integrated; implements actual bounded poll/fetch without advancing ack or skipping omitted matches. |
-| `crash_differential` | Nonempty physical consumer-reopen teeth integrated; continues K0 actual new-inode known/fenced provenance. |
-| `authorship_carrier` | Actual served auth-fold proof ready; ports preservation/restore/clone to current E2/T10 and prepares four-cut image witnesses. |
-| `feed_replay` | Actual per-group LISTGROUP bucket packet qualified on lane source; reconciles E2/current owner constructors and historical-reader overlap. |
-| `bp_foundation` | Functional kind-18 atomic fragment service/replay qualified; closes actual wrapper guards before combined image. |
-| `status_codec` | Held-bundle expiry packet qualified; joins durable deletion/status reporting to foundation's single ordered replay. |
-| `fragment_refinement` | Channel admission integrated; fixes live config-check/lock gap and joins shared transit policy to raw-request/projected-Store v3 intent. |
-| `stamp_review` | Prepares the root-qualified combined developer/production image and native consumer/BP/topic tests; no duplicate certification. |
-| `mini_evidence_bridge` | Exact-carrier inbox shares the real Mini signed transaction; profiles costly native replay and proves optimizations against existing semantics. |
-| `topic_metadata` | Topic authorship integrated; Store envelope component qualified; adds explicit durable local administrator binding before actual anchor/admission. |
+| `acceptance_stamp` | READ relation qualified on earlier source; investigates actual ADVANCE success/refusal and config-pin preservation on the E2/T17 port. |
+| `store_invariants` | Ports historical READ relation to current E2/T17, sharing source with acceptance lane. |
+| `consumer_contract` | Poll integrated; adds derived sequence index with carried correspondence to remove prefix traversal. Coordinates Store slot13 after topic slot12. |
+| `crash_differential` | Pair-10 full byte relation integrated; proves actual served framing/name call-argument bridge and names remaining physical entry invariant. |
+| `authorship_carrier` | Clone and auxiliary replay integrated; advancing-ACK four-cut driver ready; reviews actual clone recovery/outcomes. |
+| `feed_replay` | T17 and source-only native driver integrated; proof-cost repairs integrated. No redundant build. |
+| `bp_foundation` | Assembles fragments, observed-channel admission, K6 v3 and D1b into one source; closes actual fragment wrapper guards. |
+| `status_codec` | Durable kind10 deletion retains exact report intent across crash; joins actual native publisher and admin report queue. |
+| `fragment_refinement` | K6 v3 raw/projected intent and recovered Message-ID binding qualified; consolidates raw EID parsing/admission/FNBS ingress in one ACL2 called wrapper. |
+| `stamp_review` | Shared a8e4 developer/production image and reader/E2/clone qualification; exports exact public poll bytes for Mini. |
+| `mini_evidence_bridge` | Portable inbox and exact-sharing replay optimizations complete in isolated Mini worktree; implements Store-report/cursor durable join with consumer lane. |
+| `topic_metadata` | Actual Store topic slot12 projection scoped certified; reverse invariants and native anchor/admission caller underway. |
 
 Root integrates finite source commits, regenerates ledgers, checks concrete
 proof/runtime regressions and maintains evidence. No lane is a permanent file
