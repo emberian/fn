@@ -1,0 +1,7 @@
+test_enroll_author_refuse_tamper_and_restart_query (__main__.NativeHybridAuthorTest.test_enroll_author_refuse_tamper_and_restart_query) ... ok
+test_portable_carrier_verifies_exact_source_and_keyset (__main__.NativeHybridAuthorTest.test_portable_carrier_verifies_exact_source_and_keyset) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.029s
+
+OK
