@@ -1280,7 +1280,10 @@
                                        (fn-own-conn-group-index conn)))
          (decision (fn-served-submission effects)))
     (cons effects
-          (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
+          (if (and (fn-own-conn-boundedp
+                    next (fn-sn-groups (fn-own-store o)))
+                   (fn-own-conn-boundedp
+                    next (fn-state-groups (fn-own-conn-archive next))))
               (let ((o2 (fn-own-set-conns
                          o (fn-own-replace-conn next (fn-own-conns o)))))
                 (if decision
@@ -1343,7 +1346,10 @@
                                        (fn-own-conn-index conn)
                                        (fn-own-conn-group-index conn))))
           (cons (fn-served-result-effects result)
-                (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
+                (if (and (fn-own-conn-boundedp
+                          next (fn-sn-groups (fn-own-store o)))
+                         (fn-own-conn-boundedp
+                          next (fn-state-groups (fn-own-conn-archive next))))
                     (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o)))
                   (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o))))))
       (cons nil o))))
