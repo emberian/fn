@@ -482,6 +482,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/topic-history-authorship \
 	books/topic-history-admission \
 	books/topic-history-store-events \
+	books/topic-history-local-proposals \
 	tests/acl2/topic-history-metadata-tests \
 	tests/acl2/topic-history-authorship-tests \
 	tests/acl2/topic-history-admission-tests \
@@ -489,6 +490,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/topic-history-store-union-tests \
 	tests/acl2/topic-history-prefix-tests \
 	tests/acl2/topic-history-local-admin-tests \
+	tests/acl2/topic-history-store-node-tests \
+	tests/acl2/topic-history-local-proposals-tests \
 	tests/acl2/hybrid-store-tests \
 	books/crypto-attach \
 	books/auth-secret \

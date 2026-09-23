@@ -39,6 +39,7 @@
 ; service log lines (fn-olog-*): both ACL2's, read here and nowhere computed.
 (include-book "../books/owner-agent")
 (include-book "../books/owner-log")
+(include-book "../books/topic-history-local-proposals")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -407,6 +408,24 @@
       (let ((state (fn-owner-step
                     (list :store (list :prepare-topic event)) state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+
+; This is the one owner-side proposal read. ACL2 selects an exact earlier T10
+; event and snapshot from the carried topic projection; neither the control
+; peer nor host may supply an external verified/source verdict.
+(defun fn-owner-topic-propose (operation source-sequence observed-uid
+                                         entropy-id quota state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (projection (fn-sn-topic s))
+         (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
+    (value
+     (case operation
+       (:install (fn-th-local-propose-install projection txid observed-uid
+                                              entropy-id))
+       (:anchor (fn-th-local-propose-anchor projection txid source-sequence
+                                           observed-uid quota))
+       (:report (fn-th-local-propose-report projection txid source-sequence))
+       (otherwise (fn-stmt-error :operation))))))
 
 (defun fn-owner-known-abort (state)
   (declare (xargs :stobjs state :mode :program))
