@@ -7,12 +7,13 @@
 
 (defun fn-ocl-owner-with-store (o st)
   (declare (xargs :guard t))
-  (fn-own-make st (fn-own-view o) (fn-own-conns o)
-               (fn-own-next-id o) (fn-own-max-conns o)
-               (fn-own-pending o) (fn-own-ledger o)
-               (fn-own-clock o) (fn-own-facts o)
-               (fn-own-config o) (fn-own-queue o)
-               (fn-own-inflight o) (fn-own-feeds o)))
+  (fn-own-refresh
+   (fn-own-make st (fn-own-view o) (fn-own-conns o)
+                (fn-own-next-id o) (fn-own-max-conns o)
+                (fn-own-pending o) (fn-own-ledger o)
+                (fn-own-clock o) (fn-own-facts o)
+                (fn-own-config o) (fn-own-queue o)
+                (fn-own-inflight o) (fn-own-feeds o))))
 
 (defun fn-ocl-complete (oc)
   (declare (xargs :guard (fn-sn-statep
@@ -38,6 +39,11 @@
   (equal (fn-ocfg-pins (fn-ocl-complete oc))
          (fn-ocfg-pins oc))
   :hints (("Goal" :in-theory (enable fn-ocl-complete fn-ocfg-complete))))
+
+(defthm fn-ocl-complete-keeps-existing-served-table
+  (equal (fn-ocfg-served (fn-ocl-complete oc) id)
+         (fn-ocfg-served oc id))
+  :hints (("Goal" :in-theory (enable fn-ocfg-served fn-ocfg-conn-config))))
 
 (defthm fn-ocl-complete-success-install-exact-store
   (implies (and (fn-ocfg-staged oc)
