@@ -32,16 +32,18 @@
          service (fnn-bps-step service (list :contact (second event) nil))))
     (fnn-bps-drive-effects service (fnn-bps-step service event))))
 
-(defun fnn-command-bp-contact-tick (journal node-id peer-id start end
+(defun fnn-command-bp-contact-tick (journal node-id peer-id start-delay end-delay
                                     lifetime crc-type hop-limit transfer-mru
                                     wall wall-error)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (peer (fnn-bp-eid peer-id))
-         (window (fnn-core 'fn-bpsc-window peer start end)))
+         (obs (fnn-bp-observation wall wall-error))
+         (window (fnn-core 'fn-bpsc-relative-window
+                           peer obs start-delay end-delay)))
     (unless window (fnn-refuse "bp-contact: ACL2 refused contact window"))
     (let ((service (fnn-bps-open journal config wall wall-error)))
       (unwind-protect
-           (let* ((obs (fnn-bp-observation wall wall-error)))
+           (progn
              (fnn-bpc-advance-clock service obs)
              (let* ((ready (fnn-core 'fn-bpn-host-ready-peers
                                      (fnn-bps-base service)))
@@ -61,7 +63,7 @@
            :message (format nil "unknown bp-contact command ~a" command)))
   (when (< (length args) 5)
     (error 'fnn-usage-error
-           :message "bp-contact: tick needs journal node peer start end"))
+           :message "bp-contact: tick needs journal node peer start-delay end-delay"))
   (when (> (length args) 11)
     (error 'fnn-usage-error :message "bp-contact: too many arguments"))
   (flet ((number (index default label)
@@ -69,8 +71,8 @@
              (if value (fnn-bpc-u64-argument value label) default))))
     (fnn-command-bp-contact-tick
      (first args) (second args) (third args)
-     (fnn-bpc-u64-argument (fourth args) "start")
-     (fnn-bpc-u64-argument (fifth args) "end")
+     (fnn-bpc-u64-argument (fourth args) "start delay")
+     (fnn-bpc-u64-argument (fifth args) "end delay")
      (number 5 +fnn-bp-lifetime+ "lifetime")
      (number 6 +fnn-bp-crc-type+ "CRC type")
      (number 7 +fnn-bp-hop-limit+ "hop limit")

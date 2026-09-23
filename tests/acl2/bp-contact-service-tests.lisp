@@ -9,6 +9,18 @@
 (defconst *bpsc-mid* (fn-clock-observation 15 0 0 nil))
 
 (assert-event (fn-bpsc-windowp *bpsc-window*))
+(assert-event (equal (fn-bpsc-relative-window *bpsc-b* *bpsc-mid* 0 5)
+                     (fn-bpsc-window *bpsc-b* 15 20)))
+(assert-event (equal (fn-bpsc-contact-decision
+                      (fn-bpsc-relative-window *bpsc-b* *bpsc-mid* 0 5)
+                      *bpsc-b* *bpsc-mid* (list *bpsc-b*))
+                     :open))
+(assert-event (equal (fn-bpsc-contact-decision
+                      (fn-bpsc-relative-window *bpsc-b* *bpsc-mid* 1 5)
+                      *bpsc-b* *bpsc-mid* (list *bpsc-b*))
+                     :closed))
+(assert-event (not (fn-bpsc-relative-window
+                    *bpsc-b* *bpsc-mid* 0 18446744073709551615)))
 (assert-event (equal (fn-bpsc-contact-decision
                       *bpsc-window* *bpsc-b* *bpsc-mid* (list *bpsc-b*))
                      :open))
