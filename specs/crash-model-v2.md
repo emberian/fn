@@ -1323,6 +1323,12 @@ part of K0.
 ; ACL2 subjects. The physical byte/kernel relation and stage freshness at
 ; call entry remain obligations; retention/identity union codec round trips
 ; remain separate proof work.
+; The actual P-FRONTIER successful rename and root-directory-fsync suffix
+; is now derived at pairs 8 and 12. Pair 12 has a quiet durable root and
+; its frontier pathname contains exactly the supplied octets, decoding to
+; the candidate successor under fn-bs-frontier-inputp. This is independent
+; of an assumed post-fence scan or relation. The logical attempted state,
+; pair-12/pair-14 relation and error cuts remain K0 obligations.
 ; fn-bs-k0-record-prepare-preserves-relation and its fn-sn-prepare lift now
 ; carry an already related reserved state through ACL2 article preparation
 ; without changing bytes. fn-bs-k0-served-article-prepare-to-attempted-relation
