@@ -1,5 +1,20 @@
 # Current work — 2026-09-23
 
+## Native consumer/reader/clone qualification — 23:35 UTC
+
+The source-qualified `1d26e01f` images passed signed source polling,
+read-only repeat, durable advancing ACK with killed reply and recovered
+position, live-created group posting/restart, indexed reader workloads, and
+selected-pack/fenced-clone cursor recovery. The [native record](evidence/native-poll-reader-clone-1d26-2026-09-23.md)
+names exact image, driver and fixture hashes and retains the original test
+assertion failures. Its exported registration cursor predates polling, so
+Mini can independently pin the consumer scope. The separate
+[bound-callback test](evidence/native-owner-bound-1d26e01f-2026-09-23.md)
+observes a post-take signed conflict refusal followed by a successful request.
+Mini's durable application transaction/ACK/reply join remains in progress;
+file projection alone is not Store admission. Neither this campaign nor the
+BP source below changes the protected live node.
+
 ## BP composition checkpoint — 23:33 UTC
 
 The integrated fragment/expiry/transit/deletion-report source `48425e4e`

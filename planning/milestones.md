@@ -1,10 +1,12 @@
-Current selected-v1 join: the E2 Store projection, native publication,
-same-owner local control and durable bootstrap have a combined source and
-native endpoint witness. A 16-event bounded read-only poll selector and
-separate cursor/report reply have scoped ACL2 and raw host tests; their
-combined saved-image positive fetch/advancing-ack, Mini durable inbox/outbox
-binding and two-store crash trace remain open. CNS-001, PRF-064 and SCN-033
-track this work; E2 is not a v0 gate.
+Current selected-v1 join: the local-owner consumer poll and durable advancing
+ACK have passed on the source-qualified `1d26e01f` image, including a killed
+ACK reply, reopened position and no repeated acknowledged article. Selected
+packing and fenced clone recovery preserve progress; the new incarnation
+refuses old cursors. [Exact native scope and original driver failures](evidence/native-poll-reader-clone-1d26-2026-09-23.md)
+remain separate from Mini's unfinished durable inbox/outbox-to-ACK join and
+the full two-store crash trace. Poll still walks the earlier record prefix;
+the maintained event index is active work. CNS-001, PRF-064 and SCN-033 track
+this work; E2 is not a v0 gate.
 
 Current task (2026-09-23): concurrent v0/v1 development grounded in the actual
 Mini/Bread OS interfaces. [Current work](now.md) names integrated source,
