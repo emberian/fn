@@ -247,8 +247,9 @@ and faults without following or deleting anything."
         (:send
          (push (second event) (fnn-tclc-held conn)))
         (:bundle-received
-         ;; The sole held message must be fn-tcl-complete's final END ACK.
-         ;; ACL2 selects the entire outbound message list after the callback.
+         ;; The held list ends with fn-tcl-complete's final END ACK and may
+         ;; contain earlier machine output from the same drive batch. ACL2
+         ;; selects the entire outbound message list after the callback.
          (let* ((result (handler-case
                             (if *fnn-tcl-deliver*
                                 (funcall *fnn-tcl-deliver*
