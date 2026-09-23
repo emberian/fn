@@ -35,12 +35,40 @@
            :in-theory (enable fn-nov-lines-for-numbers-indexed
                               fn-nov-lines-for-numbers))))
 
-(defthm fn-nntp-over-range-indexed-equals-fold
+; A malformed session can carry a non-text selected group.  Valid archived
+; memberships all name text groups, so both projections select no numbers.
+; This removes the session recognizer from the range correspondence theorem;
+; the served call still supplies a well-formed session by construction.
+(defthm fn-xri-membership-number-nonstring
+  (implies (and (fn-string-listp groups)
+                (fn-membership-listp groups memberships)
+                (not (stringp group)))
+           (equal (fn-nntp-membership-number group memberships) 0))
+  :hints (("Goal" :induct (fn-membership-listp groups memberships)
+           :in-theory (enable fn-string-listp fn-membership-listp
+                              fn-nntp-membership-number))))
+
+(defthm fn-xri-article-number-nonstring
+  (implies (and (fn-articlep configured article)
+                (not (stringp group)))
+           (equal (fn-nntp-article-number group article) 0))
+  :hints (("Goal" :use ((:instance fn-xri-membership-number-nonstring
+                            (groups (fn-article-groups article))
+                            (memberships (fn-article-memberships article))))
+           :in-theory (e/d (fn-articlep fn-nntp-article-number)
+                           (fn-xri-membership-number-nonstring)))))
+
+(defthm fn-xri-archive-range-nonstring
+  (implies (and (fn-article-listp configured articles)
+                (not (stringp group)))
+           (equal (fn-nntp-group-range-numbers group low high articles) nil))
+  :hints (("Goal" :induct (fn-article-listp configured articles)
+           :in-theory (enable fn-article-listp
+                              fn-nntp-group-range-numbers))))
+
+(defthm fn-xri-over-range-nonstring
   (implies (and (fn-statep archive)
-                (fn-nntp-sessionp session)
-                (fn-nntp-range-okp (fn-nntp-parse-range token))
-                (natp (fn-nntp-range-low (fn-nntp-parse-range token)))
-                (natp (fn-nntp-range-high (fn-nntp-parse-range token))))
+                (not (stringp (fn-nntp-session-group session))))
            (equal (fn-nntp-over-range-indexed
                    session (fn-gidx-build (fn-state-articles archive))
                    (fn-midx-build (fn-state-articles archive))
@@ -49,7 +77,36 @@
                       (fn-nntp-xover-range session archive token)
                     (fn-nntp-over-range session archive token))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-gidx-range-of-build-equals-archive-fold
+           :use ((:instance fn-xri-archive-range-nonstring
+                            (configured (fn-state-groups archive))
+                            (articles (fn-state-articles archive))
+                            (group (fn-nntp-session-group session))
+                            (low (fn-nntp-range-low (fn-nntp-parse-range token)))
+                            (high (fn-nntp-range-high (fn-nntp-parse-range token)))))
+           :in-theory (e/d (fn-nntp-over-range-indexed
+                            fn-nntp-over-range fn-nntp-xover-range
+                            fn-statep fn-gidx-range-numbers
+                            fn-index-query-range
+                            fn-nov-lines-for-numbers-indexed
+                            fn-nov-lines-for-numbers)
+                           (fn-gidx-build fn-gidx-build-entries
+                            fn-nntp-group-range-numbers)))))
+
+(defthm fn-nntp-over-range-indexed-equals-fold
+  (implies (and (fn-statep archive)
+                (fn-nntp-range-okp (fn-nntp-parse-range token)))
+           (equal (fn-nntp-over-range-indexed
+                   session (fn-gidx-build (fn-state-articles archive))
+                   (fn-midx-build (fn-state-articles archive))
+                   token legacyp)
+                  (if legacyp
+                      (fn-nntp-xover-range session archive token)
+                    (fn-nntp-over-range session archive token))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((stringp (fn-nntp-session-group session)))
+           :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds)
+                 (:instance fn-xri-over-range-nonstring)
+                 (:instance fn-gidx-range-of-build-equals-archive-fold
                             (configured (fn-state-groups archive))
                             (articles (fn-state-articles archive))
                             (group (fn-nntp-session-group session))
@@ -63,7 +120,12 @@
                                       (fn-nntp-session-group session)
                                       (fn-nntp-range-low (fn-nntp-parse-range token))
                                       (fn-nntp-range-high (fn-nntp-parse-range token))
-                                      (fn-state-articles archive)))))
+                                      (fn-state-articles archive))))
+                 (:instance fn-nntp-group-range-numbers-is-index-shaped
+                            (group (fn-nntp-session-group session))
+                            (low (fn-nntp-range-low (fn-nntp-parse-range token)))
+                            (high (fn-nntp-range-high (fn-nntp-parse-range token)))
+                            (articles (fn-state-articles archive))))
            :in-theory (e/d (fn-nntp-over-range-indexed
                             fn-nntp-over-range fn-nntp-xover-range
                             fn-statep fn-nntp-sessionp
@@ -71,12 +133,11 @@
                            (fn-gidx-build fn-gidx-build-entries
                             fn-nov-lines-for-numbers-indexed
                             fn-nov-lines-for-numbers
-                            fn-nntp-group-range-numbers)))))
+                            fn-nntp-group-range-numbers
+                            fn-nntp-group-range-numbers-is-index-shaped)))))
 
 (defthm fn-nntp-pinned-over-range-equals-archive-command
   (implies (and (fn-statep archive)
-                (fn-nntp-sessionp session)
-                (fn-nntp-range-okp (fn-nntp-parse-range token))
                 (or (fn-nntp-keywordp keyword "OVER")
                     (fn-nntp-keywordp keyword "XOVER")))
            (equal
@@ -89,8 +150,7 @@
              session archive env keyword (list token))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-nntp-over-range-indexed-equals-fold
-                            (legacyp (fn-nntp-keywordp keyword "XOVER")))
-                 (:instance fn-nntp-parse-range-ok-has-natural-bounds))
+                            (legacyp (fn-nntp-keywordp keyword "XOVER"))))
            :in-theory (e/d (fn-nntp-archive-command-pinned
                             fn-nntp-archive-command fn-nntp-over-response
                             fn-nntp-xover-response fn-nntp-keywordp)
@@ -100,13 +160,10 @@
 
 (defthm fn-nntp-carried-over-range-equals-archive-command
   (implies (and (fn-statep archive)
-                (fn-nntp-sessionp session)
-                (fn-gidx-pinp index)
                 (fn-gidx-pin-correspondencep index archive)
                 (fn-midx-correspondencep
                  (fn-gidx-pin-trie index)
                  (fn-state-articles archive))
-                (fn-nntp-range-okp (fn-nntp-parse-range token))
                 (or (fn-nntp-keywordp keyword "OVER")
                     (fn-nntp-keywordp keyword "XOVER")))
            (equal (fn-nntp-archive-command-pinned
@@ -115,8 +172,7 @@
                    session archive env keyword (list token))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-nntp-over-range-indexed-equals-fold
-                            (legacyp (fn-nntp-keywordp keyword "XOVER")))
-                 (:instance fn-nntp-parse-range-ok-has-natural-bounds))
+                            (legacyp (fn-nntp-keywordp keyword "XOVER"))))
            :in-theory (e/d (fn-gidx-pin-correspondencep
                             fn-midx-correspondencep
                             fn-nntp-archive-command-pinned

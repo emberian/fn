@@ -13,19 +13,19 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 589 |
 | Certification roots in the Makefile | 583 |
 | Books inside the root closure | 588 |
-| `defthm` and `defthmd` events | 8367 |
+| `defthm` and `defthmd` events | 8371 |
 | `defun` events | 6247 |
 | Functions with verified guards | 2022 |
 | Functions declared `:verify-guards nil` and never verified | 369 |
 | Functions left at the default with an explicit guard | 3060 |
 | Functions left at the default with no guard | 796 |
-| `assert-event` checks | 9116 |
-| `must-fail` checks | 469 |
+| `assert-event` checks | 9121 |
+| `must-fail` checks | 472 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 76 |
 | Export-hygiene warnings | 102 |
 | Enabled-projection warnings | 35 |
-| Teeth-form warnings | 37 |
+| Teeth-form warnings | 39 |
 | Include-hygiene warnings | 504 |
 | Host-names warnings | 788 |
 | Hand-written-record warnings | 18 |
@@ -313,7 +313,7 @@ that `make certify` requests.
 | `books/nntp-pinned-effects.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-post.lisp` | root | 21 | 19 | 13/1/5/0 | 0 | 0 | 0 |
 | `books/nntp-projection.lisp` | root | 23 | 22 | 22/0/0/0 | 0 | 0 | 0 |
-| `books/nntp-range-indexed-invariants.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/nntp-range-indexed-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-range-indexed.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/nntp-responses.lisp` | root | 12 | 146 | 146/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-session.lisp` | root | 1 | 34 | 34/0/0/0 | 0 | 0 | 0 |
@@ -602,7 +602,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-newnews-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 71 | 9 | 0 |
 | `tests/acl2/nntp-pinned-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 2 | 1 | 0 |
 | `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 0 | 0 |
-| `tests/acl2/nntp-range-indexed-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 8 | 2 | 0 |
+| `tests/acl2/nntp-range-indexed-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 13 | 5 | 0 |
 | `tests/acl2/nntp-reader-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 95 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 2 | 0 |
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 167 | 0 | 0 |

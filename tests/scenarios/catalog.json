@@ -1080,14 +1080,16 @@
         "Construct a malformed tagged pin with a correct Message-ID trie but missing group bucket; compare its command result with the archive command.",
         "Construct 24 unrelated groups and measure selected bucket work against the flat membership list.",
         "Send sparse OVER and empty XOVER ranges through the pinned ACL2 dispatcher; compare the complete result with the archive dispatcher and repeat with stale bucket and missing trie pins.",
-        "On a source-matched saved image, retain readers across live group creation and three posts, then restart; issue bounded LISTGROUP ranges through the socket and measure 96 range reads over a declared 24-group, 24-article workload."
+        "On a source-matched saved image, retain readers across live group creation and three posts, then restart; issue bounded LISTGROUP ranges through the socket and measure 96 range reads over a declared 24-group, 24-article workload.",
+        "On that image, post a crosspost and two group-specific articles while keeping old and new readers pinned; issue OVER and XOVER ranges concurrently, then restart and repeat."
       ],
       "expected": [
         "The older reader sees its old empty group and the new reader sees exactly the committed sparse local number in a correctly framed multiline reply.",
         "The malformed pin changes the answer and fails the maintained pin correspondence predicate.",
         "The selected head bucket visits two units (one header and one entry) against 24 flat memberships; no timing or sort bound is inferred.",
         "The indexed OVER/XOVER replies equal the archive replies, including 423 versus legacy 420 on empty ranges; either malformed pin changes the answer.",
-        "Old readers retain their configured and committed view, the fresh reader and restarted owner return only their visible local numbers, and the declared socket timing is reported without an asymptotic claim. An internal deletion/allocation hole remains unexercised because the public operator surface cannot create one."
+        "Old readers retain their configured and committed view, the fresh reader and restarted owner return only their visible local numbers, and the declared socket timing is reported without an asymptotic claim. An internal deletion/allocation hole remains unexercised because the public operator surface cannot create one.",
+        "OVER and XOVER return the same exact crosspost overview line in each visible group, old pins hide later posts, bounded and high-empty ranges retain their response codes, concurrent readers agree, and restart recovers the latest view."
       ],
       "evidence": [
         "tests/acl2/owner-tests.lisp",
@@ -1099,7 +1101,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. The native historical/config/restart and measured 24-group LISTGROUP driver is prepared for root\u2019s next source-matched saved image; it has not run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     }
   ]
 }
