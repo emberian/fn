@@ -18,7 +18,7 @@ Each repair was tried in one `tools/proof_repl.py` session per book on the
 Mac (ACL2 8.7, SBCL, `tools/acl2`, `FN_ACL2_SLOTS=8`). The closure came from
 `~/.cache/fn-certs`. `bp-workflow-invariants` changed under
 `bp-workflow-binding-core`, so it was certified locally once
-(`build/acl2/certify-20260923T014404Z-22839`) before the second book's
+(`build/acl2/a local certification in the lane's worktree (manifest not retained; recertified by the incremental run of dev's head)) before the second book's
 session. In the "after" columns, each whole book was loaded form by form in a
 fresh session at the committed bytes, and every form was admitted. The session
 times are Mac times. Prover steps do not depend on the machine.
@@ -213,7 +213,7 @@ encapsulates. The macro change keeps any record from paying this again.
     under 100 000 steps. Unlimited, it closed in 27.7 M steps and 49.9 s on a
     158-way split in the session.
   - The macro, with its test book, certified locally in
-    `build/acl2/certify-20260923T012316Z-71591`.
+    `build/acl2/a local certification in the lane's worktree (its manifest was not retained; the incremental run of dev's head recertifies the test book).
 
 ## Before and after
 
