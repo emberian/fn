@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Source-matched saved-image CLI gate for exact signed FN-Topic projection.
 
-The field vector below is the exact ACL2 `fn-th-field-encode *th-root*` result
-from tests/acl2/topic-history-metadata-tests.lisp. Python does not encode it.
+The field vectors below are exact ACL2 `fn-th-field-encode` results for the
+root and a zero-parent report. Python does not encode them.
 """
 import os
 from pathlib import Path
@@ -15,6 +15,9 @@ IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 TOPIC_FIELD = (
     b"v1 AQBYIAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBWCAHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHB1gwZm4vc3ViamVjdC92MQABAQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFRG1pbmkBWCAHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHB1gwZm4vc3ViamVjdC92MQABAQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUF"
+)
+SHORT_TOPIC_FIELD = (
+    b"v1 AQJYMGZuL3N1YmplY3QvdjEAAQEFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBVgwZm4vc3ViamVjdC92MQABAQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFAA=="
 )
 
 
@@ -88,14 +91,18 @@ class NativeTopicMetadataTest(unittest.TestCase):
         refused = self.invoke("topic-inspect-carrier", str(tampered), str(self.ml_public))
         self.assertEqual(refused.returncode, 1)
         self.assertIn(b"topic=unverified", refused.stdout)
-        duplicate = self.sign("duplicate", self.source(field + field))
+        # This shorter valid report field is an exact ACL2-emitted vector.
+        # Two large root fields exceed the article's 8,192-octet header cap
+        # after FN-Authorship is added, so they cannot reach this inspection.
+        short_field = b"FN-Topic: " + SHORT_TOPIC_FIELD + b"\r\n"
+        duplicate = self.sign("duplicate", self.source(short_field + short_field))
         unsupported = self.invoke("topic-inspect-carrier", str(duplicate),
                                   str(self.ml_public))
         self.assertEqual(unsupported.returncode, 1)
         self.assertIn(b"TOPIC=UNSUPPORTED CARRIER=AUTHENTICATED REASON=DUPLICATE",
                       unsupported.stdout.upper())
-        folded = self.sign("folded", self.source(b"FN-Topic: v1 AA\r\n\tAA==\r\n"))
-        unsupported = self.invoke("topic-inspect-carrier", str(folded),
+        malformed = self.sign("malformed", self.source(b"FN-Topic: v1 AAAA\r\n"))
+        unsupported = self.invoke("topic-inspect-carrier", str(malformed),
                                   str(self.ml_public))
         self.assertEqual(unsupported.returncode, 1)
         self.assertIn(b"topic=unsupported", unsupported.stdout)
