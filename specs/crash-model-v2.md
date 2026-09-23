@@ -1342,6 +1342,8 @@ part of K0.
 ; complete durable record list is also unchanged: the proof preserves every
 ; retained transaction's pathname and raw octets and invokes the ordered
 ; scanner's prefix-agreement lemma, without assuming scan equality. The
+; actual file-result pair 6 now re-establishes the full byte/kernel relation
+; using separately proved state, authority and durable observations. The
 ; root rename/directory-fence relation and
 ; successful reserved pair are still open; this packet does not claim them.
 

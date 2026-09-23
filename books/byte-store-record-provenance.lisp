@@ -3310,3 +3310,275 @@
                              fn-bs-fsync-file)
                            (fn-bs-statep fn-bs-create fn-bs-write
                             fn-bs-fence-file fn-bs-lookup)))))
+
+; At the file-fence cut the only new directory operation is in :staging.
+; File fsync drains inode writes without changing root or transaction ops.
+(local
+ (defthm fn-bs-k0-frontier-file-cut-keeps-authority-dir-ops
+   (implies (and (fn-bs-statep bs)
+                 (fn-bs-namep stage)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (true-listp octets)
+                 (not (equal dir :staging)))
+            (equal (fn-bs-ops-for-dir
+                    (fn-bs-pending
+                     (car (nth 5 (fn-bs-run bs ks
+                       (fn-bs-frontier-program stage octets)
+                       nil groups capacity))))
+                    dir)
+                   (fn-bs-ops-for-dir (fn-bs-pending bs) dir)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use (fn-bs-k0-frontier-file-cut-is-write-fence)
+            :in-theory (e/d (fn-bs-create fn-bs-write fn-bs-fence-file
+                              fn-bs-ops-for-dir-of-append
+                              fn-bs-k6-filter-inode-writes-keeps-dir-ops)
+                            (fn-bs-run fn-bs-frontier-program fn-bs-statep
+                             fn-bs-lookup fn-bs-ops-not-for-ino))))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-cut-authority-quiet
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-frontier-inputp ks stage octets)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (let ((file (car (nth 5 (fn-bs-run bs ks
+                      (fn-bs-frontier-program stage octets)
+                      nil groups capacity)))))
+              (and (equal (fn-bs-ops-for-dir
+                           (fn-bs-pending file) :root) nil)
+                   (equal (fn-bs-ops-for-dir
+                           (fn-bs-pending file) :transactions) nil))))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-bs-store-relation-unfolds
+                  fn-bs-ready-relation-authority-is-quiet
+                  (:instance fn-bs-k0-frontier-file-cut-keeps-authority-dir-ops
+                             (dir :root))
+                  (:instance fn-bs-k0-frontier-file-cut-keeps-authority-dir-ops
+                             (dir :transactions)))
+            :in-theory (e/d (fn-bs-frontier-inputp)
+                            (fn-bs-run fn-bs-frontier-program
+                             fn-bs-store-relation fn-bs-ops-for-dir))))))
+
+; Authority target identities are unchanged: staging's new inode is not an
+; authority target until the root rename is issued.  This fact supports both
+; known-inode and file-fence preservation without inspecting old records.
+(local
+ (defthm fn-bs-k0-frontier-file-cut-authority-list-is-input
+   (implies (and (fn-bs-statep bs)
+                 (fn-bs-namep stage)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (true-listp octets))
+            (equal (fn-bs-authority-inode-list
+                    (car (nth 5 (fn-bs-run bs ks
+                      (fn-bs-frontier-program stage octets)
+                      nil groups capacity))))
+                   (fn-bs-authority-inode-list bs)))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-bs-k0-frontier-file-cut-is-record-file-cut
+                  fn-bs-k0-frontier-file-cut-keeps-dirs
+                  (:instance fn-bs-k0-file-cut-keeps-pending-authority-targets
+                             (frame octets)))
+            :in-theory (e/d (fn-bs-authority-inode-list
+                              fn-bs-durable-entry)
+                            (fn-bs-run fn-bs-frontier-program
+                             fn-bs-record-program fn-bs-pending-entry-targets
+                             fn-bs-pending fn-bs-dirs))))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-cut-keeps-known-list
+   (implies (and (fn-bs-statep bs)
+                 (fn-bs-namep stage)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (true-listp octets)
+                 (fn-bs-inode-list-knownp bs xs)
+                 (not (member-equal (fn-bs-next-ino bs) xs)))
+            (fn-bs-inode-list-knownp
+             (car (nth 5 (fn-bs-run bs ks
+               (fn-bs-frontier-program stage octets)
+               nil groups capacity))) xs))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-bs-inode-list-knownp bs xs)
+            :in-theory (e/d (fn-bs-inode-list-knownp)
+                            (fn-bs-run fn-bs-frontier-program
+                             fn-bs-statep fn-bs-lookup)))
+           ("Subgoal *1/1''"
+            :use (fn-bs-k0-frontier-file-cut-is-record-file-cut
+                  (:instance fn-bs-k0-file-cut-keeps-other-inode-entry
+                             (frame octets) (other (car xs))))))))
+
+(defthm fn-bs-k0-frontier-file-cut-authority-known
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-authority-knownp
+            (car (nth 5 (fn-bs-run bs ks
+              (fn-bs-frontier-program stage octets)
+              nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-related-allocation-is-fresh
+                 fn-bs-k0-frontier-file-cut-authority-list-is-input
+                 (:instance fn-bs-k0-frontier-file-cut-keeps-known-list
+                            (xs (fn-bs-authority-inode-list bs))))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-authority-knownp
+                             fn-bs-frontier-inputp)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-statep fn-bs-inode-list-knownp
+                            fn-bs-authority-fencedp fn-bs-durable-records
+                            fn-bs-replay-matches-scan
+                            fn-bs-pending-matches-phase fn-sf-crash-imagep)))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-cut-keeps-fenced-list
+   (implies (and (fn-bs-statep bs)
+                 (fn-bs-namep stage)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (true-listp octets)
+                 (fn-bs-all-fencedp bs xs)
+                 (not (member-equal (fn-bs-next-ino bs) xs)))
+            (fn-bs-all-fencedp
+             (car (nth 5 (fn-bs-run bs ks
+               (fn-bs-frontier-program stage octets)
+               nil groups capacity))) xs))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-bs-all-fencedp bs xs)
+            :in-theory (e/d (fn-bs-all-fencedp)
+                            (fn-bs-run fn-bs-frontier-program
+                             fn-bs-statep fn-bs-lookup)))
+           ("Subgoal *1/1''"
+            :use (fn-bs-k0-frontier-file-cut-is-record-file-cut
+                  (:instance fn-bs-k0-file-cut-keeps-other-fenced
+                             (frame octets) (other (car xs))))))))
+
+(defthm fn-bs-k0-frontier-file-cut-authority-fenced
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-authority-fencedp
+            (car (nth 5 (fn-bs-run bs ks
+              (fn-bs-frontier-program stage octets)
+              nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-related-allocation-is-fresh
+                 fn-bs-k0-frontier-file-cut-authority-list-is-input
+                 (:instance fn-bs-k0-frontier-file-cut-keeps-fenced-list
+                            (xs (fn-bs-authority-inode-list bs))))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-authority-fencedp
+                             fn-bs-frontier-inputp)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-statep fn-bs-all-fencedp
+                            fn-bs-authority-knownp fn-bs-durable-records
+                            fn-bs-replay-matches-scan
+                            fn-bs-pending-matches-phase fn-sf-crash-imagep)))))
+
+; Structural projection transport: while there is no pending authority
+; entry, the relation depends only on exact durable config, frontier and
+; record observations plus the separate state/authority invariants.  This
+; is a helper, not a new K0 keystone and not a scan-equality assumption.
+(local
+ (defthm fn-bs-k0-quiet-projection-transports-relation
+   (implies (and (fn-bs-store-relation bs k)
+                 (not (fn-bs-replay-visiblep k))
+                 (fn-bs-statep file)
+                 (equal (fn-bs-dirs file) (fn-bs-dirs bs))
+                 (equal (fn-bs-durable-content
+                         file (fn-bs-durable-entry
+                               file :root *fn-bs-scan-config-name*))
+                        (fn-bs-durable-content
+                         bs (fn-bs-durable-entry
+                             bs :root *fn-bs-scan-config-name*)))
+                 (equal (fn-bs-durable-frontier file)
+                        (fn-bs-durable-frontier bs))
+                 (equal (fn-bs-durable-records file)
+                        (fn-bs-durable-records bs))
+                 (fn-bs-authority-fencedp file)
+                 (fn-bs-authority-knownp file)
+                 (equal (fn-bs-ops-for-dir
+                         (fn-bs-pending file) :root) nil)
+                 (equal (fn-bs-ops-for-dir
+                         (fn-bs-pending file) :transactions) nil))
+            (fn-bs-store-relation file k))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use (fn-bs-store-relation-unfolds
+                  fn-bs-store-relation-window-unfolds)
+            :in-theory (e/d (fn-bs-store-relation fn-bs-durable-entry
+                              fn-bs-durable-names fn-bs-contiguous-namesp
+                              fn-bs-pending-matches-phase
+                              fn-bs-pending-shape-okp)
+                            (fn-bs-statep fn-sf-statep
+                             fn-bs-durable-records fn-bs-durable-frontier
+                             fn-bs-authority-fencedp fn-bs-authority-knownp
+                             fn-bs-ops-for-dir fn-sf-crash-imagep
+                             fn-bs-replay-matches-scan))))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-kernel-relation
+   (implies (fn-bs-store-relation bs ks)
+            (fn-bs-store-relation
+             bs (fn-sf-frontier-file-result
+                 (fn-sf-start-frontier ks) :ok)))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-bs-start-frontier-preserves-relation
+                  (:instance fn-bs-frontier-file-result-preserves-relation
+                             (ks (fn-sf-start-frontier ks)) (result :ok)))
+            :in-theory (theory 'minimal-theory)))))
+
+(local
+ (defthm fn-bs-k0-frontier-file-kernel-not-replaying
+   (implies (equal (fn-sf-phase ks) :ready)
+            (not (fn-bs-replay-visiblep
+                  (fn-sf-frontier-file-result
+                   (fn-sf-start-frontier ks) :ok))))
+   :rule-classes nil
+   :hints (("Goal"
+            :in-theory (enable fn-bs-replay-visiblep
+                               fn-sf-start-frontier
+                               fn-sf-frontier-file-result)))))
+
+; Actual arbitrary-history P-FRONTIER pair 6: the host has completed
+; fsync(fd) and reported :frontier-file :ok, but has not attempted the
+; replacement.  No output relation is assumed.  This is a complete
+; physical/logical relation at this cut, not yet at :reserved.
+(defthm fn-bs-k0-frontier-file-observation-establishes-relation
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-store-relation
+            (car (nth 6 (fn-bs-run bs ks
+                           (fn-bs-frontier-program stage octets)
+                           nil groups capacity)))
+            (cdr (nth 6 (fn-bs-run bs ks
+                           (fn-bs-frontier-program stage octets)
+                           nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-frontier-file-cut-statep
+                 fn-bs-k0-frontier-file-cut-keeps-dirs
+                 fn-bs-k0-frontier-file-cut-keeps-old-frontier
+                 fn-bs-k0-frontier-file-cut-keeps-config
+                 fn-bs-k0-frontier-file-cut-keeps-durable-records
+                 fn-bs-k0-frontier-file-cut-authority-known
+                 fn-bs-k0-frontier-file-cut-authority-fenced
+                 fn-bs-k0-frontier-file-cut-authority-quiet
+                 fn-bs-k0-frontier-file-observation-keeps-byte-state
+                 fn-bs-k0-frontier-file-cut-kernel-is-file-observation
+                 fn-bs-k0-frontier-file-kernel-relation
+                 fn-bs-k0-frontier-file-kernel-not-replaying
+                 (:instance fn-bs-k0-quiet-projection-transports-relation
+                            (file (car (nth 5 (fn-bs-run bs ks
+                              (fn-bs-frontier-program stage octets)
+                              nil groups capacity))))
+                            (k (fn-sf-frontier-file-result
+                                (fn-sf-start-frontier ks) :ok))))
+           :in-theory (e/d (fn-bs-frontier-inputp fn-bs-ops-for-dir)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-store-relation fn-bs-statep
+                            fn-bs-durable-frontier fn-bs-durable-records
+                            fn-bs-authority-knownp
+                            fn-bs-authority-fencedp)))))

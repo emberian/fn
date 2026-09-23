@@ -76,3 +76,23 @@ original result, source/closure digests and toolchain identity are in
 `planning/evidence/manifests/certify-20260923T233154Z-493643.json`.
 The root rename, successful directory fence and full reserved-pair relation
 are still open.
+
+The file-result relation is now proved at the actual interpreter cut:
+`fn-bs-k0-frontier-file-observation-establishes-relation` takes any related
+ready byte/kernel pair, ACL2-valid frontier program input and fresh staging
+name and concludes `fn-bs-store-relation` at P-FRONTIER pair 6. The proof
+does not posit that output relation. It establishes byte statep, exact old
+config/frontier/record observations, authority-known/fenced and quiet
+root/transaction pending directories, then uses the separately proved
+`fn-bs-start-frontier-preserves-relation` and
+`fn-bs-frontier-file-result-preserves-relation` for the logical callback.
+The small quiet-authority projection transport lemma opens the relation
+only after those primitive facts are established. The retained first
+article and second frontier allocation are the executable witness; an
+occupied staging key stops before pair 6 and fails the relation conclusion.
+
+Both selected roots passed on hbox under `run-20260923T233917Z-108e`;
+original source/closure/toolchain/results are in
+`planning/evidence/manifests/certify-20260923T233919Z-509059.json`.
+The actual rename, root fsync and :reserved callback still need their own
+relation proof. No physical power-loss or all-outcome claim follows.
