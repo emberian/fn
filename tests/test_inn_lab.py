@@ -301,6 +301,15 @@ class LabTests(DryRun, unittest.TestCase):
         for one in ids.values():
             self.assertIn("abc1234-20260920T000000Z", one)
 
+    def test_every_decided_key_is_a_declared_assertion(self):
+        """A held row reads its sentence from ASSERTIONS; the fake image holds
+        none of the violated rows, so only this catches an undeclared key."""
+        import re
+        source = (ROOT / "tools/inn_lab.py").read_text()
+        keys = set(re.findall(r'self\.(?:check|record)\(\s*"([a-z0-9-]+)"', source))
+        self.assertTrue(keys)
+        self.assertEqual(keys - set(inn_lab.InnLab.ASSERTIONS), set())
+
     def test_the_violations_are_exactly_the_three_the_fake_image_commits(self):
         """The fake stores `operator post` payloads with no Path, serves a
         transit article with the sender's Path and Xref, and takes `From: yue`,
