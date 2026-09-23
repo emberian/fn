@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "bp-node-fragment-replacement")
 (include-book "bp-fnbs-delivery-replay")
+(include-book "bp-fnbs-deletion-codec")
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnf-family-replay-row-record (row)
@@ -13,7 +14,9 @@
       (if stored stored
         (let ((delivered (fn-bpah-delivery-unframe (cadr row))))
           (if delivered delivered
-            (fn-bpnf-family-unframe (cadr row))))))))
+            (let ((family (fn-bpnf-family-unframe (cadr row))))
+              (if family family
+                (fn-bpnf-delete-unframe (cadr row))))))))))
 
 (defun fn-bpnf-family-replay-rows-aux
   (rows base held handoffs prior next-arrival)
@@ -62,6 +65,12 @@
               (fn-bpnf-family-replay-rows-aux
                (cdr rows) base (fn-bpn-nth 1 applied)
                handoffs next (1+ next-arrival)))))
+         ((equal (car record) :bpnf-deleted)
+          (mv-let (ok updated)
+            (fn-bpn-report-apply-delete record held)
+            (if (not ok) (list :fault :kind-ten-row)
+              (fn-bpnf-family-replay-rows-aux
+               (cdr rows) base updated handoffs next next-arrival))))
          (t (list :fault :received-kind)))))))
 
 (defun fn-bpnf-family-replay-rows (rows base)

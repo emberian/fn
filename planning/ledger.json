@@ -273,6 +273,8 @@
     "tests/acl2/bp-node-fragment-plan-tests",
     "books/bp-fnbs-family-codec",
     "tests/acl2/bp-fnbs-family-codec-tests",
+    "books/bp-fnbs-deletion-codec",
+    "tests/acl2/bp-fnbs-deletion-codec-tests",
     "books/bp-node-fragment-replacement",
     "tests/acl2/bp-node-fragment-replacement-tests",
     "books/bp-fnbs-family-replay",
@@ -560,25 +562,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 562,
-    "books_in_root_closure": 561,
-    "roots": 556,
+    "books": 564,
+    "books_in_root_closure": 563,
+    "roots": 558,
     "theorems": 8275,
-    "functions": 6183,
-    "assert_events": 9003,
-    "must_fails": 444,
+    "functions": 6189,
+    "assert_events": 9012,
+    "must_fails": 445,
     "encapsulates": 26,
     "guards": {
       "verified": 2019,
-      "declared-off": 343,
-      "default-guarded": 3031,
+      "declared-off": 345,
+      "default-guarded": 3035,
       "default-unguarded": 790
     },
     "suspect_theorems": 73,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 35,
-    "include_hygiene_warnings": 452,
+    "include_hygiene_warnings": 459,
     "host_names_warnings": 786,
     "hand_written_record_warnings": 18
   },
@@ -1512,6 +1514,32 @@
       "read_error": null
     },
     {
+      "book": "books/bp-fnbs-deletion-codec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-fnbs-codec",
+        "bp-report-deletion"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-fnbs-delivery-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1660,6 +1688,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "bp-fnbs-deletion-codec",
         "bp-fnbs-delivery-replay",
         "bp-node-fragment-replacement"
       ],
@@ -9969,6 +9998,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-fnbs-deletion-codec-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 1,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-fnbs-deletion-codec",
+        "../../books/codec-attach",
+        "bp-report-deletion-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-fnbs-delivery-codec-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10115,22 +10173,23 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
+        "declared-off": 4,
         "default-guarded": 0,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 7,
+      "assert_events": 11,
       "must_fails": 1,
-      "defconsts": 4,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-fnbs-family-replay",
-        "bp-node-fragment-plan-tests"
+        "bp-node-fragment-plan-tests",
+        "bp-report-deletion-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -17507,6 +17566,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-fnbs-deletion-codec.lisp",
+        "line": 4,
+        "include": "bp-report-deletion",
+        "included": "books/bp-report-deletion.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-fnbs-deletion-codec.lisp",
+        "line": 5,
+        "include": "bp-fnbs-codec",
+        "included": "books/bp-fnbs-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-fnbs-delivery-codec.lisp",
         "line": 6,
         "include": "bp-fnbs-codec",
@@ -17588,6 +17661,13 @@
         "line": 6,
         "include": "bp-fnbs-delivery-replay",
         "included": "books/bp-fnbs-delivery-replay.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-fnbs-family-replay.lisp",
+        "line": 7,
+        "include": "bp-fnbs-deletion-codec",
+        "included": "books/bp-fnbs-deletion-codec.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -18781,6 +18861,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bp-fnbs-deletion-codec-tests.lisp",
+        "line": 2,
+        "include": "../../books/bp-fnbs-deletion-codec",
+        "included": "books/bp-fnbs-deletion-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-fnbs-deletion-codec-tests.lisp",
+        "line": 3,
+        "include": "bp-report-deletion-tests",
+        "included": "tests/acl2/bp-report-deletion-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-fnbs-deletion-codec-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bp-fnbs-delivery-codec-tests.lisp",
         "line": 2,
         "include": "../../books/bp-fnbs-delivery-codec",
@@ -18876,6 +18977,13 @@
         "line": 3,
         "include": "bp-node-fragment-plan-tests",
         "included": "tests/acl2/bp-node-fragment-plan-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-fnbs-family-replay-tests.lisp",
+        "line": 4,
+        "include": "bp-report-deletion-tests",
+        "included": "tests/acl2/bp-report-deletion-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 562 |
-| Certification roots in the Makefile | 556 |
-| Books inside the root closure | 561 |
+| Books read | 564 |
+| Certification roots in the Makefile | 558 |
+| Books inside the root closure | 563 |
 | `defthm` and `defthmd` events | 8275 |
-| `defun` events | 6183 |
+| `defun` events | 6189 |
 | Functions with verified guards | 2019 |
-| Functions declared `:verify-guards nil` and never verified | 343 |
-| Functions left at the default with an explicit guard | 3031 |
+| Functions declared `:verify-guards nil` and never verified | 345 |
+| Functions left at the default with an explicit guard | 3035 |
 | Functions left at the default with no guard | 790 |
-| `assert-event` checks | 9003 |
-| `must-fail` checks | 444 |
+| `assert-event` checks | 9012 |
+| `must-fail` checks | 445 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 73 |
 | Export-hygiene warnings | 102 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 35 |
-| Include-hygiene warnings | 452 |
+| Include-hygiene warnings | 459 |
 | Host-names warnings | 786 |
 | Hand-written-record warnings | 18 |
 
@@ -120,6 +120,7 @@ that `make certify` requests.
 | `books/bp-fnbs-byte-publisher.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-codec-invariants.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-codec.lisp` | root | 1 | 14 | 0/1/13/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-deletion-codec.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-delivery-codec.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-delivery-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-delivery-replay.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -438,12 +439,13 @@ that `make certify` requests.
 | `tests/acl2/bp-fnbs-byte-counterexamples.lisp` | root | 2 | 5 | 0/0/0/5 | 3 | 2 | 0 |
 | `tests/acl2/bp-fnbs-byte-publisher-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 17 | 2 | 0 |
 | `tests/acl2/bp-fnbs-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 1 | 0 |
+| `tests/acl2/bp-fnbs-deletion-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/bp-fnbs-delivery-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
 | `tests/acl2/bp-fnbs-delivery-publication-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/bp-fnbs-delivery-replay-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 20 | 2 | 0 |
 | `tests/acl2/bp-fnbs-family-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/bp-fnbs-family-publication-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 8 | 1 | 0 |
-| `tests/acl2/bp-fnbs-family-replay-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 7 | 1 | 0 |
+| `tests/acl2/bp-fnbs-family-replay-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 11 | 1 | 0 |
 | `tests/acl2/bp-fnbs-inspect-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 3 | 1 | 0 |
 | `tests/acl2/bp-fnbs-namespace-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 12 | 1 | 0 |
 | `tests/acl2/bp-fnbs-publication-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 10 | 1 | 0 |
