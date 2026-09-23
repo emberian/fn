@@ -180,7 +180,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-005"
+        "PRF-005",
+        "PRF-062"
       ],
       "verification": [
         "proof",
@@ -215,7 +216,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-016"
+        "PRF-016",
+        "PRF-062"
       ],
       "verification": [
         "proof",
@@ -1566,6 +1568,30 @@
       ],
       "evidence": [],
       "note": "ARTICLE and HEAD return FN-Statement byte-identical and HDR :fn-verified renders the verdict acceptance recorded, with its keyring generation. No book exists at this revision (packets S1 and S2 landed `books/stx-carrier` and `books/stx-verify`; this packet did not); packet S6 owns fn-stx-render-verdict and the HDR metadata item, and decides the OVER extension. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+    },
+    {
+      "id": "TOP-001",
+      "title": "Bounded exact-source topic metadata candidate",
+      "specification": "specs/topic-history.md#topic-history-metadata-first-experimental-slice",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-062"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/topic-history-metadata.lisp",
+        "tests/acl2/topic-history-metadata-tests.lisp",
+        "host/native/signature-command.lisp",
+        "planning/evidence/topic-history-metadata-p3-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T200634Z-19239.json",
+        "planning/evidence/manifests/certify-20260923T200855Z-21687.json"
+      ],
+      "implementation_note": "The experimental root/control/report field codec and offline native carrier inspection are implemented. No durable topic admission, current policy, or governance authority follows from projection.",
+      "note": "The codec/test books certified at exact source digests, but the host-called source-binding theorem, general constructor bound and native image execution remain pending. The fixed-controller profile remains experimental."
     }
   ]
 }

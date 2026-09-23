@@ -92,6 +92,31 @@ Output is two algorithm-tagged lowercase hexadecimal lines."
         (progn (fnn-out "verified ~a" (fnn-hex (third result))) 0)
       (progn (fnn-out "unverified ~a" (second result)) 1))))
 
+(defun fnn-command-topic-inspect-carrier (args)
+  "Inspect exact authored FN-Topic metadata after checking the carrier.
+A valid carrier does not establish topic anchoring or report admission."
+  (unless (= (length args) 2)
+    (error 'fnn-usage-error
+           :message "usage: fn topic-inspect-carrier ARTICLE ML-PUBLIC-PEM"))
+  (let* ((received (fnn-octet-list
+                    (fnn-read-regular-bounded
+                     (first args) (fnn-core 'fn-hsig-host-max-received-octets))))
+         (carrier (fnn-hsig-verify-received-carrier received (second args))))
+    (if (not (eq (first carrier) :verified))
+        (progn (fnn-out "topic=unverified carrier=~a" (second carrier)) 1)
+      (let ((projection (fnn-core 'fn-th-host-inspect-source (second carrier))))
+        (if (eq (first projection) :ok)
+            (progn
+              (fnn-out "topic=candidate carrier=authenticated kind=~(~a~) metadata=~s admission=unestablished"
+                       (first (second projection)) (second projection))
+              0)
+          (progn (fnn-out "topic=unsupported carrier=authenticated reason=~a admission=unestablished"
+                          (second projection)) 1))))))
+
+(fnn-register-verb "topic-inspect-carrier"
+                   (lambda (first rest)
+                     (fnn-command-topic-inspect-carrier (cons first rest))))
+
 (fnn-register-verb "hybrid-sign"
                    (lambda (first rest)
                      (fnn-command-hybrid-sign (cons first rest))))

@@ -504,25 +504,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 505,
+    "books": 507,
     "books_in_root_closure": 504,
     "roots": 500,
-    "theorems": 7694,
-    "functions": 5847,
-    "assert_events": 8495,
-    "must_fails": 362,
+    "theorems": 7700,
+    "functions": 5870,
+    "assert_events": 8515,
+    "must_fails": 363,
     "encapsulates": 26,
     "guards": {
       "verified": 1892,
       "declared-off": 312,
-      "default-guarded": 2882,
+      "default-guarded": 2905,
       "default-unguarded": 761
     },
-    "suspect_theorems": 71,
-    "export_hygiene_warnings": 95,
+    "suspect_theorems": 72,
+    "export_hygiene_warnings": 96,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 26,
-    "include_hygiene_warnings": 361,
+    "include_hygiene_warnings": 363,
     "host_names_warnings": 691,
     "hand_written_record_warnings": 18
   },
@@ -8038,6 +8038,35 @@
       "read_error": null
     },
     {
+      "book": "books/topic-history-metadata.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 6,
+      "functions": 21,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 21,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "hybrid-store",
+        "statement",
+        "stx-carrier"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-th-decode-refuses-oversize-by-definition"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/transfer-assembly-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -13794,6 +13823,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/topic-history-metadata-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 20,
+      "must_fails": 1,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/topic-history-metadata"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/transfer-journal-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -14549,6 +14606,14 @@
       ]
     },
     {
+      "theorem": "fn-th-decode-refuses-oversize-by-definition",
+      "book": "books/topic-history-metadata.lisp",
+      "line": 247,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-th-decode and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-wire-feed-closed-noop",
       "book": "books/wire.lisp",
       "line": 1071,
@@ -15001,6 +15066,12 @@
         "theorem": "fn-stx-field-round-trip",
         "book": "books/stx-invariants.lisp",
         "line": 224,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-th-decode-refuses-oversize-by-definition",
+        "book": "books/topic-history-metadata.lisp",
+        "line": 247,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -18127,6 +18198,20 @@
         "line": 2,
         "include": "../../books/tcpcl-spool",
         "included": "books/tcpcl-spool.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-metadata-tests.lisp",
+        "line": 2,
+        "include": "../../books/topic-history-metadata",
+        "included": "books/topic-history-metadata.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-metadata-tests.lisp",
+        "line": 3,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -22620,7 +22705,7 @@
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 95,
+        "line": 116,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

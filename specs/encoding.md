@@ -133,6 +133,21 @@ meaning of an existing content ID or signed statement. Record schema 1 is the
 first concrete migration: readers accept schema 0 exactly as written, mark its
 stamp `:legacy`, and writers use schema 1 for newly accepted articles.
 
+## Experimental signed-source topic metadata
+
+`books/topic-history-metadata.lisp` implements the bounded `FN-Topic: v1`
+candidate grammar proposed in [P3](../planning/topic-history-p3-2026-09-23.md).
+The article parser supplies the exact authored-source field view; the topic
+codec accepts one nonduplicate field, canonical padded base64 without internal
+whitespace, and a restricted CBOR item sequence. It caps the field at 2,048
+octets, binary at 1,536 octets and items at 39. Root author and report-parent
+lists are strictly ordered and reject duplicates. The native
+`topic-inspect-carrier ARTICLE ML-PUBLIC-PEM` command verifies the existing
+hybrid carrier and calls this source projection, reporting candidate metadata
+separately from topic admission. It does not install a root, adopt a control,
+or admit a report. The fixed-controller public roster remains an experimental
+profile, and this grammar has not been declared a universal topic policy.
+
 ## Proposed codec deliverables
 
 Specify accepted and rejected forms, size limits, unknown-field handling,

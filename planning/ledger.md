@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 505 |
+| Books read | 507 |
 | Certification roots in the Makefile | 500 |
 | Books inside the root closure | 504 |
-| `defthm` and `defthmd` events | 7694 |
-| `defun` events | 5847 |
+| `defthm` and `defthmd` events | 7700 |
+| `defun` events | 5870 |
 | Functions with verified guards | 1892 |
 | Functions declared `:verify-guards nil` and never verified | 312 |
-| Functions left at the default with an explicit guard | 2882 |
+| Functions left at the default with an explicit guard | 2905 |
 | Functions left at the default with no guard | 761 |
-| `assert-event` checks | 8495 |
-| `must-fail` checks | 362 |
+| `assert-event` checks | 8515 |
+| `must-fail` checks | 363 |
 | `encapsulate` events | 26 |
-| Theorems flagged SUSPECT by shape | 71 |
-| Export-hygiene warnings | 95 |
+| Theorems flagged SUSPECT by shape | 72 |
+| Export-hygiene warnings | 96 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 26 |
-| Include-hygiene warnings | 361 |
+| Include-hygiene warnings | 363 |
 | Host-names warnings | 691 |
 | Hand-written-record warnings | 18 |
 
@@ -367,6 +367,7 @@ that `make certify` requests.
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
 | `books/tcpcl-session.lisp` | root | 98 | 57 | 9/0/48/0 | 0 | 0 | 0 |
 | `books/tcpcl-spool.lisp` | root | 2 | 18 | 0/0/18/0 | 0 | 0 | 0 |
+| `books/topic-history-metadata.lisp` | - | 6 | 21 | 0/0/21/0 | 0 | 0 | 1 |
 | `books/transfer-assembly-invariants.lisp` | root | 25 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/transfer-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/transfer-journal-invariants.lisp` | root | 32 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -583,6 +584,7 @@ that `make certify` requests.
 | `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 4 | 0 |
 | `tests/acl2/tcpcl-spool-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 139 | 0 | 0 |
+| `tests/acl2/topic-history-metadata-tests.lisp` | - | 0 | 2 | 0/0/2/0 | 20 | 1 | 0 |
 | `tests/acl2/transfer-journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 59 | 0 | 0 |
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
@@ -670,4 +672,5 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 801 | definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-stx-reader-verdict-is-the-recorded-verdict` | `books/stx-reader.lisp` | 52 | definition-restated: the conclusion is the body of fn-stx-reader-verdict; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-tcl-segment-never-exceeds-mru` | `books/tcpcl-octets.lisp` | 1065 | branch-of-definition: the hypothesis is a branch test of fn-tcl-decode-segment-data and the conclusion is that branch's value |
+| `fn-th-decode-refuses-oversize-by-definition` | `books/topic-history-metadata.lisp` | 247 | branch-of-definition: the hypothesis is a branch test of fn-th-decode and the conclusion is that branch's value |
 | `fn-wire-feed-closed-noop` | `books/wire.lisp` | 1071 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
