@@ -192,7 +192,67 @@ still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
 ; -----------------------------------------------------------------------------
 ; The dispatcher and the byte fold.  fn-served-connp is the carried served
 ; invariant (books/served.lisp): it types the dispatcher's own effects, so
-; the only :submit a dispatch emits is the one fn-auth-step handed it.
+; the only :submit a dispatch emits is the one fn-auth-step-pinned handed it.
+
+; The pinned reader path does not construct an injection while processing an
+; ordinary command.  Its awaiting-body branch calls the original POST step,
+; whose injection carries the configured agent.
+(defthm fn-oag-post-step-pinned-submission-names-the-configured-agent
+  (fn-oag-names-agentp
+   (fn-post-result-submission
+    (fn-nntp-post-step-pinned ps archive index verdicts config observation
+                              injection wire-event))
+   (fn-inj-config-agent config))
+  :hints (("Goal"
+           :in-theory (e/d (fn-nntp-post-step-pinned)
+                           (fn-nntp-post-step fn-nntp-step-pinned
+                            fn-oag-names-agentp fn-post-offeredp
+                            fn-oag-post-step-submission-names-the-configured-agent))
+           :use ((:instance fn-oag-post-step-submission-names-the-configured-agent)))))
+
+(defthm fn-oag-peer-step-pinned-submission-names-the-configured-agent
+  (fn-oag-names-agentp
+   (fn-post-result-submission
+    (fn-peer-step-pinned ps archive index verdicts config observation
+                         injection wire-event))
+   (fn-inj-config-agent config))
+  :hints (("Goal"
+           :in-theory (e/d (fn-peer-step-pinned fn-peer-delegate-pinned
+                            fn-peer-command fn-peer-transferp fn-peer-msgid-argp)
+                           (fn-peer-step fn-nntp-post-step-pinned
+                            fn-oag-names-agentp fn-peer-submissionp
+                            fn-peer-single fn-peer-echo-reply
+                            fn-peer-decide-offer fn-peer-decision-kind
+                            fn-nntp-keywordp fn-nntp-keyword-tokenp
+                            fn-nntp-multi fn-peer-capability-lines
+                            fn-cfg-peer-find fn-post-sessionp fn-node-statep
+                            fn-cfgp fn-af-message-idp
+                            fn-nntp-printable-tokenp fn-nntp-command-inputp
+                            fn-nntp-tokenize
+                            fn-nntp-command-arguments-at-mostp
+                            fn-post-body-octets fn-nntp-session-openp
+                            fn-peer-ihave-offer-line fn-peer-check-code))
+           :use ((:instance fn-oag-peer-step-submission-names-the-configured-agent)
+                 (:instance fn-oag-post-step-pinned-submission-names-the-configured-agent
+                            (ps (fn-peer-session-base ps)))))))
+
+(defthm fn-oag-auth-step-pinned-submission-names-the-configured-agent
+  (fn-oag-names-agentp
+   (fn-post-result-submission
+    (fn-auth-step-pinned as archive index verdicts config observation
+                         injection wire-event))
+   (fn-inj-config-agent config))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (disable fn-auth-step-pinned fn-peer-step-pinned
+                               fn-oag-names-agentp
+                               fn-oag-peer-step-pinned-submission-names-the-configured-agent)
+           :cases ((fn-post-result-submission
+                    (fn-auth-step-pinned as archive index verdicts config
+                                         observation injection wire-event)))
+           :use ((:instance fn-auth-pinned-submission-is-the-delegated-submission)
+                 (:instance fn-oag-peer-step-pinned-submission-names-the-configured-agent
+                            (ps (fn-auth-session-base as)))))))
 
 (local
  (defthm fn-oag-auth-effects-carry-no-submission
@@ -214,25 +274,31 @@ still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-served-dispatch)
-                           (fn-auth-step fn-auth-sessionp fn-served-connp
+                           (fn-auth-step-pinned fn-auth-sessionp fn-served-connp
                             fn-oag-names-agentp fn-auth-effectsp
                             fn-served-connp-is-consistent-session
-                            fn-auth-step-effects-well-formed
-                            fn-oag-auth-step-submission-names-the-configured-agent
+                            fn-served-connp-is-index-correspondence
+                            fn-auth-step-pinned-effects-well-formed
+                            fn-oag-auth-step-pinned-submission-names-the-configured-agent
                             fn-post-offeredp
                             fn-wire-begin-article-with-line-limit
                             fn-wire-article-line-limit))
            :use ((:instance fn-served-connp-is-consistent-session (c conn))
-                 (:instance fn-auth-step-effects-well-formed
+                 (:instance fn-served-connp-is-index-correspondence (c conn))
+                 (:instance fn-auth-step-pinned-effects-well-formed
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
+                            (index (fn-served-conn-index conn))
+                            (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
                             (injection (fn-served-conn-injection conn))
                             (wire-event event))
-                 (:instance fn-oag-auth-step-submission-names-the-configured-agent
+                 (:instance fn-oag-auth-step-pinned-submission-names-the-configured-agent
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
+                            (index (fn-served-conn-index conn))
+                            (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
                             (injection (fn-served-conn-injection conn))
@@ -243,7 +309,7 @@ still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
           (fn-served-result-conn (fn-served-dispatch conn event)))
          (fn-served-conn-config conn))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
-                                  (fn-auth-step fn-post-offeredp
+                                  (fn-auth-step-pinned fn-post-offeredp
                                    fn-wire-begin-article-with-line-limit
                                    fn-wire-article-line-limit)))))
 
@@ -279,14 +345,16 @@ still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
  (defthm fn-oag-fed-conn-is-a-connection
    (implies (fn-served-connp conn)
             (fn-served-connp
-             (fn-served-make-conn
+             (fn-served-make-conn-indexed
               (fn-wire-result-state
                (fn-wire-feed-byte (fn-served-conn-wire conn) byte))
               (fn-served-conn-session conn)
               (fn-served-conn-archive conn)
               (fn-served-conn-config conn)
               (fn-served-conn-observation conn)
-              (fn-served-conn-injection conn))))
+              (fn-served-conn-injection conn)
+              (fn-served-conn-verdicts conn)
+              (fn-served-conn-index conn))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                    (fn-wire-feed-byte fn-wire-statep
                                     fn-auth-session-consistentp))))))

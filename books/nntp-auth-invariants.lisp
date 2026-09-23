@@ -150,6 +150,43 @@
                             fn-auth-starttls-effect)
                            (fn-nntp-replyp fn-octet-listp)))))
 
+; POST is resolved by fn-auth-command before the pinned reader/trie can run.
+; This is the exact auth transition called by fn-served-dispatch.
+(defthm fn-auth-step-pinned-post-without-permission-is-not-offered
+  (implies (and (fn-auth-sessionp as)
+                (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-postingp as))
+                (fn-nntp-command-inputp line)
+                (consp (fn-nntp-tokenize line))
+                (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
+                (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
+                (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "POST"))
+           (and (not (fn-post-offeredp
+                      (fn-post-result-effects
+                       (fn-auth-step-pinned as archive index verdicts config
+                                            observation injection
+                                            (list :command line)))))
+                (null (fn-post-result-submission
+                       (fn-auth-step-pinned as archive index verdicts config
+                                            observation injection
+                                            (list :command line))))
+                (equal (fn-post-result-session
+                        (fn-auth-step-pinned as archive index verdicts config
+                                             observation injection
+                                             (list :command line)))
+                       as)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-eventp)
+                           (fn-peer-step-pinned fn-auth-delegate-pinned
+                            fn-auth-command fn-auth-sessionp fn-auth-postingp
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp fn-nntp-keywordp
+                            fn-post-offeredp
+                            fn-nntp-command-arguments-at-mostp))
+           :use ((:instance fn-auth-post-without-permission-is-not-offered
+                            (keyword (car (fn-nntp-tokenize line)))
+                            (args (cdr (fn-nntp-tokenize line))))))))
+
 (defthm fn-served-dispatch-of-a-refused-post-leaves-the-wire-in-place
   (implies (and (fn-served-connp conn)
                 (not (fn-auth-session-handshakingp
@@ -168,36 +205,43 @@
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-served-dispatch fn-served-post-command-eventp)
-                           (fn-auth-step fn-auth-sessionp fn-auth-postingp
+                           (fn-auth-step-pinned fn-auth-sessionp fn-auth-postingp
                             fn-wire-begin-article fn-post-offeredp
                             fn-served-submission fn-served-connp
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp fn-nntp-keywordp
                             fn-nntp-command-arguments-at-mostp
                             fn-served-connp-is-consistent-session
-                            fn-auth-step-effects-well-formed
+                            fn-auth-step-pinned-effects-well-formed
                             fn-auth-effects-carry-no-submission
-                            fn-auth-step-post-without-permission-is-not-offered))
-           :use ((:instance fn-auth-step-post-without-permission-is-not-offered
+                            fn-auth-step-pinned-post-without-permission-is-not-offered))
+           :use ((:instance fn-auth-step-pinned-post-without-permission-is-not-offered
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
+                            (index (fn-served-conn-index conn))
+                            (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
                             (injection (fn-served-conn-injection conn))
                             (line (car (cdr event))))
                  (:instance fn-served-connp-is-consistent-session (c conn))
-                 (:instance fn-auth-step-effects-well-formed
+                 (:instance fn-served-connp-is-index-correspondence (c conn))
+                 (:instance fn-auth-step-pinned-effects-well-formed
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
+                            (index (fn-served-conn-index conn))
+                            (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
                             (injection (fn-served-conn-injection conn))
                             (wire-event event))
                  (:instance fn-auth-effects-carry-no-submission
                             (effects (fn-post-result-effects
-                                      (fn-auth-step
+                                      (fn-auth-step-pinned
                                        (fn-served-conn-session conn)
                                        (fn-served-conn-archive conn)
+                                       (fn-served-conn-index conn)
+                                       (fn-served-conn-verdicts conn)
                                        (fn-served-conn-config conn)
                                        (fn-served-conn-observation conn)
                                        (fn-served-conn-injection conn)
