@@ -112,6 +112,9 @@
 (assert-event (equal (fn-native-config-anchor-server *fn-ncfg-full-config*) "int08h"))
 (assert-event (equal (fn-native-config-acl2-slots *fn-ncfg-full-config*) 4))
 (assert-event (not (fn-native-config-operator-availablep *fn-ncfg-full-config*)))
+; The refusal names the first key the native owner cannot consume.
+(assert-event (equal (fn-native-config-unsupported-key *fn-ncfg-full-config*)
+                     "agent"))
 (assert-event
  (equal (fn-native-config-listener-address
          (fn-record-string-octets
@@ -176,3 +179,75 @@
                       (append (fn-ncfg-test-lines '("[store]" "path = \"/x\""))
                               (make-list 16400 :initial-element 32)))
                      '(:refused :bounds-or-encoding)))
+
+; -----------------------------------------------------------------------------
+; What the native owner admits, key by key (fn-native-config-unsupported-key).
+
+(defun fn-ncfg-test-config (lines)
+  (car (cdr (fn-native-config-load (fn-ncfg-test-lines lines)))))
+
+; `[log] path' is consumed: an absolute path is admitted, with and without
+; the rest of a deployed profile around it.
+(defconst *fn-ncfg-log-config*
+  (fn-ncfg-test-config '("[store]" "path = \"/srv/fn\""
+                         "[log]" "path = \"/var/log/fn/fn.log\"")))
+(assert-event (equal (fn-native-config-log-path *fn-ncfg-log-config*)
+                     "/var/log/fn/fn.log"))
+(assert-event (fn-native-config-operator-availablep *fn-ncfg-log-config*))
+(defconst *fn-ncfg-deployed-config*
+  (fn-ncfg-test-config
+   '("[store]" "path = \"/tank/fn/node/store\""
+     "[listener]" "host = \"192.168.50.39\"" "port = 1119"
+     "tls_cert = \"/tank/fn/node/tls/cert.pem\""
+     "tls_key = \"/tank/fn/node/tls/key.pem\""
+     "[auth]" "required = true" "protected_only = true"
+     "path = \"/tank/fn/node/store/auth.toml\""
+     "[posting]" "enabled = true"
+     "[log]" "path = \"/tank/fn/node/log/fn.log\""
+     "[control]" "path = \"/tank/fn/node/store/control.sock\"")))
+(assert-event (fn-native-config-operator-availablep *fn-ncfg-deployed-config*))
+(assert-event (null (fn-native-config-unsupported-key *fn-ncfg-deployed-config*)))
+
+; A relative log path is refused by name: the service's working directory
+; is not part of the profile.
+(defconst *fn-ncfg-relative-log-config*
+  (fn-ncfg-test-config '("[store]" "path = \"/srv/fn\""
+                         "[log]" "path = \"fn.log\"")))
+(assert-event (not (fn-native-config-operator-availablep
+                    *fn-ncfg-relative-log-config*)))
+(assert-event (equal (fn-native-config-unsupported-key
+                      *fn-ncfg-relative-log-config*)
+                     "log"))
+
+; `[posting] agent' is refused by name whatever it says, the former default
+; included: the injecting agent is the path-identity policy
+; (books/owner-agent.lisp), and a second slot could only disagree with Path.
+; Absent, it normalizes to nil.
+(assert-event (null (fn-native-config-posting-agent *fn-ncfg-minimal-config*)))
+(defconst *fn-ncfg-agent-config*
+  (fn-ncfg-test-config '("[store]" "path = \"/srv/fn\""
+                         "[posting]" "agent = \"fn@hbox.ember.software\"")))
+(assert-event (equal (fn-native-config-unsupported-key *fn-ncfg-agent-config*)
+                     "agent"))
+(defconst *fn-ncfg-old-default-agent-config*
+  (fn-ncfg-test-config '("[store]" "path = \"/srv/fn\""
+                         "[posting]" "agent = \"fn-operator@localhost\"")))
+(assert-event (equal (fn-native-config-unsupported-key
+                      *fn-ncfg-old-default-agent-config*)
+                     "agent"))
+
+; The keys that stay unconsumed, each refused by its own name.
+(assert-event
+ (equal (fn-native-config-unsupported-key
+         (fn-ncfg-test-config '("[store]" "path = \"/srv/fn\""
+                                "[anchor]" "server = \"int08h\"")))
+        "anchor"))
+(assert-event
+ (equal (fn-native-config-unsupported-key
+         (fn-ncfg-test-config '("[store]" "path = \"/srv/fn\""
+                                "[acl2]" "slots = 4")))
+        "acl2"))
+(assert-event
+ (equal (fn-native-config-unsupported-key
+         (car (cdr *fn-ncfg-native-protected-auth*)))
+        "protected_only"))

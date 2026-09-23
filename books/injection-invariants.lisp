@@ -89,6 +89,77 @@
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
+; The injecting agent an injected article names
+;
+; RFC 5536 section 3.2.8: Injection-Info begins with the <path-identity> of
+; the injecting agent.  fn writes one Injection-Info field, generated from
+; the configuration's agent and nothing else, and the proto-article check
+; refuses a source that already carries one (fn-af-proto-article-check,
+; :injection-info), so the line below is the article's only Injection-Info.
+; The statement is about fn-inj-decide, which fn-nntp-post-step calls for
+; every article body a served POST delivers (books/nntp-post.lisp); which
+; agent the owner installs is books/owner-agent.lisp.
+
+(defun fn-inj-prefixp (x y)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (and (consp y) (equal (car x) (car y)) (fn-inj-prefixp (cdr x) (cdr y)))
+    t))
+
+(defun fn-inj-infixp (x y)
+  (declare (xargs :guard t :measure (acl2-count y)))
+  (or (fn-inj-prefixp x y)
+      (and (consp y) (fn-inj-infixp x (cdr y)))))
+
+(local
+ (defthm fn-inj-prefixp-of-append-left
+   (fn-inj-prefixp a (fn-inj-append a b))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-infixp-of-append-left
+   (fn-inj-infixp a (fn-inj-append a b))
+   :hints (("Goal" :expand ((fn-inj-infixp a (fn-inj-append a b)))))))
+
+(local
+ (defthm fn-inj-infixp-of-append-right
+   (implies (fn-inj-infixp x b)
+            (fn-inj-infixp x (fn-inj-append a b)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)
+            :induct (fn-inj-append a b)))))
+
+(local
+ (defthm fn-inj-prefixp-of-append-extends
+   (implies (fn-inj-prefixp x a) (fn-inj-prefixp x (fn-inj-append a b)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-infixp-of-append-extends
+   (implies (fn-inj-infixp x a) (fn-inj-infixp x (fn-inj-append a b)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)
+            :induct (fn-inj-infixp x a)))))
+
+(local
+ (defthm fn-inj-prefix-carries-the-injection-info-line
+   (fn-inj-infixp (fn-inj-injection-info-line agent)
+                  (fn-inj-append (fn-inj-prefix date msgid agent
+                                                generate-id generate-date)
+                                 source))
+   :hints (("Goal" :in-theory (e/d (fn-inj-prefix)
+                                   (fn-inj-injection-info-line
+                                    fn-inj-path-line
+                                    fn-inj-injection-date-line))))))
+
+(defthm fn-inj-injected-article-names-the-configured-agent
+  (implies (fn-inj-injectedp (fn-inj-decide source config observation))
+           (fn-inj-infixp (fn-inj-injection-info-line
+                           (fn-inj-config-agent config))
+                          (fn-inj-decision-octets
+                           (fn-inj-decide source config observation))))
+  :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory)
+                                  (fn-inj-prefix fn-inj-injection-info-line)))))
+
+; -----------------------------------------------------------------------------
 ; Retry identity
 ;
 ; RFC 5537 section 3.5 item 6 forbids altering an existing Message-ID header
@@ -479,3 +550,114 @@
                             (n (fn-clock-monotonic a))
                             (m (fn-clock-monotonic b)) (w 20)))))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; RFC 5536 section 3.1.2: an injected proto-article's From is a mailbox-list
+; (books/mailbox.lisp), and so names an address.  `From: yue' was injected
+; and served until 2026-09-22 because only presence was checked; this is the
+; property the node was missing, over the function the served POST
+; (books/nntp-post.lisp `fn-nntp-post-step') and the operator's submission
+; (books/owner.lisp `fn-own-operator-decision') both call.  The address half
+; is books/mailbox.lisp's `fn-mbx-mailbox-list-names-an-address', which does
+; the work; the arm of `fn-inj-mandatory-reason' only places it.
+
+; An injection happened only where posting is allowed; the operator's retry
+; keystone (books/owner-invariants.lisp) reads this.
+(defthm fn-inj-injection-requires-posting-allowed
+  (implies (fn-inj-injectedp (fn-inj-decide source config observation))
+           (fn-inj-config-allow config))
+  :hints (("Goal" :in-theory (enable fn-inj-decide-theory))))
+
+(defthm fn-inj-injected-proto-article-has-a-mailbox-list-from
+  (implies (fn-inj-injectedp (fn-inj-decide source config observation))
+           (let* ((article (fn-article-result-article (fn-article-parse source)))
+                  (value (fn-article-field-unfolded-value
+                          (car (fn-article-get-headers article
+                                                       *fn-inj-from-name*)))))
+             (and (fn-mbx-mailbox-listp value)
+                  (member-equal 64 value))))
+  :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory fn-inj-mandatory-reason
+                                   fn-inj-from-validp)
+                                  (fn-mbx-mailbox-listp)))))
+
+; -----------------------------------------------------------------------------
+; Every injected article is a re-injection of its source (books/injection.lisp
+; `fn-inj-reinjectionp'): this agent's Path line, an Injection-Date line, this
+; agent's Injection-Info line, then optionally the generated Message-ID and
+; Date lines, then the source octet for octet.  It holds for every clock
+; reading, which is why a stored injection is recognisable when the same
+; proto-article is submitted again under a later clock
+; (books/owner.lisp `fn-own-operator-decision').
+
+(local
+ (defthm fn-inj-strip-of-append-left
+   (implies (true-listp a)
+            (equal (fn-inj-strip a (fn-inj-append a b)) b))
+   :hints (("Goal" :in-theory (enable fn-inj-strip fn-inj-append)))))
+
+(local
+ (defthm fn-inj-strip-by-an-append
+   (implies (true-listp a)
+            (equal (fn-inj-strip (fn-inj-append a b) x)
+                   (fn-inj-strip b (fn-inj-strip a x))))
+   :hints (("Goal" :in-theory (enable fn-inj-strip fn-inj-append)))))
+
+(local
+ (defthm fn-inj-drop-of-append
+   (implies (and (true-listp a) (equal n (len a)))
+            (equal (fn-inj-drop n (fn-inj-append a b)) b))
+   :hints (("Goal" :in-theory (enable fn-inj-drop fn-inj-append)))))
+
+(local
+ (defthm fn-inj-take-of-append
+   (implies (and (true-listp a) (equal n (len a)))
+            (equal (fn-inj-take n (fn-inj-append a b)) a))
+   :hints (("Goal" :in-theory (enable fn-inj-take fn-inj-append)))))
+
+(local
+ (defthm fn-inj-true-listp-of-append
+   (equal (true-listp (fn-inj-append a b)) (true-listp b))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-date-octets-shape
+   (and (true-listp (fn-inj-date-octets inst))
+        (equal (len (fn-inj-date-octets inst)) 31))
+   :hints (("Goal" :in-theory (enable fn-inj-date-octets)))))
+
+(local
+ (defthm fn-inj-append-of-nil
+   (equal (fn-inj-append nil b) b)
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-append-of-a-cons-is-a-cons
+   (implies (consp a) (consp (fn-inj-append a b)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-true-listp-of-generated-message-id
+   (true-listp (fn-inj-generated-message-id obs config))
+   :hints (("Goal" :in-theory (enable fn-inj-generated-message-id)))))
+
+(local
+ (defthm fn-inj-strip-of-nil
+   (equal (fn-inj-strip nil x) x)
+   :hints (("Goal" :in-theory (enable fn-inj-strip)))))
+
+(defthm fn-inj-injected-article-is-a-reinjection-of-its-source
+  (implies (fn-inj-injectedp (fn-inj-decide source config observation))
+           (fn-inj-reinjectionp
+            (fn-inj-decision-octets (fn-inj-decide source config observation))
+            source
+            (fn-inj-config-agent config)
+            (fn-inj-decision-msgid (fn-inj-decide source config observation))))
+  :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory fn-inj-reinjectionp
+                                   fn-inj-tail-matchp fn-inj-prefix
+                                   fn-inj-path-line fn-inj-injection-date-line
+                                   fn-inj-injection-info-line fn-inj-date-line
+                                   fn-inj-message-id-line fn-inj-configp)
+                                  (fn-inj-date-octets fn-inj-instant-of
+                                   fn-inj-generated-message-id
+                                   fn-inj-mandatory-reason
+                                   fn-af-proto-article-check)))))

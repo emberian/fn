@@ -177,6 +177,12 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
                     "anchor=none checkpoint=none")
         if name.endswith("configured store"):
             return "/srv/fn/a-store"
+        if name.endswith("profile agent refusal"):
+            return "usage operator run (UNSUPPORTED-PROFILE agent)"
+        if name.endswith("profile service log"):
+            return ("accepted reader connection=0 time=2026-09-22T20:00:00Z\n"
+                    "accepted post path=control message-id=<profile-a@example.invalid> "
+                    "time=2026-09-22T20:00:01Z")
         if "auth-required AUTHINFO gate" in name:
             return self.AUTH_PAYLOAD
         if "AUTHINFO session" in name:
@@ -202,6 +208,8 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
                  # A second `init` over a store that exists is refused, and
                  # the reinit-safety row is about what that refusal left.
                  "node A second operator init": 1,
+                 # `[posting] agent` is refused at run admission, by name.
+                 "node A profile agent refusal": v0_matrix.EXIT_USAGE,
                  "node B second operator init": 1}
 
     def sh(self, name, script, timeout=600, note="", expect=0):
@@ -553,6 +561,36 @@ class NativeSliceAccountingTests(unittest.TestCase):
             self.assertEqual(row.verdict, v0_matrix.REFUSED)
             self.assertIn("411", row.observed)
 
+    def test_an_owner_the_live_verb_killed_leaves_the_refusal_half_unexercised(self):
+        # The dabebb84 run: the live verb exited 3 because the owner faulted
+        # and exited, and the offline command then found the writer lock free
+        # and was accepted.  With no live owner the refusal half is not a
+        # statement about a held store, so the offline command is not run.
+        class OwnerKilledByTheVerb(HarnessOnlyNativeGate):
+            CANNED_RC = dict(HarnessOnlyNativeGate.CANNED_RC)
+            CANNED_RC["live reconfiguration: declare fn.matrix.live on node A"] = 3
+
+            def alive(self, node, tag="main"):
+                if node.name == "a" and self.step_named(
+                        "live reconfiguration: declare fn.matrix.live on node A"):
+                    self.dead[node.name] = "fault operator run"
+                    return False
+                return bool(node.pid)
+        with tempfile.TemporaryDirectory() as home:
+            gate = OwnerKilledByTheVerb(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+            gate.execute_native_acceptance()
+            rows = {r.id: r for r in gate.rows}
+            self.assertEqual(rows["V0-CFG-LIVE"].verdict, v0_matrix.UNCERTAIN)
+            self.assertIn("DIED", rows["V0-CFG-LIVE"].observed)
+            refuse = rows["V0-CFG-LIVE-REFUSE"]
+            self.assertEqual(refuse.verdict, v0_matrix.NOT_EXERCISED)
+            self.assertIn("owner died", refuse.blocker)
+            self.assertNotIn("offline group create while the owner holds the store",
+                             [step.name for step in gate.steps])
+
     def test_wildcard_listener_is_measured_and_its_usage_code_is_named(self):
         with tempfile.TemporaryDirectory() as home:
             gate = self.structured_gate(home)
@@ -568,6 +606,66 @@ class NativeSliceAccountingTests(unittest.TestCase):
             self.assertIn("run", row.invocation)
             self.assertIn("configuration admission", row.limit)
             self.assertIn("non-loopback IPv4", row.limit)
+
+    def profile_row(self, gate):
+        gate.execute_native_acceptance()
+        rows = [r for r in gate.rows if r.id == "V0-NODE-PROFILE"]
+        self.assertEqual(len(rows), 1)
+        return rows[0]
+
+    def test_the_profile_row_measures_the_log_file_and_the_named_refusal(self):
+        with tempfile.TemporaryDirectory() as home:
+            row = self.profile_row(self.structured_gate(home))
+            self.assertEqual(row.verdict, v0_matrix.ACCEPTED)
+            # Both configurations are in the invocation: the reader must see
+            # the `[log]` table and the refused `[posting] agent`.
+            self.assertIn("[log]", row.invocation)
+            self.assertIn("agent = ", row.invocation)
+            self.assertIn("agent.toml", row.invocation)
+            self.assertIn("packaging/fn-native operator", row.invocation)
+            self.assertIn("post --message-id", row.invocation)
+            self.assertIn("accepted post path=control "
+                          "message-id=<profile-a@example.invalid>", row.observed)
+            self.assertIn("UNSUPPORTED-PROFILE agent", row.observed)
+            self.assertIn("path-identity", row.limit)
+
+    def test_a_post_that_left_no_log_line_is_not_accepted(self):
+        class Silent(HarnessOnlyNativeGate):
+            def canned(self, name):
+                if name.endswith("profile service log"):
+                    return "NO-LOG-FILE"
+                return super().canned(name)
+        with tempfile.TemporaryDirectory() as home:
+            row = self.profile_row(Silent(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"}))
+            self.assertEqual(row.verdict, v0_matrix.REFUSED)
+            self.assertIn("left no line", row.limit)
+
+    def test_an_agent_the_run_accepts_is_not_accepted(self):
+        class Silent(HarnessOnlyNativeGate):
+            CANNED_RC = {k: v for k, v in HarnessOnlyNativeGate.CANNED_RC.items()
+                         if k != "node A profile agent refusal"}
+        with tempfile.TemporaryDirectory() as home:
+            row = self.profile_row(Silent(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"}))
+            self.assertEqual(row.verdict, v0_matrix.REFUSED)
+            self.assertIn("did not refuse `[posting] agent`", row.limit)
+
+    def test_a_failed_post_leaves_the_row_not_exercised_with_its_code(self):
+        class Failed(HarnessOnlyNativeGate):
+            CANNED_RC = dict(HarnessOnlyNativeGate.CANNED_RC,
+                             **{"node A profile post": 4})
+        with tempfile.TemporaryDirectory() as home:
+            row = self.profile_row(Failed(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"}))
+            self.assertEqual(row.verdict, v0_matrix.NOT_EXERCISED)
+            self.assertIn("exited 4", row.blocker)
 
     def test_the_independent_client_runs_on_the_native_backend(self):
         with tempfile.TemporaryDirectory() as home:
@@ -1070,6 +1168,103 @@ class InnRowTests(unittest.TestCase):
                              "/opt/fn/fn-host")
             self.assertEqual(command[command.index("--host") + 1], gate.host.label)
             self.assertEqual(command[-1], "/tmp/x/inn-lab.md")
+
+
+class FromMailboxTests(unittest.TestCase):
+    """V0-POST-FROM-MAILBOX: RFC 5536 3.1.2, the agents run's `From: yue`.
+
+    The postcycle phase posts an unaddressed From on its own connection under
+    a Message-ID of its own and asks for it back; the verdict is refused only
+    when the POST was answered 441 AND the Message-ID is not served.
+    """
+
+    FAKE_DRIVER = r"""
+import json, os
+
+def note(kind, value=""):
+    with open(os.environ["POST_LOG"], "a", encoding="utf-8") as out:
+        out.write(json.dumps([kind, value]) + "\n")
+
+class Sock:
+    def __init__(self, conn):
+        self.conn = conn
+    def sendall(self, payload):
+        text = payload.decode("ascii")
+        self.conn.last = text
+        note("sendall", text)
+    def close(self):
+        note("close")
+
+class Conn:
+    def __init__(self, port, timeout=30):
+        self.sock = Sock(self)
+        self.greeting = "200 ready"
+        self.last = ""
+    def cmd(self, text, multiline=False):
+        note("cmd", text)
+        if text == "POST":
+            return "340 send article", []
+        if text.startswith("GROUP"):
+            return "211 1 1 1 fn.letters", []
+        if text.startswith("STAT"):
+            return "430 no article with that message-id", []
+        if text.startswith("ARTICLE"):
+            return "220 0 <m@example.invalid> article follows", []
+        if text == "DATE":
+            return "111 20260922212647", []
+        return "500 command not recognized", []
+    def line(self):
+        if "From: yue" in self.last:
+            return "441 posting failed; From is not a valid mailbox list"
+        return "240 article received OK"
+    def close(self):
+        self.sock.close()
+"""
+
+    def run_post(self, directory):
+        (directory / "drive.py").write_text(self.FAKE_DRIVER)
+        (directory / "matrix.py").write_text(v0_matrix.MATRIX_DRIVER)
+        log = directory / "post.log"
+        done = subprocess.run(
+            [sys.executable, "matrix.py", "postcycle", "--port", "1",
+             "--group", "fn.letters", "--msgid", "<m@example.invalid>",
+             "--user", "", "--secret", ""],
+            cwd=directory, env=dict(os.environ, POST_LOG=str(log)), text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        return done, calls
+
+    def test_the_unaddressed_post_is_its_own_article_and_is_asked_for(self):
+        with tempfile.TemporaryDirectory() as name:
+            done, calls = self.run_post(Path(name))
+            self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+            result = json.loads(done.stdout.strip().splitlines()[-1])
+            self.assertTrue(result["COMMIT"].startswith("240"))
+            self.assertEqual(result["FROM"],
+                             "441 posting failed; From is not a valid mailbox list")
+            self.assertTrue(result["FROM ARTICLE"].startswith("430"))
+            blocks = [value for kind, value in calls
+                      if kind == "sendall" and "From: yue" in value]
+            self.assertEqual(len(blocks), 1)
+            self.assertIn("Message-ID: <m.from@example.invalid>\r\n", blocks[0])
+            self.assertIn(["cmd", "STAT <m.from@example.invalid>"], calls)
+            self.assertEqual(v0_matrix.from_mailbox_verdict(result["FROM"],
+                                                             result["FROM ARTICLE"]),
+                             v0_matrix.REFUSED)
+
+    def test_the_verdict_needs_both_the_refusal_and_the_absence(self):
+        verdict = v0_matrix.from_mailbox_verdict
+        self.assertEqual(verdict("441 posting failed", "430 no such article"),
+                         v0_matrix.REFUSED)
+        # The defect: taken, or served.
+        self.assertEqual(verdict("240 article received OK", "223 0 <m>"),
+                         v0_matrix.ACCEPTED)
+        self.assertEqual(verdict("441 posting failed", "223 0 <m>"),
+                         v0_matrix.ACCEPTED)
+        # No answer is no decision.
+        self.assertEqual(verdict("", ""), v0_matrix.UNCERTAIN)
+        self.assertEqual(v0_matrix.PLAN_BY_KEY["V0-POST-FROM-MAILBOX"].expected,
+                         v0_matrix.REFUSED)
 
 
 if __name__ == "__main__":

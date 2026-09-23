@@ -83,6 +83,23 @@ article. It is a durable configuration record like a group or a peer, refused
 while the owner holds the writer lock offline and applied live through the
 owner otherwise.
 
+The same slot is the injecting agent: every article a served POST injects
+carries `Path: IDENTITY!not-for-mail` and `Injection-Info: IDENTITY` for the
+policy value in force when the connection opened (books/owner-agent.lisp,
+`fn-oag-post-config`), and a store without the policy injects as
+`fn.example.invalid`. There is no second place to name it. `[posting] agent`
+in fn.toml is refused by `run` as `UNSUPPORTED-PROFILE agent`, whatever it
+says: a value there could only disagree with Path, and a name with `@` in it
+is not a `<path-identity>`. Set the policy instead.
+
+What `run` admits of fn.toml, key by key (`fn-native-config-unsupported-key`,
+books/native-config.lisp): `[store]`, `[listener]` (a numeric address or a
+loopback alias, TLS paths paired), `[auth]` (`protected_only` only with a TLS
+pair), `[posting] enabled`, `[control]`, and `[log] path` when it is absolute.
+It refuses, naming the key, `[posting] agent`, `[anchor]`, `[acl2]` and a
+relative `[log] path`: `usage operator run (UNSUPPORTED-PROFILE agent)` and
+exit 5. The offline verbs above still accept such a file.
+
 `help` does not read the configuration file. `run` uses the normalized native
 owner callback. Missing, nonregular or oversized configuration is usage (5);
 a hard read/open failure remains a fault (4). Refused work (1), uncertain
@@ -149,6 +166,44 @@ FN_NATIVE_PROFILE=developer tools/build_native_host.sh
 image. Changing `FN_NATIVE_PROFILE` when an existing saved image starts has no
 effect; the profile is selected during image construction and serialized.
 
+### Developer selectors
+
+The developer image honours eight environment selectors and one positional
+argument that arm a cut or a fault. The table is `+fnn-developer-selectors+`
+in `host/native/io.lisp`; each is read only through `fnn-developer-selector`,
+which answers nothing on a production image.
+
+| selector | value | what it arms |
+| --- | --- | --- |
+| `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`) |
+| `FN_NATIVE_RECOVERY_FAULT` | `CUT:eio\|kill`, CUT one of `recover-replayed`, `recover-barrier` (the first of its five sites), `recovery-stage-unlinked` | recovery's cuts, in `store ROOT recover`, `operator CONFIG recover`, `store ROOT post` and the served owner's own recovery at start |
+| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts |
+| `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
+| `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |
+| `FN_NATIVE_AUTH_ADMIN_FAULT` | `CUT:eio\|kill` | the AUTHINFO credential writer's cuts |
+| `FN_NATIVE_OWNER_TEST_SIGTERM` | `after-install` | a SIGTERM between owner recovery and listen |
+| `FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP` | `1` | a two-second pause inside owner cleanup |
+| `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
+
+The served owner and `store ROOT post` read the post and recovery selectors
+through one function, `fnn-post-entry-fault`, into the one store fault slot
+that every `fnn-at` cut tests; at most one of the positional FAULT,
+`FN_NATIVE_POST_FAULT` and `FN_NATIVE_RECOVERY_FAULT` may be set (usage 5
+otherwise). The cut sites are the `fnn-at` calls in `fnn-recover`,
+`fnn-advance-frontier`, `fnn-publish` and `fnn-finish`, which both entries
+call.
+
+A production image refuses to start when any selector in the table is set in
+its environment, even to the empty string, or when `store ROOT post` is given
+a FAULT other than `-`. `fnn-main` runs `fnn-developer-selector-gate` before
+dispatch, so the refusal is usage exit 5 naming the variable, and no store,
+socket or request is reached. A running production node therefore never
+meets a selector in the middle of a request: accepted, refused and uncertain
+keep their meanings for every real request. The selectors that other layers
+read (`FN_BP_*`, `FN_TCPCL_TEST_*`, `FN_CHECKPOINT_TEST_*`,
+`FN_APP_JOURNAL_TEST_*`, `FN_IMMUTABLE_PUBLISH_TEST_FAIL`) are not in this
+table yet; the DTN image they are exercised on has no developer profile.
+
 ## Install
 
 The development service needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified
@@ -181,8 +236,13 @@ fn --config /etc/fn/fn.toml init \
 
 This creates the store and writes the configuration file.
 [`packaging/fn.toml.example`](../packaging/fn.toml.example) documents every
-table: `[store] path`, `[listener] host port`, `[posting] enabled agent`,
-`[anchor] server`, `[acl2] path slots`, `[log] path`, `[control] path`.
+table: `[store] path`, `[listener] host port`, `[posting] enabled`,
+`[anchor] server`, `[acl2] path slots`, `[log] path`, `[control] path`. This
+development `fn init` also writes `[posting] agent` from `--agent`, and
+`[anchor]`/`[acl2]` from their flags; the native `operator CONFIG run`
+refuses all three by name (see [Native component entry](#native-component-entry)),
+so delete those lines from a file this command wrote before handing it to
+the native image, and set `policy set path-identity` for the agent.
 
 The groups are **not** in the configuration file. They are durable
 configuration records inside the store, which ACL2 replays at every open;
@@ -417,16 +477,30 @@ line, the log line, and the reply on the control socket. Never map
 
 The service log (`[log] path`, otherwise stderr, which under systemd is the
 journal) carries one line per post and one per accepted connection, with the
-outcome word first. A connection line says the **role** the owner gave the
-connection at accept, which it decides from the peer table and not from
-anything the client says: `reader`, or `peer` with the record's name.
+outcome word first. `run` opens `[log] path` append-only (created 0640 if it
+is absent, never through a symlink) before it opens the store, so a wrong
+path fails before recovery; fn never truncates or rotates it. A connection
+line says the **role** the owner gave the connection at accept, which it
+decides from the peer table and not from anything the client says: `reader`,
+or `peer` with the record's name. A post line's word is the reply's word:
+`accepted` exactly when the owner consumed a durable completion (the 240),
+`refused`, `uncertain`, and for a control post `duplicate` too. A served
+post names the connection and the agent its Injection-Info carries; a
+control post stores an already-authored article and names no agent. Every
+field is at most 256 printable octets, anything else shown as `?`, so a line
+is one line whatever a client sent (books/owner-log.lisp).
 
 ```
-accepted post path=control message-id=<a@example.invalid> agent=news@example.invalid detail=committed sequence=3 charge=41 time=2026-09-19T21:04:11Z
-accepted reader connection=2 time=2026-09-19T21:04:33Z
-accepted peer connection=3 peer=innA time=2026-09-19T21:04:35Z
-refused post path=control message-id=<b@example.invalid> agent=news@example.invalid detail=refused: group-unknown time=2026-09-19T21:05:02Z
+accepted reader connection=2 time=2026-09-22T21:04:33Z
+accepted post path=served connection=2 message-id=<a@example.invalid> agent=news.example.org time=2026-09-22T21:04:34Z
+accepted peer connection=3 peer=innA time=2026-09-22T21:04:35Z
+accepted post path=control message-id=<b@example.invalid> time=2026-09-22T21:05:01Z
+refused post path=control message-id=<c@example.invalid> time=2026-09-22T21:05:02Z
 ```
+
+A POST refused before it becomes a submission (a 441 from the injection
+check itself) writes no post line; the connection line and the client's
+reply are the record of it.
 
 If a connection you expected to be a reader is logged as a `peer`, the
 source address matched a peer record's `auth` slot: the owner matches the

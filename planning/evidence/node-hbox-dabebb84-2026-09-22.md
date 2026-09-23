@@ -30,7 +30,10 @@ user unit `fn-node.service`. The first `run` answered
 `usage operator run UNSUPPORTED-PROFILE`: `fn-native-config-operator-availablep`
 (books/native-config.lisp) refuses a `[log] path` and any posting agent but
 the default. Both keys were removed from the configuration and the runbook
-(a0ffa4c9); the node then listened on 192.168.50.39:1119 with STARTTLS and
+(a0ffa4c9); lane T6b later found the agent key was never read by the
+injection (the path-identity policy is the injecting agent, and the
+articles say `hbox.ember.software`), made the log path work, and kept the
+agent key refused by name; the node then listened on 192.168.50.39:1119 with STARTTLS and
 `[auth] required = true, protected_only = true`. The old Codex-era
 Python-host unit `fn.service` was disabled. A lane (T6b) makes the operator
 honour the two keys.
@@ -69,8 +72,15 @@ the live owner exits 3 (uncertain) and the socket then gets no reply to
 image was cut (4931dcb4) and lane T8c determines whether they account for
 it. `V0-CFG-LIVE-REFUSE`: a second configuration over the same store with an
 unbound control path ran the offline executor, which accepted `group create`
-and wrote configuration generation 7 while the live owner held the store,
-two writers on one store; lane T8c owns the fix.
+and wrote configuration generation 7. Lane T8c found
+([record](t8c-live-rows-2026-09-22.md)) that this was not two writers: the
+live request had killed the owner (its open's integer id went through the
+action reader, and its stop hook closed the reply socket, which is the
+uncertain-and-silent of the first row), so the lock was free and accepting
+was correct; the harness now checks the owner is alive before the offline
+half. Both owner defects are fixed on dev (85e3254f), unwitnessed on an
+image; the first row stays a disagreement until T8b serves a group created
+live.
 
 ## What this record does not claim
 

@@ -49,6 +49,12 @@ returns NIL and the core's named reason."
           octets)
       (values nil (fnn-core-state 'fn-store-cfg-last-reason)))))
 
+(defun fnn-admin-lock-observation (store)
+  "Whether STORE holds the exclusive writer lock: the store was opened writable
+and its lock descriptor is live.  This is an observation, not a decision;
+`fn-native-admin-publication-authorize' refuses `:lock' when it is NIL."
+  (and (fnn-store-writable store) (fnn-store-lock-fd store) t))
+
 (defun fnn-admin-authorize (store records config-records record observed-names)
   "The one ACL2 publication operation binds the observed lock, occupied-name
 set, exact record, candidate replay/open result and generated final name."
@@ -56,7 +62,7 @@ set, exact record, candidate replay/open result and generated final name."
                  'fn-store-cfg-native-admin-authorize
                  (mapcar #'fnn-octet-list records) (fnn-store-frontier store)
                  (mapcar #'fnn-octet-list config-records) (fnn-octet-list record)
-                 t (mapcar (lambda (name) (fnn-octet-list (fnn-string-octets name)))
+                 (fnn-admin-lock-observation store) (mapcar (lambda (name) (fnn-octet-list (fnn-string-octets name)))
                            observed-names))))
     (if (eq (fnn-core 'fn-native-admin-host-publication-status result) :accepted)
         result
@@ -120,7 +126,15 @@ result as a refusal or uncertainty."
        ;; connection is opened and closed under this mutex without acquiring
        ;; a socket.  Its pin is therefore the current generation checked by
        ;; fn-ocfg-reconfig-refusal; raw Lisp never supplies that decision.
-       (let* ((cid (fnn-owner-action 'fn-owner-open))
+       ;; `fn-owner-open' answers the new connection's integer id, or NIL
+       ;; when the model refused the open, as the socket path reads it
+       ;; (host/native/owner.lisp).  It is not an action keyword: through
+       ;; `fnn-owner-action' every live request faulted here and stopped the
+       ;; owner (the dabebb84 matrix run, V0-CFG-LIVE).
+       (let* ((cid (let ((opened (fnn-owner-core 'fn-owner-open)))
+                     (unless (or (null opened) (and (integerp opened) (>= opened 0)))
+                       (fnn-fault "owner returned a malformed connection id"))
+                     opened))
               (staged (and (integerp cid)
                            (fnn-owner-action
                             'fn-native-admin-host-owner-reconfigure cid plan))))

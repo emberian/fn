@@ -56,6 +56,9 @@
 (in-package "ACL2")
 (include-book "owner")
 (local (include-book "arithmetic/top" :dir :system))
+; fn-inj-injected-article-is-a-reinjection-of-its-source and
+; fn-inj-injection-requires-posting-allowed: the operator keystones below.
+(local (include-book "injection-invariants"))
 
 (local (in-theory (enable fn-own-vocabulary fn-ag-append fn-ag-member)))
 
@@ -935,6 +938,110 @@
                                      fn-own-control-submit
                                      fn-own-enqueue fn-own-relation))))
 
+(defthm fn-own-operator-submit-preserves-relation
+  (implies (fn-own-relation o)
+           (fn-own-relation (fn-own-operator-submit o msgid groups octets)))
+  :hints (("Goal" :in-theory (e/d (fn-own-operator-submit-result
+                                   fn-own-operator-submit
+                                   fn-own-enqueue fn-own-relation)
+                                  (fn-own-operator-decision-of)))))
+
+; -----------------------------------------------------------------------------
+; The operator's submission injects (books/owner.lisp fn-own-operator-submit,
+; the (:operator-submit ...) event; host/owner-host.lisp fn-owner-operator-
+; submit calls fn-own-operator-submit-result and steps the event, and
+; host/native/owner.lisp fnn-owner-control-submit-serialized calls that for
+; `fn operator CONFIG post').  Found by the INN lab of 2026-09-22: the verb
+; stored its payload with no Path and INN refused it 437.
+;
+; 1. What is queued is an injection of the submitted octets by this node's
+;    injecting agent: its Path line, an Injection-Date, its Injection-Info,
+;    then the octets as submitted (fn-inj-reinjectionp), under the Message-ID
+;    and newsgroups the command named.
+; 2. With no usable clock nothing is queued and the answer is a refusal
+;    (D10-a).
+; 3. A retry of the same octets after the first became durable is the stored
+;    article, whatever the clock now reads, so the store answers duplicate.
+
+(defthm fn-own-operator-decision-is-an-injection-of-the-payload
+  (implies (fn-inj-injectedp (fn-own-operator-decision cfg clock node msgid groups octets))
+           (let ((d (fn-own-operator-decision cfg clock node msgid groups octets)))
+             (and (equal (fn-inj-decision-msgid d) msgid)
+                  (equal (fn-inj-decision-groups d) groups)
+                  (fn-inj-reinjectionp (fn-inj-decision-octets d) octets
+                                       (fn-inj-config-agent cfg) msgid))))
+  :hints (("Goal" :in-theory (e/d (fn-own-operator-decision)
+                                  (fn-inj-decide fn-inj-reinjectionp
+                                   fn-own-stored-octets fn-own-clock-usablep))
+           :use ((:instance fn-inj-injected-article-is-a-reinjection-of-its-source
+                            (source octets) (config cfg) (observation clock))))))
+
+(defthm fn-own-operator-submission-is-an-injection-of-the-payload
+  (implies (equal (fn-own-operator-submit-result o msgid groups octets) :submitted)
+           (let* ((q (fn-own-queue (fn-own-operator-submit o msgid groups octets)))
+                  (d (fn-own-sub-decision (car q))))
+             (and (equal (len q) 1)
+                  (fn-own-control-submissionp (car q))
+                  (fn-inj-injectedp d)
+                  (equal (fn-inj-decision-msgid d) msgid)
+                  (equal (fn-inj-decision-groups d) groups)
+                  (fn-inj-reinjectionp (fn-inj-decision-octets d) octets
+                                       (fn-inj-config-agent (fn-own-config o))
+                                       msgid))))
+  :hints (("Goal" :in-theory (e/d (fn-own-operator-submit-result
+                                   fn-own-operator-submit fn-own-enqueue
+                                   fn-own-operator-decision-of)
+                                  (fn-own-operator-decision fn-inj-reinjectionp))
+           :use ((:instance fn-own-operator-decision-is-an-injection-of-the-payload
+                            (cfg (fn-own-config o)) (clock (fn-own-clock o))
+                            (node (fn-sn-node (fn-own-store o))))))))
+
+(defthm fn-own-operator-submit-without-a-clock-refuses-and-changes-nothing
+  (implies (not (and (fn-clock-observationp (fn-own-clock o))
+                     (fn-clock-has-wall (fn-own-clock o))))
+           (and (equal (fn-own-operator-submit-result o msgid groups octets)
+                       :refused)
+                (equal (fn-own-operator-submit o msgid groups octets) o)))
+  :hints (("Goal" :in-theory (e/d (fn-own-operator-submit-result
+                                   fn-own-operator-submit
+                                   fn-own-operator-decision-of
+                                   fn-own-operator-decision
+                                   fn-own-clock-usablep)
+                                  (fn-inj-decide)))))
+
+(defthm fn-own-a-reinjection-is-not-absent
+  (implies (fn-inj-reinjectionp stored source agent msgid)
+           (not (equal stored :absent)))
+  :hints (("Goal" :in-theory (enable fn-inj-reinjectionp fn-inj-strip
+                                     fn-inj-path-line fn-inj-append))))
+
+(defthm fn-own-operator-retry-resubmits-the-stored-injection
+  (implies (and (fn-inj-injectedp (fn-inj-decide octets cfg first))
+                (equal (fn-inj-decision-msgid (fn-inj-decide octets cfg first))
+                       msgid)
+                (equal (fn-own-stored-octets node msgid)
+                       (fn-inj-decision-octets (fn-inj-decide octets cfg first)))
+                (fn-clock-observationp later)
+                (fn-clock-has-wall later))
+           (equal (fn-own-operator-decision cfg later node msgid groups octets)
+                  (fn-inj-make-decision
+                   :injected nil msgid groups
+                   (fn-inj-decision-octets (fn-inj-decide octets cfg first)))))
+  :hints (("Goal" :in-theory (e/d (fn-own-operator-decision fn-own-clock-usablep)
+                                  (fn-inj-decide fn-inj-reinjectionp
+                                   fn-own-stored-octets
+                                   fn-inj-injected-article-is-a-reinjection-of-its-source
+                                   fn-inj-injection-requires-posting-allowed))
+           :use ((:instance fn-inj-injected-article-is-a-reinjection-of-its-source
+                            (source octets) (config cfg) (observation first))
+                 (:instance fn-inj-injection-requires-posting-allowed
+                            (source octets) (config cfg) (observation first))
+                 (:instance fn-own-a-reinjection-is-not-absent
+                            (stored (fn-inj-decision-octets (fn-inj-decide octets cfg first)))
+                            (source octets) (agent (fn-inj-config-agent cfg))
+                            (msgid msgid)))))
+  :rule-classes nil)
+
 ; The outcome releases the transaction and empties `inflight'; neither is
 ; read by the relation.  Both served and control outcomes use this body.
 (local
@@ -1087,6 +1194,7 @@
                                       fn-own-declare-group fn-own-configure
                                       fn-own-take-submission fn-own-outcome
                                       fn-own-control-submit
+                                      fn-own-operator-submit
                                       fn-own-control-outcome))))
 
 (defthm fn-own-run-preserves-relation

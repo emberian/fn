@@ -277,6 +277,10 @@ PLAN = (
     S("V0-NODE-LOOPBACK", "F-NODE",
       "a non-loopback listener host is refused rather than silently bound",
       ("HST-003",), ("SCN-021",), REFUSED),
+    S("V0-NODE-PROFILE", "F-NODE",
+      "the operator honours `[log] path` (a post's line lands in the file) and "
+      "refuses `[posting] agent` by name",
+      ("HST-003",), ("SCN-021",), ACCEPTED),
 
     # -- F-OUT -----------------------------------------------------------
     S("V0-OUT-ACCEPTED", "F-OUT", "an accepted post exits 0",
@@ -358,6 +362,14 @@ PLAN = (
     S("V0-POST-CLOCK", "F-POST",
       "a duplicate POST is refused as an article and does not cost the node its clock",
       ("FLR-002", "NNT-005"), ("SCN-002",), ACCEPTED, "node"),
+    # RFC 5536 3.1.2: From is a mailbox-list.  The agents run of 2026-09-22
+    # posted `From: yue` and was answered 240 (books/injection.lisp checked
+    # presence only); the node now refuses it `441 posting failed; From is not
+    # a valid mailbox list` (fn-inj-decide's :from-invalid).
+    S("V0-POST-FROM-MAILBOX", "F-POST",
+      "a POST whose From names no address (`From: yue`) is refused with 441 and "
+      "is not served",
+      ("NNT-005",), ("SCN-002",), REFUSED, "node"),
     S("V0-POST-CONCURRENT", "F-POST",
       "a second reader stays live across another connection's whole POST",
       ("HST-002",), ("SCN-015",), ACCEPTED),
@@ -644,10 +656,13 @@ PLAN = (
       "an article fn took from INN is served with fn's path identity in Path and "
       "without INN's Xref (RFC 5537 3.7 steps 6 and 7)",
       ("REP-001",), ("SCN-023",), ACCEPTED, "single",
-      "specs/peering.md 2.3 renders fn's Path prepend on the way out to a peer and "
-      "says Xref is never stored; the reader path is what this row measures"),
+      "fn updates Path and removes Xref once, when it accepts the transfer, and "
+      "stores what it serves (specs/peering.md 2.3, books/path-update.lisp); the "
+      "reader path is what this row measures, and the outbound render to a "
+      "second peer is not exercised by a lab with one peer"),
     S("V0-INN-OPERATOR-POST", "F-INN",
-      "an article submitted through `operator post` reaches INN through fn's feed",
+      "an article submitted through `operator post` reaches INN through fn's feed, "
+      "injected with fn's Path (IHAVE 335/235)",
       ("REP-001",), ("SCN-023",), ACCEPTED),
 
     # -- F-CLIENT --------------------------------------------------------
@@ -817,6 +832,20 @@ def reply_verdict(status: str) -> str:
     return ACCEPTED if code[0] in "123" else REFUSED
 
 
+def from_mailbox_verdict(posted: str, stat: str) -> str:
+    """V0-POST-FROM-MAILBOX from the POST's final line and a later STAT.
+
+    Accepted when the node took the article (240) or serves it (223), which
+    is the defect of 2026-09-22; refused only when the POST was answered 441
+    AND the Message-ID is not served (430); otherwise the POST line's class.
+    """
+    if posted.startswith("240") or stat.startswith("223"):
+        return ACCEPTED
+    if posted.startswith("441") and stat.startswith("430"):
+        return REFUSED
+    return reply_verdict(posted)
+
+
 def unsupported(status: str) -> bool:
     return (status or "").strip()[:3] in UNSUPPORTED_CODES
 
@@ -915,10 +944,17 @@ def send_block(conn, lines):
     conn.sock.sendall(payload + b".\r\n")
 
 
-def article_lines(msgid, group, subject, body, path=""):
+def article_lines(msgid, group, subject, body, path="",
+                  sender="matrix@example.invalid"):
     head = ["Path: {}!not-for-mail".format(path)] if path else []
-    return head + ["From: matrix@example.invalid", "Subject: " + subject,
+    return head + ["From: " + sender, "Subject: " + subject,
                    "Newsgroups: " + group, "Message-ID: " + msgid, "", body]
+
+
+def sibling_msgid(msgid: str, tag: str) -> str:
+    """`<local.tag@domain>` for `<local@domain>`: a second identifier per run."""
+    local, _, domain = msgid.strip("<>").partition("@")
+    return "<{}.{}@{}>".format(local, tag, domain)
 
 
 def labels(caps):
@@ -1164,6 +1200,24 @@ def postcycle(args):
     login(clock, args, {})
     out["DATE AFTER DUPLICATE"] = clock.cmd("DATE")[0]
     drop(clock)
+
+    # RFC 5536 3.1.2: a From with no address, on its own connection and under
+    # its own Message-ID, then asked for by that Message-ID.
+    unaddressed = sibling_msgid(args.msgid, "from")
+    bad = Conn(args.port, timeout=SOCKET_TIMEOUT)
+    login(bad, args, {})
+    out["FROM POST"] = bad.cmd("POST")[0]
+    if out["FROM POST"].startswith("340"):
+        send_block(bad, article_lines(unaddressed, args.group, "matrix from",
+                                      "Posted by tools/v0_matrix.py.", sender="yue"))
+        out["FROM"] = bad.line()
+    else:
+        out["FROM"] = out["FROM POST"]
+    drop(bad)
+    probe = Conn(args.port, timeout=SOCKET_TIMEOUT)
+    login(probe, args, {})
+    out["FROM ARTICLE"] = probe.cmd("STAT " + unaddressed)[0]
+    drop(probe)
 
     before = out["GROUP BEFORE"].split()
     after = out["GROUP AFTER"].split()
@@ -2481,6 +2535,18 @@ else echo NONE; fi
                         "the owner its clock (D10-a) and DATE then answers 503. This "
                         "row does not INDUCE a clock fault -- it checks that an "
                         "ordinary duplicate did not cause one")
+        refused_from = str(result.get("FROM", ""))
+        served_from = str(result.get("FROM ARTICLE", ""))
+        self.emit("V0-POST-FROM-MAILBOX",
+                  from_mailbox_verdict(refused_from, served_from),
+                  step.command,
+                  "POST of `From: yue` answered '{}'; STAT of its Message-ID "
+                  "answered '{}'".format(refused_from or "(nothing)",
+                                         served_from or "(nothing)"),
+                  node=node.name,
+                  limit="one unaddressed From; the rest of the mailbox-list "
+                        "grammar is books/mailbox.lisp's and its witnesses are "
+                        "tests/acl2/injection-tests.lisp")
         if str(result.get("COMMIT", "")).startswith("240"):
             node.accepted.append(msgid)
 
@@ -3629,12 +3695,14 @@ else echo NONE; fi
     AUTH_KEYS = ("V0-AUTH-ADVERTISED", "V0-AUTH-GATED", "V0-AUTH-LOGIN",
                  "V0-AUTH-WITHDRAWN", "V0-AUTH-POST", "V0-AUTH-WRONG")
     POST_KEYS = ("V0-POST-OPEN", "V0-POST-COMMIT", "V0-POST-READBACK",
-                 "V0-POST-FRESH", "V0-POST-DUPLICATE", "V0-POST-CLOCK")
+                 "V0-POST-FRESH", "V0-POST-DUPLICATE", "V0-POST-CLOCK",
+                 "V0-POST-FROM-MAILBOX")
     CRASH_KEYS = ("V0-CRASH-KILL", "V0-CRASH-SURVIVOR", "V0-CRASH-RECOVER",
                   "V0-CRASH-ACKNOWLEDGED", "V0-CRASH-INTERRUPTED",
                   "V0-CRASH-RESTART")
     NODE_SOCKET_KEYS = ("V0-GROUP-SERVED", "V0-POST-OPEN", "V0-POST-COMMIT",
                         "V0-POST-READBACK", "V0-POST-FRESH", "V0-POST-DUPLICATE",
+                        "V0-POST-FROM-MAILBOX",
                         "V0-AUTH-ADVERTISED", "V0-AUTH-GATED", "V0-AUTH-LOGIN",
                         "V0-AUTH-WITHDRAWN", "V0-AUTH-POST", "V0-AUTH-WRONG",
                         "V0-PIN-DISPATCHED", "V0-PIN-ADVERTISED",
@@ -4016,6 +4084,10 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
     # phase serves; it must collide with neither supplied configuration nor
     # the capacity and auth-gate scratch owners above.
     INIT_OWNER_PORTS = {"a": 11295, "b": 11296}
+
+    # The scratch owner that carries `[log] path` (`native_profile`).
+    PROFILE_OWNER_PORT = 11297
+    PROFILE_AGENT = "fn@matrix.example.invalid"
 
     def native_init_lifecycle(self, node: NodeSpec):
         """A whole node, stood up and taken apart by the public operator alone.
@@ -4572,6 +4644,103 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                   "about fn declining to serve a network interface. Nothing here tests "
                   "a bind the kernel would refuse for a different reason")
 
+    def native_profile(self, node: NodeSpec):
+        """V0-NODE-PROFILE: `[log] path` honoured, `[posting] agent` refused by name.
+
+        A scratch store beside NODE's with an owner of its own: one
+        configuration names an absolute `[log] path`, the other adds a
+        `[posting] agent`.  The row is accepted only when `run` refuses the
+        second with the key named, the first reaches LISTENING, one `post`
+        through its control socket exits 0, and the log file then holds that
+        post's `accepted post path=control` line.
+        """
+        keys = ("V0-NODE-PROFILE",)
+        scratch = "{}/profile".format(node.dir)
+        store = "{}/store".format(scratch)
+        config = "{}/fn.toml".format(scratch)
+        agent_config = "{}/agent.toml".format(scratch)
+        log = "{}/service.log".format(scratch)
+        msgid = "<profile-{}@example.invalid>".format(node.name)
+        init = self.sh("node {} profile scratch store".format(node.upper), self.cd(
+            "mkdir -p {scratch} && rm -f {log} && env FN_NATIVE_HOST={image} "
+            "packaging/fn-native store {store} init {group} && printf '[store]\\npath = "
+            "\"%s\"\\n[listener]\\nhost = \"127.0.0.1\"\\nport = %s\\n[log]\\npath = "
+            "\"%s\"\\n[control]\\npath = \"%s\"\\n' \"{store}\" {port} \"{log}\" "
+            "\"{scratch}/control.sock\" > {config} && printf '[store]\\npath = \"%s\"\\n"
+            "[posting]\\nagent = \"%s\"\\n' \"{store}\" {agent} > {agent_config}".format(
+                scratch=scratch, log=log, image=shlex.quote(self.native_image),
+                store=store, group=shlex.quote(self.native_group),
+                port=self.PROFILE_OWNER_PORT, config=config,
+                agent=shlex.quote(self.PROFILE_AGENT), agent_config=agent_config)),
+            timeout=900, expect=None)
+        if init.rc != 0:
+            self.blocked(keys, "the profile scratch store was not prepared: the image's "
+                               "store entry exited {} ({})".format(init.rc, init.first_line),
+                         nodes=(node.name,), invocation=init.command)
+            return
+        refusal = self.sh("node {} profile agent refusal".format(node.upper), self.cd(
+            "timeout 60 " + self.native_command(self.Raw(agent_config), "run")),
+            timeout=180, expect=None)
+        refused_by_name = (refusal.rc == EXIT_USAGE
+                           and "UNSUPPORTED-PROFILE agent" in refusal.output)
+        tag = "profile-{}".format(node.name)
+        run = self.native_command(self.Raw(config), "run")
+        started = self.start_server("node {} profile owner".format(node.upper), run,
+                                    tag, run=scratch)
+        if not started:
+            self.emit("V0-NODE-PROFILE", REFUSED, "{}\n{}".format(init.command, run),
+                      "the owner over a configuration naming `[log] path` did not "
+                      "reach LISTENING: {}".format(self.server_failure),
+                      client=CLIENT_CLI,
+                      limit="the configuration differs from an admitted one only by "
+                            "its `[log]` table, so a refusal here is the log key's")
+            return
+        try:
+            payload = "{}/profile.article".format(scratch)
+            self.push_file(article(msgid, self.native_group, "profile",
+                                   "The operator log line for this post."), payload)
+            post = self.sh("node {} profile post".format(node.upper), self.cd(
+                self.native_command(self.Raw(config), "post", "--message-id", msgid,
+                                    "--payload", self.Raw(payload),
+                                    "--group", self.native_group)),
+                timeout=900, expect=None)
+        finally:
+            self.stop_server(tag, run=scratch)
+        logged = self.sh("node {} profile service log".format(node.upper),
+                         "cat {} 2>/dev/null || echo NO-LOG-FILE".format(log),
+                         expect=None)
+        wanted = "accepted post path=control message-id={}".format(msgid)
+        line = next((x for x in logged.output.splitlines() if x.startswith(wanted)), "")
+        observed = ("agent refusal: rc={} {}; post: rc={} {}; log line: {}".format(
+            refusal.rc, refusal.first_line or "(no output)", post.rc,
+            post.first_line or "(no output)", line or "(none)"))
+        invocation = "{}\n{}\n{}\n{}".format(init.command, refusal.command, run,
+                                               post.command)
+        limit = ("a scratch owner beside node {}'s on port {}; the log is the file "
+                 "`[log] path` names, opened append-only before the store, and the "
+                 "line is ACL2's (books/owner-log.lisp); the agent refusal is "
+                 "`fn-native-config-unsupported-key`'s, and the injecting agent a "
+                 "served POST names is the `path-identity` policy "
+                 "(books/owner-agent.lisp), which this row does not read".format(
+                     node.upper, self.PROFILE_OWNER_PORT))
+        if post.rc != EXIT_OK:
+            self.emit("V0-NODE-PROFILE", NOT_EXERCISED, invocation, observed,
+                      client=CLIENT_CLI, exit_code=post.rc,
+                      blocker="the post the log line was to record exited {}, so "
+                              "the log was not tested on an accepted submission".format(
+                                  post.rc),
+                      limit=limit)
+        elif line and refused_by_name:
+            self.emit("V0-NODE-PROFILE", ACCEPTED, invocation, observed,
+                      client=CLIENT_CLI, exit_code=post.rc, limit=limit)
+        else:
+            self.emit("V0-NODE-PROFILE", REFUSED, invocation, observed,
+                      client=CLIENT_CLI, exit_code=post.rc,
+                      limit=limit + "; {}".format(
+                          "the accepted post left no line in the log file"
+                          if not line else
+                          "`run` did not refuse `[posting] agent` with the key named"))
+
     LIVE_GROUP = "fn.matrix.live"
 
     def native_peer_records(self):
@@ -4773,6 +4942,16 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                  "whether the group reached the served configuration. No concurrent "
                  "reader was observed across the change, and nothing here says the "
                  "change survives a restart")
+        # The refusal half below is only a statement about a store a live
+        # owner holds.  On the dabebb84 image the live verb killed the owner
+        # (host/native/admin.lisp opened its private connection through
+        # `fnn-owner-action', which faults on the integer id), the offline
+        # executor then found the writer lock free and correctly accepted,
+        # and this row recorded that as two writers on one store.  Ask first.
+        owner_alive = self.alive(self.a)
+        if not owner_alive:
+            observed += "; node A's owner DIED after the verb ({})".format(
+                self.dead.get(self.a.name, "no log"))
         if declare.rc == EXIT_OK:
             # The verb accepted; what decides the row is whether the RUNNING
             # service serves the group, and that observation is the socket's.
@@ -4783,6 +4962,14 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                       exit_code=declare.rc, client=CLIENT_CLI,
                       limit=limit + "; the verb did not accept, so the socket reply "
                                     "above is the state the node was left in")
+        if not owner_alive:
+            self.emit("V0-CFG-LIVE-REFUSE", NOT_EXERCISED,
+                      "(the offline command was not run)", "(node A's owner was gone)",
+                      blocker="node A's owner died during the live verb, so no live "
+                              "owner held the store: an offline command then takes the "
+                              "free writer lock and is accepted, which says nothing "
+                              "about a store a live owner holds")
+            return
         store = self.native_config_store(self.a)
         if not store:
             self.emit("V0-CFG-LIVE-REFUSE", NOT_EXERCISED,
@@ -4806,7 +4993,8 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
             "V0-CFG-LIVE-REFUSE", step,
             limit="a second configuration over node A's OWN store whose `[control] "
                   "path` names a socket nothing has bound, so the verb takes the "
-                  "offline executor while the live owner holds the writer lock; the "
+                  "offline executor while the live owner (asked alive just before) "
+                  "holds the writer lock; the "
                   "refusal is that lock's and a server that does not take it would not "
                   "produce it. The supplied configuration is unchanged, and with its "
                   "own live control path the same words reach the live owner instead -- "
@@ -4913,6 +5101,10 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                           "from a seed",
                   owner="native principal derivation surface")
         self.phase("loopback refusal", self.native_loopback_refusal)
+        for node in self.nodes[:1]:
+            if node.name in self.native_configs:
+                self.phase("native profile {}".format(node.name),
+                           self.native_profile, node)
 
         # A whole node through the public operator, on a scratch store beside
         # each supplied one: init, one submission whose outcome may be lost,

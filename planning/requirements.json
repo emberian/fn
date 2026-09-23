@@ -475,9 +475,14 @@
         "planning/evidence/native-txn-namespace-u13-2026-09-21.md",
         "books/byte-store-fault-keystones.lisp",
         "tests/acl2/byte-store-fault-keystones-tests.lisp",
-        "planning/evidence/native-k7-uncertainty-2026-09-21.md"
+        "planning/evidence/native-k7-uncertainty-2026-09-21.md",
+        "books/store-sweep.lisp",
+        "tests/acl2/store-sweep-tests.lisp",
+        "tests/acl2/byte-store-sweep-tests.lisp",
+        "tests/test_native_recovery.py",
+        "planning/evidence/sweep-allocation-orphans-2026-09-22.md"
       ],
-      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, with designated process-death cuts represented in the experimental model. Complete current-host syscall/cut fidelity remains open: the metadata initializer omits lock/config-history operations and helper parent barriers (PRF-044). Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open. W13 supplies the exact fresh-initializer image theorem and executable injective transaction-name attachment (PRF-044). The configuration-history fence witness distinguishes this image from the weaker existing relation. Source review and selected failures do not establish all host cuts, existing/retry initialization, native correspondence or general recovery. W18 adds explicit existing-valid and history-fenced retry programs with EEXIST observations, plus source-pinned native repeated-init and SIGKILL/reopen tests. Non-EEXIST publication errors are uncertain. These are selected branch/runtime results, not whole-host or power-loss correspondence; the followup classifier covers expected-EEXIST links, and separate link/barrier handlers preserve uncertainty for post-link errors. Integrated raw-handler tests also exercise the named post-link error cut. Whole-image validation of these later corrections remains separate. Native transaction recovery now observes a bounded namespace and consumes ACL2-issued sequence/name pairs before binding each decoded record. The source-matched developer store image passed malformed-name and sequence-mismatch cases; configuration namespace recovery and general physical correspondence remain open. Native publication uncertainty now has focused byte-transition and exact fn-sn-io fence theorems for issued link, issued rename, and both authority-directory barrier errors. This is logical K7 scope; the exact-octet native SIGKILL run, general K0/K5/K6/K8, filesystem qualification and hardware power-loss correspondence remain open.",
+      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, with designated process-death cuts represented in the experimental model. Complete current-host syscall/cut fidelity remains open: the metadata initializer omits lock/config-history operations and helper parent barriers (PRF-044). Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open. W13 supplies the exact fresh-initializer image theorem and executable injective transaction-name attachment (PRF-044). The configuration-history fence witness distinguishes this image from the weaker existing relation. Source review and selected failures do not establish all host cuts, existing/retry initialization, native correspondence or general recovery. W18 adds explicit existing-valid and history-fenced retry programs with EEXIST observations, plus source-pinned native repeated-init and SIGKILL/reopen tests. Non-EEXIST publication errors are uncertain. These are selected branch/runtime results, not whole-host or power-loss correspondence; the followup classifier covers expected-EEXIST links, and separate link/barrier handlers preserve uncertainty for post-link errors. Integrated raw-handler tests also exercise the named post-link error cut. Whole-image validation of these later corrections remains separate. Native transaction recovery now observes a bounded namespace and consumes ACL2-issued sequence/name pairs before binding each decoded record. The source-matched developer store image passed malformed-name and sequence-mismatch cases; configuration namespace recovery and general physical correspondence remain open. Native publication uncertainty now has focused byte-transition and exact fn-sn-io fence theorems for issued link, issued rename, and both authority-directory barrier errors. This is logical K7 scope; the exact-octet native SIGKILL run, general K0/K5/K6/K8, filesystem qualification and hardware power-loss correspondence remain open. 2026-09-22 (t5/sweep, campaign finding F2): recovery sweeps every staging prefix a host program uses, in bounded rounds decided by fn-sn-sweep-round; a store of N crash orphans opens for every N (fn-sn-sweep-rounds-collect-every-orphan), and the sweep is a stutter of the byte relation at every cut (K-sweep, PRF-041). More than one observation of unrecognized staging names is refused (exit 1), not faulted.",
       "keystones": [
         "fn-sn-acknowledged-record-survives-observed-reopen",
         "fn-sf-prior-success-has-record-after-one-crash",
@@ -847,7 +852,8 @@
       "proof_targets": [
         "PRF-011",
         "PRF-029",
-        "PRF-042"
+        "PRF-042",
+        "PRF-058"
       ],
       "verification": [
         "proof",
@@ -864,7 +870,7 @@
         "fn-exchange-policy-ingest-trace-preserves-facts",
         "fn-exchange-policy-ingest-trace-preserves-statep"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). What crosses is a fact set: admission is by member, an ingest trace preserves the facts it already holds, and no local database identity appears in the exchanged form. Open: portable batch framing, authenticated handoff and local NNTP numbers staying local across a real peering are not proved."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). What crosses is a fact set: admission is by member, an ingest trace preserves the facts it already holds, and no local database identity appears in the exchanged form. Open: portable batch framing, authenticated handoff and local NNTP numbers staying local across a real peering are not proved. 2026-09-22 (T13-conform): what crosses a peer is stored as received except Path (this node's identity and the RFC 5537 3.2.1 diagnostic prepended) and Xref (removed), once, at acceptance, and what is stored is served and fed on (PRF-058; the INN lab found INN's Path and Xref served unchanged). Measured on a node by V0-INN-SERVING-AGENT once an image carries it."
     },
     {
       "id": "REP-002",
@@ -1109,7 +1115,10 @@
         "PRF-015",
         "PRF-031",
         "PRF-033",
-        "PRF-039"
+        "PRF-039",
+        "PRF-053",
+        "PRF-056",
+        "PRF-057"
       ],
       "verification": [
         "proof",
@@ -1140,7 +1149,8 @@
       "proof_targets": [
         "PRF-003",
         "PRF-015",
-        "PRF-033"
+        "PRF-033",
+        "PRF-056"
       ],
       "verification": [
         "proof",
@@ -1149,7 +1159,7 @@
       "evidence": [
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5."
+      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5. 2026-09-22 (T13-conform): an operator's retry of the same octets after a lost outcome resubmits the stored injection, so the store answers duplicate rather than a conflict (fn-own-operator-retry-resubmits-the-stored-injection, PRF-056); the duplicate itself is host/store-host.lisp fn-store-article-match's octet comparison, not a theorem."
     },
     {
       "id": "NNT-006",
@@ -1270,7 +1280,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-015",
-        "PRF-016"
+        "PRF-016",
+        "PRF-054"
       ],
       "verification": [
         "proof",

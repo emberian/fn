@@ -45,6 +45,29 @@
   peer path fd phase (replayed 0))
 
 (defvar *fnn-owner-startup-hooks* nil)
+;;; The service log.  `fn operator CONFIG run' opens `[log] path' append-only
+;;; before the store (host/native/operator.lisp) and leaves its descriptor
+;;; here; NIL means stderr.  The line is ACL2's (books/owner-log.lisp), left
+;;; in the global `fn-owner-log-line' by the wrapper that just ran under the
+;;; owner mutex; this writes its octets and one LF and decides nothing.  A
+;;; failed write is reported on stderr and does not stop the owner: the log
+;;; is an operator's record, never evidence of durable acceptance.
+(defvar *fnn-owner-log-fd* nil)
+
+(defun fnn-owner-log ()
+  (let ((line (fnn-global 'fn-owner-log-line)))
+    (unless (fnn-octet-list-p line)
+      (fnn-fault "owner returned a malformed log line"))
+    (let ((octets (concatenate 'fnn-octets (fnn-octets line)
+                               (fnn-octets (list 10)))))
+      (if *fnn-owner-log-fd*
+          (handler-case (fnn-write-all *fnn-owner-log-fd* octets)
+            (error (condition)
+              (fnn-err "service log write failed: ~a" condition)))
+        (when *fnn-stderr*
+          (write-sequence octets *fnn-stderr*)
+          (finish-output *fnn-stderr*))))))
+
 
 (defun fnn-owner-run-startup-hooks (service)
   "Run ACL2-backed lifecycle adapters after recovery and before listen."
@@ -800,6 +823,17 @@ the current connection."
                                          (fnn-octet-list subject))))
                    (transit-reason
                      (when transitp (fnn-owner-core 'fn-owner-transit-reason)))
+                   ;; The payload the transfer decision staged is the one
+                   ;; fn-owner-take left and the metadata above digested:
+                   ;; fn-peer-relayed-octets of the received article.  A
+                   ;; difference is a core fault, never a store attempt.
+                   (transit-checked
+                     (when (and transitp (eq transit-kind :want))
+                       (unless (equalp payload
+                                       (fnn-owner-octets-global
+                                        'fn-owner-transit-payload))
+                         (fnn-fault "owner transit payload differs from the staged one"))
+                       t))
                    ;; Transit memberships are computed by the ACL2 transfer
                    ;; decision above and installed in this same global.
                    (groups (fnn-owner-submit-groups))
@@ -815,6 +849,7 @@ the current connection."
                      (fnn-owner-action 'fn-owner-submission-intent
                                        (fnn-octet-list evidence)
                                        generation txid))))
+            (declare (ignorable transit-checked))
             (if (and transitp (not (eq transit-kind :want)))
                 (progn
                   (fnn-owner-action 'fn-owner-transit-outcome
@@ -825,7 +860,8 @@ the current connection."
                     (if transitp
                         (fnn-owner-action 'fn-owner-transit-outcome
                                           cid :want transit-reason :refused)
-                      (fnn-owner-action 'fn-owner-outcome cid :refused))
+                      (progn (fnn-owner-action 'fn-owner-outcome cid :refused)
+                             (fnn-owner-log)))
                     (values cid (fnn-owner-octets-global 'fn-owner-output) nil))
                 (progn
                   ;; Durable intent before the first Store mutation.  Empty is
@@ -839,7 +875,8 @@ the current connection."
                     (if transitp
                         (fnn-owner-action 'fn-owner-transit-outcome
                                           cid :want transit-reason word)
-                      (fnn-owner-action 'fn-owner-outcome cid word))
+                      (progn (fnn-owner-action 'fn-owner-outcome cid word)
+                             (fnn-owner-log)))
                     (values cid (fnn-owner-octets-global 'fn-owner-output)
                             (eq word :uncertain))))))))))))
 
@@ -850,7 +887,12 @@ the current connection."
 
 The interface callback is the sole admission event.  Local control and BP
 applications then share this exact durable intent, Store attempt, resolution
-and control-outcome sequence."
+and control-outcome sequence.
+
+PAYLOAD is :INJECTED for the operator's submission: the octets stored are the
+ones ACL2 injected (books/owner.lisp fn-own-operator-submit), read back from
+the owner after the take, never the payload the host read from the file.
+Every other caller submits exact authored octets and names them."
   (let ((submitted (funcall submit-callback)))
     (unless (member submitted '(:submitted :busy :refused))
       (fnn-fault "owner bound submit returned ~a" submitted))
@@ -859,6 +901,8 @@ and control-outcome sequence."
     (let ((taken (fnn-owner-action 'fn-owner-take)))
       (unless (eq taken :taken-control)
         (fnn-fault "owner bound take returned ~a" taken))
+      (when (eq payload :injected)
+        (setq payload (fnn-owner-octets-global 'fn-owner-submit-octets)))
       (unless (and (equalp msgid
                            (fnn-owner-octets-global 'fn-owner-submit-msgid))
                    (equalp payload
@@ -871,6 +915,7 @@ and control-outcome sequence."
         (unless (eq intent :ready)
           (let ((result
                   (fnn-owner-action 'fn-owner-control-outcome :refused)))
+            (fnn-owner-log)
             (unless (eq result :refused)
               (fnn-fault "owner bound intent refusal changed outcome"))
             (return-from fnn-owner-complete-bound-submission result)))
@@ -882,6 +927,7 @@ and control-outcome sequence."
                             word (fnn-octet-list evidence) generation txid)
           (fnn-owner-feed-flush service)
           (let ((result (fnn-owner-action 'fn-owner-control-outcome word)))
+            (fnn-owner-log)
             (unless (member result
                             '(:accepted :duplicate :refused :uncertain))
               (fnn-fault "owner bound completion returned ~a" result))
@@ -906,44 +952,59 @@ and control-outcome sequence."
 ;;; `fn-native-control-status-class` projects to exit 3 at the caller.  No word
 ;;; on that path is the host's.
 ;;;
-;;; The gate is the saved image's profile, as FN_NATIVE_POST_FAULT's is: a
-;;; production image refuses the variable rather than honouring it, and the
-;;; profile is serialized at build time so a restart-time environment cannot
-;;; change it (host/native/io.lisp, `fnn-select-image-profile`).
+;;; The variable is read through `fnn-developer-selector` (host/native/io.lisp),
+;;; which answers NIL on a production image; a production image does not
+;;; start with it set at all (`fnn-developer-selector-gate`).  An earlier
+;;; version faulted here on a production image, inside fnn-owner-serialized,
+;;; so an environment variable turned the next post into exit 3 with nothing
+;;; written and stopped the node (campaign dabebb84, F5).
 (defvar *fnn-owner-control-fault-consumed* nil)
 
 (defun fnn-owner-control-test-fault ()
-  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_CONTROL_FAULT")))
+  (let ((raw (fnn-developer-selector "FN_NATIVE_CONTROL_FAULT")))
     (when (and raw (not *fnn-owner-control-fault-consumed*))
-      (unless (fnn-developer-image-p)
-        (fnn-fault "FN_NATIVE_CONTROL_FAULT requires a developer image"))
       (let ((fault (cdr (assoc raw +fnn-cli-faults+ :test #'string=))))
         (unless fault
           (fnn-fault "unknown FN_NATIVE_CONTROL_FAULT cut: ~a" raw))
         fault))))
 
 (defun fnn-owner-control-arm-fault (store)
-  "Arm the developer cut on STORE for one submission; NIL when none is armed.
+  "Arm the developer cut on STORE for one submission.
 
-The caller holds the owner mutex, so the armed window cannot overlap another
+Answer NIL when none is armed, else the store fault it displaced (a list, so
+never NIL), which `fnn-owner-control-disarm-fault' puts back: the owner's
+own store fault from `fnn-post-entry-fault' survives a control fault.  The
+caller holds the owner mutex, so the armed window cannot overlap another
 submission, and the cut is consumed here rather than at each `fnn-at` so that
 exactly one submission is affected even if the owner survives it."
   (let ((fault (fnn-owner-control-test-fault)))
     (when fault
       (setq *fnn-owner-control-fault-consumed* t)
-      (destructuring-bind (point class message) fault
-        (setf (fnn-store-fault-point store) point
-              (fnn-store-fault-class store) class
-              (fnn-store-fault-message store) message))
-      t)))
+      (prog1 (list (fnn-store-fault-point store) (fnn-store-fault-class store)
+                   (fnn-store-fault-message store))
+        (destructuring-bind (point class message) fault
+          (setf (fnn-store-fault-point store) point
+                (fnn-store-fault-class store) class
+                (fnn-store-fault-message store) message))))))
 
-(defun fnn-owner-control-disarm-fault (store)
-  (setf (fnn-store-fault-point store) nil
-        (fnn-store-fault-class store) nil
-        (fnn-store-fault-message store) nil))
+(defun fnn-owner-control-disarm-fault (store displaced)
+  (destructuring-bind (point class message) displaced
+    (setf (fnn-store-fault-point store) point
+          (fnn-store-fault-class store) class
+          (fnn-store-fault-message store) message)))
 
 (defun fnn-owner-control-submit-serialized (service msgid groups payload)
-  "Queue and drain one exact authored article through the shared owner writer."
+  "Inject, queue and drain the operator's article through the shared owner writer.
+
+`fn operator CONFIG post' hands the owner a proto-article.  The owner injects
+it (books/owner.lisp fn-own-operator-submit: Path, Injection-Date and
+Injection-Info under the owner's posting configuration and clock) exactly as
+it injects a served POST, so the article crosses to a peer that requires a
+Path; until 2026-09-22 the payload was stored as read and INN refused it 437
+(planning/evidence/inn-lab-dabebb84-2026-09-22.md).  One clock reading is
+taken for this submission first, as fnn-owner-handle-chunk takes one per
+read; a refused reading leaves the owner clock-less and the submission is
+refused, not injected under a stale time (D10-a)."
   (fnn-owner-serialized
    service nil
    (lambda ()
@@ -954,15 +1015,16 @@ exactly one submission is affected even if the owner survives it."
                   (generation
                     (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
                   (txid (fnn-nat (fnn-owner-core 'fn-owner-next-txid))))
+              (fnn-owner-advance-clock)
               (fnn-owner-complete-bound-submission
                service
                (lambda ()
-                 (fnn-owner-action 'fn-owner-control-submit
+                 (fnn-owner-action 'fn-owner-operator-submit
                                    (fnn-octet-list msgid)
                                    (mapcar #'fnn-octet-list groups)
                                    (fnn-octet-list payload)))
-               msgid payload groups evidence generation txid))
-         (when armed (fnn-owner-control-disarm-fault store)))))))
+               msgid :injected groups evidence generation txid))
+         (when armed (fnn-owner-control-disarm-fault store armed)))))))
 
 (defun fnn-owner-handle-chunk (service cid incoming)
   "Run one owner read and its serial writer drain under the service mutex."
@@ -1054,6 +1116,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                 (fnn-owner-core 'fn-owner-open))))
                         (unless (or (null peer) (fnn-octet-list-p peer))
                           (fnn-fault "owner returned a malformed peer identity"))
+                        (when opened (fnn-owner-log))
                         (values opened
                                 (if opened (fnn-owner-octets-global 'fn-owner-output)
                                   (fnn-make-octets 0))))))
@@ -1287,7 +1350,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                   ;; resource exists yet.  The signal still travels through
                   ;; fnn-main's real handler; this branch supplies no shortcut
                   ;; to the stop machinery.
-                  (when (string= (or (sb-ext:posix-getenv
+                  (when (string= (or (fnn-developer-selector
                                       "FN_NATIVE_OWNER_TEST_SIGTERM") "")
                                  "after-install")
                     (fnn-out "OWNER-PRELISTEN")
@@ -1328,7 +1391,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                     (fnn-owner-wait-workers service)
                     ;; Keep the captured listener fd live while the focused
                     ;; test delivers a repeated SIGTERM during cleanup.
-                    (when (string= (or (sb-ext:posix-getenv
+                    (when (string= (or (fnn-developer-selector
                                         "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP") "")
                                    "1")
                       (fnn-out "OWNER-CLEANUP")
@@ -1365,8 +1428,15 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                   (and (eq family :inet6) (fnn-octet-list-p address-list)
                        (= (length address-list) 16)))
         (fnn-fault "ACL2 listener address projection is malformed"))
+      ;; The served owner is armed exactly as `store ROOT post' is: the same
+      ;; function reads the same selectors into the same store slot, so a
+      ;; developer image kills the served owner at every fnn-at coordinate
+      ;; of the cut table (campaign dabebb84, F1).  The control fault is
+      ;; validated here too, before the store opens.
+      (fnn-owner-control-test-fault)
       (fnn-owner-run root listener-port oncep max-connections
-                     nil (fnn-octets address-list) family tls-context))))
+                     (fnn-post-entry-fault nil) (fnn-octets address-list)
+                     family tls-context))))
 
 (defun fnn-command-owner (command args)
   "Private low-level test entry; public operators use the normalized callback."
@@ -1378,10 +1448,8 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
   (let* ((inject (fifth args))
          (connection-fault-operation
            (and inject (string= inject "connectionhandler") :receive))
-         (fault (and inject
-                     (cdr (assoc inject +fnn-cli-faults+ :test #'string=)))))
-    (when (and inject (null fault) (null connection-fault-operation))
-      (error 'fnn-usage-error :message "unknown owner fault point"))
+         (fault (fnn-post-entry-fault
+                 (and (null connection-fault-operation) inject))))
     (fnn-owner-run (first args) (parse-integer (second args))
                    (string= (third args) "1") (parse-integer (fourth args))
                    fault nil :inet nil connection-fault-operation)))

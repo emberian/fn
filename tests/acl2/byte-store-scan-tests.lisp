@@ -28,23 +28,33 @@
 (defconst *bsk-event-retention*
   (fn-store-retention-event-make :undertake 1 1 1
                                  "obligation-1" "article-0" "local" 1))
-(make-event `(defconst *bsk-event-article-frame* ',(fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+; The frames and the stores that hold them are functions, not constants:
+; fn-frame-digest and the Store-event record codec are constrained functions
+; with executable attachments (books/crypto-attach, books/codec-attach), and
+; ACL2 ignores attachments while it evaluates a defconst (the same reason
+; tests/acl2/byte-store-relation-tests.lisp builds its witnesses as
+; functions).  This book was red on that since the digest
+; became constrained.
+(defun bsk-event-article-frame ()
+  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                  *fn-frame-store-kind*
-                 (fn-store-event-encode *bsk-event-article*))))
-(make-event `(defconst *bsk-event-retention-frame* ',(fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+                 (fn-store-event-encode *bsk-event-article*)))
+(defun bsk-event-retention-frame ()
+  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                  *fn-frame-store-kind*
-                 (fn-store-event-encode *bsk-event-retention*))))
-(make-event `(defconst *bsk-mixed-event-store* ',(fn-bs-make 4
-              (list (cons 10 *bsk-event-article-frame*)
-                    (cons 11 *bsk-event-retention-frame*))
+                 (fn-store-event-encode *bsk-event-retention*)))
+(defun bsk-mixed-event-store ()
+  (fn-bs-make 4
+              (list (cons 10 (bsk-event-article-frame))
+                    (cons 11 (bsk-event-retention-frame)))
               (list (cons :transactions
                           (list (cons (fn-bs-txn-name 0) 10)
                                 (cons (fn-bs-txn-name 1) 11))))
-              nil 12)))
+              nil 12))
 (assert-event (fn-store-event-p *bsk-event-article*))
 (assert-event (fn-store-event-p *bsk-event-retention*))
 (assert-event
- (equal (fn-bs-read-records *bsk-mixed-event-store* 0 2)
+ (equal (fn-bs-read-records (bsk-mixed-event-store) 0 2)
         (list *bsk-event-article* *bsk-event-retention*)))
 
 ; Sequence checking is over the generic event accessor.  A valid retention
@@ -53,14 +63,16 @@
 (defconst *bsk-wrong-event-sequence*
   (fn-store-retention-event-make :undertake 7 1 1
                                  "obligation-1" "article-0" "local" 1))
-(make-event `(defconst *bsk-wrong-event-frame* ',(fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+(defun bsk-wrong-event-frame ()
+  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                  *fn-frame-store-kind*
-                 (fn-store-event-encode *bsk-wrong-event-sequence*))))
-(make-event `(defconst *bsk-wrong-event-store* ',(fn-bs-make 4 (list (cons 10 *bsk-wrong-event-frame*))
+                 (fn-store-event-encode *bsk-wrong-event-sequence*)))
+(defun bsk-wrong-event-store ()
+  (fn-bs-make 4 (list (cons 10 (bsk-wrong-event-frame)))
               (list (cons :transactions
-                          (list (cons (fn-bs-txn-name 0) 10)))) nil 11)))
+                          (list (cons (fn-bs-txn-name 0) 10)))) nil 11))
 (assert-event
- (equal (fn-bs-read-records *bsk-wrong-event-store* 0 1) :fault))
+ (equal (fn-bs-read-records (bsk-wrong-event-store) 0 1) :fault))
 
 ; -----------------------------------------------------------------------------
 ; The anchor: the clause each tooth violates is TRUE of the store the

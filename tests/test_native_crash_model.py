@@ -21,8 +21,14 @@ class NativeCrashFaultSurfaceTests(unittest.TestCase):
         start = source.index("(defun fnn-post-test-fault")
         end = source.index("\n(defun fnn-command-post", start)
         body = source[start:end]
-        self.assertIn("(fnn-developer-image-p)", body)
-        self.assertIn("FN_NATIVE_POST_FAULT requires a developer image", body)
+        # Read through the accessor that answers NIL on a production image;
+        # a production image refuses to start with the variable set
+        # (`fnn-developer-selector-gate', run by fnn-main before dispatch).
+        self.assertIn('(fnn-developer-selector "FN_NATIVE_POST_FAULT")', body)
+        self.assertNotIn("posix-getenv", body)
+        main = source[source.index("(defun fnn-main ()"):]
+        self.assertLess(main.index("(fnn-developer-selector-gate argv)"),
+                        main.index("(fnn-dispatch argv)"))
 
     def test_every_native_cut_has_a_byte_program_coordinate(self):
         native_cuts.verify_native_cut_map()

@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/peer-inbound-invariants")
 (include-book "../../books/codec-attach")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; The peer record and the configuration (books/peer-config.lisp)
@@ -146,6 +147,16 @@
               "Date: Sat, 19 Sep 2026 12:00:00 +0000"
               "Message-ID: <a1@example.invalid>" "" "Hello, news.")))
 (defconst *pt-a1* (fn-post-body-octets *pt-a1-lines*))
+; What the node stores for it: Path updated with fnA.hbox.test and the
+; diag-match "!" (the peer record innA expects inn.hbox.test, which IS the
+; leftmost entry, RFC 5537 section 3.2.1 step 3), every other octet as sent.
+(defconst *pt-a1-stored*
+  (fn-post-body-octets
+   (pt-lines '("Path: fnA.hbox.test!!inn.hbox.test!not-for-mail"
+               "From: poster@example.invalid"
+               "Newsgroups: fn.letters,alt.test" "Subject: hello"
+               "Date: Sat, 19 Sep 2026 12:00:00 +0000"
+               "Message-ID: <a1@example.invalid>" "" "Hello, news."))))
 (defconst *pt-id1* (pt-o "<a1@example.invalid>"))
 (defconst *pt-loop-lines*
   (pt-lines '("Path: inn.hbox.test!fnA.hbox.test!not-for-mail" "From: poster@example.invalid"
@@ -234,15 +245,15 @@
 (assert-event (equal (fn-node-stage-msgid (fn-node-stage (nth 0 *pt-t1*))) "<a1@example.invalid>"))
 (assert-event (equal (fn-node-stage-evidence (fn-node-stage (nth 0 *pt-t1*))) "peer-transit:innA"))
 (assert-event (equal (nth 0 *pt-t1*)
-                     (fn-node-prepare *pt-node0* 1 "<a1@example.invalid>" *pt-a1* '("fn.letters")
-                                      "ob-a1" "subject-a1" "peer-transit:innA" (fn-charge-for-payload (len *pt-a1*)))))
+                     (fn-node-prepare *pt-node0* 1 "<a1@example.invalid>" *pt-a1-stored* '("fn.letters")
+                                      "ob-a1" "subject-a1" "peer-transit:innA" (fn-charge-for-payload (len *pt-a1-stored*)))))
 ; Nothing is published by the prepare: the archive is unchanged until the
 ; store's :durable completion.
 (assert-event (equal (fn-state-articles (fn-node-acceptance (nth 0 *pt-t1*))) nil))
 (defconst *pt-node1* (fn-node-complete (nth 0 *pt-t1*) 0 1 :durable))
 (assert-event (fn-node-statep *pt-node1*))
 (assert-event (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*))
-(assert-event (equal (fn-article-payload (car (fn-state-articles (fn-node-acceptance *pt-node1*)))) *pt-a1*))
+(assert-event (equal (fn-article-payload (car (fn-state-articles (fn-node-acceptance *pt-node1*)))) *pt-a1-stored*))
 ; 235 only on the durable completion.
 (assert-event (equal (fn-post-result-effects (fn-peer-transit-outcome (fn-post-result-session *pt-r2*) (fn-post-result-submission *pt-r2*) (nth 1 *pt-t1*) :durable))
                      (list (pt-reply "235 article transferred OK"))))
@@ -529,3 +540,192 @@
 (assert-event (fn-nntp-effectsp (fn-post-result-effects *pt-c2*)))
 (assert-event (fn-nntp-effectsp (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-t* (fn-peer-decision :want nil) :durable)))
 (assert-event (fn-nntp-effectsp (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-t* (fn-peer-decision :want nil) :uncertain)))
+
+; -----------------------------------------------------------------------------
+; What a relaying and serving agent changes: Path and Xref (RFC 5537 3.6,
+; 3.7; books/path-update.lisp, the keystones
+;   fn-peer-relayed-octets-change-only-path-and-xref
+;   fn-peer-relayed-octets-are-idempotent
+;   fn-peer-relayed-octets-carry-no-xref
+;   fn-peer-relayed-octets-name-this-node-in-every-path
+; in books/peer-inbound-invariants.lisp).  The subject is
+; fn-peer-relayed-octets, which host/owner-host.lisp fn-owner-take calls to
+; fill the octets the native drain stores.
+;
+; THE WITNESS IS INN'S OWN ARTICLE: planning/evidence/inn-lab-dabebb84-
+; 2026-09-22.md, "innfeed -> fn", the octets innfeed sent in TAKETHIS, which
+; fn stored and served unchanged -- INN's Path without fnA.hbox.test and INN's
+; Xref -- until this change (the lab's findings 2 and 3).  The peer record
+; innA expects inn.hbox.test, the leftmost entry, so the diagnostic is "!".
+; The expected octets are written out here, not computed by the function.
+
+(defconst *pt-inn-fed*
+  (fn-post-body-octets
+   (pt-lines '("Path: inn.hbox.test!lab.example.invalid!not-for-mail"
+               "From: lab@example.invalid"
+               "Newsgroups: fn.letters"
+               "Subject: handed to INN, fed on to fn"
+               "Date: Tue, 22 Sep 2026 21:26:21 -0000"
+               "Message-ID: <inn-lab-fed-8a5f502-20260922T212621Z@example.invalid>"
+               "Xref: inn.hbox.test fn.letters:15"
+               "" "From the fn INN interop lab."))))
+(defconst *pt-inn-stored*
+  (fn-post-body-octets
+   (pt-lines '("Path: fnA.hbox.test!!inn.hbox.test!lab.example.invalid!not-for-mail"
+               "From: lab@example.invalid"
+               "Newsgroups: fn.letters"
+               "Subject: handed to INN, fed on to fn"
+               "Date: Tue, 22 Sep 2026 21:26:21 -0000"
+               "Message-ID: <inn-lab-fed-8a5f502-20260922T212621Z@example.invalid>"
+               "" "From the fn INN interop lab."))))
+(defconst *pt-inn-id*
+  (pt-o "<inn-lab-fed-8a5f502-20260922T212621Z@example.invalid>"))
+
+; The octets the transfer stages and the host stores.
+(assert-event (equal (fn-peer-relayed-octets *pt-cfg* "innA" *pt-inn-fed*)
+                     *pt-inn-stored*))
+(assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-inn-id*
+                                              *pt-inn-fed* nil "ob-inn" "subject-inn")
+                     (fn-peer-decision :want nil)))
+(assert-event (equal (nth 2 (fn-peer-injection-arguments *pt-node0* *pt-cfg* "innA"
+                                                         *pt-inn-id* *pt-inn-fed*
+                                                         1 "ob-inn" "subject-inn"))
+                     *pt-inn-stored*))
+(assert-event (equal (nth 7 (fn-peer-injection-arguments *pt-node0* *pt-cfg* "innA"
+                                                         *pt-inn-id* *pt-inn-fed*
+                                                         1 "ob-inn" "subject-inn"))
+                     (fn-charge-for-payload (len *pt-inn-stored*))))
+; Through the transfer to the durable article a reader is served.
+(defconst *pt-inn-node*
+  (fn-node-complete
+   (nth 0 (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-inn-id*
+                                       *pt-inn-fed* nil 1 "ob-inn" "subject-inn")))
+   0 1 :durable))
+(assert-event (equal (fn-article-payload
+                      (car (fn-state-articles (fn-node-acceptance *pt-inn-node*))))
+                     *pt-inn-stored*))
+; The stored article parses and names fnA.hbox.test in its Path, and has no
+; Xref, as the reader's parser sees it.
+(assert-event
+ (let ((a (fn-article-result-article (fn-article-parse *pt-inn-stored*))))
+   (and (equal (fn-af-path-field-value a)
+               (pt-o "fnA.hbox.test!!inn.hbox.test!lab.example.invalid!not-for-mail"))
+        (null (fn-article-get-headers a *fn-af-xref-name*)))))
+; A peer whose record expects another identity: the diagnostic is .MISMATCH.
+(defconst *pt-inn-other-peer*
+  (fn-cfg-peer-make "innA" "other.hbox.test" '(:nntp "127.0.0.1" 1119)
+                    '("fn.*" 32768 16) '("fn.*" t 256 1000)
+                    '(:source-address "127.0.0.1")))
+(defconst *pt-cfg-other-peer*
+  (fn-config-replay 0 510
+                    (list *pt-record*
+                          (fn-cfg-record-make 1 1 2
+                                              (list (fn-cfg-set-peer-delta
+                                                     *pt-inn-other-peer*))
+                                              *fn-cfg-default-stamp*))))
+(assert-event
+ (equal (fn-peer-relayed-octets *pt-cfg-other-peer* "innA" *pt-inn-fed*)
+        (fn-post-body-octets
+         (pt-lines '("Path: fnA.hbox.test!.MISMATCH.other.hbox.test!inn.hbox.test!lab.example.invalid!not-for-mail"
+                     "From: lab@example.invalid"
+                     "Newsgroups: fn.letters"
+                     "Subject: handed to INN, fed on to fn"
+                     "Date: Tue, 22 Sep 2026 21:26:21 -0000"
+                     "Message-ID: <inn-lab-fed-8a5f502-20260922T212621Z@example.invalid>"
+                     "" "From the fn INN interop lab.")))))
+
+; Keystone: nothing but Path and Xref changes.  Witness, non-degenerate: the
+; stored octets differ from what arrived, and agree once Path and Xref are
+; removed from both.
+(assert-event (not (equal *pt-inn-stored* *pt-inn-fed*)))
+(assert-event (equal (fn-pu-strip *pt-inn-stored* nil) (fn-pu-strip *pt-inn-fed* nil)))
+(assert-event (equal (fn-pu-strip *pt-inn-fed* nil)
+                     (fn-post-body-octets
+                      (pt-lines '("From: lab@example.invalid"
+                                  "Newsgroups: fn.letters"
+                                  "Subject: handed to INN, fed on to fn"
+                                  "Date: Tue, 22 Sep 2026 21:26:21 -0000"
+                                  "Message-ID: <inn-lab-fed-8a5f502-20260922T212621Z@example.invalid>"
+                                  "" "From the fn INN interop lab.")))))
+; The statement has no hypothesis.  Tooth: the stronger claim that the relay
+; changes nothing is false, and INN's article is the value that says so.
+(must-fail
+ (defthm pt-relay-changes-nothing
+   (equal (fn-peer-relayed-octets cfg peer octets) octets)
+   :hints (("Goal" :in-theory (e/d (fn-peer-relayed-octets)
+                                   (fn-pu-relay-article))))))
+
+; Keystone: a second pass changes nothing.
+(assert-event (equal (fn-peer-relayed-octets *pt-cfg* "innA" *pt-inn-stored*)
+                     *pt-inn-stored*))
+; No hypothesis.  Tooth: a pass by ANOTHER node (another identity) does
+; change the article -- idempotence is this node's, not a relay's.
+(defconst *pt-cfg-fnb*
+  (fn-config-replay 0 510
+                    (list (fn-cfg-record-make
+                           0 0 1
+                           (append *fn-cfg-default-change*
+                                   (list (fn-cfg-set-policy "path-identity" "fnB.hbox.test")
+                                         (fn-cfg-set-peer-delta *pt-peer*)))
+                           *fn-cfg-default-stamp*))))
+(must-fail
+ (defthm pt-relay-by-another-node-changes-nothing
+   (equal (fn-peer-relayed-octets cfg2 peer (fn-peer-relayed-octets cfg peer octets))
+          (fn-peer-relayed-octets cfg peer octets))
+   :hints (("Goal" :in-theory (e/d (fn-peer-relayed-octets)
+                                   (fn-pu-relay-article))))))
+(assert-event (not (equal (fn-peer-relayed-octets *pt-cfg-fnb* "innA" *pt-inn-stored*)
+                          *pt-inn-stored*)))
+
+; Keystone: no Xref is stored.
+(assert-event (fn-pu-xref-freep *pt-inn-stored*))
+; No hypothesis.  Tooth: what arrived had one.
+(must-fail
+ (defthm pt-every-article-is-xref-free
+   (fn-pu-xref-freep octets)))
+(assert-event (not (fn-pu-xref-freep *pt-inn-fed*)))
+
+; Keystone: every Path names this node, when it has an identity.
+(assert-event (fn-pu-path-markedp *pt-inn-stored* (fn-peer-local-identity *pt-cfg*)))
+(assert-event (not (fn-pu-path-markedp *pt-inn-fed* (fn-peer-local-identity *pt-cfg*))))
+; Tooth for the one hypothesis: a node with no path identity updates no Path
+; (the policy slot is unset), so what it stores names nothing.
+(must-fail
+ (defthm pt-relay-names-a-node-without-an-identity
+   (fn-pu-path-markedp (fn-peer-relayed-octets cfg peer octets)
+                       (fn-peer-local-identity cfg))
+   :hints (("Goal" :in-theory (e/d (fn-peer-relayed-octets)
+                                   (fn-pu-relay-article fn-pu-path-markedp
+                                    fn-peer-expected-identity
+                                    fn-peer-local-identity fn-path-identityp))))))
+(defconst *pt-cfg-anon*
+  (fn-config-replay 0 510
+                    (list (fn-cfg-record-make
+                           0 0 1
+                           (append *fn-cfg-default-change*
+                                   (list (fn-cfg-set-peer-delta *pt-peer*)))
+                           *fn-cfg-default-stamp*))))
+(assert-event (not (fn-path-identityp (fn-peer-local-identity *pt-cfg-anon*))))
+(assert-event (not (fn-pu-path-markedp (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*)
+                                       (fn-peer-local-identity *pt-cfg-anon*))))
+; ... and it still removes the sender's Xref.
+(assert-event (fn-pu-xref-freep (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*)))
+
+; The update is refused rather than stored without it: an article whose Path
+; line is already at the 998-octet line bound grows past it, and the transfer
+; is refused :oversize (RFC 5537 3.6, last paragraph).
+(defun pt-long-path (n)
+  (if (zp n) nil (append (pt-o "a.b!") (pt-long-path (- n 1)))))
+(defconst *pt-long*
+  (fn-post-body-octets
+   (list (append (pt-o "Path: inn.hbox.test!") (pt-long-path 244) (pt-o "x"))
+         (pt-o "From: lab@example.invalid") (pt-o "Newsgroups: fn.letters")
+         (pt-o "Subject: long") (pt-o "Date: Tue, 22 Sep 2026 21:26:21 -0000")
+         (pt-o "Message-ID: <long@example.invalid>") nil (pt-o "x"))))
+(assert-event (fn-article-result-okp (fn-article-parse *pt-long*)))
+(assert-event (not (fn-article-result-okp
+                    (fn-article-parse (fn-peer-relayed-octets *pt-cfg* "innA" *pt-long*)))))
+(assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA"
+                                              (pt-o "<long@example.invalid>") *pt-long*
+                                              nil "ob-long" "subject-long")
+                     (fn-peer-decision :refuse :oversize)))

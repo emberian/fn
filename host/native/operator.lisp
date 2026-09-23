@@ -102,9 +102,23 @@ order, and the names it found handed straight back."
              (private-key
                (fnn-operator-optional-path
                 result 'fn-native-operator-host-result-run-tls-key-octets))
+             ;; `[log] path', absolute by fn-native-config-log-pathp; NIL
+             ;; means the owner writes its service log to stderr.
+             (log-path
+               (fnn-operator-optional-path
+                result 'fn-native-operator-host-result-run-log-path-octets))
              (tls-context nil))
         (unwind-protect
             (progn
+              ;; Append-only, created 0640 if absent, never through a
+              ;; symlink, never truncated or rotated here.  Opened before
+              ;; the store so a wrong path is refused before recovery runs.
+              (when log-path
+                (setq *fnn-owner-log-fd*
+                      (fnn-open log-path
+                                (logior sb-posix:o-wronly sb-posix:o-append
+                                        sb-posix:o-creat +fnn-o-nofollow+)
+                                #o640)))
               ;; ACL2 already enforced paired presence.  Only a successfully
               ;; loaded and key-checked context is passed to auth/owner.
               (when certificate
@@ -139,7 +153,10 @@ order, and the names it found handed straight back."
                 (fnn-operator-emit-status
                  (fnn-operator-status-of-exit-code code) "run")
                 code))
-          (when tls-context (fnn-tls-close-context tls-context))))
+          (when tls-context (fnn-tls-close-context tls-context))
+          (when *fnn-owner-log-fd*
+            (ignore-errors (fnn-close *fnn-owner-log-fd*))
+            (setq *fnn-owner-log-fd* nil))))
     (error (condition)
       (let ((code (fnn-exit-code-for condition)))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)

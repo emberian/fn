@@ -24,9 +24,9 @@
     "accepted": 141,
     "refused": 34,
     "uncertain": 3,
-    "not-exercised": 36,
+    "not-exercised": 39,
     "not-built": 1,
-    "total": 215,
+    "total": 218,
     "disagreed": 7,
     "faulted": 0,
     "independent": 2,
@@ -62,13 +62,14 @@
         "V0-NODE-START-B",
         "V0-NODE-STOP-A",
         "V0-NODE-STOP-B",
-        "V0-NODE-LOOPBACK"
+        "V0-NODE-LOOPBACK",
+        "V0-NODE-PROFILE"
       ],
       "counts": {
         "accepted": 14,
         "refused": 1,
         "uncertain": 0,
-        "not-exercised": 0,
+        "not-exercised": 1,
         "not-built": 0
       },
       "disagreed": 0
@@ -176,13 +177,15 @@
         "V0-POST-DUPLICATE-B",
         "V0-POST-CLOCK-A",
         "V0-POST-CLOCK-B",
+        "V0-POST-FROM-MAILBOX-A",
+        "V0-POST-FROM-MAILBOX-B",
         "V0-POST-CONCURRENT"
       ],
       "counts": {
         "accepted": 11,
         "refused": 2,
         "uncertain": 0,
-        "not-exercised": 0,
+        "not-exercised": 2,
         "not-built": 0
       },
       "disagreed": 0
@@ -890,6 +893,36 @@
       "log": "planning/evidence/v0-matrix-2026-09-21.md",
       "limit": "one non-loopback address; nothing here tests a bind that the kernel would refuse for a different reason",
       "blocker": null,
+      "owner": null
+    },
+    {
+      "id": "V0-NODE-PROFILE",
+      "feature": "F-NODE",
+      "feature_title": "node init, configuration, start and stop",
+      "title": "the operator honours `[log] path` (a post's line lands in the file) and refuses `[posting] agent` by name",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "HST-003"
+      ],
+      "scenarios": [
+        "SCN-021"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
       "owner": null
     },
     {
@@ -2435,6 +2468,66 @@
       "log": "planning/evidence/v0-matrix-2026-09-21.md",
       "limit": "a 441 for an article the node already holds and a 441 for a clock the node no longer has are the same code; DATE is what separates them from outside, because a refused reading costs the owner its clock (D10-a) and DATE then answers 503. This row does not INDUCE a clock fault -- it checks that an ordinary duplicate did not cause one",
       "blocker": null,
+      "owner": null
+    },
+    {
+      "id": "V0-POST-FROM-MAILBOX-A",
+      "feature": "F-POST",
+      "feature_title": "POST and its read-back",
+      "title": "a POST whose From names no address (`From: yue`) is refused with 441 and is not served",
+      "node": "a",
+      "direction": null,
+      "requirements": [
+        "NNT-005"
+      ],
+      "scenarios": [
+        "SCN-002"
+      ],
+      "verdict": "not-exercised",
+      "expected": "refused",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-POST-FROM-MAILBOX-B",
+      "feature": "F-POST",
+      "feature_title": "POST and its read-back",
+      "title": "a POST whose From names no address (`From: yue`) is refused with 441 and is not served",
+      "node": "b",
+      "direction": null,
+      "requirements": [
+        "NNT-005"
+      ],
+      "scenarios": [
+        "SCN-002"
+      ],
+      "verdict": "not-exercised",
+      "expected": "refused",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
       "owner": null
     },
     {
@@ -6429,6 +6522,7 @@
       "V0-NODE-REINIT-A",
       "V0-NODE-REINIT-B",
       "V0-NODE-LOOPBACK",
+      "V0-NODE-PROFILE",
       "V0-CRASH-RESTART"
     ],
     "HST-004": [
@@ -6507,6 +6601,8 @@
       "V0-POST-READBACK-B",
       "V0-POST-CLOCK-A",
       "V0-POST-CLOCK-B",
+      "V0-POST-FROM-MAILBOX-A",
+      "V0-POST-FROM-MAILBOX-B",
       "V0-TRANSIT-TRANSFER-AB",
       "V0-TRANSIT-TRANSFER-BA"
     ],
@@ -6725,7 +6821,9 @@
       "V0-POST-DUPLICATE-A",
       "V0-POST-DUPLICATE-B",
       "V0-POST-CLOCK-A",
-      "V0-POST-CLOCK-B"
+      "V0-POST-CLOCK-B",
+      "V0-POST-FROM-MAILBOX-A",
+      "V0-POST-FROM-MAILBOX-B"
     ],
     "SCN-003": [
       "V0-OUT-UNCERTAIN-A",
@@ -6852,6 +6950,7 @@
       "V0-NODE-STOP-A",
       "V0-NODE-STOP-B",
       "V0-NODE-LOOPBACK",
+      "V0-NODE-PROFILE",
       "V0-OUT-ACCEPTED-A",
       "V0-OUT-ACCEPTED-B",
       "V0-OUT-REFUSED-A",
@@ -6952,5 +7051,5 @@
       "V0-BP-REPLAY"
     ]
   },
-  "rows_digest": "38d60c3c85901c68917c1349323cd4b537a4ae64e611dd895e9370f112164460"
+  "rows_digest": "bdc8b4d005f21d2f9974142dd80a4ed6b316429f05b7ddc17347a0dce9f3e4aa"
 }

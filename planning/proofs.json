@@ -1043,7 +1043,7 @@
       "assumptions": [],
       "status": "in-progress",
       "evidence": [],
-      "progress_note": "T8 (2026-09-22): two defects found and fixed in the live arm. (1) fn-ocfg-complete published through fn-cnode-apply-config on the live node, whose domain and capacity no live transition moves, so after one live group create or capacity change every later completion kept the old configuration while the record was already durable (ground witness in tests/acl2/owner-config-tests: the second of two live reconfigurations violated fn-cnode-apply-config's guard); completion now publishes fn-ocfg-published-config, the configuration step recovery replays. (2) host/native-admin-host.lisp passed argv octets as configuration labels, so live group create, group retire and peer remove were refused :malformed-delta; the delta list is now fn-native-admin-plan-deltas. Teeth for every hypothesis in tests/acl2/owner-config-tests and tests/acl2/native-admin-tests. fn-ocfg-list-active-lists-the-pinned-served-table stays proved and is not cited: fn-ocfg-list-active has no host caller. V0-CFG-LIVE on an image is not claimed: its GROUP check needs the domain seam.",
+      "progress_note": "T8 (2026-09-22): two defects found and fixed in the live arm. (1) fn-ocfg-complete published through fn-cnode-apply-config on the live node, whose domain and capacity no live transition moves, so after one live group create or capacity change every later completion kept the old configuration while the record was already durable (ground witness in tests/acl2/owner-config-tests: the second of two live reconfigurations violated fn-cnode-apply-config's guard); completion now publishes fn-ocfg-published-config, the configuration step recovery replays. (2) host/native-admin-host.lisp passed argv octets as configuration labels, so live group create, group retire and peer remove were refused :malformed-delta; the delta list is now fn-native-admin-plan-deltas. Teeth for every hypothesis in tests/acl2/owner-config-tests and tests/acl2/native-admin-tests. fn-ocfg-list-active-lists-the-pinned-served-table stays proved and is not cited: fn-ocfg-list-active has no host caller. V0-CFG-LIVE on an image is not claimed: its GROUP check needs the domain seam. T8c (2026-09-22): the dabebb84 matrix run showed the live arm faulting the owner on every request, because host/native/admin.lisp read fn-owner-open's integer id through fnn-owner-action (fixed; reproduced and fixed on hbox, planning/evidence/t8c-live-rows-2026-09-22.md), and the control reply losing the owner's fault word to its own stop hook, so the caller saw uncertain (fixed in host/native/control.lisp). fn-native-admin-publication-is-authorized-only-under-the-lock: an accepted publication result, and any result carrying a publication state, implies the lock observation the host passes, which is now the store's own (fnn-admin-lock-observation) and no longer a literal T; teeth in tests/acl2/native-admin-tests.",
       "events": [
         "fn-ocfg-no-reader-observes-a-half-change",
         "fn-ocfg-pin-is-stable-without-advance",
@@ -1051,7 +1051,8 @@
         "fn-ocfg-config-replay-of-one-more-record",
         "fn-ocfg-open-pins-the-live-configuration",
         "fn-ocfg-advance-observes-the-live-configuration",
-        "fn-native-admin-live-group-delta-is-a-typed-delta"
+        "fn-native-admin-live-group-delta-is-a-typed-delta",
+        "fn-native-admin-publication-is-authorized-only-under-the-lock"
       ]
     },
     {
@@ -1386,7 +1387,7 @@
     {
       "id": "PRF-041",
       "title": "Every byte-level crash image of a related store scans, and scans to an image the file kernel admits",
-      "statement": "fn-bs-store-crash-image-scans (K1): for every byte store related to a file-kernel state and every image fn-bs-crash-imagep admits of it, the scan tools/run_store.py performs at open -- the config entry and its integrity check, the frontier entry and its decode, the contiguity of the transaction namespace, and the record list -- returns :ok and not any of its four :fault values. No trailer assumption is used: an authority inode is fenced before any name points at it (D1) and is never overwritten (D2), so the only freedom a crash has over the authority namespace is whether the last entry operation landed. fn-bs-store-crash-image-is-kernel-admissible (K2): what that scan reads is an image fn-sf-recovery-crash-imagep admits, which outside the recovery window is the reliance predicate fn-sf-crash-imagep and inside it is that plus the two rollback arms of D14-b and D14-c -- the record the replay read and has not re-fenced, and the allocator rename that the fourth recovery barrier has not drained. fn-bs-store-recovery-is-a-kernel-crash (K3): fn-sf-image-crash at that image reproduces its frontier, its record list and the :replaying phase. fn-bs-crash-image-reopens: the host reopen entry fn-sn-open-observed succeeds on every such image, in both windows. fn-bs-acknowledged-record-survives-byte-crash (K4): an outcome the store acknowledged before the crash names a record of the state the host reopens on.",
+      "statement": "fn-bs-store-crash-image-scans (K1): for every byte store related to a file-kernel state and every image fn-bs-crash-imagep admits of it, the scan tools/run_store.py performs at open -- the config entry and its integrity check, the frontier entry and its decode, the contiguity of the transaction namespace, and the record list -- returns :ok and not any of its four :fault values. No trailer assumption is used: an authority inode is fenced before any name points at it (D1) and is never overwritten (D2), so the only freedom a crash has over the authority namespace is whether the last entry operation landed. fn-bs-store-crash-image-is-kernel-admissible (K2): what that scan reads is an image fn-sf-recovery-crash-imagep admits, which outside the recovery window is the reliance predicate fn-sf-crash-imagep and inside it is that plus the two rollback arms of D14-b and D14-c -- the record the replay read and has not re-fenced, and the allocator rename that the fourth recovery barrier has not drained. fn-bs-store-recovery-is-a-kernel-crash (K3): fn-sf-image-crash at that image reproduces its frontier, its record list and the :replaying phase. fn-bs-crash-image-reopens: the host reopen entry fn-sn-open-observed succeeds on every such image whose identity history replays (fn-sn-observed-identity-okp, the kernel reopen theorems' own condition since 4857c648), in both windows. fn-bs-acknowledged-record-survives-byte-crash (K4): under the same identity condition, an outcome the store acknowledged before the crash names a record of the state the host reopens on. K-sweep: fn-bs-staging-unlink-keeps-relation-and-scan, an unlink in :staging at any name and with any outcome keeps the byte relation to the same kernel state and keeps the scan; fn-bs-recover-sweep-keeps-relation-at-every-cut, every pair of fn-bs-recover-sweep-program's run (every recovery-stage-unlinked cut) is that kernel state with a related byte state and the original scan; fn-bs-sweep-round-keeps-every-cut-reopenable, over the names fn-sn-sweep-round returns (host/native/io.lisp fnn-sweep-staging via fn-store-sn-sweep-round), every identity-replayable crash image at every cut of the sweep reopens and the kernel state is the one before the sweep. The sweep's rounds (books/store-sweep.lisp): fn-sn-sweep-rounds-collect-every-orphan, with the kernel gate open and a positive observation bound, a staging directory of N unheld staging names ends :done and empty for every N; fn-sn-sweep-rounds-keep-every-name-they-may-not-remove; fn-sn-sweep-rounds-end-done-or-refused, the loop ends :done or :refused and :refused means more than one observation of names remains and that observation removes nothing.",
       "milestone": "M5",
       "requirements": [
         "FLR-001",
@@ -1407,7 +1408,13 @@
         "planning/lanes/HANDOFF-w11-k1-scan.md",
         "books/byte-store-fault-keystones.lisp",
         "tests/acl2/byte-store-fault-keystones-tests.lisp",
-        "planning/evidence/native-k7-uncertainty-2026-09-21.md"
+        "planning/evidence/native-k7-uncertainty-2026-09-21.md",
+        "books/store-sweep.lisp",
+        "tests/acl2/store-sweep-tests.lisp",
+        "tests/acl2/byte-store-sweep-tests.lisp",
+        "books/byte-store-programs.lisp",
+        "planning/evidence/campaign-dabebb84-2026-09-22.md",
+        "planning/evidence/sweep-allocation-orphans-2026-09-22.md"
       ],
       "events": [
         "fn-bs-store-crash-image-scans",
@@ -1418,9 +1425,14 @@
         "fn-bs-crash-image-reads-the-config",
         "fn-bs-crash-image-frontier-decodes-to-a-natural",
         "fn-bs-crash-image-namespace-is-contiguous",
-        "fn-bs-crash-image-records-do-not-fault"
+        "fn-bs-crash-image-records-do-not-fault",
+        "fn-bs-sweep-round-keeps-every-cut-reopenable",
+        "fn-sn-sweep-round-removes-only-unheld-staging-names",
+        "fn-sn-sweep-rounds-collect-every-orphan",
+        "fn-sn-sweep-rounds-keep-every-name-they-may-not-remove",
+        "fn-sn-sweep-rounds-end-done-or-refused"
       ],
-      "progress_note": "Certified over an older digest; `byte-store-keystones` are red at their current digest per `green_check` (2026-09-22); T0 re-establishes them. "
+      "progress_note": "2026-09-22 lane t5/sweep: byte-store-keystones had been red since 4857c648 added fn-sn-observed-identity-okp to the kernel reopen theorems; K4 and fn-bs-crash-image-reopens now carry the same condition over the scanned records (the byte-level tooth for that hypothesis is not written; the kernel's is store-observed's). K-sweep added for finding F2 of planning/evidence/campaign-dabebb84-2026-09-22.md; certification and scope in planning/evidence/sweep-allocation-orphans-2026-09-22.md."
     },
     {
       "id": "PRF-042",
@@ -1811,6 +1823,147 @@
         "fn-nntp-step-dispatches-newnews-to-the-newnews-response",
         "fn-nntp-newnews-response-preserves-session",
         "fn-nntp-effects-newnews-response"
+      ]
+    },
+    {
+      "id": "PRF-056",
+      "title": "The operator's post is injected as a served POST is, and its retry is the stored article",
+      "statement": "fn-own-operator-submission-is-an-injection-of-the-payload: if fn-own-operator-submit-result answers :submitted, fn-own-operator-submit queues exactly one control submission whose decision is injected, carries the Message-ID and newsgroup list the command named, and whose octets are a re-injection of the submitted octets by the owner's injecting agent (fn-inj-reinjectionp: the agent's Path line, an Injection-Date, the agent's Injection-Info, optionally the generated Message-ID and Date lines, then the submitted octets unchanged); fn-own-operator-decision-is-an-injection-of-the-payload states the same of the decision for any configuration, clock and node. fn-own-operator-submit-without-a-clock-refuses-and-changes-nothing: with no clock observation, or one without a wall time, the result is :refused and the owner is unchanged (D10-a). fn-own-operator-retry-resubmits-the-stored-injection: if fn-inj-decide injected the octets under one clock with that Message-ID and the node holds exactly those injected octets under it, then under any later usable clock the decision is those stored octets, so the store answers the Message-ID's duplicate rather than a conflict. All three rest on fn-inj-injected-article-is-a-reinjection-of-its-source (books/injection-invariants.lisp): every article fn-inj-decide injects is a re-injection of its source by its configured agent, for every clock reading. Covered scope: the owner's decision and its queue entry; the store attempt that follows is the served POST's, and the duplicate the store answers is host/store-host.lisp fn-store-article-match's octet comparison, which is not a theorem. The subject is what the host calls: fn-own-operator-submit through the (:operator-submit ...) event, which host/owner-host.lisp fn-owner-operator-submit steps and host/native/owner.lisp fnn-owner-control-submit-serialized calls for `fn operator CONFIG post`.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-004",
+        "NNT-005"
+      ],
+      "depends_on": [
+        "PRF-033"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/owner.lisp",
+        "books/owner-invariants.lisp",
+        "books/injection.lisp",
+        "books/injection-invariants.lisp",
+        "tests/acl2/owner-operator-tests.lisp",
+        "tests/acl2/injection-tests.lisp",
+        "planning/evidence/inn-lab-dabebb84-2026-09-22.md"
+      ],
+      "progress_note": "Lane T13-conform, 2026-09-22, from the INN lab's finding 1 (operator post fed INN an article with no Path; 437). Teeth: tests/acl2/owner-operator-tests.lisp builds the lab's own operator article through a real owner (configure, observe, submit, take, the store events, the completion) and asserts the queued octets byte for byte against the Path, Injection-Date and Injection-Info lines the lab's served POST carried; one must-fail per hypothesis with a refuting value beside it (the retry keystone through a macro that first admits the full statement). The native tests that run it on an image (tests/test_native_control.py) have not run: no image carries this yet.",
+      "events": [
+        "fn-own-operator-submission-is-an-injection-of-the-payload",
+        "fn-own-operator-decision-is-an-injection-of-the-payload",
+        "fn-own-operator-submit-without-a-clock-refuses-and-changes-nothing",
+        "fn-own-operator-retry-resubmits-the-stored-injection",
+        "fn-inj-injected-article-is-a-reinjection-of-its-source"
+      ]
+    },
+    {
+      "id": "PRF-057",
+      "title": "An injected article's From is an RFC 5322 mailbox-list (RFC 5536 3.1.2)",
+      "statement": "fn-mbx-mailbox-list-names-an-address: every value fn-mbx-mailbox-listp accepts contains an \"@\" octet, the addr-spec every mailbox carries. fn-inj-injected-proto-article-has-a-mailbox-list-from: whenever fn-inj-decide injects, the From field of the parsed proto-article is accepted by fn-mbx-mailbox-listp and names an address, so `From: yue` (answered 240 and served on 2026-09-22) is refused :from-invalid with `441 posting failed; From is not a valid mailbox list`. fn-mbx-mailbox-listp is RFC 5322 section 3.4's mailbox-list under RFC 5536 sections 2.1 and 2.2 (no obsolete syntax but obs-phrase, US-ASCII), bounded by the header block before either of its two passes, and reads nothing through the Lisp reader. Covered scope: soundness in the one direction stated (accepted implies an address); that the recognizer accepts every conformant mailbox-list is not a theorem and is witnessed across the grammar's productions. The subject is fn-inj-decide, which books/nntp-post.lisp fn-nntp-post-step calls on the served POST path (host/owner-host.lisp fn-owner-chunk through fn-own-read) and books/owner.lisp fn-own-operator-decision calls on the operator's.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-004"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/mailbox.lisp",
+        "books/injection.lisp",
+        "books/injection-invariants.lisp",
+        "tests/acl2/injection-tests.lisp",
+        "planning/evidence/agents-on-hbox-2026-09-22.md"
+      ],
+      "progress_note": "Lane T13-conform, 2026-09-22, from the agents run's `From: yue`. Teeth in tests/acl2/injection-tests.lisp: the INN lab's POSTed article (its injected octets are what innd received) and `From: yue` refused :from-invalid; accepted and refused values across the productions; one must-fail per hypothesis. The v0 matrix row V0-POST-FROM-MAILBOX measures it on a node; no image carries it yet.",
+      "events": [
+        "fn-mbx-mailbox-list-names-an-address",
+        "fn-inj-injected-proto-article-has-a-mailbox-list-from"
+      ]
+    },
+    {
+      "id": "PRF-058",
+      "title": "A relayed article changes in Path and Xref only, once, at acceptance (RFC 5537 3.6, 3.7)",
+      "statement": "Over fn-peer-relayed-octets, the octets this node stores, serves and feeds on for an article a peer transferred: fn-peer-relayed-octets-change-only-path-and-xref -- removing every Path and Xref field (with its continuation lines) from what arrived and from what is stored leaves the same octets, so every other header field in order, the blank line and the body are byte-identical; fn-peer-relayed-octets-are-idempotent -- a second pass by the same node changes nothing; fn-peer-relayed-octets-carry-no-xref -- no Xref field is stored; fn-peer-relayed-octets-name-this-node-in-every-path -- when the node has a <path-identity>, every Path field of what is stored begins with it and \"!\" (RFC 5537 3.6 step 7, 3.7 step 6; the 3.2.1 diagnostic follows it). None has a hypothesis but the last, whose one is the identity. Each is the article-level keystone of books/path-update.lisp (fn-pu-relay-article-changes-only-path-and-xref, -is-idempotent, -leaves-no-xref, -names-the-agent-in-every-path), proved by one induction each over a walk of the raw header lines whose re-read of its own output is exact. fn-peer-injection-arguments-payload-unfolds: the payload the transfer stages for fn-node-prepare is fn-peer-relayed-octets of the received octets. Covered scope: the octets; what a reader receives is those octets (fn-durable-completion-installs-exact-pending-article, PRF-002), and the served rendering's dot-stuffing is the wire books'. An article with no Path field gets none (RFC 5537 3.7 step 1's rejection of it is open). The subjects are what the host calls: fn-peer-relayed-octets at host/owner-host.lisp fn-owner-take, which fills fn-owner-submit-octets, the octets host/native/owner.lisp fnn-owner-drain-one digests and stores; and fn-peer-injection-arguments at host/owner-host.lisp fn-owner-transit-decide, whose staged payload the drain compares with them before the store attempt.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-001"
+      ],
+      "depends_on": [
+        "PRF-042"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/path-update.lisp",
+        "books/peer-inbound.lisp",
+        "books/peer-inbound-invariants.lisp",
+        "tests/acl2/peer-inbound-tests.lisp",
+        "specs/peering.md",
+        "planning/evidence/inn-lab-dabebb84-2026-09-22.md"
+      ],
+      "progress_note": "Lane T13-conform, 2026-09-22, from the INN lab's findings 2 and 3 (fn served INN's Path without itself, and INN's Xref). Decided at acceptance, not at serving time: specs/peering.md 2.3 carries the argument. Teeth in tests/acl2/peer-inbound-tests.lisp, last section: innfeed's own TAKETHIS octets become the stored article byte for byte (Path fnA.hbox.test!!inn.hbox.test!..., no Xref), through the transfer to the durable article, with the parser's view of the result; .MISMATCH. for a peer expecting another identity; a Path line the update would push past 998 octets refused :oversize; one must-fail per hypothesis (and, for the three statements with none, the stronger statement refuted by the lab's value). The INN lab rows V0-INN-SERVING-AGENT and V0-INN-OPERATOR-POST measure it on a node; no image carries it yet.",
+      "events": [
+        "fn-peer-relayed-octets-change-only-path-and-xref",
+        "fn-peer-relayed-octets-are-idempotent",
+        "fn-peer-relayed-octets-carry-no-xref",
+        "fn-peer-relayed-octets-name-this-node-in-every-path",
+        "fn-pu-relay-article-changes-only-path-and-xref",
+        "fn-pu-relay-article-is-idempotent",
+        "fn-pu-relay-article-leaves-no-xref",
+        "fn-pu-relay-article-names-the-agent-in-every-path"
+      ]
+    },
+    {
+      "id": "PRF-053",
+      "title": "A served POST's Injection-Info names the node's path-identity",
+      "statement": "fn-oag-post-config-agent-is-the-path-identity: when the replayed configuration's path-identity policy is set, the posting configuration fn-oag-post-config installs (called by host/owner-host.lisp fn-owner-post-config, which fn-owner-recover and fn-owner-reconfigure-complete install with fn-own-configure) has that identity's octets as its agent; unset, the agent is fn.example.invalid. fn-oag-open-pins-the-owner-config: a connection fn-ocfg-open opens (host/owner-host.lisp fn-owner-open) at an identifier no connection already holds pins the owner's installed configuration; fn-oag-configured-open-pins-the-path-identity composes the two. fn-oag-served-post-names-the-pinned-agent: for any socket read fn-ocfg-read-tls-prefix performs (host/owner-host.lisp fn-owner-chunk), if the connection's served state satisfies fn-served-connp, the submission the read hands the owner, when it is an injected article, carries the Injection-Info line generated from the agent the connection pinned; the chain runs through fn-served-step, fn-served-feed, fn-served-dispatch, fn-auth-step, fn-peer-step and fn-nntp-post-step to fn-inj-injected-article-names-the-configured-agent over fn-inj-decide. Covered scope: the served POST path; the fn-served-connp premise is the served invariant the owner does not carry (the premise PRF-006 records for fn-ocfg-read-tls-prefix), and no value is known on which the conclusion fails without it. fn.toml's [posting] agent is refused by run (fn-native-config-unsupported-key), so the path-identity policy is the only agent.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-004"
+      ],
+      "depends_on": [
+        "PRF-006"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/owner-agent.lisp",
+        "books/injection-invariants.lisp",
+        "tests/acl2/owner-agent-tests.lisp",
+        "tests/test_native_profile.py"
+      ],
+      "progress_note": "Lane t6b-profile, 2026-09-22: the served-POST keystone is proved over the host-called fn-ocfg-read-tls-prefix under the fn-served-connp premise; tests/acl2/owner-agent-tests.lisp carries a reachable witness built as the host builds it (a replayed history with the policy set path-identity delta, fn-oag-post-config, fn-ocfg-open, one POST read through fn-ocfg-read-tls-prefix whose queued article says Injection-Info: hbox.ember.software) and a must-fail per hypothesis, with a refuting value for the identity and freshness hypotheses and none known for the served premise. The image measurement is tests/test_native_profile.py and V0-NODE-PROFILE.",
+      "events": [
+        "fn-inj-injected-article-names-the-configured-agent",
+        "fn-oag-post-config-agent-is-the-path-identity",
+        "fn-oag-open-pins-the-owner-config",
+        "fn-oag-served-post-names-the-pinned-agent"
+      ]
+    },
+    {
+      "id": "PRF-054",
+      "title": "The native service log says what the reply says, one line per event",
+      "statement": "fn-olog-served-post-line-says-accepted-iff-durable: the line host/owner-host.lisp fn-owner-outcome renders for a served submission begins with the word accepted exactly when fn-own-outcome-completion of the host's word is :durable, the completion fn-own-outcome renders into the 240; a host word alone never makes it say accepted. fn-olog-control-post-line-says-the-control-result: the control line's first word is the word of fn-own-control-outcome-result, the value the control reply carries. fn-olog-served-post-line-is-one-line, fn-olog-control-post-line-is-one-line and fn-olog-connection-line-is-one-line: no line contains CR or LF, whatever octets the Message-ID, agent or peer name held. Covered scope: the rendered octets; that host/native/owner.lisp fnn-owner-log writes them and one LF to the file run opened append-only is measured by tests/test_native_profile.py, not proved.",
+      "milestone": "M3",
+      "requirements": [
+        "HST-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/owner-log.lisp",
+        "tests/acl2/owner-log-tests.lisp",
+        "tests/test_native_profile.py"
+      ],
+      "progress_note": "Lane t6b-profile, 2026-09-22: the keystones have no hypotheses; tests/acl2/owner-log-tests.lisp evaluates each renderer on a real injected decision and a real control decision, and its must-fails name the weaker statements a host-word log would satisfy (the line echoes the host word; the control line uses the served classification) with the refuting owner evaluated beside each.",
+      "events": [
+        "fn-olog-served-post-line-says-accepted-iff-durable",
+        "fn-olog-control-post-line-says-the-control-result",
+        "fn-olog-served-post-line-is-one-line",
+        "fn-olog-control-post-line-is-one-line",
+        "fn-olog-connection-line-is-one-line"
       ]
     }
   ]
