@@ -21,8 +21,14 @@ acknowledgement and reply publication remain separate open joins.
 
 Consumer Store integration `98996532` and native publisher `944916e6` add the
 maintained consumer projection and strict replay to the current Store. Their
-combined full certification is running as `run-20260923T213308Z-9bef` against
-snapshot `38d4905c`; no successful combined result is claimed yet. Consumer
+combined full certification at snapshot `38d4905c` finished with 194 newly
+passed books and 24 failed books/dependents in 195.125 seconds. The five
+source failures are optimized prepare's missing consumer gate, owner field
+projection hints, stamp event classification, BP replay event disjointness,
+and physical crash recovery's consumer-prefix premise. These are the batch's
+repair obligations; no successful combined result is claimed. The
+[optimized-prepare repair](evidence/consumer-store-convergence-2026-09-23.md)
+now passes its unchanged correspondence theorem and new stale-prefix witness. Consumer
 scenario **SCN-033** avoids the existing SCN-031 native authorship scenario;
 CNS-001 and PRF-064 retain their IDs. The actual publisher-to-physical-recovery
 composition and complete authenticated poll/ack workflow remain open.

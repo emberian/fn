@@ -25,9 +25,14 @@ names the later image that preserved those articles through an upgrade.
 Newer isolated images have exchanged articles between hbox and persvati over
 [protected NNTP connections](planning/evidence/native-two-host-path-1836ed01-2026-09-23.md),
 and preserved [exact-source author signatures and their recorded verdicts](planning/evidence/native-t8-t10a-295bbe35-2026-09-23.md)
-through reopening a store. These exercises qualify particular images and
-boundaries. The joined BP delivery/receipt path, durable agent consumption,
-and the remaining crash-correspondence proofs are still being built.
+through reopening a store. The [native BP delivery and receipt experiment](planning/evidence/native-topic-handoff-86323c89-2026-09-23.md)
+now exercises retries, restart and ambiguous publication within an explicitly
+trusted local setup. A [Mini consumer experiment](planning/evidence/dregg-e1-portable-consumer-p2.md)
+uses a signed fn report to produce a durable reply, recover it after reopening,
+and retain a conflicting report without executing the operation twice.
+These exercises qualify particular images and boundaries. Authenticated BP
+transit, durable fn polling and acknowledgement, and the remaining physical
+crash-correspondence proofs are still being joined.
 [Current work](planning/now.md) distinguishes source, image, and deployed-node
 progress; there is no finished release yet.
 
