@@ -288,6 +288,24 @@ the other, and unsupported ML-DSA is never mapped to :VERIFIED."
                 (if (consp ml-observation) (first ml-observation)
                   ml-observation)))))
 
+(defun fnn-hsig-verify-received-carrier (received ml-public-key-path)
+  "Decode a bounded portable carrier in ACL2, then verify both native suites.
+The caller supplies an independently configured ML-DSA public-key file; ACL2's
+authorization check binds its observed key bytes to the carrier's key set."
+  (let ((plan (fnn-core 'fn-hsig-host-received-carrier-plan received)))
+    (if (not (eq (first plan) :ok))
+        plan
+      (let* ((value (second plan))
+             (source (first value))
+             (carrier (second value))
+             (principal (first carrier))
+             (keys (second carrier))
+             (signatures (third carrier)))
+        (if (fnn-hsig-authorize-profile principal keys source signatures
+                                        ml-public-key-path)
+            (list :verified source principal)
+          (list :unverified :signature received))))))
+
 (defun fnn-hsig-authorized-article-event
     (sequence txid generation keyring-generation enrolled-snapshot
               msgid content-subject
