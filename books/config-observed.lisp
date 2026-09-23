@@ -38,6 +38,27 @@
 
 (verify-guards fn-cpo-open-observed)
 
+; Proof-only relation for the observed recovery boundary. Future live Store
+; transitions must carry the configuration history to preserve this relation;
+; the current Store record has no such field yet.
+(defun fn-cpo-history-relation (configs st)
+  (declare (xargs :guard t))
+  (let* ((events (fn-sf-records (fn-sn-files st)))
+         (frontier (fn-sf-frontier (fn-sn-files st)))
+         (replayed (fn-cpr-replay configs events))
+         (cn (fn-replay-result-node replayed)))
+    (and (fn-sn-statep st)
+         (fn-sn-observed-historyp frontier events)
+         (equal (fn-replay-result-kind replayed) :ok)
+         (fn-cnode-statep cn)
+         (fn-replay-advance-okp (fn-cnode-node cn) frontier)
+         (equal (fn-sn-node st)
+                (fn-replay-advance-txid (fn-cnode-node cn) frontier))
+         (equal (fn-sn-groups st)
+                (fn-cnode-domain-of (fn-cnode-config cn)))
+         (equal (fn-sn-capacity st)
+                (fn-cfg-capacity (fn-cfg-value (fn-cnode-config cn)))))))
+
 ; The caller sees the complete observed journal and the parameters from the
 ; final *ordered* configuration. No barrier has been reported at open.
 (defthm fn-cpo-open-success-exact-image
@@ -56,5 +77,13 @@
                           (fn-cfg-value (fn-cnode-config cn)))))))
   :hints (("Goal" :in-theory (enable fn-cpo-open-observed fn-sn-open-okp))))
 
-(deftheory fn-cpo-vocabulary '(fn-cpo-open-observed))
+(defthm fn-cpo-open-success-has-historical-relation
+  (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier events))
+           (fn-cpo-history-relation
+            configs (fn-sn-open-state
+                     (fn-cpo-open-observed configs frontier events))))
+  :hints (("Goal" :in-theory (enable fn-cpo-history-relation
+                                      fn-cpo-open-observed fn-sn-open-okp))))
+
+(deftheory fn-cpo-vocabulary '(fn-cpo-open-observed fn-cpo-history-relation))
 (in-theory (disable fn-cpo-vocabulary))
