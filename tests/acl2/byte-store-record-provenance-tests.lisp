@@ -1025,3 +1025,15 @@
                        nil *bsk5-groups* *bsk5-capacity*))))
     (equal (fn-bs-durable-frontier (car pair))
            (1+ (fn-sf-frontier (cdr entry)))))))
+
+; The physical root fence precedes the logical :frontier-dir :ok callback.
+; At that cut the kernel has observed the replacement, but not reservation.
+(assert-event
+ (let* ((entry (bsk5-finished))
+        (pair (nth 12 (fn-bs-run (car entry) (cdr entry)
+                      (fn-bs-frontier-program ".allocation-k0-2"
+                                               (bsk0-second-frontier-host-frame))
+                      nil *bsk5-groups* *bsk5-capacity*))))
+   (and (equal (fn-sf-phase (cdr pair)) :frontier-attempted)
+        (equal (fn-sf-frontier-candidate (cdr pair))
+               (fn-bs-durable-frontier (car pair))))))
