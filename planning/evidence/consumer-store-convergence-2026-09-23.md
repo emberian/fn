@@ -38,3 +38,21 @@ other four or the full native E2 workflow.
 `sh tests/test_native_owner_consumer_raw.sh` passed locally. Its recording
 stubs exercise the native publisher's call order and refusal cut; they do not
 establish disk durability or an authenticated end-to-end consumer session.
+
+## Combined repair check
+
+At `22418c27`, the next full Makefile-root run reused 515 matching books and
+certified fourteen more in 43.390 seconds. Only the owner-prepare negative
+fixture failed; all implementation and invariant books passed. Its stale-node
+constructor also reset the identity sequence, so the new prefix gate masked
+the intended missing-relation counterexample. The fixture now changes only
+the node/index while retaining the actual sequence and consumer projection.
+The scoped repaired test passed run `run-20260923T220303Z-19e5`; this is a
+repair of the witness, with no new implementation or theorem weakening.
+The original full-run manifest is
+[215944Z-269366](manifests/certify-20260923T215944Z-269366.json).
+
+The other repairs now derive physical and BP restart consumer validity from
+`fn-csi-full-relationp`, a relation preserved by the Store trace, rather than
+assuming the desired replay result. Native endpoint qualification remains a
+subsequent task. `make check` passed at `22418c27`.
