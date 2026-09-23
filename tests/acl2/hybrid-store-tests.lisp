@@ -51,12 +51,12 @@
                ',(fn-id-subject-of-payload *hst-carried-received*)))
 (defconst *hst-carried-subject*
   (fn-record-octets-string (fn-id-text *hst-carried-subject-id*)))
-(defconst *hst-carried-obligation*
-  (fn-record-octets-string
-   (fn-id-text
-    (fn-id-obligation-of
-     (fn-record-string-octets "<hybrid@example.invalid>")
-     *hst-carried-subject-id*))))
+(make-event `(defconst *hst-carried-obligation*
+               ',(fn-record-octets-string
+                  (fn-id-text
+                   (fn-id-obligation-of
+                    (fn-record-string-octets "<hybrid@example.invalid>")
+                    *hst-carried-subject-id*)))))
 (make-event `(defconst *hst-carried-event*
                ',(fn-hsig-authorized-carried-submission-event
                   2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
