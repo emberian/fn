@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 427 |
 | Certification roots in the Makefile | 422 |
 | Books inside the root closure | 426 |
-| `defthm` and `defthmd` events | 7162 |
-| `defun` events | 5441 |
-| Functions with verified guards | 1756 |
+| `defthm` and `defthmd` events | 7164 |
+| `defun` events | 5442 |
+| Functions with verified guards | 1757 |
 | Functions declared `:verify-guards nil` and never verified | 289 |
 | Functions left at the default with an explicit guard | 2722 |
 | Functions left at the default with no guard | 674 |
-| `assert-event` checks | 7875 |
+| `assert-event` checks | 7878 |
 | `must-fail` checks | 282 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 66 |
@@ -112,8 +112,8 @@ that `make certify` requests.
 | `books/bp-bundle-invariants.lisp` | root | 30 | 1 | 0/0/0/1 | 0 | 0 | 2 |
 | `books/bp-bundle.lisp` | root | 41 | 48 | 31/0/17/0 | 0 | 0 | 0 |
 | `books/bp-fragment-fast.lisp` | root | 15 | 8 | 6/0/0/2 | 0 | 0 | 0 |
-| `books/bp-fragment-invariants.lisp` | root | 60 | 3 | 0/0/0/3 | 0 | 0 | 3 |
-| `books/bp-fragment.lisp` | root | 6 | 35 | 34/1/0/0 | 0 | 0 | 0 |
+| `books/bp-fragment-invariants.lisp` | root | 62 | 3 | 0/0/0/3 | 0 | 0 | 3 |
+| `books/bp-fragment.lisp` | root | 6 | 36 | 35/1/0/0 | 0 | 0 | 0 |
 | `books/bp-ingress.lisp` | root | 22 | 44 | 41/0/3/0 | 0 | 0 | 0 |
 | `books/bp-limits.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-native-app-fast.lisp` | root | 24 | 15 | 0/0/15/0 | 0 | 0 | 0 |
@@ -358,7 +358,7 @@ that `make certify` requests.
 | `tests/acl2/bp-authored-wire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 3 | 0 |
 | `tests/acl2/bp-bundle-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 68 | 0 | 0 |
 | `tests/acl2/bp-fragment-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
-| `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 85 | 0 | 0 |
+| `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 88 | 0 | 0 |
 | `tests/acl2/bp-ingress-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
 | `tests/acl2/bp-ingress-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 21 | 0 | 0 |
 | `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |

@@ -213,6 +213,26 @@
  (equal (fn-bpp-adu-key
          (fn-bpf-refragment-block *bpf-refragment-parent* 3))
         (fn-bpp-adu-key *bpf-refragment-parent*)))
+(defconst *bpf-refragment-children*
+  (fn-bpf-refragment-primaries
+   *bpf-refragment-parent* (fn-bpf-starts '(3))))
+(assert-event (equal (len *bpf-refragment-children*) 2))
+(assert-event
+ (and (equal (fn-bpp-fragment-offset (nth 0 *bpf-refragment-children*)) 100)
+      (equal (fn-bpp-fragment-offset (nth 1 *bpf-refragment-children*)) 103)
+      (equal (fn-bpp-total-adu-length (nth 0 *bpf-refragment-children*)) 300)
+      (equal (fn-bpp-total-adu-length (nth 1 *bpf-refragment-children*)) 300)
+      (equal (fn-bpp-adu-key (nth 0 *bpf-refragment-children*))
+             (fn-bpp-adu-key *bpf-refragment-parent*))
+      (equal (fn-bpp-adu-key (nth 1 *bpf-refragment-children*))
+             (fn-bpp-adu-key *bpf-refragment-parent*))))
+; A mapper using local starts directly as ADU offsets violates N09 at both
+; children, despite the valid parent and successful local cut.
+(assert-event
+ (not (equal (fn-bpp-fragment-offset
+              (nth 1 (fn-bpf-fragment-primaries
+                      *bpf-refragment-parent* '(0 3) 300)))
+             (fn-bpp-fragment-offset (nth 1 *bpf-refragment-children*)))))
 
 ; Removing the whole-parent hypothesis changes the conclusion while the
 ; block shape, cut shape, and retained extent remain valid.  A child of an

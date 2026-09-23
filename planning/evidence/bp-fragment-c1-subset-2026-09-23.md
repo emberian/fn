@@ -97,3 +97,24 @@ implementation.
 The host does not call either new fast function. Principal/coherence
 active-set partitioning, machine-level N09/N10, and native malformed-input
 behavior remain open for C2. This record makes no DTN readiness claim.
+
+The N09 contract extension adds `fn-bpf-refragment-primaries`, a guarded
+mapper from local cut starts to primary blocks in the original ADU
+coordinates. Its list induction `fn-bpf-refragment-primaries-nth` connects
+each child to the single-child constructor; under the full fragment-parent,
+successful-cut and retained-extent premises,
+`fn-bpf-refragment-primaries-compose-at` proves each child has parent offset
+plus its local start, the original total ADU length and the parent's ADU key.
+The fixture checks both children at offsets 100 and 103 of a 300-octet ADU
+and separates the old direct-local-start mapper at the second child. This is
+the N09 contract half; no machine event consumes this mapper yet.
+
+The modified `bp-fragment` root passed in `run-20260923T145546Z-ac19`, with
+[`certify-20260923T145550Z-860115.json`](manifests/certify-20260923T145550Z-860115.json).
+The fixed affected-root selector then chose seven roots; the incremental
+`run-20260923T145748Z-4100` reused that matching root and certified the six
+remaining roots, all passing under ACL2 8.7 / SBCL 2.6.8 on persvati, jobs 2.
+The closure manifest is
+[`certify-20260923T145755Z-878201.json`](manifests/certify-20260923T145755Z-878201.json).
+It records 11.644 seconds of certification time for those six books. This
+does not extend the N09 result to a machine transition or close N10.
