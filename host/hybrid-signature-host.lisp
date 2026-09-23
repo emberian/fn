@@ -70,3 +70,15 @@
    sequence txid generation keyring-generation enrolled-snapshot
    msgid source groups obligation-id content-subject release-evidence charge
    principal keys signatures observed-ml-key ed ml observation))
+
+(defun fn-hsig-host-authorized-carried-submission-event
+    (sequence txid generation keyring-generation enrolled-snapshot
+              msgid source received groups obligation-id content-subject
+              release-evidence charge principal keys signatures observed-ml-key
+              ed ml observation)
+  (declare (xargs :mode :program))
+  (fn-hsig-authorized-carried-submission-event
+   sequence txid generation keyring-generation enrolled-snapshot
+   msgid source received groups obligation-id content-subject
+   release-evidence charge principal keys signatures observed-ml-key
+   ed ml observation))

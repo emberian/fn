@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/hybrid-store")
 (include-book "../../books/codec-attach")
+(include-book "../../books/crypto-attach")
 (include-book "std/testing/assert-equal" :dir :system)
 
 (defconst *hst-principal* (make-list 32 :initial-element 7))
@@ -22,6 +23,7 @@
 
 (defconst *hst-authored-source*
   (append (hst-line "From: author@example.invalid")
+          (hst-line "Date: Wed, 23 Sep 2026 12:00:00 +0000")
           (hst-line "Newsgroups: example")
           (hst-line "Subject: exact source")
           (hst-line "Message-ID: <hybrid@example.invalid>")
@@ -35,6 +37,77 @@
   (append (hst-line "From: author@example.invalid")
           (hst-line "Newsgroups: example")
           (hst-line "Subject: missing id") '(13 10)))
+ nil)
+
+; Version 1 retains exact signed source separately from the received wire
+; projection.  The latter is the Store article payload and charge subject.
+(make-event `(defconst *hst-carried-received*
+               ',(fn-hc-render-at-most *fn-article-max-octets*
+                                       *hst-authored-source* *hst-principal*
+                                       *hst-keys* *hst-signatures*)))
+(assert! *hst-carried-received*)
+(assert! (not (equal *hst-carried-received* *hst-authored-source*)))
+(make-event `(defconst *hst-carried-event*
+               ',(fn-hsig-authorized-carried-submission-event
+                  2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+                  *hst-authored-source* *hst-carried-received* '("example")
+                  "obligation" "subject" "release"
+                  (fn-charge-for-payload (len *hst-carried-received*))
+                  *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+                  :verified :verified
+                  (fn-clock-observation 1 841000000000 0 t))))
+(assert! (fn-stxa-p *hst-carried-event*))
+(assert-equal (fn-stxa-schema *hst-carried-event*) 1)
+(assert-equal (fn-stxa-authored-source *hst-carried-event*)
+              *hst-authored-source*)
+(assert-equal (fn-stxa-authored-id *hst-carried-event*)
+              (fn-hsig-authored-source-id *hst-authored-source*))
+(assert! (fn-hsig-article-event-snapshot-bindsp
+          *hst-carried-event*
+          (fn-hsig-keyring-event 1 2 3 4 *hst-principal* *hst-keys*)))
+(make-event `(defconst *hst-carried-wrong-id*
+               ',(fn-stxa-make-carried
+                  (fn-stxa-sequence *hst-carried-event*)
+                  (fn-stxa-txid *hst-carried-event*)
+                  (fn-stxa-generation *hst-carried-event*)
+                  (fn-stxa-keyring-generation *hst-carried-event*)
+                  (fn-stxa-profile *hst-carried-event*)
+                  (fn-stxa-content-subject *hst-carried-event*)
+                  (fn-stxa-article-record *hst-carried-event*)
+                  (fn-stxa-verdict-event *hst-carried-event*)
+                  (fn-stxa-authored-source *hst-carried-event*)
+                  (make-list 32 :initial-element 0))))
+(assert! (fn-stxa-bindsp *hst-carried-wrong-id*))
+(assert-equal
+ (fn-hsig-article-event-snapshot-bindsp
+  *hst-carried-wrong-id*
+  (fn-hsig-keyring-event 1 2 3 4 *hst-principal* *hst-keys*))
+ nil)
+(assert-equal
+ (fn-hsig-article-event-snapshot-bindsp
+  *hst-carried-event*
+  (fn-hsig-keyring-event
+   1 2 3 4 *hst-principal*
+   (list (cons :ed25519 (make-list 32 :initial-element 23))
+         (cons :ml-dsa-65 *hst-ml-key*))))
+ nil)
+(assert-equal
+ (fn-hsig-authorized-carried-submission-event
+  2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+  (append *hst-authored-source* '(32)) *hst-carried-received* '("example")
+  "obligation" "subject" "release"
+  (fn-charge-for-payload (len *hst-carried-received*))
+  *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+  :verified :verified (fn-clock-observation 1 841000000000 0 t))
+ nil)
+(assert-equal
+ (fn-hsig-authorized-carried-submission-event
+  2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+  *hst-authored-source* *hst-carried-received* '("example")
+  "obligation" "subject" "release"
+  (fn-charge-for-payload (len *hst-carried-received*))
+  *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+  :verified :invalid (fn-clock-observation 1 841000000000 0 t))
  nil)
 
 (assert!
