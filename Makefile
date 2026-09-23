@@ -439,6 +439,9 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 
 check:
 	$(PYTHON) tools/check_scaffold.py
+# Read-only warning over the newest local certification manifest.  A stale
+# source closure is labeled as such; this does not certify current bytes.
+	$(PYTHON) tools/proof_cost.py
 # Every host file loaded alone in its own ACL2: the dynamic half of the
 # host-names lint.  Needs FN_ACL2 and installed certificates; without
 # FN_ACL2 it prints that it did not run and exits 0.
