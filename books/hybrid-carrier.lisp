@@ -320,6 +320,26 @@
           (append (fn-hc-field-lines (cadr value)) source)
         nil))))
 
+; Rendering can add more than seven thousand carrier octets to a source near
+; the article limit.  Bound the complete received article before a caller
+; writes it or offers it to the bounded received-article parser.
+(defun fn-hc-render-at-most (max-octets source principal keys signatures)
+  (declare (xargs :guard t))
+  (let ((received (fn-hc-render source principal keys signatures)))
+    (if (and (natp max-octets)
+             (fn-cbor-octet-listp received)
+             (consp received)
+             (fn-cbor-at-mostp received max-octets)) received nil)))
+
+(defthm fn-hc-render-at-most-emitted-bound
+  (implies (fn-hc-render-at-most max-octets source principal keys signatures)
+           (fn-cbor-at-mostp
+            (fn-hc-render-at-most max-octets source principal keys signatures)
+            max-octets))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hc-render-at-most)
+                (fn-hc-render fn-cbor-at-mostp fn-cbor-octet-listp)))))
+
 (defthm fn-hc-error-preserves-original
   (equal (nth 2 (fn-hc-error reason original)) original))
 
@@ -371,7 +391,7 @@
                     (:d fn-hc-no-other-reservedp) (:d fn-hc-find-name)
                     (:d fn-hc-received-plan) (:d fn-hc-take) (:d fn-hc-drop)
                     (:d fn-hc-fold-rest) (:d fn-hc-field-lines)
-                    (:d fn-hc-render)))
+                    (:d fn-hc-render) (:d fn-hc-render-at-most)))
 
 (deftheory fn-hybrid-carrier-vocabulary
   '(fn-hc-ok fn-hc-error fn-hc-okp fn-hc-value fn-hc-items fn-hc-encode
@@ -380,4 +400,5 @@
     fn-hc-required-sourcep
     fn-hc-source-header fn-hc-authored-source fn-hc-count-name
     fn-hc-no-other-reservedp fn-hc-find-name fn-hc-received-plan
-    fn-hc-take fn-hc-drop fn-hc-fold-rest fn-hc-field-lines fn-hc-render))
+    fn-hc-take fn-hc-drop fn-hc-fold-rest fn-hc-field-lines fn-hc-render
+    fn-hc-render-at-most))

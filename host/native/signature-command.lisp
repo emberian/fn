@@ -86,7 +86,7 @@ Output is two algorithm-tagged lowercase hexadecimal lines."
            :message "usage: fn hybrid-verify-carrier ARTICLE ML-PUBLIC-PEM"))
   (let* ((received (fnn-octet-list
                     (fnn-read-regular-bounded
-                     (first args) (fnn-core 'fn-hsig-host-max-source-octets))))
+                     (first args) (fnn-core 'fn-hsig-host-max-received-octets))))
          (result (fnn-hsig-verify-received-carrier received (second args))))
     (if (eq (first result) :verified)
         (progn (fnn-out "verified ~a" (fnn-hex (third result))) 0)
