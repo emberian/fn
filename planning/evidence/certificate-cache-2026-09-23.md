@@ -31,9 +31,10 @@ fn environment `ACL2_BOOK_HASH_ALISTP=NIL ACL2_CUSTOMIZATION=NONE`.
   at include time (`include-book-certified-p`, on the certificate's
   post-alist), on the portcullis pre-alist, and between certify-book's Step 2
   and Step 3.
-- With `ACL2_BOOK_HASH_ALISTP=NIL` the book-hash is a checksum of the forms
-  read, not a write date. (`:doc book-hash`) Comments do not change it.
-  fn's closure key hashes bytes, so it is stricter.
+- With `ACL2_BOOK_HASH_ALISTP=NIL` the book-hash omits write dates. The
+  initial experiment inferred that equal source bytes were sufficient for
+  equal hashes; the correction below measures a counterexample involving
+  certification data and expansion alists.
 - `include-book-certification-tuple` records the certificate's own
   full-book-name (`cert-full-book-name`) in the world's `include-book-alist`,
   so the world names the origin's paths. It never opens them.
@@ -51,11 +52,12 @@ That last point explains the 2026-09-21 failures in
 [cert-origin-coherence-2026-09-21.md](cert-origin-coherence-2026-09-21.md).
 Their `served` logs list 41 such entries under one error. That error is
 printed only when some `(familiar-name annotations . book-hash)` differed.
-The mismatch was in content or annotations, and the absolute paths were
+The mismatch was in a compared alist field, and the absolute paths were
 only how ACL2 worded it. The logs do not say which entry differed. The
-likely source is the legacy per-book `install`, which then mixed pairs from
-the laptop and three boxes with no toolchain identity. That repair's
-toolchain identity and closure-key checks already rule this out.
+likely source was the legacy per-book `install`, which mixed pairs from
+the laptop and three boxes with no toolchain identity; later evidence shows
+that the toolchain identity and closure key alone cannot guarantee equal
+book hashes either.
 
 ## The experiment
 
@@ -253,6 +255,43 @@ real cost was `--require-origin`. Composition matters when the digests a lane
 branched at are split across runs, which is the situation described tonight.
 
 ## What is not shown
+
+### Correction from the hbox mixed-origin failure, later on 2026-09-23
+
+The earlier inference that equal source bytes force equal ACL2 book hashes is
+false. In `run-20260923T193615Z-c782`, `books/replay` failed before its new
+proof because its cached `hybrid-store` parent required `records-seam` hash
+`968568672`, while the newest chosen `records-seam` certificate's own hash
+was `327056652`. The source SHA, whole source-closure key, and toolchain
+identity matched. ACL2's `book-hash` also uses certification data and the
+expansion alist. The full-book-name messages in the replay log were symptoms;
+the unequal book hashes were the decisive incompatibility.
+
+The incremental selector now asks ACL2 to read and compare candidate
+certificate post-alists. In a read-only hbox scratch copy of the failed
+snapshot, it installed all 43 cached books needed by `hybrid-store` from four
+origins, selecting compatible T2 `records-seam` and `stx-accept-records`
+certificates. An ACL2 8.7 `(include-book "books/hybrid-store")` then succeeded.
+This reproduces and resolves the observed certificate-composition fault; it
+does not certify E2 or establish arbitrary cache correctness. ACL2 remains
+the final checker when the requested books are included or certified.
+
+The failed run was `run-20260923T193615Z-c782`, with manifest
+`certify-20260923T193622Z-4173864.json`. The reproduction copied its source
+snapshot to hbox `/tank/fn/gates/cache-compose-replay-probe-1936` and used
+`/tank/fn/toolchains/w28/acl2-literal-4g`, toolchain identity
+`d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0`,
+with `ACL2_BOOK_HASH_ALISTP=NIL ACL2_CUSTOMIZATION=NONE`. The selector queried
+119 candidate certificates across 43 books and 2,337 candidate parent/child
+comparisons. Its report was `installed 3, kept 40, missing 0`, with 31 v0,
+three T2, six authorship and three freeze-dev pairs. The following ACL2
+include printed a compiled-file warning because the scratch copy omitted
+`.fasl`, then returned normally with no proof failure. No E2 root was
+certified in this reproduction.
+
+The original measurement above remains evidence for its tested compositions,
+not a universal same-source hash guarantee. Its `install-set` mixed fallback
+does not use the new incremental selector.
 
 - The experiment covers one three-book chain and one diamond (case 5) on one
   host and toolchain. It does not include `.pcert` handling (`--pcert` mode),

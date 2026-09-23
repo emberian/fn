@@ -158,6 +158,9 @@ class FakeRepository:
         argv = ["certify_books.py", "--jobs", str(jobs), *extra, *books]
         with mock.patch.object(runner, "ROOT", self.root), \
                 mock.patch.object(runner.ledger, "ROOT", self.root), \
+                mock.patch.object(runner.certs.cert_alists, "acl2_certificate_pairs",
+                                  side_effect=lambda paths, pairs, acl2, root:
+                                  {pair: (True, True) for pair in pairs}), \
                 mock.patch.object(runner, "BUILD_ROOT", build), \
                 mock.patch.object(runner, "WALL_HISTORY", self.history), \
                 mock.patch.dict(os.environ, environment, clear=True), \
@@ -636,7 +639,7 @@ class IncrementalTests(unittest.TestCase):
             self.assertEqual(manifest["cache_install"]["roots_installed"], ["books/leaf-a"])
             self.assertEqual(set(manifest["book_provenance"].values()), {"installed"})
 
-    def test_an_installed_book_over_a_failed_dependency_is_named(self):
+    def test_a_cached_parent_is_recertified_when_its_child_is_uncached(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = self.seeded(directory, ["books/base", "books/mid"])
             key, _ = runner.certs.closure_key(repository.root, "books/base")
@@ -645,7 +648,8 @@ class IncrementalTests(unittest.TestCase):
                 ["books/leaf-a"], jobs=2, extra=["--incremental"], fail="books/base")
             self.assertEqual(code, 1)
             self.assertEqual(manifest["book_results"]["books/base"], "failed")
-            self.assertEqual(manifest["installed_over_failed"], ["books/mid"])
+            self.assertEqual(manifest["installed_over_failed"], [])
+            self.assertIn("books/mid", manifest["requested_books"])
 
     def test_incremental_and_closure_are_refused_together(self):
         with tempfile.TemporaryDirectory() as directory:
