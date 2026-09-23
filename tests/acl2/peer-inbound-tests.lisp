@@ -248,6 +248,30 @@
                      (fn-node-prepare *pt-node0* 1 "<a1@example.invalid>" *pt-a1-stored* '("fn.letters")
                                       "ob-a1" "subject-a1" "peer-transit:innA" (fn-charge-for-payload (len *pt-a1-stored*))
                                       (fn-record-stamp-of-observation *pt-obs*))))
+(defconst *pt-no-wall* (fn-clock-observation 1000000 0 0 nil))
+(assert-event
+ (equal (fn-peer-decision-kind
+         (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-id1*
+                                  *pt-a1* *pt-no-wall* "ob-a1" "subject-a1"))
+        :want))
+(assert-event
+ (equal (nth 8 (fn-peer-injection-arguments
+                 *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* 1
+                 "ob-a1" "subject-a1" *pt-no-wall*))
+        :clock-unusable))
+(assert-event
+ (equal (nth 0 (mv-list 2 (fn-peer-transfer
+                         *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1*
+                         *pt-no-wall* 1 "ob-a1" "subject-a1")))
+        *pt-node0*))
+(assert-event
+ (equal
+  (let ((a (fn-peer-injection-arguments
+            *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* 1
+            "ob-a1" "subject-a1" *pt-no-wall*)))
+    (fn-node-prepare *pt-node0* (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
+                     (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a)))
+  *pt-node0*))
 ; Nothing is published by the prepare: the archive is unchanged until the
 ; store's :durable completion.
 (assert-event (equal (fn-state-articles (fn-node-acceptance (nth 0 *pt-t1*))) nil))

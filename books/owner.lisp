@@ -1561,7 +1561,8 @@
 ; consumes the actual fn-sn-finish, fn-own-completion-consumed-once); a host
 ; word of :durable without one is :uncertain, never 240.  :refused is the
 ; host's typed refusal (nothing was staged, or the reservation was consumed
-; by a refusal); everything else is :uncertain.
+; by a refusal); :clock-unusable remains a distinct owner-clock refusal,
+; and all other words are :uncertain.
 (defun fn-own-outcome-completion (o word)
   (declare (xargs :guard t))
   (let ((sub (fn-own-inflight o)))
