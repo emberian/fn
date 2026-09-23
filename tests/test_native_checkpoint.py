@@ -113,7 +113,37 @@ class NativeCheckpointTests(unittest.TestCase):
             stderr=subprocess.PIPE)
         try:
             wait_for_announcement(owner, b"LISTENING ")
-            old_cursor = self.consumer_history(control, "clone-worker")
+            initial_cursor = self.consumer_history(control, "clone-worker")
+            # An accepted article after registration gives poll a real
+            # report and a cursor strictly beyond the zero ACK.  Poll itself
+            # is read-only; only the subsequent ACK changes durable progress.
+            msgid = "<clone-progress@example.invalid>"
+            progress_article = self.base / "clone-progress.eml"
+            progress_article.write_bytes(
+                b"From: author@example.invalid\r\n"
+                b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+                b"Newsgroups: fn.letters\r\n"
+                b"Subject: clone progress\r\nMessage-ID: " +
+                msgid.encode("ascii") + b"\r\n\r\nadvance before clone\r\n")
+            self.native("operator", config, "post", "--message-id", msgid,
+                        "--payload", progress_article, "--group", "fn.letters")
+            advanced_cursor = self.base / "clone-worker-advanced.fncu"
+            report = self.base / "clone-worker-report.fnse"
+            self.assertIn("consumer accepted",
+                          self.native("consumer", "poll", control,
+                                      "clone-worker", advanced_cursor,
+                                      report).stdout)
+            self.assertTrue(report.read_bytes())
+            self.assertNotEqual(advanced_cursor.read_bytes(),
+                                initial_cursor.read_bytes())
+            self.assertIn("consumer accepted",
+                          self.native("consumer", "ack", control,
+                                      advanced_cursor).stdout)
+            old_cursor = advanced_cursor
+            settled = self.base / "clone-worker-settled.fncu"
+            self.native("consumer", "position", control, "clone-worker",
+                        settled)
+            self.assertEqual(settled.read_bytes(), advanced_cursor.read_bytes())
         finally:
             diagnostic = stop_and_diagnostics(owner, timeout=60)
             self.assertEqual(owner.returncode, 0, diagnostic)
@@ -134,11 +164,11 @@ class NativeCheckpointTests(unittest.TestCase):
         self.assertEqual(
             (source / "packs" / "generation-0.fncp").read_bytes(),
             (target / "packs" / "generation-0.fncp").read_bytes())
-        self.assertIn("articles=1",
+        self.assertIn("articles=2",
                       self.native("store", target, "recover").stdout)
         # Prefix reclamation changed physical names, never dense history.
         packed = self.native("checkpoint", "pack", target)
-        self.assertIn("records=5", packed.stdout)
+        self.assertIn("records=7", packed.stdout)
         target_control = self.base / "clone-target-control.sock"
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))
@@ -177,7 +207,7 @@ class NativeCheckpointTests(unittest.TestCase):
             ("checkpoint", "clone", source, prepublication),
             "clone-fence-durable")
         self.assertFalse(prepublication.exists())
-        self.assertIn("articles=1",
+        self.assertIn("articles=2",
                       self.native("store", source, "recover").stdout)
 
         for point in ("clone-published", "clone-rollover-durable"):
@@ -191,10 +221,10 @@ class NativeCheckpointTests(unittest.TestCase):
                 self.assertIn("fenced pending durable incarnation", refused.stderr)
                 self.native("checkpoint", "clone-resume", destination)
                 self.assertFalse((destination / "clone-pending.fnce").exists())
-                self.assertIn("articles=1",
+                self.assertIn("articles=2",
                               self.native("store", destination, "recover").stdout)
                 packed = self.native("checkpoint", "pack", destination)
-                self.assertIn("records=5", packed.stdout)
+                self.assertIn("records=7", packed.stdout)
 
         # Process death after unlink is safe because the independent reopen
         # already confirmed the durable rollover.  A power-loss claim still
@@ -204,9 +234,9 @@ class NativeCheckpointTests(unittest.TestCase):
             ("checkpoint", "clone", source, unlinked),
             "clone-fence-unlinked")
         self.assertFalse((unlinked / "clone-pending.fnce").exists())
-        self.assertIn("articles=1",
+        self.assertIn("articles=2",
                       self.native("store", unlinked, "recover").stdout)
-        self.assertIn("records=5",
+        self.assertIn("records=7",
                       self.native("checkpoint", "pack", unlinked).stdout)
 
     @unittest.skipUnless(sys.platform.startswith("linux") and
