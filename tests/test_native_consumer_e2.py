@@ -214,6 +214,122 @@ class NativeConsumerE2Tests(unittest.TestCase):
                          recovered)
         self.stop_owner(reopened)
 
+    @unittest.skipUnless(os.environ.get("FN_RUN_CONSUMER_POLL_E2E") == "1",
+                         "requires the ACL2-owned consumer poll command")
+    def test_signed_composite_poll_and_lost_positive_ack_reply(self):
+        from tools import run_store
+
+        node = self.node("signed-poll")
+        owner = self.start_owner(node)
+        self.bootstrap(node)
+        before = self.register(node, "worker", node["base"] / "registered.fncu")
+
+        principal = node["base"] / "principal.bin"
+        ed_public = node["base"] / "ed-public.bin"
+        ed_secret = node["base"] / "ed-secret.bin"
+        ml_private = node["base"] / "ml-private.pem"
+        ml_public = node["base"] / "ml-public.pem"
+        principal.write_bytes(bytes([85]) * 32)
+        ed_public.write_bytes(bytes.fromhex(
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        ed_secret.write_bytes(bytes.fromhex(
+            "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
+        made = subprocess.run([openssl, "genpkey", "-algorithm", "ML-DSA-65",
+                               "-out", str(ml_private)], cwd=ROOT,
+                              env=self.env, capture_output=True, timeout=60,
+                              check=False)
+        self.assertEqual(made.returncode, 0, made.stderr.decode("utf-8", "replace"))
+        exported = subprocess.run([openssl, "pkey", "-in", str(ml_private),
+                                   "-pubout", "-out", str(ml_public)],
+                                  cwd=ROOT, env=self.env, capture_output=True,
+                                  timeout=60, check=False)
+        self.assertEqual(exported.returncode, 0,
+                         exported.stderr.decode("utf-8", "replace"))
+
+        msgid = "<consumer-poll@example.invalid>"
+        source = (b"From: author@example.invalid\r\n"
+                  b"Newsgroups: fn.test\r\nSubject: exact consumer poll\r\n"
+                  b"Message-ID: " + msgid.encode("ascii") +
+                  b"\r\n\r\nsigned source body\r\n")
+        article = node["base"] / "authored.eml"
+        article.write_bytes(source)
+        self.accepted("hybrid-enroll", node["control"], "1", principal,
+                      ed_public, ml_public)
+        signatures = self.accepted("hybrid-sign", principal, ed_public,
+                                   ed_secret, ml_public, ml_private, article)
+        parts = dict(line.split() for line in signatures.stdout.decode("ascii").splitlines())
+        ed_sig = node["base"] / "ed.sig"
+        ml_sig = node["base"] / "ml.sig"
+        ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+        ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+        self.accepted("hybrid-author", node["control"], "1", article,
+                      ed_sig, ml_sig, ml_public)
+
+        poll_cursor = node["base"] / "polled.fncu"
+        report_path = node["base"] / "polled.event"
+        self.consumer("poll", node, "worker", poll_cursor, report_path)
+        continuation = poll_cursor.read_bytes()
+        report = report_path.read_bytes()
+        self.assertTrue(continuation.startswith(b"fncu\x01"))
+        self.assertNotEqual(continuation, before)
+        self.assertTrue(report)
+        self.assertEqual(self.position(node, "worker",
+                                       node["base"] / "pre-ack.fncu"), before)
+
+        # ACL2 decodes and checks the returned parent and its exact signed
+        # source. Python only transports the returned Store event octets.
+        bridge = run_store.Acl2Store()
+        try:
+            form = ("(let ((decoded (fn-stxa-decode-exact '" +
+                    bridge.literal(report) + ")) "
+                    "(and (fn-stmt-okp decoded) "
+                    "(let* ((event (fn-stmt-value decoded)) "
+                    "(record-result (fn-record-decode-exact "
+                    "(fn-stxa-article-record event)))) "
+                    "(and (fn-stxa-bindsp event) "
+                    "(equal (fn-stxa-authored-source event) '" +
+                    bridge.literal(source) + ") "
+                    "(fn-record-result-okp record-result) "
+                    "(equal (fn-record-msgid "
+                    "(fn-record-result-record record-result)) \"" + msgid +
+                    "\")))))")
+            self.assertTrue(run_store.acl2_boolean(bridge.call(form)))
+        finally:
+            bridge.close()
+
+        # Poll is read-only even when repeated; only an explicit ack commits
+        # the returned frontier. Lose the reply after that durable ack.
+        second_cursor = node["base"] / "second-polled.fncu"
+        second_report = node["base"] / "second-polled.event"
+        self.consumer("poll", node, "worker", second_cursor, second_report)
+        self.assertEqual(second_cursor.read_bytes(), continuation)
+        self.assertEqual(second_report.read_bytes(), report)
+        self.stop_owner(owner)
+
+        cut_owner = self.start_owner(node, stop_after_submit=True)
+        client = subprocess.Popen(
+            [str(IMAGE), "--fn", "consumer", "ack", str(node["control"]),
+             str(poll_cursor)], cwd=ROOT, env=self.env,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.addCleanup(self.reap, client)
+        wait_for_announcement(cut_owner, b"CONTROL-SUBMITTED", timeout=120)
+        cut_owner.kill()
+        cut_owner.wait(timeout=10)
+        stdout, stderr = client.communicate(timeout=30)
+        self.assertEqual(client.returncode, 3, (stdout + stderr).decode())
+
+        reopened = self.start_owner(node)
+        self.assertEqual(self.position(node, "worker",
+                                       node["base"] / "recovered-ack.fncu"),
+                         continuation)
+        after_cursor = node["base"] / "after-ack-poll.fncu"
+        after_report = node["base"] / "after-ack-poll.event"
+        self.consumer("poll", node, "worker", after_cursor, after_report)
+        self.assertEqual(after_report.read_bytes(), b"")
+        self.stop_owner(reopened)
+
     @unittest.skipUnless(sys.platform.startswith("linux") and os.geteuid() == 0
                          and shutil.which("setpriv"),
                          "requires Linux root and setpriv to offer a distinct "
