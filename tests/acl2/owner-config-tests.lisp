@@ -114,6 +114,18 @@
      *ocfg-t-invalid-conn*
      (fn-own-conns (fn-ocfg-owner *ocfg-t-3*))))
    (fn-ocfg-config *ocfg-t-3*) (fn-ocfg-pins *ocfg-t-3*) nil))
+; A failed owner rebuild leaves the old connection intact.  ADVANCE must not
+; publish a new configuration pin when that actual owner outcome is refused.
+(assert-event
+ (equal (car (fn-own-advance-result
+              (fn-ocfg-owner *ocfg-t-invalid-reader*) 0)) :refused))
+(assert-event
+ (equal (cdr (fn-own-advance-result
+              (fn-ocfg-owner *ocfg-t-invalid-reader*) 0))
+        (fn-ocfg-owner *ocfg-t-invalid-reader*)))
+(assert-event
+ (equal (fn-ocfg-pins (fn-ocfg-advance *ocfg-t-invalid-reader* 0))
+        (fn-ocfg-pins *ocfg-t-invalid-reader*)))
 (defconst *ocfg-t-closed-by-read*
   (cdr (fn-ocfg-read *ocfg-t-invalid-reader* 0 nil)))
 (assert-event

@@ -1392,7 +1392,7 @@
 ; verdict is recomputed for the new archive (one recognizer run per advance);
 ; the cursor is kept because local numbers are never reused (PRF-002); the
 ; wire framing state is kept because the peer's stream is unaffected.
-(defun fn-own-advance (o id)
+(defun fn-own-advance-result (o id)
   (declare (xargs :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
@@ -1429,9 +1429,18 @@
                                        (fn-own-view-index view)
                                        (fn-own-view-group-index view))))
           (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
-              (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o)))
-            o))
-      o)))
+              (cons :advanced
+                    (fn-own-set-conns o
+                                      (fn-own-replace-conn next
+                                                           (fn-own-conns o))))
+            (cons :refused o)))
+      (cons :absent o))))
+
+(defun fn-own-advance (o id)
+  ; Existing owner callers consume only the state.  The configured wrapper
+  ; consumes the outcome too, so a refused rebuild cannot move its pin.
+  (declare (xargs :guard t))
+  (cdr (fn-own-advance-result o id)))
 
 (defun fn-own-remove-subs (id subs)
   (declare (xargs :guard t))
