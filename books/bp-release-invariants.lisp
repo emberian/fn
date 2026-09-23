@@ -540,7 +540,14 @@
                                          fn-node-binding-ids
                                          fn-bprl-release-pins
                                          fn-retain-exact-release-records-its-evidence
-                                         fn-retain-make-release)))))
+                                         fn-retain-make-release
+                                         fn-node-statep fn-statep fn-node-stagep
+                                         fn-bp-configp fn-bp-work-listp
+                                         fn-bp-receipt-listp fn-bp-pendingp
+                                         fn-bp-tx-key-listp fn-bp-workp
+                                         fn-bp-receiptp fn-bp-attemptp
+                                         fn-fencedp fn-retain-admissiblep
+                                         fn-retain-admit)))))
 
 ; Lifted fn-retain-release-preserves-independent-pin: every other pin, in
 ; particular the article's archive pin, is untouched.
@@ -955,4 +962,7 @@
                                    fn-bp-apply-journal-record
                                    fn-bprl-release-decision
                                    fn-bprl-record-evidence
-                                   fn-bprl-undertake)))))
+                                   fn-bprl-undertake
+                                   fn-bprl-decision-state-formula
+                                   fn-bprl-decision-okp-formula
+                                   fn-bprl-decision-evidence-formula)))))

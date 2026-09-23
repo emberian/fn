@@ -56,8 +56,12 @@
                 (equal (fn-bp-attempt-generation attempt)
                        (fn-bp-work-next-generation work)))
            (fn-bp-workp config (fn-bp-work-with-attempt work attempt)))
-  :hints (("Goal" :in-theory (enable fn-bp-workp fn-bp-attemptp
-                                      fn-bp-work-with-attempt))))
+  ;; The attempt, the receipt and the status enumeration are carried over as
+  ;; the same terms, so their recognizers stay closed; open, they split the
+  ;; goal 112 ways (9.4 s, 2026-09-23).
+  :hints (("Goal" :in-theory (e/d (fn-bp-workp fn-bp-work-with-attempt)
+                                  (fn-bp-attemptp fn-bp-receiptp
+                                   fn-bp-transport-statusp)))))
 
 (defthm fn-bp-work-attempt-of-work-with-attempt
   (equal (fn-bp-work-attempt (fn-bp-work-with-attempt work attempt))
@@ -81,8 +85,10 @@
                 (consp (fn-bp-work-attempt work))
                 (fn-bp-transport-statusp status))
            (fn-bp-workp config (fn-bp-work-with-status work status)))
-  :hints (("Goal" :in-theory (enable fn-bp-work-with-status
-                                      fn-bp-attemptp))))
+  ;; The receipt and the new status are carried as the same terms: their
+  ;; recognizers stay closed (110-way split and 12 s open, 2026-09-23).
+  :hints (("Goal" :in-theory (e/d (fn-bp-work-with-status fn-bp-attemptp)
+                                  (fn-bp-receiptp fn-bp-transport-statusp)))))
 
 (defthm fn-bp-new-attemptp
   (implies (and (fn-bp-configp config)

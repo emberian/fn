@@ -20,24 +20,34 @@
        (fn-bp-pending-boundp (fn-bp-state-node s)
                              (fn-bp-state-pending s))))
 
+;; Each of the three is one conjunct of `fn-bp-binding-statep`; the conjuncts
+;; stay closed.  Opening `fn-bp-statep` split the first 149 ways (14.3 s) and
+;; the third 284 ways (8.6 s) over the work, attempt and receipt recognizers
+;; (2026-09-23).
 (defthm fn-bp-binding-state-implies-statep
   (implies (fn-bp-binding-statep s) (fn-bp-statep s))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-bp-binding-statep))))
+  :hints (("Goal" :in-theory (e/d (fn-bp-binding-statep)
+                                  (fn-bp-statep fn-bp-works-boundp
+                                   fn-bp-pending-boundp)))))
 
 (defthm fn-bp-binding-state-implies-works-boundp
   (implies (fn-bp-binding-statep s)
            (fn-bp-works-boundp (fn-bp-state-node s)
                                (fn-bp-state-works s)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-bp-binding-statep))))
+  :hints (("Goal" :in-theory (e/d (fn-bp-binding-statep)
+                                  (fn-bp-statep fn-bp-works-boundp
+                                   fn-bp-pending-boundp)))))
 
 (defthm fn-bp-binding-state-implies-pending-boundp
   (implies (fn-bp-binding-statep s)
            (fn-bp-pending-boundp (fn-bp-state-node s)
                                  (fn-bp-state-pending s)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-bp-binding-statep))))
+  :hints (("Goal" :in-theory (e/d (fn-bp-binding-statep)
+                                  (fn-bp-statep fn-bp-works-boundp
+                                   fn-bp-pending-boundp)))))
 
 (defthm fn-bp-work-boundp-with-attempt
   (equal (fn-bp-work-boundp node (fn-bp-work-with-attempt work attempt))
@@ -165,7 +175,11 @@
     (e/d (fn-bp-binding-statep fn-bp-prepare-receipt
                                fn-bp-pending-boundp)
          (fn-bp-statep fn-bp-works-boundp fn-bp-work-boundp
-          fn-bp-find-work fn-bp-work-with-receipt)))))
+          fn-bp-find-work fn-bp-work-with-receipt
+          ;; the refusal tests of `fn-bp-prepare-receipt' are carried as
+          ;; terms; opened, they split the goal 360 ways (9.2 s, 2026-09-23)
+          fn-bp-authorized-receiptp fn-bp-configp fn-bp-workp
+          fn-bp-receiptp fn-bp-attemptp)))))
 
 (defthm fn-bp-works-boundp-of-cons
   (implies (and (fn-bp-work-boundp node work)
