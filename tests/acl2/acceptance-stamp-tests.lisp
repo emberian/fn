@@ -1,7 +1,7 @@
 ; The schema migration and owner-observation stamp, with executable teeth.
 (in-package "ACL2")
 (include-book "store-node-tests")
-(include-book "../../books/records-attach")
+(include-book "../../books/acceptance-stamp-invariants")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defconst *ast-observation* (fn-clock-observation 1 841000000000 0 t))
@@ -48,6 +48,21 @@
  (defthm ast-prepare-refusal-without-legacy-hypothesis-fails
    (equal (fn-sn-prepare *sn-reserved* *ast-built*) *sn-reserved*)
    :rule-classes nil))
+
+; The positive finish witness uses the exact pre-completion record staged by
+; the file kernel, and checks the four article-arm exclusions independently.
+(assert-event (fn-sn-completion-enabledp *sn-completing*))
+(assert-event (not (fn-store-retention-event-p
+                    (fn-sn-completion-record *sn-completing*))))
+(assert-event (not (fn-stxe-p (fn-sn-completion-record *sn-completing*))))
+(assert-event (not (fn-stxk-p (fn-sn-completion-record *sn-completing*))))
+(assert-event (not (fn-stxa-p (fn-sn-completion-record *sn-completing*))))
+(assert-event (equal (fn-article-stamp
+                      (fn-find-article "<sn@example>"
+                                       (fn-state-articles
+                                        (fn-node-acceptance
+                                         (fn-sn-node (fn-sn-finish *sn-completing*))))))
+                     (fn-record-stamp (fn-sn-completion-record *sn-completing*))))
 
 ; The two exact grammars differ only in the schema octet and final stamp item.
 (defconst *ast-schema0* *fn-record-schema0-golden-octets*)
