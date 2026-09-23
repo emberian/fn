@@ -1,0 +1,4 @@
+matrix: planning/evidence/v0-reader-884e4816-openssl.json
+faulted=1 (host fault or usage exit codes; not outcomes, counted as not exercised, and the run exits 1 over them)
+evidence: planning/evidence/v0-reader-884e4816-openssl.md
+steps=220 failed=0 not-exercised=47
