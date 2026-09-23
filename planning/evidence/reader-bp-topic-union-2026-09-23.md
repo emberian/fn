@@ -40,3 +40,24 @@ manifest. That static check does not make the failed proof roots green.
 The next reader/authored-peering/topic native image remains held for the finite
 repairs. Independent A3 BP image qualification continues on its own source.
 No live node was changed and no release claim follows from this run.
+
+## Finite repairs and full-root retry
+
+Source `884e4816` repairs the reader-context constructor and the actual pinned
+POST/agent theorem chain without changing their public conclusions. It also
+adds the bounded portable authored-source export needed by the Mini adapter.
+`make check` passed. Hbox run `run-20260923T203022Z-26d8` in
+`/tank/fn/gates/integrate-reader-repair-20260923` selected the complete default
+Makefile root set, covering the ideal and replay invariant books omitted by
+the earlier profile/test union. It used the same executable, cache, four jobs
+and per-book timeout, with no `--closure`.
+
+The [original retry manifest](manifests/certify-20260923T203040Z-47285.json)
+passes: 508 of 512 closure books reused from thirteen compatible origins and
+four newly certified books in 7.918 seconds of certification wall time.
+The repaired auth book's earlier scoped run took about six seconds rather
+than the failing union's 163.762 seconds; that comparison is proof-event
+repair evidence, not a full-tree benchmark. The source-matched developer
+image and native reader, authored peering/restart, topic inspection and Mini
+portable-verification runs are the next evidence; no runtime success is
+inferred from this proof run.
