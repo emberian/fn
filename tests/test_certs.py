@@ -30,6 +30,36 @@ sys.modules["certs"] = certs
 SPEC.loader.exec_module(certs)
 
 
+class ACL2AlistProbeTests(unittest.TestCase):
+    def test_missing_serialization_package_is_declared_only_in_probe(self):
+        calls = []
+
+        def run(*args, **kwargs):
+            calls.append(kwargs["input"].decode())
+            if len(calls) == 1:
+                return mock.Mock(returncode=0, stdout=b'The name "INSTANCE" does not designate any package')
+            return mock.Mock(returncode=0, stdout=b'ACL2 !>@@PAIR 0 1 T T\n@@DONE 1\n')
+
+        with mock.patch.object(certs.cert_alists.subprocess, "run", run):
+            result = certs.cert_alists.acl2_certificate_pairs(
+                [Path("a.cert"), Path("b.cert")], [(0, 1)], Path("acl2"), Path("."))
+        self.assertEqual(result, {(0, 1): (True, True)})
+        self.assertIn('(defpkg "INSTANCE" nil)', calls[1])
+        self.assertNotIn('(defpkg "INSTANCE" nil)', calls[0])
+
+    def test_unreadable_or_incomplete_probe_fails_closed(self):
+        paths = [Path("a.cert"), Path("b.cert")]
+        for output in (b'@@UNREADABLE 1\n@@PAIR 0 1 NIL NIL\n@@DONE 1\n',
+                       b'@@PAIR 0 1 T T\n'):
+            with self.subTest(output=output):
+                with mock.patch.object(certs.cert_alists.subprocess, "run",
+                                       return_value=mock.Mock(returncode=0,
+                                                              stdout=output)):
+                    with self.assertRaises(ValueError):
+                        certs.cert_alists.acl2_certificate_pairs(
+                            paths, [(0, 1)], Path("acl2"), Path("."))
+
+
 # The textual certificate form, which ACL2 before 8.7 wrote and which reads.
 TEXT_CERT = ('(IN-PACKAGE "ACL2")\n"ACL2 Version 8.7"\n'
              ":BEGIN-PORTCULLIS-CMDS\n:END-PORTCULLIS-CMDS\n:EXPANSION-ALIST\nNIL\n")
@@ -858,6 +888,15 @@ class PartialInstallTests(unittest.TestCase):
     TOOLCHAIN = ArtifactSetTests.TOOLCHAIN
     publish = ArtifactSetTests.publish
 
+    @staticmethod
+    def install(*args):
+        # The synthetic certificate fixtures are not ACL2-readable.  The
+        # real ACL2 alist reader has its own integration test below.
+        return certs.install_partial(
+            *args, acl2=Path("/fixture/acl2"),
+            pair_checker=lambda paths, pairs, acl2, root:
+                {pair: (True, True) for pair in pairs})
+
     def test_a_cached_bottom_installs_and_the_uncached_top_is_named(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as destination:
             cache = Path(destination) / "cache"
@@ -867,7 +906,7 @@ class PartialInstallTests(unittest.TestCase):
             # A stale pair for the uncached root, left from an earlier attempt.
             (target / "tests/acl2/mid-tests.cert").write_bytes(SERIALIZED + b" stale")
             (target / "tests/acl2/mid-tests.port").write_text("; stale\n")
-            report = certs.install_partial(
+            report = self.install(
                 target, cache, ["tests/acl2/mid-tests"], self.TOOLCHAIN)
             self.assertEqual(report.books, 3)
             self.assertEqual(report.installed, 2)
@@ -888,10 +927,10 @@ class PartialInstallTests(unittest.TestCase):
             source = worktree(one, certified=["books/base", "books/mid"])
             self.publish(source, cache, ["books/base", "books/mid"], "/farm/run-a")
             target = worktree(destination + "/target")
-            report = certs.install_partial(target, cache, ["books/mid"], self.TOOLCHAIN)
+            report = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual((report.installed, report.uncached), (2, []))
             self.assertEqual(report.roots_installed, ["books/mid"])
-            again = certs.install_partial(target, cache, ["books/mid"], self.TOOLCHAIN)
+            again = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual((again.installed, again.kept), (0, 2))
 
     def test_a_partial_set_draws_each_book_from_its_own_origin(self):
@@ -909,7 +948,7 @@ class PartialInstallTests(unittest.TestCase):
             refused = certs.install_artifact_set(
                 target, cache, ["tests/acl2/mid-tests"], self.TOOLCHAIN)
             self.assertIsNone(refused.artifact_set)
-            report = certs.install_partial(
+            report = self.install(
                 target, cache, ["tests/acl2/mid-tests"], self.TOOLCHAIN)
             self.assertEqual(report.origins, {"/farm/run-a": 1, "/farm/run-b": 1})
             self.assertEqual(report.uncached, ["tests/acl2/mid-tests"])
@@ -918,17 +957,62 @@ class PartialInstallTests(unittest.TestCase):
             self.assertEqual((target / "books/mid.cert").read_bytes(),
                              (second / "books/mid.cert").read_bytes())
 
-    def test_a_cached_book_over_an_uncached_dependency_still_installs(self):
-        """Its key names the dependency's current bytes, which this run's
-        certificate of that dependency reproduces."""
+    def test_same_source_different_acl2_hash_selects_matching_older_child(self):
+        """The hbox replay failure had exactly this parent/child shape."""
+        with tempfile.TemporaryDirectory() as one, \
+                tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            first = worktree(one, certified=["books/base", "books/mid"])
+            second = worktree(two, certified=["books/base"])
+            self.publish(first, cache, ["books/base", "books/mid"], "/farm/first")
+            self.publish(second, cache, ["books/base"], "/farm/second")
+            target = worktree(destination + "/target")
+            older_base = entry(cache, target, "books/base", Path("/farm/first"))
+            newer_base = entry(cache, target, "books/base", Path("/farm/second"))
+
+            def acl2_pairs(paths, pairs, acl2, root):
+                self.assertEqual(acl2, Path("/fixture/acl2"))
+                return {pair: (True, paths[pair[1]].parent == older_base)
+                        for pair in pairs}
+
+            report = certs.install_partial(
+                target, cache, ["books/mid"], self.TOOLCHAIN,
+                acl2=Path("/fixture/acl2"), pair_checker=acl2_pairs)
+            self.assertEqual(report.uncached, [])
+            self.assertEqual(report.installed_from["books/base"], "/farm/first")
+            self.assertEqual(report.installed_from["books/mid"], "/farm/first")
+            self.assertNotEqual(older_base, newer_base)
+
+    def test_incompatible_cached_parent_is_recertified_if_no_child_matches(self):
+        with tempfile.TemporaryDirectory() as one, \
+                tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            parent = worktree(one, certified=["books/mid"])
+            child = worktree(two, certified=["books/base"])
+            self.publish(parent, cache, ["books/mid"], "/farm/parent")
+            self.publish(child, cache, ["books/base"], "/farm/child")
+            target = worktree(destination + "/target")
+            report = certs.install_partial(
+                target, cache, ["books/mid"], self.TOOLCHAIN,
+                acl2=Path("/fixture/acl2"),
+                pair_checker=lambda paths, pairs, acl2, root:
+                    {pair: (True, False) for pair in pairs})
+            self.assertEqual(report.uncached, ["books/mid"])
+            self.assertEqual(report.installed_from,
+                             {"books/base": "/farm/child"})
+
+    def test_a_cached_parent_over_an_uncached_child_is_recertified(self):
+        """The new child's ACL2 book-hash is unknown until certification."""
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as destination:
             cache = Path(destination) / "cache"
             source = worktree(one, certified=["books/mid"])
             self.publish(source, cache, ["books/mid"], "/farm/run-a")
             target = worktree(destination + "/target")
-            report = certs.install_partial(target, cache, ["books/mid"], self.TOOLCHAIN)
-            self.assertEqual(report.uncached, ["books/base"])
-            self.assertEqual(report.roots_installed, ["books/mid"])
+            report = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual(report.uncached, ["books/base", "books/mid"])
+            self.assertEqual(report.roots_installed, [])
 
     def test_another_toolchain_and_a_live_worktree_are_never_drawn_from(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
@@ -943,7 +1027,7 @@ class PartialInstallTests(unittest.TestCase):
             certs.publish(live, cache, [manifest_for(live, ["books/mid"], write=False)],
                           ["books/mid"], origin=str(live), origin_kind="worktree")
             target = worktree(destination + "/target")
-            report = certs.install_partial(target, cache, ["books/mid"], self.TOOLCHAIN)
+            report = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual(report.uncached, ["books/base", "books/mid"])
             self.assertEqual(report.installed, 0)
 

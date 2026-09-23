@@ -466,15 +466,16 @@ def affected_roots(books: list[str], targets: list[str]) -> list[str]:
     return selected
 
 
-def install_from_cache(roots: list[str], toolchain_identity: str) -> certs.Report:
+def install_from_cache(roots: list[str], toolchain_identity: str,
+                       acl2: Path) -> certs.Report:
     """Install what the cache holds of the roots' closure (`--incremental`).
 
-    `certs.install_partial` decides, per book, from the closure key and the
-    toolchain identity alone; the books it names as uncached are the ones
-    this run certifies.  A seam, so the runner tests can stand in a cache.
+    `certs.install_partial` uses the closure key and toolchain to find
+    candidates, then asks ACL2 whether their certificate alists compose.
+    The books it names as uncached are what this run certifies.
     """
     return certs.install_partial(ROOT, certs.cache_directory(), roots,
-                                 toolchain_identity)
+                                 toolchain_identity, acl2)
 
 
 def with_dependencies(books: list[str]) -> list[str]:
@@ -998,7 +999,7 @@ def main() -> int:
     manifest["acl2_compatibility"] = toolchain.compatibility
     if args.incremental:
         try:
-            installed = install_from_cache(roots, toolchain.identity)
+            installed = install_from_cache(roots, toolchain.identity, acl2)
         except (OSError, ValueError) as error:
             manifest["failure"] = f"Installing from the certificate cache failed: {error}"
             record(run_dir, manifest)

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """A cache of ACL2 certificates, keyed by a book's whole include closure.
 
-Every fn tool sets ``ACL2_BOOK_HASH_ALISTP=NIL``, so ACL2 8.7 hashes book
-*contents* rather than write dates and absolute paths: a ``.cert``/``.port``
-pair is valid in any worktree and on any host whose books are the same bytes.
-This tool caches those pairs.  Two rules, both learned by being wrong:
+Every fn tool sets ``ACL2_BOOK_HASH_ALISTP=NIL``, so ACL2 8.7 omits write
+dates from book hashes.  The source closure key admits candidates, but it
+does not establish that independently certified pairs compose: ACL2 also
+hashes certification data and expansion alists.  ``install-partial`` asks
+ACL2 to compare candidate post-alists before selecting a mixed set.  This
+tool caches those pairs.  Rules learned from measured failures follow:
 
 **A pair is published only against a certification manifest.**  A ``.cert``
 lying next to a book proves nothing: it may be left over from the source that
@@ -46,9 +48,11 @@ the including book.  A parent from origin A over children from origin B
 includes without a warning, with A and B on disk, removed, or edited; a new
 parent certified over a closure from three origins includes cleanly with all
 three removed; editing an event in the target's own child is still refused.
-So ``install-set`` takes one complete origin when there is one, and otherwise
+``install-set`` takes one complete origin when there is one, and otherwise
 composes the closure book by book from every usable entry with the same
-toolchain, the newest first, and names the origins it drew from.  A live
+toolchain, the newest first, and names the origins it drew from.  Its legacy
+mixed fallback does not perform the exact post-alist selection used by the
+incremental runner; it is not the E2 qualification path.  A live
 worktree that still exists on this machine is still not drawn from.  The
 measurement found nothing that requires this exclusion; it stays because no
 run needs a live tree's pairs when the farm publishes every certified book
@@ -60,10 +64,11 @@ inspection and recovery command; native builds use ``install-set``.
 what an incremental certification uses (``certify_books.py --incremental``,
 the default for a plain-roots farm run): every book of the closure whose pair
 exists at its current closure key and toolchain installs, each from its own
-newest usable origin, and the books left over -- roots included -- are what
-the runner certifies, dependencies first.  A book below an installed one may
-be among the certified: the installed certificate names that dependency's
-book-hash, which the fresh certificate of the same bytes reproduces.
+newest usable origin whose actual ACL2 post-alist agrees with selected
+parents, and the books left over -- roots included -- are what the runner
+certifies, dependencies first.  If a child has no compatible cached pair,
+its cached parents are recertified too: matching source bytes alone do not
+promise that the fresh child will reproduce its former book-hash.
 
 **A snapshot is an origin that is not a worktree.**  A gate directory and a
 farm run root are each made from one commit by one run, and nothing edits or
@@ -91,13 +96,14 @@ cache only moves its result to another worktree, where ACL2 checks it again.
     python3 tools/certs.py publish [--manifest PATH] [--remote hbox]
     python3 tools/certs.py publish --origin-kind gate    # from a gate directory
     python3 tools/certs.py install-set books/served # coherent dependency set
-    python3 tools/certs.py install-partial --toolchain-identity ID books/served
+    python3 tools/certs.py --acl2 PATH install-partial --toolchain-identity ID books/served
     python3 tools/certs.py status
 """
 
 from __future__ import annotations
 
 import argparse
+import cert_alists
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 import datetime as dt
@@ -771,23 +777,97 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
     return report
 
 
+def compatible_partial_choices(
+    root: Path, options: dict[str, list[tuple[Path, dict]]], acl2: Path,
+    pair_checker=cert_alists.acl2_certificate_pairs,
+) -> dict[str, tuple[Path, dict]]:
+    """Choose a partial set whose ACL2 certificate alists actually agree.
+
+    Source SHA and toolchain identify candidates, but not their book-hash:
+    ACL2 also hashes certification data and make-event expansions.  Prefer
+    the newest usable pair, switch a conflicting child or parent to a matching
+    cached pair when possible, and otherwise recertify the conflicting parent
+    and its cached ancestors.  The last step is conservative: a new child's
+    book-hash cannot be promised before it is certified.
+    """
+    indexed: list[tuple[str, Path, dict]] = []
+    ids: dict[str, list[int]] = {}
+    for name in sorted(options):
+        ids[name] = []
+        for directory, meta in options[name]:
+            ids[name].append(len(indexed))
+            indexed.append((name, directory, meta))
+    dependencies = {name: set(closure(root, name)) - {name} for name in options}
+    pairs = [(p, c) for parent in sorted(options)
+             for child in sorted(dependencies[parent]) if child in ids
+             for p in ids[parent] for c in ids[child]]
+    facts = pair_checker([directory / "book.cert" for _, directory, _ in indexed],
+                         pairs, acl2, root)
+    if set(facts) != set(pairs):
+        raise ValueError("ACL2 certificate-alist probe omitted a candidate pair")
+    selected = {name: candidates[0] for name, candidates in ids.items() if candidates}
+
+    def conflicts(chosen: dict[str, int]) -> list[tuple[str, str]]:
+        bad = []
+        for parent in sorted(chosen):
+            for child in sorted(dependencies[parent]):
+                if child not in chosen:
+                    bad.append((parent, child))
+                elif facts[(chosen[parent], chosen[child])] == (True, False):
+                    bad.append((parent, child))
+                elif facts[(chosen[parent], chosen[child])] == (False, False):
+                    raise ValueError("ACL2 could not read a cached certificate alist")
+        return bad
+
+    seen: set[tuple[tuple[str, int], ...]] = set()
+    steps = 0
+    while True:
+        bad = conflicts(selected)
+        if not bad:
+            break
+        seen.add(tuple(sorted(selected.items())))
+        parent, child = bad[0]
+        best: dict[str, int] | None = None
+        best_count = len(bad) + 1
+        if steps < 8 * len(indexed) + 32:
+            for name in (child, parent):
+                for candidate in ids.get(name, []):
+                    if selected.get(name) == candidate:
+                        continue
+                    trial = dict(selected)
+                    trial[name] = candidate
+                    if tuple(sorted(trial.items())) in seen:
+                        continue
+                    count = len(conflicts(trial))
+                    if count < best_count:
+                        best, best_count = trial, count
+        if best is not None:
+            selected = best
+            steps += 1
+            continue
+        # No cached pair can satisfy this parent.  Its cached ancestors must
+        # also be authored afresh; their stored hash for it may differ.
+        selected = {name: candidate for name, candidate in selected.items()
+                    if name != parent and parent not in dependencies[name]}
+        steps += 1
+
+    return {name: (indexed[candidate][1], indexed[candidate][2])
+            for name, candidate in selected.items()}
+
+
 def install_partial(root: Path, cache: Path, roots: Iterable[str],
-                    toolchain_identity: str) -> Report:
+                    toolchain_identity: str, acl2: Path | None = None,
+                    pair_checker=None,
+                    _attempt: int = 0) -> Report:
     """Install every book of the roots' closure that has a usable pair, and
     name the rest, which the runner then certifies in dependency order.
 
-    ``install-set`` is all or nothing: one book low in the graph without a
-    pair at its current digest refused the whole run, and the only way on
-    was ``--closure`` from ``sha256`` up (2026-09-23: 338 of 409 books
-    cached, 70 not, and the run refused).  Here each book stands alone.
-    Its pair is keyed by its whole closure at the current bytes, so a pair
-    that installs is a certificate of exactly these bytes over exactly these
-    dependencies, whichever origin wrote it; ACL2 compares a sub-book by
-    familiar name, annotations and book-hash (a checksum of its forms), so a
-    dependency certified afresh in this run at the same bytes satisfies it
-    (``planning/evidence/certificate-cache-2026-09-23.md``, case 5).  Roots
-    are part of the closure: a root whose pair installs is already certified
-    at these bytes, and the runner does not certify it again.
+    ``install-set`` is all or nothing.  Here each book stands alone, but
+    candidate cached pairs are selected only after ACL2 compares their actual
+    post-alist entries.  If no compatible candidate exists, recertify that
+    book and any cached ancestor.  Roots are part of the closure: a root
+    whose pair installs is already certified at these bytes, and the runner
+    does not certify it again.
 
     The toolchain identity is required, not optional: this is the one
     installer that mixes origins per book, and it must not mix provers.
@@ -800,14 +880,28 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
     required = required_closure(root, roots)
     report.books = len(required)
     report.toolchain_identity = toolchain_identity
+    options: dict[str, list[tuple[Path, dict]]] = {}
     for name in sorted(required):
-        source = root / f"{name}.lisp"
         key, _ = closure_key(root, name)
         usable = [(directory, meta) for directory, meta in cached_entries(cache, key)
                   if usable_origin(meta, target)
                   and meta.get("toolchain_identity") == toolchain_identity]
         own = [entry for entry in usable if entry[1].get("origin_root") == target]
-        chosen = own[0] if own else newest(usable)
+        options[name] = ((own[:1] + sorted(
+            [entry for entry in usable if entry not in own],
+            key=lambda entry: (str(entry[1].get("published_at", "")), str(entry[0])),
+            reverse=True)) if own else sorted(
+                usable, key=lambda entry: (str(entry[1].get("published_at", "")),
+                                           str(entry[0])), reverse=True))
+    if acl2 is None:
+        raise ValueError("install-partial needs an ACL2 executable for exact "
+                         "certificate-alist compatibility")
+    if pair_checker is None:
+        pair_checker = cert_alists.acl2_certificate_pairs
+    selected = compatible_partial_choices(root, options, acl2, pair_checker)
+    for name in sorted(required):
+        source = root / f"{name}.lisp"
+        chosen = selected.get(name)
         cert = source.with_suffix(".cert")
         port = source.with_suffix(".port")
         if chosen is None:
@@ -817,21 +911,14 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
                     artifact.unlink()
                     report.removed_foreign += 1
             continue
-        for attempt in range(3):
-            directory, meta = chosen
-            try:
-                moved = install_entry(directory, meta, cert, port)
-                break
-            except EntryChanged:
-                if attempt == 2:
-                    raise
-                usable = [(directory, meta) for directory, meta in cached_entries(cache, key)
-                          if usable_origin(meta, target)
-                          and meta.get("toolchain_identity") == toolchain_identity]
-                own = [entry for entry in usable if entry[1].get("origin_root") == target]
-                chosen = own[0] if own else newest(usable)
-                if chosen is None:
-                    raise EntryChanged(f"cache entry vanished for {name}")
+        directory, meta = chosen
+        try:
+            moved = install_entry(directory, meta, cert, port)
+        except EntryChanged:
+            if _attempt >= 2:
+                raise
+            return install_partial(root, cache, roots, toolchain_identity, acl2,
+                                   pair_checker, _attempt + 1)
         if moved:
             report.installed += 1
         else:
@@ -1247,6 +1334,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--toolchain-identity", default=None,
                         help="for install-set, require this qualified ACL2 "
                              "launcher/core/runtime compatibility identity")
+    parser.add_argument("--acl2", default=os.environ.get("FN_ACL2"),
+                        help="ACL2 executable used to compare certificate "
+                             "alists for install-partial")
     parser.add_argument("--require-origin", default=None,
                         help="for install-set, require one complete set from this "
                              "exact certificate origin instead of composing one")
@@ -1283,7 +1373,10 @@ def main(argv: list[str] | None = None) -> int:
         if not arguments.toolchain_identity:
             parser.error("install-partial needs --toolchain-identity: it takes "
                          "each book's pair on its own and must not mix provers")
-        report = install_partial(root, cache, names, arguments.toolchain_identity)
+        if not arguments.acl2:
+            parser.error("install-partial needs --acl2 to check certificate alists")
+        report = install_partial(root, cache, names, arguments.toolchain_identity,
+                                 Path(arguments.acl2).resolve())
     else:
         report = status(root, cache)
     for line in report.lines():

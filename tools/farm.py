@@ -267,12 +267,11 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
 
     The default, incremental plan (``certs.py install-partial``) installs
     every book of the selected roots' closure whose pair is cached at its
-    current digest and this ACL2 toolchain, each from its own newest usable
-    origin, and names the rest; the runner (``--incremental``) certifies only
-    those.  It never refuses for a miss.  Measured 2026-09-23: a parent
-    certified over a closure from three origins includes cleanly with all
-    three removed, because ACL2 compares sub-books by familiar name,
-    annotations and book-hash, never by full-book-name
+    current digest and ACL2 toolchain, selecting compatible certificate
+    post-alists from available origins; the runner (``--incremental``)
+    certifies the remainder.  It never refuses for a cache miss.  ACL2
+    compares sub-books by familiar name, annotations and book-hash, never
+    by full-book-name
     (``planning/evidence/certificate-cache-2026-09-23.md``).
     ``--require-origin`` demands one complete dependency set from that one
     origin and refuses otherwise.  ``--closure`` is root's explicit
@@ -289,7 +288,7 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         mode = (f"--require-origin {remote_quote(require_origin)} "
                 "--dependencies-only install-set")
     else:
-        mode = "install-partial"
+        mode = '--acl2 "$acl2" install-partial'
     return (
         f"cd {remote_quote(remote)} || exit 9; "
         f"roots=$({select}) || exit 13; "
