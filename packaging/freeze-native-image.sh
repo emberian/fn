@@ -24,8 +24,29 @@ cp -RL "$sbcl_home"/. "$out/runtime/sbcl-home"/
 cp -L "$openssl/lib/libcrypto.so.3" "$openssl/lib/libssl.so.3" "$out/openssl/lib/"
 cp -L "$sodium" "$out/lib/libsodium.so.23"
 variants="fn-host fn-host-developer fn-host-dtn"
-if [ -e "$build/fn-host-dtn-developer" ] || [ -e "$build/fn-host-dtn-developer.core" ]; then
-  variants="$variants fn-host-dtn-developer"
+if [ "${FN_FREEZE_VARIANTS+x}" = x ]; then
+  [ -n "$FN_FREEZE_VARIANTS" ] || { echo 'freeze-native-image: empty variant selection' >&2; exit 2; }
+  variants=
+  set -f
+  for name in $FN_FREEZE_VARIANTS; do
+    case $name in
+      fn-host|fn-host-developer|fn-host-dtn|fn-host-dtn-developer) ;;
+      *) echo "freeze-native-image: unknown variant: $name" >&2; exit 2 ;;
+    esac
+    case " $variants " in
+      *" $name "*) echo "freeze-native-image: duplicate variant: $name" >&2; exit 2 ;;
+    esac
+    variants="$variants $name"
+  done
+  set +f
+  case " $variants " in
+    *" fn-host "*) ;;
+    *) echo 'freeze-native-image: fn-host must be selected' >&2; exit 2 ;;
+  esac
+else
+  if [ -e "$build/fn-host-dtn-developer" ] || [ -e "$build/fn-host-dtn-developer.core" ]; then
+    variants="$variants fn-host-dtn-developer"
+  fi
 fi
 for name in $variants; do
   src=$build/$name

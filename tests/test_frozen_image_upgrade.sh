@@ -30,6 +30,22 @@ LAUNCHER
 done
 FN_FREEZE_SODIUM="$tmp/libsodium.so.23" sh "$root/packaging/freeze-native-image.sh" \
   "$tmp/build" "$tmp/image" "$tmp/openssl"
+# A targeted qualification can freeze only the cores it built; an invalid
+# selection must fail before producing a misleading image directory.
+FN_FREEZE_SODIUM="$tmp/libsodium.so.23" FN_FREEZE_VARIANTS='fn-host fn-host-developer' \
+  sh "$root/packaging/freeze-native-image.sh" "$tmp/build" "$tmp/image-pair" "$tmp/openssl"
+[ -s "$tmp/image-pair/fn-host.core" ] && [ -s "$tmp/image-pair/fn-host-developer.core" ]
+[ ! -e "$tmp/image-pair/fn-host-dtn" ] && [ ! -e "$tmp/image-pair/fn-host-dtn.core" ]
+(cd "$tmp/image-pair" && sha256sum -c image.sha256 >/dev/null)
+for selection in 'fn-host fn-host' 'fn-host unknown'; do
+  if FN_FREEZE_SODIUM="$tmp/libsodium.so.23" FN_FREEZE_VARIANTS="$selection" \
+      sh "$root/packaging/freeze-native-image.sh" "$tmp/build" "$tmp/invalid" \
+      "$tmp/openssl" >"$tmp/out" 2>"$tmp/err"; then
+    echo "invalid frozen variant selection passed: $selection" >&2
+    exit 1
+  fi
+  rm -rf "$tmp/invalid"
+done
 # The source core and runtime can vanish without changing the frozen launch.
 mv "$tmp/build" "$tmp/removed-build"
 mv "$tmp/runtime" "$tmp/removed-runtime"
