@@ -96,6 +96,11 @@
    ((equal (fn-cbor-ag-car event) :family)
     (and (true-listp event) (equal (len event) 2)
          (fn-frame-natp (fn-bpn-nth 1 event)) t))
+   ((equal (fn-cbor-ag-car event) :expire-held)
+    (and (true-listp event) (equal (len event) 3)
+         (fn-clock-observationp (fn-bpn-nth 1 event))
+         (if (equal (fn-bpn-nth 2 event) t) t
+           (equal (fn-bpn-nth 2 event) nil))))
    ((equal (fn-cbor-ag-car event) :recover-fnbs)
     (and (true-listp event) (equal (len event) 5)
          (true-listp (fn-bpn-nth 2 event))

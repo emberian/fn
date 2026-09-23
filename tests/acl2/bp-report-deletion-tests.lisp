@@ -24,7 +24,7 @@
 (assert-event
  (mv-let (ok updated)
    (fn-bpn-report-apply-delete *bprd-record* (list *bprd-held*))
-   (and ok (equal (fn-bpn-nth 14 (car updated)) :lifetime-expired)
+   (and ok (equal (fn-bpn-nth 14 (car updated)) *bprd-record*)
         (not (fn-bpn-report-held-delete-pendingp (car updated)))
         (equal (fn-bpnf-held-key
                 (fn-bpnf-held-principal (car updated))
@@ -78,7 +78,7 @@
    1 5 1 (fn-bpp-primary-identity *bprd-request-primary*)
    :lifetime-expired))
 (defconst *bprd-request-tombstone*
-  (fn-bpn-report-tombstone-held *bprd-request-held* :lifetime-expired))
+  (fn-bpn-report-tombstone-held *bprd-request-held* *bprd-request-record*))
 (assert-event (fn-bpnf-heldp *bprd-request-held*))
 (assert-event (fn-bpn-report-delete-recordp *bprd-request-record*))
 (assert-event

@@ -77,7 +77,7 @@
 (assert-event (equal (car (bpnfr-delete-answer)) :ready))
 (assert-event
  (equal (fn-bpn-nth 14 (car (nth 1 (bpnfr-delete-answer))))
-        :lifetime-expired))
+        *bpnfr-delete-record*))
 (assert-event
  (equal (car (fn-bpnf-family-replay-rows
               (reverse (bpnfr-delete-rows))

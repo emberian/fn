@@ -34,6 +34,12 @@
 (assert-event (equal (fn-bpnf-host-eventp '(:family 0)) t))
 (assert-event (null (fn-bpnf-host-eventp '(:family -1))))
 (assert-event
+ (equal (fn-bpnf-host-eventp (list :expire-held *bpnf-obs* t)) t))
+(assert-event
+ (equal (fn-bpnf-host-eventp (list :expire-held *bpnf-obs* nil)) t))
+(assert-event
+ (null (fn-bpnf-host-eventp (list :expire-held *bpnf-obs* :enabled))))
+(assert-event
  (equal (fn-bpnf-host-eventp
          '(:recover-fnbs 1 nil :ready (:ready nil nil))) t))
 (assert-event

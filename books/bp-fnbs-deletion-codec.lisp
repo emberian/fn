@@ -6,12 +6,13 @@
 (set-verify-guards-eagerness 0)
 
 (defconst *fn-bpnf-delete-kind* 10)
-(defconst *fn-bpnf-delete-fields* '(:nat :nat :nat :blob :nat))
+(defconst *fn-bpnf-delete-fields* '(:nat :nat :nat :blob :nat :blob))
 
 (defun fn-bpnf-delete-values (record)
   (declare (xargs :guard t))
   (list (fn-bpn-nth 1 record) (fn-bpn-nth 2 record)
-        (fn-bpn-nth 3 record) (fn-bpn-nth 4 record) 1))
+        (fn-bpn-nth 3 record) (fn-bpn-nth 4 record) 1
+        (fn-bpn-nth 6 record)))
 
 (defun fn-bpnf-delete-frame (record)
   (declare (xargs :guard t))
@@ -33,10 +34,10 @@
 
 (defun fn-bpnf-delete-from-values (values)
   (declare (xargs :guard t))
-  (let ((record (fn-bpn-report-delete-record
+  (let ((record (fn-bpn-report-delete-with-intent
                  (fn-bpn-nth 0 values) (fn-bpn-nth 1 values)
                  (fn-bpn-nth 2 values) (fn-bpn-nth 3 values)
-                 :lifetime-expired)))
+                 :lifetime-expired (fn-bpn-nth 5 values))))
     (if (and (equal (fn-bpn-nth 4 values) 1)
              (fn-bpn-report-delete-recordp record))
         record nil)))

@@ -2311,12 +2311,12 @@ budgets of §2.1 applying to report bundles like any other. When enabled and
 requested, generation at each of the four points is a SHOULD of RFC 9171
 and fn generates: reception (§4.1), forwarding (§4.3), delivery (§4.2),
 deletion (§4.2, §4.3). `:report-due` makes the loop reserve a sequence and
-issue `:author-report`, which `fn-bpn-report-step` turns into a transmit
-with submission `(:report subject assertion)`, so a report is a held entry
-dispatched like any other and is idempotent by submission. A crash between
-`:report-due` and `:author-report` loses the report: reports are never
-evidence and never necessary for retry (§9.6). A report never requests
-reports.
+issue `:author-report`, which the node turns into a durable outbound carrier
+with submission `(:report subject assertion)`. The kind-10 deletion record
+retains the exact selected report intent across a crash before outbound
+authoring, and the outbound job key binds that intent to one carrier.
+Reports are diagnostic evidence only and never necessary for application
+retry or release (§9.6). A report never requests reports.
 
 Consumption. §4.1 step 5 for received ones and §4.2's `:administrative`
 dispatch for locally authored ones; both use
@@ -2331,14 +2331,18 @@ logging and correlating a report is bounded work per report and is served
 in the loop's diagnostic share (§9.1), so report traffic cannot consume the
 service accepted work needs.
 
-The D1b kind-10 prerequisite currently has a pure, certified held-row
-selector/tombstone kernel only (`books/bp-report-deletion.lisp`). It requires
-definite expiry and exact arrival/primary identity, and cannot issue a report
-until a single ordered FNBS replay and durable publication path accepts the
-deletion. The current native caller has no status-report generation or
-consumption claim. The kind-10 codec and single ordered FNBS 5/7/18/10 replay
-are source-present with scoped certification; live issue/publication and
-consumer joins are not yet implemented.
+The D1b kind-10 source now has an ACL2 held-row expiry selector, an outer
+proposal step, an exact immutable publication authorization and one ordered
+FNBS 5/7/18/10 replay. A definitely expired, unprocessed received carrier
+gets a kind-10 record bound to its arrival and primary identity. The record
+also carries the exact bounded status-report payload selected at proposal, or
+the one-octet suppression sentinel; replay retains the full record in the
+held tombstone. No report effect is issued before the deletion publication
+callback is durable, and an uncertain callback fences the issued operation.
+The recovery outbox selector can find that same intent after a process death.
+These are component contracts: administrative outbound authoring, native
+caller progression and read-only received-report consumption remain open,
+so there is no served D1b generation or consumption claim yet.
 
 Minimal generation and consumption before slice B's gate (§11): the
 deletion assertion at §4.2's `:expire` and §4.3's deletions, and §4.1
