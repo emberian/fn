@@ -655,6 +655,11 @@
 ; through the host's entry; run any further Store trace that reaches :ready
 ; (the recovery barriers); then fn-bprj-install replays the journal and the
 ; ADU fn-bprj-receipt-adu regenerates is the one the live receiver held.
+(local
+ (defthm fn-bprv-full-relation-has-store-relation
+   (implies (fn-csi-full-relationp s) (fn-snt-relation s))
+   :hints (("Goal" :in-theory (enable fn-csi-full-relationp)))))
+
 (defthm fn-bpr-live-receipt-regenerated-after-restart
   (let* ((final (fn-bpr-live-run live events))
          (opened (fn-sn-open-observed (fn-sn-groups (car final)) (fn-sn-capacity (car final))
@@ -754,7 +759,9 @@
                                   frontier records))
                                 recovery-events))))
            :in-theory (e/d (fn-bprv-extendsp)
-                           (fn-bprv-observed-reopen-facts
+                           (fn-csi-full-relationp fn-sn-observed-identity-okp
+                            fn-snt-consumerp fn-replay-identity
+                            fn-bprv-observed-reopen-facts
                             fn-bpr-live-run-preserves-store-relation
                             fn-bpr-live-run-preserves-consumer-full-relation
                             fn-bpr-live-run-extends-history
