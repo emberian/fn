@@ -47,6 +47,8 @@ of the extended ACL2 interpreter, including `:undertake` and `:release`.
 and a malformed-suffix `must-fail` witness for dropping success. ACL2 8.7 on
 `persvati` passed [the replay book](manifests/certify-20260923T173933Z-2312844.json)
 in 2.801 certification wall seconds and [its test book](manifests/certify-20260923T174038Z-2322911.json)
-in 1.504 seconds, using the same two-job toolchain and invocation form above.
+in 1.504 seconds, using the same two-job toolchain and farm invocation form
+above with `--timeout-seconds 60` for run `run-20260923T173930Z-73d0`
+and `--timeout-seconds 90` for run `run-20260923T174035Z-6285`.
 This proof narrows the prior replay assurance gap; a rebuilt native image and
 full dependent-root closure remain the integrated batch's evidence.
