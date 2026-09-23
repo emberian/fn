@@ -435,7 +435,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
+	books/nntp-index-runtime \
 	books/group-bucket-index \
+	books/group-bucket-invariants \
 	tests/acl2/group-bucket-index-tests \
 	tests/acl2/nntp-reader-profile-tests \
 	tests/acl2/nntp-legacy-tests \

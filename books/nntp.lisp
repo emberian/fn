@@ -192,6 +192,7 @@
 ; Message-ID retrieval spellings use the trie here; all other commands retain
 ; the established archive dispatcher except the pinned :fn-verified HDR item.
 (include-book "nntp-verdict")
+(include-book "group-bucket-index")
 
 (defun fn-nntp-archive-command-pinned
     (session archive index verdicts env keyword args)
@@ -203,12 +204,16 @@
          (consp args) (null (cdr args))
          (fn-nntp-message-id-tokenp (car args)))
     (fn-nntp-msgid-retrieval-indexed
-     session archive index
+     session archive (fn-gidx-pin-trie index)
      (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
            ((fn-nntp-keywordp keyword "HEAD") :head)
            ((fn-nntp-keywordp keyword "BODY") :body)
            (t :stat))
      (car args)))
+   ((and (fn-nntp-keywordp keyword "LISTGROUP")
+         (fn-gidx-pinp index))
+    (fn-gidx-listgroup-command
+     session archive (fn-gidx-pin-buckets index) args))
    ((and (fn-nntp-keywordp keyword "HDR")
          (consp args)
          (fn-nntp-keywordp (car args) ":FN-VERIFIED"))

@@ -12,6 +12,7 @@
 ; unrecognized command, or a syntax error.
 (in-package "ACL2")
 (include-book "nntp-overview")
+(include-book "group-bucket-cursor-invariants")
 
 ; This book reasons about the NNTP transitions themselves, so it opens the
 ; vocabularies the five books of the nntp cluster withdraw at their export
@@ -1069,9 +1070,69 @@
 ; The actual pinned dispatcher preserves the same carried reader invariant.
 ; Its Message-ID retrieval and historical verdict arms leave the session
 ; unchanged; every other arm invokes the original archive command.
+(defthm fn-gidx-listgroup-result-session-of-build
+  (implies (and (fn-statep archive) (stringp group))
+           (equal
+            (fn-nntp-result-session
+             (fn-gidx-listgroup-result session archive
+              (fn-gidx-build (fn-state-articles archive)) group range))
+            (fn-nntp-result-session
+             (fn-nntp-listgroup-result session archive group range))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-gidx-group-low-of-build
+                            (configured (fn-state-groups archive))
+                            (articles (fn-state-articles archive))))
+           :in-theory (e/d (fn-gidx-listgroup-result
+                           fn-nntp-listgroup-result fn-statep)
+                           (fn-gidx-group-low-of-build
+                            fn-nntp-number-lines fn-nntp-multi-octets
+                            fn-nntp-result-session)))))
+
+(defthm fn-gidx-listgroup-command-session-of-build
+  (implies (and (fn-statep archive) (fn-nntp-sessionp session))
+           (equal
+            (fn-nntp-result-session
+             (fn-gidx-listgroup-command session archive
+              (fn-gidx-build (fn-state-articles archive)) args))
+            (fn-nntp-result-session
+             (fn-nntp-listgroup-command session archive args))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-gidx-listgroup-result-session-of-build
+                            (group (fn-nntp-session-group session))
+                            (range (list :ok 1 2147483647)))
+                 (:instance fn-gidx-listgroup-result-session-of-build
+                            (group (fn-nntp-token-string (car args)))
+                            (range (list :ok 1 2147483647)))
+                 (:instance fn-gidx-listgroup-result-session-of-build
+                            (group (fn-nntp-token-string (car args)))
+                            (range (fn-nntp-parse-range (cadr args)))))
+           :in-theory (e/d (fn-gidx-listgroup-command
+                            fn-nntp-listgroup-command
+                            fn-nntp-sessionp fn-nntp-token-string)
+                           (fn-gidx-listgroup-result
+                            fn-nntp-listgroup-result
+                            fn-gidx-build fn-nntp-result-session)))))
+
+(defthm fn-gidx-listgroup-command-preserves-consistent-session
+  (implies (and (fn-nntp-session-consistentp session archive)
+                (fn-nntp-projectionp archive)
+                (equal buckets (fn-gidx-build (fn-state-articles archive))))
+           (fn-nntp-session-consistentp
+            (fn-nntp-result-session
+             (fn-gidx-listgroup-command session archive buckets args))
+            archive))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-gidx-listgroup-command-session-of-build)
+                 (:instance fn-nntp-listgroup-command-preserves-consistent-session))
+           :in-theory (disable fn-gidx-build fn-gidx-listgroup-command
+                               fn-nntp-listgroup-command
+                               fn-nntp-result-session
+                               fn-nntp-session-consistentp))))
+
 (defthm fn-nntp-archive-command-pinned-preserves-consistent-session
   (implies (and (fn-nntp-session-consistentp session archive)
-                (fn-nntp-projectionp archive))
+                (fn-nntp-projectionp archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
              (fn-nntp-archive-command-pinned
@@ -1079,8 +1140,11 @@
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-archive-command-pinned)
                 (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
+                 fn-gidx-listgroup-command
                  fn-nntp-verdict-hdr-response fn-nntp-result-session
-                 fn-nntp-session-consistentp)))))
+                 fn-nntp-session-consistentp))
+           :use ((:instance fn-gidx-listgroup-command-preserves-consistent-session
+                            (buckets (fn-gidx-pin-buckets index)))))))
 
 (local
  (defthm fn-nntp-consistent-projected-session-has-archive
@@ -1090,7 +1154,8 @@
    :hints (("Goal" :in-theory (enable fn-nntp-session-consistentp)))))
 
 (defthm fn-nntp-command-pinned-preserves-consistent-session
-  (implies (fn-nntp-session-consistentp session archive)
+  (implies (and (fn-nntp-session-consistentp session archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
              (fn-nntp-command-pinned
@@ -1104,7 +1169,8 @@
            :use ((:instance fn-nntp-consistent-projected-session-has-archive)))))
 
 (defthm fn-nntp-step-pinned-preserves-consistent-session
-  (implies (fn-nntp-session-consistentp session archive)
+  (implies (and (fn-nntp-session-consistentp session archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
              (fn-nntp-step-pinned
