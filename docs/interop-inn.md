@@ -250,9 +250,10 @@ Every row quotes the reply the other server gave, from the relay's log.
 | `POST` to the fn owner, read back | — | fn injects (Path, Injection-Date, Injection-Info) and serves the article |
 | fn's feed offers it to `innd` | S1 | fn's outbound feed, by `IHAVE` (the peer record's streaming is `false`): `335`, the article, `235` |
 | `nnrpd` serves it | S3 (half) | INN's copy against fn's, header by header; RFC 5537 §3.6 lets a relay change Path and Xref and nothing else |
-| `operator post`, then the feed | — | what an article submitted offline carries when fn relays it |
+| `operator post`, then the feed | — | the operator's submission is injected like a POST (Path naming fn, Injection-Date, Injection-Info) and innd takes it `335`/`235` |
+| `POST` with `From: yue` | — | fn refuses a From that names no address (`441`) and does not serve it |
 | `IHAVE ... into INN` by hand | S1 control | `235`; the same offer again `435`; a Path naming INN `437`; `CHECK` new `238`, known `438` |
-| INN's `innfeed` offers to fn | S3 | `CHECK`/`TAKETHIS` into the owner, fn's replies, and fn's copy against what crossed |
+| INN's `innfeed` offers to fn | S3 | `CHECK`/`TAKETHIS` into the owner, fn's replies, and fn's copy against what crossed: fn's identity prepended to Path and the sender's Xref removed (RFC 5537 §3.7 steps 6, 7) |
 | a second offer to fn of each article it holds | S4 | `435` from fn |
 | a Path naming fn's own identity | S8 | fn's loop suppression (`policy set path-identity`): refused, and not served |
 | SIGTERM the owner, `recover`, restart, reread | S10/S11 (shape) | the articles fn held are served byte-identical |

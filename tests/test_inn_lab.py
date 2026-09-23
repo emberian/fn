@@ -301,13 +301,24 @@ class LabTests(DryRun, unittest.TestCase):
         for one in ids.values():
             self.assertIn("abc1234-20260920T000000Z", one)
 
+    def test_every_decided_key_is_a_declared_assertion(self):
+        """A held row reads its sentence from ASSERTIONS; the fake image holds
+        none of the violated rows, so only this catches an undeclared key."""
+        import re
+        source = (ROOT / "tools/inn_lab.py").read_text()
+        keys = set(re.findall(r'self\.(?:check|record)\(\s*"([a-z0-9-]+)"', source))
+        self.assertTrue(keys)
+        self.assertEqual(keys - set(inn_lab.InnLab.ASSERTIONS), set())
+
     def test_the_violations_are_exactly_the_three_the_fake_image_commits(self):
-        """The fake stores `operator post` payloads with no Path and serves a
-        transit article with the sender's Path and Xref, as the image did on
-        2026-09-22; the lab must call each of those violated and nothing else."""
+        """The fake stores `operator post` payloads with no Path, serves a
+        transit article with the sender's Path and Xref, and takes `From: yue`,
+        as the image did on 2026-09-22; the lab must call each of those
+        violated and nothing else."""
         self.assertEqual(self.keys_with("violated"),
                          {"operator-post-feeds-inn", "fn-serves-own-path-identity",
-                          "fn-serves-no-sender-xref"}, self.text[-6000:])
+                          "fn-serves-no-sender-xref", "fn-post-from-invalid-441"},
+                         self.text[-6000:])
         self.assertEqual(self.code, 1)
         self.assertNotIn("lab error", self.text)
         self.assertEqual(self.keys_with("not-exercised"), set())
