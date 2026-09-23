@@ -30,6 +30,10 @@
         *cpo-t-configs*))
 (assert-event
  (fn-cpo-history-relation (fn-sn-open-state *cpo-t-open*)))
+; The legacy Store trace relation still replays the undertaking at final
+; capacity 1; the configured image needs the historical relation above.
+(assert-event
+ (not (fn-snt-relation (fn-sn-open-state *cpo-t-open*))))
 (assert-event
  (equal (fn-sn-open-kind
          (fn-sn-open-observed '("fn.letters" "fn.test") 1
