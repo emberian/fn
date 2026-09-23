@@ -163,6 +163,16 @@
   (implies (not (equal id other))
            (equal (fn-ocfg-pin-find id (fn-ocfg-pin-remove other pins))
                   (fn-ocfg-pin-find id pins))))
+(defthm fn-ocfg-pin-find-of-pin-remove-same
+  (not (fn-ocfg-pin-find id (fn-ocfg-pin-remove id pins)))
+  :hints (("Goal" :induct (fn-ocfg-pin-remove id pins)
+           :in-theory (enable fn-ocfg-pin-remove fn-ocfg-pin-find))))
+(defthm fn-ocfg-pin-remove-absent-is-unchanged
+  (implies (and (true-listp pins)
+                (not (fn-ocfg-pin-find id pins)))
+           (equal (fn-ocfg-pin-remove id pins) pins))
+  :hints (("Goal" :induct (fn-ocfg-pin-remove id pins)
+           :in-theory (enable fn-ocfg-pin-remove fn-ocfg-pin-find))))
 
 ; The connection's pinned configuration, and the served table at that pin.
 (defun fn-ocfg-conn-config (oc id)
@@ -482,15 +492,45 @@
   (fn-ocfg-make owner (fn-ocfg-config oc) (fn-ocfg-pins oc)
                 (fn-ocfg-staged oc)))
 
+(defun fn-ocfg-with-read-owner (oc id owner)
+  ; fn-own-finish-read may close an invalid connection.  Keep the pin table's
+  ; domain equal to the returned owner's connections on that branch.
+  (declare (xargs :guard t))
+  (fn-ocfg-make owner (fn-ocfg-config oc)
+                (if (fn-own-find-conn id (fn-own-conns owner))
+                    (fn-ocfg-pins oc)
+                  (fn-ocfg-pin-remove id (fn-ocfg-pins oc)))
+                (fn-ocfg-staged oc)))
+
+(defthm fn-ocfg-with-read-owner-keeps-other-pins
+  (implies (not (equal other id))
+           (equal (fn-ocfg-pin-find
+                   other (fn-ocfg-pins
+                          (fn-ocfg-with-read-owner oc id owner)))
+                  (fn-ocfg-pin-find other (fn-ocfg-pins oc))))
+  :hints (("Goal" :in-theory (enable fn-ocfg-with-read-owner))))
+
+(defthm fn-ocfg-with-read-owner-pin-iff-survives
+  (equal (fn-ocfg-pin-find
+          id (fn-ocfg-pins (fn-ocfg-with-read-owner oc id owner)))
+         (if (fn-own-find-conn id (fn-own-conns owner))
+             (fn-ocfg-pin-find id (fn-ocfg-pins oc))
+           nil))
+  :hints (("Goal" :in-theory (enable fn-ocfg-with-read-owner
+                                      fn-ocfg-pin-remove
+                                      fn-ocfg-pin-find))))
+
 (defun fn-ocfg-read (oc id octets)
   (declare (xargs :guard t))
   (let ((result (fn-own-read (fn-ocfg-owner oc) id octets)))
-    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+    (cons (car result)
+          (fn-ocfg-with-read-owner oc id (cdr result)))))
 
 (defun fn-ocfg-read-step (oc id event)
   (declare (xargs :guard t))
   (let ((result (fn-own-read-step (fn-ocfg-owner oc) id event)))
-    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+    (cons (car result)
+          (fn-ocfg-with-read-owner oc id (cdr result)))))
 
 (defun fn-ocfg-open-peer (oc peer acfg)
   (declare (xargs :guard t))
@@ -691,9 +731,9 @@
   :hints (("Goal" :in-theory (enable (:d fn-ocfg-reconfigure) (:d fn-ocfg-complete)
                                      (:d fn-ocfg-served) (:d fn-ocfg-conn-config)))))
 
-; The pin moves only at `(:advance id)' -- and at `(:close id)', which
-; removes it.  Across any other event list the connection keeps the
-; configuration it opened at.
+; A pin moves at `(:advance id)' and disappears at close, fault, or a read
+; that closes an invalid connection.  The last two read forms may preserve
+; the pin, but must count as possible pin changes in the trace theorem.
 ; `(car (car events))' and `(car (cdr (car events)))' under `:guard t' owe
 ; `(implies (not (consp x)) (equal x nil))' of the EVENT, which is false at
 ; `(list 3)'; the same defect the four accessors had.  The `mbe' leaves the
@@ -704,7 +744,7 @@
   (if (consp events)
       (or (and (member-equal (mbe :logic (car (car events))
                                   :exec (fn-ag-car (fn-ag-car events)))
-                             '(:advance :close :fault))
+                             '(:advance :close :fault :octets :read))
                (equal (mbe :logic (car (cdr (car events)))
                            :exec (fn-ag-car (fn-ag-cdr (fn-ag-car events))))
                       id))
@@ -713,7 +753,8 @@
 
 (local (defthm fn-ocfg-step-keeps-other-pins
   (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
-                (not (and (member-equal (car event) '(:advance :close :fault))
+                (not (and (member-equal (car event)
+                                        '(:advance :close :fault :octets :read))
                           (equal (car (cdr event)) id))))
            (equal (fn-ocfg-pin-find id (fn-ocfg-pins (fn-ocfg-step oc event)))
                   (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
