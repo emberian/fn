@@ -30,7 +30,7 @@
      (declare (ignore opened))
      (fnn-out "BP obligation owner work=~a status=~(~a~) pinned=~a"
               work-id (fnn-core-state 'fn-workflow-work-status work-id)
-              (if (eq (fnn-owner-action
+              (if (eq (fnn-owner-core
                        'fn-owner-workflow-forward-pinnedp work-id) t)
                   "yes" "no"))
      +fnn-exit-ok+)))
