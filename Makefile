@@ -358,10 +358,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-feed-invariants \
 	books/feed-events \
 	books/feed-correspondence \
+	books/feed-port-replay \
 	books/feed-journal \
 	tests/acl2/feed-journal-tests \
 	tests/acl2/peer-feed-tests \
 	tests/acl2/feed-correspondence-tests \
+	tests/acl2/feed-port-replay-tests \
 	books/owner-feed \
 	books/owner-feed-port \
 	tests/acl2/owner-feed-port-tests \

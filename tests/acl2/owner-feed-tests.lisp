@@ -7,6 +7,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-feed")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: every function this book calls is guard verified in the
@@ -139,6 +140,27 @@
 (assert-event (fn-own-feed-offerablep *oft-b* nil *oft-groups* *oft-path*))
 (assert-event (equal (fn-own-feed-targets *oft-tbl* nil *oft-groups* *oft-path*)
                      '("nodeB")))
+
+; PRF-029's target keystone needs both hypotheses.  Without membership,
+; nodeC's valid outbound feed has no matching group.  Without the table
+; recognizer, a duplicate nodeB key can make a later offerable row a target
+; while lookup reads an earlier non-offerable row.
+(must-fail (assert-event
+  (fn-own-feed-offerablep
+   (fn-own-feed-record-of "nodeC" *oft-tbl*)
+   nil *oft-groups* *oft-path*)))
+(defconst *oft-bad-duplicate-table*
+  (list (fn-own-feed-entry "nodeB" *oft-c*
+                           (fn-own-feed-find "nodeC" *oft-tbl*))
+        (fn-own-feed-entry "nodeB" *oft-b*
+                           (fn-own-feed-find "nodeB" *oft-tbl*))))
+(assert-event (not (fn-own-feed-tablep *oft-bad-duplicate-table*)))
+(assert-event (member-equal "nodeB"
+  (fn-own-feed-targets *oft-bad-duplicate-table* nil *oft-groups* *oft-path*)))
+(must-fail (assert-event
+  (fn-own-feed-offerablep
+   (fn-own-feed-record-of "nodeB" *oft-bad-duplicate-table*)
+   nil *oft-groups* *oft-path*)))
 
 ; TEETH.  One concrete violating value per conjunct of fn-own-feed-offerablep,
 ; each an assertion on the negated conclusion.
