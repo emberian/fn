@@ -1,28 +1,20 @@
-Current task (2026-09-23): T0 is complete and hbox runs the `da5fd8cb`
-image. The takeover's first convergence repaired and qualified protected
-peering/restart, native entry profiles, packaging, reclamation bindings and
-administration on isolated frozen images. The autonomous goal now covers the
-documented v0 gates, substantial integrated v1 work and the selected durable
-sleeping-agent exchange. The stamped `daa6c15e` image passed its scoped native and journal migration
-gates; an older selected checkpoint still fails to decode and is the next
-upgrade repair. Complete that migration, stamped NEWNEWS, Store index
-preservation and BP/authorship joins, then qualify the next combined source
-under the
-[takeover plan](takeover-2026-09-23.md).
-The [architectural reassessment](ambition-2026-09-23.md) proposes portable
-application-evidence and durable-consumer experiments while retaining the
-selected v0 gate; these are not additional release requirements.
-The proposed [E2 v1 contract](../specs/consumer-progress.md) and
-[adversarial traces](experiments/e1-e2-v1-traces.json) now name the future
-Store/owner caller and crash observations. The bounded
-[ACL2 consumer-position kernel](../books/consumer-position.lisp) now decides
-cursor scope and register/ack/rebase/unregister proposals; it has no Store
-event, served caller, consumer database or executed two-store trace and is
-not a v0 gate.
-[Current work](now.md) identifies the tested image and active/proposed work.
-Release scope and step contracts remain in
-[the trajectory plan](plan-2026-09-22-trajectory.md) §§2–3; the execution
-loop is [how we work](how-we-work.md).
+Current task (2026-09-23): concurrent v0/v1 development grounded in the actual
+Mini/Bread OS interfaces. [Current work](now.md) names integrated source,
+qualified image scope and remaining release obligations; the
+[swarm board](swarm-board.md) names cooperating implementation lanes. Frozen
+`329a51a2` passed scoped native migration, storage, peering and process-death
+tests; its cross-host attempt exposed a saved-library relocation defect now
+being repaired. It is not the final v0 release freeze. The live node remains
+`da5fd8cb`. Native BP/TCPCL/contact integration, durable author and consumer
+bindings, historical live configuration, pinned reader verdicts, served
+indexes, byte-level durability and a human client advance concurrently.
+The [OS integration study](dregg-os-integration-2026-09-23.md) proposes the
+next real Mini evidence and consumer experiments; P0 is being implemented in
+an isolated Mini worktree. The conditional K5 prefix theorem has landed;
+K0/K6/K8 and physical qualification retain their documented open scope.
+Release gates remain the [trajectory](plan-2026-09-22-trajectory.md), and
+image qualification proceeds alongside implementation under
+[how we work](how-we-work.md).
 
 
 Earlier current task (2026-09-21): repair and qualify the wider native service batch
