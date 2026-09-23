@@ -84,9 +84,9 @@
 ; configured-owner state.  The counted transition is a single execution;
 ; this theorem relates its result to the pre-existing semantic entry point.
 ; The wire hypothesis is the domain `fn-served-step-counted-fast-is-reference'
-; (books/served-tls-prefix).  It is carried by the historical configured-owner
-; relation in a separate proof book; the static `fn-ocfg-statep' is not a
-; valid premise after a live domain or capacity change.
+; (books/served-tls-prefix).  Carrying it through the historical configured-owner
+; relation remains a separate proof obligation; the static `fn-ocfg-statep'
+; is not a valid premise after a live domain or capacity change.
 (defthm fn-ocfg-read-tls-prefix-is-full-read
   (implies
    (fn-wire-statep
