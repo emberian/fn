@@ -41,27 +41,74 @@ shared dispatch brief at `build/launch-20260923/BRIEF.md` and the relevant specs
 | fragment_refinement (Sol) | Fragment/reassembly reference correspondence and bounded admission | bp_foundation, status_codec |
 | status_codec (Sol) | Bounded canonical BP status-report codec | bp_foundation, fragment_refinement |
 | matrix_witnesses (Sol) | Actual native protected-exchange/queue observations and accurate test subjects | feed_replay, image_upgrade, crash_differential |
-| iteration_tooling (Sol) | Affected-root selection defect and measured proof-cost reporting | all proof lanes |
+| iteration_tooling (Sol, landed) | Affected-root selection, measured proof-cost reporting, E1/E2 experiment proposal | all proof lanes |
+| acceptance_stamp (Sol) and stamp_callers helper | T2a schema migration, caller and fixture correspondence | authorship_carrier (canonicality proof), crash_differential, BP lanes |
 
 ## Current agreements and discoveries
 
 - Feed replay and matrix lanes share the protected two-node restart/queue
   exercise; do not independently build the same image for that witness.
-- Iteration tooling will repair Makefile/selection of host wrappers together,
-  preserving their admission coverage through the appropriate host/image gate.
+- Iteration tooling repaired Makefile selection of host wrappers, preserving
+  admission coverage through certifiable host-test roots. The proof-cost report
+  is landed. Root also repaired the merge gate: `--changed-since --strict` now
+  rejects moved dependency bytes as `stale`, distinct from a failed proof.
 - Crash correspondence must account for physical inode renaming and invisible
   unreachable model inodes. Compare through an explicit observation relation;
   do not call scanner agreement full physical-state equality.
 - The architect found that reader watermarks acknowledge output, not durable
-  agent processing. Cursor/consumer semantics are under assessment, not new
-  v0 promises.
+  agent processing. The assessment and E1/E2 experiment proposal are landed.
+  The user selected report/receipt plus reply, consumer-owned inbox/outbox and
+  a cursor/ack contract, with separately administered stores and trusted peers
+  first. These experiments do not widen the v0 gate.
+
+## First convergence
+
+- Native entry restrictions and four-profile packaging are landed and exercised
+  on frozen `24a5df6b`; see its image evidence. Production normal submission,
+  developer-only raw insertion and relocation passed their scoped gates.
+- Broader no-skip suites exposed absent workflow constructors, an omitted
+  reclaim-plan include, a Boolean predicate called as an action, and an admin
+  fixture waiting forever after the CONTROL announcement. The latter three
+  are repaired in source. Workflow undertake/receipt/release still need the
+  actual ACL2 contract and caller join; rebuilding alone cannot supply them.
+- Protected peering on the old image was not qualified. The corrected fixture
+  observed a queued article with no offer. TLS zero-time reads never polled the
+  socket; the host fix and real OpenSSL witness are landed. Matrix and feed
+  agents share the new two-node restart/mid-transfer gate.
+- The bounded feed-port replay theorem and served process-death visible-file
+  relation are landed with exact manifests. Physical FNFD correspondence and
+  the visible-relation-to-recovery theorem remain distinct open obligations.
+- BP foundation is landed as an unhosted refinement. Review caught callback
+  reuse and uncertainty fencing defects; the repaired model allocates operation
+  IDs and ignores ordinary callbacks while uncertain. Guards and FNBS/native
+  joins remain open.
+- Hybrid carrier/profile source and its affected closure are landed. Store
+  verdict and reader integration remain open; known profile alone grants no
+  verified verdict. Its Sol agent now helps T2a reverse-parser canonicality.
+- Fragment refinement and status-report codec proof work continue. T2a is
+  checkpointed in its lane, not ready for integration.
 
 ## Runs and capacity
 
-No certification run has been assigned by this board yet. Lanes start with
-at most two jobs per submitted run, announce the run and matching cache work,
-and negotiate larger shared runs. Existing machine slot pools and the hbox
-memory wrapper remain in force. Do not change slot directories or pool limits
-per lane. Root's initial read-only checks found the deployed node running and
-no farm certification processes; this is a dispatch-time observation, not an
-ongoing health claim.
+Frozen image `24a5df6b`: hbox run `run-20260923T142047Z-4e1a`, gate
+`/tank/fn/gates/takeover-image-upgrade-24a5df6b`, w28 toolchain, all 174
+closure books reused. Four cores and the no-skip suite outcomes are recorded
+in [image evidence](evidence/four-profile-image-24a5df6b-2026-09-23.md).
+
+Second frozen runtime source `f0b8b166`: hbox run `run-20260923T143814Z-b301`,
+gate `/tank/fn/gates/takeover-image-upgrade-f0b8b166`, w28 toolchain. The
+176-book image closure reused 174 and certifies two for the newly included
+reclaim plan. Image_upgrade coordinates shared artifacts with matrix,
+entry-profile and crash agents. Later harness commits are recorded separately.
+
+Carrier affected closure: persvati run `run-20260923T143127Z-1770`, w25,
+102 cached and 161 newly certified books, all passed. Fragment follows this
+run; T2 will coordinate its broad migration batch when coherent. See the
+individual evidence records for manifests and source digests.
+
+Lanes begin with at most two jobs, then negotiate shared wider runs when
+useful. Existing machine slot pools and hbox memory wrapper remain in force.
+Release idle REPLs when peers need their slots. A runner that has not emitted
+its first completed book may still be proving: the current farm progress
+display can misleadingly show zero books/elapsed. Diagnose via its drivers,
+version log and exact process before calling this a queue or resubmitting.

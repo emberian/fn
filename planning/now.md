@@ -36,8 +36,18 @@ alongside independent feed-replay, BP-foundation and authorship-carrier work.
 Sequence the broad acceptance-stamp change and the shared Store joins as the
 takeover plan describes. The user selected developer-only raw `store post`;
 production uses normal submission. The decision, HST-001/SCN-015 contract,
-and first-batch obligation are recorded; the entry restriction and DTN profile
-gates are implemented in source, with saved-image qualification still pending.
+and first-batch obligation are recorded. The entry restriction and DTN profile
+gates passed on [frozen image 24a5df6b](evidence/four-profile-image-24a5df6b-2026-09-23.md).
+That image's wider suites exposed concrete runtime gaps; it is not a v0 gate.
+The shared `f0b8b166` image batch now exercises the TLS polling repair,
+reclaim-plan include, forwarding-pin call binding and distinct recovery cuts.
+Checkpoint and BP obligation suites passed on its default pair; receipt workflow
+constructors remain absent. The node still runs `da5fd8cb`.
+
+The selected [sleeping-agent experiment](experiments/e1-e2-agent-exchange.md)
+has report/receipt plus reply, consumer-owned durable inbox/outbox and a fn
+cursor/ack contract, with trusted transport peers between separate stores.
+It is design work alongside the retained v0 gate, not an implemented consumer API.
 
 Earlier dated progress is retained in the handoff, its evidence records, and
 [the archived work page](archive/now-2026-09-22.md).
