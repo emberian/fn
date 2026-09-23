@@ -85,6 +85,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import difflib
 import fcntl
 import hashlib
 import json
@@ -475,7 +476,8 @@ PLAN = (
     S("V0-TRANSIT-TRANSFER", "F-TRANSIT", "the transferred article is taken with 235",
       ("REP-001", "NNT-005"), ("SCN-023",), ACCEPTED, "direction"),
     S("V0-TRANSIT-IDENTICAL", "F-TRANSIT",
-      "the far side serves the same octets the source served",
+      "the far side serves the source's octets with its own path identity and "
+      "the diagnostic prepended to Path and no Xref, every other line identical",
       ("OBJ-001",), ("SCN-023",), ACCEPTED, "direction"),
     S("V0-TRANSIT-DUPLICATE", "F-TRANSIT",
       "a second IHAVE of the same Message-ID is refused with 435",
@@ -910,6 +912,140 @@ def exit_blocker(rc) -> str:
         rc, "a code outside the operator contract")
     return ("the command exited {}, {}, which is not one of the three outcomes "
             "(docs/operator.md: 0 accepted, 1 refused, 3 uncertain)".format(rc, kind))
+
+# --------------------------------------------------------------------------
+# What a relayed article may differ in: Path and Xref, as the theorem says.
+#
+# Since 9a659682 a node that takes an article by transit stores, and so
+# serves, `fn-peer-relayed-octets` of what it received (books/peer-inbound.lisp
+# over books/path-update.lisp `fn-pu-relay-article`; specs/peering.md 2.3).
+# The keystones over that function are what the transit row checks, one each:
+#   fn-peer-relayed-octets-change-only-path-and-xref  -- with every Path and
+#     Xref field (and its continuation lines) removed from both, what was
+#     sent and what is served are the same lines, body included;
+#   fn-peer-relayed-octets-carry-no-xref              -- no Xref is served;
+#   fn-peer-relayed-octets-name-this-node-in-every-path -- every Path begins
+#     with the receiving node's `<path-identity>!`.
+# The Path check is exact about the rendering specs/peering.md 2.3 states:
+# after `Path:` and its whitespace, `<identity>!`, the RFC 5537 section 3.2.1
+# `<path-diagnostic>` and `!` are inserted before the posted value, and a
+# Path whose value already begins with `<identity>!` is left alone; an
+# article with no Path gets none.  WHICH diagnostic applies is
+# `fn-path-diagnostic`'s decision (books/path.lisp), and the harness does not
+# make it: both renderings -- `<diag-match>` (empty, so `<identity>!!`) and
+# `.MISMATCH.<expected>` naming the peer record's identity of the source --
+# are admitted, and the served Path is reported beside the verdict so the
+# reader sees which one the node chose.
+
+def _relay_lines(article) -> list:
+    """An article as its lines without CRLF: a list passes through, octets split."""
+    if isinstance(article, (list, tuple)):
+        return list(article)
+    if isinstance(article, (bytes, bytearray)):
+        article = bytes(article).decode("latin-1")
+    lines = article.split("\r\n")
+    if article.endswith("\r\n"):
+        lines.pop()
+    return lines
+
+
+def _relay_fields(lines: list):
+    """The header block as fields [first line, continuations...], and the rest.
+
+    The rest is the blank line and the body, or [] when the article has no
+    blank line.  A continuation line before any field is a field of its own
+    with no name, as `fn-pu-walk` copies it.
+    """
+    fields, rest = [], []
+    for index, line in enumerate(lines):
+        if line == "":
+            rest = lines[index:]
+            break
+        if line[:1] in (" ", "\t") and fields:
+            fields[-1].append(line)
+        else:
+            fields.append([line])
+    return fields, rest
+
+
+def _relay_named(field: list, name: str) -> bool:
+    line = field[0]
+    return line[:1] not in (" ", "\t") and line[:len(name)].lower() == name
+
+
+_PATH_IDENTITY = re.compile(r"[A-Za-z0-9._-]+")
+
+
+def relayed_article_differences(sent, served, identity: str,
+                                expected: str | None = None) -> list:
+    """The lines by which `served` is not `sent` relayed through `identity`.
+
+    `sent` is what the source served and the transit carried; `served` is
+    what the receiving node serves afterwards; `identity` is the receiving
+    node's `<path-identity>` (its `policy set path-identity`), and
+    `expected`, when given, is the identity its peer record names for the
+    source -- the only identity a `.MISMATCH.` diagnostic may name.  Either
+    article may be octets or a list of lines.  An empty list means the
+    served article is exactly the posted one with the Path update and the
+    Xref removal of `fn-peer-relayed-octets` and nothing else; otherwise each
+    entry names a line that differs and why.
+    """
+    sent_fields, sent_rest = _relay_fields(_relay_lines(sent))
+    served_fields, served_rest = _relay_fields(_relay_lines(served))
+    out = []
+
+    # Everything but Path and Xref, in order, with the blank line and body.
+    def strip(fields, rest):
+        kept = [line for field in fields
+                if not (_relay_named(field, "path:") or _relay_named(field, "xref:"))
+                for line in field]
+        return kept + rest
+    left, right = strip(sent_fields, sent_rest), strip(served_fields, served_rest)
+    if left != right:
+        for line in difflib.ndiff(left, right):
+            if line[:2] == "- ":
+                out.append("only posted: {!r}".format(line[2:]))
+            elif line[:2] == "+ ":
+                out.append("only served: {!r}".format(line[2:]))
+
+    for field in served_fields:
+        if _relay_named(field, "xref:"):
+            out.append("Xref survived: {!r}".format(field[0]))
+
+    sent_paths = [f for f in sent_fields if _relay_named(f, "path:")]
+    served_paths = [f for f in served_fields if _relay_named(f, "path:")]
+    if len(sent_paths) != len(served_paths):
+        out.append("posted {} Path field(s), served {}: posted {!r}, served {!r}".format(
+            len(sent_paths), len(served_paths), [f[0] for f in sent_paths],
+            [f[0] for f in served_paths]))
+        return out
+    for posted, got in zip(sent_paths, served_paths):
+        if posted[1:] != got[1:]:
+            out.append("Path continuation changed: posted {!r}, served {!r}".format(
+                posted[1:], got[1:]))
+        line, value = posted[0], posted[0][5:]
+        space = value[:len(value) - len(value.lstrip(" \t"))]
+        head, tail = line[:5] + space, value[len(space):]
+        if tail.startswith(identity + "!"):
+            if got[0] != line:
+                out.append("Path already named {} and was changed: posted {!r}, "
+                           "served {!r}".format(identity, line, got[0]))
+            continue
+        served_line = got[0]
+        ok = False
+        if served_line.startswith(head + identity + "!") and served_line.endswith(tail):
+            middle = served_line[len(head + identity + "!"):len(served_line) - len(tail)]
+            if middle == "!":
+                ok = True
+            elif middle.startswith(".MISMATCH.") and middle.endswith("!"):
+                named = middle[len(".MISMATCH."):-1]
+                ok = (named == expected if expected is not None
+                      else _PATH_IDENTITY.fullmatch(named) is not None)
+        if not ok:
+            out.append("Path is not the posted Path with {0}!! or {0}!.MISMATCH.{1}! "
+                       "prepended: posted {2!r}, served {3!r}".format(
+                           identity, expected or "<path-identity>", line, served_line))
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -1863,7 +1999,16 @@ command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
     # -- the shared driver, with one adaptation -----------------------------
     @staticmethod
     def feed_driver() -> str:
-        """`tools/twonode_gate.py`'s driver, with a Date on the loop article.
+        """`tools/twonode_gate.py`'s driver, with two adaptations.
+
+        The `relay` phase also reports the lines it sent and the lines the
+        target served afterwards (`sent_lines`, `reread_lines`), so the
+        transit row can check them against `relayed_article_differences`
+        rather than against the driver's `identical`, which is byte equality
+        and has been the wrong expectation since a relayed article carries
+        this node's Path update and no Xref (specs/peering.md 2.3).
+
+        And a Date on the loop article.
 
         The loop article the `relay` phase builds by hand carries no `Date`,
         and an fn node refuses a transfer without one (`437 transfer
@@ -1884,7 +2029,13 @@ command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
         if old not in source:
             raise GateError("tools/twonode_gate.py's loop article moved; the v0 "
                             "matrix's Date adaptation no longer applies")
-        return source.replace(old, new)
+        reread = '    out["identical"] = (got == lines)\n'
+        if source.count(reread) != 1:
+            raise GateError("tools/twonode_gate.py's relay reread moved; the v0 "
+                            "matrix cannot report the transit octets")
+        return source.replace(old, new).replace(
+            reread, reread + '    out["sent_lines"] = lines\n'
+                             '    out["reread_lines"] = got\n')
 
     # -- ports --------------------------------------------------------------
     def allocate_ports(self):
@@ -2759,6 +2910,49 @@ else echo NONE; fi
                     "node {} failed the independence control, so the transit rows below "
                     "are unfounded: {}".format(node.upper, step.first_line))
 
+    def transit_identical(self, result: dict, source: NodeSpec, target: NodeSpec,
+                          way: str, command: str):
+        """V0-TRANSIT-IDENTICAL: the served article is the relayed one, exactly.
+
+        Expected: what node `target` serves is what `source` served with
+        `target`'s `<path-identity>`, `!`, a section 3.2.1 diagnostic and `!`
+        prepended to the Path value and every Xref removed, every other
+        header and the body byte-identical (`fn-peer-relayed-octets`).
+        `relayed_article_differences` compares; a difference names its lines.
+        """
+        reread = result.get("reread", "")
+        sent, served = result.get("sent_lines"), result.get("reread_lines")
+        limit = ("the posted and served lines are compared against "
+                 "fn-peer-relayed-octets' keystones (change-only-path-and-xref, "
+                 "carry-no-xref, name-this-node-in-every-path) with node {}'s "
+                 "configured path-identity {}; which diagnostic applies is "
+                 "fn-path-diagnostic's and either rendering is admitted, the served "
+                 "Path shows which; local article numbers are not compared"
+                 .format(target.upper, target.path_identity))
+        if not reread.startswith("220"):
+            self.emit("V0-TRANSIT-IDENTICAL", reply_verdict(reread), command,
+                      "reread={}".format(reread or "(none)"), direction=way, limit=limit)
+            return
+        if not isinstance(sent, list) or not isinstance(served, list):
+            self.emit("V0-TRANSIT-IDENTICAL", NOT_EXERCISED, command,
+                      "reread={}; the relay driver reported no lines".format(reread),
+                      direction=way,
+                      blocker="the relay driver did not report the sent and served "
+                              "lines, so there is nothing to compare")
+            return
+        differences = relayed_article_differences(
+            sent, served, target.path_identity, source.path_identity)
+        path = next((line for line in served if line[:5].lower() == "path:"),
+                    "(no Path)")
+        self.emit("V0-TRANSIT-IDENTICAL", REFUSED if differences else ACCEPTED,
+                  command,
+                  "reread={} served {!r}; {}".format(
+                      reread, path,
+                      "differences: " + "; ".join(differences[:12]) if differences
+                      else "the posted article with the Path update and no Xref, "
+                           "every other line identical"),
+                  direction=way, limit=limit)
+
     def transit_direction(self, source: NodeSpec, target: NodeSpec, way: str):
         msgid = ART[source.name]
         probe = self.feed(
@@ -2808,16 +3002,7 @@ else echo NONE; fi
                         limit=served)
         self.from_reply("V0-TRANSIT-TRANSFER", result.get("transfer", ""),
                         probe.command, direction=way, limit=served)
-        reread = result.get("reread", "")
-        identical = bool(result.get("identical"))
-        self.emit("V0-TRANSIT-IDENTICAL",
-                  ACCEPTED if (reread.startswith("220") and identical)
-                  else reply_verdict(reread) if not reread.startswith("220") else REFUSED,
-                  probe.command,
-                  "reread={} identical={}".format(reread or "(none)", identical),
-                  direction=way,
-                  limit="the octets are compared line for line against what the source "
-                        "served; local article numbers are not compared and may differ")
+        self.transit_identical(result, source, target, way, probe.command)
         self.from_reply("V0-TRANSIT-DUPLICATE", result.get("duplicate", ""),
                         probe.command, direction=way,
                         limit="RFC 3977 6.3.2: 435 is the Message-ID history refusing "
