@@ -40,7 +40,8 @@ def book(root: Path, name: str, body: str) -> str:
 
 def manifest(root: Path, run_id: str, *, status: str,
              passed: dict[str, str] = {}, failed: dict[str, str] = {},
-             host: str = "testbox", after: dict[str, str] | None = None) -> None:
+             host: str = "testbox", after: dict[str, str] | None = None,
+             closure: dict[str, str] | None = None) -> None:
     """One archived manifest, with the fields the pass rule actually reads.
 
     The synthetic run ids below are spelled out, which is safe only here:
@@ -66,8 +67,9 @@ def manifest(root: Path, run_id: str, *, status: str,
         "book_results": {name: ("passed" if name in passed else "failed")
                          for name in requested},
         "book_failures": {name: ["no certificate on disk"] for name in failed},
-        "source_digests_sha256": {f"{name}.lisp": found
-                                  for name, found in {**passed, **failed}.items()},
+        "source_digests_sha256": {
+            **{f"{name}.lisp": found for name, found in (closure or {}).items()},
+            **{f"{name}.lisp": found for name, found in {**passed, **failed}.items()}},
         "certificate_digests_sha256": {name: digest(f"cert {run_id} {name}")
                                        for name in passed},
         "acl2_exit_codes": {name: 0 for name in requested},
@@ -221,6 +223,64 @@ class DependencyDriftTests(unittest.TestCase):
             self.assertEqual(entry["verdict"], "green")
             self.assertEqual(entry["deps_moved_since"], ["books/dep.lisp"])
             self.assertIn("1 deps moved since", entry["note"])
+
+    def test_older_matching_closure_pass_survives_newer_incompatible_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            dep = book(root, "books/dep", '(in-package "ACL2")')
+            top = book(root, "books/top",
+                       '(in-package "ACL2")\n(include-book "dep")\n')
+            manifest(root, "certify-20260901T010000Z-1", status="passed",
+                     passed={"books/top": top}, closure={"books/dep": dep})
+            manifest(root, "certify-20260902T020000Z-2", status="passed",
+                     passed={"books/top": top},
+                     closure={"books/dep": digest("old dependency")})
+            entry = green_check.audit(root, roots=["books/top"])["books_by_verdict"]["books/top"]
+            self.assertEqual(entry["verdict"], "green")
+            self.assertEqual(entry["certified_at_digest"], "certify-20260901T010000Z-1")
+            self.assertEqual(entry["deps_moved_since"], [])
+
+    def test_newer_failure_for_different_closure_does_not_poison_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            dep = book(root, "books/dep", '(in-package "ACL2")')
+            top = book(root, "books/top",
+                       '(in-package "ACL2")\n(include-book "dep")\n')
+            manifest(root, "certify-20260901T010000Z-1", status="passed",
+                     passed={"books/top": top}, closure={"books/dep": dep})
+            manifest(root, "certify-20260902T020000Z-2", status="failed",
+                     failed={"books/top": top},
+                     closure={"books/dep": digest("old dependency")})
+            entry = green_check.audit(root, roots=["books/top"])["books_by_verdict"]["books/top"]
+            self.assertEqual(entry["verdict"], "green")
+            self.assertIsNone(entry["failed_at_digest"])
+
+    def test_newer_failure_for_exact_closure_overrides_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            dep = book(root, "books/dep", '(in-package "ACL2")')
+            top = book(root, "books/top",
+                       '(in-package "ACL2")\n(include-book "dep")\n')
+            manifest(root, "certify-20260901T010000Z-1", status="passed",
+                     passed={"books/top": top}, closure={"books/dep": dep})
+            manifest(root, "certify-20260902T020000Z-2", status="failed",
+                     failed={"books/top": top}, closure={"books/dep": dep})
+            entry = green_check.audit(root, roots=["books/top"])["books_by_verdict"]["books/top"]
+            self.assertEqual(entry["verdict"], "red")
+            self.assertEqual(entry["failed_at_digest"], "certify-20260902T020000Z-2")
+
+    def test_missing_failure_closure_digests_remain_conservative(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            dep = book(root, "books/dep", '(in-package "ACL2")')
+            top = book(root, "books/top",
+                       '(in-package "ACL2")\n(include-book "dep")\n')
+            manifest(root, "certify-20260901T010000Z-1", status="passed",
+                     passed={"books/top": top}, closure={"books/dep": dep})
+            manifest(root, "certify-20260902T020000Z-2", status="failed",
+                     failed={"books/top": top})
+            entry = green_check.audit(root, roots=["books/top"])["books_by_verdict"]["books/top"]
+            self.assertEqual(entry["verdict"], "red")
 
 
 class AttributionTests(unittest.TestCase):
