@@ -27,6 +27,20 @@
         (fn-bpa-result-message answer)
       nil)))
 
+(defun fn-bpaj-article-fields (request)
+  (declare (xargs :guard t))
+  (if (not (fn-bpa-requestp request)) (list :refused :request)
+    (let ((parsed (fn-article-parse (fn-bpa-request-article request))))
+      (if (not (fn-article-result-okp parsed)) (list :refused :article-syntax)
+        (let ((checked (fn-af-proto-article-check
+                        (fn-article-result-article parsed))))
+          (if (not (equal (car checked) :ok))
+              (list :refused (cadr checked))
+            (let ((msgid (cadr checked)) (groups (caddr checked)))
+              (if (or (not msgid) (not (consp groups)))
+                  (list :refused :article-fields)
+                (list :ok msgid groups)))))))))
+
 (defun fn-bpaj-request-subjectp (request)
   (declare (xargs :guard t))
   (and (fn-bpa-requestp request)
@@ -41,7 +55,11 @@
   (and (fn-record-p record)
        (fn-bpa-requestp request)
        (fn-bpr-store-record-acceptedp store record)
-       (equal (fn-record-payload record) stored-octets)))
+       (equal (fn-record-payload record) stored-octets)
+       (let ((fields (fn-bpaj-article-fields request)))
+         (and (equal (car fields) :ok)
+              (equal (fn-record-msgid record)
+                     (fn-record-octets-string (cadr fields)))))))
 
 
 ; The v3 intent is written before Store submission.  Its final three fields
@@ -398,20 +416,6 @@
     (and fact (if (equal (fn-bpaj-nth 0 fact) :request-transit-context)
                   (fn-bpaj-nth 7 fact)
                 (fn-bpaj-nth 8 fact)))))
-
-(defun fn-bpaj-article-fields (request)
-  (declare (xargs :guard t))
-  (if (not (fn-bpa-requestp request)) (list :refused :request)
-    (let ((parsed (fn-article-parse (fn-bpa-request-article request))))
-      (if (not (fn-article-result-okp parsed)) (list :refused :article-syntax)
-        (let ((checked (fn-af-proto-article-check
-                        (fn-article-result-article parsed))))
-          (if (not (equal (car checked) :ok))
-              (list :refused (cadr checked))
-            (let ((msgid (cadr checked)) (groups (caddr checked)))
-              (if (or (not msgid) (not (consp groups)))
-                  (list :refused :article-fields)
-                (list :ok msgid groups)))))))))
 
 (defun fn-bpaj-bp-provenance-octets (node-id bundle-identity request)
   (declare (xargs :guard t))
