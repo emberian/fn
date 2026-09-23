@@ -127,8 +127,10 @@ TLS and journals, and preserves the owner's exit outcome.
 
 ### Install the native production entry
 
-Build or select the source-pinned production `fn-host` and adjacent
-`fn-host.core`, then stage an installation without starting a service:
+Build or select a source-pinned frozen image with `packaging/freeze-native-image.sh`
+(as in `tools/runbooks/hbox-image-build.sh`). Its production `fn-host` and
+adjacent `fn-host.core` travel with their SBCL runtime and crypto libraries.
+Stage an installation without starting a service:
 
 ```sh
 FN_NATIVE_HOST=/path/to/fn-host FN_NATIVE_CORE=/path/to/fn-host.core \
@@ -147,7 +149,9 @@ and accepts only its production-profile refusal. This checks the selected image
 profile; it does not establish feature parity. `share/fn/native-artifacts.txt`
 records launcher, core, and runtime hashes, the copied SBCL home, linked runtime
 libraries, and the `libsodium` plus OpenSSL 3 libraries loaded by native crypto
-code. Those crypto libraries remain system package dependencies. Rendered service files live under `share/fn/systemd` and
+code. For a frozen image, the copied libraries travel with the release; the older
+generated-launcher installation form still uses system package dependencies.
+Rendered service files live under `share/fn/systemd` and
 `share/fn/launchd`. Installation does not enable, start, or restart them.
 The package does not widen the selected image's command set. In particular,
 the frozen `8c` qualification image refuses public `peer add` with usage 5

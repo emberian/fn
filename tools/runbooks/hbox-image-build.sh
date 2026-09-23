@@ -28,10 +28,13 @@ echo "== build developer"
 FN_ACL2=$ACL2 FN_NATIVE_PROFILE=developer FN_NATIVE_BUILD=host/native/build.lisp FN_NATIVE_IMAGE=build/fn-host-developer FN_NATIVE_LOG=build/freeze/native-build-developer.log swarm-build sh tools/build_native_host.sh
 echo "== build dtn"
 FN_ACL2=$ACL2 FN_NATIVE_BUILD=host/native/build-dtn.lisp FN_NATIVE_IMAGE=build/fn-host-dtn FN_NATIVE_LOG=build/freeze/native-build-dtn.log swarm-build sh tools/build_native_host.sh
+echo "== build dtn developer"
+FN_ACL2=$ACL2 FN_NATIVE_PROFILE=developer FN_NATIVE_BUILD=host/native/build-dtn.lisp FN_NATIVE_IMAGE=build/fn-host-dtn-developer FN_NATIVE_LOG=build/freeze/native-build-dtn-developer.log swarm-build sh tools/build_native_host.sh
 echo "== freeze"
-IMG=build/images/$REV; mkdir -p "$IMG"
-cp -p build/fn-host build/fn-host.core build/fn-host-developer build/fn-host-developer.core build/fn-host-dtn build/fn-host-dtn.core "$IMG/"
+IMG="$ROOT/build/images/$REV"
+sh packaging/freeze-native-image.sh "$ROOT/build" "$IMG" "$FN_OPENSSL_PREFIX"
 find books host Makefile tools/build_native_host.sh -type f \( -name '*.lisp' -o -name Makefile -o -name '*.sh' \) | sort | xargs sha256sum > "$IMG/build-source.sha256"
-sha256sum "$IMG"/* /tank/fn/sbcl/bin/sbcl "$ACL2" /tank/fn/acl2-8.7/saved_acl2.core "$FN_OPENSSL_PREFIX/lib/libcrypto.so.3" "$FN_OPENSSL_PREFIX/lib/libssl.so.3" | tee build/freeze/image-hashes.txt
+(cd "$IMG" && sha256sum -c image.sha256) | tee build/freeze/image-validation.txt
+sha256sum "$IMG"/*.core "$IMG"/runtime/sbcl "$IMG"/openssl/lib/*.so.3 "$IMG"/lib/libsodium.so.23 "$ACL2" | tee build/freeze/image-hashes.txt
 ls -la "$IMG"
 echo "== done"
