@@ -1651,9 +1651,12 @@
         "tests/acl2/consumer-local-control-tests.lisp",
         "planning/evidence/manifests/certify-20260923T213301Z-209515.json",
         "planning/experiments/e1-e2-v1-traces.json",
-        "planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md"
+        "planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md",
+        "tests/test_native_consumer_project_bounds.py",
+        "planning/evidence/consumer-project-envelope-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T234427Z-1749031.json"
       ],
-      "note": "Selected v1 experiment, not a v0 gate. The cursor/event kernel and Store completed-prefix model are certified in scope. Native image 1d26e01f passed local-owner signed poll, repeat without ACK mutation, advancing ACK with killed reply and recovered position, selected-pack/fenced-clone recovery and old-incarnation refusal. The current poll walks the preceding history before its bounded 16-event window. General remote authenticated multi-group poll/ack/rebase, native physical crash refinement, the consumer-owned transaction/ACK/reply join and executed two-store exchange remain open; the full adversarial E2 trace set is not qualified."
+      "note": "Selected v1 experiment, not a v0 gate. The cursor/event kernel and Store completed-prefix model are certified in scope. Native image 1d26e01f passed local-owner signed poll, repeat without ACK mutation, advancing ACK with killed reply and recovered position, selected-pack/fenced-clone recovery and old-incarnation refusal. The current poll walks the preceding history before its bounded 16-event window. General remote authenticated multi-group poll/ack/rebase, native physical crash refinement, the consumer-owned transaction/ACK/reply join and executed two-store exchange remain open; the full adversarial E2 trace set is not qualified. The subsequent consumer-project exact-file overlimit refusal repair has a scoped ACL2 envelope regression and old-image fault counterexample; its native regression awaits the next source-matched image."
     }
   ]
 }

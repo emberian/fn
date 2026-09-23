@@ -48,6 +48,33 @@
  (equal (fn-ncl-poll-reply-decode
          (fn-ncl-poll-reply-encode :accepted *ncl-token* nil))
         (list :consumer-poll-reply :accepted *ncl-token* nil)))
+
+; Stress the carried event's independent schema-1 field maxima.  Even this
+; deliberately non-binding value fits the consumer report envelope.  A
+; report one octet beyond that envelope is refused before frame creation.
+(defconst *ncl-max-shape-event*
+  (fn-stxa-make-carried
+   *fn-cbor-max-uint* *fn-cbor-max-uint*
+   *fn-cbor-max-uint* *fn-cbor-max-uint*
+   (make-list *fn-stxk-max-profile* :initial-element 1)
+   (make-list *fn-record-max-metadata* :initial-element 2)
+   (make-list *fn-record-max-octets* :initial-element 3)
+   (make-list *fn-stxe-max-octets* :initial-element 4)
+   (make-list *fn-article-max-octets* :initial-element 5)
+   (make-list *fn-record-max-metadata* :initial-element 6)))
+(assert-event (fn-stxa-p *ncl-max-shape-event*))
+(defconst *ncl-max-shape-bytes* (fn-stxa-encode *ncl-max-shape-event*))
+(assert-event
+ (and (consp *ncl-max-shape-bytes*)
+      (< 131076 (len *ncl-max-shape-bytes*))
+      (<= (len *ncl-max-shape-bytes*) *fn-stxa-max-octets*)
+      (not (eq (fn-ncl-poll-reply-encode
+                :accepted *ncl-token* *ncl-max-shape-bytes*) :bad))))
+(assert-event
+ (eq (fn-ncl-poll-reply-encode
+      :accepted *ncl-token*
+      (make-list (1+ *fn-stxa-max-octets*) :initial-element 7))
+     :bad))
 (assert-event
  (equal (fn-ncl-reply-decode (fn-ncl-reply-encode :uncertain nil))
         '(:consumer-reply :uncertain nil)))

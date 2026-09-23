@@ -302,6 +302,10 @@ reply has a separate 196,963-octet payload ceiling, within the 4,194,304-octet
 underlying frame payload ceiling; ordinary control requests retain their smaller cap.
 Its cursor and report lengths are checked independently. Poll leaves the
 durable consumer position unchanged; only a subsequent `ack` writes progress.
+The `consumer-project` exact-file reader uses the ACL2 cursor and event
+ceilings (346 and 196,608 octets). A file beyond either ceiling is a bounded
+`:limit` refusal of that CLI request; malformed files within the ceilings
+reach the ACL2 projector's codec refusal. Neither result advances an ack.
 The current list-backed selector copies a 16-event window after a positional
 walk of at most the configured Store transaction limit, so its pessimistic
 work is that limit plus 16 event steps per poll, not constant-time lookup.

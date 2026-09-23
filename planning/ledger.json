@@ -583,7 +583,7 @@
     "roots": 574,
     "theorems": 8312,
     "functions": 6239,
-    "assert_events": 9085,
+    "assert_events": 9088,
     "must_fails": 465,
     "encapsulates": 26,
     "guards": {
@@ -12713,9 +12713,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
+      "assert_events": 21,
       "must_fails": 0,
-      "defconsts": 6,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -25560,14 +25560,14 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 790,
+        "line": 793,
         "name": "minusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 1052,
+        "line": 1055,
         "name": "fnn-checkpoint-name-result",
         "source": "host/native/checkpoint.lisp",
         "reason": "defined in host/native/checkpoint.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

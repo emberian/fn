@@ -19,7 +19,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 369 |
 | Functions left at the default with an explicit guard | 3053 |
 | Functions left at the default with no guard | 795 |
-| `assert-event` checks | 9085 |
+| `assert-event` checks | 9088 |
 | `must-fail` checks | 465 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 76 |
@@ -537,7 +537,7 @@ that `make certify` requests.
 | `tests/acl2/config-store-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 0 | 0 |
 | `tests/acl2/config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 95 | 0 | 0 |
-| `tests/acl2/consumer-local-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
+| `tests/acl2/consumer-local-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
 | `tests/acl2/consumer-owner-local-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 0 | 0 |
 | `tests/acl2/consumer-poll-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 36 | 8 | 0 |
