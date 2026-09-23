@@ -156,7 +156,7 @@
  (defthm fn-opc-reader-context-conn-okp
    (implies (fn-own-conn-okp conn groups capacity records)
             (fn-own-conn-okp
-             (fn-own-conn-make-indexed
+             (fn-own-conn-make-group-indexed
                                (fn-own-conn-id conn) (fn-own-conn-version conn)
                                (fn-own-conn-frontier conn) (fn-own-conn-wire conn)
                                (fn-auth-with-base
@@ -166,14 +166,16 @@
                                (fn-own-conn-archive conn) (fn-own-conn-config conn)
                                (fn-own-conn-observation conn)
                                (fn-own-conn-verdicts conn)
-                               (fn-own-conn-index conn))
+                               (fn-own-conn-index conn)
+                               (fn-own-conn-group-index conn))
              groups capacity records))
    :hints (("Goal" :in-theory (e/d (fn-own-conn-okp (:d fn-own-conn-boundedp))
                                    (fn-auth-with-base fn-peer-open-session
                                     fn-auth-sessionp fn-peer-sessionp
                                     fn-own-prefix-archive
                                     fn-nntp-session-group fn-nntp-session-current
-                                    fn-opc-reader-context-session-boundedp))
+                                    fn-opc-reader-context-session-boundedp
+                                    fn-own-conn-make-group-indexed))
             :use ((:instance fn-opc-reader-context-session-boundedp
                              (as (fn-own-conn-session conn))
                              (cid (fn-own-conn-id conn))
@@ -221,7 +223,8 @@
                            (fn-own-conn-okp fn-own-conn-boundedp fn-own-find-conn-okp
                             fn-opc-reader-context-conn-okp
                             fn-auth-with-base fn-peer-open-session
-                            fn-auth-sessionp fn-peer-sessionp fn-cfgp)))))
+                            fn-auth-sessionp fn-peer-sessionp fn-cfgp
+                            fn-own-conn-make-group-indexed)))))
 
 (defthm fn-opc-configured-step-preserves-owner-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))
