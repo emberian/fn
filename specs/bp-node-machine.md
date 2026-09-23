@@ -698,6 +698,10 @@ image that selects its final inode. The general `fn-bs-crash-imagep` to observed
 journal theorem, multi-record replay, restored epoch/frontier, and native
 publisher/recovery caller are still open. The present kind-5 subset has no
 submission or receipt handoff; the broader row below remains the target.
+`fn-bpnf-actual-link-crash-is-absent-or-exact` further connects the real
+`fn-bs-link` pending entry to the absent-or-exact crash choices;
+`fn-bpnf-directory-barrier-quiet` fixes the final name after directory
+fsync. The relation across every native publisher call remains open.
 `books/bp-fnbs-replay.lisp` is the bounded kind-5 byte-row scanner over
 canonical final names: it decodes exact frames, rejects damaged/duplicate or
 out-of-order rows and capacity overflow, and reconstructs the held list and
