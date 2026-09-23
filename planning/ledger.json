@@ -222,7 +222,11 @@
     "tests/acl2/bp-node-machine-authorization-tests",
     "books/bp-fragment",
     "books/bp-fragment-invariants",
+    "books/bp-fragment-fast",
+    "books/bp-limits",
     "tests/acl2/bp-fragment-tests",
+    "tests/acl2/bp-fragment-fast-tests",
+    "tests/acl2/bp-limits-tests",
     "books/clock",
     "books/clock-invariants",
     "tests/acl2/clock-tests",
@@ -430,25 +434,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 431,
-    "books_in_root_closure": 430,
-    "roots": 426,
-    "theorems": 7155,
-    "functions": 5504,
-    "assert_events": 7938,
+    "books": 435,
+    "books_in_root_closure": 434,
+    "roots": 430,
+    "theorems": 7179,
+    "functions": 5517,
+    "assert_events": 7965,
     "must_fails": 293,
     "encapsulates": 26,
     "guards": {
-      "verified": 1746,
-      "declared-off": 296,
+      "verified": 1756,
+      "declared-off": 297,
       "default-guarded": 2790,
-      "default-unguarded": 672
+      "default-unguarded": 674
     },
-    "suspect_theorems": 67,
+    "suspect_theorems": 68,
     "export_hygiene_warnings": 93,
-    "enabled_projection_warnings": 27,
+    "enabled_projection_warnings": 31,
     "teeth_form_warnings": 24,
-    "include_hygiene_warnings": 267,
+    "include_hygiene_warnings": 272,
     "host_names_warnings": 660,
     "hand_written_record_warnings": 18
   },
@@ -1142,10 +1146,35 @@
       "read_error": null
     },
     {
+      "book": "books/bp-fragment-fast.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 8,
+      "guards": {
+        "verified": 6,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 6,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-fragment"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-fragment-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 40,
+      "theorems": 48,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -1167,7 +1196,8 @@
       ],
       "suspects": [
         "fn-bpf-cell-of-uncovered-is-gap",
-        "fn-bpf-out-of-bounds-input-allocates-nothing"
+        "fn-bpf-out-of-bounds-input-allocates-nothing",
+        "fn-bpf-whole-parent-fragments-restore-parent"
       ],
       "read_error": null
     },
@@ -1176,14 +1206,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 6,
-      "functions": 30,
+      "functions": 35,
       "guards": {
-        "verified": 30,
-        "declared-off": 0,
+        "verified": 34,
+        "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 30,
+      "verify_guards_events": 34,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -1221,6 +1251,34 @@
         "article-properties",
         "store-node",
         "store-node-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-limits.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-adu",
+        "bp-fragment",
+        "bp-node-machine-codec",
+        "frame-octets"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7744,6 +7802,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-fragment-fast-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-fragment-fast"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-fragment-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -7756,9 +7839,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 68,
+      "assert_events": 80,
       "must_fails": 0,
-      "defconsts": 11,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7817,6 +7900,31 @@
       "includes": [
         "../../books/bp-ingress",
         "../../books/codec-attach"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-limits-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-limits"
       ],
       "system_includes": [],
       "suspects": [],
@@ -12024,6 +12132,14 @@
       ]
     },
     {
+      "theorem": "fn-bpf-whole-parent-fragments-restore-parent",
+      "book": "books/bp-fragment-invariants.lisp",
+      "line": 554,
+      "reasons": [
+        "instance-corollary: the statement is fn-bpf-whole-fragment-primaries-restore-parent instantiated, discharging nothing"
+      ]
+    },
+    {
       "theorem": "fn-bpn-apply-inapplicable-record-is-noop",
       "book": "books/bp-node-machine-invariants.lisp",
       "line": 850,
@@ -13208,7 +13324,44 @@
         "book": "books/bp-primary.lisp",
         "line": 396,
         "stated_in": [
+          "books/bp-fragment-invariants.lisp",
           "books/bp-node-machine-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-report-to",
+        "book": "books/bp-primary.lisp",
+        "line": 398,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-lifetime",
+        "book": "books/bp-primary.lisp",
+        "line": 401,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-fragment-offset",
+        "book": "books/bp-primary.lisp",
+        "line": 402,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-total-adu-length",
+        "book": "books/bp-primary.lisp",
+        "line": 403,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
         ],
         "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
       },
@@ -13517,6 +13670,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-fragment-fast.lisp",
+        "line": 14,
+        "include": "bp-fragment",
+        "included": "books/bp-fragment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-fragment-invariants.lisp",
         "line": 15,
         "include": "bp-fragment",
@@ -13528,6 +13688,20 @@
         "line": 9,
         "include": "article-fields",
         "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-limits.lisp",
+        "line": 9,
+        "include": "bp-fragment",
+        "included": "books/bp-fragment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-limits.lisp",
+        "line": 11,
+        "include": "bp-node-machine-codec",
+        "included": "books/bp-node-machine-codec.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -14196,6 +14370,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bp-fragment-fast-tests.lisp",
+        "line": 3,
+        "include": "../../books/bp-fragment-fast",
+        "included": "books/bp-fragment-fast.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bp-fragment-tests.lisp",
         "line": 10,
         "include": "../../books/bp-fragment-invariants",
@@ -14214,6 +14395,13 @@
         "line": 3,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-limits-tests.lisp",
+        "line": 3,
+        "include": "../../books/bp-limits",
+        "included": "books/bp-limits.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -482,3 +482,103 @@
                                    fn-bpp-no-fragmentp
                                    fn-bpp-any-status-requestp
                                    fn-bpp-administrativep)))))
+
+(local
+ (defthm fn-bpf-eleven-list-reconstructs
+   (implies (and (true-listp b) (equal (len b) 11))
+            (equal (list (car b) (nth 1 b) (nth 2 b) (nth 3 b) (nth 4 b) (nth 5 b) (nth 6 b) (nth 7 b) (nth 8 b) (nth 9 b) (nth 10 b)) b))
+   :hints (("Goal" :expand ((len b) (len (cdr b)) (len (cdr (cdr b))) (len (cdr (cdr (cdr b)))) (len (cdr (cdr (cdr (cdr b))))) (len (cdr (cdr (cdr (cdr (cdr b)))))) (len (cdr (cdr (cdr (cdr (cdr (cdr b))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr b)))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr b))))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr b)))))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr b))))))))))) (len (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr b)))))))))))) (true-listp b) (true-listp (cdr b)) (true-listp (cdr (cdr b))) (true-listp (cdr (cdr (cdr b)))) (true-listp (cdr (cdr (cdr (cdr b))))) (true-listp (cdr (cdr (cdr (cdr (cdr b)))))) (true-listp (cdr (cdr (cdr (cdr (cdr (cdr b))))))) (true-listp (cdr (cdr (cdr (cdr (cdr (cdr (cdr b)))))))) (true-listp (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr b))))))))) (true-listp (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr b)))))))))) (true-listp (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr b))))))))))) (true-listp (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr b)))))))))))))))))
+
+; Whole-parent restoration needs the record's eleven-field shape, with the
+; field recognizers closed after that fact is available.
+(local
+ (defthm fn-bpf-block-recompose
+   (implies (fn-bpp-blockp p)
+            (equal (fn-bpp-make-block
+                    (fn-bpp-flags p) (fn-bpp-crc-type p)
+                    (fn-bpp-destination p) (fn-bpp-source p)
+                    (fn-bpp-report-to p) (fn-bpp-creation-time p)
+                    (fn-bpp-sequence p) (fn-bpp-lifetime p)
+                    (fn-bpp-fragment-offset p) (fn-bpp-total-adu-length p))
+                   p))
+   :hints (("Goal"
+            :use ((:instance fn-bpf-eleven-list-reconstructs (b p)))
+            :in-theory (disable fn-bpf-eleven-list-reconstructs
+                                fn-bpp-eidp fn-bpp-timep fn-bpp-crc-typep
+                                fn-bpp-dtn-sspp)))))
+
+(local
+ (defthm fn-bpf-whole-block-has-no-fragment-fields
+   (implies (and (fn-bpp-blockp p)
+                 (not (fn-bpp-fragmentp (fn-bpp-flags p))))
+            (and (equal (fn-bpp-fragment-offset p) nil)
+                 (equal (fn-bpp-total-adu-length p) nil)))
+   :hints (("Goal" :in-theory (e/d (fn-bpp-blockp)
+                                   (fn-bpp-eidp fn-bpp-timep
+                                    fn-bpp-crc-typep fn-bpp-dtn-sspp))))))
+
+(local
+ (defthm fn-bpf-block-flags-natural
+   (implies (fn-bpp-blockp p) (natp (fn-bpp-flags p)))
+   :hints (("Goal" :in-theory (e/d (fn-bpp-blockp)
+                                   (fn-bpp-eidp fn-bpp-timep
+                                    fn-bpp-crc-typep fn-bpp-dtn-sspp))))))
+
+(defthm fn-bpf-whole-fragment-unfragments-to-parent
+  (implies (and (fn-bpp-blockp parent)
+                (not (fn-bpp-fragmentp (fn-bpp-flags parent))))
+           (equal (fn-bpf-unfragment-block
+                   (fn-bpf-fragment-block parent offset total))
+                  parent))
+  :hints (("Goal"
+           :use ((:instance fn-bpf-block-recompose (p parent))
+                 (:instance fn-bpf-whole-block-has-no-fragment-fields
+                            (p parent))
+                 (:instance fn-bpf-block-flags-natural (p parent)))
+           :in-theory (disable fn-bpf-block-recompose
+                               fn-bpf-whole-block-has-no-fragment-fields
+                               fn-bpf-block-flags-natural fn-bpp-blockp
+                               fn-bpp-eidp fn-bpp-timep fn-bpp-crc-typep
+                               fn-bpp-dtn-sspp))))
+
+(defthm fn-bpf-whole-fragment-primaries-restore-parent
+  (implies (and (fn-bpp-blockp parent)
+                (not (fn-bpp-fragmentp (fn-bpp-flags parent))))
+           (fn-bpf-all-unfragment-to
+            parent (fn-bpf-fragment-primaries parent starts total)))
+  :hints (("Goal" :induct (fn-bpf-fragment-primaries
+                            parent starts total)
+           :in-theory (disable fn-bpp-blockp fn-bpf-fragment-block
+                               fn-bpf-unfragment-block))))
+
+(defthm fn-bpf-whole-parent-fragments-restore-parent
+  (implies (and (fn-bpp-blockp parent)
+                (not (fn-bpp-fragmentp (fn-bpp-flags parent)))
+                (fn-bpf-fragmentablep parent)
+                (equal (car (fn-bpf-fragment payload boundaries)) :ok)
+                (equal total (len payload)))
+           (fn-bpf-all-unfragment-to
+            parent
+            (fn-bpf-fragment-primaries
+             parent (fn-bpf-starts boundaries) total)))
+  :hints (("Goal"
+           :use ((:instance fn-bpf-whole-fragment-primaries-restore-parent
+                            (starts (fn-bpf-starts boundaries))))
+           :in-theory (disable fn-bpf-whole-fragment-primaries-restore-parent
+                               fn-bpf-fragment-primaries
+                               fn-bpf-all-unfragment-to fn-bpf-fragment
+                               fn-bpp-blockp fn-bpf-fragmentablep
+                               fn-bpp-fragmentp))))
+
+; N09: a fragment parent at ADU offset O cut at local offset K has child
+; offset O+K and retains the original total and ADU key.
+(defthm fn-bpf-refragment-block-unfolds
+  (and (equal (fn-bpp-fragment-offset
+               (fn-bpf-refragment-block parent local-offset))
+              (+ (fn-bpp-fragment-offset parent) local-offset))
+       (equal (fn-bpp-total-adu-length
+               (fn-bpf-refragment-block parent local-offset))
+              (fn-bpp-total-adu-length parent))
+       (equal (fn-bpp-adu-key
+               (fn-bpf-refragment-block parent local-offset))
+              (fn-bpp-adu-key parent))))
