@@ -63,7 +63,7 @@ class AuditTests(unittest.TestCase):
                             "codec": ["fn-x-codec-vocabulary"]},
                            {"book": "books/b", "opened": ["fn-y"], "codec": []}]}
         self.assertIn("2 of 9 books", theory_check.summary(report))
-        self.assertIn("1 open a CODEC", theory_check.summary(report))
+        self.assertIn("1 above the codec layer open a CODEC", theory_check.summary(report))
         lines = theory_check.table(report)
         self.assertTrue(lines[1].startswith("codec  books/a"))
         self.assertTrue(lines[2].startswith("       books/b"))
