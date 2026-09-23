@@ -597,11 +597,16 @@ STREAMING appear exactly when the pinned peer record has an inbound half;
 AUTHINFO USER continues to describe only the reader mechanism the connection
 may use now.
 
-**Open, named**: the fold-level form of that statement — no read of a
-connection under a configuration that grants posting to no one emits a
-submission — is `OB-AUTH-FOLD`, recorded in `planning/proofs.json` and in
-the header of `books/nntp-auth-invariants.lisp` with the three lemmas it
-waits on.
+**Proved for the local posting path**: `OB-AUTH-FOLD` is
+`fn-auth-fold-step-has-no-local-submission` in `books/nntp-auth-fold.lisp`.
+For a valid served connection with a pinned no-posters credential policy and
+no pending local POST body, the complete `fn-served-step` effect list has no
+injected submission; `fn-auth-fold-step-preserves-safe-connp` carries those
+conditions across reads. This does not prohibit a separately authorized
+transit peer: a no-posting credential can bind a configured peer role, and
+TAKETHIS may then produce a distinct transit submission. The complete-read
+witness and local POST counterexample for the removed policy premise are in
+`tests/acl2/nntp-auth-fold-tests.lisp`.
 
 ## Scope
 

@@ -414,8 +414,10 @@
     "tests/acl2/owner-tls-pin-tests",
     "tests/acl2/served-tls-prefix-tests",
     "books/nntp-auth-invariants",
+    "books/nntp-auth-fold",
     "tests/acl2/served-tests",
     "tests/acl2/nntp-auth-teeth-tests",
+    "tests/acl2/nntp-auth-fold-tests",
     "books/config-stream",
     "tests/acl2/config-stream-tests",
     "books/config-physical-replay",
@@ -532,19 +534,19 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 533,
-    "books_in_root_closure": 532,
-    "roots": 528,
-    "theorems": 7985,
-    "functions": 6034,
-    "assert_events": 8771,
-    "must_fails": 405,
+    "books": 535,
+    "books_in_root_closure": 534,
+    "roots": 530,
+    "theorems": 8035,
+    "functions": 6039,
+    "assert_events": 8789,
+    "must_fails": 406,
     "encapsulates": 26,
     "guards": {
       "verified": 1982,
-      "declared-off": 321,
-      "default-guarded": 2961,
-      "default-unguarded": 770
+      "declared-off": 324,
+      "default-guarded": 2962,
+      "default-unguarded": 771
     },
     "suspect_theorems": 73,
     "export_hygiene_warnings": 101,
@@ -5502,6 +5504,31 @@
         "native-admin",
         "native-auth-admin",
         "native-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-auth-fold.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 50,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-auth-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -12687,6 +12714,34 @@
         "../../books/native-operator"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/nntp-auth-fold-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 18,
+      "must_fails": 1,
+      "defconsts": 18,
+      "defmacros": 4,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/nntp-auth-fold"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
