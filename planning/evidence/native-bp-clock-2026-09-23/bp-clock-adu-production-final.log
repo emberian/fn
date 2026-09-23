@@ -1,0 +1,2 @@
+{"a_accepted": 1, "a_adu_is_b_adu": true, "a_authored": true, "a_bundle_octets": 1589, "a_clock_domain": true, "a_payload_octets": 1500, "b_accepted": 1, "b_adu_is_a_adu": true, "b_clock_domain": true, "b_retained_kind5": true, "b_same_length_corruption_refused": true, "bundle_wraps_adu": true, "listener_rc": 0, "ok": true, "refusals": 0, "scenario": "adu", "sender_rc": 0, "uncertain": 0}
+{"failed": [], "ok": true, "passed": ["adu"], "scenario": "summary"}

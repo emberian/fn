@@ -68,6 +68,46 @@
         (fnn-indeterminate "bp-service: ACL2 rejected lifecycle namespace"))
       (values names plan))))
 
+(defun fnn-bps-clock-domain-gate (service namespace-plan)
+  "Establish or check the durable boot domain before replaying age anchors."
+  (let* ((root (fnn-bps-root service))
+         (final (fnn-join root (fnn-core 'fn-bpcd-final-name)))
+         (present (fnn-check-regular final))
+         (sequence-frontier
+           (fnn-check-regular
+            (fnn-join (fnn-join root "sequence") "frontier.fnb")))
+         (legacy-evidence
+           (fnn-core 'fn-bpnf-clock-domain-legacy-evidence
+                     namespace-plan (and sequence-frontier t)))
+         (saved (and present
+                     (fnn-octet-list
+                      (fnn-read-regular-bounded
+                       final (fnn-core 'fn-bpcd-frame-limit)))))
+         (observed (fnn-bp-boot-id-observation))
+         (plan (fnn-core 'fn-bpnf-clock-domain-plan
+                         saved (and present t) observed legacy-evidence
+                         (and (fnn-bps-lock-fd service) t) (not present))))
+    (case (fnn-core 'fn-bpnf-clock-domain-plan-status plan)
+      (:same service)
+      (:initialize
+       (let* ((stage (fnn-join root
+                               (format nil ".clock-domain-~d-~a"
+                                       (sb-posix:getpid) (fnn-random-hex 12))))
+              (outcome
+                (fnn-immutable-publish-effect
+                 (fnn-core 'fn-bpnf-clock-domain-plan-publication plan)
+                 stage final root
+                 (fnn-octets (fnn-core 'fn-bpnf-clock-domain-plan-frame plan))
+                 :cleanup-directory root :operation-label :clock-domain)))
+         (unless (eq outcome :durable)
+           (fnn-indeterminate
+            "bp-service: clock domain publication is ~a" outcome))
+         service))
+      (otherwise
+       (fnn-indeterminate
+        "bp-service: clock domain fenced: ~a"
+        (fnn-core 'fn-bpnf-clock-domain-plan-reason plan))))))
+
 (defun fnn-bps-read-records (service names)
   (let ((limit (fnn-core 'fn-bpn-host-lifecycle-frame-limit))
         (records nil))
@@ -282,7 +322,7 @@
        (setf (fnn-bps-outcome service) :uncertain)
        (fnn-indeterminate "bp-service: restart fenced: ~(~a~)" (second effect)))
       (:restart-ready
-       (fnn-out "BP queue recovered jobs=~d" (second effect)))
+       (fnn-out "BP FNBS recovered held=~d" (second effect)))
       (t nil)))
   service)
 
@@ -379,6 +419,14 @@
           (multiple-value-bind (observed-names plan)
               (fnn-bps-namespace-plan service)
             (declare (ignore observed-names))
+            (handler-case (fnn-fsync-dir root)
+              (fnn-os-error (e)
+                (fnn-indeterminate
+                 "bp-service: clock domain namespace barrier failed: ~a" e)))
+            (handler-case (fnn-bps-clock-domain-gate service plan)
+              (fnn-os-error (e)
+                (fnn-indeterminate
+                 "bp-service: clock domain observation failed: ~a" e)))
             (let* ((record-names
                      (fnn-core 'fn-bpnf-mixed-legacy-names plan))
                    (received-names
@@ -402,6 +450,9 @@
                       (fnn-core 'fn-bpn-host-lifecycle-recovery-stages recovery))
                 (fnn-bps-drive-effects
                  service (fnn-bps-foundation-step service event))
+                (fnn-out "BP queue recovered jobs=~d"
+                         (fnn-core 'fn-bpnf-base-job-count
+                                   (fnn-bps-state service)))
                 (unless (eq (fnn-core 'fn-bpn-host-lifecycle-recovery-agrees-p
                                       recovery (fnn-bps-base service)) t)
                   (fnn-indeterminate
@@ -476,6 +527,19 @@
          (progn (fnn-bps-attempt-ready service) (fnn-bps-exit-code service))
       (fnn-bps-release service))))
 
+(defun fnn-command-bp-service-inspect-received (frame-path adu-out)
+  "Read-only, ACL2-decoded evidence projection of a kind-5 FNBS frame."
+  (let* ((frame (fnn-octet-list
+                 (fnn-read-regular-bounded
+                  frame-path (fnn-core 'fn-bpnf-stored-frame-limit))))
+         (result (fnn-core 'fn-bpnf-inspect-adu frame)))
+    (unless (eq (fnn-core 'fn-bpnf-inspect-readyp result) t)
+      (fnn-refuse "bp-service: invalid received FNBS frame"))
+    (let ((adu (fnn-core 'fn-bpnf-inspect-value result)))
+      (fnn-write-staged adu-out (fnn-octets adu))
+      (fnn-out "BP FNBS inspect adu=~d" (length adu))
+      +fnn-exit-ok+)))
+
 (defun fnn-dispatch-bp-service (command args)
   (flet ((need (n)
            (when (< (length args) n)
@@ -504,6 +568,9 @@
         (number 2 +fnn-bp-lifetime+) (number 3 +fnn-bp-crc-type+)
         (number 4 +fnn-bp-hop-limit+) (number 5 +fnn-tcl-transfer-mru+)
         (optional-number 6) (number 7 0)))
+      ((string= command "inspect-received")
+       (need 2)
+       (fnn-command-bp-service-inspect-received (first args) (second args)))
       (t (error 'fnn-usage-error
                 :message (format nil "unknown bp-service command ~a" command))))))
 

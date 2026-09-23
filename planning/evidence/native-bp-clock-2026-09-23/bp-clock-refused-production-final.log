@@ -1,0 +1,2 @@
+{"ok": true, "outcomes": [["refused", "outbound reason=exceeds-transfer-mtu"]], "scenario": "refused", "segments": 0, "sender_rc": 1, "staged": []}
+{"failed": [], "ok": true, "passed": ["refused"], "scenario": "summary"}

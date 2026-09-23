@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parent.parent
 class NativeBpReceiveIntegrityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.image = ROOT / "build" / "fn-host-dtn"
+        cls.image = Path(os.environ.get(
+            "FN_NATIVE_BP_HOST", ROOT / "build" / "fn-host-dtn"))
         if not os.access(cls.image, os.X_OK):
             raise unittest.SkipTest(f"DTN native image missing: {cls.image}")
 

@@ -246,6 +246,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-receive-boundary \
 	tests/acl2/bp-node-receive-boundary-tests \
 	books/bp-fnbs-codec \
+	books/bp-fnbs-inspect \
+	tests/acl2/bp-fnbs-inspect-tests \
 	books/bp-fnbs-codec-invariants \
 	tests/acl2/bp-fnbs-codec-tests \
 	books/bp-fnbs-byte-publisher \
@@ -257,6 +259,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-namespace-tests \
 	books/bp-fnbs-publication \
 	tests/acl2/bp-fnbs-publication-tests \
+	books/bp-clock-domain \
+	tests/acl2/bp-clock-domain-tests \
 	tests/acl2/bp-fnbs-byte-publisher-tests \
 	tests/acl2/bp-fnbs-byte-counterexamples \
 	books/bp-sequence-fidelity \

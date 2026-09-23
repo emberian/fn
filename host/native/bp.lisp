@@ -49,11 +49,30 @@
       (fnn-refuse "bp: ~a is not usable as a node ID (RFC 9171 4.2.5.2)" node-id))
     config))
 
+(defun fnn-bp-monotonic-now ()
+  "Milliseconds on Linux CLOCK_BOOTTIME, whose origin survives process death.
+This is host clock evidence, not an ACL2 expiry decision.  A reboot starts a
+new origin and needs a separately identified recovery epoch."
+  #+(and sbcl linux)
+  (multiple-value-bind (seconds nanoseconds)
+      (sb-unix::clock-gettime 7) ; Linux CLOCK_BOOTTIME includes suspend time.
+    (+ (* 1000 seconds) (floor nanoseconds 1000000)))
+  #-(and sbcl linux)
+  (error "BP monotonic clock requires Linux CLOCK_BOOTTIME"))
+
+(defun fnn-bp-boot-id-observation ()
+  "Bounded Linux boot identifier; ACL2 validates its UUID syntax and domain."
+  #+(and sbcl linux)
+  (fnn-octet-list
+   (fnn-read-regular-bounded "/proc/sys/kernel/random/boot_id" 37))
+  #-(and sbcl linux)
+  (error "BP clock domain requires Linux boot ID"))
+
 (defun fnn-bp-observation (wall wall-error)
   "One observation per wakeup.  With no operator-supplied DTN time the
 observation has no wall reading, and `fn-bpn-creation-time' then writes the
 zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
-  (let ((obs (fnn-core 'fn-bpn-host-observation (fnn-tcl-now)
+  (let ((obs (fnn-core 'fn-bpn-host-observation (fnn-bp-monotonic-now)
                        (or wall 0) (or wall-error 0) (and wall t))))
     (unless obs (fnn-refuse "bp: the clock reading is not an observation"))
     obs))
@@ -456,13 +475,12 @@ dominates an acceptance: a run that saw one of each did not succeed."
          (peer (fnn-bp-eid peer-eid))
          (adu (fnn-octet-list (fnn-read-regular-bounded adu-path transfer-mru)))
          (obs (fnn-bp-observation wall wall-error))
-         (journal-root (fnn-bp-journal-dir journal))
-         (spool-lock (fnn-tcl-spool-acquire journal-root)))
+         ;; The standalone sender shares the FNBS owner and clock-domain gate
+         ;; with bp-service, so it cannot create an unmarked sequence frontier.
+         (service (fnn-bps-open journal config wall wall-error))
+         (journal-root (fnn-bps-root service)))
     (unwind-protect
-         (let* ((tally (fnn-bp-evidence-open
-                        (make-fnn-bp-tally
-                         :config config :wall wall :wall-error wall-error
-                         :journal journal-root :spool-lock spool-lock)))
+         (let* ((tally (fnn-bp-evidence-open (fnn-bps-tally service)))
                 (socket nil))
            (multiple-value-bind (sequence reservation)
                (fnn-bp-reserve-sequence tally)
@@ -502,7 +520,7 @@ dominates an acceptance: a run that saw one of each did not succeed."
                           (fnn-bp-summary tally)
                           (fnn-bp-exit-code tally conn)))
                    (when socket (fnn-socket-shut socket)))))))
-      (fnn-tcl-spool-release spool-lock))))
+      (fnn-bps-release service))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; `bp receive'

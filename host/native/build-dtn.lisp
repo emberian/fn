@@ -62,8 +62,10 @@
 (include-book "books/bp-node-machine-guards")
 (include-book "books/bp-node-receive-boundary")
 (include-book "books/bp-fnbs-replay")
+(include-book "books/bp-fnbs-inspect")
 (include-book "books/bp-fnbs-namespace")
 (include-book "books/bp-fnbs-publication")
+(include-book "books/bp-clock-domain")
 (include-book "books/bp-receive-evidence")
 
 (ld "host/store-host.lisp" :ld-error-action :error)

@@ -685,7 +685,8 @@
       "proof_targets": [
         "PRF-017",
         "PRF-018",
-        "PRF-033"
+        "PRF-033",
+        "PRF-061"
       ],
       "verification": [
         "proof",
@@ -1006,7 +1007,8 @@
         "PRF-045",
         "PRF-046",
         "PRF-059",
-        "PRF-060"
+        "PRF-060",
+        "PRF-061"
       ],
       "verification": [
         "proof",

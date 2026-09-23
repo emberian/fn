@@ -14,6 +14,10 @@
         (fn-bpnf-state base nil nil nil nil nil nil 0 0)
       nil)))
 
+(defun fn-bpnf-base-job-count (st)
+  (declare (xargs :guard t))
+  (len (fn-bpn-machine-state-jobs (fn-bpnf-base st))))
+
 ; The admitted principal comes from configured session admission.  The
 ; announced TCPCL peer EID remains a separate provenance field.
 (defun fn-bpnf-tcpcl-ingress
@@ -115,6 +119,7 @@
   :rule-classes nil)
 
 (verify-guards fn-bpnf-initial-state)
+(verify-guards fn-bpnf-base-job-count)
 (verify-guards fn-bpnf-tcpcl-ingress)
 (verify-guards fn-bpnf-receive-wire-event)
 (verify-guards fn-bpnf-receive-wire-readyp)
