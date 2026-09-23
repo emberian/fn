@@ -1,9 +1,10 @@
 #!/bin/sh
 # Stand up one native fn node on hbox from a frozen build tree.  Run ON hbox:
-#   sh hbox-node-deploy.sh /tank/fn/gates/freeze-dev-<rev> <shortrev> <listen-ipv4>
+#   sh hbox-node-deploy.sh /tank/fn/gates/freeze-dev-<rev> <shortrev> <listen-ipv4> <frozen-image-dir>
 # Idempotent only in the sense that it refuses to touch an existing node dir.
 set -eu
-TREE=$1; REV=$2; ADDR=$3
+[ "$#" -eq 4 ] || { echo "usage: $0 TREE SHORTREV LISTEN_IPV4 FROZEN_IMAGE_DIR" >&2; exit 2; }
+TREE=$1; REV=$2; ADDR=$3; IMAGE=$4
 NODE=/tank/fn/node
 PREFIX=$NODE/fn-$REV
 [ ! -e "$NODE/store" ] || { echo "refusing: $NODE/store exists"; exit 1; }
@@ -16,7 +17,7 @@ export ACL2_CUSTOMIZATION=NONE; unset ACL2_SYSTEM_BOOKS
 FN_OPENSSL_PREFIX=${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}
 export FN_OPENSSL_PREFIX
 echo "== install the production image under $PREFIX"
-FN_NATIVE_HOST="$TREE/build/fn-host" FN_NATIVE_CORE="$TREE/build/fn-host.core" \
+FN_NATIVE_HOST="$IMAGE/fn-host" FN_NATIVE_CORE="$IMAGE/fn-host.core" \
   FN_NATIVE_SOURCE_REVISION="$REV" PREFIX="$PREFIX" sh packaging/install-native.sh
 FN="$PREFIX/bin/fn"
 echo "== TLS pair (self-signed, ten years)"
@@ -85,7 +86,6 @@ StartLimitBurst=5
 [Service]
 Type=simple
 Environment=ACL2_CUSTOMIZATION=NONE
-Environment=FN_OPENSSL_PREFIX=$FN_OPENSSL_PREFIX
 ExecStart=$FN operator $NODE/fn.toml run
 Restart=on-failure
 RestartSec=5

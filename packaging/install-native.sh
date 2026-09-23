@@ -16,21 +16,39 @@ for support in packaging/fn-native packaging/fn-native.service.in packaging/net.
   [ -r "$support" ] || { echo "install-native: missing package input: $support" >&2; exit 4; }
 done
 grep -q '^#!.*sh' "$image" || { echo "install-native: image launcher is not the generated shell form" >&2; exit 4; }
-core_refs=$(grep -o -- '--core "[^"]*"' "$image" | wc -l | tr -d ' ')
-[ "$core_refs" = 1 ] || { echo "install-native: image launcher must name exactly one core" >&2; exit 4; }
-launcher_core=$(sed -n 's/.*--core "\([^"]*\)".*/\1/p' "$image")
+if grep -q '^# fn frozen image launcher v1$' "$image"; then
+  image_dir=$(CDPATH= cd -- "$(dirname -- "$image")" && pwd)
+  launcher_core=$image_dir/$(basename -- "$image").core
+  runtime=$image_dir/runtime/sbcl
+  sbcl_home=$image_dir/runtime/sbcl-home
+  [ -s "$image_dir/image.sha256" ] &&
+    (cd "$image_dir" && sha256sum -c image.sha256 >/dev/null) || {
+      echo "install-native: frozen image digest check failed" >&2; exit 4; }
+  [ -s "$image_dir/openssl/lib/libcrypto.so.3" ] &&
+  [ -s "$image_dir/openssl/lib/libssl.so.3" ] &&
+  [ -s "$image_dir/lib/libsodium.so.23" ] || {
+    echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
+  frozen=yes
+else
+  core_refs=$(grep -o -- '--core "[^"]*"' "$image" | wc -l | tr -d ' ')
+  [ "$core_refs" = 1 ] || { echo "install-native: image launcher must name exactly one core" >&2; exit 4; }
+  launcher_core=$(sed -n 's/.*--core "\([^"]*\)".*/\1/p' "$image")
+  runtime=$(sed -n 's/^exec "\([^"]*\)" .*/\1/p' "$image")
+  sbcl_home=$(sed -n "s/^export SBCL_HOME='\([^']*\)'/\1/p" "$image")
+  frozen=no
+fi
 [ -s "$launcher_core" ] || { echo "install-native: generated launcher core is unavailable" >&2; exit 4; }
 cmp -s "$core" "$launcher_core" || {
   echo "install-native: FN_NATIVE_CORE does not match the generated launcher core" >&2; exit 4; }
-runtime=$(sed -n 's/^exec "\([^"]*\)" .*/\1/p' "$image")
 [ -n "$runtime" ] && [ -x "$runtime" ] || { echo "install-native: generated launcher runtime is unavailable" >&2; exit 4; }
-sbcl_home=$(sed -n "s/^export SBCL_HOME='\([^']*\)'/\1/p" "$image")
 [ -n "$sbcl_home" ] && [ -d "$sbcl_home" ] || { echo "install-native: generated launcher SBCL_HOME is unavailable" >&2; exit 4; }
 
 hash_command=sha256sum
 command -v "$hash_command" >/dev/null 2>&1 || hash_command='shasum -a 256'
 crypto_inventory=
-if command -v ldconfig >/dev/null 2>&1; then
+if [ "$frozen" = yes ]; then
+  : # The frozen launcher loads the pinned libraries in its own directory.
+elif command -v ldconfig >/dev/null 2>&1; then
   crypto_inventory=$(ldconfig -p 2>/dev/null || true)
   printf '%s\n' "$crypto_inventory" | grep -Eq 'libsodium\.so(\.23)? ' || {
     echo "install-native: libsodium shared library is unavailable" >&2; exit 4; }
@@ -77,10 +95,17 @@ mkdir -p "$bindir" "$libdir" "$sharedir" "$sharedir/systemd" "$sharedir/launchd"
 mkdir -p "$libdir/runtime/sbcl-home"
 install -m 0755 "$runtime" "$libdir/runtime/sbcl"
 cp -RL "$sbcl_home"/. "$libdir/runtime/sbcl-home"/
-sed -e "s|^export SBCL_HOME='[^']*'|export SBCL_HOME='$prefix/libexec/fn/runtime/sbcl-home/'|" \
-    -e "s|^exec \"[^\"]*\"|exec \"$prefix/libexec/fn/runtime/sbcl\"|" \
-    -e "s|--core \"[^\"]*\"|--core \"$prefix/libexec/fn/fn-host.core\"|" \
-    "$image" > "$libdir/fn-host"
+if [ "$frozen" = yes ]; then
+  mkdir -p "$libdir/openssl/lib" "$libdir/lib"
+  cp -p "$image_dir/openssl/lib/"* "$libdir/openssl/lib/"
+  cp -p "$image_dir/lib/"* "$libdir/lib/"
+  cp -p "$image" "$libdir/fn-host"
+else
+  sed -e "s|^export SBCL_HOME='[^']*'|export SBCL_HOME='$prefix/libexec/fn/runtime/sbcl-home/'|" \
+      -e "s|^exec \"[^\"]*\"|exec \"$prefix/libexec/fn/runtime/sbcl\"|" \
+      -e "s|--core \"[^\"]*\"|--core \"$prefix/libexec/fn/fn-host.core\"|" \
+      "$image" > "$libdir/fn-host"
+fi
 chmod 0755 "$libdir/fn-host"
 install -m 0644 "$core" "$libdir/fn-host.core"
 install -m 0755 packaging/fn-native "$bindir/fn"
@@ -106,7 +131,10 @@ sed "s|@PREFIX@|$prefix|g" packaging/net.fn.native.plist.in > "$sharedir/launchd
   elif command -v ldd >/dev/null 2>&1; then ldd "$runtime"
   fi
   echo "dlopen-requirements: libsodium.so.23|libsodium.so libcrypto.so.3 libssl.so.3"
-  if [ -n "$crypto_inventory" ]; then
+  if [ "$frozen" = yes ]; then
+    $hash_command "$image_dir/openssl/lib/libcrypto.so.3" "$image_dir/openssl/lib/libssl.so.3" "$image_dir/lib/libsodium.so.23"
+    $hash_command "$libdir/openssl/lib/libcrypto.so.3" "$libdir/openssl/lib/libssl.so.3" "$libdir/lib/libsodium.so.23"
+  elif [ -n "$crypto_inventory" ]; then
     printf '%s\n' "$crypto_inventory" | grep -E 'libsodium\.so(\.23)?|libcrypto\.so\.3|libssl\.so\.3'
   else
     $hash_command "$sodium_path" "$crypto_path" "$ssl_path"
