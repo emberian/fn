@@ -313,12 +313,27 @@ class EmitTests(unittest.TestCase):
         self.assertIsNone(row.agrees)
 
     def test_a_refusal_row_that_draws_its_refusal_agrees(self):
-        row = self.gate.emit("V0-NODE-LOOPBACK", REFUSED, "bin/fn run", "rc=1")
-        self.assertEqual(PLAN_BY_KEY["V0-NODE-LOOPBACK"].expected, REFUSED)
+        row = self.gate.emit("V0-OUT-REFUSED", REFUSED, "fn lookup", "rc=1", node="a")
+        self.assertEqual(PLAN_BY_KEY["V0-OUT-REFUSED"].expected, REFUSED)
         self.assertTrue(row.agrees)
 
+    def test_exact_wildcard_config_usage_is_distinct_from_request_refusal(self):
+        spec = PLAN_BY_KEY["V0-NODE-LOOPBACK"]
+        row = self.gate.emit("V0-NODE-LOOPBACK", NOT_EXERCISED,
+                             'host = "0.0.0.0"; fn operator run',
+                             "rc=5 " + spec.expected_usage, exit_code=5)
+        record = row.json("abc1234")
+        self.assertIsNone(row.agrees)
+        self.assertTrue(v0_matrix.expected_usage_matches(record))
+        self.assertEqual(v0_matrix.derive([record])["summary"]["faulted"], 0)
+        record["observed"] = "rc=5 usage operator request (OTHER INVALID)"
+        self.assertFalse(v0_matrix.expected_usage_matches(record))
+        self.assertEqual(v0_matrix.derive([record])["summary"]["faulted"], 1)
+        record["exit_code"] = 4
+        self.assertEqual(v0_matrix.derive([record])["summary"]["faulted"], 1)
+
     def test_an_outcome_row_names_the_client_that_saw_it(self):
-        row = self.gate.emit("V0-NODE-LOOPBACK", REFUSED, "bin/fn run", "rc=1")
+        row = self.gate.emit("V0-OUT-REFUSED", REFUSED, "fn lookup", "rc=1", node="a")
         self.assertEqual(row.client, v0_matrix.CLIENT_DRIVER)
         self.assertFalse(row.independent)
 
@@ -347,12 +362,10 @@ class DryRunRowTests(unittest.TestCase):
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
         cls.gate = make_gate(cls.temp.name)
-        # `bin/fn run` on a non-loopback listener host exits 1 without binding
-        # anything, so the refusal row can be produced with no store, no ACL2
-        # and no socket.  The script stands in for that shape here.
-        step = cls.gate.sh("dry-run refusal", "echo 'run listener host is not "
-                                              "loopback' ; exit 1", expect=None)
-        cls.row = cls.gate.from_step("V0-NODE-LOOPBACK", step,
+        # This stands in for a refused lookup; it exercises report plumbing.
+        step = cls.gate.sh("dry-run refusal", "echo 'article absent' ; exit 1",
+                           expect=None)
+        cls.row = cls.gate.from_step("V0-OUT-REFUSED", step, node="a",
                                      limit="a dry-run stand-in, not bin/fn")
         cls.gate.backfill()
         cls.doc = cls.gate.document("2026-09-20T00:00:00Z", 1.0)
@@ -365,7 +378,7 @@ class DryRunRowTests(unittest.TestCase):
         self.assertEqual(self.row.verdict, REFUSED)
         self.assertTrue(self.row.agrees)
         self.assertEqual(self.row.exit_code, 1)
-        self.assertIn("not loopback", self.row.observed)
+        self.assertIn("article absent", self.row.observed)
 
     def test_the_row_names_its_invocation_its_revision_and_its_log(self):
         payload = self.row.json("abc1234")
@@ -378,8 +391,8 @@ class DryRunRowTests(unittest.TestCase):
         self.assertEqual(v0_matrix.validate(self.doc), [])
 
     def test_the_document_indexes_by_requirement_and_scenario(self):
-        self.assertIn("V0-NODE-LOOPBACK", self.doc["by_requirement"]["HST-003"])
-        self.assertIn("V0-NODE-LOOPBACK", self.doc["by_scenario"]["SCN-021"])
+        self.assertIn("V0-OUT-REFUSED-A", self.doc["by_requirement"]["FLR-002"])
+        self.assertIn("V0-OUT-REFUSED-A", self.doc["by_scenario"]["SCN-021"])
 
     def test_the_summary_is_over_the_rows(self):
         self.assertEqual(self.doc["summary"]["total"], len(PLANNED_IDS))

@@ -694,7 +694,7 @@
       ],
       "steps": [
         "Initialize each node from the operator surface: a store, its served groups, and a configuration file naming the store, the listener and the ACL2 image.",
-        "Report each node's status; initialize over an existing store again; refuse a non-loopback listener host.",
+        "Report each node's status; initialize over an existing store again; reject a wildcard listener configuration before bind with a usage result.",
         "Create and retire a served group, and observe the created group over the socket.",
         "Start each node's service, declare a group on the running service's control channel, and attempt the same change through the offline command while the service holds the store.",
         "Stop each service and reopen each store."

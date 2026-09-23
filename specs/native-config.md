@@ -8,6 +8,9 @@ of at most 16,384 octets. It returns either `(:accepted configuration)` or
 `(:refused reason)`. The raw native host reads bounded bytes and invokes that
 function; it does not parse TOML, supply a default, validate a field, or
 compute a configuration path.
+`fn-native-operator-run` maps a refused configuration load to `:usage` and
+CLI exit 5 before a Store request or listener bind; this is distinct from a
+request refusal (exit 1).
 
 The profile is intentionally smaller than TOML. It accepts ASCII source only,
 blank lines and full-line `#` comments, the eight documented table headers,

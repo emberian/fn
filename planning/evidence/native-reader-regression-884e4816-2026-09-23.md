@@ -7,7 +7,8 @@ The launcher SHA-256 was
 `ec8442a896d4b1b1ab242bfe649e5e595567c4bfb278fc7ce4091da581f0680a`;
 the core SHA-256 was
 `4a49fe97136f8c592464eac64921b02b9f1482d38d90c46b5d219ccebecb17c1`.
-Its [build and focused reader evidence](native-reader-884e4816-2026-09-23.md)
+Its build and focused reader evidence in
+`planning/evidence/native-reader-884e4816-2026-09-23.md`
 records the current-source certificate closure and earlier HDR/index tests.
 No image was built for this regression pass, and no deployed node was used.
 

@@ -186,6 +186,8 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
             return "/srv/fn/a-store"
         if name.endswith("profile agent refusal"):
             return "usage operator run (UNSUPPORTED-PROFILE agent)"
+        if name == "loopback refusal: run":
+            return "usage operator request (CONFIGURATION INVALID)"
         if name.endswith("profile service log"):
             return ("accepted reader connection=0 time=2026-09-22T20:00:00Z\n"
                     "accepted post path=control message-id=<profile-a@example.invalid> "
@@ -633,6 +635,9 @@ class NativeSliceAccountingTests(unittest.TestCase):
             # with the code named -- never a refusal read off a usage error.
             self.assertEqual(row.verdict, v0_matrix.NOT_EXERCISED)
             self.assertEqual(row.exit_code, v0_matrix.EXIT_USAGE)
+            self.assertEqual(row.observed,
+                             "rc=5 usage operator request (CONFIGURATION INVALID)")
+            self.assertTrue(v0_matrix.expected_usage_matches(row.json("abc1234")))
             self.assertIn("exited 5", row.blocker)
             self.assertIn('host = "0.0.0.0"', row.invocation)
             self.assertIn("packaging/fn-native operator", row.invocation)
