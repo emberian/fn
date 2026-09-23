@@ -468,6 +468,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-traces \
 	tests/acl2/config-store-traces-tests \
 	books/config-owner-live \
+	books/config-owner-advance-invariants \
+	tests/acl2/config-owner-advance-invariants-tests \
 	books/config-owner-read-invariants \
 	tests/acl2/config-owner-read-invariants-tests \
 	tests/acl2/config-owner-live-tests \
