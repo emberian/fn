@@ -20,8 +20,12 @@
             fn-node-stagep fn-node-bindingp fn-node-statep fn-node-initial-state
             fn-node-pending-matchesp fn-node-prepare fn-node-complete fn-node-recover
             fn-replay-okp fn-replay-advance-okp fn-replay-advance-txid) (theory 'fn-acceptance-invariants-vocabulary)) (theory 'fn-node-invariants-vocabulary))))
+; `fn-sn-identity-context' is withdrawn at store-node's export since
+; 2026-09-23; the io-step proofs here carry it across `fn-sn-make-v2' by
+; reading its two fields, so it stays open in this book as it was before.
 (local (in-theory (e/d (fn-sn-statep fn-sn-initial fn-sn-pending-record
                         fn-sn-record-bindsp fn-sn-prepare
+                        fn-sn-identity-context
                         fn-sn-completion-record fn-sn-completion-enabledp
                         fn-sn-finish fn-sn-file-step fn-sn-io fn-sn-crash
                         fn-sn-recover fn-sn-committed-recordp
@@ -787,7 +791,7 @@
 (defthm fn-sn-prepare-retention-preserves-state
   (implies (fn-sn-statep s)
            (fn-sn-statep (fn-sn-prepare-retention s event)))
-  :hints (("Goal" :in-theory (e/d (fn-sn-statep)
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep fn-sn-prepare-retention)
                                   (fn-sf-statep fn-node-statep
                                    fn-sf-prepare-record
                                    fn-replay-apply-retention-event
@@ -798,7 +802,7 @@
 (defthm fn-sn-prepare-identity-preserves-state
   (implies (fn-sn-statep s)
            (fn-sn-statep (fn-sn-prepare-identity s event)))
-  :hints (("Goal" :in-theory (e/d (fn-sn-statep)
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep fn-sn-prepare-identity)
                                   (fn-sf-statep fn-node-statep
                                    fn-sf-prepare-record
                                    fn-replay-apply-record
@@ -830,7 +834,8 @@
             (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
             (history (fn-sf-records (fn-sn-files s)))
             (txid (+ -1 (fn-sf-frontier (fn-sn-files s))))))
-    :in-theory (e/d (fn-sf-prepare-record fn-replay-apply-record)
+    :in-theory (e/d (fn-sf-prepare-record fn-replay-apply-record
+                     fn-sn-prepare-retention)
                     (fn-sn-statep fn-sn-record-bindsp fn-sf-history-recoverablep
                      fn-sn-completion-enabledp fn-sn-completion-record
                      fn-sf-recover fn-sf-record-listp
@@ -859,7 +864,7 @@
             (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
             (history (fn-sf-records (fn-sn-files s)))
             (txid (+ -1 (fn-sf-frontier (fn-sn-files s))))))
-    :in-theory (e/d (fn-sf-prepare-record)
+    :in-theory (e/d (fn-sf-prepare-record fn-sn-prepare-identity)
                     (fn-sn-statep fn-sn-record-bindsp fn-sf-history-recoverablep
                      fn-sn-completion-enabledp fn-sn-completion-record
                      fn-sf-recover fn-sf-record-listp
