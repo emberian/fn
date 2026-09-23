@@ -1,0 +1,13 @@
+{
+  "application": "mini-e1",
+  "operation": "birth-1",
+  "history": "fn-synthetic-history-1",
+  "incarnation": "fn-incarnation-1",
+  "sourceIdentity": "source-fca9c81e8cd02281b3703df4",
+  "fnVerdictRef": "trusted-test-verdict-329a51a2",
+  "subject": 7,
+  "target": 600,
+  "capability": 61,
+  "expectedAuthorityRoot": 28865126663438181025996297387742624199493174938149086865281198030651821338193,
+  "expectedTargetRoot": 34402997249813615786458331096051691677260662547862643525987715591717434163840
+}
