@@ -3,6 +3,7 @@
 ; invariant and kind-5/18/8/9 tests follow the serving wrapper checkpoint.
 (in-package "ACL2")
 (include-book "../../books/bp-node-debt-cache-invariants")
+(include-book "../../books/codec-attach")
 (include-book "bp-node-debt-tests")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -70,17 +71,21 @@
   (fn-bpnf-stored-record 0 0 *bpnd-old-held*))
 (defconst *bpndc-row1-record*
   (fn-bpnf-stored-record 0 1 *bpnd-new-held*))
-(defconst *bpndc-rows*
-  (list (list (fn-bpnf-stored-record-name 0 0)
-              (fn-bpnf-stored-record-frame *bpndc-row0-record*))
-        (list (fn-bpnf-stored-record-name 0 1)
-              (fn-bpnf-stored-record-frame *bpndc-row1-record*))))
-(defconst *bpndc-replay*
-  (fn-bpnf-family-replay-rows *bpndc-rows* (fn-bpnf-base *bpnd-s2*)))
-(defconst *bpndc-recover-event*
-  (fn-bpnf-family-recover-auto-event *bpnd-s2* nil :ready *bpndc-rows*))
-(defconst *bpndc-recovered*
-  (fn-bpnp-step *bpnd-s2* *bpndc-recover-event*))
+(make-event
+ `(defconst *bpndc-rows*
+    ',(list (list (fn-bpnf-stored-record-name 0 0)
+                  (fn-bpnf-stored-record-frame *bpndc-row0-record*))
+            (list (fn-bpnf-stored-record-name 0 1)
+                  (fn-bpnf-stored-record-frame *bpndc-row1-record*)))))
+(make-event
+ `(defconst *bpndc-replay*
+    ',(fn-bpnf-family-replay-rows *bpndc-rows* (fn-bpnf-base *bpnd-s2*))))
+(make-event
+ `(defconst *bpndc-recover-event*
+    ',(fn-bpnf-family-recover-auto-event *bpnd-s2* nil :ready *bpndc-rows*)))
+(make-event
+ `(defconst *bpndc-recovered*
+    ',(fn-bpnp-step *bpnd-s2* *bpndc-recover-event*)))
 (assert-event
  (and (fn-bpnf-stored-recordp *bpndc-row0-record*)
       (fn-bpnf-stored-recordp *bpndc-row1-record*)
@@ -102,16 +107,17 @@
 (defconst *bpndc-corrupt-rows*
   (cons (list (fn-bpnf-stored-record-name 0 0)
               (cons 255
-                    (cdr (fn-bpnf-stored-record-frame
-                          *bpndc-row0-record*))))
+                    (cdr (cadar *bpndc-rows*))))
         (cdr *bpndc-rows*)))
-(defconst *bpndc-fault-event*
-  (fn-bpnf-family-recover-auto-event
-   (fn-bpnf-answer-state *bpndc-recovered*) nil :ready
-   *bpndc-corrupt-rows*))
-(defconst *bpndc-fault*
-  (fn-bpnp-step (fn-bpnf-answer-state *bpndc-recovered*)
-                *bpndc-fault-event*))
+(make-event
+ `(defconst *bpndc-fault-event*
+    ',(fn-bpnf-family-recover-auto-event
+       (fn-bpnf-answer-state *bpndc-recovered*) nil :ready
+       *bpndc-corrupt-rows*)))
+(make-event
+ `(defconst *bpndc-fault*
+    ',(fn-bpnp-step (fn-bpnf-answer-state *bpndc-recovered*)
+                   *bpndc-fault-event*)))
 (assert-event
  (and (equal (car (fn-bpnf-family-replay-rows
                    *bpndc-corrupt-rows*
