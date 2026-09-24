@@ -1143,7 +1143,10 @@
          ; (fn-acar-own-outcome-is-reference-under-ocl-relation), which the
          ; commit before it keeps (fn-ocmt-post-commit-preserves-ocl-relation):
          ; the re-pin tests the rebuilt session at the node the held session
-         ; already carries instead of re-running fn-node-statep on it.
+         ; already carries instead of re-running fn-node-statep on it, and
+         ; opens the reader session with fn-acar-nntp-projectionp, which
+         ; omits the fn-statep of the whole view archive that
+         ; fn-ocl-view-historyp carries (fn-acar-view-historyp-carries-view-statep).
          (result (fn-acar-own-outcome owner id word))
          (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
