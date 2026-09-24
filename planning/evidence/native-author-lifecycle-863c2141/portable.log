@@ -1,0 +1,6 @@
+test_portable_carrier_verifies_exact_source_and_keyset (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_portable_carrier_verifies_exact_source_and_keyset) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.360s
+
+OK

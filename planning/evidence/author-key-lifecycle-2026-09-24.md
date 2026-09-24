@@ -83,13 +83,44 @@ physical crash boundary or a global trace induction for the local selector.
 
 `python3 tools/harness_check.py --quiet` reported zero ACL2 arity/signature
 findings, `python3 -m py_compile tests/test_native_hybrid_author.py` passed,
-and an SBCL reader pass read the edited host files. The opt-in native fixture
-now covers fresh signed sources across rotation, revocation, a second active
-principal, offline history and restart inspection, but **it has not run on a
-source-matched saved image**. No native service or deployment result follows
-from this packet. PRF-069 remains in progress: the completed-snapshot
+and an SBCL reader pass read the edited host files.
+
+The frozen `863c2141` Linux production image passed the targeted native
+author-key subset on hbox. The image's ACL2 build manifest is
+`/tank/fn/gates/capability-863c2141-20260924/build/acl2/certify-20260924T061350Z-995404/manifest.json`
+(SHA-256 `d25fb5027cfab2c6ca3c48fae3577ca0f48b22712a0feb41af67303d0904c156`);
+the `build/fn-host` launcher is SHA-256
+`d3214eb2abb382c170f35d102938854a03aa74650aeb20c2b42750dad4bfeb4f`
+and its core is
+`fb20885046e2cf5d86612f7198999ef98d2cb225c65d6a1f63867914d2803107`.
+With `FN_NATIVE_HOST` set to that launcher, `FN_TEST_OPENSSL` set to
+`/tank/fn/toolchains/openssl-3.5.8/bin/openssl`,
+`LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib`, and
+`FN_RUN_HYBRID_E2E=1`, these exact commands passed:
+
+```sh
+python3 -m unittest -v tests.test_native_hybrid_author.NativeHybridAuthorTest.test_enroll_author_refuse_tamper_and_restart_query tests.test_native_hybrid_author.NativeHybridAuthorTest.test_local_revocation_targets_one_principal
+python3 -m unittest -v tests.test_native_hybrid_author.NativeHybridAuthorTest.test_portable_carrier_verifies_exact_source_and_keyset
+```
+
+The first ran two tests in 3.594 seconds and covers fresh signing,
+tamper refusal, restart query, per-principal rotation/revocation and
+unrelated-principal survival. The second ran one test in 2.360 seconds and
+covers exact-source and ordered-keyset carrier verification. OpenSSL reported
+3.5.8 for both executable and library. The archived
+[`lifecycle.log`](native-author-lifecycle-863c2141/lifecycle.log) has SHA-256
+`713d7a30c89a3a11e160841ddcb96ce560e2a72883d0fdcd9d719d67cfd5dfc0`;
+[`portable.log`](native-author-lifecycle-863c2141/portable.log) has
+`37b47558bf83f6b86de6715af450eddccf4fec866b4236c5e9880dcc0131370b`.
+This is source-matched execution of the selected native CLI subset on scratch
+Stores, not a deployed service or a general cryptographic proof.
+
+PRF-069 remains in progress: the completed-snapshot
 theorems and reachable tests are not a full crash-phase Store-node relation
 for every possible lifecycle trace, nor a proof of
 cryptographic security, remote succession, recovery from lost keys or
-revocation delivery under partition. The linear per-principal history scan
-also needs an indexed correspondence if the snapshot history becomes large.
+revocation delivery under partition. Destination-side admission of an
+incoming signed carrier still needs its separate exact-authority caller and
+source-matched evidence; local permission does not itself establish that
+remote policy. The linear per-principal history scan also needs an indexed
+correspondence if the snapshot history becomes large.
