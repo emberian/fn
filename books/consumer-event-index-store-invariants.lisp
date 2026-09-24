@@ -100,6 +100,58 @@
                  fn-cei-correspondencep fn-cei-build
                  fn-cei-build-aux)))))
 
+(defthm fn-ceis-prepare-retention-preserves-related
+  (implies (and (fn-sn-statep s) (fn-ceis-relatedp s)
+                (not (member-eq (fn-sf-phase (fn-sn-files s))
+                                '(:replaying :fault))))
+           (fn-ceis-relatedp (fn-sn-prepare-retention s event)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-relatedp fn-sn-prepare-retention
+                  fn-store-files-traces-vocabulary)
+                (fn-sn-update fn-sn-make-v6
+                 fn-sn-statep fn-sf-statep fn-store-event-p
+                 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux)))))
+
+(defthm fn-ceis-prepare-identity-preserves-related
+  (implies (and (fn-sn-statep s) (fn-ceis-relatedp s)
+                (not (member-eq (fn-sf-phase (fn-sn-files s))
+                                '(:replaying :fault))))
+           (fn-ceis-relatedp (fn-sn-prepare-identity s event)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-relatedp fn-sn-prepare-identity
+                  fn-store-files-traces-vocabulary)
+                (fn-sn-update fn-sn-make-v6
+                 fn-sn-statep fn-sf-statep fn-store-event-p
+                 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux)))))
+
+(defthm fn-ceis-prepare-topic-preserves-related
+  (implies (and (fn-sn-statep s) (fn-ceis-relatedp s)
+                (not (member-eq (fn-sf-phase (fn-sn-files s))
+                                '(:replaying :fault))))
+           (fn-ceis-relatedp (fn-sn-prepare-topic s event)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-relatedp fn-sn-prepare-topic
+                  fn-store-files-traces-vocabulary)
+                (fn-sn-update fn-sn-make-v6
+                 fn-sn-statep fn-sf-statep fn-store-event-p
+                 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux)))))
+
+(defthm fn-ceis-prepare-article-preserves-related
+  (implies (and (fn-sn-statep s) (fn-ceis-relatedp s)
+                (not (member-eq (fn-sf-phase (fn-sn-files s))
+                                '(:replaying :fault))))
+           (fn-ceis-relatedp (fn-sn-prepare s record)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-relatedp fn-sn-prepare
+                  fn-store-files-traces-vocabulary)
+                (fn-sn-update fn-sn-make-v6
+                 fn-sn-statep fn-sf-statep fn-store-event-p
+                 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux)))))
+
 (defthm fn-ceis-finish-keeps-index
   (equal (fn-sn-event-index (fn-sn-finish s))
          (fn-sn-event-index s))
