@@ -1,0 +1,55 @@
+
+Number of samples:   331
+Sample interval:     0.001 seconds
+Total sampling time: 0.331 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=1757420 "fn-sprof" RUNNING {120F1A05D3}> (856/1048576 bytes, 7 hash buckets)
+   #<THREAD tid=1757423 "fn owner client" RUNNING {120F768663}> (84592/1048576 bytes, 289 hash buckets)
+   #<THREAD tid=1757421 "fn outbound feed" RUNNING {120F5FEB13}> (320/1048576 bytes, 2 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     37  11.2     73  22.1     37  11.2        -  FN-RECORD-STRING-OCTETS-AUX
+   4     27   8.2     28   8.5     64  19.3        -  FN-RECORD-STRING-OCTETS
+   6     11   3.3     11   3.3     75  22.7        -  ASH
+   8     11   3.3     11   3.3     86  26.0        -  SB-KERNEL:STRING=*
+  10     10   3.0     13   3.9     96  29.0        -  FN-CBOR-OCTET-LISTP
+  12     10   3.0     10   3.0    106  32.0        -  FN-SHA256-NTHX
+  14      9   2.7     25   7.6    115  34.7        -  FN-SHA256-ROTR32
+  16      8   2.4      8   2.4    123  37.2        -  FN-AG-CAR
+  18      8   2.4      8   2.4    131  39.6        -  FN-SHA256-W32
+  20      8   2.4      8   2.4    139  42.0        -  foreign function __open64
+  22      7   2.1     15   4.5    146  44.1        -  FN-ARTICLE-MSGIDS
+  24      7   2.1     15   4.5    153  46.2        -  FN-NODE-BINDING-IDS
+  26      7   2.1      7   2.1    160  48.3        -  foreign function fsync
+  28      6   1.8      7   2.1    166  50.2        -  FN-OCTET-LISTP
+  30      6   1.8      6   1.8    172  52.0        -  FN-AG-CDR
+  32      5   1.5      5   1.5    177  53.5        -  foreign function __write
+  34      4   1.2     32   9.7    181  54.7        -  FN-SHA256-ROUNDS
+  36      4   1.2      4   1.2    185  55.9        -  FN-CBOR-OCTETP
+  38      4   1.2      4   1.2    189  57.1        -  FN-AG-APPEND
+  40      4   1.2      4   1.2    193  58.3        -  foreign function __close
+  42      4   1.2      4   1.2    197  59.5        -  SB-KERNEL:TWO-ARG-IOR
+  44      4   1.2      4   1.2    201  60.7        -  %DATA-VECTOR-AND-INDEX
+  46      3   0.9     18   5.4    204  61.6        -  SB-KERNEL:%MEMBER-TEST
+  48      3   0.9      7   2.1    207  62.5        -  FN-RECORD-PAYLOADP
+  50      3   0.9      6   1.8    210  63.4        -  FN-SHA256-FIRSTN
+  52      3   0.9      4   1.2    213  64.4        -  FN-ARTICLE-NEXT-LINE-AUX
+  54      3   0.9      3   0.9    216  65.3        -  FN-SHA256-REVX
+  56      3   0.9      3   0.9    219  66.2        -  FN-RECORD-NONEMPTY-AT-MOSTP
+  58      3   0.9      3   0.9    222  67.1        -  GENERIC-+
+  60      2   0.6    252  76.1    224  67.7        -  FNN-CORE-STATE
+  62      2   0.6     13   3.9    226  68.3        -  FN-RECORD-MSGIDP
+  64      2   0.6     12   3.6    228  68.9        -  FN-SHA256-BSIG0
+  66      2   0.6     11   3.3    230  69.5        -  FN-RETAIN-FIND-ID
+  68      2   0.6      5   1.5    232  70.1        -  FN-AG-MEMBER
+  70      2   0.6      4   1.2    234  70.7        -  FN-SHA256-FIX-OCTETS
+  72      2   0.6      2   0.6    236  71.3        -  foreign function clock_nanosleep
+  74      2   0.6      2   0.6    238  71.9        -  SB-KERNEL:TWO-ARG-<=
+  76      2   0.6      2   0.6    240  72.5        -  REPLACE
+  78      2   0.6      2   0.6    242  73.1        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  80      2   0.6      2   0.6    244  73.7        -  SB-IMPL::LIST-REVERSE
+------------------------------------------------------------------------
+         16   4.8                                     elsewhere
