@@ -8,7 +8,9 @@ state. For the first native profile, `routes=nil` and `generation=0`. The
 event selects the least-arrival live whole pending held row; a route-less
 transit row gets a per-key volatile `:route` wait, so a later event can select
 a younger local request and use the existing durable kind-7 application path.
-Cold recovery clears these waits. A changed route generation reconsiders a
+Successful cold recovery clears these waits; a recovery fault retains them
+and leaves the underlying uncertainty fence in place. A changed route
+generation reconsiders a
 route wait. The host prints a stable wait line only from the ACL2 effect.
 
 The served selection scans fixed held slots and the persisted expiry anchor.
