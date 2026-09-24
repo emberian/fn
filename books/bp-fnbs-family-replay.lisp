@@ -84,4 +84,16 @@
          (prior (fn-bpn-nth 3 replay))
          (new-epoch (1+ (max (nfix (fn-bpnf-epoch st))
                              (nfix (and (consp prior) (car prior)))))))
-    (list :recover-fnbs new-epoch base-records sequence-ready replay)))
+    ; The count is the exact number of ordered received finals examined by
+    ; replay, including rows subsequently consumed by a family replacement.
+    ; It cannot be reconstructed from the surviving held list.
+    (list :recover-fnbs new-epoch base-records sequence-ready replay
+          (len rows))))
+
+(defthm fn-bpnf-family-recover-event-carries-exact-row-count
+  (equal (fn-bpn-nth
+          5 (fn-bpnf-family-recover-auto-event
+             st base-records sequence-ready rows))
+         (len rows))
+  :hints (("Goal" :in-theory (enable fn-bpnf-family-recover-auto-event)))
+  :rule-classes nil)
