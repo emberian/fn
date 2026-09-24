@@ -1,17 +1,17 @@
 # Trajectory to a node agents use, and what comes after — 2026-09-22
 
-The 2026-09-23 [takeover plan](takeover-2026-09-23.md) and
-[working loop](how-we-work.md) supersede this document's five-lane schedule
-and exclusive-file allocation: start around ten useful agents with direct
-peer coordination and a separate bounded compute budget. Release scope and
-subsystem dependencies below still apply.
+This plan's §0 to §2 and §6 are the release scope; §3's step table and
+dependencies still name the work. Where dev is and who is working on what is
+[now.md](now.md); lane width and the compute budget are
+[how we work](how-we-work.md).
 
 Status: a plan, revised the same day with ember's decisions (§0). It changes
 no registry, book, host file, tool or test; where a registry row or a
 document is wrong, §7 says what root writes. Every number is a tool's, taken
 at `dev` `d69e9952`; every statement about the past names the record it comes
-from. The two lanes in `build/lanes/w31-freeze-3` and
-`build/lanes/w32-native-guards` are untouched.
+from. The two lanes then in `build/lanes/w31-freeze-3` and
+`build/lanes/w32-native-guards` were untouched (both worktrees have since
+been removed).
 
 Why this exists: [the proof-engineering review](review-2026-09-22-proof-engineering.md)
 explains why a night produced no image, and ember asked that the old plans not
@@ -53,8 +53,9 @@ what each decides.
 7. **Five lanes; converge every two to three batches.** "I would prefer to
    have 5 (two per persvati/hbox, one locally). We do not need to run the
    damn merge gate on every single freaking batch. We can converge every
-   2-3." §3.3 is the phase schedule; [how we work](how-we-work.md) has the
-   loop.
+   2-3." The phase schedule that implemented this (§3.3) was removed on
+   2026-09-24 after ember's 2026-09-23 width correction ([decisions](decisions.md));
+   [how we work](how-we-work.md) has the loop.
 8. **Peering is measured on one box first.** "You do not actually need two
    separate machines to test the peering." The matrix's two nodes on one host
    are T9's gate; the hbox-to-persvati run is a later row of T13.
@@ -217,6 +218,32 @@ Tier follows ember's preference: Opus for most, Fable for the seams.
 | T15 | Retirement | §5 done | decisions 3, 4 | planning tree, worktrees | 0.5 | root |
 | T16 | Durability qualified (D14) | (a) K0 `fn-bs-program-step-preserves-relation` over the frontier, record, finish and recover programs (`byte-store-programs.lisp:155-256`), K5, K6, K8; (b) one platform profile: hbox's filesystem, torn-write injection through the model's image constructor applied to real files (`specs/crash-model-v2.md` §5.1, §5.2), a power-cut or `dm-flakey` run on a scratch pool, the profile written into `specs/failures.md` and the node's page | T5 | (a) `byte-store-relation`, `-program-invariants`, `-keystones`, `-scan`; (b) `tests/campaign/`, `tools/runbooks/` | (a) 6 to 10, (b) 3 to 5 | Fable (a), Opus (b) |
 | T17 | Message-ID index on the served path | first step of v1; briefed from `w28/nntp-msgid-index` (§5.2) | T10b | `msgid-index`, `nntp*`, `served`, `owner*` | 3 to 4 | Opus |
+
+**Status at 2026-09-24 (dev `46f2660d`).** Only T8 was marked DONE in this
+table when it was written. The records below show later work; none of them
+was re-checked against every clause of the DONE definition above, so no
+other step is marked DONE here.
+
+- T0: an image was frozen and deployed; the live node runs `da5fd8cb`
+  ([node record](evidence/node-hbox-da5fd8cb-2026-09-23.md)). The "node's page
+  lists P1 to P11" clause is not re-verified.
+- T2a: the acceptance stamp landed
+  ([lane evidence](evidence/t2a-acceptance-stamp-4670cc35-2026-09-23.md)) and
+  was built into a native image ([daa6c15e](evidence/t2-native-daa6c15e-2026-09-23.md)).
+- T2b: NEWNEWS over the stamp was exercised natively on the frozen 329 image
+  ([migration record](evidence/t2b-newnews-migration-329-2026-09-23.md)).
+- T8: DONE 2026-09-22; live configuration also passed on the `295bbe35`
+  image ([record](evidence/native-t8-t10a-295bbe35-2026-09-23.md)).
+- T10a: author/reopen tests passed on the `295bbe35` image (same record);
+  local author lifecycle is integrated with the scope the
+  [wind-down handoff](handoff-2026-09-24-winddown.md) states.
+- T12: BP forwarding is integrated, but the final cut's three red roots are
+  in the BP progress machine and no image past `863c2141` exists (handoff,
+  "Final cut"). Not DONE.
+- T16: a bounded private-device observation exists
+  ([record](evidence/t16-private-publication-profile-2026-09-24.md)); it is
+  not a platform qualification. Not DONE.
+- T1, T3 to T7, T8b, T9, T11, T13 to T15, T17: not re-verified.
 
 ### 3.1 The steps in detail
 
@@ -454,43 +481,11 @@ path to *v0* is the longer of the two chains: T0, T1 (seam and store cluster),
 T2, T4, T10a, T10b, T13, about 26 to 36 lane-days sequential; and T0, T1 (BP
 cluster), T12a, T12c, T12d, T13, about 24 to 35. T1 is on both on purpose: it
 is the change that makes the proofs after it return. Summing the table, v0 is
-about 75 to 110 lane-days in all; with five lanes and the phase schedule
-below that is six phases, and a phase is as long as its longest lane, not a
-calendar promise.
+about 75 to 110 lane-days in all.
 
-### 3.3 The phase schedule: five lanes, two per box, one local
-
-Decision 7. A lane certifies on the box named; "local" means the laptop's
-four-slot pool and the small closures, and a local lane submits a farm run
-when its closure outgrows the pool. Within a phase, lanes edit disjoint
-books (their include-closures may overlap); a lane declares its books at
-launch. Root merges each batch as it lands behind the lane's own certification
-and the static `green_check --changed-since --strict`; **the provisional wave
-and the image come at the end of the phase, or after every two to three
-merged batches, whichever is sooner**, and reds go back to the lane whose
-books they name. A phase ends with a wave, an image, and a redeploy if the
-image changed what the node does.
-
-| Phase | hbox lane 1 | hbox lane 2 | persvati lane 1 | persvati lane 2 | local lane | Ends with |
-| --- | --- | --- | --- | --- | --- | --- |
-| 0 (now) | T0 store reds (`w31-freeze-3`) | T12a design against §1.5, no book edits until phase 2 | T0 native guards (`w32-native-guards`) | T7 login/TLS teeth | root: T14 hygiene, T15 retirement | the image, the hbox node, the matrix on it, the node's page |
-| 1 | T1 seam books, then the store cluster (Fable) | T1 BP-receiver cluster, from the day the seam books exist | T9c outbound TLS/AUTHINFO feed | T8 live reconfiguration | T11 capacity keystone; then the T2 design note | wave; `theory_check --strict` count; image |
-| 2 | T2 acceptance stamp (Fable) | T12 slice A1, the machine and the round trip (Fable) | T1 stx/identity/lace cluster | T1 frame/anchor/transfer-journal cluster | T12b bundle store records (certifies on hbox by farm) | wave; `theory_check --strict` at zero, wired into `make check`; image |
-| 3 | T4 finish arms, then T3 article match | T12 slice A2 replay theorems, then A3 obligations and K6 | T5 POST end to end, then T6 reader pins | T9a feed K5 (Fable) | T9b inbound octets and the peer-row round trip | wave; image; second deploy (P2, P3, P4, P6, P7 on loopback) |
-| 4 | T10a signatures, node side (Fable) | T12c contact scheduler native and the gate run's harness | T10b S6 reader exposure | T12d obligations and receipts | T10c client `--sign` and `principal new`; T13 INN and dtn7-rs labs on hbox | wave; DTN image; third deploy (P8) |
-| 5 | T16a K0, K5, K6, K8 (Fable) | T12 slices C2, D2 and E, then the v0.3 gate record | T16b platform profile on hbox | T13 ION lab; hbox-to-persvati exchange row | T13 matrix and the v0 record | wave; the v0 image; `planning/evidence/v0-<rev>.md` |
-| 6 (v1 begins) | LTP | T17 Message-ID index | S4/S5 | compaction | | |
-
-Why this order and not another: phase 1 cannot start T2, T4, T5 or T9a
-before the seam exists (F3); phase 2 cannot start T4 to T6 before the record
-is its final shape (T2); T3 shares `store-node` with T2 and T4 and so follows
-them in one lane; T5 and T6 share `owner-invariants` and so are one lane;
-T10b and T17 both rewrite the served chain and so are two phases apart; T12b
-can start as soon as the frame codec has its seam, which is why the local
-lane takes it in phase 2 and certifies it on hbox by farm; T16 follows T5
-because its campaign is T5's. Root may swap a lane's box when a closure is
-smaller or larger than expected; the constraint that does not move is
-disjoint edited books within a phase.
+The five-lane phase schedule that was §3.3 was removed on 2026-09-24; it
+was superseded by ember's 2026-09-23 width correction. Lane width and the
+compute budget are in [how we work](how-we-work.md).
 
 ## 4. C. Structural steps
 
@@ -638,21 +633,24 @@ the same way, and their disposition is written in its landing note.
 
 | Document | Why it misleads now | Disposition |
 | --- | --- | --- |
-| `planning/now.md` | 384 lines in which each dated paragraph supersedes the one below it; "Current integration checkpoint" describes `773e9ae3`, superseded by 915 and then by this | rewrite to §7.2 |
+| `planning/now.md` | 384 lines in which each dated paragraph supersedes the one below it; "Current integration checkpoint" describes `773e9ae3`, superseded by 915 and then by this | rewrite to §7.2. Done 2026-09-24: the log is `planning/archive/now-2026-09-24.md` and now.md is one entry page |
 | `planning/milestones.md` | the checklist (§5.1), the "earlier landing notes", and M0 to M6 whose bullets describe 2026-09-18 | §7.1 |
 | `planning/swarm-cycles.md` | pre-crash Codex staffing and C1 to C3 packets; the roles section defines names this plan retires | archive to `planning/archive/`; `docs/README.md` "What should happen next" points here |
 | `wide-capability-cycle-2026-09-21.md`, `recovery-2026-09-21.md`, `quiescence-2026-09-21.md`, `astra-reorientation-2026-09-21.md`, `handoff-to-codex-2026-09-19.md` | each was the plan for a day that is over; the quiescence note says "resume only on user instruction", which ember has given | archive; the branches are §5.2 |
-| `planning/deputies/BOARD.md` and `deputies/*.md` | an append-only board of W12/W13 claims and cluster briefs for lanes that no longer exist | archive |
+| `planning/deputies/BOARD.md` and `deputies/*.md` | an append-only board of W12/W13 claims and cluster briefs for lanes that no longer exist | archive. Not done as of 2026-09-24: books, tests, tools and evidence records still cite `planning/deputies/` paths |
 | `planning/assurance-closure.md` | a matrix whose cells say "Certified" in prose beside registries that are the ledger | archive; anything in it not in a registry note becomes one |
-| `planning/evidence-index.md` | 23 record rows for 181 files in `planning/evidence/` and 64 in `tests/evidence/` | either `tools/evidence_manifests.py` generates it from the records' headers or it is retired; do not hand-extend it |
+| `planning/evidence-index.md` | 23 record rows for 181 files in `planning/evidence/` and 64 in `tests/evidence/` | either `tools/evidence_manifests.py` generates it from the records' headers or it is retired; do not hand-extend it. Retired 2026-09-24 to `planning/archive/evidence-index.md` |
 | `docs/operator.md` | its first half describes the Python development service as the operator path, against D07 | rewrite around `packaging/fn-native` and the hbox runbook; the Python half moves to `docs/development.md` |
 | `docs/implementation.md` | a 2026-09-18 component table | replace with a pointer to the ledger and §2.1 |
 | `specs/substrate-transport.md` §8 | the packet table names `books/statement-field.lisp` and `statement-transit.lisp`, which never existed (its own footnote says so) | replace the table with the landed book names and T10 |
 | `specs/peering.md` | a design section followed by three dated status sections (waves 6, 11 and the native witness) | one status section, K1 to K7 each with its theorem or its step |
 | `specs/bp-design.md` packet table | its packet 5 says the Python BPA tools are deleted; they are not, and under D07 they are development tooling | T12a's landing note says which survive as development oracles |
 
-**Roles.** Astra, Terra, Sol, Luna: retired with `swarm-cycles.md`. A lane is
-named by its step (`t9a-feed`), and its model is written in its brief.
+**Roles.** This plan proposed retiring the names Astra, Terra, Sol and Luna
+with `swarm-cycles.md`. In fact the Codex swarm kept using them as GPT-6
+role names through 2026-09-24. Claude-coordinated lanes are named by their
+worktree (`build/lanes/<name>`), and every lane's model is written in its
+brief.
 
 ## 6. What v0 does not claim
 
@@ -664,6 +662,9 @@ handshake is a host facility, `docs/architecture.md`); that a peer is honest
 with the date it last changed.
 
 ## 7. Edits root makes
+
+These are the edits as planned on 2026-09-22. Where later work overtook
+them, [now.md](now.md) and the [decision register](decisions.md) govern.
 
 ### 7.1 `planning/milestones.md`
 

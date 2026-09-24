@@ -111,16 +111,18 @@ that motivated it. Green is not true; these rules are how a claim earns its name
 - **Housekeeping.** Function prefixes are registered in
   [`docs/prefixes.md`](docs/prefixes.md); lane worktrees under `build/lanes/`
   are removed when the lane lands; role names used in planning are defined in
-  [`planning/swarm-cycles.md`](planning/archive/swarm-cycles.md) or not used.
+  [`planning/archive/swarm-cycles.md`](planning/archive/swarm-cycles.md) or not used.
 
 ## Swarm coordination (user correction, 2026-09-23)
 
-- Start around ten useful agents, mostly GPT-6-Sol, with proof/build capacity
-  separately bounded by the existing shared pools and memory limits.
-- File ownership is not exclusive. Agents announce intentions, coordinate
-  overlapping work directly, share useful results and agree how a combined
-  change will be integrated and checked. See [the working loop](planning/how-we-work.md)
-  and [swarm board](planning/swarm-board.md). Root need not broker every handoff.
+- Start around ten useful lanes, with proof/build capacity separately bounded
+  by the existing shared pools and memory limits. The coordinator names each
+  lane's model in its brief.
+- File ownership is not exclusive. Lanes announce intentions, coordinate
+  overlapping work, share useful results and agree how a combined change will
+  be integrated and checked. Lanes coordinate through their worktree
+  `LANEDUMP.md` and the [swarm board](planning/swarm-board.md); the
+  coordinator merges. See [the working loop](planning/how-we-work.md).
 - Reuse matching source/closure/toolchain evidence and coordinate expensive
   runs. Another agent should add progress, not another copy of the same job.
   Preserve bounded proof attempts and measured edit-to-verdict latency.
@@ -144,8 +146,9 @@ that motivated it. Green is not true; these rules are how a claim earns its name
   and limitations for certification or integration evidence.
 - A proposed theorem is not a theorem proved by ACL2. An admitted definition is
   not guard verification. Passing tests is not a proof or an RFC audit.
-- A lane is briefed from `planning/how-we-work.md` and its step in the
-  current plan (`planning/plan-2026-09-22-trajectory.md` §3).
+- A lane is briefed from `planning/now.md`, `planning/how-we-work.md` and the
+  restart record (`planning/handoff-2026-09-24-winddown.md`); release scope is
+  `planning/plan-2026-09-22-trajectory.md` §0 to §2.
 - Before ending a development task, keep the milestone's current task and the
   registries accurate. Report what changed, what ran, and what remains open.
 - Do not create deployment, publication, or messaging side effects unless the

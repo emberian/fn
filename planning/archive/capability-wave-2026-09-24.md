@@ -1,5 +1,7 @@
 # Broad capability wave — 2026-09-24
 
+> Archived on 2026-09-24, superseded by [now.md](../now.md) and the [wind-down handoff](../handoff-2026-09-24-winddown.md).
+
 The user asked us to replace serial prerequisite-sized advances with a large
 concurrent implementation wave, accepting temporary development breakage and
 converging afterwards. This changes sequencing, not the required end state or
