@@ -41,6 +41,8 @@ ruleset, because the build host is shared.
 | `node1/`, `node2/` | Complete `.ionconfig`/`.ionrc`/`.ionsecrc`/`.ltprc`/`.bprc`/`.ipnrc` sets |
 | `start_node.sh`, `stop_node.sh` | Single-node start and graceful shutdown |
 | `fn_ltp_stage.c` | ION receiver that writes a durable staged copy of one ADU |
+| `fn_ltp_send.c` | Pinned-ION C sender that observes the real bundle ID while detained |
+| `run_native_send_id.sh` | Opt-in two-node ID/ADU equality check with per-node cleanup |
 | `ion_bpa.py` | `IonLtpSender` and `IonStagingInbox`, the adapter surfaces fn needs |
 | `run_fn_ltp_lab.py` | fn sender work → LTP → staging → `tools/run_bp_receive.py` acceptance |
 | `interrupt_expiry.sh` | Link cut mid-transfer, restoration, and a lifetime-expiry case |
@@ -79,8 +81,34 @@ ION's `bpsendfile` prints no bundle identifier, and `bp_send()` returns only an
 in-process `SdrObject` address for the new bundle. There is no transport handle
 for fn's durable attempt record to bind. `IonLtpSender.submit()` therefore
 returns a local `ion-unreported:<label>` name and records that as the seam. A
-real adapter would have to read the bundle id out of that SDR object before the
-bundle is destroyed, through the C API, not through any shipped utility.
+durable fn workflow still needs an adapter that reads the bundle ID out of
+that SDR object before release, through the C API, not through a shipped utility.
+
+`fn_ltp_send.c` now demonstrates that C-API path against the pinned ION build.
+It uses `bp_open_source(..., detain=1)`; ordinary `bp_open` leaves the output
+bundle object zero. Under an SDR transaction it reads `Bundle.id` from the
+detained object, including the source EID and creation timestamp, then calls
+`bp_release`. The `Bundle` layout is from ION's **private, revision-pinned**
+`bpP.h`, so rebuilding for another ION revision requires an explicit ABI audit.
+ION prints to stdout itself, so the helper publishes an exclusive
+`observed-v1|APP_PEER_EID|BP_DEST_EID|SOURCE_EID|MSEC|SEQUENCE` file via
+fsynced temporary file, non-replacing hard link and directory fsync. Exit 0
+means this observation file was published; exit 1 is a pre-send refusal;
+exit 3 means `bp_send` was entered but the resulting outcome is uncertain.
+The application EID and BP destination remain separate arguments. This helper
+does not yet replace `IonLtpSender` in fn's durable sender workflow and does
+not establish application acceptance or a receipt return leg.
+
+Build and test on the pinned Linux ION host (never use ION's `killm`):
+
+```sh
+gcc -std=c11 -Wall -Wextra -Werror \
+  -I$ION_ROOT/src/ion/bpv7/library -I$ION_ROOT/install/include \
+  tests/ltp/fn_ltp_send.c -L$ION_ROOT/install/lib \
+  -Wl,-rpath,$ION_ROOT/install/lib -lbp -lici -o "$RUN/fn_ltp_send"
+FN_LTP_SEND_BIN="$RUN/fn_ltp_send" \
+  bash tests/ltp/run_native_send_id.sh "$RUN/identity-check"
+```
 
 fn's configured `peer-eid` (`dtn://fn.lab/inbox`) is an *application* identity
 that ACL2 binds inside the request ADU. ION registers only the `ipn` scheme in
@@ -98,5 +126,6 @@ no cross-implementation vectors, no errata audit. Not a mission profile: IPv4
 loopback UDP with zero light time, no contact plan, no asymmetry, no rate
 limiting, no BPSec, no authenticated peer, no author signature. Not a
 power-loss qualification. Not a receipt-return demonstration: the return leg is
-out of this packet's scope precisely because of the send-seam blocker above.
+out of this packet's scope because the observed ID is not yet bound to fn's
+durable attempt and ACL2-authorized receipt.
 LTP reliability is not fn application acceptance.
