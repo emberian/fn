@@ -110,6 +110,14 @@ cited theorem that no book defines, a cited theorem the detector flags, a cited
 theorem in a book no Makefile certification root reaches, a cited function
 whose guards are not verified, or a stale `ledger.md`.
 
+`python3 tools/certified_claims.py` also runs in `make check` as a warning.
+For each target marked `certified`, it checks that the registry names curated
+events in the current books and that each event's defining book has archived
+manifest evidence for its current source and include closure. It uses
+`green_check`'s verdict, so a pass records compatible evidence from a named
+run, not a certificate installed here or a qualified native image. Missing or
+partial manifest evidence remains a warning rather than a failed theorem.
+
 ### Guard status
 
 Four states, from the source rather than from the ACL2 world: `verified`

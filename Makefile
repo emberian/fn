@@ -629,6 +629,10 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 
 check:
 	$(PYTHON) tools/check_scaffold.py
+# A certified registry row must name existing ACL2 events whose defining
+# books have source- and include-closure-compatible manifest evidence. This
+# audit warns because older/partial evidence is not itself a failed theorem.
+	$(PYTHON) tools/certified_claims.py
 # Read-only warning over the newest local certification manifest.  A stale
 # source closure is labeled as such; this does not certify current bytes.
 	$(PYTHON) tools/proof_cost.py
@@ -766,7 +770,7 @@ model-test: certify
 tooling-test:
 	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
-	    tests.test_evidence_manifests tests.test_green_check \
+	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts -v
 
 test: check certify
