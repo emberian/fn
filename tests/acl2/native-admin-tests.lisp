@@ -962,7 +962,8 @@
 ; `peer list' renders the D23 rows (post-d25-tests lane).  Teeth for
 ; `fn-native-admin-peer-extra-decode-lists-exactly-the-rows'.
 ;
-; An NNTP peer written with `carries HEX HEX': the line is the base line and
+; An NNTP peer written with `carries HEX HEX' (the 11-word explicit form: the
+; argv bound is 16 words): the line is the base line and
 ; one `carries-principal=' word per row, in row order.
 (defconst *fn-na-hex-a*
   "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a")
@@ -973,8 +974,7 @@
    (fn-na-test-argv
     (list "peer" "add" "principal-peer" "principal.example"
           "192.0.2.45" "1119" "fn.*" "-" "principal"
-          *fn-na-principal-hex* "false" "implicit" "news.example"
-          "/etc/fn/peer-ca.pem" "carries" *fn-na-hex-a* *fn-na-hex-b*))))
+          *fn-na-principal-hex* "false" "carries" *fn-na-hex-a* *fn-na-hex-b*))))
 (assert-event (equal (fn-native-admin-result-status *fn-na-peer-carries*)
                      :accepted))
 (defconst *fn-na-peer-carries-rows* (fn-na-test-plan-rows *fn-na-peer-carries*))
@@ -983,7 +983,7 @@
         (append (fn-record-string-octets
                  (string-append
                   (string-append
-                   "principal-peer path-identity=principal.example address=192.0.2.45 port=1119 security=implicit inbound=fn.* outbound=- auth=principal:"
+                   "principal-peer path-identity=principal.example address=192.0.2.45 port=1119 security=clear inbound=fn.* outbound=- auth=principal:"
                    *fn-na-principal-hex*)
                   (string-append
                    (string-append " carries-principal=" *fn-na-hex-a*)
