@@ -660,8 +660,8 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 666,
-    "books_in_root_closure": 664,
+    "books": 667,
+    "books_in_root_closure": 665,
     "roots": 656,
     "theorems": 8870,
     "functions": 6569,
@@ -678,7 +678,7 @@
     "export_hygiene_warnings": 107,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 47,
-    "include_hygiene_warnings": 637,
+    "include_hygiene_warnings": 640,
     "host_names_warnings": 816,
     "hand_written_record_warnings": 18
   },
@@ -2501,6 +2501,32 @@
       "read_error": null
     },
     {
+      "book": "books/bp-node-forward-lower-guards.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 29,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-fnbs-dispatch-codec",
+        "bp-forward-attempt"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-node-foundation.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2830,13 +2856,14 @@
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 39,
+      "verify_guards_events": 65,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "bp-node-forward-lower-guards",
         "bp-node-progress",
         "bp-report-guards"
       ],
@@ -20979,6 +21006,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-node-forward-lower-guards.lisp",
+        "line": 4,
+        "include": "bp-fnbs-dispatch-codec",
+        "included": "books/bp-fnbs-dispatch-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-forward-lower-guards.lisp",
+        "line": 5,
+        "include": "bp-forward-attempt",
+        "included": "books/bp-forward-attempt.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-node-fragment-expiry.lisp",
         "line": 6,
         "include": "bp-node-fragment-plan",
@@ -21088,6 +21129,13 @@
         "line": 5,
         "include": "bp-node-progress",
         "included": "books/bp-node-progress.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-progress-guards.lisp",
+        "line": 6,
+        "include": "bp-node-forward-lower-guards",
+        "included": "books/bp-node-forward-lower-guards.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

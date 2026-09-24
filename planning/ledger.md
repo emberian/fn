@@ -10,9 +10,9 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 666 |
+| Books read | 667 |
 | Certification roots in the Makefile | 656 |
-| Books inside the root closure | 664 |
+| Books inside the root closure | 665 |
 | `defthm` and `defthmd` events | 8870 |
 | `defun` events | 6569 |
 | Functions with verified guards | 2036 |
@@ -26,7 +26,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 107 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 47 |
-| Include-hygiene warnings | 637 |
+| Include-hygiene warnings | 640 |
 | Host-names warnings | 816 |
 | Hand-written-record warnings | 18 |
 
@@ -154,6 +154,7 @@ that `make certify` requests.
 | `books/bp-node-debt-cache-invariants.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-debt.lisp` | root | 2 | 17 | 0/0/17/0 | 0 | 0 | 0 |
 | `books/bp-node-dispatch.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/bp-node-forward-lower-guards.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-foundation.lisp` | root | 17 | 62 | 59/0/3/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-expiry.lisp` | root | 1 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-family.lisp` | root | 9 | 9 | 0/3/6/0 | 0 | 0 | 0 |
