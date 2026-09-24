@@ -36,8 +36,9 @@
 
 (defun fn-bpnp-with-waits (st waits)
   (declare (xargs :guard t))
-  (if (and (null waits) (< (len st) 12)) st
-    (update-nth 11 waits st)))
+  (if (not (true-listp st)) st
+    (if (and (null waits) (< (len st) 12)) st
+      (update-nth 11 waits st))))
 
 (defun fn-bpnp-wait-for (key waits)
   (declare (xargs :guard t :measure (acl2-count waits)))
@@ -66,35 +67,79 @@
   (declare (xargs :guard t))
   (fn-bpnf-held-key (fn-bpnf-held-principal h) (fn-bpnf-held-id h)))
 
-(defun fn-bpnp-live-pendingp (h node observation)
+; These projections read only fixed record slots admitted at reception or
+; reconstructed by bounded cold replay.  In particular they never re-encode
+; a retained wire image during a served progress scan.
+(defun fn-bpnp-primary (h)
   (declare (xargs :guard t))
-  (and (fn-bpnf-heldp h)
-       (fn-bpp-eidp node)
+  (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
+
+(defun fn-bpnp-payload (h)
+  (declare (xargs :guard t))
+  (fn-bpb-block-data
+   (fn-bpb-bundle-payload (fn-bpnf-held-bundle h))))
+
+(defun fn-bpnp-held-expiry (h observation)
+  (declare (xargs :guard t))
+  (if (not (fn-clock-observationp observation)) :uncertain
+    (let* ((primary (fn-bpnp-primary h))
+           (anchor (fn-bpn-nth 9 h)))
+      (if (not (true-listp primary)) :uncertain
+        (let ((creation (fn-bpp-creation-time primary))
+              (lifetime (fn-bpp-lifetime primary)))
+      (if (not (and (fn-clock-timep creation)
+                    (fn-clock-timep lifetime)))
+          :uncertain
+        (cond
+         ((equal anchor '(:wall))
+          (fn-clock-expiry-decision creation lifetime nil observation))
+         ((and (true-listp anchor) (equal (len anchor) 3)
+               (equal (car anchor) :observed-age)
+               (fn-clock-timep (cadr anchor))
+               (fn-clock-timep (caddr anchor))
+               (fn-clock-age-anchorp
+                (cons (cadr anchor) (caddr anchor))))
+          (fn-clock-expiry-decision
+           creation lifetime (cons (cadr anchor) (caddr anchor))
+           observation))
+         (t :uncertain))))))))
+
+(defun fn-bpnp-local-class (h)
+  (declare (xargs :guard t))
+  (let ((result (fn-bpa-decode-exact (fn-bpnp-payload h))))
+    (if (fn-bpa-result-okp result)
+        (let ((message (fn-bpa-result-message result)))
+          (cond ((fn-bpa-requestp message) :request)
+                ((fn-bpa-receiptp message) :receipt)
+                (t :unsupported)))
+      :unsupported)))
+
+(defun fn-bpnp-live-pendingp (h node observation)
+  (declare (xargs :guard t) (ignore node))
+  (and (equal (fn-bpn-nth 0 h) :bpnf-held)
+       (natp (fn-bpn-nth 3 h))
        (equal (fn-bpn-nth 12 h) '(:dispatch-pending))
        (null (fn-bpn-nth 10 h))
        (null (fn-bpn-nth 14 h))
-       (equal (fn-bpah-held-expiry h observation) :live)
-       (let* ((bundle (fn-bpnf-held-bundle h))
-              (primary (fn-bpb-bundle-primary bundle)))
-         (and (fn-bpb-bundlep bundle)
-              (fn-bpp-blockp primary)
-              (not (fn-bpp-fragmentp (fn-bpp-flags primary)))
-              (if (equal (fn-bpp-destination primary) node)
-                  (fn-bpah-local-pendingp h node)
-                t)))))
+       (equal (fn-bpnp-held-expiry h observation) :live)
+       (let* ((primary (fn-bpnp-primary h))
+              (flags (fn-bpn-nth 1 primary)))
+         (and (natp flags)
+              (not (fn-bpp-fragmentp flags))))))
 
 (defun fn-bpnp-blockedp (h node routes generation waits)
   (declare (xargs :guard t))
   (let* ((key (fn-bpnp-wait-key h))
          (wait (fn-bpnp-wait-for key waits))
-         (primary (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
-         (destination (fn-bpp-destination primary))
+         (primary (fn-bpnp-primary h))
+         (destination (fn-bpn-nth 3 primary))
          (route (fn-bpnp-route-peer destination routes)))
-    (and (not (equal destination node))
-         (equal (fn-bpn-nth 0 wait) :bpnp-wait)
+    (and (equal (fn-bpn-nth 0 wait) :bpnp-wait)
          (equal (fn-bpn-nth 3 wait) generation)
-         (if route (equal (fn-bpn-nth 2 wait) :session)
-           (equal (fn-bpn-nth 2 wait) :route)))))
+         (if (equal destination node)
+             (equal (fn-bpn-nth 2 wait) :class)
+           (if route (equal (fn-bpn-nth 2 wait) :session)
+             (equal (fn-bpn-nth 2 wait) :route))))))
 
 (defun fn-bpnp-oldest-eligible
   (held node observation routes generation waits selected)
@@ -112,18 +157,41 @@
       (fn-bpnp-oldest-eligible
        (cdr held) node observation routes generation waits selected))))
 
+(defun fn-bpnp-oldest-uncertain-local
+  (held node observation generation waits selected)
+  (declare (xargs :guard t :measure (acl2-count held)))
+  (if (atom held) selected
+    (let* ((h (car held))
+           (primary (fn-bpnp-primary h))
+           (flags (fn-bpn-nth 1 primary))
+           (selected
+            (if (and (equal (fn-bpn-nth 0 h) :bpnf-held)
+                     (natp (fn-bpn-nth 3 h))
+                     (equal (fn-bpn-nth 12 h) '(:dispatch-pending))
+                     (null (fn-bpn-nth 10 h))
+                     (null (fn-bpn-nth 14 h))
+                     (natp flags)
+                     (not (fn-bpp-fragmentp flags))
+                     (equal (fn-bpn-nth 3 primary) node)
+                     (not (fn-bpnp-blockedp h node nil generation waits))
+                     (equal (fn-bpnp-held-expiry h observation) :uncertain)
+                     (or (null selected)
+                         (< (nfix (fn-bpn-nth 3 h))
+                            (nfix (fn-bpn-nth 3 selected)))))
+                h selected)))
+      (fn-bpnp-oldest-uncertain-local
+       (cdr held) node observation generation waits selected))))
+
 (defun fn-bpnp-delivery-view (held)
   (declare (xargs :guard t))
-  (if (not (fn-bpnf-heldp held)) nil
-    (let* ((bundle (fn-bpnf-held-bundle held))
-           (primary (fn-bpb-bundle-primary bundle)))
-      (if (not (and (fn-bpb-bundlep bundle) (fn-bpp-blockp primary))) nil
-        (list :delivery (fn-bpnp-wait-key held)
-              (fn-bpah-held-class held) (fn-bpb-payload bundle)
-              (fn-bpn-nth 4 held)
-              (fn-bpp-primary-identity primary)
-              (fn-bpaj-eid-text (fn-bpp-source primary))
-              (fn-bpaj-eid-text (fn-bpp-destination primary)))))))
+  (let ((primary (fn-bpnp-primary held)))
+    (if (not (fn-bpp-blockp primary)) nil
+      (list :delivery (fn-bpnp-wait-key held)
+            (fn-bpnp-local-class held) (fn-bpnp-payload held)
+            (fn-bpn-nth 4 held)
+            (fn-bpp-primary-identity primary)
+            (fn-bpaj-eid-text (fn-bpp-source primary))
+            (fn-bpaj-eid-text (fn-bpp-destination primary))))))
 
 (defun fn-bpnp-progress-step (st node observation routes generation)
   (declare (xargs :guard t))
@@ -143,19 +211,39 @@
                waits nil)))
       (if (not h)
           (let ((uncertain
-                 (fn-bpah-pending-decision-at st node observation)))
-            (if (equal (car uncertain) :uncertain)
-                (fn-bpnf-answer
-                 st (list (list :progress-uncertain (fn-bpn-nth 1 uncertain))))
+                 (fn-bpnp-oldest-uncertain-local
+                  (fn-bpnf-held-list st) node observation
+                  generation waits nil)))
+            (if uncertain
+                (if (member-equal (fn-bpnp-local-class uncertain)
+                                  '(:request :receipt))
+                    (fn-bpnf-answer
+                     st (list (list :progress-uncertain
+                                    (fn-bpnp-wait-key uncertain))))
+                  (let* ((key (fn-bpnp-wait-key uncertain))
+                         (new-waits
+                          (cons (list :bpnp-wait key :class generation)
+                                (fn-bpnp-remove-wait key waits))))
+                    (fn-bpnf-answer
+                     (fn-bpnp-with-waits st new-waits)
+                     (list (list :progress-unsupported key)))))
               (fn-bpnf-answer st nil)))
         (let* ((key (fn-bpnp-wait-key h))
-               (primary (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
-               (destination (fn-bpp-destination primary)))
+               (primary (fn-bpnp-primary h))
+               (destination (fn-bpn-nth 3 primary)))
           (if (equal destination node)
-              (let ((answer (fn-bpah-deliver-step st key node)))
-                (fn-bpnf-answer
-                 (fn-bpnp-with-waits (fn-bpnf-answer-state answer) waits)
-                 (fn-bpnf-answer-effects answer)))
+              (if (member-equal (fn-bpnp-local-class h)
+                                '(:request :receipt))
+                  (let ((answer (fn-bpah-deliver-step st key node)))
+                    (fn-bpnf-answer
+                     (fn-bpnp-with-waits (fn-bpnf-answer-state answer) waits)
+                     (fn-bpnf-answer-effects answer)))
+                (let ((new-waits
+                       (cons (list :bpnp-wait key :class generation)
+                             (fn-bpnp-remove-wait key waits))))
+                  (fn-bpnf-answer
+                   (fn-bpnp-with-waits st new-waits)
+                   (list (list :progress-unsupported key)))))
             (let* ((reason (if (fn-bpnp-route-peer destination routes)
                                :session :route))
                    (new-waits

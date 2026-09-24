@@ -137,6 +137,12 @@
       (unless effects (return-from fnn-bpnode-dispatch-one nil))
       (when (and (= (length effects) 1)
                  (eq (first (first effects)) :progress-wait))
+        (fnn-out "BP node progress waiting reason=~(~a~)"
+                 (third (first effects)))
+        (return-from fnn-bpnode-dispatch-one t))
+      (when (and (= (length effects) 1)
+                 (eq (first (first effects)) :progress-unsupported))
+        (fnn-out "BP node progress waiting reason=class")
         (return-from fnn-bpnode-dispatch-one t))
       (when (and (= (length effects) 1)
                  (eq (first (first effects)) :progress-uncertain))
