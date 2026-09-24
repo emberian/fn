@@ -99,3 +99,68 @@
                  fn-sn-statep fn-sf-statep fn-store-event-p
                  fn-cei-correspondencep fn-cei-build
                  fn-cei-build-aux)))))
+
+(defthm fn-ceis-finish-keeps-index
+  (equal (fn-sn-event-index (fn-sn-finish s))
+         (fn-sn-event-index s))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-finish fn-sn-finish-identity
+                  fn-sn-advance-identity-next
+                  fn-sn-with-topic fn-sn-with-consumer
+                  fn-sn-update-indexed fn-sn-update-accepted
+                  fn-sn-make-v6 fn-sn-event-index)
+                (fn-sn-completion-enabledp fn-sn-completion-record
+                 fn-store-retention-event-p fn-stxe-p fn-stxk-p
+                 fn-stxa-p fn-cpe-eventp fn-th-topic-eventp
+                 fn-replay-apply-record fn-replay-apply-retention-event
+                 fn-replay-identity-step fn-sn-composite-delta
+                 fn-sn-accepted-delta
+                 fn-sf-core-completion fn-sf-emit-success)))))
+
+(defthm fn-ceis-finish-keeps-records
+  (equal (fn-sf-records (fn-sn-files (fn-sn-finish s)))
+         (fn-sf-records (fn-sn-files s)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-finish fn-sn-finish-identity
+                  fn-sn-advance-identity-next
+                  fn-sn-with-topic fn-sn-with-consumer
+                  fn-sn-update-indexed fn-sn-update-accepted
+                  fn-sn-make-v6 fn-sn-files
+                  fn-sf-core-completion fn-sf-emit-success)
+                (fn-sn-completion-enabledp fn-sn-completion-record
+                 fn-store-retention-event-p fn-stxe-p fn-stxk-p
+                 fn-stxa-p fn-cpe-eventp fn-th-topic-eventp
+                 fn-replay-apply-record fn-replay-apply-retention-event
+                 fn-replay-identity-step fn-sn-composite-delta
+                 fn-sn-accepted-delta fn-store-event-p)))))
+
+(defthm fn-ceis-finish-preserves-related
+  (implies (and (fn-ceis-relatedp s)
+                (not (member-eq (fn-sf-phase (fn-sn-files s))
+                                '(:replaying :fault))))
+           (fn-ceis-relatedp (fn-sn-finish s)))
+  :hints (("Goal" :use (fn-ceis-finish-keeps-index
+                         fn-ceis-finish-keeps-records)
+           :in-theory (e/d (fn-ceis-relatedp)
+                           (fn-sn-finish fn-cei-correspondencep
+                            fn-ceis-finish-keeps-index
+                            fn-ceis-finish-keeps-records)))))
+
+(defthm fn-ceis-crash-preserves-related
+  (implies (fn-ceis-relatedp s)
+           (fn-ceis-relatedp
+            (fn-sn-crash s frontier-choice record-choice)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-relatedp fn-sn-crash fn-sf-crash)
+                (fn-sn-statep fn-sf-statep
+                 fn-sn-make-v6 fn-cei-correspondencep fn-cei-build)))))
+
+(defthm fn-ceis-recover-preserves-related
+  (implies (and (fn-sn-statep s) (fn-ceis-relatedp s))
+           (fn-ceis-relatedp (fn-sn-recover s)))
+  :hints (("Goal" :use (fn-ceis-recovery-rebuilds-index-by-definition)
+           :in-theory
+           (e/d (fn-ceis-relatedp fn-sn-recover)
+                (fn-sn-statep fn-sf-statep fn-sf-recover
+                 fn-sn-make-v6 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux)))))
