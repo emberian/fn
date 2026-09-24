@@ -232,6 +232,21 @@
                                        (theory 'minimal-theory))))))
 
 (local
+ (defthm bpgap-receive-event-shape
+   (implies (and (fn-bpnp-host-eventp event)
+                 (equal (fn-cbor-ag-car event) :receive-bundle))
+            (and (true-listp event) (equal (len event) 5)
+                 (fn-bpb-bundlep (fn-bpn-nth 1 event))
+                 (fn-cbor-octet-listp (fn-bpn-nth 2 event))
+                 (fn-bpnf-cl-ingressp (fn-bpn-nth 3 event))
+                 (fn-clock-observationp (fn-bpn-nth 4 event))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories '(fn-bpnp-host-eventp fn-bpnf-host-eventp
+                                         (:e equal))
+                                       (theory 'minimal-theory))))))
+
+(local
  (defthm bpgap-conflict-held-under-hypotheses
    (implies (and (fn-bpnp-host-eventp event)
                 (equal (fn-cbor-ag-car event) :receive-bundle)
@@ -254,15 +269,11 @@
                     (fn-bpnf-held-list st)))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-bpnp-conflict-held fn-bpnp-host-eventp
-                             fn-bpnf-host-eventp fn-bpnf-receive-decision
-                             fn-frame-natp)
-                            (fn-bpnf-find-held fn-bpb-bundlep fn-bpb-encode
-                             fn-bpnf-cl-ingressp fn-clock-observationp
-                             fn-bpnf-immutable fn-bpnf-held-key
-                             fn-bpnf-ingress-principal fn-bpb-bundle-id
-                             fn-cbor-octet-listp fn-cbor-at-mostp
-                             fn-bpah-delivery-uncertainp))))))
+            :use ((:instance bpgap-receive-event-shape))
+            :in-theory (union-theories
+                        '(fn-bpnp-conflict-held fn-bpnf-receive-decision
+                          (:e equal) (:e not))
+                        (theory 'minimal-theory))))))
 
 (local
  (defthm bpgap-conflict-propose-fields
@@ -399,7 +410,10 @@
                             fn-bpnp-conflict-refusal
                             fn-bpnp-domain-recover-eventp fn-bpnp-conflict-held
                             fn-bpnf-answer fn-bpnf-answer-state
-                            fn-bpnf-answer-effects fn-bpnf-operation)
+                            fn-bpnf-answer-effects fn-bpnf-operation
+                            fn-bpn-nth)
                            (fn-bpnp-step fn-bpnp-with-issued
                             fn-bpnp-with-credit fn-bpnp-with-waits
+                            fn-bpnf-held-list fn-bpnf-issued fn-bpnp-used
+                            fn-bpnp-waits fn-bpnp-debt
                             bpgap-conflict-persist-arm-is-taken)))))
