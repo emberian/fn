@@ -4,8 +4,8 @@
   "tolerance": 0.25,
   "books": {
     "books/bp-channel-ingress": {
-      "seconds": 15.901,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 15.962,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
@@ -22,8 +22,14 @@
       "verdict": "passed"
     },
     "books/bp-node-fragment-guards": {
-      "seconds": 11.548,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 12.749,
+      "run": "certify-20260924T094824Z-1155517",
+      "host": "hbox",
+      "verdict": "passed"
+    },
+    "books/bp-node-fragment-step": {
+      "seconds": 10.145,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
@@ -34,15 +40,15 @@
       "verdict": "passed"
     },
     "books/bp-node-progress-guards": {
-      "seconds": 119.645,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 21.815,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
-      "verdict": "failed"
+      "verdict": "passed"
     },
     "books/bp-node-progress-selection-invariants": {
-      "seconds": 11.148,
-      "run": "certify-20260924T085630Z-1101093",
-      "host": "nextop.local",
+      "seconds": 12.201,
+      "run": "certify-20260924T094824Z-1155517",
+      "host": "hbox",
       "verdict": "passed"
     },
     "books/bp-primary": {
@@ -58,56 +64,50 @@
       "verdict": "passed"
     },
     "books/bp-report-deletion": {
-      "seconds": 10.244,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 10.993,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/byte-store-record-provenance": {
-      "seconds": 15.808,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 15.563,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/checkpoint-codec": {
-      "seconds": 12.097,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 12.254,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/config-owner-live": {
-      "seconds": 13.752,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 11.6,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/consumer-event-index-store-invariants": {
-      "seconds": 95.203,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 33.651,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/consumer-local-control": {
-      "seconds": 13.196,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 13.355,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/consumer-store-invariants": {
-      "seconds": 56.865,
-      "run": "certify-20260924T070931Z-1040432",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/native-admin": {
-      "seconds": 10.04,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 10.289,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/nntp-auth-fold": {
-      "seconds": 14.903,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 14.853,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
@@ -130,14 +130,14 @@
       "verdict": "passed"
     },
     "books/owner-config": {
-      "seconds": 14.207,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 13.698,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/owner-invariants": {
-      "seconds": 41.623,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 33.043,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     },
@@ -151,12 +151,6 @@
       "seconds": 11.658,
       "run": "certify-20260923T155856Z-97680",
       "host": "nextop.local",
-      "verdict": "passed"
-    },
-    "books/store-identity-sequence-invariants": {
-      "seconds": 66.188,
-      "run": "certify-20260924T070931Z-1040432",
-      "host": "hbox",
       "verdict": "passed"
     },
     "books/store-node": {
@@ -190,8 +184,8 @@
       "verdict": "passed"
     },
     "books/topic-history-store-invariants": {
-      "seconds": 69.267,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 15.402,
+      "run": "certify-20260924T094824Z-1155517",
       "host": "hbox",
       "verdict": "passed"
     }
