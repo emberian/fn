@@ -78,6 +78,7 @@
 (defun fn-pa-carriesp (principal carried)
   (declare (xargs :guard t))
   (and (fn-hsig-exact-octets-p principal 32)
+       (true-listp carried)
        (member-equal (fn-stx-hex-octets principal) carried)
        t))
 
@@ -184,6 +185,13 @@
 ;; host/owner-host.lisp fn-owner-peer-carrier-plan calls for every present
 ;; carrier (served POST, bound submission and transit).
 
+; The carrier's own form is :absent, (:refused REASON) or (:ok ...): the
+; carried arm is only ever the plan's.
+(defthm fn-pa-carrier-form-is-never-carried
+  (not (equal (car (fn-pa-carrier-form received)) :carried))
+  :hints (("Goal" :in-theory (e/d (fn-pa-carrier-form)
+                                  (fn-pa-carrier-kind fn-hc-received-plan)))))
+
 ; Four outcomes and no fifth: accepted under this node's enrollment, carried
 ; for the delivering boundary, refused with a reason, or the unsigned arm.
 (defthm fn-pa-current-plan-outcomes
@@ -207,8 +215,8 @@
                   (null (fn-hl-current-for-principal (nth 2 plan) snapshots))
                   (equal (nth 1 plan) (nth 1 (fn-pa-carrier-form received)))
                   (equal (nth 2 plan) (nth 2 (fn-pa-carrier-form received))))))
-  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan)
-                                  (fn-pa-carrier-form
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carrier-form)
+                                  (fn-pa-carrier-kind fn-hc-received-plan
                                    fn-hl-current-for-principal
                                    fn-hl-current-enrollment fn-pa-carriesp)))))
 
@@ -220,6 +228,7 @@
                        :carried))
            (equal (fn-pa-current-plan received snapshots carried)
                   (fn-pa-current-plan received snapshots nil)))
+  :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carriesp)
                                   (fn-pa-carrier-form
                                    fn-hl-current-for-principal
@@ -243,7 +252,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-pa-carried-event)
                 (fn-pa-current-plan fn-hsig-article-event-carried-bindsp
-                 fn-stxa-make-carried fn-stxe-encode fn-record-encode
+                 fn-stxa-make-carried fn-stxe-encode 
                  fn-record-make fn-hsig-carried-record-metadatap)))))
 
 ; The carried event is what replay's carried branch admits, and its verdict
@@ -264,7 +273,7 @@
            (e/d (fn-pa-carried-event)
                 (fn-pa-current-plan fn-hsig-article-event-carried-bindsp
                  fn-stxa-bindsp fn-stxa-p
-                 fn-stxa-make-carried fn-stxe-encode fn-record-encode
+                 fn-stxa-make-carried fn-stxe-encode 
                  fn-record-make fn-hsig-carried-record-metadatap
                  fn-stxe-decode-exact
                  fn-hc-received-plan fn-hsig-authored-source-id)))))

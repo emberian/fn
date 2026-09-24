@@ -38,7 +38,7 @@
             (fn-native-admin-plan-deltas plan) monotonic wall state))
           ((equal kind :set-peer)
            (fn-store-cfg-peer-delta-record
-            (list (fn-cfg-set-peer-delta (fn-native-admin-result-peer plan)))
+            (list (fn-native-admin-set-peer-delta plan))
             monotonic wall state))
           ((equal kind :remove-peer)
            (fn-store-cfg-remove-peer (fn-native-admin-result-name plan)

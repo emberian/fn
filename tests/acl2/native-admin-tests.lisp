@@ -681,3 +681,42 @@
    :hints (("Goal" :in-theory (disable fn-record-group-namep
                                        fn-native-admin-fold-octets
                                        fn-record-string-octets)))))
+
+; D23: `peer add ... carries HEX' adds carries-principal rows to the peer's
+; set-peer delta; a peer without `carries' is the base plan unchanged.
+(defconst *fn-na-carry-hex*
+  "0707070707070707070707070707070707070707070707070707070707070707")
+(defconst *fn-na-base-words*
+  '("peer" "add" "near" "near" "localhost" "119" "*" "*" "127.0.0.1" "true"))
+(defconst *fn-na-carry-plan*
+  (fn-native-admin-peer-plan (append *fn-na-base-words*
+                                     (list "carries" *fn-na-carry-hex*))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-carry-plan*) :accepted))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-carry-plan*) :set-peer))
+(assert-event (equal (fn-native-admin-result-peer *fn-na-carry-plan*)
+                     (fn-native-admin-result-peer
+                      (fn-native-admin-peer-plan *fn-na-base-words*))))
+(assert-event
+ (equal (fn-native-admin-plan-deltas *fn-na-carry-plan*)
+        (list (fn-cfg-set-peer
+               "near"
+               (append (fn-cfg-peer-rows
+                        (fn-native-admin-result-peer *fn-na-carry-plan*))
+                       (list (list "near" "carries-principal" *fn-na-carry-hex* 0)))))))
+(assert-event
+ (equal (fn-native-admin-plan-deltas (fn-native-admin-peer-plan *fn-na-base-words*))
+        (list (fn-cfg-set-peer-delta
+               (fn-native-admin-result-peer
+                (fn-native-admin-peer-plan *fn-na-base-words*))))))
+; Uppercase hex, or no principal after `carries', is refused.
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-peer-plan
+          (append *fn-na-base-words*
+                  (list "carries"
+                        "0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A"))))
+        :carries))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-peer-plan (append *fn-na-base-words* (list "carries"))))
+        :carries))

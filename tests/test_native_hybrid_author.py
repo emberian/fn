@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -672,6 +673,152 @@ class NativeHybridAuthorTest(unittest.TestCase):
                     self.assertTrue(stream.readline().startswith(b"200 "))
                     stream.write(b"STAT " + msgid.encode() + b"\r\n")
                     self.assertTrue(stream.readline().startswith(b"430 "))
+        finally:
+            for owner in reversed(owners):
+                self.stop_owner(owner)
+
+    # ------------------------------------------------------------------
+    # D23: A signs and posts; relay R has no enrollment of A's principal and
+    # allowlists it on its boundary for A (`carries HEX'); C enrolls it.  R
+    # stores and relays with a `carried' verdict, C verifies.  Without the
+    # list R refuses (439, local-enrollment), as D02 did.
+    def _chain(self, listed):
+        nodes = {}
+        for name in ("relay", "sink"):
+            root = self.root / name
+            nodes[name] = {"store": root, "control": self.root / (name + ".sock"),
+                           "log": self.root / (name + ".log"), "port": free_port(),
+                           "config": self.root / (name + ".toml")}
+            n = nodes[name]
+            n["config"].write_text(
+                '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+                '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
+                    n["store"], n["port"], n["control"], n["log"]), encoding="ascii")
+        relay, sink = nodes["relay"], nodes["sink"]
+
+        def ok(*args):
+            result = self.invoke(*map(str, args), timeout=180)
+            self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", "replace"))
+            return result
+
+        hexp = self.principal.read_bytes().hex()
+        for n in (relay, sink):
+            ok("store", n["store"], "init", "fn.test")
+        ok("operator", self.config, "policy", "set", "path-identity", "author.example.invalid")
+        ok("operator", relay["config"], "policy", "set", "path-identity", "relay.example.invalid")
+        ok("operator", sink["config"], "policy", "set", "path-identity", "sink.example.invalid")
+        # A feeds R.  R takes A's feed (source 127.0.0.1) and feeds C; its C
+        # record's source address is one nothing connects from.  C takes R.
+        ok("operator", self.config, "peer", "add", "relay", "relay.example.invalid",
+           "127.0.0.1", relay["port"], "-", "fn.*", "127.0.0.9", "true")
+        carries = ["carries", hexp] if listed else []
+        ok("operator", relay["config"], "peer", "add", "author", "author.example.invalid",
+           "127.0.0.1", self.port, "fn.*", "-", "127.0.0.1", "true", *carries)
+        ok("operator", relay["config"], "peer", "add", "sink", "sink.example.invalid",
+           "127.0.0.1", sink["port"], "-", "fn.*", "127.0.0.9", "true")
+        ok("operator", sink["config"], "peer", "add", "relay", "relay.example.invalid",
+           "127.0.0.1", relay["port"], "fn.*", "-", "127.0.0.1", "true")
+        msgid = "<d23-carried-{}@example.invalid>".format("listed" if listed else "unlisted")
+        source = self.root / "d23-source.eml"
+        source.write_bytes(
+            b"From: author@example.invalid\r\n"
+            b"Date: Thu, 24 Sep 2026 22:00:00 +0000\r\n"
+            b"Newsgroups: fn.test\r\nSubject: carried relay\r\n"
+            b"Message-ID: " + msgid.encode() + b"\r\n\r\ncarried body\r\n")
+        signed = ok("hybrid-sign", self.principal, self.ed_public,
+                    self.ed_secret, self.ml_public, self.ml_private, source)
+        parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+        ed_sig, ml_sig = self.root / "d23-ed.sig", self.root / "d23-ml.sig"
+        ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+        ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+        return nodes, msgid, source, ed_sig, ml_sig, ok
+
+    def _hdr(self, port, msgid):
+        with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
+            with sock.makefile("rwb", buffering=0) as stream:
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"HDR :fn-verified " + msgid.encode() + b"\r\n")
+                status = stream.readline()
+                if not status.startswith(b"225 "):
+                    return None
+                line = stream.readline()
+                self.assertEqual(stream.readline(), b".\r\n")
+                return line
+
+    def _start(self, owners, config):
+        proc = subprocess.Popen([str(IMAGE), "--fn", "operator", str(config), "run"],
+                                cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        owners.append(proc)
+        wait_for_announcement(proc, b"LISTENING ")
+
+    def _verify(self, port, msgid):
+        keyring = self.root / "d23-keyring.json"
+        entry = subprocess.run([sys.executable, str(ROOT / "tools" / "fn_verify.py"),
+                                "keyring-entry", str(self.principal), str(self.ed_public),
+                                str(self.ml_public)], stdout=subprocess.PIPE, check=True)
+        keyring.write_text('{"format": "fn-verify-keyring-v1", "principals": [%s]}'
+                           % entry.stdout.decode().strip())
+        run = subprocess.run([sys.executable, str(ROOT / "tools" / "fn_verify.py"),
+                              msgid, "--node", "127.0.0.1:{}".format(port), "--plain",
+                              "--keyring", str(keyring)],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+        return run.returncode, run.stdout.decode("utf-8", "replace")
+
+    def test_d23_allowlisted_relay_carries_and_the_enrolled_sink_verifies(self):
+        nodes, msgid, source, ed_sig, ml_sig, ok = self._chain(listed=True)
+        relay, sink = nodes["relay"], nodes["sink"]
+        owners = []
+        try:
+            for config in (self.config, relay["config"], sink["config"]):
+                self._start(owners, config)
+            for control in (self.control, sink["control"]):
+                ok("hybrid-enroll", control, "1", self.principal,
+                   self.ed_public, self.ml_public)
+            ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
+            deadline, at_sink = time.monotonic() + 60, None
+            while time.monotonic() < deadline:
+                at_sink = self._hdr(sink["port"], msgid)
+                if at_sink is not None:
+                    break
+                time.sleep(0.2)
+            hexp = self.principal.read_bytes().hex().encode()
+            self.assertEqual(self._hdr(relay["port"], msgid), b"0 carried " + hexp + b"\r\n")
+            self.assertEqual(at_sink, b"0 verified " + hexp + b" keyring 1\r\n")
+            carried = [line for line in relay["log"].read_text().splitlines()
+                       if " message-id=" + msgid + " " in line and " detail=carried " in line]
+            self.assertEqual(len(carried), 1, relay["log"].read_text())
+            if os.environ.get("FN_D23_VERIFY") == "1":
+                self.assertEqual(self._verify(sink["port"], msgid)[0], 0)
+                code, out = self._verify(relay["port"], msgid)
+                self.assertEqual(code, 3, out)
+                self.assertIn("carried this article", out)
+        finally:
+            for owner in reversed(owners):
+                self.stop_owner(owner)
+
+    def test_d23_unlisted_relay_refuses_439_and_logs_it(self):
+        nodes, msgid, source, ed_sig, ml_sig, ok = self._chain(listed=False)
+        relay = nodes["relay"]
+        owners = []
+        try:
+            for config in (self.config, relay["config"]):
+                self._start(owners, config)
+            ok("hybrid-enroll", self.control, "1", self.principal,
+               self.ed_public, self.ml_public)
+            ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
+            sender_line = "refused feed peer=relay message-id=" + msgid + " code=439 "
+            deadline, sent = time.monotonic() + 30, ""
+            while time.monotonic() < deadline:
+                sent = self.service_log.read_text() if self.service_log.exists() else ""
+                if sender_line in sent:
+                    break
+                time.sleep(0.2)
+            self.assertIn(sender_line, sent)
+            refusals = [line for line in relay["log"].read_text().splitlines()
+                        if line.startswith("refused transit ") and msgid in line]
+            self.assertEqual(len(refusals), 1, relay["log"].read_text())
+            self.assertIn(" detail=local-enrollment ", refusals[0])
+            self.assertIsNone(self._hdr(relay["port"], msgid))
         finally:
             for owner in reversed(owners):
                 self.stop_owner(owner)
