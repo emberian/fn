@@ -55,6 +55,18 @@ distinct runtime defect, owned by `consumer_contract`. Existing failed logs
 are evidence, not discarded fixture noise. Combined proof capacity remains
 four jobs, scoped runs coordinated separately; agents reuse matching caches.
 
+At 06:17 UTC the immutable `863c2141` combined run is active on hbox as
+`run-20260924T061318Z-cd11`, gate
+`/tank/fn/gates/capability-863c2141-20260924`. The revised work distribution is:
+`topic_metadata` implements shared NNTP/BP verified incoming authorship with
+`assurance_review_followup`; `consumer_contract` continues the integrated
+partial maintained topic bridge. `mini_reply_join` adds A-side durable reply
+consumption while retaining the failed old-image two-Store preflight. The
+preservation agent extends the isolated block-error campaign in addition to
+running its pack/mixed-history subset when the shared image exists. The
+qualifier hands independent native test subsets to those agents instead of
+serializing every test through one worker. No new duplicate build is needed.
+
 ### Recovery repair, BP prerequisites and complete exchanges — 05:28 UTC
 
 Root integrated pure BP debt and dispatch codec prerequisites through
