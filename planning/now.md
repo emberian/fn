@@ -99,14 +99,21 @@ stored octets; 235 with a Path identity), dtn-build-checkpoint (DTN images
 headroom in `operator status`, `init --profile scale`; the deployed store's
 budget is 128 with 7 used). Third cut `60862103` submitted with every fix.
 
+Landed after that: bp-app-receive (the dropped ingress argument, a raw-arity
+check that also caught `fn config check` exiting 4, refusal reasons logged,
+`bp send` closes), matrix/campaign/native-subsets on `47bdb9a4` (all clean
+for the server), and the deploy: **the hbox node runs `47bdb9a4`**
+([record](evidence/node-hbox-47bdb9a4-2026-09-24.md)).
+
 **In flight:**
 
 | Lane | Intended result |
 | --- | --- |
-| bp-kind8-retry | M4: retry after a durable attempt with the original identity, receiver dedup, bounded, stranded reportable (default pending ember) |
-| served-path-cost | the per-command whole-state checks carried in state (`fn-auth-sessionp`'s `fn-node-statep`), re-measured |
-| probe-tables | the probe's expectation table for the four new cuts and the swallowed unlink; the differential reads the article's octets |
-| stale-native-tests | the five (c)-class native tests brought up to date with the machine |
+| m4-dtn-n08 | M4 on a DTN image with the kind-8 policy: N08 exactly-once after a death, the DTN modules, an interrupted contact on the pinned dtn7-rs, the four-node lab |
+| commit-path-cost | the whole-history `fn-record-p` per POST carried from open; CPU per POST re-measured |
+| m5-profile-upgrade | offline development-to-scale profile upgrade with an ACL2 upgrade-only predicate, a cut coordinate and the campaign cuts; the deployed store's budget past 128 |
+| p8-signed-post | a signed POST over NNTP classified by the same ACL2 plan as transit, with a durable verdict |
+| stale-tests-2 | served crash model judged against the stored octets; two raw scripts; the launcher exits 5 instead of waiting on stdin when OpenSSL is missing |
 
 ## Where to read next
 
