@@ -3024,7 +3024,7 @@
       ]
     },
     {
-      "id": "PRF-076",
+      "id": "PRF-077",
       "title": "The native request is the workflow's request for exactly that work, over the plan bp-obligation request executes",
       "statement": "fn-bprq-plan S WORK ATTEMPT (books/bp-request-plan.lisp), called by host/workflow-host.lisp fn-workflow-request-plan, which host/native/bp-obligation.lisp fnn-bpo-request-publish calls, returns nil or (:request ATTEMPT-RECORD OUTCOME KEY ADU DESTINATION RETRY). fn-bprq-plan-is-the-works-request: whenever it returns a plan, the attempt record is an :attempt naming exactly WORK and ATTEMPT, KEY (the FNBS job key the host enqueues under) is (WORK ATTEMPT generation) with the attempt's generation, ADU decodes exactly (fn-bpa-decode-exact) to fn-bpa-make-request over the work WORK holds in the image reached by publishing RETRY (if any), the attempt and its durable outcome (fn-bprq-published-state), that request is fn-bpa-requestp with work id WORK, and DESTINATION is that work's peer EID. Hypothesis: the plan exists. The published image is the host's: fn-bpiw-apply on these records is fn-bprl-apply-journal-record (reachable witness in the test book, not a general theorem). ION is an adapter: fn-bpiw-attempt-record-is-the-generic-attempt (test book) equates the ION constructor with fn-bprq-attempt-record, which host/workflow-host.lisp fn-workflow-ion-attempt-record now calls. Not claimed: that the image's work fields equal those before the attempt (they are stated over the published image), any transport or receipt property, or recovery of a fenced attempt.",
       "milestone": "M4",

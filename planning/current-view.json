@@ -11,16 +11,27 @@
         "host/native/bp-service.lisp": "09dfc3155e8498e6ad409f2cde320d512e137f40daf5893a9795698969025ec9",
         "host/owner-host.lisp": "f8de2831c92bb16367127469050a32436491d57ba09c21bac8a6b064905bebbf"
       }
+    },
+    "4eca4148": {
+      "source": "4eca4148c59df75af916aa9c4be51647e7dc21b6",
+      "qualification": "planning/evidence/qual-4eca4148-2026-09-24.md",
+      "closure_manifest": "certify-20260924T224341Z-2081666",
+      "host_sha256": {
+        "host/bp-native-app-host.lisp": "0104e3ee0711aa048e7418c769d3bd750483e572540de21191e90c2336975cf7",
+        "host/checkpoint-host.lisp": "524723314d4cb080ece3eea2d454052f0dbe49cde507ee9d149f4611cfdb8e5c",
+        "host/native/bp-service.lisp": "46bcb7ade951947aae71669d11a8487fdd24d1e0e993407ded5e02889a15d003",
+        "host/owner-host.lisp": "cb7298a30e57e3b378e6803737a599d5ee6de0bd872836ec321f81318d4ea5f1"
+      }
     }
   },
   "deployment": {
     "where": "hbox `/tank/fn/node`",
-    "image": "18c91321",
-    "record": "planning/evidence/node-hbox-18c91321-2026-09-24.md",
+    "image": "4eca4148",
+    "record": "planning/evidence/node-hbox-4eca4148-2026-09-24.md",
     "profiles": [
       "default"
     ],
-    "profile_text": "production default image, store profile scale (4096 transactions), LAN-only, no peers configured, DTN profile not deployed; `fn-47bdb9a4` and `fn-da5fd8cb` kept for rollback"
+    "profile_text": "production default image, store profile scale (4096 transactions), LAN-only, no peers configured, DTN profile not deployed; `fn-18c91321`, `fn-47bdb9a4` and `fn-da5fd8cb` kept for rollback"
   },
   "superseded": [
     "planning/evidence/node-hbox-47bdb9a4-2026-09-24.md",
