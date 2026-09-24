@@ -357,8 +357,14 @@ class NativeHybridAuthorTest(unittest.TestCase):
     def test_authored_carrier_survives_native_peering_and_receiver_restart(self):
         """Real owner/feed/receiver path; portable verification is independent.
 
-        This does not claim a receiver-local enrolled verdict or protected
-        transport. Those have separate gates. Both peers are loopback fixtures.
+        Since receiver-local authorship at transit ingress
+        (planning/evidence/peer-authored-ingress-2026-09-24.md) the receiver
+        stores a signed carrier only under its OWN current enrollment of the
+        carried principal (fn-pa-current-plan); without one it answers 439
+        with reason local-enrollment.  The receiver therefore enrolls the
+        author's key set here, as the two-Store join provisions it, and its
+        own HDR :fn-verified verdict is checked after delivery and restart.
+        Protected transport has its own gate. Both peers are loopback fixtures.
         """
         other_store = self.root / "receiver"
         other_control = self.root / "receiver.sock"
@@ -431,8 +437,9 @@ class NativeHybridAuthorTest(unittest.TestCase):
         try:
             start(self.config)
             receiver = start(other_config)
-            ok("hybrid-enroll", self.control, "1", self.principal,
-               self.ed_public, self.ml_public)
+            for control in (self.control, other_control):
+                ok("hybrid-enroll", control, "1", self.principal,
+                   self.ed_public, self.ml_public)
             ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
             original = read_article(self.port)
             self.assertIsNotNone(original)
@@ -468,6 +475,15 @@ class NativeHybridAuthorTest(unittest.TestCase):
             # Verify the recovered bytes, rather than reusing a sender verdict.
             carried.write_bytes(read_article(other_port))
             ok("hybrid-verify-carrier", carried, self.ml_public)
+            # The receiver's own kind-4 verdict, recovered after restart.
+            with socket.create_connection(("127.0.0.1", other_port), timeout=15) as sock:
+                with sock.makefile("rwb", buffering=0) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+                    stream.write(b"HDR :fn-verified " + msgid.encode() + b"\r\n")
+                    self.assertEqual(stream.readline(), b"225 headers follow\r\n")
+                    self.assertEqual(stream.readline(),
+                                     b"0 verified " + b"55" * 32 + b" keyring 1\r\n")
+                    self.assertEqual(stream.readline(), b".\r\n")
         finally:
             for owner in reversed(owners):
                 self.stop_owner(owner)

@@ -264,7 +264,10 @@ closed by this worker, preserving the one-closer rule."
        ;; its FNFD projection.  MODE is a connection-phase command, not a
        ;; delivery effect, and :ready has no socket bytes.
        (when (member word '(:send :quiet :refused))
-         (fnn-owner-feed-flush service))
+         (fnn-owner-feed-flush service)
+         ;; A reply outcome (not a 335/238 prompt) has one ACL2-rendered
+         ;; line: a peer's refusal or deferral is never silent.
+         (fnn-owner-log 'fn-owner-feed-log-line t))
        (values word
                (if (member word '(:starttls :auth-user :auth-pass :mode :send))
                    (let ((command (fnn-owner-octets-global 'fn-owner-feed-command)))

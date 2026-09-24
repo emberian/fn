@@ -38,7 +38,14 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         self.assertNotIn("(not (eq taken :taken))", drain)
         self.assertIn("'fn-owner-transit-decide", drain)
         self.assertIn("'fn-owner-transit-evidence", drain)
-        self.assertIn("'fn-owner-transit-outcome", drain)
+        # The outcome and its service-log line go through one helper.
+        self.assertIn("fnn-owner-transit-complete", drain)
+        self.assertNotIn("'fn-owner-transit-outcome", drain)
+        helper_start = source.index("(defun fnn-owner-transit-complete")
+        helper = source[helper_start:start]
+        self.assertIn("'fn-owner-transit-log-line", helper)
+        self.assertIn("'fn-owner-transit-outcome", helper)
+        self.assertIn("(fnn-owner-log)", helper)
         self.assertIn("(eq word :uncertain)", drain)
 
     def test_condition_handlers_and_cleanup_enclose_the_served_body(self):
