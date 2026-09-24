@@ -315,6 +315,89 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP FNBS recovered held=2", restarted.stdout)
         self.assertEqual(self.receiver_counts()[1], 1)
 
+    def forward_mru_bundles(self):
+        """ACL2 authors the two transit wires; Python only carries octets."""
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-node")')
+            bridge.call('(include-book "books/codec-attach")')
+            sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
+            paths = []
+            for label, size, octet, serial, no_fragment in (
+                ("older", 49152, 65, 77, True),
+                ("younger", 8192, 66, 78, False),
+            ):
+                bundle = (
+                    "(fn-bpn-send-bundle "
+                    f"(fn-bpn-config {sender} 3600000 2 32 1048576) "
+                    f"{sender} (make-list {size} :initial-element {octet}) "
+                    f"{serial} (fn-clock-observation 0 0 0 nil))"
+                )
+                if no_fragment:
+                    bundle = (
+                        f"(let ((bundle {bundle})) "
+                        "(fn-bpb-make-bundle "
+                        "(update-nth 1 *fn-bpp-flag-no-fragment* "
+                        "(fn-bpb-bundle-primary bundle)) "
+                        "(fn-bpb-bundle-blocks bundle) "
+                        "(fn-bpb-bundle-payload bundle)))"
+                    )
+                wire = run_store.acl2_octets(
+                    bridge.call(f"(fn-bpb-encode {bundle})"))
+                path = self.tmp / f"forward-{label}.bundle"
+                path.write_bytes(wire)
+                paths.append(path)
+            self.assertGreater(paths[0].stat().st_size, 32768)
+            self.assertLess(paths[1].stat().st_size, 32768)
+            return paths
+        finally:
+            bridge.close()
+
+    def test_older_mru_wait_allows_younger_forward_and_replays(self):
+        receiver, port = self.start_node(True, once=False)
+        older, younger = self.forward_mru_bundles()
+        for label, path in (("older", older), ("younger", younger)):
+            sent = self.invoke(
+                "tcpcl", "send", "127.0.0.1", port, path,
+                self.tmp / f"forward-{label}-sender-spool", "dtn://sender/",
+                "dtn://receiver/", 0, 65536, 1048576, 0,
+            )
+            self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.stop_process(receiver)
+        before_forward = len(tuple(
+            (self.receiver_journal / "lifecycle").glob("*.fnb")))
+        self.assertGreaterEqual(before_forward, 2)
+
+        peer, peer_port = self.start_node(False, once=False)
+        self.relay.route(peer_port)
+        args = self.dispatch_receiver_args()
+        args[-4] = "32768"  # Negotiated outbound transfer MRU.
+        dispatched = subprocess.run(
+            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=240, check=False,
+        )
+        self.assertEqual(dispatched.returncode, 0, dispatched.stderr)
+        self.assertIn(b"BP forwarding attempt durable", dispatched.stdout)
+        self.assertIn(b"BP forwarding result durable", dispatched.stdout)
+        self.assertEqual(
+            len(tuple((self.receiver_journal / "lifecycle").glob("*.fnb"))),
+            before_forward + 4,  # Two kind-6, then kind-8 and kind-9.
+        )
+
+        self.stop_process(peer)
+        self.relay.route(None)
+        replayed = subprocess.run(
+            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=120, check=False,
+        )
+        self.assertEqual(replayed.returncode, 0, replayed.stderr)
+        self.assertIn(b"BP FNBS recovered held=2", replayed.stdout)
+        self.assertNotIn(b"BP forwarding attempt durable", replayed.stdout)
+        self.assertEqual(
+            len(tuple((self.receiver_journal / "lifecycle").glob("*.fnb"))),
+            before_forward + 4,
+        )
+
     @staticmethod
     def acl2_lifecycle_payloads(journal, kind):
         """Ask the ACL2 frame decoders for exact durable report payloads."""
