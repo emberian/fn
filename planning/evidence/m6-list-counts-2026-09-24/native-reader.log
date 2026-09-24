@@ -1,0 +1,12 @@
+test_list_counts_and_numbered_msgid_lookup (tests.test_native_reader_index.NativeReaderIndexTest.test_list_counts_and_numbered_msgid_lookup) ... ok
+test_listgroup_historical_pin_live_group_and_restart (tests.test_native_reader_index.NativeReaderIndexTest.test_listgroup_historical_pin_live_group_and_restart) ... ok
+test_listgroup_many_unrelated_groups_measured_socket_workload (tests.test_native_reader_index.NativeReaderIndexTest.test_listgroup_many_unrelated_groups_measured_socket_workload) ... ok
+test_over_xover_crosspost_sparse_range_historical_pin_and_restart (tests.test_native_reader_index.NativeReaderIndexTest.test_over_xover_crosspost_sparse_range_historical_pin_and_restart) ... ok
+test_pinned_archive_and_index_through_public_reader (tests.test_native_reader_index.NativeReaderIndexTest.test_pinned_archive_and_index_through_public_reader) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 5.307s
+
+OK
+native LISTGROUP workload: groups=24 articles=24 commands=96 range=1-1 elapsed=0.022s
+native reader indexed 96 concurrent STAT reads: 0.032s
