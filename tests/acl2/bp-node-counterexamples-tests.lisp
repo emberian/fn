@@ -11,6 +11,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-progress-bridge")
 (include-book "../../books/bp-node-machine-gaps")
+(include-book "../../books/bp-fnbs-conflict-publication")
 (include-book "../../books/bp-node-progress-selection-invariants")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/codec-attach")
@@ -224,13 +225,13 @@
 (defconst *bpcx-a-changed*
   (fn-bpn-send-bundle *bpcx-sender-config* *bpcx-dest* '(1 2 3 5) 7 *bpcx-obs*))
 (defconst *bpcx-r06* (fn-bpnp-step *bpcx-s1* (bpcx-receive-event (fn-bpb-encode *bpcx-a-aged*))))
-(defconst *bpcx-r07* (fn-bpnp-step *bpcx-s1* (bpcx-receive-event (fn-bpb-encode *bpcx-a-changed*))))
+(make-event `(defconst *bpcx-r07* ',(fn-bpnp-step *bpcx-s1* (bpcx-receive-event (fn-bpb-encode *bpcx-a-changed*)))))
 (defconst *bpcx-n11-bundle*
   (fn-bpb-make-bundle
    (update-nth 3 *bpcx-local*
                (update-nth 1 *fn-bpp-flag-administrative* (fn-bpb-bundle-primary *bpcx-a*)))
    (fn-bpb-bundle-blocks *bpcx-a*) (fn-bpb-bundle-payload *bpcx-a*)))
-(defconst *bpcx-n11* (fn-bpnp-step *bpcx-s1* (bpcx-receive-event (fn-bpb-encode *bpcx-n11-bundle*))))
+(make-event `(defconst *bpcx-n11* ',(fn-bpnp-step *bpcx-s1* (bpcx-receive-event (fn-bpb-encode *bpcx-n11-bundle*)))))
 (defconst *bpcx-late-obs* (fn-clock-observation 3602000 0 0 nil))
 (defconst *bpcx-r16-event* (list :progress *bpcx-local* *bpcx-late-obs* *bpcx-routes* 1))
 (make-event `(defconst *bpcx-r16* ',(fn-bpnp-step *bpcx-s1* *bpcx-r16-event*)))
@@ -491,24 +492,72 @@
 ;; no-uncertain-delivery dropped: a delivery-uncertain state holding the
 ;; request answers nothing to a conflicting copy of it.
 (defconst *bpcx-req-conflict*
-  (fn-bpb-make-bundle (fn-bpb-bundle-primary *bpcx-req*)
-                      (fn-bpb-bundle-blocks *bpcx-req*) '(1 2 3)))
+  (fn-bpb-make-bundle (update-nth 1 *fn-bpp-flag-administrative*
+                                  (fn-bpb-bundle-primary *bpcx-req*))
+                      (fn-bpb-bundle-blocks *bpcx-req*)
+                      (fn-bpb-bundle-payload *bpcx-req*)))
 (defconst *bpcx-req-conflict-event* (bpcx-receive-event (fn-bpb-encode *bpcx-req-conflict*)))
 (assert-event
- (and (fn-bpah-delivery-uncertainp *bpcx-du-s*)
+ (and (fn-bpb-bundlep *bpcx-req-conflict*)
+      (fn-bpnp-host-eventp *bpcx-req-conflict-event*)
+      (fn-bpah-delivery-uncertainp *bpcx-du-s*)
       (not (fn-bpnf-issued *bpcx-du-s*))
       (equal (fn-bpnf-receive-decision (fn-bpnf-held-list *bpcx-du-s*)
                                        *bpcx-ingress* *bpcx-req-conflict*)
              :identity-conflict)))
 (must-fail (assert-event (bpcx-conflict-concl *bpcx-du-s* *bpcx-req-conflict-event*)))
-;; next-op bound dropped (corrupted-state witness, not reachable): at the
-;; terminal operation ID the reception is refused :arguments.
+;; next-op bound dropped (corrupted-state witness): at the terminal
+;; operation ID the reception is refused :arguments.  Not reachable through
+;; fn-bpnp-step: recovery resets next-op to 0 and each operation advances it
+;; by one, so the terminal ID needs 2^64 operations in one epoch.
 (defconst *bpcx-s1-terminal* (update-nth 9 *fn-frame-max-nat* *bpcx-s1*))
 (must-fail (assert-event (bpcx-conflict-concl *bpcx-s1-terminal* *bpcx-n11-event*)))
-;; epoch, next-op and next-arrival natp dropped (corrupted-state witnesses):
+;; epoch and next-op natp dropped (corrupted-state witnesses).  Neither is
+;; reachable through fn-bpnp-step: the initial state has epoch 0 and next-op
+;; 0, recovery admits only a fn-frame-natp new epoch and resets next-op to
+;; 0, and next-op only grows by one below the bound above.
 (must-fail (assert-event (bpcx-conflict-concl (update-nth 8 -1 *bpcx-s1*) *bpcx-n11-event*)))
 (must-fail (assert-event (bpcx-conflict-concl (update-nth 9 -1 *bpcx-s1*) *bpcx-n11-event*)))
-(must-fail (assert-event (bpcx-conflict-concl (update-nth 10 -1 *bpcx-s1*) *bpcx-n11-event*)))
+;; next-arrival natp dropped, REACHED through fn-bpnp-step: recovery admits
+;; an arrival frontier of 2^64 (fn-bpnf-recover-fnbs-step bounds it by
+;; *fn-frame-max-nat* + 1), so the recovered S1 keeps A held, has a frame
+;; epoch and next-op 0, and next-arrival outside the frame.  The conflicting
+;; reception then gets neither the refusal nor the record.
+(defconst *bpcx-arrival-exhausted*
+  (fn-bpnf-answer-state
+   (fn-bpnp-step *bpcx-s1*
+                 (list :recover-fnbs (1+ (fn-bpnf-epoch *bpcx-s1*)) nil :ready
+                       (list :ready (fn-bpnf-held-list *bpcx-s1*) nil nil
+                             (1+ *fn-frame-max-nat*))
+                       (fn-bpnp-used *bpcx-s1*)))))
+(assert-event
+ (and (equal (fn-bpnf-held-list *bpcx-arrival-exhausted*) (fn-bpnf-held-list *bpcx-s1*))
+      (not (fn-bpnf-issued *bpcx-arrival-exhausted*))
+      (not (fn-bpah-delivery-uncertainp *bpcx-arrival-exhausted*))
+      (fn-frame-natp (fn-bpnf-epoch *bpcx-arrival-exhausted*))
+      (equal (fn-bpnf-next-op *bpcx-arrival-exhausted*) 0)
+      (not (fn-frame-natp (fn-bpnf-next-arrival *bpcx-arrival-exhausted*)))
+      (equal (fn-bpnf-receive-decision (fn-bpnf-held-list *bpcx-arrival-exhausted*)
+                                       *bpcx-ingress* *bpcx-n11-bundle*)
+             :identity-conflict)))
+(assert-event (not (bpcx-conflict-concl *bpcx-arrival-exhausted* *bpcx-n11-event*)))
+;; Event-kind hypothesis dropped: a six-field recovery event carrying the
+;; conflicting bundle, its exact encoding and the ingress in the fields the
+;; other hypotheses read satisfies every other hypothesis on S1, and the
+;; step answers a restart outcome, neither the refusal nor the record.
+(defconst *bpcx-n11-as-recovery*
+  (list :recover-fnbs *bpcx-n11-bundle* (fn-bpb-encode *bpcx-n11-bundle*)
+        *bpcx-ingress* (list :ready (fn-bpnf-held-list *bpcx-s1*) nil) 0))
+(assert-event
+ (and (fn-bpnp-host-eventp *bpcx-n11-as-recovery*)
+      (not (equal (fn-cbor-ag-car *bpcx-n11-as-recovery*) :receive-bundle))
+      (equal (fn-bpn-nth 2 *bpcx-n11-as-recovery*)
+             (fn-bpb-encode (fn-bpn-nth 1 *bpcx-n11-as-recovery*)))
+      (equal (fn-bpnf-receive-decision (fn-bpnf-held-list *bpcx-s1*)
+                                       (fn-bpn-nth 3 *bpcx-n11-as-recovery*)
+                                       (fn-bpn-nth 1 *bpcx-n11-as-recovery*))
+             :identity-conflict)))
+(assert-event (not (bpcx-conflict-concl *bpcx-s1* *bpcx-n11-as-recovery*)))
 ;; wire = encoding dropped: other octets under the same bundle are invalid.
 (defconst *bpcx-n11-badwire*
   (update-nth 2 (fn-bpb-encode *bpcx-a*) *bpcx-n11-event*))
@@ -550,6 +599,43 @@
                                            (fn-bpnf-next-op *bpcx-s1*) :durable)))
          *bpcx-n11-refusal*)))
 
+;; Kind-14 publication authority (fn-bpnf-conflict-publication-authorize,
+;; host/native/bp-service.lisp fnn-bps-persist-kind-fourteen).  Keystone:
+;; fn-bpnf-conflict-publication-success-binds-exact-echo.  Witness: the
+;; reachable issued record of *bpcx-n11-s* is authorized at its stored
+;; record name with the codec's frame.
+(defun bpcx-n11-authorize (st epoch op record lock final-absent)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bpnf-conflict-publication-authorize st epoch op record lock final-absent))
+(defconst *bpcx-n11-epoch* (fn-bpnf-epoch *bpcx-s1*))
+(defconst *bpcx-n11-op* (fn-bpnf-next-op *bpcx-s1*))
+(make-event
+ `(defconst *bpcx-n11-auth*
+    ',(bpcx-n11-authorize *bpcx-n11-s* *bpcx-n11-epoch* *bpcx-n11-op* *bpcx-n11-record* t t)))
+(assert-event
+ (and (fn-bpnf-conflict-publication-operationp *bpcx-n11-auth*)
+      (equal (fn-bpnf-conflict-publication-name *bpcx-n11-auth*)
+             (fn-bpnf-stored-record-name *bpcx-n11-epoch* *bpcx-n11-op*))
+      (equal (fn-bpnf-conflict-publication-frame *bpcx-n11-auth*)
+             (fn-bpnf-conflict-frame *bpcx-n11-record*))
+      (equal (fn-bpnf-conflict-unframe
+              (fn-bpnf-conflict-publication-frame *bpcx-n11-auth*))
+             *bpcx-n11-record*)))
+;; Each binding the keystone concludes, broken alone, refuses authority:
+;; lock not held, final name present, another operation id, another record,
+;; the operation no longer pending (after an uncertain outcome), and a state
+;; with nothing issued (S1).
+(defun bpcx-auth-ok (answer)
+  (declare (xargs :guard t))
+  (equal (fn-cbor-ag-car answer) :ok))
+(assert-event (not (bpcx-auth-ok (bpcx-n11-authorize *bpcx-n11-s* *bpcx-n11-epoch* *bpcx-n11-op* *bpcx-n11-record* nil t))))
+(assert-event (not (bpcx-auth-ok (bpcx-n11-authorize *bpcx-n11-s* *bpcx-n11-epoch* *bpcx-n11-op* *bpcx-n11-record* t nil))))
+(assert-event (not (bpcx-auth-ok (bpcx-n11-authorize *bpcx-n11-s* *bpcx-n11-epoch* (1+ *bpcx-n11-op*) *bpcx-n11-record* t t))))
+(assert-event (not (bpcx-auth-ok (bpcx-n11-authorize *bpcx-n11-s* *bpcx-n11-epoch* *bpcx-n11-op*
+                                                     (update-nth 3 7 *bpcx-n11-record*) t t))))
+(assert-event (not (bpcx-auth-ok (bpcx-n11-authorize *bpcx-n11-u* *bpcx-n11-epoch* *bpcx-n11-op* *bpcx-n11-record* t t))))
+(assert-event (not (bpcx-auth-ok (bpcx-n11-authorize *bpcx-s1* *bpcx-n11-epoch* *bpcx-n11-op* *bpcx-n11-record* t t))))
+
 ;; N07: a durable attempt (kind 8, S3), then a restart in a different boot:
 ;; the saved clock-domain record names boot A, this boot observes boot B.
 ;; The seven-field recovery event carries fn-bpnf-clock-domain-plan's
@@ -567,23 +653,23 @@
   (if (atom chars) nil
     (cons (if (characterp (car chars)) (char-code (car chars)) 0)
           (bpcx-octets (cdr chars)))))
-(defconst *bpcx-boot-a* (bpcx-octets (bpcx-boot #\1)))
-(defconst *bpcx-boot-b* (bpcx-octets (bpcx-boot #\2)))
-(defconst *bpcx-observed-a* (append *bpcx-boot-a* '(10)))
-(defconst *bpcx-observed-b* (append *bpcx-boot-b* '(10)))
-(defconst *bpcx-saved-a* (fn-bpcd-frame *bpcx-boot-a*))
+(make-event `(defconst *bpcx-boot-a* ',(bpcx-octets (bpcx-boot #\1))))
+(make-event `(defconst *bpcx-boot-b* ',(bpcx-octets (bpcx-boot #\2))))
+(make-event `(defconst *bpcx-observed-a* ',(append *bpcx-boot-a* '(10))))
+(make-event `(defconst *bpcx-observed-b* ',(append *bpcx-boot-b* '(10))))
+(make-event `(defconst *bpcx-saved-a* ',(fn-bpcd-frame *bpcx-boot-a*)))
 (defun bpcx-domain-event (plan)
   (declare (xargs :guard t :verify-guards nil))
   (append *bpcx-n08-recover-event* (list plan)))
-(defconst *bpcx-plan-b*
-  (fn-bpnf-clock-domain-plan *bpcx-saved-a* t *bpcx-observed-b* nil t nil))
-(defconst *bpcx-plan-a*
-  (fn-bpnf-clock-domain-plan *bpcx-saved-a* t *bpcx-observed-a* nil t nil))
-(defconst *bpcx-n07* (fn-bpnp-step *bpcx-s3* (bpcx-domain-event *bpcx-plan-b*)))
-(defconst *bpcx-n07-s* (fn-bpnf-answer-state *bpcx-n07*))
-(defconst *bpcx-n07-same* (fn-bpnp-step *bpcx-s3* (bpcx-domain-event *bpcx-plan-a*)))
-(defconst *bpcx-late-tick*
-  (list :progress *bpcx-local* *bpcx-late-obs* *bpcx-routes* 1))
+(make-event `(defconst *bpcx-plan-b*
+ ',(fn-bpnf-clock-domain-plan *bpcx-saved-a* t *bpcx-observed-b* nil t nil)))
+(make-event `(defconst *bpcx-plan-a*
+ ',(fn-bpnf-clock-domain-plan *bpcx-saved-a* t *bpcx-observed-a* nil t nil)))
+(make-event `(defconst *bpcx-n07* ',(fn-bpnp-step *bpcx-s3* (bpcx-domain-event *bpcx-plan-b*))))
+(make-event `(defconst *bpcx-n07-s* ',(fn-bpnf-answer-state *bpcx-n07*)))
+(make-event `(defconst *bpcx-n07-same* ',(fn-bpnp-step *bpcx-s3* (bpcx-domain-event *bpcx-plan-a*))))
+(make-event `(defconst *bpcx-late-tick*
+ ',(list :progress *bpcx-local* *bpcx-late-obs* *bpcx-routes* 1)))
 (assert-event
  (and (fn-bpnp-host-eventp (bpcx-domain-event *bpcx-plan-b*))
       (fn-bpnp-domain-recover-eventp (bpcx-domain-event *bpcx-plan-b*))
@@ -722,8 +808,10 @@
 ;; ---------------------------------------------------------------------
 ;; Coverage of spec 11.1 over this machine (each row names its subject).
 ;; Present here: N05, N06 (machine half), N07 (the seven-field recovery
-;; event; the six-field form stays ungated until the host passes the
-;; domain decision), N08, N11 (both halves), BP-R02, R06, R07, R15, R16.
+;; event, which the host builds at bp-service.lisp fnn-bps-open with the
+;; decision fnn-bps-clock-domain-gate returns; the six-field form stays
+;; ungated for callers that pass no decision), N08, N11 (both halves, and
+;; the kind-14 publication authority), BP-R02, R06, R07, R15, R16.
 ;; Present elsewhere: N03 (bp-node-machine-teeth-tests), N04
 ;; (bp-node-forwarding-teeth-tests), N09 (bp-fragment-tests), N15
 ;; unlabelled (bp-channel-ingress-tests, fn-bpaj-tcpcl-ingress-result).

@@ -7,6 +7,16 @@
 (include-book "bp-node-progress")
 (include-book "bp-clock-domain")
 
+;; Slot facts.  fn-bpn-nth is nth on a natural index; the writers are
+;; update-nth, so nth-update-nth decides every slot without opening either
+;; recursion on a symbolic state.
+(local
+ (defthm bpgap-nth-is-nth
+   (implies (natp n)
+            (equal (fn-bpn-nth n xs) (nth n xs)))
+   :hints (("Goal" :induct (fn-bpn-nth n xs)
+            :in-theory (enable fn-bpn-nth nth fn-cbor-ag-car)))))
+
 (local
  (defthm bpgap-held-of-slot-writers
    (and (equal (fn-bpnf-held-list (fn-bpnp-with-runtime st s p))
@@ -20,10 +30,29 @@
         (equal (fn-bpnf-issued (fn-bpnp-with-credit st u d))
                (fn-bpnf-issued st))
         (equal (fn-bpnf-issued (fn-bpnp-with-waits st w))
-               (fn-bpnf-issued st)))
-   :hints (("Goal" :in-theory (enable fn-bpnp-with-runtime fn-bpnp-with-credit
-                                      fn-bpnp-with-waits fn-bpnf-held-list
-                                      fn-bpnf-issued fn-bpn-nth)))))
+               (fn-bpnf-issued st))
+        (equal (fn-bpnp-used (fn-bpnp-with-waits st w)) (fn-bpnp-used st))
+        (implies (true-listp st)
+                 (equal (fn-bpnp-used (fn-bpnp-with-credit st u d)) u)))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnp-with-runtime fn-bpnp-with-credit
+                                 fn-bpnp-with-waits fn-bpnf-held-list
+                                 fn-bpnf-issued fn-bpnp-used
+                                 bpgap-nth-is-nth nth-update-nth
+                                 (:e natp) (:e nfix) (:e equal))
+                               (theory 'minimal-theory))))))
+
+(local
+ (defthm bpgap-state-with-arrival-fields
+   (let ((st (fn-bpnf-state-with-arrival
+              base held outcomes handoffs correlation issued waits epoch
+              next-op next-arrival)))
+     (and (equal (fn-bpnf-held-list st) held)
+          (equal (fn-bpnf-issued st) issued)
+          (true-listp st)))
+   :hints (("Goal" :in-theory (enable fn-bpnf-state-with-arrival
+                                      fn-bpnf-held-list fn-bpnf-issued
+                                      fn-bpn-nth)))))
 
 (local
  (defthm bpgap-with-issued-fields
@@ -33,13 +62,27 @@
         (equal (fn-bpnf-held-list (fn-bpnp-with-next-issued st x))
                (fn-bpnf-held-list st))
         (equal (fn-bpnf-issued (fn-bpnp-with-next-issued st x)) x))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnp-with-issued fn-bpnf-with-issued
+                                 fn-bpnp-with-next-issued
+                                 bpgap-held-of-slot-writers
+                                 bpgap-state-with-arrival-fields)
+                               (theory 'minimal-theory))))))
+
+(local
+ (defthm bpgap-with-issued-true-listp
+   (true-listp (fn-bpnp-with-issued st x))
    :hints (("Goal" :in-theory (e/d (fn-bpnp-with-issued fn-bpnf-with-issued
-                                    fn-bpnp-with-next-issued
-                                    fn-bpnf-state-with-arrival
-                                    fn-bpnf-held-list fn-bpnf-issued
-                                    fn-bpn-nth fn-bpnp-with-runtime
-                                    fn-bpnp-with-credit fn-bpnp-with-waits)
-                                   ())))))
+                                    fn-bpnp-with-runtime fn-bpnp-with-credit
+                                    fn-bpnf-state-with-arrival)
+                                   (bpgap-nth-is-nth
+                                    fn-bpnf-base fn-bpnf-held-list
+                                    fn-bpnf-outcomes fn-bpnf-handoffs
+                                    fn-bpnf-correlation fn-bpnf-waits
+                                    fn-bpnf-epoch fn-bpnf-next-op
+                                    fn-bpnf-next-arrival fn-bpnp-used
+                                    fn-bpnp-debt fn-bpnp-sessions
+                                    fn-bpnp-pending-image))))))
 
 (local
  (defthm bpgap-used-of-slot-writers
@@ -47,10 +90,13 @@
         (implies (true-listp st)
                  (equal (fn-bpnp-used (fn-bpnp-with-credit st u d)) u))
         (true-listp (fn-bpnp-with-issued st x)))
-   :hints (("Goal" :in-theory (enable fn-bpnp-with-waits fn-bpnp-with-credit
-                                      fn-bpnp-used fn-bpnp-with-issued
-                                      fn-bpnp-with-runtime fn-bpnf-with-issued
-                                      fn-bpnf-state-with-arrival fn-bpn-nth)))))
+   :hints (("Goal" :in-theory (union-theories
+                               '(bpgap-held-of-slot-writers
+                                 bpgap-with-issued-true-listp)
+                               (theory 'minimal-theory))))))
+
+; Past the slot facts, reason at the accessor level.
+(local (in-theory (disable bpgap-nth-is-nth)))
 
 ;; ---------------------------------------------------------------------
 ;; A fenced state (an uncertain issued operation) is inert to every event
@@ -214,6 +260,24 @@
                          (:e fn-cbor-ag-car) (:e fn-bpn-nth) (:e equal))
                        (theory 'minimal-theory)))))
 
+(local
+ (defthm bpgap-answer-fields
+   (and (equal (fn-bpnf-answer-state (fn-bpnf-answer st effects)) st)
+        (equal (fn-bpnf-answer-effects (fn-bpnf-answer st effects)) effects))
+   :hints (("Goal" :in-theory (enable fn-bpnf-answer fn-bpnf-answer-state
+                                      fn-bpnf-answer-effects)))))
+
+(local
+ (defthm bpgap-persist-event-fields
+   (let ((event (list :persist-result epoch op result)))
+     (and (equal (fn-cbor-ag-car event) :persist-result)
+          (equal (fn-bpn-nth 1 event) epoch)
+          (equal (fn-bpn-nth 2 event) op)
+          (equal (fn-bpn-nth 3 event) result)
+          (not (fn-bpnp-domain-recover-eventp event))))
+   :hints (("Goal" :in-theory (enable fn-cbor-ag-car fn-bpn-nth
+                                      fn-bpnp-domain-recover-eventp)))))
+
 ;; ---------------------------------------------------------------------
 ;; N11 lemmas: the conflict arm is reached exactly under the keystone's
 ;; hypotheses, and the arm's answer.
@@ -313,13 +377,11 @@
             (equal (fn-bpnf-answer-effects ans)
                    (list (list :receive-answer ingress :identity-conflict))))))
    :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-bpnp-conflict-propose-step
-                             fn-bpnp-conflict-refusal
-                             fn-bpnf-answer fn-bpnf-answer-state
-                             fn-bpnf-answer-effects fn-bpn-nth)
-                            (fn-bpnp-with-next-issued fn-bpnf-conflict-of
-                             fn-bpnf-conflict-recordp fn-bpnf-conflict-frame
-                             fn-bpnd-admitp fn-bpnf-operation))))))
+            :in-theory (union-theories
+                        '(fn-bpnp-conflict-propose-step
+                          fn-bpnp-conflict-refusal
+                          bpgap-answer-fields bpgap-with-issued-fields)
+                        (theory 'minimal-theory))))))
 
 ;; ---------------------------------------------------------------------
 ;; N11.  KEYSTONE (a conflicting reception is refused, never dropped or
@@ -381,6 +443,11 @@
                                 (fn-bpnf-held-list st)))))
            :in-theory (theory 'minimal-theory))))
 
+(local
+ (defthm bpgap-operation-status
+   (equal (fn-bpn-nth 5 (fn-bpnf-operation epoch op kind key status)) status)
+   :hints (("Goal" :in-theory (enable fn-bpnf-operation fn-bpn-nth)))))
+
 ;; The persist-result arm for a pending kind-14 operation, and its answer.
 (local
  (defthm bpgap-conflict-persist-arm-is-taken
@@ -390,10 +457,8 @@
                    (fn-bpnp-conflict-persist-step st epoch op result)))
    :hints (("Goal" :do-not-induct t
             :expand ((fn-bpnp-step st (list :persist-result epoch op result)))
-            :in-theory (union-theories '(fn-bpnp-domain-recover-eventp
-                                         fn-cbor-ag-car fn-bpn-nth
-                                         car-cons cdr-cons
-                                         (:e fn-bpn-nth) (:e equal))
+            :in-theory (union-theories '(bpgap-persist-event-fields
+                                         (:e equal))
                                        (theory 'minimal-theory))))))
 
 ;; N11.  KEYSTONE (the record's publication outcome answers the refusal).
@@ -422,14 +487,11 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance bpgap-conflict-persist-arm-is-taken))
-           :in-theory (e/d (fn-bpnp-conflict-persist-step
-                            fn-bpnp-conflict-refusal
-                            fn-bpnp-domain-recover-eventp fn-bpnp-conflict-held
-                            fn-bpnf-answer fn-bpnf-answer-state
-                            fn-bpnf-answer-effects fn-bpnf-operation
-                            fn-bpn-nth)
-                           (fn-bpnp-step fn-bpnp-with-issued
-                            fn-bpnp-with-credit fn-bpnp-with-waits
-                            fn-bpnf-held-list fn-bpnf-issued fn-bpnp-used
-                            fn-bpnp-waits fn-bpnp-debt
-                            bpgap-conflict-persist-arm-is-taken)))))
+           :in-theory (union-theories
+                       '(fn-bpnp-conflict-persist-step
+                         fn-bpnp-conflict-refusal
+                         bpgap-answer-fields bpgap-held-of-slot-writers
+                         bpgap-with-issued-fields bpgap-used-of-slot-writers
+                         bpgap-operation-status
+                         member-equal (:e member-equal) (:e equal))
+                       (theory 'minimal-theory)))))
