@@ -421,6 +421,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-outbound \
 	tests/acl2/bp-outbound-tests \
 	tests/acl2/bp-outbound-guards-tests \
+	books/bp-ion-observation \
+	tests/acl2/bp-ion-observation-tests \
 	books/journal \
 	tests/acl2/journal-tests \
 	books/exchange \
