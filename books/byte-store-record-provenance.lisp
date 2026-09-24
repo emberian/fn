@@ -3955,3 +3955,134 @@
                             fn-bs-frontier-inputp)
                            (fn-bs-run fn-bs-frontier-program
                             fn-bs-durable-frontier fn-bs-dir-quietp)))))
+
+; The physical root fence drains its own rename.  The rename adds only a
+; root entry and a staging deletion, so it cannot introduce a transaction
+; operation.  This is the pending-authority clause needed by the still-open
+; complete relation at the actual pre-callback pair 12.
+(local
+ (defthm fn-bs-k0-frontier-rename-keeps-transaction-quiet
+  (implies (equal (fn-bs-ops-for-dir (fn-bs-pending file) :transactions) nil)
+           (equal (fn-bs-ops-for-dir
+                   (fn-bs-pending (mv-nth 1 (fn-bs-rename
+                     file :staging stage :root *fn-bs-frontier-name* :ok)))
+                   :transactions) nil))
+  :hints (("Goal" :use ((:instance fn-bs-ops-for-dir-of-append
+                           (a (fn-bs-pending file))
+                           (b (list (list :set-entry :root *fn-bs-frontier-name*
+                                          (fn-bs-lookup file :staging stage))
+                                    (list :del-entry :staging stage)))
+                           (dir :transactions)))
+           :in-theory (e/d (fn-bs-rename)
+                           (fn-bs-lookup fn-bs-ops-for-dir-of-append))))))
+
+(local
+ (defthm fn-bs-k0-other-directory-ops-survive-filter
+  (implies (not (equal kept removed))
+           (equal (fn-bs-ops-for-dir (fn-bs-ops-not-for-dir ops removed) kept)
+                  (fn-bs-ops-for-dir ops kept)))
+  :hints (("Goal" :induct (fn-bs-ops-not-for-dir ops removed)
+           :in-theory (enable fn-bs-ops-for-dir fn-bs-ops-not-for-dir)))))
+
+(local
+ (defthm fn-bs-k0-root-fence-keeps-transaction-quiet
+  (implies (equal (fn-bs-ops-for-dir (fn-bs-pending file) :transactions) nil)
+           (equal (fn-bs-ops-for-dir
+                   (fn-bs-pending (fn-bs-fence-dir file :root))
+                   :transactions) nil))
+  :hints (("Goal" :use ((:instance fn-bs-k0-other-directory-ops-survive-filter
+                                    (ops (fn-bs-pending file))
+                                    (removed :root) (kept :transactions)))
+           :in-theory (e/d (fn-bs-fence-dir)
+                           (fn-bs-ops-for-dir fn-bs-ops-not-for-dir
+                            fn-bs-k0-other-directory-ops-survive-filter))))))
+
+(local
+ (defthm fn-bs-k0-frontier-dir-cut-transaction-quiet
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal (fn-bs-ops-for-dir
+                   (fn-bs-pending
+                    (car (nth 12 (fn-bs-run bs ks
+                                   (fn-bs-frontier-program stage octets)
+                                   nil groups capacity))))
+                   :transactions)
+                  nil))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-frontier-file-cut-authority-quiet
+                 fn-bs-k0-frontier-file-observation-keeps-byte-state
+                 fn-bs-k0-frontier-dir-cut-is-fence
+                 (:instance fn-bs-k0-frontier-rename-keeps-transaction-quiet
+                   (file (car (nth 6 (fn-bs-run bs ks
+                         (fn-bs-frontier-program stage octets)
+                         nil groups capacity)))))
+                 (:instance fn-bs-k0-root-fence-keeps-transaction-quiet
+                   (file (mv-nth 1 (fn-bs-rename
+                         (car (nth 6 (fn-bs-run bs ks
+                           (fn-bs-frontier-program stage octets)
+                           nil groups capacity)))
+                         :staging stage :root *fn-bs-frontier-name* :ok)))))
+           :in-theory (e/d (fn-bs-frontier-inputp)
+                           (fn-bs-run fn-bs-frontier-program fn-bs-statep
+                            fn-bs-store-relation fn-bs-lookup
+                            fn-bs-rename fn-bs-fence-dir fn-bs-ops-for-dir
+                            fn-bs-k0-frontier-rename-keeps-transaction-quiet
+                            fn-bs-k0-root-fence-keeps-transaction-quiet))))))
+
+(defthm fn-bs-k0-frontier-dir-cut-pending-matches-phase
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-pending-matches-phase
+            (car (nth 12 (fn-bs-run bs ks
+                           (fn-bs-frontier-program stage octets)
+                           nil groups capacity)))
+            (cdr (nth 12 (fn-bs-run bs ks
+                           (fn-bs-frontier-program stage octets)
+                           nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-frontier-dir-cut-root-quiet
+                 fn-bs-k0-frontier-dir-cut-transaction-quiet)
+           :in-theory (e/d (fn-bs-pending-matches-phase
+                            fn-bs-pending-shape-okp fn-bs-dir-quietp
+                            fn-bs-frontier-inputp)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-ops-for-dir fn-bs-store-relation)))))
+
+(defthm fn-bs-k0-frontier-dir-cut-statep
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-statep
+            (car (nth 12 (fn-bs-run bs ks
+                           (fn-bs-frontier-program stage octets)
+                           nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-frontier-file-cut-statep
+                 fn-bs-k0-frontier-file-observation-keeps-byte-state
+                 fn-bs-k0-frontier-dir-cut-is-fence
+                 (:instance fn-bs-rename-preserves-statep
+                   (s (car (nth 6 (fn-bs-run bs ks
+                           (fn-bs-frontier-program stage octets)
+                           nil groups capacity))))
+                   (sdir :staging) (sname stage)
+                   (ddir :root) (dname *fn-bs-frontier-name*)
+                   (outcome :ok))
+                 (:instance fn-bs-fence-dir-preserves-statep
+                   (s (mv-nth 1 (fn-bs-rename
+                         (car (nth 6 (fn-bs-run bs ks
+                           (fn-bs-frontier-program stage octets)
+                           nil groups capacity)))
+                         :staging stage :root *fn-bs-frontier-name* :ok)))
+                   (dir :root)))
+           :in-theory (e/d (fn-bs-frontier-inputp fn-bs-dir-idp fn-bs-namep)
+                           (fn-bs-run fn-bs-frontier-program fn-bs-statep
+                            fn-bs-store-relation fn-bs-lookup
+                            fn-bs-rename fn-bs-fence-dir)))))

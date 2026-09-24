@@ -1037,3 +1037,20 @@
    (and (equal (fn-sf-phase (cdr pair)) :frontier-attempted)
         (equal (fn-sf-frontier-candidate (cdr pair))
                (fn-bs-durable-frontier (car pair))))))
+
+; The actual root-fenced cut after one durable article has no pending
+; authority operation.  Staging's source deletion may still be pending.
+(assert-event
+ (let* ((entry (bsk5-finished))
+        (pair (nth 12 (fn-bs-run (car entry) (cdr entry)
+                      (fn-bs-frontier-program ".allocation-k0-2"
+                                               (bsk0-second-frontier-host-frame))
+                      nil *bsk5-groups* *bsk5-capacity*)))
+        (file (car pair)))
+   (and (fn-bs-store-relation (car entry) (cdr entry))
+        (fn-bs-frontier-inputp (cdr entry) ".allocation-k0-2"
+                                (bsk0-second-frontier-host-frame))
+        (not (fn-bs-lookup (car entry) :staging ".allocation-k0-2"))
+        (fn-bs-pending-matches-phase file (cdr pair))
+        (equal (fn-bs-ops-for-dir (fn-bs-pending file) :root) nil)
+        (equal (fn-bs-ops-for-dir (fn-bs-pending file) :transactions) nil))))
