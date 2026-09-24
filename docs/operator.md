@@ -449,6 +449,22 @@ not (an unreachable node exits 3, never 0), 2 for a usage error.
 groups, read what is new since last time, post a reply -- the client is
 `tools/fn_client.py`, described in [agents on an fn node](agents.md).
 
+For a person, the same node in a browser: the web reader logs in over the
+same verified STARTTLS, asks for the password on the terminal (or takes
+`FN_CLIENT_PASSWORD`), and serves pages on `127.0.0.1` only
+([the web reader](web.md)):
+
+```sh
+mkdir -p ~/.fn ~/.fn-web
+scp hbox:/tank/fn/node/tls/cert.pem ~/.fn/hbox-cert.pem
+python3 tools/fn_web.py --node 192.168.50.39:1119 --tls-cert ~/.fn/hbox-cert.pem \
+  --user ember --outbox ~/.fn-web/outbox-hbox-ember
+# then open http://127.0.0.1:8919/
+```
+
+It exits 1 if the node refuses the login or the certificate does not verify,
+3 if the node cannot be reached, and 2 if no password is available.
+
 ## Post and read
 
 Read with any NNTP client against the configured port:

@@ -3,14 +3,19 @@
 
 This is a separate client process. It never opens the Store, changes fn's
 state directly, or treats viewing an article as a processing acknowledgement.
-Use an SSH loopback forward for a remote node; the HTTP listener and its NNTP
-target are both restricted to loopback for this first interface.
+The HTTP listener is always 127.0.0.1. The NNTP target is either a loopback
+development node (--plain) or any node reached over STARTTLS with a verified
+certificate (--tls-cert) and an AUTHINFO login; every accept, refuse, number
+and verdict shown is the node's answer, never this process's decision.
+
+    python3 tools/fn_web.py --node 192.168.50.39:1119 --tls-cert hbox-cert.pem --user ember
 """
 from __future__ import annotations
 
 import argparse
 from collections import OrderedDict
 import fcntl
+import getpass
 import hashlib
 import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -21,6 +26,7 @@ from pathlib import Path
 import re
 import secrets
 import stat
+import sys
 import tempfile
 import threading
 from types import SimpleNamespace
@@ -38,6 +44,9 @@ MAX_BODY = 16384
 MAX_RECENT = 40
 MAX_ARTICLE_NUMBER = 9_999_999_999
 MAX_SUBMISSIONS = 128
+MAX_READ_NUMBERS = 4096
+MAX_REFERENCES = 800
+LOOPBACK = ("127.0.0.1", "::1")
 
 
 class BoundedSession(Session):
@@ -74,8 +83,57 @@ class FormErrors:
 
 
 class Backend:
-    def __init__(self, args, user: str, password: str):
+    def __init__(self, args, user: str, password: str, sender: str = ""):
         self.args, self.user, self.password = args, user, password
+        self.sender = sender
+
+    @property
+    def node(self) -> str:
+        return fn_client.node_name(self.args.host, self.args.port)
+
+    def default_from(self) -> str:
+        # Display only: fn_client.compose writes this same default when the
+        # From field is left empty; the node decides whether it is acceptable.
+        user = self.user or "anonymous"
+        return self.sender or "%s <%s@%s>" % (user, user, self.args.host)
+
+    def login_check(self):
+        """Open one connection exactly as every page does: STARTTLS, verify, 281.
+
+        The node answers; a refusal (481, a certificate that does not verify)
+        and an uncertain outcome (unreachable, handshake cut) stay distinct.
+        """
+        def query(client):
+            tls = client.session.tls
+            return fn_client.Result(fn_client.DONE, "logged in", {"tls": tls}, "")
+        try:
+            return self.using(query)
+        except fn_client.Stop as exc:
+            return fn_client.Result(exc.word, exc.detail, {}, "")
+
+    def slot(self, group: str, number: int):
+        """What the node serves at one local number now: its OVER row, or none."""
+        def query(client):
+            status, _ = client.cmd("GROUP " + group)
+            if not status.startswith("211"):
+                return fn_client.Result(fn_client.REFUSED, status, {}, "")
+            overview, body = client.cmd("OVER %d" % number, multiline=True)
+            row = None
+            if overview.startswith("224"):
+                for line in body:
+                    parts = line.split("\t")
+                    if parts and fn_client.number(parts[0]) == number and len(parts) > 4:
+                        row = {"number": number, "subject": parts[1],
+                               "message_id": parts[4]}
+            elif overview[:3] not in ("420", "423"):
+                return fn_client.Result(fn_client.REFUSED, overview, {}, "")
+            fields = status.split()
+            return fn_client.Result(fn_client.DONE, status,
+                                    {"row": row,
+                                     "low": fn_client.number(fields[2]) if len(fields) > 2 else None,
+                                     "high": fn_client.number(fields[3]) if len(fields) > 3 else None},
+                                    "")
+        return self.using(query)
 
     def using(self, operation):
         client = fn_client.Client(self.args, self.user, self.password,
@@ -139,6 +197,24 @@ class Backend:
                     rows = []
                 else:
                     return fn_client.Result(fn_client.REFUSED, overview, {}, "")
+            wanted = {row["number"] for row in rows}
+            if rows:
+                try:
+                    # One bounded HDR over the same window; each row's report
+                    # is accepted only under its own numeric slot.
+                    hdr, lines = client.cmd("HDR :fn-verified %d-%d"
+                                            % (window_start, window_end), multiline=True)
+                    if hdr.startswith("225"):
+                        for line in lines[:MAX_RECENT]:
+                            one = fn_client.number(line.split(" ", 1)[0])
+                            if one in wanted:
+                                report = parse_verdict_hdr(line, one)
+                                if report:
+                                    for row in rows:
+                                        if row["number"] == one:
+                                            row["verdict"] = report
+                except fn_client.Stop:
+                    pass
             return fn_client.Result(fn_client.DONE, status,
                                     {"group": group, "rows": rows, "low": low,
                                      "high": high, "window_start": window_start,
@@ -169,7 +245,7 @@ class Backend:
 
     def prepare(self, group: str, subject: str, sender: str, references: str,
                 body: str):
-        form = SimpleNamespace(group=group, subject=subject, sender=sender,
+        form = SimpleNamespace(group=group, subject=subject, sender=sender or self.sender,
                                references=references, message_id="", body_file="",
                                host=self.args.host)
         return fn_client.compose(form, self.user, FormErrors(), body)
@@ -518,6 +594,216 @@ class DurableSubmissionBook(SubmissionBook):
         return entry
 
 
+class ReadMarks:
+    """This principal's read marks on this node, kept only on this machine.
+
+    NNTP (RFC 3977) has no server-side read state, and fn keeps none: these
+    marks are the client's note of which local article numbers this browser
+    opened, not an fn record, not a processing acknowledgement and not a
+    consumer cursor. Local numbers belong to one node, so the file is keyed
+    by node and principal and marks are never compared across nodes.
+    """
+
+    def __init__(self, path: Optional[Path], node: str, user: str):
+        self.path = path.expanduser().absolute() if path is not None else None
+        self.node, self.user = node, user
+        self.lock = threading.Lock()
+        self.groups: dict = {}
+        self.error = None
+        if self.path is not None:
+            self._load()
+
+    def _load(self):
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return
+        except (OSError, ValueError) as exc:
+            self._refuse("the read-marks file could not be read (%s)" % exc)
+            return
+        if not isinstance(data, dict) or data.get("version") != 1 or \
+                data.get("node") != self.node or data.get("user") != self.user or \
+                not isinstance(data.get("groups"), dict):
+            self._refuse("the read-marks file belongs to another node or principal")
+            return
+        for group, mark in data["groups"].items():
+            try:
+                through, read = mark["through"], mark["read"]
+                last = mark.get("last")
+                if not group_token(group) or not isinstance(through, int) or through < 0 or \
+                        not isinstance(read, list) or len(read) > MAX_READ_NUMBERS or \
+                        not all(isinstance(n, int) and n > through for n in read):
+                    raise ValueError(group)
+                if last is not None and not (
+                        isinstance(last, dict) and isinstance(last.get("number"), int) and
+                        isinstance(last.get("message_id"), str) and
+                        len(last["message_id"]) <= 250):
+                    raise ValueError(group)
+            except (KeyError, TypeError, ValueError):
+                self._refuse("the read-marks file is malformed")
+                return
+            self.groups[group] = {"through": through, "read": set(read), "last": last}
+
+    def _refuse(self, why: str):
+        # Never overwrite a file this process could not understand.
+        self.error = why + "; marks start empty and are not saved this run"
+        self.groups = {}
+        self.path = None
+
+    def _entry(self, group):
+        return self.groups.setdefault(group, {"through": 0, "read": set(), "last": None})
+
+    def _compact(self, entry):
+        entry["read"] = {n for n in entry["read"] if n > entry["through"]}
+        while entry["through"] + 1 in entry["read"]:
+            entry["through"] += 1
+            entry["read"].discard(entry["through"])
+        while len(entry["read"]) > MAX_READ_NUMBERS:
+            entry["read"].discard(min(entry["read"]))
+
+    def _save(self):
+        if self.path is None:
+            return
+        document = {"version": 1, "node": self.node, "user": self.user,
+                    "groups": {g: {"through": m["through"], "read": sorted(m["read"]),
+                                   "last": m["last"]}
+                               for g, m in sorted(self.groups.items())}}
+        try:
+            if not self.path.parent.is_dir():
+                self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            fd, temporary = tempfile.mkstemp(prefix=".marks-", dir=self.path.parent)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                    stream.write(json.dumps(document, separators=(",", ":")))
+                os.replace(temporary, self.path)
+            finally:
+                if os.path.exists(temporary):
+                    os.unlink(temporary)
+            self.error = None
+        except OSError as exc:
+            self.error = "read marks were not saved (%s); they hold only until restart" % exc
+
+    def is_read(self, group: str, number: int) -> bool:
+        with self.lock:
+            entry = self.groups.get(group)
+            return bool(entry) and (number <= entry["through"] or number in entry["read"])
+
+    def unread_upper(self, group: str, low, high) -> int:
+        """Number slots in the node's current low..high this principal has not opened.
+
+        An upper bound: LIST ACTIVE gives water marks, not a count, so a
+        removed number inside the range still counts until it is opened.
+        """
+        if low is None or high is None or high < low:
+            return 0
+        with self.lock:
+            entry = self.groups.get(group) or {"through": 0, "read": set()}
+            start = max(low, entry["through"] + 1)
+            if start > high:
+                return 0
+            return high - start + 1 - sum(1 for n in entry["read"] if start <= n <= high)
+
+    def last(self, group: str):
+        with self.lock:
+            entry = self.groups.get(group)
+            return dict(entry["last"]) if entry and entry["last"] else None
+
+    def mark(self, group: str, number: int, message_id: str):
+        with self.lock:
+            entry = self._entry(group)
+            entry["read"].add(number)
+            if message_id and len(message_id) <= 250 and \
+                    (entry["last"] is None or number >= entry["last"]["number"]):
+                entry["last"] = {"number": number, "message_id": message_id}
+            self._compact(entry)
+            self._save()
+
+    def mark_through(self, group: str, number: int):
+        with self.lock:
+            entry = self._entry(group)
+            entry["through"] = max(entry["through"], number)
+            self._compact(entry)
+            self._save()
+
+
+def default_marks_path(host: str, port: int, user: str) -> Path:
+    name = re.sub(r"[^A-Za-z0-9._-]", "-", "%s_%d_%s" % (host, port, user or "anonymous"))
+    return Path.home() / ".fn-web" / (name + ".json")
+
+
+def thread_rows(rows: list) -> list:
+    """(row, depth, reply_outside_window) in References order within one window.
+
+    A row's parent is the last References entry (RFC 5536 section 3.2.10)
+    that names another row in this window; rows with no such parent are
+    roots, ordered by local number. Only display order: it decides nothing.
+    """
+    by_id, parent = {}, {}
+    for row in rows:
+        if row["message_id"] and row["message_id"] not in by_id:
+            by_id[row["message_id"]] = row
+    for row in rows:
+        refs = row["references"].split()
+        parent[row["number"]] = next((by_id[ref]["number"] for ref in reversed(refs)
+                                      if ref in by_id and ref != row["message_id"]), None)
+    children = {row["number"]: [] for row in rows}
+    roots = []
+    for row in sorted(rows, key=lambda one: one["number"]):
+        seen, up = {row["number"]}, parent[row["number"]]
+        while up is not None and up not in seen:
+            seen.add(up)
+            up = parent[up]
+        if parent[row["number"]] is None or up is not None:
+            roots.append(row)          # no parent here, or a References cycle
+        else:
+            children[parent[row["number"]]].append(row)
+    ordered, stack = [], [(row, 0) for row in reversed(roots)]
+    while stack:
+        row, depth = stack.pop()
+        ordered.append((row, depth, bool(row["references"].split()) and depth == 0))
+        stack.extend((child, depth + 1) for child in reversed(children[row["number"]]))
+    return ordered
+
+
+def reply_subject(subject: str) -> str:
+    subject = subject.strip()
+    return (subject if re.match(r"(?i)re:", subject) else "Re: " + subject)[:240]
+
+
+def reply_references(parent_references: str, parent_id: str) -> str:
+    """RFC 5537 section 3.4.4: the parent's References plus its Message-ID.
+
+    Trimmed to the form's bound by removing entries after the first while
+    keeping the first and the last three, as that section requires.
+    """
+    refs = [ref for ref in parent_references.split()
+            if ref.startswith("<") and ref.endswith(">")]
+    if parent_id:
+        refs.append(parent_id)
+    while len(" ".join(refs)) > MAX_REFERENCES and len(refs) > 4:
+        del refs[1]
+    if len(" ".join(refs)) > MAX_REFERENCES:
+        refs = [parent_id] if parent_id and len(parent_id) <= MAX_REFERENCES else []
+    return " ".join(refs)
+
+
+def frozen_fields(lines) -> dict:
+    """The editable fields of an article this client composed, for a new draft."""
+    lines = list(lines or ())
+    cut = lines.index("") if "" in lines else len(lines)
+    fields = fn_client.headers(lines[:cut])
+    return {"subject": fn_client.first(fields, "subject") or "",
+            "sender": fn_client.first(fields, "from") or "",
+            "references": fn_client.first(fields, "references") or "",
+            "body": "\n".join(lines[cut + 1:])}
+
+
+def verdict_kind(report) -> str:
+    if not report:
+        return "unavailable"
+    return report.split(" ", 1)[0].rstrip(":")
+
+
 def e(value) -> str:
     return html.escape(str(value if value is not None else ""), quote=True)
 
@@ -584,17 +870,6 @@ def group_summary(row: dict) -> str:
     return address + " · " + policy
 
 
-def depth_of(row: dict, by_id: dict, seen=None) -> int:
-    seen = set() if seen is None else seen
-    msgid = row["message_id"]
-    if msgid in seen:
-        return 0
-    refs = row["references"].split()
-    parent = next((by_id[ref] for ref in reversed(refs)
-                   if ref in by_id and ref != msgid), None)
-    return min(4, 1 + depth_of(parent, by_id, seen | {msgid})) if parent else 0
-
-
 STYLE = """
 :root { color-scheme: light; font-family: system-ui, sans-serif; background:#f5f3eb; color:#172725 }
 body { max-width: 940px; margin: 0 auto; padding: 1.5rem 1rem 5rem; line-height:1.5 }
@@ -613,6 +888,12 @@ input,textarea { box-sizing:border-box; width:100%; padding:.7rem; margin:.2rem 
 textarea { min-height:12rem } label { display:block; font-weight:650 }
 button,.button { display:inline-block; border:0; border-radius:6px; padding:.65rem 1rem; background:#145f50; color:white; font:inherit; cursor:pointer; text-decoration:none }
 button:hover,.button:hover { background:#0b4439 } .muted { color:#52645d }
+.verified { background:#daf1df; color:#0f4a2a } .unverified { background:#fae0d9; color:#7a2217 }
+.absent,.unavailable { background:#ecebe4; color:#4a4a42 } .unread { font-weight:700 }
+.unread-dot { color:#922e24 } .reason { font-family:ui-monospace, monospace; background:#fdf1ee; padding:.5rem .8rem; border-radius:6px; overflow-wrap:anywhere }
+.identity { font-size:.85rem } .resume code { overflow-wrap:anywhere } form.inline { display:inline }
+form.inline button { padding:.35rem .7rem; font-size:.85rem } .row { display:flex; gap:.6rem; flex-wrap:wrap }
+.row label { flex:1 1 12rem }
 """
 
 
@@ -633,6 +914,7 @@ class Handler(BaseHTTPRequestHandler):
                 "<meta name='viewport' content='width=device-width,initial-scale=1'>"
                 "<title>" + e(title) + " · fn</title><style>" + STYLE + "</style>"
                 "<body><header><h1><a href='/'>fn / news</a></h1>"
+                "<span class='identity muted'>" + e(self.server.identity) + "</span>"
                 + ("<a href='/outbox'>Local outbox</a>" if getattr(
                     self.server.submissions, "durable", False) else
                    "<span class='muted'>local reader</span>") +
@@ -689,13 +971,30 @@ class Handler(BaseHTTPRequestHandler):
             self.page("Draft", "<p>This form has not been submitted.</p>", 200)
             return
         word, msgid = result.word, entry["message_id"]
+        group = entry["group"]
+        source = "\n".join(entry["lines"] or ())
         if word == fn_client.ACCEPTED:
             meaning = "The node answered that it accepted this article."
+            said = ("<p>The node's answer:</p><p class='reason'>" +
+                    e(result.detail.rsplit(msgid, 1)[-1].strip() or result.detail) + "</p>"
+                    "<p><a href='" + e(href("/g", name=group)) + "'>Back to " + e(group) +
+                    "</a></p>")
         elif word == fn_client.REFUSED:
             meaning = "The node refused this exact article. This form will not post it again."
+            said = ("<p>The node's reason, as it sent it:</p><p class='reason'>" +
+                    e(result.detail) + "</p><p>Nothing was stored. You can edit the text "
+                    "into a new post; it gets a new Message-ID.</p><p><a class='button' href='" +
+                    e(href("/compose", group=group, edit=token)) +
+                    "'>Edit as a new post</a></p>")
         else:
             meaning = ("The article may or may not have been accepted. Do not post a "
                        "new copy while its status is unknown.")
+            said = ("<p class='reason'>" + e(result.detail) + "</p>"
+                    "<p class='hint'>Do not repost. Your text is kept below exactly as it "
+                    "was sent" + (", and in the local outbox across restarts"
+                                   if getattr(self.server.submissions, "durable", False)
+                                   else ", while this process runs") +
+                    ". Check the Message-ID first: if the node serves it, it was accepted.</p>")
         observed = ""
         if entry["settlement"] is not None:
             found = entry["settlement"]
@@ -709,9 +1008,12 @@ class Handler(BaseHTTPRequestHandler):
         self.page("Post " + word, "<nav><a href='/'>Groups</a></nav><article>"
                   "<span class='badge " + e(word) + "'>" + e(word) + "</span>"
                   "<h2>" + e(meaning) + "</h2>"
-                  "<p class='meta'>Message-ID: <code>" + e(msgid) + "</code></p>"
+                  "<p class='meta'>Message-ID: <code>" + e(msgid) + "</code></p>" + said
                   + observed + "<p><a href='" + e(href("/settle", id=token)) +
                   "'>Check whether the node serves this Message-ID</a></p>"
+                  "<details" + (" open" if word == fn_client.UNCERTAIN else "") +
+                  "><summary>The exact article sent</summary><pre>" + e(source) +
+                  "</pre></details>"
                   "<details><summary>Node response and diagnostic detail</summary><pre>" +
                   e(result.detail) + "</pre></details>"
                   + ("<p class='hint'>" + e(entry.get("record_error")) +
@@ -725,6 +1027,76 @@ class Handler(BaseHTTPRequestHandler):
                      "this process runs and the form remains in its bounded memory.") + "</p>"
                   "</article>")
 
+    def article_html(self, group, number, one, verdict, has_verdict_lookup):
+        fields = one["headers"]
+        first = lambda name: fn_client.first(fields, name) or ""
+        statement = bool(first("fn-statement"))
+        carrier = bool(first("fn-authorship"))
+        kind = verdict_kind(verdict) if has_verdict_lookup else "unavailable"
+        badge = ("<p><span class='badge " + e(kind) + "'>node verdict: " + e(kind) +
+                 "</span></p>")
+        verdict_html = (("<p class='meta'>Server report of historical verification "
+                         "verdict: " + e(verdict) + ". This reports what this node "
+                         "recorded; it is not an independent cryptographic check or "
+                         "current authorization.</p>") if verdict else
+                        "<p class='meta'>Server report of historical verification "
+                        "verdict: unavailable" +
+                        ("" if has_verdict_lookup else
+                         " (HDR :fn-verified needs a group and local number; this view "
+                         "was reached by Message-ID)") + ".</p>")
+        provenance = (badge + "<p class='hint'><strong>Who wrote this?</strong> The displayed "
+                      "From name is a claim in the article. This reader has not "
+                      "verified the writer's identity.</p><p class='meta'>"
+                      + ("FN-Statement present; not verified here" if statement else
+                         "No FN-Statement recorded in this article") + "<br>" +
+                      ("FN-Authorship carrier present; not verified here" if carrier else
+                       "No FN-Authorship carrier recorded in this article") + "</p>" +
+                      verdict_html +
+                      "<details><summary>Recorded handling details</summary>"
+                      "<p class='meta'>From (claimed): " + e(first("from")) +
+                      "<br>Path: " + e(first("path") or "not supplied") +
+                      "<br>Injection-Info: " + e(first("injection-info") or "not supplied") +
+                      "<br>Injection-Date: " + e(first("injection-date") or "not supplied") +
+                      "<br>References: " + e(first("references") or "none") +
+                      "</p></details><p class='muted'>Viewing does not acknowledge application processing.</p>")
+        msgid = one["message_id"] or ""
+        resume = ""
+        if number and msgid:
+            resume = ("<details class='resume'><summary>Resume from here</summary>"
+                      "<p class='meta'>Group <code>" + e(group) + "</code>, local #" +
+                      e(number) + ", Message-ID <code>" + e(msgid) + "</code>. Local "
+                      "numbers belong to this node; the Message-ID is what the resume "
+                      "checks the number against.</p><p><a href='" +
+                      e(href("/resume", group=group, number=number, id=msgid)) +
+                      "'>Open the articles after this one</a></p><p class='meta'>Command "
+                      "line: <code>" + e("fn_client.py read %s --since %d" % (group, number)) +
+                      "</code></p></details>")
+        nav = ("<nav><a href='" + e(href("/g", name=group)) + "'>" + e(group) +
+               "</a><a href='" + e(href("/compose", group=group, reply=number)) +
+               "'>Reply</a></nav>" if group and number else
+               "<nav><a href='/'>Groups</a></nav>")
+        return (nav + "<article><h2>" + e(first("subject") or "(no subject)") +
+                "</h2><p class='meta'>" + e(msgid) +
+                (" · local #" + e(number) if number else
+                 " · local number not reported by a lookup by Message-ID") + "</p>" +
+                provenance + "<pre>" + e("\n".join(one["body"])) + "</pre>" + resume +
+                "</article>")
+
+    def marks_note(self) -> str:
+        error = self.server.marks.error
+        return "<p class='hint'>" + e(error) + ".</p>" if error else ""
+
+    def resume_form(self) -> str:
+        return ("<details><summary>Resume from a (group, local number, Message-ID)</summary>"
+                "<form method='get' action='/resume'><div class='row'>"
+                "<label>Group<input name='group' maxlength='240' required></label>"
+                "<label>Local number<input name='number' maxlength='10' inputmode='numeric' required></label>"
+                "<label>Message-ID<input name='id' maxlength='250' required></label></div>"
+                "<button type='submit'>Resume after it</button></form>"
+                "<p class='meta'>The node is asked what it serves at that number now; "
+                "if it is not the same Message-ID, you are told so instead of being "
+                "moved.</p></details>")
+
     def compose_form(self, token, group, subject="", sender="", references="", body=""):
         save = ("<button name='action' value='save' type='submit' formnovalidate>"
                 "Save draft</button> "
@@ -736,8 +1108,12 @@ class Handler(BaseHTTPRequestHandler):
                 "<input type='hidden' name='references' value='" + e(references) + "'>"
                 "<label>Subject<input name='subject' maxlength='240' required value='" +
                 e(subject[:240]) + "'></label>"
+                + ("<p class='meta'>In reply to: <code>" + e(references.split()[-1]) +
+                   "</code> (References carries " + e(len(references.split())) +
+                   " Message-ID(s))</p>" if references.split() else "") +
                 "<label>From (optional)<input name='sender' maxlength='240' value='" +
-                e(sender) + "'></label>"
+                e(sender) + "' placeholder='" + e(self.server.backend.default_from()) +
+                "'></label>"
                 "<label>Message<textarea name='body' maxlength='16384' required>" +
                 e(body) + "</textarea></label>" + save +
                 "<button name='action' value='post' type='submit'>Post to " + e(group) +
@@ -772,11 +1148,25 @@ class Handler(BaseHTTPRequestHandler):
                 if result.word != fn_client.DONE:
                     self.outcome(result.word, result.detail)
                     return
-                cards = "".join("<article><h2><a href='" + e(href("/g", name=row["group"])) +
-                                "'>" + e(row["group"]) + "</a></h2><p class='meta'>" +
-                                e(group_summary(row)) + "</p></article>"
-                                for row in result.data["groups"])
-                self.page("Groups", "<h2>Groups</h2>" + (cards or "<p>No groups are served.</p>"))
+                marks = self.server.marks
+                cards = []
+                for row in result.data["groups"]:
+                    unread = marks.unread_upper(row["group"], row["first"], row["last"])
+                    last = marks.last(row["group"])
+                    cards.append(
+                        "<article><h2><a href='" + e(href("/g", name=row["group"])) +
+                        "'>" + e(row["group"]) + "</a> <span class='badge" +
+                        (" unread" if unread else "") + "'>" +
+                        e("%d unread" % unread if unread else "nothing unread") +
+                        "</span></h2><p class='meta'>" + e(group_summary(row)) + "</p>" +
+                        ("<p class='meta resume'>Resume from local #" + e(last["number"]) +
+                         " <code>" + e(last["message_id"]) + "</code> · <a href='" +
+                         e(href("/resume", group=row["group"], number=last["number"],
+                                id=last["message_id"])) + "'>continue after it</a></p>"
+                         if last else "") + "</article>")
+                self.page("Groups", "<h2>Groups</h2>" + self.marks_note() +
+                          ("".join(cards) or "<p>No groups are served.</p>") +
+                          self.resume_form())
             elif path == "/outbox" and getattr(self.server.submissions, "durable", False):
                 with self.server.submissions.lock:
                     rows = [(token, entry["message_id"],
@@ -812,15 +1202,31 @@ class Handler(BaseHTTPRequestHandler):
                 end = result.data["window_end"]
                 low, high = result.data["low"], result.data["high"]
                 has_group_numbers = high >= low
-                by_id = {row["message_id"]: row for row in rows if row["message_id"]}
-                cards = "".join("<article class='thread' style='margin-left:" +
-                                str(depth_of(row, by_id) * 18) + "px'><h2><a href='" +
-                                e(href("/a", group=group, number=row["number"])) + "'>" +
-                                e(row["subject"]) + "</a></h2><p class='meta'>" +
-                                e(" · ".join(x for x in (row["from"], row["date"],
-                                                 "local #%s" % row["number"]) if x)) +
-                                "</p></article>"
-                                for row in rows)
+                marks = self.server.marks
+                cards = "".join(
+                    "<article class='thread' style='margin-left:" + str(min(depth, 8) * 18) +
+                    "px'><h2" + ("" if marks.is_read(group, row["number"]) else
+                                 " class='unread'") + ">" +
+                    ("" if marks.is_read(group, row["number"]) else
+                     "<span class='unread-dot' title='not opened in this client'>● </span>") +
+                    "<a href='" + e(href("/a", group=group, number=row["number"])) + "'>" +
+                    e(row["subject"]) + "</a> <span class='badge " +
+                    e(verdict_kind(row.get("verdict"))) + "' title='" +
+                    e(row.get("verdict") or "server report unavailable") + "'>" +
+                    e(verdict_kind(row.get("verdict"))) + "</span></h2><p class='meta'>" +
+                    e(" · ".join(x for x in (row["from"], row["date"],
+                                             "local #%s" % row["number"],
+                                             "reply to an article outside this window"
+                                             if outside else "") if x)) +
+                    "</p></article>"
+                    for row, depth, outside in thread_rows(rows))
+                mark_all = (("<form class='inline' method='post' action='/mark'>"
+                             "<input type='hidden' name='csrf' value='" + e(self.server.token) +
+                             "'><input type='hidden' name='group' value='" + e(group) +
+                             "'><input type='hidden' name='through' value='" + e(min(end, high)) +
+                             "'><button type='submit'>Mark read through local #" +
+                             e(min(end, high)) +
+                             "</button></form>") if rows else "")
                 older = ("<a rel='prev' href='" + e(href("/g", name=group,
                           start=max(low, start - MAX_RECENT), end=start - 1)) +
                          "'>Older</a>" if has_group_numbers and start > low else "")
@@ -836,7 +1242,11 @@ class Handler(BaseHTTPRequestHandler):
                           e(href("/compose", group=group)) + "'>Write a post</a></nav>"
                           "<h2>" + e(group) + "</h2><p class='muted'>" +
                           e(page_window + frontier) + " · viewing does not acknowledge processing</p>"
-                          "<nav aria-label='Article number windows'>" + older + " " + newer + "</nav>" +
+                          "<p class='muted'>Threaded by References within this window. "
+                          "Unread marks are this client's, not the node's.</p>" +
+                          self.marks_note() +
+                          "<nav aria-label='Article number windows'>" + older + " " + newer +
+                          " " + mark_all + "</nav>" +
                           (cards or "<p>No articles in this number window.</p>"))
             elif path == "/a":
                 group, raw = values.get("group", ""), values.get("number", "")
@@ -852,43 +1262,15 @@ class Handler(BaseHTTPRequestHandler):
                     self.outcome(result.word, result.detail)
                     return
                 one = result.data["articles"][0]
-                fields = one["headers"]
-                first = lambda name: fn_client.first(fields, name) or ""
-                statement = bool(first("fn-statement"))
-                carrier = bool(first("fn-authorship"))
-                verdict = result.data.get("fn_verified_report")
-                verdict_html = ("<p class='meta'>Server report of historical verification "
-                                "verdict: " + e(verdict) + ". This reports what this node "
-                                "recorded; it is not an independent cryptographic check or "
-                                "current authorization.</p>" if verdict else
-                                "<p class='meta'>Server report of historical verification "
-                                "verdict: unavailable.</p>")
-                provenance = ("<p class='hint'><strong>Who wrote this?</strong> The displayed "
-                              "From name is a claim in the article. This reader has not "
-                              "verified the writer's identity.</p><p class='meta'>"
-                              + ("FN-Statement present; not verified here" if statement else
-                                 "No FN-Statement recorded in this article") + "<br>" +
-                              ("FN-Authorship carrier present; not verified here" if carrier else
-                               "No FN-Authorship carrier recorded in this article") + "</p>" +
-                              verdict_html +
-                              "<details><summary>Recorded handling details</summary>"
-                              "<p class='meta'>From (claimed): " + e(first("from")) +
-                              "<br>Path: " + e(first("path") or "not supplied") +
-                              "<br>Injection-Info: " + e(first("injection-info") or "not supplied") +
-                              "<br>Injection-Date: " + e(first("injection-date") or "not supplied") +
-                              "</p></details><p class='muted'>Viewing does not acknowledge application processing.</p>")
-                self.page(first("subject") or "Article", "<nav><a href='" +
-                          e(href("/g", name=group)) + "'>" + e(group) + "</a><a href='" +
-                          e(href("/compose", group=group, reply=number)) + "'>Reply</a></nav>"
-                          "<article><h2>" + e(first("subject") or "(no subject)") +
-                          "</h2><p class='meta'>" + e(one["message_id"]) +
-                          " · local #" + e(number) + "</p>" + provenance +
-                          "<pre>" + e("\n".join(one["body"])) + "</pre></article>")
+                self.server.marks.mark(group, number, one["message_id"] or "")
+                self.page(fn_client.first(one["headers"], "subject") or "Article",
+                          self.article_html(group, number, one,
+                                            result.data.get("fn_verified_report"), True))
             elif path == "/compose":
                 group = values.get("group", "")
                 if not group_token(group):
                     raise ValueError("invalid group name")
-                subject, references = "", ""
+                subject, references, sender, body = "", "", "", ""
                 if "reply" in values:
                     raw = values["reply"]
                     if not raw.isascii() or not raw.isdecimal() or len(raw) > 10 or int(raw) < 1:
@@ -900,16 +1282,28 @@ class Handler(BaseHTTPRequestHandler):
                         self.outcome(result.word, result.detail)
                         return
                     fields = result.data["articles"][0]["headers"]
-                    old_subject = fn_client.first(fields, "subject") or ""
-                    subject = old_subject if old_subject.lower().startswith("re:") else "Re: " + old_subject
-                    msgid = fn_client.first(fields, "message-id") or ""
-                    references = ((fn_client.first(fields, "references") or "") + " " +
-                                  msgid).strip()
-                    if len(references) > 800:
-                        references = msgid
+                    subject = reply_subject(fn_client.first(fields, "subject") or "")
+                    references = reply_references(fn_client.first(fields, "references") or "",
+                                                  fn_client.first(fields, "message-id") or "")
+                elif "edit" in values:
+                    # Only a refused submission's text may seed a new post: the
+                    # node said it stored nothing. An uncertain one never does.
+                    old = values["edit"]
+                    if not old or len(old) > 64:
+                        raise ValueError("invalid submission identifier")
+                    entry = self.server.submissions.get(old)
+                    if entry is None or entry["result"] is None or \
+                            entry["result"].word != fn_client.REFUSED or entry["group"] != group:
+                        raise ValueError("only a refused submission of this group can be edited "
+                                         "into a new post")
+                    fields = frozen_fields(entry["lines"])
+                    subject, sender = fields["subject"], fields["sender"]
+                    references, body = fields["references"], fields["body"]
+                    if sender == self.server.backend.default_from():
+                        sender = ""
                 submission_id = self.server.submissions.new(group)
-                form = self.compose_form(submission_id, group, subject,
-                                         self.server.backend.user, references)
+                form = self.compose_form(submission_id, group, subject, sender,
+                                         references, body)
                 self.page("Compose", "<nav><a href='" + e(href("/g", name=group)) +
                           "'>" + e(group) + "</a></nav><h2>Write a post</h2>"
                           "<p class='muted'>One form sends one exact article. If the reply "
@@ -948,7 +1342,55 @@ class Handler(BaseHTTPRequestHandler):
                     lambda client: client.show(msgid, "")))
                 if result is None:
                     return
-                self.outcome(result.word, result.detail, msgid)
+                if result.word != fn_client.DONE:
+                    self.outcome(result.word, result.detail, msgid)
+                    return
+                one = result.data["articles"][0]
+                groups = (fn_client.first(one["headers"], "newsgroups") or "").split(",")
+                self.page(fn_client.first(one["headers"], "subject") or "Article",
+                          "<p><span class='badge done'>served</span> The node serves "
+                          "<code>" + e(msgid) + "</code>.</p>" +
+                          self.article_html(groups[0].strip() if group_token(
+                              groups[0].strip()) else "", None, one, None, False))
+            elif path == "/resume":
+                group, raw, msgid = (values.get("group", ""), values.get("number", ""),
+                                     values.get("id", ""))
+                if not group_token(group) or not raw.isascii() or not raw.isdecimal() or \
+                        len(raw) > 10 or int(raw) < 1 or not (
+                            len(msgid) <= 250 and msgid.startswith("<") and
+                            msgid.endswith(">") and "\r" not in msgid and "\n" not in msgid):
+                    raise ValueError("a resume point is a group, a local number and a Message-ID")
+                number = int(raw)
+                result = self.run_backend(lambda: self.server.backend.slot(group, number))
+                if result is None:
+                    return
+                if result.word != fn_client.DONE:
+                    self.outcome(result.word, result.detail)
+                    return
+                row, high = result.data["row"], result.data["high"]
+                if row is not None and row["message_id"] == msgid:
+                    start = number + 1
+                    end = min(MAX_ARTICLE_NUMBER, number + MAX_RECENT)
+                    if high is not None and start > high:
+                        self.page("Resume", "<nav><a href='" + e(href("/g", name=group)) +
+                                  "'>" + e(group) + "</a></nav><p>Local #" + e(number) +
+                                  " still carries <code>" + e(msgid) + "</code>. Nothing "
+                                  "newer: the group ends at local #" + e(high) + ".</p>")
+                        return
+                    self.redirect(href("/g", name=group, start=start, end=end))
+                    return
+                now = ("the node serves <code>" + e(row["message_id"]) + "</code> there"
+                       if row else "the node serves no article at that number")
+                self.page("Resume point moved", "<nav><a href='" + e(href("/g", name=group)) +
+                          "'>" + e(group) + "</a></nav><article><span class='badge refused'>"
+                          "not the same article</span><h2>Local #" + e(number) + " in " +
+                          e(group) + " is not <code>" + e(msgid) + "</code></h2><p>Now " +
+                          now + ". The article was removed, or this node's local numbering "
+                          "is not the one the resume point was taken from. The client does not "
+                          "guess a new position.</p><p><a href='" + e(href("/find", id=msgid)) +
+                          "'>Look up the Message-ID</a> · <a href='" +
+                          e(href("/g", name=group)) + "'>Open the newest articles</a></p>"
+                          "</article>", 409)
             else:
                 self.page("Not found", "<p>Page not found.</p>", 404)
         except ValueError as exc:
@@ -959,7 +1401,7 @@ class Handler(BaseHTTPRequestHandler):
             self.page("Outbox unavailable", "<p>" + e(exc) + "</p>", 503)
 
     def do_POST(self):
-        if not self.valid_host() or self.path != "/post":
+        if not self.valid_host() or self.path not in ("/post", "/mark"):
             self.send_error(400)
             return
         expected = "http://127.0.0.1:%d" % self.server.server_port
@@ -976,6 +1418,15 @@ class Handler(BaseHTTPRequestHandler):
                                                     max_num_fields=16).items()}
             if not hmac.compare_digest(values.get("csrf", ""), self.server.token):
                 self.page("Refused", "<p>Form token is invalid.</p>", 403)
+                return
+            if self.path == "/mark":
+                # Local read marks only; nothing is sent to the node.
+                group, through = values.get("group", ""), values.get("through", "")
+                if not group_token(group) or not through.isascii() or \
+                        not through.isdecimal() or len(through) > 10:
+                    raise ValueError("invalid read mark")
+                self.server.marks.mark_through(group, int(through))
+                self.redirect(href("/g", name=group))
                 return
             submission_id = values.get("submission_id", "")
             if not submission_id or len(submission_id) > 64:
@@ -1018,9 +1469,15 @@ class Handler(BaseHTTPRequestHandler):
 class WebServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, port: int, backend: Backend, outbox: Optional[Path] = None):
+    def __init__(self, port: int, backend: Backend, outbox: Optional[Path] = None,
+                 marks: Optional[ReadMarks] = None, identity: str = ""):
         self.backend = backend
         self.token = secrets.token_urlsafe(32)
+        self.marks = marks if marks is not None else ReadMarks(None, backend.node,
+                                                                backend.user)
+        self.identity = identity or (
+            "plain loopback node " + backend.node if backend.args.plain else
+            "%s at %s over TLS" % (backend.user, backend.node))
         self.submissions = (DurableSubmissionBook(backend, outbox) if outbox else
                             SubmissionBook(backend))
         try:
@@ -1036,31 +1493,92 @@ class WebServer(ThreadingHTTPServer):
             self.submissions.close()
 
 
+def web_credentials(args, parser, environ=None, prompt=None):
+    """The principal and its password: --credentials, or --user/FN_CLIENT_USER plus
+    FN_CLIENT_PASSWORD, or a terminal prompt. Never argv, never a page or a file."""
+    environ = os.environ if environ is None else environ
+    if args.plain:
+        return "", ""
+    if args.credentials:
+        user, password = fn_client.credentials(args, parser)
+        if args.user and args.user != user:
+            parser.error("--user %s does not match the --credentials file" % args.user)
+        return user, password
+    user = args.user or environ.get("FN_CLIENT_USER", "")
+    if not user:
+        parser.error("name the principal with --user or FN_CLIENT_USER")
+    password = environ.get("FN_CLIENT_PASSWORD", "")
+    if not password:
+        if prompt is None:
+            if not sys.stdin.isatty():
+                parser.error("no password: set FN_CLIENT_PASSWORD, give --credentials, "
+                             "or run from a terminal to be prompted")
+            prompt = getpass.getpass
+        password = prompt("fn password for %s at %s: " % (
+            user, fn_client.node_name(args.host, args.port)))
+    if not password:
+        parser.error("an empty password cannot log in")
+    return user, password
+
+
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--node", default="127.0.0.1:1119")
-    parser.add_argument("--port", type=int, default=8919, help="loopback HTTP port")
-    parser.add_argument("--cafile")
-    parser.add_argument("--plain", action="store_true")
-    parser.add_argument("--credentials")
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--node", default="127.0.0.1:1119",
+                        help="HOST:PORT of the NNTP node")
+    # Not `port`: fn_client.resolve writes the NNTP port there from --node,
+    # which silently made the HTTP listener try to bind the node's port.
+    parser.add_argument("--port", dest="http_port", type=int, default=8919,
+                        help="loopback HTTP port")
+    parser.add_argument("--tls-cert", "--cafile", dest="cafile",
+                        help="the node's certificate (or its CA); STARTTLS is verified against it")
+    parser.add_argument("--plain", action="store_true",
+                        help="no TLS and no login; loopback development node only")
+    parser.add_argument("--user", help="the principal to log in as")
+    parser.add_argument("--credentials", help="a mode-0600 file holding `user password`")
+    parser.add_argument("--from", dest="sender", default=os.environ.get("FN_CLIENT_FROM", ""),
+                        help="default From for new posts (a mailbox; the node checks it)")
     parser.add_argument("--outbox", type=Path,
                         help="private durable local submission directory")
+    parser.add_argument("--marks", type=Path,
+                        help="local read-marks file (default ~/.fn-web/HOST_PORT_USER.json)")
+    parser.add_argument("--no-marks", action="store_true",
+                        help="keep read marks in memory only")
     parser.add_argument("--timeout", type=float, default=15.0)
     args = parser.parse_args(argv)
     fn_client.resolve(args, parser)
-    if args.host not in ("127.0.0.1", "::1"):
-        parser.error("the initial web client requires a loopback NNTP target")
-    if not 0 <= args.port < 65536 or not 0 < args.timeout <= 60:
+    if args.plain and args.host not in LOOPBACK:
+        parser.error("--plain is for a loopback development node; a remote node needs "
+                     "--tls-cert and a login")
+    if not 0 <= args.http_port < 65536 or not 0 < args.timeout <= 60:
         parser.error("invalid HTTP port or timeout")
-    user, password = ("", "") if args.plain else fn_client.credentials(args, parser)
-    if not args.plain and not (user and password):
-        parser.error("set client credentials or pass a mode-0600 --credentials file")
+    if args.plain and args.user:
+        parser.error("--plain sends no login, so --user cannot apply")
+    user, password = web_credentials(args, parser)
+    backend = Backend(args, user, password, args.sender)
+    checked = backend.login_check()
+    if checked.word != fn_client.DONE:
+        detail = checked.detail.replace(password, "[password]") if password else checked.detail
+        sys.stderr.write("fn web client: %s %s\n" % (checked.word, detail))
+        sys.exit(fn_client.EXIT[checked.word])
+    tls = checked.data.get("tls")
+    identity = ("plain loopback node " + backend.node if args.plain else
+                "%s at %s · %s, certificate verified" % (
+                    user, backend.node, (tls or {}).get("version") or "TLS"))
+    marks = ReadMarks(None if args.no_marks else
+                      (args.marks or default_marks_path(args.host, args.port, user)),
+                      backend.node, user)
     try:
-        with WebServer(args.port, Backend(args, user, password), args.outbox) as server:
-            print("fn web client: http://127.0.0.1:%d/" % server.server_port, flush=True)
+        with WebServer(args.http_port, backend, args.outbox, marks, identity) as server:
+            print("fn web client: %s; open http://127.0.0.1:%d/" % (identity, server.server_port),
+                  flush=True)
+            if marks.error:
+                print("fn web client: " + marks.error, flush=True)
             server.serve_forever()
     except (OSError, OutboxError) as exc:
         parser.error("local web client: " + str(exc))
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
