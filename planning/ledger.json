@@ -624,7 +624,7 @@
       "default-guarded": 3133,
       "default-unguarded": 809
     },
-    "suspect_theorems": 78,
+    "suspect_theorems": 81,
     "export_hygiene_warnings": 103,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 41,
@@ -7619,7 +7619,10 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-peer-archive-command-pinned-preserves-consistent-session"
+        "fn-peer-archive-command-pinned-preserves-consistent-session",
+        "fn-peer-nntp-command-pinned-preserves-consistent-session",
+        "fn-peer-nntp-step-pinned-preserves-consistent-session",
+        "fn-peer-post-step-pinned-preserves-consistent-session"
       ],
       "read_error": null
     },
@@ -17540,6 +17543,30 @@
       "line": 1560,
       "reasons": [
         "instance-corollary: the statement is fn-nntp-archive-command-pinned-preserves-consistent-session instantiated, discharging nothing"
+      ]
+    },
+    {
+      "theorem": "fn-peer-nntp-command-pinned-preserves-consistent-session",
+      "book": "books/peer-inbound.lisp",
+      "line": 1575,
+      "reasons": [
+        "instance-corollary: the statement is fn-nntp-command-pinned-preserves-consistent-session instantiated, discharging nothing"
+      ]
+    },
+    {
+      "theorem": "fn-peer-nntp-step-pinned-preserves-consistent-session",
+      "book": "books/peer-inbound.lisp",
+      "line": 1590,
+      "reasons": [
+        "instance-corollary: the statement is fn-nntp-step-pinned-preserves-consistent-session instantiated, discharging nothing"
+      ]
+    },
+    {
+      "theorem": "fn-peer-post-step-pinned-preserves-consistent-session",
+      "book": "books/peer-inbound.lisp",
+      "line": 1603,
+      "reasons": [
+        "instance-corollary: the statement is fn-post-step-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
     },
     {
