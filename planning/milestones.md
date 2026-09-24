@@ -585,6 +585,7 @@ the whole-tree run behind these statuses is
 | Interrupted contact-plan run | **open** | no evidence file exists; the w9/dtn-e2e lane owns it |
 | fn authors a BPv7 bundle another implementation accepts | **done** | `books/bp-node` certifies; dtn7-rs 0.21.0 decoded and delivered fn's 138-octet bundle, and fn decoded and re-encoded dtn7-rs's 132-octet one byte for byte ([bp-dtn7-w11](evidence/bp-dtn7-w11-2026-09-21.md)) |
 | The node's processing machine (`fn-bpn-step`, T1 to T6) | **open** | `books/bp-node` is the two ends of `specs/bp-design.md` §1.5, not the machine; §1.5.1 lists what is absent and nothing claims T1 to T6 |
+| Received-held route-wait progress slice | **source and selected proof, native pending** | The actual BP service now calls `fn-bpnp-step` for `:progress`; a route-less older transit carrier records a volatile per-key wait and leaves a younger live local request selectable. [Scoped proof evidence](evidence/bp-progress-route-wait-2026-09-24.md). Full N03 class fairness, N04 forwarding/MRU, N05 journal debt, and a source-matched native image remain open. |
 | LTP | **open** | `planning/ltp-feasibility.md` is a study; REP-006 stays `specified` for that half |
 
 ### v0.4 substrate transport -- fiber record: [fiber-substrate-transport](evidence/fiber-substrate-transport-2026-09-20.md)
