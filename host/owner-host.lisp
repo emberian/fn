@@ -1008,6 +1008,19 @@
          (state (fn-owner-feed-install-feed records nil state)))
     (value :fed)))
 
+; The service-log line for the transit outcome about to be fed, read off the
+; owner BEFORE fn-owner-transit-outcome moves it (books/owner-log.lisp
+; fn-olog-transit-line), with the same id, kind, reason and word.  DETAIL is
+; the ingress refusal the host relays (host/native/owner.lisp
+; fnn-owner-transit-refused), a log field only.
+(defun fn-owner-transit-log-line (id kind reason word detail state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-log-line
+                             (fn-olog-transit-line (fn-owner-core state)
+                                                   id kind reason word detail)
+                             state)))
+    (value :ok)))
+
 (defun fn-owner-transit-kind (state)
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-owner-transit-kind state)))
@@ -1571,9 +1584,14 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
         (if (null response)
             (let ((state (fn-owner-feed-install-feed nil nil state)))
               (value :quiet))
-          (let ((result (fn-own-feed-port-observe-peer
+          (let* ((result (fn-own-feed-port-observe-peer
                          peer (fn-own-feeds owner) response
-                         (fn-own-feed-article owner msgid) obs)))
+                         (fn-own-feed-article owner msgid) obs))
+                ; The sender's one line for this reply (nil for a 335/238),
+                ; books/owner-log.lisp fn-olog-feed-reply-line.
+                (state (f-put-global 'fn-owner-feed-log-line
+                                     (fn-olog-feed-reply-line owner peer response)
+                                     state)))
             (mv-let (status state)
               (fn-owner-feed-install-port-result owner result state)
               (value (if (equal status :refused) :refused
@@ -1604,7 +1622,8 @@ existing port only after fn-fc has made this connection ready."
         ;; never every peer's retained buffer.
         (if (not (fn-fc-statep input))
             (value :invalid)
-          (let* ((step (fn-fc-step input octets))
+          (let* ((state (f-put-global 'fn-owner-feed-log-line nil state))
+                 (step (fn-fc-step input octets))
                  (kind (fn-owner-feed-connection-result-kind step))
                  (state (f-put-global
                          'fn-owner-feed-inputs
