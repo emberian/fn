@@ -1,0 +1,31 @@
+; Scratch-only raw profiling entry (d24-peer lane): never committed.
+; The entry is build.lisp's fn-native-entry with a statistical-profiler
+; thread started first, driven by FN_SPROF_DIR/start and /stop.
+(in-package "ACL2")
+(require :sb-sprof)
+(defun fn-native-entry (st)
+  (declare (ignore st))
+  (let ((dir (sb-ext:posix-getenv "FN_SPROF_DIR")))
+    (when dir
+      (sb-thread:make-thread
+       (lambda ()
+         (flet ((f (n) (concatenate 'string dir "/" n)))
+           (loop until (probe-file (f "start")) do (sleep 0.05))
+           (sb-sprof:start-profiling :max-samples 1000000 :mode :cpu
+                                     :sample-interval 0.001 :threads :all)
+           (loop until (probe-file (f "stop")) do (sleep 0.05))
+           (sb-sprof:stop-profiling)
+           (with-open-file (s (f "flat.txt") :direction :output :if-exists :supersede)
+             (sb-sprof:report :type :flat :max 120 :stream s))
+           (with-open-file (s (f "graph.txt") :direction :output :if-exists :supersede)
+             (sb-sprof:report :type :graph :max 80 :stream s))
+           (with-open-file (s (f "done") :direction :output :if-exists :supersede)
+             (print :done s))))
+       :name "fn-sprof")))
+  (fnn-native-startup (lambda ()
+                        (fnn-crypto-startup)
+                        (fnn-tls-reset)
+                        (fnn-hsig-reset)
+                        (fnn-hsig-initialize)))
+  (fnn-main)
+  (values nil :exited *the-live-state*))
