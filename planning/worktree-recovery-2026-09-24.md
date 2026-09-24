@@ -38,3 +38,16 @@ lane work were unaffected.
 Reviews of another revision should use `git show`, `git diff`, or an isolated
 worktree. A status observation can become stale while another agent is
 committing; it never authorizes resetting a shared checkout.
+
+At 02:10:13 UTC the topic integration agent created its intended worktree but
+ran the following cherry-pick from the main checkout. That left `dev` at
+`eb2c55fd` with a conflicted `2d08043e` cherry-pick; it was not a deliberate
+root integration. The agent's transcript established the command's working
+directory. Root preserved the four affected files, index stages and binary
+patches in private local `build/recovery/topic-cherry-20260924/`, verified
+that no unrelated changes were present, and aborted that misplaced operation.
+The main checkout returned cleanly to `eb2c55fd`. The complete topic packet
+remains on `integrate/topic-native-tail` at `26278201`; no topic work was
+removed from its intended branch. Creating a worktree does not change the
+working directory of the next shell command: pass its explicit directory to
+every mutation.
