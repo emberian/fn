@@ -105,15 +105,26 @@ check that also caught `fn config check` exiting 4, refusal reasons logged,
 for the server), and the deploy: **the hbox node runs `47bdb9a4`**
 ([record](evidence/node-hbox-47bdb9a4-2026-09-24.md)).
 
+Landed after the deploy: m4-dtn-n08 (N08 exactly-once on the default
+image; the DTN image lacks the node driver), stale-tests-2 (served crash
+model against the stored octets; a refused start exits 5), commit-path-cost
+(the POST commit's history search carried: commit CPU 20 -> 1 to 3 ms),
+m5-profile-upgrade (offline development-to-scale upgrade with its byte
+program and cuts, PRF-072), p8-signed-post (a signed POST over NNTP gets a
+durable verdict through the transit classification).
+
 **In flight:**
 
 | Lane | Intended result |
 | --- | --- |
-| m4-dtn-n08 | M4 on a DTN image with the kind-8 policy: N08 exactly-once after a death, the DTN modules, an interrupted contact on the pinned dtn7-rs, the four-node lab |
-| commit-path-cost | the whole-history `fn-record-p` per POST carried from open; CPU per POST re-measured |
-| m5-profile-upgrade | offline development-to-scale profile upgrade with an ACL2 upgrade-only predicate, a cut coordinate and the campaign cuts; the deployed store's budget past 128 |
-| p8-signed-post | a signed POST over NNTP classified by the same ACL2 plan as transit, with a durable verdict |
-| stale-tests-2 | served crash model judged against the stored octets; two raw scripts; the launcher exits 5 instead of waiting on stdin when OpenSSL is missing |
+| dtn-node-image | the DTN image runs the BP node (bp-node loaded), admits inbound bundles through the enrolled boundary, uncertain on a severed contact, same-identity retry |
+| p10-k0-recovery | K0 over the seven recovery cuts (entry theorem from the scan) and the issued-link error arm |
+| p11-machine-gaps | N07 (clock boot domain) and N11 (kind-14 conflict record) added to the machine with theorems and teeth |
+| commit-path-2 | fn-sf-next-lower in prepare and the advance's node check carried; fn-ocl-relation across an article completion |
+| second-count | the transaction file name from ACL2's sequence; the payload bound from the profile; the host counter and constant gone |
+
+Next cut (the fifth) follows the DTN node lane; it carries everything since
+`47bdb9a4` and is the image on which the deployed store's profile upgrade runs.
 
 ## Where to read next
 
