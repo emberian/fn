@@ -84,6 +84,12 @@
 
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
+; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
+; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file
+; the DTN images could not `store init' (native-subsets-6c0626c5, failure 2).
+; Every host file build.lisp loads and this one omits is listed, with its
+; reason, in tools/build_lists_check.py, which `make check' runs.
+(ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
 (ld "host/config-host.lisp" :ld-error-action :error)
