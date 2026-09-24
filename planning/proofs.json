@@ -2341,9 +2341,10 @@
         "planning/evidence/manifests/certify-20260924T020813Z-3039371.json",
         "planning/evidence/manifests/certify-20260924T020336Z-2999170.json",
         "tests/acl2/topic-history-native-vector-tests.lisp",
-        "planning/evidence/manifests/certify-20260924T022329Z-3173943.json"
+        "planning/evidence/manifests/certify-20260924T022329Z-3173943.json",
+        "planning/evidence/manifests/certify-20260924T030421Z-3524851.json"
       ],
-      "progress_note": "The slot-12 topic Store and slot-13 consumer index union certifies through Store trace, observed/config reopen and actual owner indexed poll at the cited hbox manifests; the earlier slot-12-only persvati manifest remains a historical component record. The source-level native owner/control path calls one ACL2 local proposal dispatcher and uses the existing connected same-euid credential observation. The native proposal/control roots require certification against this combined source, and the staged native install/root/report/reopen test, saved image and broad reverse closure remain unqualified; this is not yet a served durable-admission claim."
+      "progress_note": "The merged slot-12 topic and slot-13 consumer index source passed 21 explicit Store, topic, native-control and indexed-poll ACL2 roots on persvati at d4b48fda. The source-level native owner/control path calls the ACL2 local proposal dispatcher after the connected same-euid credential observation. The staged native install/root/report/reopen test and combined saved image remain unqualified; the full reverse closure and proof-cost target remain open, so this is not yet a served durable-admission claim."
     }
   ]
 }

@@ -39,3 +39,20 @@ automatic policy adoption or Mini application operation is inferred.
 The field values themselves are checked against `fn-th-field-encode` by
 `tests/acl2/topic-history-native-vector-tests.lisp`, which passed on persvati
 in [`certify-20260924T022329Z-3173943.json`](manifests/certify-20260924T022329Z-3173943.json).
+
+The combined topic/consumer-index source was merged once with dev
+`eb4e63c0` at `d4b48fda`. Its 21 explicit Store, topic, native-control and
+indexed-poll roots passed in persvati run `run-20260924T030411Z-ade4`:
+[`certify-20260924T030421Z-3524851.json`](manifests/certify-20260924T030421Z-3524851.json).
+The incremental run used ACL2 8.7/SBCL 2.6.8, two jobs, the shared cache,
+150-second per-book timeout and no closure; 92 dependencies installed at
+matching closure keys and 68 books certified. This qualifies those logical
+roots at the merged source, not the broader reverse closure or a native image.
+The new native install/root/report/reopen test has not run on that source.
+
+Proof cost remains visible: `VERIFY-GUARDS FN-SN-COMPLETION-CORE-ENABLEDP`
+took 21.20 seconds after opening the completion record and topic recognizers;
+`FN-SN-FINISH-PRESERVES-STATE` took 18.51 seconds,
+`FN-SNT-IO-RECORDS-PREFIX` 22.46 seconds, and the derived consumer index's
+identity-prepare relation 46.56 seconds. These are passed events, not a
+claim that the proof-cost target is met.
