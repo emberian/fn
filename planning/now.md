@@ -15,7 +15,11 @@ runs and the bounded Luna trials. The a785 production and developer images were 
 consumer and reader checks passed, while the BP report cut exposed an
 unregistered developer fault selector. The [native record](evidence/native-a785-selected-gate-2026-09-24.md)
 retains both results and limitations. Its selector and test-fixture repairs
-are integrated; their source-matched runtime check remains pending.
+are integrated; their source-matched runtime check was pending at that
+checkpoint.
+The later `e160442f` shared image passed the repaired D1b report cut after a
+test-only sender-lock ordering fix; the initial a785 failure remains in the
+[native record](evidence/native-luna-e160-selected-2026-09-24.md).
 The index foundation still needs its actual owner/Store join and does not yet
 establish bounded served polling. The read-only expiry selector is integrated;
 native fragment admission and persisted replacement remain a separate join.
@@ -36,16 +40,18 @@ and fewer prover steps. [Cleanup and recovery](worktree-recovery-2026-09-24.md)
 records 101 verified worktree archives and recovery from an external accidental
 checkout reset. Old branch counts are not a feature backlog.
 
-A new three-lane GPT-6-Luna feature trial is underway with Sol review.
-Bounded web history windows and native offline cursor inspection are on dev;
-web socket/HTTP tests pass, while the inspector awaits one shared saved
-image. Local consumer status remains in its implementation lane, with ACL2
-owning scope checks and journal-distance arithmetic. Review has already
-corrected the cursor file ceiling, advanced empty-group navigation, and a
-frame-kind collision with the pending topic branch. This trial records
-review assistance as well as implementation results; it does not establish
-unreviewed model reliability. The old topic, consumer-index, BP activation
-and allocator packets remain separate integration work.
+The [three-lane GPT-6-Luna feature trial](experiments/luna-feature-trial-2026-09-24.md)
+is integrated at frozen source `e160442f`: bounded web history windows,
+offline cursor inspection, and read-only local consumer status. A four-job
+hbox run qualified all default, DTN and ACL2 test roots at that revision;
+the [shared image](evidence/native-luna-e160-selected-2026-09-24.md) has
+passed the feature-specific native web, cursor and status tests. The status
+codec's general roundtrip theorem `PRF-068` remains
+open, so runtime examples and guard certification are not a claim of a
+fully proved codec. The trial records Luna repairs, Sol proof and fixture
+repair, root review assistance, and a session-cost proxy; future bounded
+Luna fn work keeps proof development with Sol. Topic, consumer-index, BP
+activation and allocator packets remain separate integration work.
 
 The dated checkpoints below are historical observations, not competing
 descriptions of current source.

@@ -33,15 +33,20 @@ recorded in [the native evidence](evidence/native-a785-selected-gate-2026-09-24.
 The later D1b selector repair awaits the next shared image. The live
 `da5fd8cb` node is protected.
 
-- Three GPT-6-Luna feature lanes implement bounded web history windows,
-  native cursor inspection, and local consumer status. Web and cursor source
-  are on dev; status is under scoped ACL2 qualification. The Sol reviewer
-  assembles their candidate and owns one combined incremental qualification.
-  Review repairs and elapsed source-packet times are recorded in its
-  experiment note, with native results separate.
-- `native_qualification` builds one source-matched shared image after that
-  candidate certifies, then runs cursor/status and the corrected D1b cut.
-  No lane duplicates this build.
+- The [GPT-6-Luna feature trial](experiments/luna-feature-trial-2026-09-24.md)
+  is source-integrated at `e160442f`. Its four-job hbox run
+  `run-20260924T031246Z-1771` passed all default, DTN and ACL2 test roots.
+  The [one source-matched image pair](evidence/native-luna-e160-selected-2026-09-24.md)
+  has passed native web paging, cursor inspection and local consumer status.
+  General status codec roundtrip
+  `PRF-068` remains open; Sol repaired the decoder guard and ACL2 fixtures.
+  The trial record separates Luna implementation, Sol review/proof work,
+  root assistance and the measured session-cost proxy. Future bounded Luna
+  fn lanes leave proof development and certification failures with Sol.
+- `native_qualification` also passed the D1b report cut on that same image
+  after a test-only ordering fix `7c1215d6`: the first driver had queried
+  the sender's Store while its live process held the lock. This is separate
+  from the three Luna features.
 - `consumer_contract` has scoped certificates for the topic/index Store
   relation, observed reopen and actual indexed owner poll; it assembles a
   finite source/evidence packet. `topic_metadata` joins its native topic tail
