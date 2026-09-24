@@ -1364,23 +1364,20 @@ part of K0.
 ; This is a successful P-FRONTIER trace slice, not general K0: call-entry
 ; relation establishment, error/torn outcomes and physical syscall/barrier
 ; qualification remain separate obligations.
-; One real unsuccessful cut is now also covered.  Given a related ready
-; byte/owner input, a typed successor frontier frame and fresh staging,
-; fn-bs-k0-frontier-eio-applied-run-has-actual-failed-cut equates pair 12 of
-; the actual P-FRONTIER run with an EIO at the root-directory fsync to the
-; byte state reached by the successful root fence when its pending rename
-; selection is :apply.  fn-bs-k0-frontier-node-root-eio-applied-fences-related-state
-; proves the physical error result can leave the candidate durable while
-; fn-sn-io :frontier-directory :error fences the kernel and preserves the
-; full byte/kernel relation.  The configured-owner projection
-; fn-bs-k0-owner-frontier-root-eio-applied-run-fences-related-state joins
-; the exact fn-ocfg-step :store/:io callback to that failed run.  The host
-; classifies a fnn-fsync-dir root error after attempted rename as
-; fnn-indeterminate; no success callback occurs.  The test book reaches
-; both :apply and :drop from the same byte/owner input: an error return
-; alone cannot say whether the candidate persisted.  This is one selected
-; modeled EIO outcome, not arbitrary error choices, call-entry relation
-; establishment, or qualification of the physical filesystem barrier.
+; The root-directory EIO cut is covered for both supported pending-entry
+; choices.  Given a related ready byte/owner input, a typed successor
+; frontier frame and fresh staging,
+; fn-bs-k0-frontier-eio-choice-run-has-actual-failed-cut equates pair 12 of
+; the actual stopped P-FRONTIER fn-bs-run to its EIO byte result.
+; fn-bs-k0-owner-frontier-root-eio-choice-run-fences-related-state joins that
+; cut to the exact fn-ocfg-step :store/:io callbacks: the owner is fenced,
+; the full byte/kernel relation survives, and the durable frontier is the
+; candidate for :apply or the old value for :drop.  The test book reaches
+; both choices from the same related input and checks the exact conclusion.
+; The host classifies a fnn-fsync-dir root error after attempted rename as
+; fnn-indeterminate; no success callback occurs.  Served call-entry relation,
+; other error and torn paths, and physical filesystem-barrier qualification
+; remain separate obligations.
 
 ; K1. The scan never faults on a crash image of a related state.  No torn
 ; unit is ever under an authority name, because links and renames are

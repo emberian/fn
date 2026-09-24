@@ -1291,13 +1291,14 @@
    (bsk0-owner-frontier-entry)
    ".allocation-owner-k0" (fn-bs-frontier-encode 1))))
 
-; This predicate is exactly the public owner theorem's three-conjunct
-; conclusion.  Premise teeth below refute this predicate itself.
-(defun bsk0-owner-frontier-eio-applied-conclusionp (bs oc stage octets)
+; The same predicate is the finite-choice owner theorem's exact conclusion.
+; The old applied wrapper below keeps the four existing premise teeth on the
+; new theorem's :apply arm, while a second positive witness reaches :drop.
+(defun bsk0-owner-frontier-eio-choice-conclusionp (bs oc stage octets choice)
   (let* ((s (fn-own-store (fn-ocfg-owner oc)))
          (run (fn-bs-run bs (fn-sn-files s)
                          (fn-bs-frontier-program stage octets)
-                         (fn-bs-k0-root-error-outcomes :apply)
+                         (fn-bs-k0-root-error-outcomes choice)
                          (fn-sn-groups s) (fn-sn-capacity s)))
          (failed (car (nth 12 run)))
          (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok))))
@@ -1306,10 +1307,16 @@
          (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
          (k3 (fn-sn-files (fn-own-store (fn-ocfg-owner oc3))))
          (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
-    (and (fn-bs-store-relation failed k4)
+    (and (equal (len run) 13)
+         (fn-bs-store-relation failed k4)
          (equal (fn-sf-phase k4) :fenced-frontier)
          (equal (fn-bs-durable-frontier failed)
-                (fn-sf-frontier-candidate k3)))))
+                (if (equal choice :apply)
+                    (fn-sf-frontier-candidate k3)
+                  (fn-bs-durable-frontier bs))))))
+
+(defun bsk0-owner-frontier-eio-applied-conclusionp (bs oc stage octets)
+  (bsk0-owner-frontier-eio-choice-conclusionp bs oc stage octets :apply))
 
 ; The called owner path classifies a root-directory EIO after rename as a
 ; recovery fence.  The byte interpreter stops at the failing fsync (pair 12),
@@ -1368,6 +1375,10 @@
         (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
         (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
    (and (equal (len applied) 13) (equal (len dropped) 13)
+        (bsk0-owner-frontier-eio-choice-conclusionp
+         bs oc stage (fn-bs-frontier-encode 1) :apply)
+        (bsk0-owner-frontier-eio-choice-conclusionp
+         bs oc stage (fn-bs-frontier-encode 1) :drop)
         (equal (fn-bs-durable-frontier (car (nth 12 applied))) 1)
         (equal (fn-bs-durable-frontier (car (nth 12 dropped))) 0)
         (fn-bs-store-relation (car (nth 12 applied)) k4)
