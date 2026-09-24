@@ -997,6 +997,17 @@ This narrows A3 delivery eligibility beyond the target's `not :expired`
 condition until the full progress transition and reclamation records land.
 Already committed application and return-carrier obligations are independent
 of that held-carrier eligibility.
+The host-called A3 selector `fn-bpah-pending-decision-at` gives an eligible
+local `:live` carrier priority over an older carrier whose *clock* expiry is
+`:uncertain`. If no local live carrier exists, it reports the oldest uncertain
+carrier explicitly, so the owner refuses application dispatch pending clock
+evidence. The older carrier remains held in either case. This per-carrier
+clock decision does not relax the separate global fence after an ambiguous
+FNBS or Store publication; `fnn-bpnode-dispatch-one` checks the service's
+uncertain outcome before calling `:deliver`, and `fn-bpnf-step` refuses to
+issue a delivery marker while an uncertain publication is issued. This A3
+selection only covers local whole application requests/receipts; N03's route
+wait, N04's session MRU, and N05's journal debt remain open in A1.
 
 One action per event. This is the only place delivery and dispatch are
 started, so expiry is decided before either (F-L). Selection is among
