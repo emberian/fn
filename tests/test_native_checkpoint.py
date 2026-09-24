@@ -671,7 +671,7 @@ class NativeCheckpointTests(unittest.TestCase):
             posted = self.native("operator", config, "post", "--message-id",
                                  msgid, "--payload", article, "--group",
                                  "fn.letters")
-            self.assertIn("accepted", posted.stdout)
+            self.assertIn("accepted operator post", posted.stderr)
         finally:
             diagnostic = stop_and_diagnostics(owner, timeout=60)
             self.assertEqual(owner.returncode, 0, diagnostic)
