@@ -164,7 +164,8 @@
       "requirements": [
         "RET-001",
         "RET-002",
-        "RET-004"
+        "RET-004",
+        "STO-005"
       ],
       "depends_on": [
         "PRF-001"
@@ -190,7 +191,10 @@
         "fn-sbud-prepare-below-budget-is-the-owner-prepare",
         "fn-sbud-refusal-kind-at-budget-is-unaffordable",
         "fn-sbud-budget-is-the-profile-admissibility",
-        "fn-sbud-used-names-the-transaction-namespace"
+        "fn-sbud-used-names-the-transaction-namespace",
+        "fn-sbud-pending-sequence-is-used",
+        "fn-sbud-pending-name-is-the-scans-next-name",
+        "fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound"
       ],
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144414Z-1366014.json",
@@ -210,9 +214,12 @@
         "tests/acl2/owner-prepare-carried-tests.lisp",
         "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
         "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
-        "planning/evidence/commit-path-2-2026-09-24.md"
+        "planning/evidence/commit-path-2-2026-09-24.md",
+        "books/store-budget-naming.lisp",
+        "tests/acl2/store-budget-naming-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T182844Z-3383029.json"
       ],
-      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities. P9 over the host-called functions (books/store-node-retention.lisp, 2026-09-24): fn-spc-prepare (host/store-node-host.lisp:472, answered :refused at :475 when it returns its input) returns the live store state unchanged whenever the record's charge exceeds the room the node's retention capacity leaves, with that comparison its only hypothesis; fn-node-prepare does the same; fn-node-prepare-refuses-whatever-retain-admit-refuses is the named equation that makes RET-002's fn-retain-admit-refuses-unaffordable-obligation a statement about the called function (fn-retain-admit's no-op is exactly the inadmissible case, and in that case prepare refuses). fn-sn-finish (store-node-host.lisp:546): every article accepted before a completion is accepted after it on every arm (no hypothesis beyond membership), and an obligation leaves the ledger only when the completed record is a retention release, not an undertaking, matching its id, subject, kind and evidence; Store releases name kind :forward, so no arm releases an article's :archive pin (corollary fn-sn-finish-keeps-every-archive-obligation). Teeth: tests/acl2/store-node-retention-tests.lisp, reachable witnesses from fn-sn-initial through the host's io/prepare/finish (capacity 10, 2 reserved, charge 9 refused and 8 staged; article, undertaking and release arms) and one must-fail per hypothesis; the identity, consumer and topic arms have no concrete witness. Scope: charges are abstract units, not physical bytes; there is no archive-release event in v0, so 'until explicit release' is 'kept' for articles; crash/recover and sweep are not covered here. Authorized/committed evidence validation remains open. M5 transaction budget over the called prepare (books/owner-store-budget.lisp, 2026-09-24): fn-sbud-prepare, which host/owner-host.lisp fn-owner-prepare installs, is the identity when the budget is at most the owner Store's committed record count and is fn-opc-prepare below it; its refusal word is :unaffordable; the budget is the persisted profile's admissibility (fn-sbud-budget-is-the-profile-admissibility) and is fixed at init. Teeth in tests/acl2/owner-store-budget-tests.lisp and tests/acl2/store-budget-tests.lisp; farm manifest certify-20260924T161235Z-2188032."
+      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities. P9 over the host-called functions (books/store-node-retention.lisp, 2026-09-24): fn-spc-prepare (host/store-node-host.lisp:472, answered :refused at :475 when it returns its input) returns the live store state unchanged whenever the record's charge exceeds the room the node's retention capacity leaves, with that comparison its only hypothesis; fn-node-prepare does the same; fn-node-prepare-refuses-whatever-retain-admit-refuses is the named equation that makes RET-002's fn-retain-admit-refuses-unaffordable-obligation a statement about the called function (fn-retain-admit's no-op is exactly the inadmissible case, and in that case prepare refuses). fn-sn-finish (store-node-host.lisp:546): every article accepted before a completion is accepted after it on every arm (no hypothesis beyond membership), and an obligation leaves the ledger only when the completed record is a retention release, not an undertaking, matching its id, subject, kind and evidence; Store releases name kind :forward, so no arm releases an article's :archive pin (corollary fn-sn-finish-keeps-every-archive-obligation). Teeth: tests/acl2/store-node-retention-tests.lisp, reachable witnesses from fn-sn-initial through the host's io/prepare/finish (capacity 10, 2 reserved, charge 9 refused and 8 staged; article, undertaking and release arms) and one must-fail per hypothesis; the identity, consumer and topic arms have no concrete witness. Scope: charges are abstract units, not physical bytes; there is no archive-release event in v0, so 'until explicit release' is 'kept' for articles; crash/recover and sweep are not covered here. Authorized/committed evidence validation remains open. M5 transaction budget over the called prepare (books/owner-store-budget.lisp, 2026-09-24): fn-sbud-prepare, which host/owner-host.lisp fn-owner-prepare installs, is the identity when the budget is at most the owner Store's committed record count and is fn-opc-prepare below it; its refusal word is :unaffordable; the budget is the persisted profile's admissibility (fn-sbud-budget-is-the-profile-admissibility) and is fixed at init. Teeth in tests/acl2/owner-store-budget-tests.lisp and tests/acl2/store-budget-tests.lisp; farm manifest certify-20260924T161235Z-2188032. Second count and payload constant removed (books/store-budget-naming.lisp, 2026-09-24): the host names each transaction file from the staged candidate's sequence, fn-sbud-pending-sequence (host/owner-host.lisp fn-owner-pending-sequence, host/store-node-host.lisp fn-store-sn-pending-sequence), through fn-sbud-txn-name, the scan's fn-bs-txn-name; in a record phase of a well-formed kernel that sequence is the committed count (fn-sbud-pending-sequence-is-used) and the name extends the committed namespace to one fn-bs-txn-observation-pairs accepts at sequence used (fn-sbud-pending-name-is-the-scans-next-name). The POST boundary both entries call is fn-sbud-post-boundary over the persisted profile, admitting exactly the payloads at or under the profile's payload field (fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound); the served owner relays :payload-bound as the Store word :refused, whose 441 line is W3's. Teeth in tests/acl2/store-budget-naming-tests.lisp over an owner reached by its own transitions; farm manifest certify-20260924T182844Z-3383029."
     },
     {
       "id": "PRF-005",

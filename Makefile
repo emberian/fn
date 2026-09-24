@@ -625,6 +625,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-correspondence-tests \
 	books/owner-store-budget \
 	tests/acl2/owner-store-budget-tests \
+	books/store-budget-naming \
+	tests/acl2/store-budget-naming-tests \
 	tests/acl2/owner-retention-preparation-tests \
 	books/relay \
 	books/relay-invariants \
