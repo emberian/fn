@@ -616,6 +616,48 @@
       "note": "Frame integrity evidence is scoped by PRF-035. W12 repairs only a torn final FNFD envelope; complete invalid evidence is preserved and fails startup. General media repair, durable staging orphan collection and old-valid-store rollback detection remain open."
     },
     {
+      "id": "STO-009",
+      "title": "A lost committed suffix is detected at open",
+      "specification": "specs/storage.md#the-committed-history-boundary",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-076"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/store-history-marker.lisp",
+        "tests/acl2/store-history-marker-tests.lisp",
+        "host/native/io.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_history_marker.py",
+        "planning/evidence/manifests/certify-20260924T230629Z-1648710.json",
+        "planning/evidence/m5-history-lifetimes-2026-09-24.md"
+      ],
+      "implementation_note": "committed-history.json (FNSM kind 3) holds the committed-record count. fnn-mark-committed writes it through fn-hm-after-commit after each record's transaction-directory barrier and before fnn-finish, at all three publish sites. fnn-recover evaluates fn-hm-open-verdict once against the reconstructed record count and faults with history-short-of-marker or marker-damaged. An absent marker is admitted as unmarked, which covers stores written before it.",
+      "note": "Not detected: loss of the marker with the files it covers, an unacknowledged record above the marker, whole-store replacement by an older valid copy (D14), and the configuration history and BP stores. The crash table is a transcription of rename atomicity, not yet a program of the fn-bs byte model."
+    },
+    {
+      "id": "STO-010",
+      "title": "Each class of durable history has a stated lifetime and only named capabilities remove it",
+      "specification": "specs/storage.md#history-classes-and-lifetimes",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "scenario"
+      ],
+      "evidence": [
+        "specs/storage.md",
+        "planning/evidence/m5-history-lifetimes-2026-09-24.md"
+      ],
+      "implementation_note": "Packing (P) is implemented and proved (PRF-073). History compaction (H) and content reclamation (C) are not implemented. Each needs D13 and a decision-preserving summary obligation, as the class table states. Today's compaction relieves the transaction-file count and per-file overhead only.",
+      "note": "This row is the contract. The open policy cells (release summaries, key-epoch summaries, BP outcome summaries, configuration-generation lifetime, the headroom line) are marked open in the specification."
+    },
+    {
       "id": "FLR-001",
       "title": "Crash model includes torn/reordered writes and explicit barriers",
       "specification": "specs/failures.md#crash-only-storage-model",

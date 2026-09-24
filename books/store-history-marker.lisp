@@ -342,4 +342,6 @@
 ; Export: the codec and the history model close; the round trip, the
 ; decisions' shape facts and the keystones are what includers use.
 (in-theory (disable fn-hm-encode fn-hm-decode fn-hm-step fn-hm-run
-                    fn-hm-marker-value fn-hm-admittedp))
+                    fn-hm-marker-value fn-hm-admittedp
+                    fn-hm-after-commit-decodes-to-the-next-count
+                    fn-hm-completed-commit-marks-its-count))

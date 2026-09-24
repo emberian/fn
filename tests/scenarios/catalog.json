@@ -1115,7 +1115,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -1265,6 +1265,36 @@
         "tests/acl2/native-operator-tests.lisp",
         "tests/test_native_operator_verbs.py"
       ]
+    },
+    {
+      "id": "SCN-040",
+      "title": "A lost committed suffix beside burned reservations, and the history-class contract",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-009",
+        "STO-010"
+      ],
+      "steps": [
+        "Post two articles; burn a reservation by a known abort and another by process death after reservation.",
+        "Delete the newest transaction file and open the store.",
+        "Kill or fail the post at each committed-history marker cut and recover.",
+        "Compact the store and compare which classes of state each capability removed with the class table."
+      ],
+      "expected": [
+        "Burned reservations leave the open admitted and the next post commits at the next sequence.",
+        "The open refuses the shortened history with history-short-of-marker, naming the marker and the record count.",
+        "Every marker cut recovers; later losses are still refused.",
+        "Packing removes transaction files only; no class is removed by a capability its row does not name."
+      ],
+      "evidence": [
+        "books/store-history-marker.lisp",
+        "tests/acl2/store-history-marker-tests.lisp",
+        "tests/test_native_history_marker.py",
+        "specs/storage.md",
+        "planning/evidence/m5-history-lifetimes-2026-09-24.md"
+      ],
+      "execution_scope": "Partial: the first three steps run natively on a developer image (tests/test_native_history_marker.py). The fourth is a contract check: packing's preservation is PRF-073, and history compaction and content reclamation are not implemented."
     }
   ]
 }

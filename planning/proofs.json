@@ -2973,6 +2973,37 @@
         "fn-bpaj-unlisted-carried-request-is-refused",
         "fn-bpaj-carried-unenrolled-request-is-refused"
       ]
+    },
+    {
+      "id": "PRF-076",
+      "title": "M5 committed-history boundary: no reachable history is refused, and a lost suffix containing an acknowledged record is refused by name",
+      "statement": "Over the host-called decisions fn-hm-after-commit (what the marker holds after the record of SEQUENCE: the FNSM kind-3 frame of SEQUENCE+1, host/native/io.lisp fnn-mark-committed) and fn-hm-open-verdict (the open's check, io.lisp fnn-check-history-marker called by fnn-recover with the reconstructed record count), and the history step fn-hm-step: burned reservations, uncertain publications that did or did not survive, and commits whose marker program crashed at any cut, with a crash table in which the marker is old before the rename, old or new after it, and new after the root barrier. fn-hm-run-keeps-every-open-admitted: from an admitted state, every such history with its count within uint32 is admitted. fn-hm-open-refuses-a-lost-acknowledged-record: after a commit whose marker program completed at a natural count C, followed by any history within uint32, an open that observes K <= C records is (:refused :history-short-of-marker M), where M is the marker's count. fn-hm-decode-of-encode: the marker codec round-trips every uint32.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-009"
+      ],
+      "depends_on": [
+        "PRF-073"
+      ],
+      "assumptions": [
+        "A-DURABILITY"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/store-history-marker.lisp",
+        "tests/acl2/store-history-marker-tests.lisp",
+        "host/native/io.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_history_marker.py",
+        "planning/evidence/manifests/certify-20260924T230629Z-1648710.json",
+        "planning/evidence/m5-history-lifetimes-2026-09-24.md"
+      ],
+      "progress_note": "Lane m5-history-lifetimes (2026-09-24). Certified on persvati (run-20260924T230612Z-64bc, manifest certify-20260924T230629Z-1648710, ACL2 8.7 w25, book 2.5 s, tests 2.2 s). Teeth: a reachable seven-step history (commit, burn, commit crashed after rename with the old marker, surviving uncertain record, commit, burn, lost uncertain) that is admitted, refuses a lost newest record by name, and admits the same history after further burns. For every hypothesis of both keystones, a concrete instance where the others hold and the conclusion is false. Open: the crash table is not a program of the fn-bs byte model; an absent marker is admitted; an unacknowledged survivor above the marker is not covered.",
+      "events": [
+        "fn-hm-run-keeps-every-open-admitted",
+        "fn-hm-open-refuses-a-lost-acknowledged-record",
+        "fn-hm-decode-of-encode"
+      ]
     }
   ]
 }
