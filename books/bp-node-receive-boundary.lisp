@@ -3,6 +3,7 @@
 ; parses, validates, and names the machine event and three-way result.
 (in-package "ACL2")
 (include-book "bp-node-foundation")
+(include-book "bp-fnbs-namespace")
 (include-book "bp-node-machine-guards")
 
 (set-verify-guards-eagerness 0)
@@ -109,9 +110,11 @@
          (fn-bpn-routep (fn-bpn-nth 3 event))
          (fn-clock-observationp (fn-bpn-nth 4 event))))
    ((equal (fn-cbor-ag-car event) :recover-fnbs)
-    (and (true-listp event) (equal (len event) 5)
+    (and (true-listp event) (equal (len event) 6)
          (true-listp (fn-bpn-nth 2 event))
-         (<= (len (fn-bpn-nth 2 event)) *fn-bpn-machine-max-records*)))
+         (<= (len (fn-bpn-nth 2 event)) *fn-bpn-machine-max-records*)
+         (natp (fn-bpn-nth 5 event))
+         (<= (fn-bpn-nth 5 event) *fn-bpnf-received-max-records*)))
    (t nil)))
 
 ; Only the actual machine's final receive-answer can authorize the TCPCL

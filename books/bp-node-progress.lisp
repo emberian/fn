@@ -5,6 +5,7 @@
 (include-book "bp-report-author")
 (include-book "bp-app-handoff-time")
 (include-book "bp-node-receive-boundary")
+(include-book "bp-node-debt")
 (set-verify-guards-eagerness 0)
 
 (defconst *fn-bpnp-max-routes* 64)
@@ -33,6 +34,22 @@
 (defun fn-bpnp-waits (st)
   (declare (xargs :guard t))
   (fn-bpn-nth 11 st))
+
+; These counters are maintained by the actual outer reducer.  USED counts
+; immutable received FNBS finals, including consumed historical rows.  DEBT
+; is the cold fn-bpnd-debt projection cached for served admission.
+(defun fn-bpnp-used (st)
+  (declare (xargs :guard t))
+  (fn-bpn-nth 12 st))
+
+(defun fn-bpnp-debt (st)
+  (declare (xargs :guard t))
+  (fn-bpn-nth 13 st))
+
+(defun fn-bpnp-with-credit (st used debt)
+  (declare (xargs :guard t))
+  (if (not (true-listp st)) st
+    (update-nth 13 debt (update-nth 12 used st))))
 
 (defun fn-bpnp-with-waits (st waits)
   (declare (xargs :guard t))
@@ -272,13 +289,21 @@
       (fn-bpnp-progress-step
        st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
        (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))
-    (let ((answer (fn-bpn-report-author-step st event)))
+    (let* ((answer (fn-bpn-report-author-step st event))
+           (ready (and (equal (fn-cbor-ag-car event) :recover-fnbs)
+                       (equal (fn-bpn-nth 0
+                               (fn-bpn-nth 0 (fn-bpnf-answer-effects answer)))
+                              :restart-ready)))
+           (next (fn-bpnp-with-waits
+                  (fn-bpnf-answer-state answer)
+                  (if ready nil (fn-bpnp-waits st)))))
       (fn-bpnf-answer
-       (fn-bpnp-with-waits
-        (fn-bpnf-answer-state answer)
-        (if (and (equal (fn-cbor-ag-car event) :recover-fnbs)
-                 (equal (fn-bpn-nth 0
-                         (fn-bpn-nth 0 (fn-bpnf-answer-effects answer)))
-                        :restart-ready))
-            nil (fn-bpnp-waits st)))
+       (if ready
+           (fn-bpnp-with-credit
+            next (fn-bpn-nth 5 event)
+            (fn-bpnd-debt
+             next
+             (fn-bpn-config-node-id
+              (fn-bpn-machine-state-config (fn-bpnf-base next)))))
+         (fn-bpnp-with-credit next (fn-bpnp-used st) (fn-bpnp-debt st)))
        (fn-bpnf-answer-effects answer)))))

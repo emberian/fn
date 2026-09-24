@@ -53,7 +53,10 @@
         (list :queue-report -1 9 *bpnrb-route* *bpnf-obs*))))
 (assert-event
  (equal (fn-bpnf-host-eventp
-         '(:recover-fnbs 1 nil :ready (:ready nil nil))) t))
+         '(:recover-fnbs 1 nil :ready (:ready nil nil) 0)) t))
+(assert-event
+ (null (fn-bpnf-host-eventp
+        '(:recover-fnbs 1 nil :ready (:ready nil nil)))))
 (assert-event
  (null (fn-bpnf-host-eventp
         (list :receive-bundle *bpnf-bundle* *bpnf-wire* *bpnf-ingress-p*))))
