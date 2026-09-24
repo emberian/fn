@@ -699,7 +699,7 @@
     "roots": 690,
     "theorems": 9410,
     "functions": 6740,
-    "assert_events": 10299,
+    "assert_events": 10300,
     "must_fails": 739,
     "encapsulates": 30,
     "guards": {
@@ -17155,7 +17155,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 40,
+      "assert_events": 41,
       "must_fails": 5,
       "defconsts": 21,
       "defmacros": 0,
@@ -21467,7 +21467,7 @@
       {
         "check": "olt-feed-line-always-classed",
         "book": "tests/acl2/owner-log-tests.lisp",
-        "line": 279,
+        "line": 288,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
