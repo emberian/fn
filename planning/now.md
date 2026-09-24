@@ -18,14 +18,22 @@ record/Store definitions closed in proofs. The [owner repair](evidence/owner-v6-
 and [K6 repair](evidence/byte-store-k6-provenance-cost-2026-09-24.md) have scoped
 certification; the next full combined run and image remain required.
 
-Frozen `f0d67034` passes `make check`; the repaired combined ACL2 run is
+Frozen `f0d67034` passes `make check`; its combined ACL2 run was
 `run-20260924T041225Z-7481` on hbox, under
 `/tank/fn/gates/topic-index-repaired-f0d67034-20260924`. It reused 521 of
-618 closure books and submitted 97 at four jobs. Its verdict and resulting
-native image remain pending. Later tooling-only commits `af47c79a` and
+618 closure books and submitted 97 at four jobs. It failed in 144.093 seconds:
+two direct proof failures in consumer Store projection and live configuration,
+plus thirteen missing-certificate cascades. The [original evidence](evidence/topic-index-f0d-combined-red-2026-09-24.md)
+is retained; no image was built. The [configuration repair](evidence/config-live-v6-proof-repair-2026-09-24.md)
+is integrated and scoped-certified. The consumer repair is being checked in
+a bounded proof session before another scoped run. Later tooling-only commits `af47c79a` and
 `7caa9a03` make the proof-cost warning use current include closures across
 the manifest archive and exclude whole-certification summaries from event
 diagnosis. All eight focused cost tests and the integrated static check pass.
+The [peer proof-cost repair](evidence/peer-inbound-pinned-cost-2026-09-24.md)
+is also integrated: unchanged theorem statements, 55.35 to 8.79 seconds of
+ACL2 certification time on the named source/toolchain runs. Its wider reverse
+closure remains for the next combined gate.
 
 The last shared qualified image is still `e160442f`. All three Luna feature
 runtime tests and the corrected BP deletion-report test passed on it; the
