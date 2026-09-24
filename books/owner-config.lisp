@@ -1098,6 +1098,16 @@
 ; uncertain publication fences the owner and forces the reopen whose result
 ; is one of the two histories above.
 
+; Project the accepted-record conjunct locally so the recovery proof can keep
+; the broad reconfiguration predicate closed while opening this one shape.
+(encapsulate ()
+(local (defthm fn-ocfg-reconfig-okp-implies-live-record-acceptablep
+  (implies (fn-ocfg-reconfig-okp oc id deltas)
+           (fn-cnode-record-acceptablep (fn-ocfg-live-cnode oc)
+                                        (fn-ocfg-reconfig-record oc deltas)
+                                        (fn-cnode-line-ceiling)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable (:d fn-ocfg-reconfig-okp))))))
 (defthm fn-ocfg-crash-at-any-instant-recovers-the-live-generation
   (implies (and (not (fn-ocfg-staged oc))
                 (equal (fn-replay-result-kind (fn-cnode-config-replay history)) :ok)
@@ -1122,15 +1132,19 @@
                            (fn-cfg-generation (fn-ocfg-config oc))))
                   (not (fn-ocfg-staged published)))))
   :hints (("Goal" :in-theory (e/d ((:d fn-ocfg-step) (:d fn-ocfg-reconfigure)
-                                   (:d fn-ocfg-complete) (:d fn-ocfg-reconfig-okp) (:d fn-ocfg-close)
+                                   (:d fn-ocfg-complete) (:d fn-ocfg-close)
                                    (:d fn-ocfg-reconfig-record)
                                    (:d fn-ocfg-published-config)
                                    (:d fn-ocfg-live-cnode)
                                    fn-cnode-record-acceptablep)
                                   (fn-cfg-record-acceptablep fn-cfg-apply-record
                                    fn-cnode-config-replay fn-own-complete fn-own-close
+                                   fn-ocfg-reconfig-okp
+                                   fn-ocfg-config-replay-of-one-more-record
                                    fn-ocfg-acceptable-record-is-acceptable-at-zero-reservation))
-           :use ((:instance fn-ocfg-acceptable-record-is-acceptable-at-zero-reservation
+           :use ((:instance fn-ocfg-reconfig-okp-implies-live-record-acceptablep
+                            (oc oc) (id id) (deltas deltas))
+                 (:instance fn-ocfg-acceptable-record-is-acceptable-at-zero-reservation
                             (cfg (fn-ocfg-config oc))
                             (r (fn-ocfg-reconfig-record oc deltas))
                             (reserved (fn-retain-reserved
@@ -1142,7 +1156,7 @@
                             (r (fn-ocfg-reconfig-record oc deltas))
                             (reserved (fn-retain-reserved
                                        (fn-node-retention
-                                        (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))))))))))
+                                        (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))))))))))
 
 ; -----------------------------------------------------------------------------
 ; OPEN, recorded rather than claimed (specs/reconfiguration.md section 8).
