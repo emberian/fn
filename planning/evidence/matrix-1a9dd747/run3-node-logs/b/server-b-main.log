@@ -1,0 +1,50 @@
+CONTROL /tank/fn/scratch/matrix-1a9dd747/stores/b/control.sock
+LISTENING 11191
+accepted peer connection=0 peer=a time=2026-09-24T14:35:17Z
+accepted peer connection=1 peer=a time=2026-09-24T14:35:17Z
+accepted post path=served connection=1 message-id=<native-matrix-166c41966954-b@example.invalid> agent=b.gate.example.invalid time=2026-09-24T14:35:17Z
+accepted peer connection=2 peer=a time=2026-09-24T14:35:17Z
+accepted peer connection=3 peer=a time=2026-09-24T14:35:17Z
+refused post path=served connection=3 message-id=<native-matrix-166c41966954-b@example.invalid> agent=b.gate.example.invalid time=2026-09-24T14:35:17Z
+accepted peer connection=4 peer=a time=2026-09-24T14:35:17Z
+accepted peer connection=5 peer=a time=2026-09-24T14:35:17Z
+accepted peer connection=6 peer=a time=2026-09-24T14:35:17Z
+accepted peer connection=7 peer=a time=2026-09-24T14:35:18Z
+accepted peer connection=8 peer=a time=2026-09-24T14:35:18Z
+accepted peer connection=9 peer=a time=2026-09-24T14:35:20Z
+accepted peer connection=10 peer=a time=2026-09-24T14:35:20Z
+accepted peer connection=11 peer=a time=2026-09-24T14:35:20Z
+accepted peer connection=12 peer=a time=2026-09-24T14:35:20Z
+accepted post path=served connection=12 message-id=<auth-b@example.invalid> agent=b.gate.example.invalid time=2026-09-24T14:35:20Z
+accepted peer connection=13 peer=a time=2026-09-24T14:35:20Z
+accepted post path=control message-id=<beta@b.example.invalid> time=2026-09-24T14:35:21Z
+duplicate post path=control message-id=<beta@b.example.invalid> time=2026-09-24T14:35:22Z
+refused post path=control message-id=<beta@b.example.invalid> time=2026-09-24T14:35:23Z
+accepted post path=control message-id=<stream-b@example.invalid> time=2026-09-24T14:35:23Z
+accepted peer connection=14 peer=a time=2026-09-24T14:35:26Z
+accepted peer connection=15 peer=a time=2026-09-24T14:35:27Z
+accepted peer connection=16 peer=a time=2026-09-24T14:35:27Z
+accepted peer connection=17 peer=a time=2026-09-24T14:35:27Z
+accepted peer connection=18 peer=a time=2026-09-24T14:35:27Z
+accepted peer connection=19 peer=a time=2026-09-24T14:35:27Z
+accepted peer connection=20 peer=a time=2026-09-24T14:35:28Z
+accepted peer connection=21 peer=a time=2026-09-24T14:35:29Z
+accepted peer connection=22 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=23 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=24 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=25 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=26 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=27 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=28 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=29 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=30 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=31 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=32 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=33 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=34 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=35 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=36 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=37 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=38 peer=a time=2026-09-24T14:35:31Z
+accepted peer connection=39 peer=a time=2026-09-24T14:35:31Z
+accepted operator run

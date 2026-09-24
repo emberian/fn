@@ -240,6 +240,44 @@ intra-function assignment and no further: a verdict that reached a guard
 through a helper, a JSON file or another process is beyond a static reader,
 and the sweep below is what those need.
 
+## Host value shapes: static in `make check`, dynamic beside it
+
+`acl2-arity` counts arguments; it does not count *values*. At `9c344d1d`
+`host/owner-host.lisp` passed `(fn-owner-clock-observation state)`, a
+`:program` function returning an error triple through `(value ...)`, as an
+argument of `fn-pa-authorized-event`, and ACL2 refused the translate ("a
+result of shape (MV * * STATE) where a result of shape * is required"). `make
+check` was green; the image build on hbox was the first thing to see it.
+
+`python3 tools/host_shape_check.py` is part of `make check`, needs no ACL2 and
+takes about two seconds. It infers, to a fixpoint, how many values every
+`defun` in `books/` and in the ACL2-mode host files returns (one, or an `mv`
+of k, an error triple being k = 3), then walks every ACL2-mode host
+definition and fails when a known shape meets a position that needs another:
+a function argument, a `let`/`let*` binding, an `if`/`cond`/`case` test or
+key, an `and`/`or`, `value` or `mv` argument, a non-final `pprogn`/`prog2$`
+form, the term of an `mv-let` with k variables, an `er-progn` form or
+`er-let*` binding that is not a triple, and conditional arms that disagree.
+A head it does not model (a macro, `b*`, a lambda application, a definition
+whose every arm is itself unknown) is counted as `undecidable`, never
+guessed; on the tree when it landed there were none among 3703 checked
+positions. It reports the `9c344d1d` file with exactly one finding
+(`tests/test_host_shape_check.py`). It does **not** check stobj flow (a
+`state` where a non-stobj formal is expected, which ACL2 also refuses), guards,
+undefined names (the `host_names` lint's job), or the 28 raw Common Lisp files
+the image loads under `(set-raw-mode t)`, where ACL2 translates nothing.
+
+`make check-host-translate` is the dynamic check: it installs the cached
+certificate pairs, then feeds ACL2 the ACL2-mode prefix of
+`host/native/build.lisp` (every `include-book` and host `ld` before its first
+`defttag`) exactly as `tools/build_native_host.sh` does, without saving an
+image, under the slot pool. It exits 0 when every form translated, 1 on any
+ACL2 error, and 2 (NOT RUN) when there is no ACL2, a book the prefix
+includes has no certificate, or an include warned `[Uncertified]` because the
+installed pairs do not compose. The whole prefix took about 7 s on the
+maintainer's Mac; it is outside `make check` because a worktree rarely holds a
+certificate set that composes, not because it is slow.
+
 ### The skip triage of 2026-09-21
 
 All 32 unittest-level skip sites under `tests/`, and the 35 harness-recorded

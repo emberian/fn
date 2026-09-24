@@ -141,6 +141,10 @@
         {
           "kind": "theorem",
           "name": "fn-durable-completion-installs-exact-pending-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-pinned-view-survives-other-post"
         }
       ]
     },
@@ -187,6 +191,30 @@
         {
           "kind": "theorem",
           "name": "fn-retain-release-preserves-known-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-retain-admit-refuses-unaffordable-obligation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-prepare-refuses-unaffordable-obligation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-prepare-refuses-whatever-retain-admit-refuses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spc-prepare-refuses-unaffordable-obligation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-keeps-accepted-articles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-releases-an-obligation-only-by-its-matching-release"
         }
       ]
     },
@@ -780,6 +808,11 @@
         {
           "kind": "theorem",
           "name": "fn-served-run-effects-are-typed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-240-follows-consumed-completion",
+          "pending_subject": "Subject is fn-own-finish (books/owner-served-invariants.lisp), the (:complete) event with its word computed in ACL2. The host still runs (:complete) through fn-owner-step and decides :durable by comparing phases and ledger lengths in fn-owner-finish (host/owner-host.lisp:495-507), then passes that word to fn-own-outcome (host/owner-host.lisp:1034). Under that host word a 240 over a completion of another record is reachable (tests/acl2/owner-served-invariants-tests.lisp, *own-240*). Met when fn-owner-finish returns (car (fn-own-finish o))."
         }
       ]
     },
@@ -1004,33 +1037,61 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-ocl-no-reader-observes-a-half-change",
+          "note": "headline 1 over the called path; subjects fn-ocfg-step for (:reconfigure ...) (host/owner-host.lisp:213, fn-owner-step from fn-owner-reconfigure-deltas) and fn-ocl-publish (host/owner-host.lisp:271, fn-owner-reconfigure-complete, which installs its owner unconditionally); no hypothesis"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-publish-installs-the-whole-staged-record",
+          "note": "headline 1, the value published; subject fn-ocl-publish (host/owner-host.lisp:271); hypothesis fn-ocl-config-historyp, a conjunct of fn-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-cpr-loop-configuration-is-the-record-fold",
+          "note": "the induction the whole-record keystone rests on; subject fn-cpr-loop under fn-cpr-replay, called at host/owner-host.lisp:173 (fn-owner-recover) and inside fn-ocl-complete (fn-ocl-store-config)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-publish-agrees-with-ocfg-complete-on-readers",
+          "note": "the equation from the called fn-ocl-publish to the model event fn-ocfg-step (:complete) on pins, served tables, connection records and the stage; owner and live configuration differ and are not transferred"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-request-refused-over-a-reader-in-the-group",
+          "note": "subject fn-ocl-request-deltas (host/owner-host.lisp:247, fn-owner-reconfigure, the tools/run_owner.py path) through fn-ocfg-step (host/owner-host.lisp:213); the native live arm stages fn-native-admin-plan-deltas instead"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-ocfg-no-reader-observes-a-half-change",
-          "note": "headline 1; subject fn-ocfg-step, called at host/owner-host.lisp:214 (fn-owner-step) for (:reconfigure ...) from fn-owner-reconfigure-deltas and (:complete) from fn-owner-reconfigure-complete"
+          "note": "the model statement over fn-ocfg-step (:complete); cited with fn-ocl-publish-agrees-with-ocfg-complete-on-readers",
+          "pending_subject": "Publication subject is fn-ocfg-complete through fn-ocfg-step (:complete); the host calls fn-ocl-publish (host/owner-host.lisp:271). fn-ocl-publish-agrees-with-ocfg-complete-on-readers equates them on pins, served tables, connection records and the stage only; the owner conjunct is false of the called path (tests/acl2/config-owner-publish-tests must-fail fn-ocl-publish-keeps-the-owner-is-false). The called-path headline is fn-ocl-no-reader-observes-a-half-change."
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-pin-is-stable-without-advance",
-          "note": "headline 1, the until-advance half; subject fn-ocfg-run, the fold of fn-ocfg-step (host/owner-host.lisp:214)"
+          "note": "headline 1, the until-advance half; subject fn-ocfg-run, the fold of fn-ocfg-step (host/owner-host.lisp:213)"
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-crash-at-any-instant-recovers-the-live-generation",
-          "note": "headline 2; subjects fn-ocfg-step (host/owner-host.lisp:214) over the live arm's event sequence (host/native/admin.lisp:134-162) and fn-cnode-config-replay (host/owner-host.lisp:172, fn-owner-recover)"
+          "note": "headline 2; subjects fn-ocfg-step over the live arm's event sequence (host/native/admin.lisp) and fn-cnode-config-replay",
+          "pending_subject": "Subjects are fn-cnode-config-replay and fn-ocfg-step (:complete); no host line calls fn-cnode-config-replay (fn-owner-recover calls fn-cpr-replay, host/owner-host.lisp:173) and publication calls fn-ocl-publish (host/owner-host.lisp:271). fn-ocl-cpr-loop-configuration-is-the-record-fold and fn-ocl-publish-installs-the-whole-staged-record state the configuration half over the called functions; no theorem equates the :ok verdicts of fn-cpr-replay and fn-cnode-config-replay."
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-config-replay-of-one-more-record",
-          "note": "the replay keystone headline 2 uses; subject fn-cnode-config-replay (host/owner-host.lisp:172)"
+          "note": "the replay keystone headline 2 uses; subject fn-cnode-config-replay",
+          "pending_subject": "fn-cnode-config-replay has no host caller; recovery calls fn-cpr-replay (host/owner-host.lisp:173). See fn-ocl-cpr-loop-configuration-is-the-record-fold."
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-open-pins-the-live-configuration",
-          "note": "host line host/owner-host.lisp:1005 (fn-ocfg-open)"
+          "note": "host line host/owner-host.lisp:1205 (fn-ocfg-open)"
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-advance-observes-the-live-configuration",
-          "note": "subject fn-ocfg-advance through fn-ocfg-step (host/owner-host.lisp:214, fn-owner-advance)"
+          "note": "subject fn-ocfg-advance through fn-ocfg-step (host/owner-host.lisp:213, fn-owner-advance)"
         },
         {
           "kind": "theorem",
@@ -1139,6 +1200,30 @@
         {
           "kind": "theorem",
           "name": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-gated-command-is-refused-and-not-performed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-protected-only-refuses-authinfo-before-tls"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-of-authinfo-on-a-clear-connection-is-483-and-changes-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-post-by-a-principal-without-the-flag-is-440"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated"
         }
       ]
     },
@@ -1299,6 +1384,10 @@
         {
           "kind": "theorem",
           "name": "fn-auth-step-preserves-the-config"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-login-installs-the-credential-posting-flag"
         }
       ]
     },
@@ -1562,12 +1651,52 @@
         {
           "kind": "theorem",
           "name": "fn-bpn-sf-step-preserves-nonreuse",
-          "pending_subject": "Observed-file trace model calls the native core recover/reserve subjects through named equations; raw syscall observations, ordering and the confirmed-frontier durability premise still require host/platform correspondence."
+          "pending_subject": "Model-only (reach_check orphan): the subject is the fn-bpn-sf observed-file model, whose wrappers equal fn-bpn-sequence-reserve/-recover. The served fn-bpnp-step allocates no sequence; the host reserves one outside it (fnn-bp-reserve-sequence, host/native/bp.lisp:152, through fn-bpn-host-sequence-reserve/-recover in the uncertified host/bp-node-host.lisp:83-104, called at host/native/bp.lisp:168-174 and bp-service.lisp:158) or reuses one via fn-bpn-host-existing-sequence (host/bp-node-machine-host.lisp:21, bp-service.lisp:799-806), and passes it to fn-bpnp-step as an :enqueue operand. No served-path theorem exists until those host functions move into a certified book and a theorem shows the existing-sequence reuse binds one bundle."
         },
         {
           "kind": "theorem",
           "name": "fn-bpn-sf-trace-preserves-safety",
-          "pending_subject": "Observed-file trace model calls the native core recover/reserve subjects through named equations; raw syscall observations, ordering and the confirmed-frontier durability premise still require host/platform correspondence."
+          "pending_subject": "Model-only (reach_check orphan): the subject is the fn-bpn-sf observed-file model, whose wrappers equal fn-bpn-sequence-reserve/-recover. The served fn-bpnp-step allocates no sequence; the host reserves one outside it (fnn-bp-reserve-sequence, host/native/bp.lisp:152, through fn-bpn-host-sequence-reserve/-recover in the uncertified host/bp-node-host.lisp:83-104, called at host/native/bp.lisp:168-174 and bp-service.lisp:158) or reuses one via fn-bpn-host-existing-sequence (host/bp-node-machine-host.lisp:21, bp-service.lisp:799-806), and passes it to fn-bpnp-step as an :enqueue operand. No served-path theorem exists until those host functions move into a certified book and a theorem shows the existing-sequence reuse binds one bundle."
+        }
+      ]
+    },
+    {
+      "id": "PRF-046",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-base-event-refines-fn-bpn-step",
+          "note": "Subject-equating keystone (AGENTS.md rule 1) for the lower machine keystones below: on (:base E), which fnn-bps-step (bp-service.lisp:178-179) builds for every lower machine event, host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step and answers exactly fn-bpn-step's base state and effects when nothing is issued and no delivery is uncertain, otherwise no effect with the base unchanged. Teeth: tests/acl2/bp-node-counterexamples-tests (witness plus one must-fail per hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-emits-no-release-and-no-receipt-prepare",
+          "note": "Over every event of the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step), no hypotheses: no :release and no :receipt-prepare effect. The release path is the bp-release receipt join. Teeth: reachable kind-8/kind-9 witnesses and a release mutant in tests/acl2/bp-node-counterexamples-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-preserves-guard-premises",
+          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): the base machine invariant, session table and held-list shape survive every host event. Teeth: tests/acl2/bp-node-progress-premises-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-progress-preserves-held",
+          "note": "Over the called fn-bpnp-step on a :progress event. Teeth: tests/acl2/bp-node-machine-teeth-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch",
+          "note": "Over the called fn-bpnp-step on a :progress event. Teeth: tests/acl2/bp-node-machine-teeth-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-step-preserves-lifecycle-invariant",
+          "note": "Subject fn-bpn-step; holds of the called fn-bpnp-step's base on (:base E) events through fn-bpnp-step-base-event-refines-fn-bpn-step. Not proved over the served step's other arms (receive, delivery, family, forwarding, recovery), which change the base through fn-bpn-propose and fn-bpn-restart-step."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record",
+          "note": "Subject fn-bpn-step; bridged to the called fn-bpnp-step on (:base E) by fn-bpnp-step-base-event-refines-fn-bpn-step. The served forwarding arm's own :cl-send (kind 8, fn-bpnp-attempt-persist-step) has no authorization keystone yet."
         }
       ]
     },
@@ -1658,6 +1787,26 @@
         {
           "kind": "theorem",
           "name": "fn-own-feed-targets-omit-no-offerable-peer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-never-offers-a-loop",
+          "note": "The loop keystone, over the unfiltered fn-own-feed-targets. It counts for the host only through fn-own-submission-targets-are-feed-targets."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-submission-targets-are-feed-targets",
+          "note": "The subject equation of AGENTS.md rule 1 (a bound, not an equality: tests/acl2/owner-tests shows the filter emptying the targets once the peer holds the Message-ID). fn-own-submission-targets is what host/owner-host.lisp fn-owner-submission-intent reaches through fn-own-submission-intent-records, and what fn-own-feed-durable and fn-own-feed-durable-records enqueue and journal."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-submission-never-targets-a-loop",
+          "note": "The loop statement over the host-called fn-own-submission-targets; its proof is the two events above."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-transit-outcome-never-enqueues-on-the-origin",
+          "note": "Over fn-own-transit-outcome, the transition host/owner-host.lisp fn-owner-transit-outcome installs: the origin peer's feed is unchanged whatever the decision and the store word. Replaces, for the host, the sibling fn-own-feed-accept-never-enqueues-on-the-origin (fn-own-feed-accept has no caller)."
         }
       ]
     },
@@ -1700,6 +1849,18 @@
         {
           "kind": "theorem",
           "name": "fn-own-fault-is-not-a-store-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-fault-reply-is-not-a-post-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-fault-keeps-every-other-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-open-at-the-bound-refuses"
         }
       ]
     },
@@ -1841,6 +2002,16 @@
           "kind": "theorem",
           "name": "fn-pu-relay-article-names-the-agent-in-every-path",
           "note": "The article-level keystone doing the work."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-relayed-octets-keep-the-received-path-tail",
+          "note": "One hypothesis (the node has a path identity) with a must-fail on the anonymous node. Over fn-peer-relayed-octets (host/owner-host.lisp fn-owner-take): each stored Path line's content is the received one with the identity, the diagnostic and two '!' in front."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pu-relay-article-keeps-the-received-path-tail",
+          "note": "The article-level keystone doing the work (books/path-update-tail.lisp)."
         }
       ]
     },
@@ -2067,6 +2238,31 @@
           "kind": "theorem",
           "name": "fn-ncl-status-nonaccepted-reply-roundtrip",
           "note": "The exact host-called kind-9 status encoder and decoder recover refused, uncertain and fault with empty fields; an unrecognized status is a separating tooth."
+        }
+      ]
+    },
+    {
+      "id": "PRF-026",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-of-a-kind-4-acceptance-records-its-verdict",
+          "note": "Keystone, store side. Subject fn-sn-finish (host/owner-host.lisp fn-owner-finish runs the owner (:complete) event, fn-own-complete; host/store-node-host.lisp fn-store-sn-finish calls it directly). Under fn-sn-completion-enabledp and fn-stxa-p of the completion record, fn-sn-verdict-lookup of the finished Store at the kind-4 verdict event's Message-ID is that event's (token detail keyring-generation) verdict. Teeth in tests/acl2/owner-verdict-read-tests.lisp: reachable T10a witness; must-fail without the gate (identity sequence advanced) and without fn-stxa-p (reachable kind-3 rotation completion). Book 2.9 s, persvati run-20260924T144834Z-7de2."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-of-a-kind-4-acceptance-keeps-other-verdicts",
+          "note": "Sibling of the keystone: every other Message-ID's lookup is unchanged by the kind-4 finish."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-reader-opened-after-completion-pins-the-finished-verdicts",
+          "note": "Keystone, owner side. A connection fn-own-open creates after fn-own-step (:complete) pins exactly (fn-sn-verdicts (fn-sn-finish s)). Must-fail: reader A, opened before the completion, pins a different list."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-hdr-fn-verified-is-the-pinned-verdict",
+          "note": "Keystone, reader side, over fn-own-read: host/native/owner.lisp (fnn-owner-action 'fn-owner-chunk ...) runs host/owner-host.lisp fn-owner-chunk, i.e. fn-ocfg-read-tls-prefix, equal to fn-ocfg-read by fn-ocfg-read-tls-prefix-is-full-read, whose reply is (car (fn-own-read ...)). One read whose octets frame nothing until the last, which frames HDR :fn-verified <msgid>, on an ungated reader (non-peer, not awaiting, projected) answers the 225 block whose field is (fn-stx-reader-item (fn-stx-reader-lookup msgid (fn-own-conn-verdicts conn))). Lemmas: fn-served-step-hdr-fn-verified-is-the-pinned-verdict, fn-served-step-of-one-framed-event, fn-served-dispatch-hdr-fn-verified-msgid, fn-nntp-verdict-hdr-msgid-is-recorded. Framing is a premise, not proved from the wire. Must-fail per hypothesis only for: article absent from the pin (reader A, 430), last octet not framing (read cut before LF), item not :fn-verified (HDR Subject). No teeth yet for the auth gate, peer, awaiting-article or wire-closed premises. Book 5.3 s, persvati run-20260924T144834Z-7de2."
         }
       ]
     },

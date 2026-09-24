@@ -142,6 +142,10 @@ function supplied no observation at all, which is a defect here."
 (defun fnn-owner-finish ()
   (fnn-owner-action 'fn-owner-finish))
 
+(defun fnn-owner-finish-submission ()
+  "The article completion's word, fn-own-finish's (host/owner-host.lisp)."
+  (fnn-owner-action 'fn-owner-finish-submission))
+
 (defun fnn-owner-name-list (octets)
   "Split ACL2's LF-joined name projection; LF is excluded by the name grammar."
   (let ((names nil) (current nil))
@@ -760,7 +764,7 @@ recovery."
                       :admissible)
             (return-from fnn-owner-attempt :unaffordable))
           (let ((*fnn-observe-callback* #'fnn-owner-observe)
-                (*fnn-finish-callback* #'fnn-owner-finish))
+                (*fnn-finish-callback* #'fnn-owner-finish-submission))
             (fnn-advance-frontier store
                                   (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
             (multiple-value-bind (obligation subject ignored)

@@ -1,0 +1,54 @@
+CONTROL /tank/fn/scratch/matrix-1a9dd747/stores/a/control.sock
+LISTENING 11190
+accepted peer connection=0 peer=b time=2026-09-24T14:35:09Z
+accepted peer connection=1 peer=b time=2026-09-24T14:35:10Z
+accepted post path=served connection=1 message-id=<native-matrix-942175316232-a@example.invalid> agent=a.gate.example.invalid time=2026-09-24T14:35:10Z
+accepted peer connection=2 peer=b time=2026-09-24T14:35:10Z
+accepted peer connection=3 peer=b time=2026-09-24T14:35:10Z
+refused post path=served connection=3 message-id=<native-matrix-942175316232-a@example.invalid> agent=a.gate.example.invalid time=2026-09-24T14:35:10Z
+accepted peer connection=4 peer=b time=2026-09-24T14:35:10Z
+accepted peer connection=5 peer=b time=2026-09-24T14:35:10Z
+accepted peer connection=6 peer=b time=2026-09-24T14:35:10Z
+accepted peer connection=7 peer=b time=2026-09-24T14:35:11Z
+accepted peer connection=8 peer=b time=2026-09-24T14:35:11Z
+accepted peer connection=9 peer=b time=2026-09-24T14:35:12Z
+accepted peer connection=10 peer=b time=2026-09-24T14:35:12Z
+accepted peer connection=11 peer=b time=2026-09-24T14:35:12Z
+accepted peer connection=12 peer=b time=2026-09-24T14:35:12Z
+accepted post path=served connection=12 message-id=<auth-a@example.invalid> agent=a.gate.example.invalid time=2026-09-24T14:35:12Z
+accepted peer connection=13 peer=b time=2026-09-24T14:35:12Z
+accepted post path=control message-id=<alpha@a.example.invalid> time=2026-09-24T14:35:13Z
+duplicate post path=control message-id=<alpha@a.example.invalid> time=2026-09-24T14:35:14Z
+refused post path=control message-id=<alpha@a.example.invalid> time=2026-09-24T14:35:15Z
+accepted post path=control message-id=<stream-a@example.invalid> time=2026-09-24T14:35:16Z
+accepted peer connection=14 peer=b time=2026-09-24T14:35:25Z
+accepted peer connection=15 peer=b time=2026-09-24T14:35:27Z
+accepted peer connection=16 peer=b time=2026-09-24T14:35:27Z
+accepted peer connection=17 peer=b time=2026-09-24T14:35:28Z
+accepted peer connection=18 peer=b time=2026-09-24T14:35:28Z
+accepted peer connection=19 peer=b time=2026-09-24T14:35:28Z
+accepted peer connection=20 peer=b time=2026-09-24T14:35:29Z
+accepted peer connection=21 peer=b time=2026-09-24T14:35:29Z
+accepted peer connection=22 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=23 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=24 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=25 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=26 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=27 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=28 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=29 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=30 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=31 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=32 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=33 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=34 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=35 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=36 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=37 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=38 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=39 peer=b time=2026-09-24T14:35:30Z
+accepted peer connection=40 peer=b time=2026-09-24T14:35:32Z
+accepted peer connection=41 peer=b time=2026-09-24T14:35:32Z
+accepted post path=served connection=41 message-id=<concurrent@example.invalid> agent=a.gate.example.invalid time=2026-09-24T14:35:32Z
+accepted peer connection=43 peer=b time=2026-09-24T14:35:34Z
+accepted operator run
