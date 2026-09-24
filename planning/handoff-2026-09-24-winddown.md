@@ -116,6 +116,14 @@ file bytes and symlink targets before removing a worktree.
 
 ## Final cut
 
-Pending the finite BP packet and one shared convergence run. Until this section
-is updated, `863c2141` is the latest completed shared image described here,
-and later source must retain its unqualified boundaries.
+All finite implementation packets are integrated. At 06:55 UTC the final
+image is blocked by the expanded BP guard closure: both
+`host/native/build.lisp` and `host/native/build-dtn.lisp` directly include
+`books/bp-node-progress-guards`. It is not an optional assurance book that can
+be omitted while claiming the normal image built. Two bounded repair lanes
+are closing lower helper and outer progress guards through 07:08 UTC.
+
+Until this section is updated with the final result, `863c2141` is the latest
+completed shared image described here. Current dev passes structural checks
+but its later BP source is not yet a buildable qualified image. Do not erase
+that distinction by using old certificates or excluding a failed root.
