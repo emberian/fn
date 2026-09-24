@@ -354,7 +354,7 @@ class NativeBpNodeTests(unittest.TestCase):
             for frame in sorted((journal / "lifecycle").glob("*.fnb")):
                 octets = "'" + bridge.literal(frame.read_bytes())
                 row = bridge.call(f"(fn-bpnf-conflict-unframe {octets})")
-                if row.strip().upper() != "NIL":
+                if row.lstrip().upper().startswith(b"(:BPNF-CONFLICT "):
                     rows.append((frame.name, row))
             return rows
         finally:
@@ -379,9 +379,9 @@ class NativeBpNodeTests(unittest.TestCase):
 
         conflicting = self.conflicting_transit_bundle()
         refused = self.send_transit(port, conflicting, "s2")
-        self.assertEqual(refused.returncode, 1, refused.stderr)
         out = self.wait_for_output(receiver, b"reason=identity-conflict", timeout=60)
         self.assertIn(b"BP refused xfer=", out)
+        self.assertEqual(refused.returncode, 1, (refused.stdout, refused.stderr, out))
         # The same conflict again: refused again, never :busy.
         again = self.send_transit(port, conflicting, "s3")
         self.assertEqual(again.returncode, 1, again.stderr)

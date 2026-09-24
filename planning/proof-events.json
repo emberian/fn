@@ -2029,12 +2029,17 @@
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-identity-conflict-is-refused-or-recorded",
-          "note": "N11 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): a host-admitted reception whose exact wire conflicts with a live held identity keeps every held row and answers either the refusal to its ingress or, exactly when the kind-14 record is well formed and journal credit admits one zero-debt final, the :persist-conflict proposal naming the held row, the ingress and the carrier's fn-digest content id. Needs the host's :persist-conflict publisher before merge into an image. Teeth: tests/acl2/bp-node-counterexamples-tests (the event-kind hypothesis has no separate must-fail)."
+          "note": "N11 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): a host-admitted reception whose exact wire conflicts with a live held identity keeps every held row and answers either the refusal to its ingress or, exactly when the kind-14 record is well formed and journal credit admits one zero-debt final, the :persist-conflict proposal naming the held row, the ingress and the carrier's fn-digest content id. The TCPCL callback (fnn-bps-receive) settles the :persist-conflict through fnn-bps-persist-kind-fourteen before it takes the final answer. Teeth: tests/acl2/bp-node-counterexamples-tests (one witness per hypothesis: the event-kind witness is a six-field recovery event carrying the same bundle, wire and ingress; the next-arrival witness is reached through fn-bpnp-step recovery; the epoch, next-op and next-op-bound witnesses are corrupted states, unreachable because recovery admits only a frame epoch and resets next-op to 0)."
         },
         {
           "kind": "theorem",
           "name": "fn-bpnp-step-conflict-publication-answers-refusal",
           "note": "N11 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): the matching persist result of a pending kind-14 operation answers the recorded ingress exactly :identity-conflict for every outcome, keeps every held row, clears the operation on :durable or :refused and fences otherwise; a durable record consumes one final of credit. Teeth: tests/acl2/bp-node-counterexamples-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-conflict-publication-success-binds-exact-echo",
+          "note": "N11 publication authority (books/bp-fnbs-conflict-publication), called by host/native/bp-service.lisp fnn-bps-persist-kind-fourteen: an :ok authorization is exactly the pending :conflict operation at (epoch, op) with that record, next-op advanced past it, the lock held and the final name absent, and it publishes fn-bpnf-conflict-frame of that record at fn-bpnf-stored-record-name epoch op. Teeth: tests/acl2/bp-node-counterexamples-tests (reachable witness on the issued N11 state; refusals for lock, final name, operation id, record, uncertain status and nothing issued)."
         },
         {
           "kind": "theorem",
