@@ -48,13 +48,16 @@ idempotence. An adapter that called `bprecvfile` and treated its output as
 staging would be unsafe; an adapter that acknowledged before its own `fsync`
 would be lying about restart safety.
 
-**LTP-B2 — no bundle identifier to the sender.** `bpsendfile` prints none;
-`bp_send()` returns an in-process `SdrObject` address. fn's durable attempt
-record has no observed transport handle to bind, which is why no receipt return
-leg was attempted here. Closing this needs a C-API adapter that reads the
-RFC 9171 bundle id (source EID, creation timestamp, sequence) out of the new
-bundle object before it is destroyed, and a decision about what fn stores when
-that read fails.
+**LTP-B2 — observed bundle identifier, not yet durably bound.** `bpsendfile`
+prints none; ordinary `bp_open()` leaves `bp_send()`'s in-process bundle object
+unset. The pinned C helper `tests/ltp/fn_ltp_send.c` uses a detained source SAP,
+reads the RFC 9171 source EID, creation timestamp and sequence under an SDR
+transaction, and publishes an exclusive fsynced observation file. An isolated
+two-node run matched that ID to the receiver's staged ADU; see the
+[native ID evidence](evidence/ltp-native-id-2026-09-24.md). fn's durable attempt
+record still has no ACL2-validated binding to the observation or returned
+application receipt. A crash after `bp_send()` but before observation
+publication is uncertain, not a refusal.
 
 **LTP-B3 — EID mapping.** fn's configured `peer-eid` is an application identity
 ACL2 binds inside the ADU; ION needs its own registered destination EID. The
@@ -74,8 +77,9 @@ report, deletion or expiry cannot perform an obligation release.
 
 ## Suggested next work
 
-1. A C-API ION adapter closing LTP-B2, so a sender attempt binds a real bundle
-   id and the receipt return leg can run.
+1. Bind the C helper's observed bundle ID to fn's durable attempt through an
+   ACL2-validated transition, retaining uncertainty if the file is missing or
+   publication fails; then drive the application receipt return leg.
 2. Separate application-peer-EID from BP-destination-EID in the fn workflow
    config, rather than in a lab driver.
 3. The interruption campaign C3-04 wants: outages past the LTP repair budget,
