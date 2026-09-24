@@ -1139,6 +1139,30 @@
         {
           "kind": "theorem",
           "name": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-gated-command-is-refused-and-not-performed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-protected-only-refuses-authinfo-before-tls"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-of-authinfo-on-a-clear-connection-is-483-and-changes-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-post-by-a-principal-without-the-flag-is-440"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated"
         }
       ]
     },
@@ -1299,6 +1323,10 @@
         {
           "kind": "theorem",
           "name": "fn-auth-step-preserves-the-config"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-login-installs-the-credential-posting-flag"
         }
       ]
     },
