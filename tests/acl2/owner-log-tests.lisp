@@ -182,9 +182,19 @@
 (defconst *olt-transit-unconsumed* (olt-owner 0 nil *olt-transit-decision*))
 
 ; The failure-8 line: the receiver's ingress refused a signed carrier for want
-; of its own enrollment, and the peer was sent 439.
+; of its own enrollment, and the peer was sent 439.  The ingress refused
+; before the Store, so no completion was consumed: the owner is the
+; unconsumed one.  Over a consumed completion fn-own-outcome-completion reads
+; a refusal word as uncertain and the line says `uncertain ... code=436',
+; which is what this witness evaluated to over *olt-transit*.
 (defconst *olt-refused-transit-line*
-  (fn-olog-transit-line *olt-transit* 7 :want nil :refused :local-enrollment))
+  (fn-olog-transit-line *olt-transit-unconsumed* 7 :want nil :refused
+                        :local-enrollment))
+(assert-event
+ (equal (fn-olog-line-word
+         (fn-olog-transit-line *olt-transit* 7 :want nil :refused
+                               :local-enrollment))
+        (olt-text "uncertain")))
 (assert-event
  (equal *olt-refused-transit-line*
         (olt-text "refused transit connection=7 message-id=<relay@example.invalid> code=439 decision=want reason=none detail=local-enrollment time=2026-09-18T00:00:00Z")))
