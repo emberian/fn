@@ -445,6 +445,19 @@ Current convergence checkpoint (root `b9bf596d`):
 The next small repaired poll/clone/Mini-projection image should not wait for
 all later P3 or BP work. Keep each source and test-driver identity explicit.
 
+### Storage topic/reopen handoff — 2026-09-24 05:25 UTC
+
+- `storage_kernel_completion` on isolated `fix/byte-store-topic-reopen`:
+  byte K4 and sweep reopen statements carry the exact scanned observed-topic
+  replay premise required by Store v6. A physically framed topic-anchor image
+  after a consumer bootstrap satisfies the old consumer/byte/crash/identity
+  premises and refuses at `fn-sn-open-observed` because topic replay fails.
+  Persvati selected book/test `run-20260924T052420Z-2a40` passed at two jobs;
+  evidence `planning/evidence/byte-k4-topic-reopen-2026-09-24.md`. The packet
+  is conditional; topic_metadata owns the maintained actual Store topic/crash
+  bridge and BP foundation uses that shared interface. No native or full
+  closure run was duplicated.
+
 
 ### Root checkpoint — 2026-09-23 23:33 UTC
 
