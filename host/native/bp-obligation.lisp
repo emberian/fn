@@ -91,7 +91,8 @@
 ;;; FNBS key (work attempt generation), the request ADU (fn-bpo-request-adu
 ;;; over the image those two records make) and its destination EID.  The host
 ;;; publishes the two records, takes the one :submit effect, and only then
-;;; hands the ADU to the FNBS carrier.  No ION record, route or helper is used;
+;;; hands the ADU to the FNBS carrier.  A work whose last attempt a reopen
+;;; marked :restart-observed gets the plan's :retry-request first.  No ION record, route or helper is used;
 ;;; `app-journal workflow-ion-submit' is the ION adapter of the same attempt.
 
 (defun fnn-bpo-request-pause (selector marker)
@@ -109,14 +110,20 @@
      (declare (ignore service))
      (let ((plan (fnn-core-state 'fn-workflow-request-plan work-id attempt-id)))
        (unless (and (consp plan) (eq (first plan) :request)
-                    (= (length plan) 6))
+                    (= (length plan) 7))
          (fnn-refuse "ACL2 refused a request for work ~a attempt ~a"
                      work-id attempt-id))
-       (destructuring-bind (tag attempt outcome key adu destination) plan
+       (destructuring-bind (tag attempt outcome key adu destination retry) plan
          (declare (ignore tag))
          (unless (and (fnn-octet-list-p adu) (<= 1 (length adu) 65538)
                       (stringp destination))
            (fnn-fault "ACL2 returned an invalid request plan"))
+         ;; A restart-observed attempt is retried by the journaled policy
+         ;; decision first, so the next open replays the new attempt.
+         (when retry
+           (fnn-app-publish opened retry)
+           (fnn-out "BP obligation request durable retry work=~a attempt=~a generation=~d"
+                    (second retry) (third retry) (fourth retry)))
          (fnn-app-publish opened attempt :reserve-resolution t)
          (fnn-bpo-request-pause "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT"
                                 "BP OBLIGATION ATTEMPT DURABLE")

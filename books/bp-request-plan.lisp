@@ -47,30 +47,60 @@
 (defun fn-bprq-plan-key (plan) (declare (xargs :guard t)) (fn-bp-journal-nth 3 plan))
 (defun fn-bprq-plan-adu (plan) (declare (xargs :guard t)) (fn-bp-journal-nth 4 plan))
 (defun fn-bprq-plan-destination (plan) (declare (xargs :guard t)) (fn-bp-journal-nth 5 plan))
+(defun fn-bprq-plan-retry (plan) (declare (xargs :guard t)) (fn-bp-journal-nth 6 plan))
 
-; The workflow image after the plan's attempt and its durable outcome, which
-; is the image the host holds once both publications return :durable.
-(defun fn-bprq-published-state (s attempt outcome)
+; A work whose last attempt a reopen marked :restart-observed is retryable
+; only in the live image: disk replay applies the restart after the last
+; record, so a new :attempt straight after the old one is refused on the next
+; open.  The journaled :retry-request for the old attempt (fn-bp-request-retry,
+; the explicit local policy decision to retry) is admitted both live and in
+; replay, and makes the old attempt :unknown, which is retryable.  The
+; operator asking again for the same work is that decision.
+(defun fn-bprq-retry-record (s work-id)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((work (fn-bp-find-work work-id (fn-bp-state-works s)))
+         (old (fn-bp-work-attempt work))
+         (record (list :retry-request work-id (fn-bp-attempt-id old)
+                       (fn-bp-attempt-generation old)
+                       (fn-bp-config-policy-id (fn-bp-state-config s)))))
+    (if (and (consp old)
+             (equal (fn-bp-attempt-status old) :restart-observed)
+             (fn-bp-journal-recordp record)
+             (car (fn-bprl-apply-journal-record s record)))
+        record
+      nil)))
+
+(defun fn-bprq-pre-state (s retry)
+  (declare (xargs :guard t :verify-guards nil))
+  (if retry (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s retry)) s))
+
+; The workflow image after the plan's records (its retry request, if any,
+; its attempt and the attempt's durable outcome), which is the image the host
+; holds once every publication returns :durable.
+(defun fn-bprq-published-state (s retry attempt outcome)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bp-journal-nth
    1 (fn-bprl-apply-journal-record
-      (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s attempt))
+      (fn-bp-journal-nth
+       1 (fn-bprl-apply-journal-record (fn-bprq-pre-state s retry) attempt))
       outcome)))
 
-; Plan: (:request ATTEMPT OUTCOME (WORK ATTEMPT-ID GENERATION) ADU DESTINATION)
-; or nil.  DESTINATION is the work's peer EID, the bundle destination the
+; Plan: (:request ATTEMPT OUTCOME (WORK ATTEMPT-ID GENERATION) ADU DESTINATION
+; RETRY) or nil, RETRY being the :retry-request published first, or nil.  DESTINATION is the work's peer EID, the bundle destination the
 ; FNBS carrier addresses; the request inside names the same EID.
 ; nil is a refusal: no admissible attempt, no single :submit, or no request
 ; (fn-bpo-request-adu refuses a work that is not outstanding, not bound to a
 ; committed article, or whose image is pending or fenced).
 (defun fn-bprq-plan (s work-id attempt-id)
   (declare (xargs :guard t :verify-guards nil))
-  (let* ((txid (fn-bprq-next-txid s))
-         (attempt (fn-bprq-attempt-record s txid 0 work-id attempt-id)))
+  (let* ((retry (fn-bprq-retry-record s work-id))
+         (s1 (fn-bprq-pre-state s retry))
+         (txid (fn-bprq-next-txid s1))
+         (attempt (fn-bprq-attempt-record s1 txid 0 work-id attempt-id)))
     (if (not attempt)
         nil
       (let* ((outcome (list :outcome txid 0 :ordinary :durable))
-             (a1 (fn-bprl-apply-journal-record s attempt))
+             (a1 (fn-bprl-apply-journal-record s1 attempt))
              (a2 (fn-bprl-apply-journal-record
                   (fn-bp-journal-nth 1 a1) outcome))
              (generation (fn-bp-journal-nth 5 attempt))
@@ -86,7 +116,8 @@
                   (fn-bp-work-peer-eid
                    (fn-bp-find-work work-id
                                     (fn-bp-state-works
-                                     (fn-bp-journal-nth 1 a2)))))
+                                     (fn-bp-journal-nth 1 a2))))
+                  retry)
           nil)))))
 
 (defthm fn-bprq-find-work-names-its-key
@@ -171,13 +202,16 @@
 
 (defthm fn-bprq-plan-unfolds
   (implies (fn-bprq-plan s work-id attempt-id)
-           (let* ((txid (fn-bprq-next-txid s))
-                  (attempt (fn-bprq-attempt-record s txid 0 work-id attempt-id))
+           (let* ((retry (fn-bprq-retry-record s work-id))
+                  (s1 (fn-bprq-pre-state s retry))
+                  (txid (fn-bprq-next-txid s1))
+                  (attempt (fn-bprq-attempt-record s1 txid 0 work-id attempt-id))
                   (outcome (list :outcome txid 0 :ordinary :durable))
                   (generation (fn-bp-journal-nth 5 attempt))
-                  (s2 (fn-bprq-published-state s attempt outcome))
+                  (s2 (fn-bprq-published-state s retry attempt outcome))
                   (plan (fn-bprq-plan s work-id attempt-id)))
              (and attempt
+                  (equal (fn-bprq-plan-retry plan) retry)
                   (equal (fn-bprq-plan-attempt plan) attempt)
                   (equal (fn-bprq-plan-outcome plan) outcome)
                   (equal (fn-bprq-plan-key plan)
@@ -195,8 +229,9 @@
   :hints (("Goal" :in-theory (e/d (fn-bprq-plan fn-bprq-plan-attempt
                                    fn-bprq-plan-outcome fn-bprq-plan-key
                                    fn-bprq-plan-adu fn-bprq-plan-destination
-                                   fn-bprq-published-state)
+                                   fn-bprq-plan-retry fn-bprq-published-state)
                                   (fn-bp-find-work fn-bp-work-peer-eid
+                                   fn-bprq-retry-record fn-bprq-pre-state
                                    fn-bp-state-works fn-bprq-attempt-record fn-bprq-next-txid
                                    fn-bprl-apply-journal-record
                                    fn-bpo-request-adu fn-bpo-result-okp
@@ -226,7 +261,8 @@
    (let* ((plan (fn-bprq-plan s work-id attempt-id))
           (attempt (fn-bprq-plan-attempt plan))
           (generation (fn-bp-journal-nth 5 attempt))
-          (s2 (fn-bprq-published-state s attempt (fn-bprq-plan-outcome plan)))
+          (s2 (fn-bprq-published-state s (fn-bprq-plan-retry plan) attempt
+                                       (fn-bprq-plan-outcome plan)))
           (work (fn-bp-find-work work-id (fn-bp-state-works s2)))
           (article
            (fn-find-article
@@ -251,17 +287,31 @@
   :hints (("Goal"
            :use ((:instance fn-bprq-plan-unfolds)
                  (:instance fn-bprq-attempt-record-names-its-attempt
-                            (txid (fn-bprq-next-txid s)) (tx-generation 0))
+                            (s (fn-bprq-pre-state s (fn-bprq-retry-record s work-id)))
+                            (txid (fn-bprq-next-txid
+                                   (fn-bprq-pre-state
+                                    s (fn-bprq-retry-record s work-id))))
+                            (tx-generation 0))
                  (:instance fn-bprq-request-adu-is-the-works-request
                             (s (fn-bprq-published-state
-                                s
+                                s (fn-bprq-retry-record s work-id)
                                 (fn-bprq-attempt-record
-                                 s (fn-bprq-next-txid s) 0 work-id attempt-id)
-                                (list :outcome (fn-bprq-next-txid s) 0
-                                      :ordinary :durable)))
+                                 (fn-bprq-pre-state s (fn-bprq-retry-record s work-id))
+                                 (fn-bprq-next-txid
+                                  (fn-bprq-pre-state
+                                   s (fn-bprq-retry-record s work-id)))
+                                 0 work-id attempt-id)
+                                (list :outcome
+                                      (fn-bprq-next-txid
+                                       (fn-bprq-pre-state
+                                        s (fn-bprq-retry-record s work-id)))
+                                      0 :ordinary :durable)))
                             (generation
                              (fn-bp-journal-nth
                               5 (fn-bprq-attempt-record
-                                 s (fn-bprq-next-txid s) 0 work-id
-                                 attempt-id)))))
+                                 (fn-bprq-pre-state s (fn-bprq-retry-record s work-id))
+                                 (fn-bprq-next-txid
+                                  (fn-bprq-pre-state
+                                   s (fn-bprq-retry-record s work-id)))
+                                 0 work-id attempt-id)))))
            :in-theory (theory 'minimal-theory))))

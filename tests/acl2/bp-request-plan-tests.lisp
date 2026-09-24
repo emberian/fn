@@ -39,9 +39,10 @@
   (fn-bpiw-apply (nth 1 *bprq-live-1*) (nth 3 *bprq-live-1*)
                  (fn-bprq-plan-outcome *bprq-plan*)))
 (assert-event (and (car *bprq-live-1*) (car *bprq-live-2*)))
+(assert-event (null (fn-bprq-plan-retry *bprq-plan*)))
 (assert-event (equal (nth 1 *bprq-live-2*)
                      (fn-bprq-published-state
-                      *bprq-s* (fn-bprq-plan-attempt *bprq-plan*)
+                      *bprq-s* nil (fn-bprq-plan-attempt *bprq-plan*)
                       (fn-bprq-plan-outcome *bprq-plan*))))
 (assert-event (equal (nth 1 *bprq-live-2*) *bpo-state*))
 (assert-event (fn-bprq-submit-effectsp (nth 2 *bprq-live-2*)
@@ -82,14 +83,40 @@
 (assert-event (fn-bprq-attempt-record *bprq-unbound* 11 0 "work:out" "attempt:out"))
 (assert-event (null (fn-bprq-plan *bprq-unbound* "work:out" "attempt:out")))
 
-; After a restart the in-flight attempt is :restart-observed and retryable:
-; the next plan is a new attempt at the next generation, not the old one.
+; After a restart the in-flight attempt is :restart-observed.  The next plan
+; journals a :retry-request for the old attempt first, then a new attempt at
+; the next generation, and the whole history (the reopen's restart is not a
+; record) replays: fn-bpiw-replay-journal, the function the host's open calls
+; (host/workflow-host.lisp fn-workflow-install-replay), accepts it.
 (defconst *bprq-restarted* (fn-bp-restart *bpo-state*))
 (defconst *bprq-plan-2* (fn-bprq-plan *bprq-restarted* "work:out" "attempt:two"))
 (assert-event (equal (car *bprq-plan-2*) :request))
+(assert-event (equal (fn-bprq-plan-retry *bprq-plan-2*)
+                     '(:retry-request "work:out" "attempt:out" 0 "policy:out")))
 (assert-event (equal (fn-bprq-plan-key *bprq-plan-2*)
                      '("work:out" "attempt:two" 1)))
 (assert-event (equal (fn-bprq-plan-adu *bprq-plan-2*) *bpo-request-octets*))
+(defconst *bprq-history*
+  (list *bpo-config-record* *bpo-enqueue-record* '(:outcome 10 0 :ordinary :durable)
+        *bpo-attempt-record* '(:outcome 11 0 :ordinary :durable)))
+(assert-event (car (fn-bpiw-replay-journal *bpo-node* *bprq-history*)))
+(assert-event
+ (car (fn-bpiw-replay-journal
+       *bpo-node*
+       (append *bprq-history*
+               (list (fn-bprq-plan-retry *bprq-plan-2*)
+                     (fn-bprq-plan-attempt *bprq-plan-2*)
+                     (fn-bprq-plan-outcome *bprq-plan-2*))))))
+; Without the retry request the live image still admits the new attempt, and
+; the history refuses it: the defect the retry record closes.
+(assert-event
+ (fn-bprq-attempt-record *bprq-restarted* 12 0 "work:out" "attempt:two"))
+(assert-event
+ (not (car (fn-bpiw-replay-journal
+            *bpo-node*
+            (append *bprq-history*
+                    (list (fn-bprq-plan-attempt *bprq-plan-2*)
+                          (fn-bprq-plan-outcome *bprq-plan-2*)))))))
 
 ; ION is an adapter of the same attempt: its constructor is this one.
 (defthm fn-bpiw-attempt-record-is-the-generic-attempt
