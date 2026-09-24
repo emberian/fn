@@ -188,7 +188,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "peer")
          "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME | peer list")
         ((equal subject "bp-boundary")
-         "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] (IPv4 loopback; the short form grants no inbound articles)")
+         "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...] (IPv4 loopback; the short form grants no inbound articles; carries lists the source EIDs this neighbour may relay, each judged under its own enrollment here)")
         ((equal subject "policy")
          "usage: fn operator CONFIG policy set path-identity IDENTITY")
         ((equal subject "principal")

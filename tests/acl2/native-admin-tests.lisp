@@ -517,6 +517,84 @@
                               "fn.*" "0" "16"))))
         :refused))
 
+;; D23: `carries EID ...' after either form lists the source EIDs the
+;; neighbour may carry, one durable row each, in the same :set-peer delta.
+(defconst *fn-na-bp-carries*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("bp-boundary" "add" "relay"
+                       "relay.example.invalid" "dtn://relay/" "4557"
+                       "carries" "dtn://sender/" "ipn:9.1"))))
+(defconst *fn-na-bp-carries-long*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("bp-boundary" "add" "relay"
+                       "relay.example.invalid" "dtn://relay/" "4557"
+                       "fn.*" "32768" "16" "carries" "dtn://sender/"))))
+(defun fn-na-test-plan-rows (plan)
+  (fn-cfg-delta-rows (car (fn-native-admin-plan-deltas plan))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-bp-carries*)
+                     :accepted))
+(assert-event (equal (fn-native-admin-result-status *fn-na-bp-carries-long*)
+                     :accepted))
+(assert-event
+ (and (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
+                                     "dtn://sender/" 0)
+                    (fn-na-test-plan-rows *fn-na-bp-carries*))
+      (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
+                                     "ipn:9.1" 0)
+                    (fn-na-test-plan-rows *fn-na-bp-carries*))
+      (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
+                                     "dtn://sender/" 0)
+                    (fn-na-test-plan-rows *fn-na-bp-carries-long*))
+      (member-equal (fn-cfg-row-make "relay" "inbound-groups" "fn.*" 32768)
+                    (fn-na-test-plan-rows *fn-na-bp-carries-long*))))
+(assert-event (fn-cfg-delta-listp
+               (fn-native-admin-plan-deltas *fn-na-bp-carries*)))
+; Without the clause no carries row exists.
+(assert-event
+ (not (member-equal (fn-cfg-row-make "dtn-peer" "bp-boundary-carries"
+                                     "dtn://sender/" 0)
+                    (fn-na-test-plan-rows *fn-na-bp-inbound*))))
+; A carried word that is not a BP EID, a repeated EID, and an empty list
+; are refused, not read as another form.
+(defun fn-na-test-bp-refusedp (words)
+  (equal (fn-native-admin-result-status
+          (fn-native-admin-plan (fn-na-test-argv words)))
+         :refused))
+(assert-event
+ (and (fn-na-test-bp-refusedp
+       '("bp-boundary" "add" "relay" "relay.example.invalid" "dtn://relay/"
+         "4557" "carries" "sender"))
+      (fn-na-test-bp-refusedp
+       '("bp-boundary" "add" "relay" "relay.example.invalid" "dtn://relay/"
+         "4557" "carries" "dtn://s/" "dtn://s/"))
+      (fn-na-test-bp-refusedp
+       '("bp-boundary" "add" "relay" "relay.example.invalid" "dtn://relay/"
+         "4557" "carries"))))
+; The carried rows ride the configuration record: its canonical encoding
+; decodes to itself, and replay recovers them in the peer table.
+(defconst *fn-na-bp-carries-record*
+  (fn-cfg-record-make 1 1 2 (fn-native-admin-plan-deltas *fn-na-bp-carries*)
+                      *fn-cfg-default-stamp*))
+(assert-event (fn-cfg-recordp *fn-na-bp-carries-record*))
+(assert-event
+ (equal (fn-cfg-decode-exact (fn-cfg-encode *fn-na-bp-carries-record*))
+        (fn-record-parse-ok *fn-na-bp-carries-record* nil)))
+(defconst *fn-na-bp-carries-replayed*
+  (fn-config-replay 0 510 (list *fn-cfg-default-record*
+                                *fn-na-bp-carries-record*)))
+(assert-event (fn-config-replay-okp *fn-na-bp-carries-replayed*))
+(assert-event
+ (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
+                                "dtn://sender/" 0)
+               (fn-cfg-peers (fn-cfg-value *fn-na-bp-carries-replayed*))))
+(must-fail
+ (assert-event
+  (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
+                                 "dtn://sender/" 0)
+                (fn-cfg-peers (fn-cfg-value
+                               (fn-config-replay
+                                0 510 (list *fn-cfg-default-record*)))))))
+
 ; -----------------------------------------------------------------------------
 ; RFC 5536 s3.1.4 reserved names at `group create'
 ; (`fn-native-admin-group-name-reservedp', `fn-native-admin-plan').

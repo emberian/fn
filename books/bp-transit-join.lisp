@@ -6,13 +6,18 @@
 (include-book "peer-inbound-invariants")
 (set-verify-guards-eagerness 0)
 
+; The peer a request is judged under (D23): the neighbour for a direct
+; request, the author's own enrollment for a carried one, never the carrier.
 (defun fn-bpaj-ingress-peer (cfg ingress source-eid)
   (declare (xargs :guard t))
-  (if (and (fn-bpnf-cl-ingressp ingress)
-           (fn-bpaj-current-peer-eidp
-            cfg (fn-bpnf-ingress-principal ingress)
-            (fn-bpn-nth 5 ingress) source-eid))
-      (fn-record-octets-string (fn-bpnf-ingress-principal ingress))
+  (if (fn-bpnf-cl-ingressp ingress)
+      (let ((decision (fn-bpaj-carried-source-decision
+                       cfg (fn-bpnf-ingress-principal ingress)
+                       (fn-bpn-nth 5 ingress) source-eid)))
+        (if (fn-bpaj-source-decision-trustedp decision)
+            (fn-record-octets-string
+             (fn-bpaj-source-decision-principal decision))
+          nil))
     nil))
 
 (defun fn-bpaj-transit-msgid (article-octets)
@@ -85,3 +90,194 @@
                   (fn-bpaj-transit-stored-octets plan))))
     (and (member-equal (car plan) '(:submit :have))
          (fn-bpaj-transit-intentp r) r)))
+
+;; -----------------------------------------------------------------------------
+;; D23 over the functions the host calls.  host/native/bp-node.lisp's
+;; `fnn-bpnode-request-result' asks `fn-owner-bp-request-trustedp' and
+;; `fnn-bpnode-receipt-result' asks `fn-owner-bp-receipt-trustedp'
+;; (host/bp-native-app-host.lisp: `fn-bpah-request-trustedp' and
+;; `fn-bpah-receipt-trustedp' over the live owner configuration); the Store
+;; plan is `fn-bpaj-transit-plan', called by `fn-owner-app-plan-install' with
+;; the view's ingress (element 4) and source EID (element 6).  The views below
+;; have the shape `fn-bpah-pending-view' builds.
+
+(local (defthm fn-bpaj-transit-plan-reads-ingress-only-through-peer
+  (implies (equal (fn-bpaj-ingress-peer cfg a src)
+                  (fn-bpaj-ingress-peer cfg b src))
+           (equal (fn-bpaj-transit-plan node cfg a src req clock)
+                  (fn-bpaj-transit-plan node cfg b src req clock)))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpaj-transit-plan)
+                                             (theory 'minimal-theory))))))
+
+(local (defthm fn-bpaj-carried-source-is-a-string
+  (implies (and (fn-cfgp cfg)
+                (fn-bpaj-carrier-rows (fn-cfg-peers (fn-cfg-value cfg))
+                                      (fn-cfg-peers (fn-cfg-value cfg))
+                                      principal source))
+           (stringp source))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-labelp fn-record-ascii-stringp)
+                                  (fn-bpaj-carrier-rows fn-cfgp
+                                   fn-bpaj-carried-source-is-a-label))
+           :use fn-bpaj-carried-source-is-a-label))))
+
+(local (defthm fn-bpaj-carried-ingress-peer-is-the-authors
+  (let* ((d (fn-bpaj-carried-source-decision
+             cfg (fn-bpnf-ingress-principal carried)
+             (fn-bpn-nth 5 carried) src))
+         (author (fn-bpaj-source-decision-principal d)))
+    (implies (and (fn-bpnf-cl-ingressp carried)
+                  (fn-bpnf-cl-ingressp direct)
+                  (equal (car d) :carried)
+                  (equal (fn-bpnf-ingress-principal direct) author)
+                  (equal (fn-bpn-nth 5 direct) (fn-bpn-nth 5 carried)))
+             (equal (fn-bpaj-ingress-peer cfg carried src)
+                    (fn-bpaj-ingress-peer cfg direct src))))
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-bpaj-carried-decision-is-the-authors-direct-decision
+                            (principal (fn-bpnf-ingress-principal carried))
+                            (generation (fn-bpn-nth 5 carried))
+                            (source src)))
+           :in-theory (e/d (fn-bpaj-ingress-peer)
+                           (fn-bpaj-carried-decision-is-the-authors-direct-decision
+                            fn-bpaj-carried-source-decision
+                            fn-bpnf-cl-ingressp fn-bpnf-ingress-principal))))))
+
+; KEYSTONE (D23: a carried request from an allowlisted, enrolled source is
+; accepted exactly as a direct one).  When the delivering neighbour's
+; decision is `:carried' with author A, a delivery of the same bundle
+; directly from A (an ingress naming A at the same generation) is decided
+; `:direct' under A, both host trust checks answer the same, and the Store
+; plan is the same plan: the peer, inbound scope and transfer decision are
+; A's, and the carrier's enrollment does not enter.
+(defthm fn-bpaj-carried-request-is-judged-as-the-authors-direct-request
+  (let* ((d (fn-bpaj-carried-source-decision
+             cfg (fn-bpnf-ingress-principal carried)
+             (fn-bpn-nth 5 carried) src))
+         (author (fn-bpaj-source-decision-principal d))
+         (cview (list :delivery key class adu carried id src dst))
+         (dview (list :delivery key class adu direct id src dst)))
+    (implies (and (fn-bpnf-cl-ingressp carried)
+                  (fn-bpnf-cl-ingressp direct)
+                  (equal (car d) :carried)
+                  (equal (fn-bpnf-ingress-principal direct) author)
+                  (equal (fn-bpn-nth 5 direct) (fn-bpn-nth 5 carried)))
+             (and (equal (fn-bpah-view-source-decision dview cfg)
+                         (list :direct author))
+                  (fn-bpah-request-trustedp (update-nth 2 :request cview) cfg)
+                  (equal (fn-bpah-request-trustedp cview cfg)
+                         (fn-bpah-request-trustedp dview cfg))
+                  (equal (fn-bpah-receipt-trustedp cview cfg)
+                         (fn-bpah-receipt-trustedp dview cfg))
+                  (equal (fn-bpaj-transit-plan node cfg carried src req clock)
+                         (fn-bpaj-transit-plan node cfg direct src req
+                                               clock)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-bpaj-carried-decision-is-the-authors-direct-decision
+                            (principal (fn-bpnf-ingress-principal carried))
+                            (generation (fn-bpn-nth 5 carried))
+                            (source src))
+                 (:instance fn-bpaj-carried-source-is-a-string
+                            (principal (fn-bpnf-ingress-principal carried))
+                            (source src))
+                 fn-bpaj-carried-ingress-peer-is-the-authors
+                 (:instance fn-bpaj-transit-plan-reads-ingress-only-through-peer
+                            (a carried) (b direct)))
+           :in-theory (e/d (fn-bpah-view-source-decision
+                            fn-bpah-request-trustedp fn-bpah-receipt-trustedp
+                            fn-bpn-nth)
+                           (fn-bpaj-carried-ingress-peer-is-the-authors
+                            fn-bpaj-transit-plan-reads-ingress-only-through-peer
+                            fn-bpaj-ingress-peer
+                            fn-bpaj-carried-decision-is-the-authors-direct-decision
+                            fn-bpaj-carried-source-is-a-string
+                            fn-bpaj-current-peer-eidp fn-bpaj-carrier-rows
+                            fn-bpaj-enrolled-source-names
+                            fn-bpnf-cl-ingressp fn-bpnf-ingress-principal
+                            fn-bpaj-transit-plan fn-cfgp
+                            fn-bpa-decode-exact fn-bpa-result-okp
+                            fn-bpa-receiptp fn-bpa-result-message
+                            fn-bpa-receipt-issuer fn-bpa-receipt-peer-eid))))
+  :rule-classes nil)
+
+; D23: a source the neighbour neither is nor carries.  Its boundary has no
+; transport-bp row and no carries row for the source; neither host trust
+; check admits the delivery and the Store plan is refused, so the host
+; returns `:request-refused' before opening FNRJ or Store
+; (host/native/bp-node.lisp `fnn-bpnode-request-result').
+(defthm fn-bpaj-unlisted-carried-request-is-refused
+  (let* ((principal (fn-bpnf-ingress-principal ingress))
+         (rows (fn-cfg-peers (fn-cfg-value cfg)))
+         (name (fn-record-octets-string principal))
+         (view (list :delivery key class adu ingress id src dst)))
+    (implies (and (not (fn-bpaj-boundary-rowp rows name "transport-bp" src 0))
+                  (not (fn-bpaj-boundary-rowp rows name "bp-boundary-carries"
+                                               src 0)))
+             (and (not (fn-bpah-request-trustedp view cfg))
+                  (not (fn-bpah-receipt-trustedp view cfg))
+                  (equal (fn-bpaj-transit-plan node cfg ingress src req clock)
+                         '(:refused :no-principal)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-bpaj-unlisted-source-is-not-trusted
+                            (principal (fn-bpnf-ingress-principal ingress))
+                            (generation (fn-bpn-nth 5 ingress))
+                            (source src)))
+           :in-theory (e/d (fn-bpah-view-source-decision
+                            fn-bpah-request-trustedp fn-bpah-receipt-trustedp
+                            fn-bpaj-ingress-peer fn-bpaj-transit-plan
+                            fn-bpn-nth)
+                           (fn-bpaj-unlisted-source-is-not-trusted
+                            fn-bpaj-carried-source-decision
+                            fn-bpaj-source-decision-trustedp
+                            fn-bpaj-boundary-rowp
+                            fn-bpnf-cl-ingressp fn-bpnf-ingress-principal
+                            fn-record-octets-string
+                            fn-bpa-decode-exact fn-bpa-result-okp
+                            fn-bpa-receiptp fn-bpa-result-message
+                            fn-bpa-receipt-issuer fn-bpa-receipt-peer-eid))))
+  :rule-classes nil)
+
+; D23: a carried source this node has not enrolled.  The neighbour is a
+; current carrier of the source, and no boundary here is enrolled with it as
+; its transport-bp EID.  The decision is the named refusal, not trusted
+; under the carrier, and the Store plan is refused.
+(defthm fn-bpaj-carried-unenrolled-request-is-refused
+  (let* ((principal (fn-bpnf-ingress-principal ingress))
+         (rows (fn-cfg-peers (fn-cfg-value cfg)))
+         (view (list :delivery key class adu ingress id src dst)))
+    (implies (and (fn-bpnf-cl-ingressp ingress)
+                  (fn-cfgp cfg)
+                  (equal (fn-bpn-nth 5 ingress) (fn-cfg-generation cfg))
+                  (fn-bpaj-carrier-rows rows rows principal src)
+                  (not (fn-bpaj-source-enrolled-anywherep rows src)))
+             (and (equal (fn-bpah-view-source-decision view cfg)
+                         '(:refused :carried-source-unenrolled))
+                  (not (fn-bpah-request-trustedp view cfg))
+                  (not (fn-bpah-receipt-trustedp view cfg))
+                  (equal (fn-bpaj-transit-plan node cfg ingress src req clock)
+                         '(:refused :no-principal)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-bpaj-carried-unenrolled-source-is-refused
+                            (principal (fn-bpnf-ingress-principal ingress))
+                            (generation (fn-bpn-nth 5 ingress))
+                            (source src))
+                 (:instance fn-bpaj-carried-source-is-a-string
+                            (principal (fn-bpnf-ingress-principal ingress))
+                            (source src)))
+           :in-theory (e/d (fn-bpah-view-source-decision
+                            fn-bpah-request-trustedp fn-bpah-receipt-trustedp
+                            fn-bpaj-ingress-peer fn-bpaj-transit-plan
+                            fn-bpn-nth)
+                           (fn-bpaj-carried-unenrolled-source-is-refused
+                            fn-bpaj-carried-source-is-a-string
+                            fn-bpaj-carried-source-decision
+                            fn-bpaj-carrier-rows
+                            fn-bpaj-source-enrolled-anywherep fn-cfgp
+                            fn-bpnf-cl-ingressp fn-bpnf-ingress-principal
+                            fn-bpa-decode-exact fn-bpa-result-okp
+                            fn-bpa-receiptp fn-bpa-result-message
+                            fn-bpa-receipt-issuer fn-bpa-receipt-peer-eid))))
+  :rule-classes nil)
