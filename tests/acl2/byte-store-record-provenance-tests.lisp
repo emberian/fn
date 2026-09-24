@@ -1040,6 +1040,42 @@
                        nil *bsk5-groups* *bsk5-capacity*))))
     (fn-bs-store-relation (car pair) (cdr pair)))))
 
+; The same retained history reaches the actual pair-14 callback in
+; :reserved, with the relation reestablished.  Each premise matters here.
+(assert-event
+ (let* ((entry (bsk5-finished))
+        (pair (nth 14 (fn-bs-run (car entry) (cdr entry)
+                       (fn-bs-frontier-program ".allocation-k0-2"
+                                                (bsk0-second-frontier-host-frame))
+                       nil *bsk5-groups* *bsk5-capacity*))))
+   (and (fn-bs-store-relation (car pair) (cdr pair))
+        (equal (fn-sf-phase (cdr pair)) :reserved))))
+(must-fail
+ (assert-event
+  (let* ((entry (bsk5-finished))
+         (pair (nth 14 (fn-bs-run (bsk0-dangling-old-transaction) (cdr entry)
+                        (fn-bs-frontier-program ".allocation-k0-2"
+                                                 (bsk0-second-frontier-host-frame))
+                        nil *bsk5-groups* *bsk5-capacity*))))
+    (fn-bs-store-relation (car pair) (cdr pair)))))
+(must-fail
+ (assert-event
+  (let* ((entry (bsk5-finished))
+         (pair (nth 14 (fn-bs-run (car entry) (cdr entry)
+                        (fn-bs-frontier-program ".allocation-k0-bad" (list 65))
+                        nil *bsk5-groups* *bsk5-capacity*))))
+    (fn-bs-store-relation (car pair) (cdr pair)))))
+(must-fail
+ (assert-event
+  (let* ((entry (bsk5-finished))
+         (occupied (mv-nth 1 (fn-bs-create (car entry) :staging
+                                         ".allocation-k0-2" :ok)))
+         (pair (nth 14 (fn-bs-run occupied (cdr entry)
+                        (fn-bs-frontier-program ".allocation-k0-2"
+                                                 (bsk0-second-frontier-host-frame))
+                        nil *bsk5-groups* *bsk5-capacity*))))
+    (fn-bs-store-relation (car pair) (cdr pair)))))
+
 ; Without fresh staging, O_EXCL stops the program before pair 12.  The
 ; exact-frame conclusion would otherwise be mistaken for a bare scan fact.
 (must-fail
