@@ -13070,7 +13070,7 @@
       "verify_guards_events": 0,
       "assert_events": 31,
       "must_fails": 4,
-      "defconsts": 13,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
