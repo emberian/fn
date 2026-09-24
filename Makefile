@@ -816,6 +816,14 @@ check:
 # Static, under a second, with its teeth test.
 	$(PYTHON) tools/build_lists_check.py
 	$(PYTHON) -m unittest -q tests.test_build_lists_check
+# specs/identity.md "The signed bytes" is what an independent verifier is
+# written from.  On 2026-09-24 tools/fn_verify.py had to read the books for
+# the preimage layout, the dropped fields and the ML-DSA context, because the
+# prose did not give them.  This fails when a function or constant that
+# section names is no longer defined in books/, or when the section, the book
+# constants and the verifier state different tag bytes, widths or dropped
+# fields.  Static, no ACL2, no crypto library, under a second.
+	$(PYTHON) -m unittest -q tests.test_fn_verify.SpecBookTieTests
 # Every repository path this tree cites and no file answers.  On 2026-09-21
 # `books/stx-lace.lisp` was found citing a book and a test book that have
 # never existed, for the observation four keystones hypothesise.  The counts

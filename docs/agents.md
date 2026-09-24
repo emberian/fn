@@ -203,7 +203,8 @@ article. [`tools/fn_verify.py`](../tools/fn_verify.py) checks that word
 against the article's bytes with code fn does not own. It fetches `ARTICLE`
 and the HDR line in one STARTTLS session with the same login as
 `fn_client.py`. It then reads the `FN-Authorship` carrier and rebuilds the
-authored source and the signed preimage from the specification. Both
+authored source and the signed preimage from the specification
+([the signed bytes](../specs/identity.md#the-signed-bytes)). Both
 signatures are checked with other libraries: pyca/cryptography for
 Ed25519, where the node uses libsodium, and dilithium-py, a pure-Python
 FIPS 204 implementation, for ML-DSA-65, where the node uses OpenSSL. When
