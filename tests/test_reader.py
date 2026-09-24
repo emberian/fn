@@ -127,7 +127,7 @@ class ReaderSocketTests(unittest.TestCase):
             sock,
             b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
             b"OVER MSGID\r\nHDR\r\nNEWNEWS\r\n"
-            b"LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT\r\n"
+            b"LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT\r\n"
             b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
 
     def test_reader_profile_transcript_over_a_real_socket(self):
@@ -616,7 +616,7 @@ class StoreReaderSocketTests(unittest.TestCase):
                 client,
                 b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
                 b"OVER MSGID\r\nHDR\r\nNEWNEWS\r\n"
-                b"LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT\r\n"
+                b"LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT\r\n"
                 b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
             client.sendall(b"GROUP fn.letters\r\n")
             reader.assert_bytes(client, b"211 2 1 2 fn.letters\r\n")

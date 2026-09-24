@@ -229,6 +229,37 @@ class Client:
         return Result(DONE, "%s served %d group name(s)" % (self.node, len(rows)),
                       {"groups": rows}, text)
 
+    def counts(self) -> Result:
+        """RFC 6048 section 2.2 LIST COUNTS: name, high, low, count, status.
+
+        The count is the node's (books/nntp-list-counts.lisp,
+        fn-nntp-group-count-is-listgroup-length: the length of LISTGROUP's
+        number list), not the span of the water marks.  A node that does not
+        answer 215 (a node older than LIST COUNTS) is REFUSED with its status
+        line, and the caller decides what to fall back to.
+        """
+        status, body = self.cmd("LIST COUNTS", multiline=True)
+        if not status.startswith("215"):
+            return Result(REFUSED, status, {}, "")
+        rows = []
+        for one in body:
+            fields = one.split()
+            if len(fields) < 4:
+                continue
+            high, low, count = number(fields[1]), number(fields[2]), number(fields[3])
+            rows.append({"group": fields[0], "first": low, "last": high,
+                         "articles": count, "count": count,
+                         "status": fields[4] if len(fields) > 4 else ""})
+        return Result(DONE, "%s counted %d group(s)" % (self.node, len(rows)),
+                      {"groups": rows}, "")
+
+    def listgroup(self, group: str) -> Result:
+        status, body = self.cmd("LISTGROUP " + group, multiline=True)
+        if not status.startswith("211"):
+            return Result(REFUSED, status, {"group": group}, "")
+        numbers = [n for n in (number(line.strip()) for line in body) if n is not None]
+        return Result(DONE, status, {"group": group, "numbers": numbers}, "")
+
     # -------------------------------------------------------------- read
 
     def read(self, group: str, marks: dict, save) -> Result:
@@ -311,8 +342,11 @@ class Client:
         if not status.startswith("220"):
             return Result(REFUSED, status, {"article": token}, "")
         fields = status.split()
-        # RFC 3977 section 6.2.1: retrieval by Message-ID answers `220 0`,
-        # and 0 is not an article number; --json says null, as `render` does.
+        # RFC 3977 section 6.2.1.2: retrieval by Message-ID answers the
+        # article's number in the selected group, or `220 0` with no group
+        # selected or when the article is not in it (books/nntp-responses.lisp
+        # fn-nntp-msgid-local-number).  0 is not an article number; --json says
+        # null, as `render` does.
         found = number(fields[1]) if len(fields) > 1 else None
         one = article(found or None, body)
         return Result(DONE, "%s %s" % (self.node, one["message_id"] or token),

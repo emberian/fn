@@ -126,6 +126,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-lifecycle-tests \
 	books/hybrid-lifecycle-store-invariants \
 	books/owner-verdict-read \
+	books/owner-list-counts-read \
 	books/owner-signed-post \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
@@ -501,6 +502,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-pinned-effects \
 	books/nntp-pinned-msgid \
 	tests/acl2/nntp-pinned-msgid-tests \
+	books/nntp-list-counts \
+	tests/acl2/nntp-list-counts-tests \
 	tests/acl2/nntp-post-tests \
 	books/path \
 	books/path-update \

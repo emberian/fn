@@ -43,6 +43,30 @@
                                    fn-nntp-index-group-range-numbers
                                    fn-nntp-parse-range fn-nntp-single)))))
 
+; LIST COUNTS over the pinned buckets (books/nntp.lisp).  The lines carry the
+; same group names and decimal fields as the archive fold's, whatever the
+; summary, so no bucket relation is needed for their shape.
+(defthm fn-gidx-counts-lines-are-response-text
+  (implies (fn-nntp-safe-group-listp groups)
+           (fn-nntp-block-textp (fn-gidx-counts-lines archive buckets groups)))
+  :hints (("Goal" :induct (fn-gidx-counts-lines archive buckets groups)
+           :in-theory (e/d (fn-gidx-counts-lines fn-gidx-counts-line
+                            fn-nntp-block-textp fn-nntp-safe-group-listp)
+                           (fn-nntp-counts-summary-line)))))
+
+(defthm fn-nntp-effects-gidx-list-counts-command
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-gidx-list-counts-command session archive buckets args))))
+  :hints (("Goal" :in-theory (e/d (fn-gidx-list-counts-command)
+                                  (fn-nntp-projectionp
+                                   fn-statep fn-state-groups
+                                   fn-state-articles fn-state-nexts
+                                   fn-gidx-counts-lines
+                                   fn-nntp-filter-groups-by-wildmat
+                                   fn-wildmat-parse)))))
+
 (defthm fn-nntp-archive-command-pinned-effects-well-formed
   (implies (and (fn-nntp-projectionp archive)
                 (fn-midx-correspondencep (fn-gidx-pin-trie index)
@@ -60,10 +84,15 @@
                             (trie (fn-gidx-pin-trie index))
                             (token (car args))
                             (legacyp (fn-nntp-keywordp keyword "XOVER")))
-                 (:instance fn-nntp-verdict-hdr-response-effects))
+                 (:instance fn-nntp-verdict-hdr-response-effects)
+                 (:instance fn-nntp-effects-gidx-list-counts-command
+                            (buckets (fn-gidx-pin-buckets index))
+                            (args (cdr args))))
            :in-theory
            (e/d (fn-nntp-archive-command-pinned)
                 (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
+                 fn-gidx-list-counts-command
+                 fn-nntp-effects-gidx-list-counts-command
                  fn-gidx-listgroup-command fn-gidx-build
                  fn-nntp-over-range-indexed
                  fn-nntp-verdict-hdr-response fn-nntp-effectsp

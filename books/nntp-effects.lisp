@@ -417,6 +417,21 @@
                             fn-nntp-safe-group-listp)
                            (fn-nntp-active-line)))))
 
+; RFC 6048 LIST COUNTS lines: the group name and three decimal fields.
+(defthm fn-nntp-counts-summary-line-is-response-text
+  (implies (fn-nntp-safe-group-namep group)
+           (fn-nntp-response-textp (fn-nntp-counts-summary-line group summary)))
+  :hints (("Goal" :in-theory (enable fn-nntp-counts-summary-line
+                                     fn-nntp-append-pieces))))
+
+(defthm fn-nntp-counts-lines-are-response-text
+  (implies (fn-nntp-safe-group-listp groups)
+           (fn-nntp-block-textp (fn-nntp-counts-lines archive groups)))
+  :hints (("Goal" :induct (fn-nntp-counts-lines archive groups)
+           :in-theory (e/d (fn-nntp-counts-lines fn-nntp-counts-line
+                            fn-nntp-block-textp fn-nntp-safe-group-listp)
+                           (fn-nntp-counts-summary-line)))))
+
 (defthm fn-nntp-newsgroup-lines-are-response-text
   (implies (fn-nntp-safe-group-listp groups)
            (fn-nntp-block-textp (fn-nntp-newsgroup-lines groups)))
@@ -827,6 +842,20 @@
                             fn-state-articles fn-state-nexts
                                    fn-nntp-list-active fn-nntp-list-newsgroups
                                    fn-nntp-list-filtered-response)))))
+
+(defthm fn-nntp-effects-list-counts-command
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-list-counts-command session archive args))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-counts-command
+                                   fn-nntp-list-counts)
+                                  (fn-nntp-projectionp
+                                   fn-statep fn-state-groups
+                                   fn-state-articles fn-state-nexts
+                                   fn-nntp-counts-lines
+                                   fn-nntp-filter-groups-by-wildmat
+                                   fn-wildmat-parse)))))
 
 ; LIST OVERVIEW.FMT (RFC 3977 section 8.4) is answered from the unmaintained
 ; LIST dispatcher below, which keeps fn-nntp-list-overview-fmt closed, so its
@@ -1322,6 +1351,7 @@
                                    fn-state-nexts fn-nntp-keywordp
                                    fn-nntp-keyword-tokenp
                                    fn-nntp-list-response
+                                   fn-nntp-list-counts-command
                                    fn-nntp-list-active-times)))))
 
 (in-theory (disable fn-nntp-list-command))
