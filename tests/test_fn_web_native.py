@@ -51,7 +51,8 @@ class NativeWebClientTests(unittest.TestCase):
                 thread = threading.Thread(target=server.serve_forever, daemon=True)
                 thread.start()
 
-                def request(method, path, data=None):
+                def request(method, path, data=None, subject="Native web post",
+                            body_text="Native owner body <visible>"):
                     conn = http.client.HTTPConnection("127.0.0.1",
                                                       server.server_port, timeout=30)
                     headers = {}
@@ -63,8 +64,8 @@ class NativeWebClientTests(unittest.TestCase):
                         headers["Origin"] = "http://127.0.0.1:%d" % server.server_port
                         data = urlencode({"csrf": server.token, "submission_id": token,
                                           "group": "fn.agents",
-                                          "subject": "Native web post", "sender": "Human <h@local.invalid>",
-                                          "references": "", "body": "Native owner body <visible>"})
+                                          "subject": subject, "sender": "Human <h@local.invalid>",
+                                          "references": "", "body": body_text})
                     conn.request(method, path, body=data, headers=headers)
                     result = conn.getresponse()
                     answer = result.status, result.read().decode("utf-8")
@@ -77,15 +78,34 @@ class NativeWebClientTests(unittest.TestCase):
                 status, page = request("GET", "/")
                 self.assertEqual(status, 200)
                 self.assertIn("fn.agents", page)
-                status, page = request("POST", "/post")
+                status, page = request("POST", "/post", subject="Native web first",
+                                       body_text="First native owner body")
                 self.assertEqual(status, 200)
                 self.assertIn("<span class='badge accepted'>accepted</span>", page)
-                status, page = request("GET", "/g?name=fn.agents")
+                status, page = request("POST", "/post", subject="Native web second",
+                                       body_text="Second native owner body")
                 self.assertEqual(status, 200)
-                self.assertIn("Native web post", page)
+                self.assertIn("<span class='badge accepted'>accepted</span>", page)
+
+                status, page = request(
+                    "GET", "/g?name=fn.agents&start=1&end=1")
+                self.assertEqual(status, 200)
+                self.assertIn("Native web first", page)
+                self.assertNotIn("Native web second", page)
+                self.assertNotIn("rel='prev'", page)
+                self.assertIn("start=2&amp;end=41", page)
+
+                status, page = request(
+                    "GET", "/g?name=fn.agents&start=2&end=2")
+                self.assertEqual(status, 200)
+                self.assertIn("Native web second", page)
+                self.assertNotIn("Native web first", page)
+                self.assertIn("start=1&amp;end=1", page)
+                self.assertNotIn("rel='next'", page)
+
                 status, page = request("GET", "/a?group=fn.agents&number=1")
                 self.assertEqual(status, 200)
-                self.assertIn("Native owner body &lt;visible&gt;", page)
+                self.assertIn("First native owner body", page)
                 self.assertIn("Viewing does not acknowledge application processing", page)
             finally:
                 if server is not None:
