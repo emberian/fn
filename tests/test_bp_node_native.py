@@ -660,8 +660,10 @@ class NativeBpNodeTests(unittest.TestCase):
         interrupted = self.tick_receiver()
         self.assertEqual(interrupted.returncode, 3, interrupted.stderr)
         self.assertIn(b"reason=uncertain", interrupted.stdout)
-        self.assertIn(b"pinned=yes", self.sender_status().stdout)
         self.stop_process(sender)
+        pinned = self.sender_status()
+        self.assertEqual(pinned.returncode, 0, pinned.stderr)
+        self.assertIn(b"pinned=yes", pinned.stdout)
 
         sender, port = self.start_node(False, once=False)
         self.relay.route(port)
