@@ -1,0 +1,69 @@
+# target tests.planning/evidence/stale-native-tests/bpapp_enrolled_diag.py  start 2026-09-24T16:32:41Z  cwd /tank/fn/scratch/stale-native-tests/tree
+# cmd: python3 -m unittest -v tests.planning/evidence/stale-native-tests/bpapp_enrolled_diag.py
+# sbcl on PATH: /tank/fn/scratch/stale-native-tests/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=99cee8c066aec7ad1d011df32345bfc4539ed315b8687ad75c66b280cc9e07c0
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=f9ba0c633b5e3fe69f8983b3ed1a44e00ad3bff16021e9e14f1bd42d20335fad
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=6c0626c5ad5691966fdbbae475dcd886ec425f28
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/stale-native-tests/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/stale-native-tests/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/runtime/sbcl-home/
+== sender poll after 30 s: None
+== sender rc 143
+-- stdout
+BP FNBS recovered held=0
+BP queue recovered jobs=0
+BP authored creation=0 sequence=0 lifetime=3600000 payload=392 octets=489
+BP wire authored path=/tmp/fn-native-bp-app-p7oingfu/sender-spool/authored-0.wire
+TCPCL active aux (:SEND :CONTACT 6)
+TCPCL active event (:SEND :SESS-INIT 38)
+TCPCL active event (:SESSION-UP 10 1024 1048576 NIL)
+TCPCL active aux (:SEND :XFER-SEGMENT 511)
+TCPCL active event (:OUTBOUND-REFUSED 0 "active" 4)
+TCPCL active refused outbound xfer=0 reason=4
+TCPCL active aux (:SEND :KEEPALIVE 1)
+TCPCL active aux (:SEND :KEEPALIVE 1)
+
+-- stderr
+
+== receiver poll after 30 s: None
+== receiver rc 143
+-- stdout
+TCPCL bp-app event (:SEND :CONTACT 6)
+TCPCL bp-app event (:SEND :SESS-INIT 40)
+TCPCL bp-app event (:SESSION-UP 10 1024 1048576 NIL)
+TCPCL bp-app event (:SEND :XFER-ACK 18)
+TCPCL bp-app event (:BUNDLE-RECEIVED 0 489)
+BP application refused xfer=0
+TCPCL bp-app refused inbound xfer=0 reason=REFUSED
+TCPCL bp-app aux (:SEND :KEEPALIVE 1)
+TCPCL bp-app aux (:SEND :KEEPALIVE 1)
+TCPCL bp-app aux (:SESSION-DOWN)
+
+-- stderr
+
+== receive-evidence files: ['receiver-spool/receive-evidence/00000000000000000000.adu', 'receiver-spool/receive-evidence/00000000000000000000.wire']
+# rc=0 wall=46.7 end 2026-09-24T16:33:27Z

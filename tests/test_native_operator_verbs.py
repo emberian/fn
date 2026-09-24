@@ -162,7 +162,9 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
 
         again = self.operator("init", "fn.test")
         self.assertEqual(again.returncode, EXIT_REFUSED, again.stderr.decode())
-        self.assertIn(b"REFUSED OPERATOR INIT STORE-EXISTS", again.stderr.upper())
+        # Case-insensitive, as the other refusal checks here: both sides upper.
+        self.assertIn(b"REFUSED OPERATOR INIT STORE-EXISTS", again.stderr.upper(),
+                      again.stderr.decode())
 
     def test_a_locked_store_is_refused_without_the_lock_being_touched(self):
         self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
