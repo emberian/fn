@@ -77,7 +77,10 @@ operator named, so a node is stood up with the same binary that runs it; the
 image's low-level `--fn store ROOT init` entry stays a diagnostic. There is no
 default group table: `init` with no group is a usage error (5) rather than a
 store whose served groups nobody chose. The names it admits are the store's
-own -- `fn-record-group-namep`, bounded at 128 octets, the same predicate
+own -- `fn-record-group-namep`: an RFC 5536 section 3.1.4 <newsgroup-name>
+(components of letters, digits, `+`, `-` and `_` joined by single dots, so no
+space and no leading, trailing or doubled dot) of at most 128 octets, the
+bound being local policy, and the same predicate
 `group create` applies and the same duplicate rule `fn-record-groupsp`
 imposes -- so this verb does not own a second idea of what a group may be
 called. An `init` over a store that already
