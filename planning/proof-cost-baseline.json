@@ -3,60 +3,6 @@
   "threshold_seconds": 10.0,
   "tolerance": 0.25,
   "books": {
-    "books/bp-handoff-status": {
-      "seconds": 10.333,
-      "run": "certify-20260924T175653Z-3095992",
-      "host": "persvati",
-      "verdict": "passed"
-    },
-    "books/bp-node-fragment-family": {
-      "seconds": 12.336,
-      "run": "certify-20260924T153508Z-1499013",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/bp-node-progress-bridge": {
-      "seconds": 10.285,
-      "run": "certify-20260924T183457Z-1789884",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/bp-report-deletion": {
-      "seconds": 10.137,
-      "run": "certify-20260924T180628Z-1764223",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/byte-store-k0": {
-      "seconds": 11.238,
-      "run": "certify-20260924T183457Z-1789884",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/byte-store-record-provenance": {
-      "seconds": 18.9,
-      "run": "certify-20260924T183457Z-1789884",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/byte-store-scan": {
-      "seconds": 16.147,
-      "run": "certify-20260924T153508Z-1499013",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/consumer-store-invariants": {
-      "seconds": 17.296,
-      "run": "certify-20260924T153508Z-1499013",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/nntp-auth-invariants": {
-      "seconds": 11.539,
-      "run": "certify-20260924T183457Z-1789884",
-      "host": "hbox",
-      "verdict": "passed"
-    },
     "books/owner-invariants": {
       "seconds": 10.691,
       "run": "certify-20260924T180628Z-1764223",

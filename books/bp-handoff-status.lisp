@@ -84,9 +84,8 @@
           (equal (fn-bpn-job-peer job) peer)
           (equal (fn-bpb-payload (fn-bpn-job-bundle job)) receipt-adu))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-bpah-outbox-job-matchp
-                            fn-bpah-handoff-carrier-job)
-                           (fn-bpn-find-job))))
+           :in-theory '(fn-bpah-outbox-job-matchp
+                        fn-bpah-handoff-carrier-job)))
   :rule-classes nil)
 
 (defthm fn-bpah-effective-handoff-binds-exact-durable-carrier

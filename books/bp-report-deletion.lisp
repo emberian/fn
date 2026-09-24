@@ -217,7 +217,10 @@
                                fn-bpp-blockp
                                fn-bpn-report-held-bundle-for-guard
                                fn-bpn-report-primary-for-guard
-                               ))))
+                               fn-cp-idp-true-listp
+                               fn-nntp-response-text-true-listp
+                               fn-nntp-clean-line-is-response-text
+                               fn-nntp-article-idp-is-consp))))
 (verify-guards fn-bpn-report-deleted-payload
   :hints (("Goal" :use ((:instance fn-bpn-report-held-bundle-for-guard)
                          (:instance fn-bpn-report-primary-for-guard
@@ -229,4 +232,7 @@
                                fn-bpp-blockp
                                fn-bpn-report-held-bundle-for-guard
                                fn-bpn-report-primary-for-guard
-                               ))))
+                               fn-cp-idp-true-listp
+                               fn-nntp-response-text-true-listp
+                               fn-nntp-clean-line-is-response-text
+                               fn-nntp-article-idp-is-consp))))
