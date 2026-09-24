@@ -1062,6 +1062,11 @@
       "evidence": [],
       "progress_note": "T8 (2026-09-22): two defects found and fixed in the live arm. (1) fn-ocfg-complete published through fn-cnode-apply-config on the live node, whose domain and capacity no live transition moves, so after one live group create or capacity change every later completion kept the old configuration while the record was already durable (ground witness in tests/acl2/owner-config-tests: the second of two live reconfigurations violated fn-cnode-apply-config's guard); completion now publishes fn-ocfg-published-config, the configuration step recovery replays. (2) host/native-admin-host.lisp passed argv octets as configuration labels, so live group create, group retire and peer remove were refused :malformed-delta; the delta list is now fn-native-admin-plan-deltas. Teeth for every hypothesis in tests/acl2/owner-config-tests and tests/acl2/native-admin-tests. fn-ocfg-list-active-lists-the-pinned-served-table stays proved and is not cited: fn-ocfg-list-active has no host caller. V0-CFG-LIVE on an image is not claimed: its GROUP check needs the domain seam. T8c (2026-09-22): the dabebb84 matrix run showed the live arm faulting the owner on every request, because host/native/admin.lisp read fn-owner-open's integer id through fnn-owner-action (fixed; reproduced and fixed on hbox, planning/evidence/t8c-live-rows-2026-09-22.md), and the control reply losing the owner's fault word to its own stop hook, so the caller saw uncertain (fixed in host/native/control.lisp). fn-native-admin-publication-is-authorized-only-under-the-lock: an accepted publication result, and any result carrying a publication state, implies the lock observation the host passes, which is now the store's own (fnn-admin-lock-observation) and no longer a literal T; teeth in tests/acl2/native-admin-tests.",
       "events": [
+        "fn-ocl-no-reader-observes-a-half-change",
+        "fn-ocl-publish-installs-the-whole-staged-record",
+        "fn-ocl-cpr-loop-configuration-is-the-record-fold",
+        "fn-ocl-publish-agrees-with-ocfg-complete-on-readers",
+        "fn-ocl-request-refused-over-a-reader-in-the-group",
         "fn-ocfg-no-reader-observes-a-half-change",
         "fn-ocfg-pin-is-stable-without-advance",
         "fn-ocfg-crash-at-any-instant-recovers-the-live-generation",
