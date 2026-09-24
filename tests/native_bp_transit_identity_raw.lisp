@@ -44,8 +44,8 @@
     (otherwise (error "unexpected action ~s" name))))
 (defun fnn-owner-feed-flush (service)
   (declare (ignore service)) (push :flush *calls*))
-(defun fnn-owner-attempt (&rest args)
-  (declare (ignore args)) (push :attempt *calls*) :durable)
+(defun fnn-owner-attempt-transit (&rest args)
+  (declare (ignore args)) (push :attempt-transit *calls*) :durable)
 
 (with-open-file (stream "host/native/owner.lisp")
   (let ((found nil))
@@ -62,7 +62,7 @@
 (assert (eq (invoke-transit "66a" "77b") :accepted))
 (assert (equal (reverse *calls*)
                '(fn-owner-take fn-owner-transit-decide
-                 fn-owner-submission-intent :flush :attempt
+                 fn-owner-submission-intent :flush :attempt-transit
                  fn-owner-submission-resolution :flush
                  fn-owner-bp-transit-outcome)))
 (dolist (bad '(("66b" "77b") ("66a" "77a")

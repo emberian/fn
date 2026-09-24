@@ -1,0 +1,118 @@
+;;; Exercise the shipped common NNTP/BP transit decision wrapper at its host
+;;; boundary. ACL2's plan and event values are stubbed here; the ACL2 book/test
+;;; independently checks those exact source, enrollment and event bindings.
+(require :sb-posix)
+(require :sb-bsd-sockets)
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(define-condition fnn-store-indeterminate (error) ())
+(define-condition fnn-store-fault (error) ())
+(define-condition fnn-store-error (error) ())
+(define-condition fnn-os-error (error) ())
+(defstruct sample-store fenced)
+(defvar *store* (make-sample-store))
+(defvar *form* :absent)
+(defvar *plan* '(:refused :local-enrollment))
+(defvar *existing* nil)
+(defvar *signature* :verified)
+(defvar *calls* nil)
+(defun fnn-owner-service-store (service)
+  (declare (ignore service)) *store*)
+(defun fnn-store-fenced (store) (sample-store-fenced store))
+(defun (setf fnn-store-fenced) (value store)
+  (setf (sample-store-fenced store) value))
+(defun fnn-octet-list (x) (coerce x 'list))
+(defun fnn-charge (n) n)
+(defun fnn-owner-core (name &rest args)
+  (case name
+    (fn-owner-peer-carrier-form
+     (assert (equal args '((65 66)))) *form*)
+    (fn-owner-peer-carrier-plan *plan*)
+    (fn-owner-group-codes '(0))
+    (fn-owner-next-store-coordinates '(3 3 3))
+    (fn-owner-peer-carried-event
+     (push :event *calls*) :kind4)
+    (otherwise (error "unexpected owner core ~s" name))))
+(defun fnn-core (name &rest args)
+  (declare (ignore args))
+  (assert (eq name 'fn-hsig-host-preimage))
+  '(1 2 3))
+(defun fnn-owner-action (name &rest args)
+  (case name
+    (fn-owner-existing-action
+     (assert (equal args '((60 120 62) (65 66) (0))))
+     *existing*)
+    (otherwise (error "unexpected owner action ~s" name))))
+(defun fnn-validate-post-boundary (&rest args)
+  (declare (ignore args)) (push :boundary *calls*))
+(defun fnn-owner-attempt (&rest args)
+  (declare (ignore args)) (push :legacy *calls*) :durable)
+(defun fnn-owner-advance-clock () (push :clock *calls*) :observed)
+(defun fnn-hsig-observe-raw (&rest args)
+  (declare (ignore args))
+  (push :primitives *calls*)
+  (list *signature* (list *signature* #(17 18))))
+(defun fnn-metadata (&rest args)
+  (declare (ignore args)) (values #(49) #(50) nil))
+(defun fnn-owner-identity-commit (service event)
+  (declare (ignore service))
+  (assert (eq event :kind4))
+  (push :kind4-commit *calls*) :durable)
+
+(with-open-file (stream "host/native/owner.lisp")
+  (let ((found nil))
+    (loop for form = (read stream nil :eof) until (eq form :eof)
+          when (and (consp form) (eq (car form) 'defun)
+                    (eq (cadr form) 'fnn-owner-attempt-transit))
+            do (eval form) (setq found t) (return))
+    (assert found)))
+
+(defun attempt ()
+  (fnn-owner-attempt-transit :service #(60 120 62) #(65 66)
+                             (list #(103)) #(69)))
+(defun reset-case ()
+  (setq *calls* nil *existing* nil *signature* :verified
+        *plan* '(:refused :local-enrollment)))
+
+; A carrier-absent article keeps the old path. A present malformed carrier
+; never reaches either the old Store attempt or the signature primitive.
+(reset-case)
+(assert (eq (attempt) :durable))
+(assert (equal *calls* '(:legacy)))
+(reset-case)
+(setq *form* '(:refused :carrier))
+(assert (eq (attempt) :refused))
+(assert (null *calls*))
+
+; Exact bytes recover the old Store duplicate outcome even after a local
+; tombstone.  In particular, if these bytes were already stored as a legacy
+; fn-r before this receiver profile was installed, this does not upgrade that
+; historical record to kind-4 or create a verified verdict.  The duplicate
+; result only says that the existing Store record was left unchanged.
+(reset-case)
+(setq *form* '(:ok source principal keys signatures)
+      *existing* :duplicate)
+(assert (eq (attempt) :duplicate))
+(assert (not (member :primitives *calls*)))
+(assert (not (member :kind4-commit *calls*)))
+(reset-case)
+(assert (eq (attempt) :refused))
+(assert (not (member :legacy *calls*)))
+
+; New current-enrollment-bound bytes require both primitive observations,
+; then publish the ACL2-built kind-4 event through the identity Store gate.
+(reset-case)
+(setq *plan* '(:ok source principal ((:ed25519 . (11))
+                                    (:ml-dsa-65 . (13)))
+                   ((:ed25519 . (17)) (:ml-dsa-65 . (19))) snapshot 1))
+(assert (eq (attempt) :durable))
+(assert (member :kind4-commit *calls*))
+(assert (not (member :legacy *calls*)))
+(reset-case)
+(setq *plan* '(:ok source principal ((:ed25519 . (11))
+                                    (:ml-dsa-65 . (13)))
+                   ((:ed25519 . (17)) (:ml-dsa-65 . (19))) snapshot 1)
+      *signature* :refused)
+(assert (eq (attempt) :refused))
+(assert (not (member :kind4-commit *calls*)))
+(format t "native peer-authored transit boundary passed~%")

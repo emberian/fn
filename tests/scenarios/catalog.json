@@ -1212,6 +1212,30 @@
         "planning/evidence/author-key-lifecycle-2026-09-24.md"
       ],
       "execution_scope": "ACL2 source tests cover ordered snapshot/replay and the control codec. The opt-in native owner, saved-image and restart fixture is source-present but not yet qualified on a matching image; no remote revocation or cryptographic succession policy follows."
+    },
+    {
+      "id": "SCN-038",
+      "title": "Protected peer carrier becomes a receiver-local historical authorship event",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": ["OBJ-007"],
+      "steps": [
+        "Enroll the exact principal and ordered hybrid keys at receiving node B, transfer A's signed carrier over a configured protected peer, and poll B's consumer cursor after Store completion and restart.",
+        "Repeat with a present malformed carrier, a wrong key set, a revoked enrollment, and a carrier with one altered signature.",
+        "Repeat an exact older legacy fn-r carrier already held at B and an exact kind-4 accepted carrier after key rotation. Send one signed carrier through each NNTP and BP transit caller."
+      ],
+      "expected": [
+        "Only the new enrolled, dual-verified carrier publishes a schema-1 kind-4 event containing B's relayed article, exact authored source, selected local snapshot and historical verdict; consumer-project can bind the resulting poll item.",
+        "A present malformed or unauthorized carrier refuses without legacy fallback or new Store acceptance; an absent carrier keeps the legacy article path.",
+        "An older legacy duplicate remains legacy without a fabricated verdict; an exact historical kind-4 duplicate changes no Store bytes despite later key rotation."
+      ],
+      "evidence": [
+        "tests/acl2/peer-authored-accept-tests.lisp",
+        "tests/native_peer_authored_accept_raw.lisp",
+        "tests/native_bp_transit_identity_raw.lisp",
+        "tests/native_peer_raw_key_component.lisp"
+      ],
+      "execution_scope": "ACL2 source projection, local-enrollment selection and event construction plus raw host caller and OpenSSL 3.5.8 raw-key component tests pass. A source-matched saved-image two-Store consumer poll/project, physical crash/reopen, and full owner closure remain open."
     }
   ]
 }
