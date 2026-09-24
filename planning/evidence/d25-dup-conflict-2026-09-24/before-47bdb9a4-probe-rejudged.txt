@@ -1,0 +1,51 @@
+frontier-created kill                kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-created eio                 refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+frontier-written kill                kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-written eio                 refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+frontier-staged-durable kill         kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-staged-durable eio          refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+frontier-replaced kill               kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-replaced eio                uncertain pass  rc=3    present=False reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='240 article received OK\r\n'
+frontier-attempted kill              kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-attempted eio               uncertain pass  rc=3    present=False reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='240 article received OK\r\n'
+frontier-durable kill                kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-durable eio                 uncertain pass  rc=3    present=False reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='240 article received OK\r\n'
+frontier-reserved kill               kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-reserved eio                uncertain pass  rc=3    present=False reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='240 article received OK\r\n'
+record-created kill                  kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+record-created eio                   refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+record-written kill                  kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+record-written eio                   refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+record-staged-durable kill           kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+record-staged-durable eio            refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+record-linked kill                   kill      FAIL  rc=-9   present=True  reply='' repost='441 posting failed; a different article with this Message-ID is stored here\r\n'
+    repost '441 posting failed; a different article with this Message-ID is stored here\r\n' not in ['441 posting failed; this article is already stored here\r\n']
+record-linked eio                    uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+record-attempted kill                kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+record-attempted eio                 uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+record-durable kill                  kill      FAIL  rc=-9   present=True  reply='' repost='441 posting failed; a different article with this Message-ID is stored here\r\n'
+    repost '441 posting failed; a different article with this Message-ID is stored here\r\n' not in ['441 posting failed; this article is already stored here\r\n']
+record-durable eio                   uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+record-completing kill               kill      FAIL  rc=-9   present=True  reply='' repost='441 posting failed; a different article with this Message-ID is stored here\r\n'
+    repost '441 posting failed; a different article with this Message-ID is stored here\r\n' not in ['441 posting failed; this article is already stored here\r\n']
+record-completing eio                uncertain FAIL  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; a different article with this Message-ID is stored here\r\n'
+    repost '441 posting failed; a different article with this Message-ID is stored here\r\n' not in ['441 posting failed; this article is already stored here\r\n']
+record-stage-unlinked kill           kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+record-stage-unlinked eio            swallowed FAIL  rc=0    present=True  reply='240 article received OK\r\n' repost='441 posting failed; a different article with this Message-ID is stored here\r\n'
+    owner log names the swallowed cleanup error 0 times, not 1: []
+    repost '441 posting failed; a different article with this Message-ID is stored here\r\n' not in ['441 posting failed; this article is already stored here\r\n']
+record-staging-cleaned kill          kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+record-staging-cleaned eio           uncertain FAIL  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; a different article with this Message-ID is stored here\r\n'
+    repost '441 posting failed; a different article with this Message-ID is stored here\r\n' not in ['441 posting failed; this article is already stored here\r\n']
+finish-consumed kill                 kill      FAIL  rc=-9   present=True  reply='' repost='441 posting failed; a different article with this Message-ID is stored here\r\n'
+    repost '441 posting failed; a different article with this Message-ID is stored here\r\n' not in ['441 posting failed; this article is already stored here\r\n']
+finish-consumed eio                  consumed  FAIL  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; a different article with this Message-ID is stored here\r\n'
+    repost '441 posting failed; a different article with this Message-ID is stored here\r\n' not in ['441 posting failed; this article is already stored here\r\n']
+finish-durable kill                  kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+finish-durable eio                   consumed  pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+dev-accepted-then-sigkill            control   FAIL  rc=-9   present=True  reply='240 article received OK\r\n' repost='441 posting failed; a different article with this Message-ID is stored here\r\n'
+    repost '441 posting failed; a different article with this Message-ID is stored here\r\n' not in ['441 posting failed; this article is already stored here\r\n']
+dev-refused-no-from                  control   pass  rc=0    present=False reply='441 posting failed; From is required\r\n' repost='441 posting failed; From is required\r\n'
+prod-accepted-then-sigkill           control   pass  rc=-9   present=True  reply='240 article received OK\r\n' repost='441 posting failed; this article is already stored here\r\n'
+prod-sigkill-mid-article             control   pass  rc=-9   present=False reply=None repost=None
+31 of 40 rows pass

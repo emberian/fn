@@ -1,0 +1,30 @@
++ T=/tank/fn/scratch/d25-dup/img
++ export FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g FN_CERT_CACHE=/tank/fn/certcache
++ export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
++ cd /tank/fn/scratch/d25-dup/img
++ date -u +%FT%TZ
++ cat roots.txt
++ swarm-build python3 tools/certify_books.py --incremental --jobs 4 --timeout-seconds 1800 books/anchor-invariants books/anchor-replace books/anchor-servers books/anchor-wire books/app-journal books/article-fields books/bp-app-handoff books/bp-app-handoff-time books/bp-authored-wire books/bp-channel-ingress books/bp-clock-domain books/bp-contact-service books/bp-fnbs-deletion-publication books/bp-fnbs-delivery-publication books/bp-fnbs-delivery-replay books/bp-fnbs-dispatch-publication books/bp-fnbs-family-publication books/bp-fnbs-forward-publication books/bp-fnbs-inspect books/bp-fnbs-namespace books/bp-fnbs-publication books/bp-fnbs-replay books/bp-handoff-status books/bp-ion-workflow books/bp-native-app-fast books/bp-node books/bp-node-fragment-guards books/bp-node-machine books/bp-node-machine-codec books/bp-node-machine-guards books/bp-node-progress books/bp-node-progress-guards books/bp-node-receive-boundary books/bp-node-records books/bp-outbound books/bp-receipt-records books/bp-receive-evidence books/bp-release books/bp-report-author books/bp-report-guards books/bp-report-observe books/bp-transit-join books/bp-workflow-constructors books/bp-workflow-records books/byte-store-compaction-correspondence books/byte-store-frame books/byte-store-txn-name books/checkpoint-auxiliary books/checkpoint-compaction books/checkpoint-compaction-preservation books/checkpoint-pack-retire books/checkpoint-publish books/codec-attach books/config-owner-live books/config-owner-publish books/consumer-local-control books/consumer-owner-local books/consumer-poll-projection books/crypto-attach books/feed-auth-profile books/feed-connection books/feed-connection-invariants books/feed-filename books/feed-journal books/feed-wire-input books/frame books/frame-trailer books/hybrid-carrier books/hybrid-lifecycle books/hybrid-store books/identity books/journal-publish books/native-admin books/native-auth-admin books/native-auth-profile books/native-config books/native-config-observation books/native-control books/native-hybrid-control books/native-operator books/nntp books/nntp-effects books/node-config books/owner-advance-carried books/owner-agent books/owner-commit-carried books/owner-commit-ocl books/owner-config books/owner-config-observe books/owner-feed-port books/owner-log books/owner-prepare-carried books/owner-prepare-correspondence books/owner-served-carried books/owner-served-invariants books/owner-store-budget books/owner-tls-prefix books/peer-authored-accept books/peer-config books/poster-bytes books/provenance-codec books/replay books/served books/served-tls-prefix books/store-budget books/store-budget-naming books/store-config books/store-node books/store-node-resolution books/store-observed books/store-observed-traces books/store-prepare-correspondence books/store-profile-upgrade books/store-sweep books/tcpcl-delivery books/tcpcl-host-drive books/tcpcl-session books/tcpcl-spool books/topic-history-authorship books/topic-history-local-control books/topic-history-local-proposals
+From the cache: installed 257 of 292 books (101 of 121 roots); certifying 35
+Installed from the cache: 257 books
+ACL2 certification passed: books/bp-channel-ingress, books/bp-report-deletion, books/bp-fnbs-deletion-codec, books/bp-node-fragment-expiry, books/bp-fnbs-family-codec, books/bp-node-fragment-replacement, books/bp-forward-image, books/bp-forward-attempt, books/bp-fnbs-forward-codec, books/bp-node-dispatch, books/bp-fnbs-delivery-replay, books/bp-fnbs-family-replay, books/bp-node-fragment-step, books/bp-node-report-step, books/bp-fnbs-deletion-publication, books/bp-node-debt, books/bp-report-outbox, books/bp-report-author, books/bp-node-progress, books/bp-fnbs-dispatch-publication, books/bp-fnbs-family-publication, books/bp-fnbs-forward-publication, books/bp-handoff-status, books/bp-node-fragment-guards, books/bp-node-forward-lower-guards, books/bp-report-observe, books/bp-report-guards, books/bp-node-progress-guards, books/native-admin, books/native-control, books/consumer-local-control, books/native-config-observation, books/native-hybrid-control, books/native-operator, books/topic-history-local-control
+Certification evidence: build/acl2/certify-20260924T223053Z-2063715
++ python3 tools/proof_artifacts.py acquire --profile default --root /tank/fn/scratch/d25-dup/img --cache /tank/fn/certcache --acl2 /tank/fn/toolchains/w28/acl2-literal-4g
+attempt 87e50b2cc9315f5b composed: loaded
+profile=default image=build/fn-host artifact-set=87e50b2cc9315f5b2dbad1b4684473b84f307f84adbbd71ed3845e4adfcb5020 origin=composed books=292 source=81a7f79b9f6c7ba9ce60a8e646f4447e0b1999758dc1a5f41fe876196f442d8e toolchain=d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0 rejected=0
++ python3 tools/proof_artifacts.py validate --profile default --root /tank/fn/scratch/d25-dup/img --cache /tank/fn/certcache --acl2 /tank/fn/toolchains/w28/acl2-literal-4g
+profile=default image=build/fn-host roots=121 result=loaded
++ FN_NATIVE_PROFILE=production swarm-build sh tools/build_native_host.sh
+built build/fn-host profile=production (122M core)
++ FN_NATIVE_PROFILE=developer swarm-build sh tools/build_native_host.sh
+built build/fn-host-developer profile=developer (122M core)
++ ls -la build/
++ grep fn-host
+-rwxrwxr-x  1 hbox hbox       441 Sep 24 18:33 fn-host
+-rw-rw-r--  1 hbox hbox 332410408 Sep 24 18:33 fn-host.core
+-rwxrwxr-x  1 hbox hbox       451 Sep 24 18:33 fn-host-developer
+-rw-rw-r--  1 hbox hbox 332410408 Sep 24 18:33 fn-host-developer.core
++ sha256sum build/fn-host build/fn-host.core build/fn-host-developer build/fn-host-developer.core
++ date -u +%FT%TZ
++ echo IMAGE-DONE
+IMAGE-DONE

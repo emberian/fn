@@ -156,7 +156,7 @@
         "books/store-node-existing-invariants.lisp",
         "tests/acl2/store-node-existing-tests.lisp"
       ],
-      "progress_note": "Exact logical identity bindings and retries covered; native identities, signatures, and durable protocol retry path remain open. T3 places the duplicate/conflict/missing branch decision in fn-sn-existing-action, the function all four host prepare/query sites call, with exact case theorems and reachable teeth in store-node-existing-invariants/tests. Those direct case equations are not counted here as keystones for the broader no-allocation/no-obligation property; composed native retry qualification remains open."
+      "progress_note": "Exact logical identity bindings and retries covered; native identities, signatures, and durable protocol retry path remain open. T3 places the duplicate/conflict/missing branch decision in fn-sn-existing-action, the function all four host prepare/query sites call, with exact case theorems and reachable teeth in store-node-existing-invariants/tests. Those direct case equations are not counted here as keystones for the broader no-allocation/no-obligation property; composed native retry qualification remains open. Since D25 (2026-09-24) the host calls fn-pb-existing-action (books/poster-bytes.lisp), which keys on the poster's bytes and refines fn-sn-existing-action; the case theorems of the host-called decision are in books/poster-bytes-invariants.lisp."
     },
     {
       "id": "PRF-004",
@@ -2739,7 +2739,7 @@
     {
       "id": "PRF-070",
       "title": "The POST outcome at the wire keeps its three outcomes and names its refusal",
-      "statement": "fn-own-consumed-completion-is-240-or-uncertain: over fn-own-outcome (host/owner-host.lisp fn-owner-outcome), once a completion has been consumed into the ledger after the connection's submission was taken, the reply is the 240 for the host word :durable and the uncertain `441 ... do not repost' for every other word, so a durable record is never answered as a refusal. fn-post-outcome-store-refusal-kinds-are-distinct and fn-post-outcome-store-refusal-is-not-uncertain: over fn-nntp-post-outcome, each Store refusal kind (duplicate, conflict, malformed, unaffordable, storage-failed, unnamed) is its own 441 line and none is the uncertain line.",
+      "statement": "fn-own-consumed-completion-is-240-or-uncertain: over fn-own-outcome (host/owner-host.lisp fn-owner-outcome), once a completion has been consumed into the ledger after the connection's submission was taken, the reply is the 240 for the host word :durable and the uncertain `441 ... do not repost' for every other word, so a durable record is never answered as a refusal. fn-post-outcome-store-refusal-kinds-are-distinct and fn-post-outcome-store-refusal-is-not-uncertain: over fn-nntp-post-outcome, each Store refusal kind (duplicate, conflict, malformed, unaffordable, storage-failed, unnamed) is its own 441 line and none is the uncertain line. D25, over fn-own-outcome with the word fn-pb-existing-action returns (books/poster-bytes.lisp; host/owner-host.lisp fn-owner-existing-action, called by host/native/owner.lisp fnn-owner-attempt): fn-pb-same-poster-bytes-is-answered-already-stored, a held Message-ID whose article has the submission's poster's bytes (its octets without the injected Path, Xref, Injection-Date, Injection-Info and a node-generated Date) and groups is answered `441 posting failed; this article is already stored here' while no completion has been consumed; fn-pb-different-poster-bytes-is-answered-conflict, different poster's bytes or groups under a held Message-ID are answered the conflict line; fn-pb-a-resent-injection-has-the-same-poster-bytes, one proto-article with a supplied Message-ID injected by fn-inj-decide under any two clock readings has one poster's bytes, when it supplies no Date or does not open with one; fn-pb-a-resend-at-a-later-second-is-answered-already-stored composes them: the resend of the held article's source at any later clock reading is the duplicate reply.",
       "milestone": "M3",
       "requirements": [
         "NNT-005"
@@ -2761,13 +2761,21 @@
         "host/native/owner.lisp",
         "host/native/io.lisp",
         "tests/campaign/native_nntp_post_probe.py",
-        "planning/evidence/p2-wire-2026-09-24.md"
+        "planning/evidence/p2-wire-2026-09-24.md",
+        "books/poster-bytes.lisp",
+        "books/poster-bytes-invariants.lisp",
+        "tests/acl2/poster-bytes-tests.lisp",
+        "planning/evidence/d25-dup-conflict-2026-09-24.md"
       ],
-      "note": "Lane p2-wire, from the campaign's W1/W2/W3 (planning/evidence/campaign-1a9dd747-2026-09-24.md). The refusal kind is relayed by the host from the ACL2 step that refused (fn-sn-existing-action, fn-owner-prepare, fn-store-publication-admissibility, fn-owner-known-abort); the capacity comparison against max-transactions and the durable/fault word of fn-owner-finish (host/owner-host.lisp) are still host computations. The refusal words are a local policy choice pending ember's decision.",
+      "note": "Lane p2-wire, from the campaign's W1/W2/W3 (planning/evidence/campaign-1a9dd747-2026-09-24.md). The refusal kind is relayed by the host from the ACL2 step that refused (fn-sn-existing-action, fn-owner-prepare, fn-store-publication-admissibility, fn-owner-known-abort); the capacity comparison against max-transactions and the durable/fault word of fn-owner-finish (host/owner-host.lisp) are still host computations. The refusal words are a local policy choice pending ember's decision. D25 (lane d25-dup-conflict): the duplicate-versus-conflict decision is fn-pb-existing-action, keyed on the poster's bytes; it refines fn-sn-existing-action (fn-pb-existing-action-refines-the-byte-identity-decision). Scope limit: a source that opens with a Date equal octet for octet to fn's rendering of the injection second is excluded by fn-pb-opens-with-a-date.",
       "events": [
         "fn-own-consumed-completion-is-240-or-uncertain",
         "fn-post-outcome-store-refusal-kinds-are-distinct",
-        "fn-post-outcome-store-refusal-is-not-uncertain"
+        "fn-post-outcome-store-refusal-is-not-uncertain",
+        "fn-pb-same-poster-bytes-is-answered-already-stored",
+        "fn-pb-different-poster-bytes-is-answered-conflict",
+        "fn-pb-a-resent-injection-has-the-same-poster-bytes",
+        "fn-pb-a-resend-at-a-later-second-is-answered-already-stored"
       ]
     },
     {

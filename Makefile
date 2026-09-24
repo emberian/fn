@@ -152,6 +152,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-files-teeth-tests \
 	books/store-node \
 	books/store-node-existing-invariants \
+	books/poster-bytes \
 	books/store-node-invariants \
 	books/acceptance-stamp-invariants \
 	tests/acl2/acceptance-stamp-tests \
@@ -633,6 +634,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
+	books/poster-bytes-invariants \
+	tests/acl2/poster-bytes-tests \
 	tests/acl2/owner-served-invariants-tests \
 	tests/acl2/owner-numbering-tests \
 	tests/acl2/owner-fault-tests \

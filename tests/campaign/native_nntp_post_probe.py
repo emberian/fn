@@ -279,7 +279,11 @@ def _repost_ok(row, failures, required=False):
         if required and row.get("reread_owner_ready"):
             failures.append("no repost was made to the restarted owner")
         return
-    want = {DUPLICATE, CONFLICT} if _present(row) else {OK_240}
+    # D25: the repost is the poster's own octets, so a present article is
+    # "already stored here" at any later clock second.  Before D25 the
+    # conflict line was accepted too, because the key held Injection-Date
+    # (campaign 47bdb9a4, finding K1).
+    want = {DUPLICATE} if _present(row) else {OK_240}
     if repost not in want:
         failures.append("repost {!r} not in {}".format(repost, sorted(want)))
 

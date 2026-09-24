@@ -1,5 +1,8 @@
-; Exact duplicate and conflicting-binding outcomes of the host-called Store
-; decision.  The lookup is over the live node carried by the composed Store.
+; Exact duplicate and conflicting-binding outcomes of the byte-identity Store
+; decision.  Since D25 the host calls fn-pb-existing-action
+; (books/poster-bytes.lisp), which keys on the poster's bytes and refines this
+; one (fn-pb-existing-action-refines-the-byte-identity-decision,
+; books/poster-bytes-invariants.lisp).  The lookup is over the live node carried by the composed Store.
 (in-package "ACL2")
 (include-book "store-node")
 
