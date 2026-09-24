@@ -63,6 +63,7 @@
 (assert-event (not (fn-stxk-p (fn-sn-completion-record *sn-completing*))))
 (assert-event (not (fn-stxa-p (fn-sn-completion-record *sn-completing*))))
 (assert-event (not (fn-cpe-eventp (fn-sn-completion-record *sn-completing*))))
+(assert-event (not (fn-th-topic-eventp (fn-sn-completion-record *sn-completing*))))
 (assert-event (equal (fn-article-stamp
                       (fn-find-article "<sn@example>"
                                        (fn-state-articles
@@ -95,6 +96,35 @@
          (list *ast-built* *ast-consumer-bootstrap*))
         (list (cons (fn-record-msgid *ast-built*)
                     (fn-record-stamp *ast-built*)))))
+
+; A valid topic administrator install is durable Store history, but it does
+; not carry an article stamp. The old article-arm exclusions all hold for it;
+; the explicit topic exclusion is necessary, not merely a proof hint.
+(defconst *ast-topic-install*
+  (list :topic-admin-install 0 0 0 501
+        (make-list 32 :initial-element 7)))
+(assert-event (fn-th-topic-eventp *ast-topic-install*))
+(assert-event (and (not (fn-store-retention-event-p *ast-topic-install*))
+                   (not (fn-stxe-p *ast-topic-install*))
+                   (not (fn-stxk-p *ast-topic-install*))
+                   (not (fn-stxa-p *ast-topic-install*))
+                   (not (fn-cpe-eventp *ast-topic-install*))))
+(assert-event (not (fn-replay-article-eventp *ast-topic-install*)))
+(assert-event (fn-replay-article-eventp *ast-built*))
+(assert-event
+ (equal (fn-replay-journal-article-stamps
+         (list *ast-built* *ast-topic-install*))
+        (list (cons (fn-record-msgid *ast-built*)
+                    (fn-record-stamp *ast-built*)))))
+(must-fail
+ (defthm ast-article-classification-without-topic-exclusion-fails
+   (implies (and (not (fn-store-retention-event-p *ast-topic-install*))
+                 (not (fn-stxe-p *ast-topic-install*))
+                 (not (fn-stxk-p *ast-topic-install*))
+                 (not (fn-stxa-p *ast-topic-install*))
+                 (not (fn-cpe-eventp *ast-topic-install*)))
+            (fn-replay-article-eventp *ast-topic-install*))
+   :rule-classes nil))
 
 ; The two exact grammars differ only in the schema octet and final stamp item.
 (defconst *ast-schema0* *fn-record-schema0-golden-octets*)

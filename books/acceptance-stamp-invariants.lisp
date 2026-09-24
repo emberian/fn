@@ -1,6 +1,9 @@
 ; T2a: the host-called constructor and durable stamp carrier.
 (in-package "ACL2")
 (include-book "store-node-invariants")
+; These proofs dispatch on the topic kind; opening its payload grammar in
+; every article replay case obscures that one-bit separation.
+(local (in-theory (disable fn-th-topic-eventp)))
 
 ; This projects the stamp conjunct of the actual durable completion theorem.
 ; The work is in fn-sn-actual-durable-completion-installs-record, whose proof
@@ -11,7 +14,8 @@
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
                 (not (fn-stxa-p (fn-sn-completion-record s)))
-                (not (fn-cpe-eventp (fn-sn-completion-record s))))
+                (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (and
             (consp (fn-find-article
                     (fn-record-msgid (fn-sn-completion-record s))
@@ -30,7 +34,8 @@
                             fn-sn-completion-enabledp
                             fn-sn-completion-record
                             fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
-                            fn-store-retention-event-p)))))
+                            fn-store-retention-event-p
+                            fn-th-topic-eventp)))))
 
 ; These two projections are deliberately independent of the replay step.
 ; Article state is newest first; the Store journal is oldest first.
@@ -53,7 +58,8 @@
   (and (not (fn-store-retention-event-p record))
        (not (fn-stxe-p record))
        (not (fn-stxk-p record))
-       (not (fn-cpe-eventp record))))
+       (not (fn-cpe-eventp record))
+       (not (fn-th-topic-eventp record))))
 
 (defun fn-replay-journal-article-stamps (records)
   (declare (xargs :guard t))
@@ -238,7 +244,8 @@
             (and (not (fn-store-retention-event-p record))
                  (not (fn-stxe-p record))
                  (not (fn-stxk-p record))
-                 (not (fn-cpe-eventp record))))
+                 (not (fn-cpe-eventp record))
+                 (not (fn-th-topic-eventp record))))
    :hints (("Goal"
             :do-not-induct t
             :in-theory
@@ -246,6 +253,7 @@
                   fn-stxe-p fn-stxe-shapep fn-stxe-msgid
                   fn-stxk-p fn-stxk-shapep
                   fn-cpe-eventp
+                  fn-th-topic-eventp
                   fn-store-retention-event-p fn-record-msgidp)
                  (fn-stxe-bounded-octetsp
                   fn-record-metadata-bytes-p))))))
@@ -264,7 +272,30 @@
                  fn-replay-article-eventp)
                  (fn-record-shape-vocabulary fn-replay-apply-record
                   fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                  fn-th-topic-eventp
                   fn-store-retention-event-p))))))
+
+; The composite arm passes the historical bound article through replay. Keep
+; this node projection explicit so the stamp proof does not expand the entire
+; 14-slot Store constructor and its other completion arms.
+(local
+ (defthm fn-stamp-composite-finish-node-is-replay
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-stxa-p (fn-sn-completion-record s)))
+            (equal (fn-sn-node (fn-sn-finish s))
+                   (fn-replay-apply-record
+                    (fn-sn-node s) (fn-sn-completion-record s))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-finish fn-sn-finish-identity fn-sn-node
+                  fn-sn-make-v6)
+                 (fn-sn-completion-enabledp fn-sn-statep
+                  fn-sn-completion-record fn-store-retention-event-p
+                  fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                  fn-th-topic-eventp fn-replay-apply-record
+                  fn-replay-identity-step fn-sn-identity-context
+                  fn-sf-core-completion fn-sf-emit-success
+                  fn-record-shape-vocabulary
+                  fn-record-record-vocabulary))))))
 
 (defthm fn-sn-finish-installs-the-stamp-the-composite-carries
   (implies (and (fn-sn-completion-enabledp s)
@@ -285,13 +316,16 @@
                     (fn-replay-composite-record (fn-sn-completion-record s))))))
   :hints (("Goal"
            :use (fn-stamp-composite-enabled-implies-replay-premises
+                 fn-stamp-composite-finish-node-is-replay
                  (:instance fn-replay-apply-record-installs-the-stamp
                             (node (fn-sn-node s))
                             (record (fn-sn-completion-record s))))
-           :in-theory (e/d (fn-sn-finish fn-replay-article-record)
+           :in-theory (e/d (fn-replay-article-record)
                            (fn-store-event-p fn-record-shape-vocabulary
                             fn-stxa-p fn-stxe-p fn-stxk-p
                             fn-sn-completion-enabledp
+                            fn-sn-finish fn-sn-finish-identity
+                            fn-replay-apply-record
                             fn-store-retention-event-p))))
   :rule-classes nil)
 

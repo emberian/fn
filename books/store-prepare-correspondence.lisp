@@ -199,7 +199,11 @@
    (implies (fn-sn-statep s)
             (fn-sn-statep (fn-sn-set-keyring s keyring)))
    :hints (("Goal"
-            :in-theory (e/d (fn-sn-set-keyring fn-sn-statep)
+            :in-theory (e/d (fn-sn-set-keyring fn-sn-statep fn-sn-shapep
+                             fn-sn-groups fn-sn-capacity fn-sn-files
+                             fn-sn-node fn-sn-keyring
+                             fn-sn-keyring-generation fn-sn-verdicts
+                             fn-sn-keyring-snapshots fn-sn-identity-next)
                              (fn-sf-statep fn-node-statep
                               fn-stx-index-of-store))))))
 
@@ -215,16 +219,23 @@
                (fn-sn-node s))
         (equal (fn-sn-consumer (fn-sn-set-keyring s keyring))
                (fn-sn-consumer s))
+        (equal (fn-sn-topic (fn-sn-set-keyring s keyring))
+               (fn-sn-topic s))
         (equal (fn-sn-identity-next (fn-sn-set-keyring s keyring))
                (fn-sn-identity-next s)))
-   :hints (("Goal" :in-theory (enable fn-sn-set-keyring)))))
+   :hints (("Goal" :in-theory (enable fn-sn-set-keyring
+                                      fn-sn-groups fn-sn-capacity
+                                      fn-sn-files fn-sn-node
+                                      fn-sn-consumer fn-sn-topic
+                                      fn-sn-identity-next)))))
 
 (local
  (defthm fn-spc-set-keyring-keeps-completion-record
    (equal (fn-sn-completion-record (fn-sn-set-keyring s keyring))
           (fn-sn-completion-record s))
-   :hints (("Goal" :in-theory (enable fn-sn-set-keyring
-                                       fn-sn-completion-record)))))
+   :hints (("Goal" :use fn-spc-set-keyring-keeps-store-components
+            :in-theory (e/d (fn-sn-completion-record)
+                            (fn-sn-set-keyring fn-sn-make-v6))))))
 
 ; Reconfiguration keeps the snapshot list and the identity cursor, so it
 ; keeps the identity replay context `6e992351' and `4bb7bb3d' made
@@ -233,7 +244,9 @@
  (defthm fn-spc-set-keyring-keeps-identity-context
    (equal (fn-sn-identity-context (fn-sn-set-keyring s keyring))
           (fn-sn-identity-context s))
-   :hints (("Goal" :in-theory (e/d (fn-sn-set-keyring fn-sn-identity-context)
+   :hints (("Goal" :in-theory (e/d (fn-sn-set-keyring fn-sn-identity-context
+                                    fn-sn-identity-next
+                                    fn-sn-keyring-snapshots)
                                    (fn-stx-index-of-store))))))
 
 ; The five event recognizers and the three appliers stay closed: since
@@ -256,6 +269,7 @@
                              fn-record-record-vocabulary
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-th-topic-eventp
                              fn-replay-apply-record
                              fn-replay-apply-retention-event
                              fn-replay-apply-identity-neutral
