@@ -998,7 +998,47 @@
         (equal (fn-bs-durable-frontier file)
                (1+ (fn-sf-frontier (cdr entry))))
         (equal (fn-bs-durable-records file)
-               (fn-bs-durable-records (car entry))))))
+               (fn-bs-durable-records (car entry)))
+        (fn-sf-crash-imagep (cdr pair)
+                            (fn-bs-durable-frontier file)
+                            (fn-bs-durable-records file)))))
+
+; The full byte/kernel relation is regained before the frontier-directory
+; callback, after the first article is durable in the retained prefix.
+(assert-event
+ (let* ((entry (bsk5-finished))
+        (pair (nth 12 (fn-bs-run (car entry) (cdr entry)
+                      (fn-bs-frontier-program ".allocation-k0-2"
+                                               (bsk0-second-frontier-host-frame))
+                      nil *bsk5-groups* *bsk5-capacity*))))
+   (fn-bs-store-relation (car pair) (cdr pair))))
+(must-fail
+ (assert-event
+  (let* ((entry (bsk5-finished))
+         (bs (bsk0-dangling-old-transaction))
+         (pair (nth 12 (fn-bs-run bs (cdr entry)
+                       (fn-bs-frontier-program ".allocation-k0-2"
+                                                (bsk0-second-frontier-host-frame))
+                       nil *bsk5-groups* *bsk5-capacity*))))
+    (fn-bs-store-relation (car pair) (cdr pair)))))
+(must-fail
+ (assert-event
+  (let* ((entry (bsk5-finished))
+         (pair (nth 12 (fn-bs-run (car entry) (cdr entry)
+                       (fn-bs-frontier-program ".allocation-k0-bad"
+                                                (list 65))
+                       nil *bsk5-groups* *bsk5-capacity*))))
+    (fn-bs-store-relation (car pair) (cdr pair)))))
+(must-fail
+ (assert-event
+  (let* ((entry (bsk5-finished))
+         (occupied (mv-nth 1 (fn-bs-create (car entry) :staging
+                                         ".allocation-k0-2" :ok)))
+         (pair (nth 12 (fn-bs-run occupied (cdr entry)
+                       (fn-bs-frontier-program ".allocation-k0-2"
+                                                (bsk0-second-frontier-host-frame))
+                       nil *bsk5-groups* *bsk5-capacity*))))
+    (fn-bs-store-relation (car pair) (cdr pair)))))
 
 ; Without fresh staging, O_EXCL stops the program before pair 12.  The
 ; exact-frame conclusion would otherwise be mistaken for a bare scan fact.
