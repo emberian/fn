@@ -5,7 +5,8 @@ implementation packets; it does not alter the selected release gates, claim a
 new proof result, or authorize changes outside fn. The external repositories
 were read only. The [selected E1/E2 exchange](experiments/e1-e2-agent-exchange.md),
 [consumer contract](../specs/consumer-progress.md), [decisions](decisions.md), and
-[takeover](archive/takeover-2026-09-23.md) remain authoritative.
+[takeover](archive/takeover-2026-09-23.md) remained authoritative at that date (the
+takeover plan is archived since 2026-09-24; current work is [now.md](now.md)).
 
 ## Recommendation
 

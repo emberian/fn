@@ -2,8 +2,8 @@
 
 fn now has executable ACL2 components and a native node exercised by agents.
 The [node record](../planning/evidence/node-hbox-da5fd8cb-2026-09-23.md) gives
-the tested image and its limits; [current work](../planning/now.md) tracks
-development beyond that image. The older [implementation inventory](implementation.md)
+the tested image and its limits; [now](../planning/now.md) is the single
+current page for development beyond that image. The older [implementation inventory](implementation.md)
 is historical, not the current service status.
 
 ## Reading order
@@ -54,10 +54,10 @@ reading stored articles over loopback NNTP.
 | What has been decided? | [Decision register](../planning/decisions.md) |
 | What behavior is required? | [Requirement registry](../planning/requirements.json), with links to the detailed specs |
 | What is to be proved? | [Proof registry](../planning/proofs.json), interpreted by the proof strategy |
-| What should happen next? | [The trajectory plan](../planning/plan-2026-09-22-trajectory.md) §3 and its phase schedule; [how we work](../planning/how-we-work.md) |
+| What is happening now, and what should happen next? | [Now](../planning/now.md) (dev, images, goal, active lanes); release scope in [the trajectory plan](../planning/plan-2026-09-22-trajectory.md) §0 to §2; [how we work](../planning/how-we-work.md) |
 | Which examples must be exercised? | [Scenario catalog](../tests/scenarios/catalog.json) |
 | Which standards support the design? | [References](references.md) |
-| What evidence exists, and what does it not show? | [Evidence index](../planning/archive/evidence-index.md), one row per record in `tests/evidence/` |
+| What evidence exists, and what does it not show? | Dated records in [`planning/evidence/`](../planning/evidence/), certify manifests in [`planning/evidence/manifests/`](../planning/evidence/manifests/), and [`tests/evidence/`](../tests/evidence/); each record states its scope. The hand-kept evidence index is [archived](../planning/archive/evidence-index.md). |
 
 The registries track requirement and proof status. Narrative documents explain
 contracts rather than maintain competing completion counts. Scenario entries are
