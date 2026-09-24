@@ -51,6 +51,11 @@
 (sb-alien:define-alien-routine ("EVP_PKEY_free" fnn-%hsig-pkey-free)
     sb-alien:void (key (* t)))
 (sb-alien:define-alien-routine
+    ("EVP_PKEY_new_raw_public_key_ex" fnn-%hsig-new-raw-public-key) (* t)
+  (library-context (* t)) (keytype sb-alien:c-string)
+  (properties sb-alien:c-string) (key (* sb-alien:unsigned-char))
+  (key-length sb-alien:unsigned-long))
+(sb-alien:define-alien-routine
     ("EVP_PKEY_get_raw_public_key" fnn-%hsig-get-raw-public-key) sb-alien:int
   (key (* t)) (output (* sb-alien:unsigned-char))
   (output-length (* sb-alien:unsigned-long)))
@@ -222,19 +227,18 @@
       (when key (fnn-%hsig-pkey-free key)))
     signature))
 
-(defun fnn-hsig-ml-dsa-65-verify (public-key-path message signature)
-  (fnn-hsig-initialize)
+(defun fnn-hsig-ml-dsa-65-verify-key (key message signature)
+  "Verify with an already imported public key and report its actual raw bytes."
   (let ((text (fnn-crypto-octets message +fnn-hsig-max-message-octets+
                                  "hybrid signed preimage"))
         (sig (fnn-crypto-octets signature +fnn-hsig-ml-signature-octets+
                                 "ML-DSA-65 signature"))
-        (key nil) (context nil) (algorithm nil) (observed-key nil))
+        (context nil) (algorithm nil) (observed-key nil))
     (unless (= (length sig) +fnn-hsig-ml-signature-octets+)
-      (return-from fnn-hsig-ml-dsa-65-verify nil))
+      (return-from fnn-hsig-ml-dsa-65-verify-key nil))
     (unwind-protect
          (progn
-           (setq key (fnn-hsig-read-key public-key-path nil)
-                 context (fnn-%hsig-context-new (fnn-hsig-null) key nil)
+           (setq context (fnn-%hsig-context-new (fnn-hsig-null) key nil)
                  algorithm (fnn-%hsig-fetch (fnn-hsig-null) "ML-DSA-65" nil))
            (setq observed-key (fnn-hsig-ml-public-key-from-handle key))
            (when (or (fnn-hsig-null-p context) (fnn-hsig-null-p algorithm))
@@ -250,7 +254,35 @@
                      (t (error 'fnn-hsig-fault
                                :detail "ML-DSA-65 verification fault"))))))
       (when algorithm (fnn-%hsig-signature-free algorithm))
-      (when context (fnn-%hsig-context-free context))
+      (when context (fnn-%hsig-context-free context)))))
+
+(defun fnn-hsig-ml-dsa-65-verify (public-key-path message signature)
+  (fnn-hsig-initialize)
+  (let ((key nil))
+    (unwind-protect
+         (progn
+           (setq key (fnn-hsig-read-key public-key-path nil))
+           (fnn-hsig-ml-dsa-65-verify-key key message signature))
+      (when key (fnn-%hsig-pkey-free key)))))
+
+(defun fnn-hsig-ml-dsa-65-verify-raw (public-key message signature)
+  "Import the exact bounded enrolled key bytes; no PEM file or key choice."
+  (fnn-hsig-initialize)
+  (let ((raw (fnn-crypto-octets public-key +fnn-hsig-ml-public-key-octets+
+                                 "ML-DSA-65 public key"))
+        (key nil))
+    (unless (= (length raw) +fnn-hsig-ml-public-key-octets+)
+      (return-from fnn-hsig-ml-dsa-65-verify-raw nil))
+    (unwind-protect
+         (progn
+           (sb-sys:with-pinned-objects (raw)
+             (setq key (fnn-%hsig-new-raw-public-key
+                        (fnn-hsig-null) "ML-DSA-65" nil
+                        (fnn-hsig-pointer raw) (length raw))))
+           (when (fnn-hsig-null-p key)
+             (error 'fnn-hsig-fault
+                    :detail "cannot import ML-DSA-65 enrolled public key"))
+           (fnn-hsig-ml-dsa-65-verify-key key message signature))
       (when key (fnn-%hsig-pkey-free key)))))
 
 (defun fnn-hsig-observe
@@ -266,6 +298,22 @@ the other, and unsupported ML-DSA is never mapped to :VERIFIED."
               (multiple-value-bind (verified observed-key)
                   (fnn-hsig-ml-dsa-65-verify
                    ml-public-key-path message ml-signature)
+                (list (if verified :verified :refused) observed-key))
+            (fnn-hsig-unsupported () :unsupported)
+            (error () :fault)))))
+
+(defun fnn-hsig-observe-raw
+    (ed-public-key ml-public-key message signatures)
+  "Two independent observations against the exact ACL2-selected key bytes."
+  (let ((ed-signature (and (consp signatures) (cdr (car signatures))))
+        (ml-signature (and (consp (cdr signatures))
+                           (cdr (car (cdr signatures))))))
+    (list (fnn-crypto-ed25519-observe
+           ed-public-key message ed-signature +fnn-hsig-max-message-octets+)
+          (handler-case
+              (multiple-value-bind (verified observed-key)
+                  (fnn-hsig-ml-dsa-65-verify-raw
+                   ml-public-key message ml-signature)
                 (list (if verified :verified :refused) observed-key))
             (fnn-hsig-unsupported () :unsupported)
             (error () :fault)))))

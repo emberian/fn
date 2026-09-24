@@ -743,6 +743,77 @@ the current connection."
         (error e))
       ((or fnn-store-error fnn-os-error) () :refused))))
 
+(defun fnn-owner-attempt-transit (service msgid payload groups evidence)
+  "One ingress decision for both NNTP and BP transit under the caller's
+durable intent. ACL2 distinguishes carrier absence from present-invalid,
+selects the B-local current enrollment, and constructs the exact kind-4
+event. A carrier-absent article keeps the established legacy Store path."
+  (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
+                              (fnn-octet-list payload))))
+    (cond
+      ((eq plan :absent)
+       (fnn-owner-attempt service msgid payload groups evidence))
+      ((not (and (consp plan) (eq (first plan) :ok))) :refused)
+      (t
+       (handler-case
+           (let* ((store (fnn-owner-service-store service))
+                  (codes (fnn-owner-core
+                          'fn-owner-group-codes
+                          (mapcar #'fnn-octet-list groups)))
+                  (charge (fnn-charge (length payload)))
+                  (source (second plan))
+                  (principal (third plan))
+                  (keys (fourth plan))
+                  (signatures (fifth plan)))
+             (when (or (keywordp codes) (not (listp codes))
+                       (/= (length codes) (length groups)))
+               (return-from fnn-owner-attempt-transit :refused))
+             (fnn-validate-post-boundary store msgid payload codes charge)
+             (case (fnn-owner-action 'fn-owner-existing-action
+                                     (fnn-octet-list msgid)
+                                     (fnn-octet-list payload) codes)
+               (:duplicate (return-from fnn-owner-attempt-transit :duplicate))
+               (:conflict (return-from fnn-owner-attempt-transit :refused)))
+             (unless (eq (fnn-owner-advance-clock) :observed)
+               (return-from fnn-owner-attempt-transit :clock-unusable))
+             (let* ((preimage
+                      (fnn-core 'fn-hsig-host-preimage
+                                principal keys source))
+                    (observations
+                      (and preimage
+                           (fnn-hsig-observe-raw
+                            (cdr (first keys)) (cdr (second keys))
+                            preimage signatures)))
+                    (ml-observation (second observations))
+                    (observed-ml-key
+                      (and (consp ml-observation)
+                           (second ml-observation))))
+               (unless (and observed-ml-key
+                            (eq (first observations) :verified)
+                            (eq (first ml-observation) :verified))
+                 (return-from fnn-owner-attempt-transit :refused))
+               (multiple-value-bind (obligation subject ignored)
+                   (fnn-metadata msgid payload)
+                 (declare (ignore ignored))
+                 (let* ((coordinates
+                          (fnn-owner-core 'fn-owner-next-store-coordinates))
+                        (event
+                          (fnn-owner-core
+                           'fn-owner-peer-carried-event coordinates
+                           (fnn-octet-list msgid) (fnn-octet-list payload)
+                           codes (fnn-octet-list obligation)
+                           (fnn-octet-list subject) (fnn-octet-list evidence)
+                           charge (coerce observed-ml-key 'list)
+                           (first observations) (first ml-observation))))
+                   (unless event
+                     (return-from fnn-owner-attempt-transit :refused))
+                   (fnn-owner-identity-commit service event)))))
+         (fnn-store-indeterminate () :uncertain)
+         (fnn-store-fault (e)
+           (setf (fnn-store-fenced (fnn-owner-service-store service)) t)
+           (error e))
+         ((or fnn-store-error fnn-os-error) () :refused))))))
+
 (defun fnn-owner-retention-commit (service event)
   "Publish one ACL2-authored retention event through the normal Store path."
   (unless (and (listp event) (= (length event) 5)
@@ -1021,7 +1092,11 @@ client, which can issue POSITION after reconnecting."
                   ;; Durable intent before the first Store mutation.  Empty is
                   ;; a complete batch when the ACL2 target set is empty.
                   (fnn-owner-feed-flush service)
-                  (let ((word (fnn-owner-attempt service msgid payload groups evidence)))
+                  (let ((word (if transitp
+                                  (fnn-owner-attempt-transit
+                                   service msgid payload groups evidence)
+                                (fnn-owner-attempt
+                                 service msgid payload groups evidence))))
                     (fnn-owner-action 'fn-owner-submission-resolution
                                       word (fnn-octet-list evidence)
                                       generation txid)
@@ -1157,7 +1232,8 @@ Every other caller submits exact authored octets and names them."
               (return-from fnn-owner-complete-bp-transit-submission
                 (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)))
             (fnn-owner-feed-flush service)
-            (let ((word (fnn-owner-attempt service msgid stored groups evidence)))
+            (let ((word (fnn-owner-attempt-transit
+                         service msgid stored groups evidence)))
               (fnn-owner-action 'fn-owner-submission-resolution
                                 word (fnn-octet-list evidence) generation txid)
               (fnn-owner-feed-flush service)

@@ -572,6 +572,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/hybrid-carrier \
 	tests/acl2/hybrid-carrier-tests \
 	books/hybrid-store-invariants \
+	books/peer-authored-accept \
+	tests/acl2/peer-authored-accept-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \
