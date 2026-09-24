@@ -2150,86 +2150,123 @@ admitted under the announced identity.
 `books/bp-native-app` is red at its digest and opens the record codec
 book-wide; the K6 edit waits for T1's BP-receiver cluster (slice A3's gate).
 
-### 6.1 D23: a neighbour carries named sources; the author's enrollment decides
+### 6.1 D23: four questions, not one
 
-Decision D23 ([decisions](../planning/decisions.md), 2026-09-24). Session
-admission is unchanged: `fn-bpaj-session-principal` names the delivering
-TCPCL neighbour from the observed channel and the announced EID, and the
-ingress carries that principal and the configuration generation. What
-changes is the per-bundle source check that the application and the Store
-plan make, which used to require the bundle's source EID to equal the
-neighbour's own enrolled EID. Through any relaying BPA the two differ, so
-every relayed request and receipt was refused
-([m4-app-receipt](../planning/evidence/m4-app-receipt-2026-09-24.md),
-finding 1).
+Decision D23 ([decisions](../planning/decisions.md), 2026-09-24), as the
+[direction review](../planning/review-2026-09-24-gpt6-direction.md) spells
+it out: carriage is not authorship, and authorship is not release
+authority. A relayed request and a relayed receipt are judged by four
+separate ACL2 predicates. Each has its own configuration input, none implies
+another, and the identities they take are typed.
 
-**Enrollment.** A BP boundary may list the source EIDs its neighbour may
-carry: `operator CONFIG bp-boundary add NAME PATH BP-EID PORT
-[INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...]`
-(`fn-native-admin-bp-boundary-plan`). Each listed EID is a
-`(NAME "bp-boundary-carries" EID 0)` row in the boundary's `:set-peer`
-delta, so the durable configuration record carries it and configuration
-replay recovers it; nothing received can create one. A carried word must be
-a `dtn:` or `ipn:` EID, is listed once, and the list is non-empty.
+| question | predicate (book) | configuration input | identity it takes |
+| --- | --- | --- | --- |
+| neighbour admitted | `fn-bpaj-neighbor-admittedp cfg channel announced` (`bp-session-admission`) | the boundary's listener, trust and transport rows (`fn-bpaj-session-principal`, unchanged) | the observed channel and announced EID |
+| origin carriage permitted | `fn-bpaj-origin-carriage-permittedp cfg peer generation source` (`bp-session-admission`) | the peer's carried list, `(NAME "bp-boundary-carries" EID 0)` rows | `(:bp-source-eid E)` |
+| author publication authorized | `fn-bpah-author-publication-authorizedp cfg author generation source` (`bp-app-handoff`) | the author's own boundary (trust profile, `transport-bp`) | `(:principal P)`, `(:bp-source-eid E)` |
+| receipt authorizes release | `fn-bpah-receipt-authorizes-releasep cfg carrier generation issuer wf receipt work` (`bp-release-authority`) | the carrier's release list, `(NAME "bp-boundary-releases-for" EID 0)` rows, and the held obligation in the workflow image | `(:release-issuer-eid E)` |
 
-**The decision** is one ACL2 function the host does not reimplement,
-`fn-bpaj-carried-source-decision cfg principal generation source`
-(`books/bp-session-admission.lisp`):
+`fn-bpaj-boundary-carried-sources` and `fn-bpaj-boundary-release-issuers`
+return the two lists in their own domains; a BP source EID, a release
+issuer EID and a boundary principal are never one string bag.
 
-- `(:direct P)` when SOURCE is P's own enrolled EID (the old rule,
-  `fn-bpaj-current-peer-eidp`, unchanged);
-- `(:refused :generation)` when the configuration is not current;
-- `(:refused :source-not-carried)` when P is not a current BP boundary
-  listing SOURCE as carried;
-- `(:carried P A)` when P carries SOURCE and exactly one boundary here is
-  directly enrolled with SOURCE as its `transport-bp` EID (its own trust
-  profile, a unique `bp-trust network` row); A is that boundary, the
-  **author's** enrollment;
-- `(:refused :carried-source-unenrolled)` when P carries SOURCE and no
-  boundary (or more than one) is enrolled for it.
+**Enrollment.** `operator CONFIG bp-boundary add NAME PATH BP-EID PORT
+[INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...]
+[releases-for ISSUER-EID ...]` (`fn-native-admin-bp-boundary-plan`). Each
+list is non-empty when present, its words are `dtn:`/`ipn:` EIDs listed
+once, and the clauses come in that order. Each EID is one row in the
+boundary's `:set-peer` delta, so the durable configuration record carries
+it and replay recovers it. The release list defaults to empty.
 
-The application principal is P for a direct bundle and A for a carried one
-(`fn-bpaj-source-decision-principal`). `fn-bpah-request-trustedp` and
-`fn-bpah-receipt-trustedp` (the host's `fn-owner-bp-request-trustedp` and
-`fn-owner-bp-receipt-trustedp`) admit exactly the direct and carried
-decisions; `fn-bpaj-ingress-peer` names the application principal, so the
-transit plan's peer, inbound scope and transfer decision for a carried
-request are the author's and never the carrier's. The host prints ACL2's
-line for every dispatched request and receipt (`fn-bpah-source-decision-line`,
-`BP node source direct principal=...`, `... carried carrier=... author=...`
-or `... refused reason=...`).
+**Requests: carriage and authorship.** The source decision is unchanged:
+`fn-bpaj-carried-source-decision cfg principal generation source` answers
+`(:direct P)` for the neighbour's own EID, `(:carried P A)` when P carries
+the source and A is the unique boundary directly enrolled for it (the
+author), or `(:refused R)` with `:generation`, `:source-not-carried` or
+`:carried-source-unenrolled`. A carried decision is an origin-carriage
+permission (`fn-bpaj-carried-decision-requires-origin-carriage`), and the
+request is judged under the author's enrollment
+(`fn-bpaj-carried-decision-is-the-authors-direct-decision`,
+`fn-bpaj-carried-request-is-judged-as-the-authors-direct-request`). The
+release list does not enter: two configurations that differ only in
+release rows make the same source decision
+(`fn-bpaj-source-decision-ignores-release-rows`), trust the same requests
+(`fn-bpah-request-trust-ignores-release-rows`) and give the transit plan
+the same principal (`fn-bpaj-ingress-peer-ignores-release-rows`); a release
+row alone is not carriage (`fn-bpaj-release-row-is-not-carriage`).
 
-**Theorems** (the subjects are the functions the host calls):
+**Receipts: release authority.** `fn-bpah-receipt-trustedp` (the host's
+gate) reads the issuer half of the release question,
+`fn-bpah-release-issuer-authorizedp`: the receipt's issuer is the
+delivering neighbour's own enrolled EID (a neighbour speaking for itself,
+the direct `trusted-local-observation-v0` profile), or it is on the
+neighbour's release list. The carried list is not an input: a neighbour
+allowed to carry Alice's article is not thereby entitled to assert Bob's
+receipt. The whole question, `fn-bpah-receipt-authorizes-releasep`, adds
+that the receipt names the exact held obligation: an outstanding work whose
+id, content subject, counterpart peer, policy, incarnation, authority
+context and terms are the receipt's, under the workflow's configured
+receipt authority (the workflow's own `fn-bp-authorized-receiptp`). The
+requester is this node: the receipt's carrier is addressed to it
+(`fn-bpah-local-pendingp`) and the work is in its own journal.
 
-- `fn-bpaj-carried-decision-is-the-authors-direct-decision`: a carried
-  decision names an author whose own delivery of the same source at the same
-  generation is decided `:direct` under that author.
-- `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request`
-  (`books/bp-transit-join.lisp`): for a carried delivery and a direct one
-  from the author at the same generation, both trust checks answer the same
-  and `fn-bpaj-transit-plan` returns the same plan.
-- `fn-bpaj-unlisted-carried-request-is-refused`: when the neighbour's
-  boundary has neither a `transport-bp` nor a `bp-boundary-carries` row for
-  the source, neither trust check admits it and the plan is
-  `(:refused :no-principal)`; the host answers `request-refused` before
-  opening FNRJ or Store.
-- `fn-bpaj-carried-unenrolled-request-is-refused`: a current carrier of a
-  source that no boundary here is enrolled with is decided
-  `(:refused :carried-source-unenrolled)`, trusted by neither check, and the
-  plan is refused.
+**The host path.** `fnn-bpnode-receipt-result` (`host/native/bp-node.lisp`)
+prints ACL2's source line and its release line (`BP node release
+<verdict> carrier=<name> issuer=<eid>`), refuses on the gate before opening
+the workflow journal, and after opening it publishes only the record
+`fn-bpah-receipt-release-record view cfg wf` returns (through
+`fn-owner-bp-receipt-release-record`, `host/bp-native-app-host.lisp`); nil
+publishes nothing and the pin stays. Theorems over that function:
+
+- `fn-bpah-unauthorized-issuer-releases-nothing`: when the issuer is not
+  authorized for release at the delivering neighbour, the gate refuses and
+  the record is nil.
+- `fn-bpah-carrier-without-release-row-releases-nothing`: the same over the
+  configuration rows: the neighbour's boundary has neither a `transport-bp`
+  nor a `bp-boundary-releases-for` row for the issuer. Its carried list is
+  not a hypothesis, so carrying the issuer's EID releases nothing.
+- `fn-bpah-released-receipt-names-exactly-its-obligation`: a non-nil record
+  implies the issuer is authorized, the obligation the receipt's work id
+  finds is outstanding and passes the workflow's exact-term check, the
+  record carries that work's id, and the workflow image admits the record.
+- `fn-bpah-receipt-naming-other-terms-releases-nothing`: a receipt whose
+  work id finds no outstanding work, or whose subject, policy or terms
+  differ from that work's, releases nothing whoever issued it.
+
+**Provenance.** A reader of the FNBS journal tells the four facts apart
+from the held row alone: `fn-bpah-held-received-from` (the kind-5 ingress:
+neighbour principal, its EID, the configuration generation),
+`fn-bpah-held-claimed-source` (the bundle's source, a BP source EID),
+`fn-bpah-held-verdict` (a receipt's kind-7 detail, `release=<verdict>`,
+ACL2's `fn-bpah-receipt-release-verdict`: `self-issued`, `listed-issuer`,
+`carried-not-released`, `issuer-not-released`, `obligation-mismatch`,
+`workflow-refused`, `generation`, `not-a-receipt` or `ingress`) and
+`fn-bpah-held-policy-row` (the configuration row that verdict rests on). A
+request's kind-7 detail is its receipt id, so its policy and verdict are
+re-derived from the held row and the configuration record of the stamped
+generation (`fn-bpah-held-source-decision`).
+
+**Transitive trust in the trusted-relay profile.** A release row is a
+finite delegation, not an authentication. `relay releases-for dtn://b/`
+says this node trusts the relay to hand on B's receipts faithfully; the
+receipt's issuer field is B's claim as the relay delivered it, and nothing
+here verifies B's signature over it. A dishonest relay on the list can
+release an obligation for B's work by forging a receipt that names it
+exactly. What the rule removes is the collapse of carriage into release: a
+relay trusted only to carry B's articles cannot release anything. Release
+through an untrusted intermediary needs the receipt itself bound and
+verified against the authorized issuer (a signed receipt), which is open.
 
 Teeth, one per hypothesis, and reachable witnesses are in
-`tests/acl2/bp-transit-join-tests.lisp`, `bp-session-admission-tests.lisp`
-and `bp-app-handoff-tests.lisp`.
+`tests/acl2/bp-release-authority-tests.lisp`,
+`bp-session-admission-tests.lisp`, `bp-app-handoff-tests.lisp`,
+`bp-transit-join-tests.lisp` and `native-admin-tests.lisp`.
 
 **Not decided here.** The carried list admits sources, not destinations:
 `bp-node serve`'s own forwarding still expects the application peer as its
-TCPCL neighbour (`fnn-bpnode-forward-contact`, finding 3), which is a
-routing choice (which neighbour a job is handed to), not this trust rule.
-A signed article's verification against the author's enrollment
-(D23's second half, the `:fn-verified` verdict) is the posting path's.
-
-## 7. Limits, reassembly, fragmentation, routes, reports
+TCPCL neighbour (`fnn-bpnode-forward-contact`), which is routing, not this
+trust rule. A signed article's verification against the author's enrollment
+(the `:fn-verified` verdict) is the posting path's.
 
 ### 7.1 Limits that compose (§12, D-9)
 

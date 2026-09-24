@@ -268,6 +268,12 @@ def main(argv=None):
                          "`carried' (D23, the default) enrols the neighbour with "
                          "`carries' naming the far fn node, and the far node "
                          "under its own EID, on each side")
+    ap.add_argument("--a-releases", choices=("listed", "none"), default="listed",
+                    help="D23 release authority at A in the carried mode: "
+                         "`listed' (the default) gives A's return boundary "
+                         "`releases-for' the receiver's EID, so a receipt it "
+                         "relays may release the obligation; `none' leaves "
+                         "only `carries', and the receipt must release nothing")
     args = ap.parse_args(argv)
     if args.relays and not args.dtn7_repo:
         ap.error("--dtn7-repo is required unless --relays 0")
@@ -347,14 +353,20 @@ def main(argv=None):
             setup.append(lab.fn("setup-{}-path".format(side), "operator", config, "policy",
                                 "set", "path-identity", path_id).returncode)
             carries = ["carries", far[2]] if carried else []
+            # D23: carriage is not release authority.  Only A releases on
+            # receipts, and only for an issuer on its boundary's release list.
+            releases = (["releases-for", far[2]]
+                        if carried and side == "a" and args.a_releases == "listed"
+                        else [])
             setup.append(lab.fn("setup-{}-boundary".format(side), "operator", config,
                                 "bp-boundary", "add", name, remote, eid, port,
-                                *scope, *carries).returncode)
+                                *scope, *carries, *releases).returncode)
             if carried:
                 setup.append(lab.fn("setup-{}-author".format(side), "operator", config,
                                     "bp-boundary", "add", far[0], far[1], far[2],
                                     free_port(), *far[3]).returncode)
         report["b_trusts"]["carried"] = carried
+        report["a_releases"] = args.a_releases if carried else "direct"
         report["setup_rcs"] = setup
         report["a_pinned_before"] = lab.fn("a-status-0", "bp-obligation", "status",
                                            a_store, a_wf, WORK).stdout.strip()
@@ -463,6 +475,7 @@ def main(argv=None):
              tick_outcome=outcome_of(tick.returncode),
              a_receipt_lines=[l for l in alines if l.startswith("BP node delivery")],
              a_source_decisions=[l for l in alines if l.startswith("BP node source")],
+             a_release_lines=[l for l in alines if l.startswith("BP node release")],
              a_inbound_custody=[l for l in alines if l.startswith(
                  ("BP accepted", "BP received carrier"))],
              a_obligation=status.stdout.strip())
