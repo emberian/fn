@@ -2771,11 +2771,7 @@
       "events": [
         "fn-own-consumed-completion-is-240-or-uncertain",
         "fn-post-outcome-store-refusal-kinds-are-distinct",
-        "fn-post-outcome-store-refusal-is-not-uncertain",
-        "fn-pb-same-poster-bytes-is-answered-already-stored",
-        "fn-pb-different-poster-bytes-is-answered-conflict",
-        "fn-pb-a-resent-injection-has-the-same-poster-bytes",
-        "fn-pb-a-resend-at-a-later-second-is-answered-already-stored"
+        "fn-post-outcome-store-refusal-is-not-uncertain"
       ]
     },
     {
