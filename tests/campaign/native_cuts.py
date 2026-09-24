@@ -94,6 +94,21 @@ CHECKPOINT_CUTS = (
     NativeCut("selection-directory", "fn-cpp-marker-step", "present"),
     NativeCut("pack-reclaim-unlink", "fn-bs-pack-reclaim-program", "either"),
     NativeCut("pack-reclaim-directory", "fn-bs-pack-reclaim-program", "n/a"),
+    NativeCut("pack-retire-unlink", "fn-cprt-retire-program", "either",
+              book="checkpoint-pack-retire.lisp"),
+    NativeCut("pack-retire-directory", "fn-cprt-retire-program", "n/a",
+              book="checkpoint-pack-retire.lisp"),
+)
+# The two entries that reach every CHECKPOINT_CUTS site on a pack: the
+# developer `checkpoint' verb (`pack ROOT select', then `pack-reclaim ROOT',
+# then `pack-retire ROOT') and the public `operator CONFIG store compact'
+# (host/native/checkpoint.lisp `fnn-compact-steps', which carries out
+# books/store-compact-verb.lisp `*fn-cverb-pack-steps*').
+COMPACT_ENTRY_STEPS = (
+    ("pack", "fnn-pack-publish-generation"),
+    ("select", "fnn-pack-select"),
+    ("reclaim", "fnn-pack-prefix-reclaim"),
+    ("retire", "fnn-pack-retire-older-generations"),
 )
 
 
@@ -286,13 +301,58 @@ def verify_checkpoint_cut_map() -> None:
              reclaim_host.index('(fnn-checkpoint-test-stop "pack-reclaim-directory")')]
     if order != sorted(order):
         raise AssertionError("fnn-pack-prefix-reclaim is out of fn-bs-pack-reclaim-steps order")
+    retire = model_cut_names("fn-cprt-retire-steps", "checkpoint-pack-retire.lisp")
+    for name in ("pack-retire-unlink", "pack-retire-directory"):
+        if name not in retire:
+            raise AssertionError("{} absent from retire model".format(name))
+    verify_compact_entries(native)
     bridge = (ROOT / "host/checkpoint-host.lisp").read_text()
     for wrapper, subject in (
+            ("fn-store-compact-decide", "fn-cverb-decide"),
             ("fn-store-checkpoint-compaction-observe", "fn-ccp-observe-framed"),
             ("fn-store-checkpoint-compaction-coverage", "fn-ccp-coverage-framed")):
         body = host_function(bridge, wrapper)
         if "({} ".format(subject) not in body:
             raise AssertionError("{} does not call {}".format(wrapper, subject))
+
+
+def verify_compact_entries(native: str) -> None:
+    """Both compaction entries reach the checkpoint cuts through one code path.
+
+    The pack publication passes the checkpoint candidate observer (the
+    candidate-* cuts), the pack and checkpoint selections share
+    `fnn-marker-replace' (the selection-* cuts), the operator verb's step
+    arms call the same four functions the developer verb calls, and ACL2's
+    step list names exactly those arms in that order.
+    """
+    publish = host_function(native, "fnn-pack-publish-generation")
+    if ":observer #'fnn-checkpoint-candidate-observer" not in publish:
+        raise AssertionError("pack publication does not reach the candidate cuts")
+    for caller in ("fnn-pack-select", "fnn-checkpoint-select"):
+        if "(fnn-marker-replace " not in host_function(native, caller):
+            raise AssertionError("{} does not share the marker loop".format(caller))
+    steps = host_function(native, "fnn-compact-steps")
+    if "(fnn-core 'fn-store-compact-decide" not in steps:
+        raise AssertionError("fnn-compact-steps does not ask fn-store-compact-decide")
+    positions = []
+    for keyword, function in COMPACT_ENTRY_STEPS:
+        arm = re.search(r"\(:{}\s".format(keyword), steps)
+        if not arm or "({} ".format(function) not in steps:
+            raise AssertionError("compact step {} does not call {}".format(keyword, function))
+        positions.append(arm.start())
+    if positions != sorted(positions):
+        raise AssertionError("fnn-compact-steps arms are out of step order")
+    book = (ROOT / "books/store-compact-verb.lisp").read_text()
+    match = re.search(r"\(defconst \*fn-cverb-pack-steps\* '\(([^)]*)\)\)", book)
+    if not match or tuple(re.findall(r":([a-z]+)", match.group(1))) != tuple(
+            k for k, _ in COMPACT_ENTRY_STEPS):
+        raise AssertionError("*fn-cverb-pack-steps* is not the host's step order")
+    command = host_function(native, "fnn-checkpoint-command")
+    for word, function in (('"pack"', "fnn-checkpoint-command-pack"),
+                           ('"pack-reclaim"', "fnn-checkpoint-command-pack-reclaim"),
+                           ('"pack-retire"', "fnn-checkpoint-command-pack-retire")):
+        if word not in command or function not in command:
+            raise AssertionError("developer checkpoint verb lacks {}".format(word))
 
 
 # The post cut whose EIO the host swallows: a cut between two best-effort

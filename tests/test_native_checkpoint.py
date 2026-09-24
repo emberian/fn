@@ -17,11 +17,14 @@ from tests.native_process import wait_for_announcement, stop_and_diagnostics
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+PRODUCTION_IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 
 
 @unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
                      "build/fn-host-developer is required for raw Store fixtures")
 class NativeCheckpointTests(unittest.TestCase):
+    image = IMAGE
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-checkpoint-")
         self.base = Path(self.temporary.name)
@@ -36,7 +39,7 @@ class NativeCheckpointTests(unittest.TestCase):
 
     def native(self, *args, expected=0, env=None):
         result = subprocess.run(
-            [str(IMAGE), "--fn", *map(str, args)], cwd=ROOT,
+            [str(self.image), "--fn", *map(str, args)], cwd=ROOT,
             env=env or self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             timeout=30, check=False, text=True)
         self.assertEqual(result.returncode, expected,
@@ -941,7 +944,7 @@ class NativeCheckpointTests(unittest.TestCase):
 
     def run_owner(self, config):
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(config), "run"],
+            [str(self.image), "--fn", "operator", str(config), "run"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         wait_for_announcement(process, b"LISTENING ")
@@ -1093,6 +1096,82 @@ class NativeCheckpointTests(unittest.TestCase):
                 self.assert_view_kept_and_next_number(
                     store, config, port, msgids, before, before_retention, name)
                 self.native("checkpoint", "pack-reclaim", store)
+
+
+@unittest.skipUnless(PRODUCTION_IMAGE.is_file() and os.access(PRODUCTION_IMAGE, os.X_OK),
+                     "build/fn-host (the production image) is required")
+class NativeProductionCompactTests(unittest.TestCase):
+    """`operator CONFIG store compact' on the production image (M5).
+
+    The helpers are NativeCheckpointTests', run against the production image;
+    no developer selector or developer verb is used here.
+    """
+    image = PRODUCTION_IMAGE
+    setUp = NativeCheckpointTests.setUp
+    tearDown = NativeCheckpointTests.tearDown
+    native = NativeCheckpointTests.native
+    owner_config = NativeCheckpointTests.owner_config
+    run_owner = NativeCheckpointTests.run_owner
+    stop_owner = NativeCheckpointTests.stop_owner
+    operator_post = NativeCheckpointTests.operator_post
+    served_view = NativeCheckpointTests.served_view
+    transaction_bytes = NativeCheckpointTests.transaction_bytes
+    assert_view_kept_and_next_number = NativeCheckpointTests.assert_view_kept_and_next_number
+
+    def test_operator_compact_keeps_every_article_and_next_number(self):
+        name = "prod-compact"
+        store = self.base / name
+        config, port = self.owner_config(store, name)
+        init = self.native("operator", config, "init", "fn.letters")
+        self.assertIn("accepted operator init", init.stderr)
+        msgids = ["<{}-{}@example.invalid>".format(name, k) for k in range(5)]
+        owner = self.run_owner(config)
+        try:
+            for k, msgid in enumerate(msgids):
+                self.operator_post(config, msgid, "{}-{}".format(name, k))
+            # Refused while an owner runs, and nothing changes.
+            held = self.native("operator", config, "store", "compact", expected=1)
+            self.assertIn("refused operator compact", held.stderr)
+            self.assertIn("locked", held.stderr)
+        finally:
+            self.stop_owner(owner)
+        files = self.transaction_bytes(store)
+        self.assertGreaterEqual(len(files), 5)
+        before = self.served_view(config, port, msgids)
+        before_retention = self.native("store", store, "retention").stdout
+        compacted = self.native("operator", config, "store", "compact")
+        self.assertIn("compacted steps=pack,select,reclaim,retire records={} "
+                      "generation=0 reclaimed={} retired=0".format(len(files), len(files)),
+                      compacted.stdout)
+        self.assertIn("accepted operator compact", compacted.stderr)
+        self.assertEqual(self.transaction_bytes(store), {})
+        self.assert_view_kept_and_next_number(store, config, port, msgids,
+                                              before, before_retention, name)
+        # The post after the first compaction is the new suffix: a second
+        # compaction packs all six, reclaims it and retires generation 0.
+        suffix = len(self.transaction_bytes(store))
+        self.assertGreaterEqual(suffix, 1)
+        again = self.native("operator", config, "store", "compact")
+        self.assertIn("compacted steps=pack,select,reclaim,retire records={} "
+                      "generation=1 reclaimed={} retired=1".format(len(files) + suffix, suffix),
+                      again.stdout)
+        self.assertEqual(self.transaction_bytes(store), {})
+        refused = self.native("operator", config, "store", "compact", expected=1)
+        self.assertIn("refused operator compact", refused.stderr)
+        self.assertIn("already-compact", refused.stderr)
+        usage = self.native("operator", config, "store", "compact", "now", expected=5)
+        self.assertIn("usage operator store", usage.stderr)
+        grown_ids = msgids + ["<{}-next@example.invalid>".format(name)]
+        view = self.served_view(config, port, grown_ids)
+        self.assertEqual(int(view["group"].split()[3]),
+                         int(before["group"].split()[3]) + 1)
+        for key, value in before.items():
+            if key not in ("group", "hdr"):
+                self.assertEqual(view[key], value)
+        self.assert_view_kept_and_next_number(
+            store, config, port, grown_ids, view,
+            self.native("store", store, "retention").stdout, name + "-2")
+
 
 if __name__ == "__main__":
     unittest.main()

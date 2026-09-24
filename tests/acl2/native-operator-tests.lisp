@@ -344,6 +344,44 @@
                                               (fn-nop-test-argv '("store" "downgrade"))))
                      5))
 
+;
+; `store compact': an offline store action with no argument; what it does to
+; the store is `fn-cverb-decide' (books/store-compact-verb.lisp).
+(defconst *fn-nop-compact*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("store" "compact"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-compact*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-compact*) :compact))
+(assert-event (equal (fn-native-operator-result-upgrade-profile *fn-nop-compact*) nil))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-upgrade*)
+                     :upgrade-profile))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "compact" "now"))))
+                     5))
+; Teeth for fn-native-operator-run-store-compact-is-the-compact-action.
+; Without the argv hypothesis: an accepted store plan that is not compact.
+(local (must-fail
+        (defthm fn-nop-compact-action-without-argv
+          (equal (fn-native-operator-result-native-action *fn-nop-upgrade*) :compact))))
+; Without acceptance: `store compact' under a configuration that does not
+; load is usage, and its action is :none.
+(defconst *fn-nop-compact-bad-config*
+  (fn-native-operator-run (fn-nop-test-lines '("[store]" "path = 7"))
+                          (fn-nop-test-argv '("store" "compact"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-compact-bad-config*) :usage))
+(local (must-fail
+        (defthm fn-nop-compact-action-without-acceptance
+          (equal (fn-native-operator-result-native-action *fn-nop-compact-bad-config*)
+                 :compact))))
+; Tooth for fn-native-operator-run-compact-action-is-only-store-compact:
+; without the :compact action the argv is any other command.
+(local (must-fail
+        (defthm fn-nop-compact-argv-without-action
+          (equal (fn-nop-argument-texts
+                  (fn-nop-test-argv '("store" "upgrade-profile" "scale")))
+                 '("store" "compact")))))
+
 ; Teeth, one hypothesis at a time: a bare `init` names no group and is a
 ; usage error rather than a store with a guessed group table; a word that
 ; `fn-record-group-namep` does not admit is a usage error; a repeated name is

@@ -156,16 +156,21 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; (books/store-profile-upgrade.lisp).  The same two profile words as init;
 ; whether the named profile is an upgrade of the store's is decided at the
 ; store, by `fn-profile-upgrade-verdict', not here.
+; `store compact': the offline compaction (books/store-compact-verb.lisp).
+; It takes no argument; what it does to the store (pack and reclaim, resume a
+; reclaim, or refuse) is `fn-cverb-decide' at the store, not here.
 (defun fn-nop-parse-store (words config)
   (declare (xargs :guard t))
-  (if (and (consp words) (equal (car words) "upgrade-profile")
-           (consp (cdr words)) (null (cddr words)))
-      (let ((profile (fn-nop-init-profile-word (cadr words))))
-        (if (null profile)
-            (fn-nop-usage :invalid-store-profile "store" config words)
-          (fn-nop-result :accepted :plan "store" config
-                         (list :upgrade-profile profile))))
-    (fn-nop-usage :invalid-store-command "store" config words)))
+  (cond ((and (consp words) (equal (car words) "upgrade-profile")
+              (consp (cdr words)) (null (cddr words)))
+         (let ((profile (fn-nop-init-profile-word (cadr words))))
+           (if (null profile)
+               (fn-nop-usage :invalid-store-profile "store" config words)
+             (fn-nop-result :accepted :plan "store" config
+                            (list :upgrade-profile profile)))))
+        ((and (consp words) (equal (car words) "compact") (null (cdr words)))
+         (fn-nop-result :accepted :plan "store" config (list :compact)))
+        (t (fn-nop-usage :invalid-store-command "store" config words))))
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
@@ -182,7 +187,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "status") "usage: fn operator CONFIG status")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store upgrade-profile development|scale (offline; refused while an owner runs)")
+         "usage: fn operator CONFIG store {upgrade-profile development|scale | compact} (offline; refused while an owner runs)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "peer")
@@ -516,7 +521,9 @@ is installed into the owner for both served and control submission."
   "The profile keyword an accepted `store upgrade-profile' plan names, else nil."
   (declare (xargs :guard t))
   (if (and (equal (fn-native-operator-result-status result) :accepted)
-           (equal (fn-native-operator-result-command result) "store"))
+           (equal (fn-native-operator-result-command result) "store")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :upgrade-profile))
       (let ((profile (fn-ncfg-second (fn-native-operator-result-arguments result))))
         (if (member-equal profile '(:development :scale)) profile nil))
     nil))
@@ -602,7 +609,11 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "post") :post)
           ((equal (fn-native-operator-result-command result) "status") :status)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
-          ((equal (fn-native-operator-result-command result) "store") :upgrade-profile)
+          ((equal (fn-native-operator-result-command result) "store")
+           (if (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                      :compact)
+               :compact
+             :upgrade-profile))
           ((or (equal (fn-native-operator-result-command result) "group")
                (equal (fn-native-operator-result-command result) "capacity")
                (equal (fn-native-operator-result-command result) "peer")
@@ -642,3 +653,128 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                    fn-nop-argvp fn-native-config-load
                                    fn-ncfg-ascii-octetsp
                                    fn-native-config-operator-availablep)))))
+
+; KEYSTONE (M5, the operator entry to compaction).  The subject is
+; `fn-native-operator-run' (host/native-operator-host.lisp calls it) and the
+; projection `fn-native-operator-result-native-action' that
+; `fnn-operator-dispatch-plan' (host/native/operator.lisp) dispatches on.
+; An accepted `store compact' is the :compact action, and the :compact
+; action arises from that argv and no other (a further word, another
+; subcommand, another verb), so the raw host reaches `fnn-command-compact'
+; only for the bare command.
+(defthm fn-native-operator-run-store-compact-is-the-compact-action
+  (implies (and (equal (fn-nop-argument-texts argv) '("store" "compact"))
+                (equal (fn-native-operator-result-status
+                        (fn-native-operator-run config argv))
+                       :accepted))
+           (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :compact))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-parse-command fn-nop-parse-store
+                                   fn-nop-usage fn-nop-refused fn-nop-result
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-native-operator-result-native-action)
+                                  (fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep)))))
+
+; Which subcommand parser answers is visible in the result's command field.
+(local
+ (defthm fn-nop-subparser-commands
+   (and (equal (fn-native-operator-result-command (fn-nop-parse-init w c)) "init")
+        (equal (fn-native-operator-result-command (fn-nop-parse-post w c)) "post")
+        (equal (fn-native-operator-result-command (fn-nop-parse-principal a c))
+               "principal")
+        (equal (fn-native-operator-result-command
+                (fn-nop-parse-administration command a c))
+               command)
+        (equal (fn-native-operator-result-command (fn-nop-parse-store w c))
+               "store"))
+   :hints (("Goal" :in-theory (enable fn-nop-parse-init fn-nop-parse-post
+                                      fn-nop-parse-principal
+                                      fn-nop-parse-administration
+                                      fn-nop-parse-store
+                                      fn-nop-usage fn-nop-refused fn-nop-result
+                                      fn-native-operator-result-command)))))
+
+(local
+ (defthm fn-nop-parse-store-compact-words
+   (implies (and (equal (fn-native-operator-result-status (fn-nop-parse-store w c))
+                        :accepted)
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-store w c)))
+                        :compact))
+            (equal w '("compact")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
+                                      fn-native-operator-result-status
+                                      fn-native-operator-result-arguments)))))
+
+(local
+ (defthm fn-nop-result-accessors
+   (and (equal (fn-native-operator-result-status (fn-nop-result s r c g a)) s)
+        (equal (fn-native-operator-result-command (fn-nop-result s r c g a)) c)
+        (equal (fn-native-operator-result-arguments (fn-nop-result s r c g a)) a))
+   :hints (("Goal" :in-theory (enable fn-nop-result fn-native-operator-result-status
+                                      fn-native-operator-result-command
+                                      fn-native-operator-result-arguments)))))
+
+(local
+ (defthm fn-nop-parse-command-compact-words
+   (implies (and (equal (fn-native-operator-result-status
+                         (fn-nop-parse-command words config argv))
+                        :accepted)
+                 (equal (fn-native-operator-result-command
+                         (fn-nop-parse-command words config argv))
+                        "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-command words config argv)))
+                        :compact))
+            (equal words '("store" "compact")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
+                                   (fn-nop-result
+                                    fn-native-operator-result-status
+                                    fn-native-operator-result-command
+                                    fn-native-operator-result-arguments
+                                    fn-nop-parse-init fn-nop-parse-post
+                                    fn-nop-parse-principal
+                                    fn-nop-parse-administration
+                                    fn-nop-parse-store fn-nop-parse-run
+                                    fn-nop-help-text fn-nop-help-subjectp))
+            :use ((:instance fn-nop-parse-store-compact-words
+                             (w (cdr words)) (c config)))))))
+
+(defthm fn-native-operator-run-compact-action-is-only-store-compact
+  (implies (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :compact)
+           (equal (fn-nop-argument-texts argv) '("store" "compact")))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-usage
+                                   fn-native-operator-result-native-action)
+                                  (fn-nop-result
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-nop-parse-command fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep))
+           :use ((:instance fn-nop-parse-command-compact-words
+                            (words (fn-nop-argument-texts argv))
+                            (config (fn-ncfg-second (fn-native-config-load config)))
+                            (argv argv))
+                 (:instance fn-nop-parse-command-compact-words
+                            (words (fn-nop-argument-texts argv))
+                            (config nil) (argv argv))))))
