@@ -1,0 +1,4 @@
+committed sequence=0 charge=2
+committed sequence=1 charge=2
+store: committed history refused at open: history-short-of-marker marker=2 records=1
+exit=4

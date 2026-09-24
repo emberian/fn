@@ -690,6 +690,7 @@ the current connection."
           ; the only error branch that reopens the writer without recovery.
           (setf (fnn-store-fenced store) nil))
         (error e)))
+    (fnn-mark-committed store sequence)
     (setf (fnn-store-fenced store) t)
     (fnn-finish store)
     :durable))

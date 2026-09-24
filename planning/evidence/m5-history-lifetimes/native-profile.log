@@ -1,0 +1,6 @@
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 9.000s
+
+OK
+profile cuts: [(('profile-created', 'eio', 'operator'), 128), (('profile-created', 'eio', 'store'), 128), (('profile-created', 'kill', 'operator'), 128), (('profile-created', 'kill', 'store'), 128), (('profile-durable', 'eio', 'operator'), 4096), (('profile-durable', 'eio', 'store'), 4096), (('profile-durable', 'kill', 'operator'), 4096), (('profile-durable', 'kill', 'store'), 4096), (('profile-replaced', 'eio', 'operator'), 4096), (('profile-replaced', 'eio', 'store'), 4096), (('profile-replaced', 'kill', 'operator'), 4096), (('profile-replaced', 'kill', 'store'), 4096), (('profile-staged-durable', 'eio', 'operator'), 128), (('profile-staged-durable', 'eio', 'store'), 128), (('profile-staged-durable', 'kill', 'operator'), 128), (('profile-staged-durable', 'kill', 'store'), 128), (('profile-written', 'eio', 'operator'), 128), (('profile-written', 'eio', 'store'), 128), (('profile-written', 'kill', 'operator'), 128), (('profile-written', 'kill', 'store'), 128)]

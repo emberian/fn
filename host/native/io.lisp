@@ -1108,6 +1108,7 @@ resolves the names against `domain' and the host carries that list verbatim."
              (not *fnn-clone-activation*))
     (fnn-refuse "clone is fenced pending durable incarnation rollover")))
 (defun fnn-frontier-path (s) (fnn-join (fnn-store-root s) "allocation-frontier.json"))
+(defun fnn-history-marker-path (s) (fnn-join (fnn-store-root s) "committed-history.json"))
 (defun fnn-config-dir (s) (fnn-join (fnn-store-root s) "config"))
 (defun fnn-config-record-name (generation)
   "The one persistent configuration filename renderer is ACL2's fixed-width
@@ -1362,6 +1363,67 @@ after the syscall."
       (fnn-fault "legacy JSON allocator is retained in place; explicit offline migration is required"))
     (setf (fnn-store-frontier store) (fnn-metadata-frontier-decode raw))))
 
+;; The committed-history boundary (books/store-history-marker).  The open
+;; reads the marker once and ACL2 (fn-hm-open-verdict) compares it with the
+;; length of the record list replay is handed: pack events plus suffix files.
+(defun fnn-history-marker-observation (store)
+  "(:absent) or (:present OCTETS): one bounded read of committed-history.json."
+  (let ((path (fnn-history-marker-path store)))
+    (if (null (fnn-check-regular path))
+        (list :absent)
+        (list :present
+              (fnn-octet-list
+               (handler-case (fnn-read-regular-bounded path 4096)
+                 (fnn-os-error (e)
+                   (fnn-fault "cannot read the committed-history marker: ~a" e))))))))
+
+(defun fnn-check-history-marker (store record-count)
+  "Refuse an open whose committed history is short of its marker.
+
+A refusal is detected damage to committed data (specs/storage.md STO-005):
+a fault naming ACL2's reason, never a silent rollback to the shorter history."
+  (let* ((verdict (fnn-core 'fn-hm-open-verdict
+                            (fnn-history-marker-observation store) record-count))
+         (word (and (consp verdict) (first verdict))))
+    (case word
+      (:admitted verdict)
+      (:refused
+       (fnn-fault "committed history refused at open: ~(~a~)~@[ marker=~d~] records=~d"
+                  (second verdict) (third verdict) record-count))
+      (otherwise (fnn-fault "ACL2 returned a malformed committed-history verdict")))))
+
+(defun fnn-mark-committed (store sequence)
+  "Replace the committed-history marker after record SEQUENCE is durable.
+
+Every caller runs this after fnn-publish returned :durable and before
+fnn-finish, so a record the node acknowledges is below a durable marker, and
+nothing else (a reservation, an abort, a refusal, recovery) writes it.  The
+bytes are ACL2's (fn-hm-after-commit); the steps are fn-hm-marker-program's,
+and each cut is an `fnn-at' site named in fn-hm-marker-cut-names.  The stage
+uses the `.stage-' prefix the recovery sweep collects.  Any OS error is
+uncertain: the record is durable and the marker may or may not be replaced,
+so the store stays fenced and recovery decides; the transaction is never
+acknowledged without its marker."
+  (fnn-require-writer store)
+  (let ((frame (fnn-core 'fn-hm-after-commit sequence))
+        (stage (fnn-join (fnn-staging store)
+                         (format nil ".stage-marker-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
+    (setf (fnn-store-fenced store) t)
+    (unless (fnn-octet-list-p frame)
+      (fnn-indeterminate "ACL2 returned no committed-history marker for sequence ~d" sequence))
+    (handler-case
+        (progn
+          (fnn-write-staged-at store stage (fnn-octets frame) :marker-created :marker-written)
+          (fnn-at store :marker-staged-durable)
+          (fnn-replace stage (fnn-history-marker-path store))
+          (fnn-at store :marker-replaced)
+          (fnn-fsync-dir (fnn-store-root store))
+          (fnn-at store :marker-durable)
+          :marked)
+      (fnn-os-error (e)
+        (fnn-indeterminate "committed-history marker update after durable sequence ~d is uncertain: ~a"
+                           sequence e)))))
+
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
   ;; the core from the operator's group names.
@@ -1482,6 +1544,7 @@ after the syscall."
               (setq records (funcall *fnn-pack-recover-callback*
                                      store physical-records physical-sequences
                                      actual-lower)))
+            (fnn-check-history-marker store (length records))
             (unless (eq (fnn-bridge-recover records (fnn-store-frontier store) config-records)
                         :recovering)
               (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
@@ -2007,7 +2070,11 @@ observes a genuine new-process image."
         (let* ((label (subseq raw 0 colon))
                (point (intern (string-upcase label) :keyword))
                (action (subseq raw (1+ colon))))
-          (unless (member point +fnn-post-model-cuts+)
+          (unless (or (member point +fnn-post-model-cuts+)
+                      ;; The committed-history marker's cuts are ACL2's
+                      ;; table (books/store-history-marker).
+                      (member (string-downcase label)
+                              (fnn-core 'fn-hm-marker-cut-names) :test #'string=))
             (fnn-fault "unknown FN_NATIVE_POST_FAULT cut: ~a" label))
           (list point
                 (cond ((string= action "eio") 'fnn-os-error)
@@ -2096,6 +2163,7 @@ error for the same reason."
                      (unless (eq (fnn-bridge-known-abort) :aborted)
                        (fnn-indeterminate "ACL2 rejected known pre-publication abort")))
                    (error e))))
+             (fnn-mark-committed store sequence)
              (setf (fnn-store-fenced store) t)
              (fnn-finish store)
              (fnn-out "committed sequence=~d charge=~d" sequence charge)
@@ -2217,12 +2285,12 @@ payloads, close, reopen, and report both timings as JSON on stdout."
                                             (fnn-charge (length payload)))
                         :prepared)
               (fnn-fault "probe prepare refused"))
-            (unless (eq (fnn-publish store
-                                     (fnn-pending-sequence
-                                      (fnn-core-state 'fn-store-sn-pending-sequence))
-                                     (fnn-bridge-pending-record))
-                        :durable)
-              (fnn-fault "probe publish refused"))
+            (let ((pending (fnn-pending-sequence
+                            (fnn-core-state 'fn-store-sn-pending-sequence))))
+              (unless (eq (fnn-publish store pending (fnn-bridge-pending-record))
+                          :durable)
+                (fnn-fault "probe publish refused"))
+              (fnn-mark-committed store pending))
             (unless (eq (fnn-finish store) :durable) (fnn-fault "probe finish refused"))))))
     (let ((commit-seconds (/ (- (get-internal-real-time) started)
                              (float internal-time-units-per-second 1d0))))
