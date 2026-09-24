@@ -29,8 +29,9 @@ log that lived here is [archive/now-2026-09-24.md](archive/now-2026-09-24.md).
 
 1. A frozen image past `863c2141`: the three roots above certified, and BP
    N03 plus the interrupted-fragment native cases passing on it.
-2. Stretch: one end-to-end join, signed peering into Mini consumption across
-   two Stores, run as one exchange (handoff, "Mini work is committed separately").
+2. Stretch, **done**: the two-Store join ran complete on `1a9dd747` with no cut
+   and under all four cut families ([record](evidence/two-store-join-1a9dd747-2026-09-24.md));
+   the lost-ACK cut answered UNCERTAIN and settled.
 3. Proof cost down: books over 10 s from 30 to at most 20, and
    `tools/proof_cost.py` and `tools/certified_claims.py` failing `make check`
    against a baseline instead of warning.
