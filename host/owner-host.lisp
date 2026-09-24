@@ -34,6 +34,9 @@
 (include-book "../books/owner-config-observe")
 (include-book "../books/owner-served-carried")
 (include-book "../books/owner-commit-carried")
+(include-book "../books/owner-prepare-carried")
+(include-book "../books/owner-advance-carried")
+(include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
@@ -369,12 +372,18 @@
                  ; carried profile's budget fn-sbud-prepare is the identity
                  ; (fn-sbud-prepare-refuses-at-budget) and the word is
                  ; :unaffordable; below it, it is fn-opc-prepare.
+                 ; The call is fn-pcar-sbud-prepare
+                 ; (books/owner-prepare-carried.lisp), equal to
+                 ; fn-sbud-prepare with no hypothesis
+                 ; (fn-pcar-sbud-prepare-is-sbud-prepare): its candidate
+                 ; test reads the last record's txid instead of folding
+                 ; every record's through fn-record-p.
                  (budget (fn-sbud-budget (fn-owner-store-profile state) :article))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
                           (fn-owner-install-ocfg
-                           (fn-sbud-prepare before record budget)
+                           (fn-pcar-sbud-prepare before record budget)
                            state))))
             (if (equal record :clock-unusable)
                 (value :clock-unusable)
@@ -1109,7 +1118,13 @@
          (records (fn-own-outcome-journal-records
                    owner id word
                    (f-get-global 'fn-owner-shared-resolution-id state)))
-         (result (fn-own-outcome owner id word))
+         ; fn-acar-own-outcome (books/owner-advance-carried.lisp) is
+         ; fn-own-outcome under fn-ocl-relation
+         ; (fn-acar-own-outcome-is-reference-under-ocl-relation), which the
+         ; commit before it keeps (fn-ocmt-post-commit-preserves-ocl-relation):
+         ; the re-pin tests the rebuilt session at the node the held session
+         ; already carries instead of re-running fn-node-statep on it.
+         (result (fn-acar-own-outcome owner id word))
          (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
          (state (f-put-global 'fn-owner-shared-resolution-id nil state))
