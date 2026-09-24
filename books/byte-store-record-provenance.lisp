@@ -4945,7 +4945,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner
                             fn-own-step fn-own-store-step fn-snrt-step
-                            fn-snt-step)
+                            fn-snt-step fn-own-refresh-keeps-fields)
                            (fn-own-refresh fn-sn-io fn-ocfg-make
                             fn-own-make)))))
 
