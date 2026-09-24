@@ -1230,8 +1230,16 @@
        (equal (fn-sf-completion (fn-sn-files s))
               (fn-sf-record-pair (fn-sn-completion-record s)))))
 
+; The guard needs only the state shape; the event recognizers stay closed.
+; Measured 2026-09-24 on persvati: with them open the guard proof took
+; 20.6 s (67 s once `fn-th-topic-eventp' was withdrawn and the three stx
+; recognizers split instead); closed, 0.02 s.
 (verify-guards fn-sn-completion-core-enabledp
-  :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep)
+                                  (fn-sf-statep fn-node-statep
+                                   fn-record-p fn-store-retention-event-p
+                                   fn-stxe-p fn-stxk-p fn-stxa-p
+                                   fn-cpe-eventp fn-th-topic-eventp)))))
 
 ; The node/file publication gate and the consumer projection gate are
 ; separate facts.  Existing Store replay relations reason about the former;
