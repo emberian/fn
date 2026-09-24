@@ -2025,6 +2025,21 @@
           "note": "The recovery theorem requires an explicit topic-replay-ok premise alongside identity and consumer checks; the duplicate administrator-install image is a refusing observed-open witness."
         }
       ]
+    },
+    {
+      "id": "PRF-068",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ncl-status-accepted-reply-roundtrip",
+          "note": "The exact host-called kind-9 status encoder and decoder recover every accepted uint32 ACK and frontier with ACK no greater than frontier and an exact gap; tests isolate each premise."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncl-status-nonaccepted-reply-roundtrip",
+          "note": "The exact host-called kind-9 status encoder and decoder recover refused, uncertain and fault with empty fields; an unrecognized status is a separating tooth."
+        }
+      ]
     }
   ]
 }

@@ -615,10 +615,10 @@
     "books": 616,
     "books_in_root_closure": 614,
     "roots": 608,
-    "theorems": 8557,
+    "theorems": 8562,
     "functions": 6339,
-    "assert_events": 9298,
-    "must_fails": 504,
+    "assert_events": 9301,
+    "must_fails": 505,
     "encapsulates": 27,
     "guards": {
       "verified": 2034,
@@ -4698,7 +4698,7 @@
       "book": "books/consumer-local-control.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 5,
       "functions": 18,
       "guards": {
         "verified": 18,
@@ -13352,8 +13352,8 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 31,
-      "must_fails": 4,
+      "assert_events": 34,
+      "must_fails": 5,
       "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
