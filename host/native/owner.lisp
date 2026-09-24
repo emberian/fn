@@ -54,10 +54,13 @@
 ;;; is an operator's record, never evidence of durable acceptance.
 (defvar *fnn-owner-log-fd* nil)
 
-(defun fnn-owner-log ()
-  (let ((line (fnn-global 'fn-owner-log-line)))
+(defun fnn-owner-log (&optional (global 'fn-owner-log-line) optional)
+  "Write the ACL2-rendered line in GLOBAL.  OPTIONAL: an empty line is none."
+  (let ((line (fnn-global global)))
     (unless (fnn-octet-list-p line)
       (fnn-fault "owner returned a malformed log line"))
+    (when (and optional (null line))
+      (return-from fnn-owner-log nil))
     (let ((octets (concatenate 'fnn-octets (fnn-octets line)
                                (fnn-octets (list 10)))))
       (if *fnn-owner-log-fd*
@@ -743,6 +746,22 @@ the current connection."
         (error e))
       ((or fnn-store-error fnn-os-error) () :refused))))
 
+;;; Which ingress check refused the transit attempt in flight, for the one
+;;; service-log line fn-olog-transit-line renders.  Where ACL2 names the
+;;; refusal (fn-pa-carrier-form, fn-pa-current-plan: `(:refused REASON)')
+;;; its keyword is relayed unchanged; the other names say which host
+;;; boundary check answered :refused.  It is a log detail, never an input
+;;; to any decision.  Bound per submission by fnn-owner-drain-one.
+(defvar *fnn-owner-transit-detail* nil)
+
+(defun fnn-owner-transit-refused (detail)
+  (setq *fnn-owner-transit-detail*
+        (if (and (consp detail) (eq (first detail) :refused)
+                 (keywordp (second detail)))
+            (second detail)
+          detail))
+  :refused)
+
 (defun fnn-owner-attempt-transit (service msgid payload groups evidence)
   "One ingress decision for both NNTP and BP transit under the caller's
 durable intent. ACL2 distinguishes carrier absence from present-invalid,
@@ -753,7 +772,8 @@ event. A carrier-absent article keeps the established legacy Store path."
     (cond
       ((eq form :absent)
        (fnn-owner-attempt service msgid payload groups evidence))
-      ((not (and (consp form) (eq (first form) :ok))) :refused)
+      ((not (and (consp form) (eq (first form) :ok)))
+       (fnn-owner-transit-refused form))
       (t
        (handler-case
            (let* ((store (fnn-owner-service-store service))
@@ -763,17 +783,20 @@ event. A carrier-absent article keeps the established legacy Store path."
                   (charge (fnn-charge (length payload))))
              (when (or (keywordp codes) (not (listp codes))
                        (/= (length codes) (length groups)))
-               (return-from fnn-owner-attempt-transit :refused))
+               (return-from fnn-owner-attempt-transit
+                 (fnn-owner-transit-refused :groups)))
              (fnn-validate-post-boundary store msgid payload codes charge)
              (case (fnn-owner-action 'fn-owner-existing-action
                                      (fnn-octet-list msgid)
                                      (fnn-octet-list payload) codes)
                (:duplicate (return-from fnn-owner-attempt-transit :duplicate))
-               (:conflict (return-from fnn-owner-attempt-transit :refused)))
+               (:conflict (return-from fnn-owner-attempt-transit
+                            (fnn-owner-transit-refused :conflict))))
              (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
                                          (fnn-octet-list payload))))
                (unless (and (consp plan) (eq (first plan) :ok))
-                 (return-from fnn-owner-attempt-transit :refused))
+                 (return-from fnn-owner-attempt-transit
+                   (fnn-owner-transit-refused plan)))
              (unless (eq (fnn-owner-advance-clock) :observed)
                (return-from fnn-owner-attempt-transit :clock-unusable))
              (let* ((source (second plan))
@@ -795,7 +818,8 @@ event. A carrier-absent article keeps the established legacy Store path."
                (unless (and observed-ml-key
                             (eq (first observations) :verified)
                             (eq (first ml-observation) :verified))
-                 (return-from fnn-owner-attempt-transit :refused))
+                 (return-from fnn-owner-attempt-transit
+                   (fnn-owner-transit-refused :signature)))
                (multiple-value-bind (obligation subject ignored)
                    (fnn-metadata msgid payload)
                  (declare (ignore ignored))
@@ -810,13 +834,15 @@ event. A carrier-absent article keeps the established legacy Store path."
                            charge (coerce observed-ml-key 'list)
                            (first observations) (first ml-observation))))
                    (unless event
-                     (return-from fnn-owner-attempt-transit :refused))
+                     (return-from fnn-owner-attempt-transit
+                       (fnn-owner-transit-refused :event)))
                    (fnn-owner-identity-commit service event))))))
          (fnn-store-indeterminate () :uncertain)
          (fnn-store-fault (e)
            (setf (fnn-store-fenced (fnn-owner-service-store service)) t)
            (error e))
-         ((or fnn-store-error fnn-os-error) () :refused))))))
+         ((or fnn-store-error fnn-os-error) ()
+           (fnn-owner-transit-refused :store)))))))
 
 (defun fnn-owner-retention-commit (service event)
   "Publish one ACL2-authored retention event through the normal Store path."
@@ -1027,8 +1053,20 @@ client, which can issue POSITION after reconnecting."
             (list :consumer-reply :accepted token)))
          (otherwise (fnn-fault "ACL2 returned malformed consumer decision")))))))
 
+(defun fnn-owner-transit-complete (cid kind reason word)
+  "Feed a transit outcome to the owner and write its one service-log line.
+
+The line is rendered by ACL2 (fn-olog-transit-line) from the owner before the
+outcome consumes the submission, with the same KIND, REASON and WORD; a
+refused or deferred peer transfer is never silent."
+  (fnn-owner-action 'fn-owner-transit-log-line cid kind reason word
+                    *fnn-owner-transit-detail*)
+  (fnn-owner-action 'fn-owner-transit-outcome cid kind reason word)
+  (fnn-owner-log))
+
 (defun fnn-owner-drain-one (service)
   "Take and complete at most one queued served submission; return cid/reply."
+  (setq *fnn-owner-transit-detail* nil)
   (let ((taken (fnn-owner-action 'fn-owner-take)))
     (unless (member taken '(:idle :taken :taken-control :taken-transit))
       (fnn-fault "owner returned unexpected take result"))
@@ -1081,14 +1119,16 @@ client, which can issue POSITION after reconnecting."
             (declare (ignorable transit-checked))
             (if (and transitp (not (eq transit-kind :want)))
                 (progn
-                  (fnn-owner-action 'fn-owner-transit-outcome
-                                    cid transit-kind transit-reason :refused)
+                  (fnn-owner-transit-complete
+                   cid transit-kind transit-reason :refused)
                   (values cid (fnn-owner-octets-global 'fn-owner-output) nil))
               (if (not (eq intent :ready))
                   (progn
                     (if transitp
-                        (fnn-owner-action 'fn-owner-transit-outcome
-                                          cid :want transit-reason :refused)
+                        (progn
+                          (setq *fnn-owner-transit-detail* :intent)
+                          (fnn-owner-transit-complete
+                           cid :want transit-reason :refused))
                       (progn (fnn-owner-action 'fn-owner-outcome cid :refused)
                              (fnn-owner-log)))
                     (values cid (fnn-owner-octets-global 'fn-owner-output) nil))
@@ -1106,8 +1146,8 @@ client, which can issue POSITION after reconnecting."
                                       generation txid)
                     (fnn-owner-feed-flush service)
                     (if transitp
-                        (fnn-owner-action 'fn-owner-transit-outcome
-                                          cid :want transit-reason word)
+                        (fnn-owner-transit-complete
+                         cid :want transit-reason word)
                       (progn (fnn-owner-action 'fn-owner-outcome cid word)
                              (fnn-owner-log)))
                     (values cid (fnn-owner-octets-global 'fn-owner-output)
