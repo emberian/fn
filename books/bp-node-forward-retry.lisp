@@ -7,6 +7,7 @@
 ; fn-bpnp-attempt-apply, the function ordered FNBS replay also calls.
 (in-package "ACL2")
 (include-book "bp-node-progress")
+(set-verify-guards-eagerness 0)
 
 ; Every row of ORDERED other than H is not a forward candidate.
 (defun fn-bpnp-only-forward-candidatep (ordered h peer observation epoch)
@@ -63,7 +64,11 @@
                 (< (fn-bpnp-attempt-retries (fn-bpn-nth 13 h))
                    *fn-bpnp-max-forward-retries*))
            (fn-bpnp-forward-candidatep h peer observation epoch))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnp-forward-candidatep
+                                fn-bpnp-retry-eligible-slotp)
+                              (theory 'minimal-theory)))))
 
 ;; A stranded report is only a report: never an attempt proposal.
 (defthm fn-bpnp-stranded-effects-propose-nothing
@@ -279,6 +284,31 @@
                                 (:executable-counterpart zp))
                               (theory 'minimal-theory)))))
 
+;; Slot writers leave other slots (the idiom of bp-node-progress-premises).
+(local
+ (defthm fn-bpnfr-nth-of-nil
+   (equal (fn-bpn-nth n nil) nil)
+   :hints (("Goal" :in-theory (enable fn-bpn-nth fn-cbor-ag-car)))))
+
+(local
+ (defun fn-bpnfr-nth-update-induct (i j l)
+   (if (or (zp i) (zp j)) (list i j l)
+     (fn-bpnfr-nth-update-induct (1- i) (1- j) (cdr l)))))
+
+(local
+ (defthm fn-bpnfr-nth-of-update-nth
+   (implies (and (natp i) (natp j) (not (equal i j)))
+            (equal (fn-bpn-nth i (update-nth j v l))
+                   (fn-bpn-nth i l)))
+   :hints (("Goal" :induct (fn-bpnfr-nth-update-induct i j l)
+            :in-theory (union-theories
+                        '(fn-bpn-nth fn-cbor-ag-car update-nth car-cons cdr-cons
+                          zp natp fn-bpnfr-nth-of-nil
+                          (:induction fn-bpnfr-nth-update-induct)
+                          (:e zp) (:e natp) (:e car) (:e cdr) (:e <)
+                          (:e binary-+) (:e unary--) fix)
+                        (theory 'minimal-theory))))))
+
 (local
  (defthm fn-bpnp-held-list-of-writers
    (and (equal (fn-bpnf-held-list (fn-bpnp-with-runtime st s p))
@@ -292,7 +322,19 @@
         (equal (fn-bpnf-held-list
                 (fn-bpnf-state-with-arrival b h o ho c i w e n a))
                h))
-   :hints (("Goal" :in-theory (enable fn-bpn-nth fn-bpnf-with-issued)))))
+   :hints (("Goal" :in-theory (union-theories
+                    '(fn-bpnf-held-list fn-bpnp-with-runtime fn-bpnp-with-credit
+                      fn-bpnp-with-waits fn-bpnp-with-issued fn-bpnf-with-issued
+                      fn-bpnf-state-with-arrival fn-bpnfr-nth-of-update-nth
+                      fn-bpn-nth natp
+                      fn-cbor-ag-car car-cons cdr-cons
+                      (:executable-counterpart equal)
+                      (:executable-counterpart natp)
+                      (:executable-counterpart not)
+                      (:executable-counterpart zp)
+                      (:executable-counterpart binary-+)
+                      (:executable-counterpart unary--))
+                    (theory 'minimal-theory))))))
 
 ;; (c) over the step the host calls: the :persist-result arm for an issued
 ;; kind 8, the only served arm that writes an attempt slot, keeps every held
