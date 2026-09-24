@@ -46,10 +46,13 @@ was ACL2 8.7 / SBCL 2.6.8, identity
 `1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286`;
 the run used two jobs and a 90-second per-book cap, with 8.891 seconds
 certification wall time. The manifest records source digests, included
-dependency digests, observed markers and both passed root results. Affected
-closure and source-matched native qualification remain open. The additional
-kind-7 completion assertions were added after this run and require their own
-test-root certification before they become evidence.
+dependency digests, observed markers and both passed root results. The
+follow-up test source at `b0374907`, including matched application result,
+durable kind-7 callback and preserved older row, passed persvati run
+`run-20260924T034900Z-0178`,
+[manifest](manifests/certify-20260924T034935Z-3925833.json), with one job,
+the same toolchain identity and 4.187 seconds certification wall time.
+Affected closure and source-matched native qualification remain open.
 
 This is one actual A3 local application selection step. It does not satisfy
 N03's route wait and four-progress-event trace, N04's forwarding MRU trace,
