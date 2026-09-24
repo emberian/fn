@@ -624,16 +624,16 @@
     "books": 627,
     "books_in_root_closure": 625,
     "roots": 617,
-    "theorems": 8686,
-    "functions": 6408,
-    "assert_events": 9426,
-    "must_fails": 537,
+    "theorems": 8687,
+    "functions": 6414,
+    "assert_events": 9430,
+    "must_fails": 538,
     "encapsulates": 27,
     "guards": {
       "verified": 2036,
       "declared-off": 382,
       "default-guarded": 3177,
-      "default-unguarded": 813
+      "default-unguarded": 819
     },
     "suspect_theorems": 82,
     "export_hygiene_warnings": 103,
@@ -12949,18 +12949,18 @@
       "book": "tests/acl2/byte-store-scan-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
-      "functions": 18,
+      "theorems": 3,
+      "functions": 24,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 18
+        "default-unguarded": 24
       },
       "verify_guards_events": 0,
-      "assert_events": 32,
-      "must_fails": 4,
-      "defconsts": 6,
+      "assert_events": 36,
+      "must_fails": 5,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [

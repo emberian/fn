@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 627 |
 | Certification roots in the Makefile | 617 |
 | Books inside the root closure | 625 |
-| `defthm` and `defthmd` events | 8686 |
-| `defun` events | 6408 |
+| `defthm` and `defthmd` events | 8687 |
+| `defun` events | 6414 |
 | Functions with verified guards | 2036 |
 | Functions declared `:verify-guards nil` and never verified | 382 |
 | Functions left at the default with an explicit guard | 3177 |
-| Functions left at the default with no guard | 813 |
-| `assert-event` checks | 9426 |
-| `must-fail` checks | 537 |
+| Functions left at the default with no guard | 819 |
+| `assert-event` checks | 9430 |
+| `must-fail` checks | 538 |
 | `encapsulate` events | 27 |
 | Theorems flagged SUSPECT by shape | 82 |
 | Export-hygiene warnings | 103 |
@@ -545,7 +545,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-record-fence-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 7 | 5 | 0 |
 | `tests/acl2/byte-store-record-provenance-tests.lisp` | root | 1 | 38 | 0/1/0/37 | 47 | 62 | 0 |
 | `tests/acl2/byte-store-relation-tests.lisp` | root | 1 | 5 | 0/0/0/5 | 12 | 12 | 0 |
-| `tests/acl2/byte-store-scan-tests.lisp` | root | 2 | 18 | 0/0/0/18 | 32 | 4 | 0 |
+| `tests/acl2/byte-store-scan-tests.lisp` | root | 3 | 24 | 0/0/0/24 | 36 | 5 | 0 |
 | `tests/acl2/byte-store-stable-prefix-tests.lisp` | root | 1 | 11 | 0/0/0/11 | 4 | 2 | 0 |
 | `tests/acl2/byte-store-sweep-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 8 | 0 | 0 |
 | `tests/acl2/byte-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
