@@ -54,9 +54,9 @@ successors". The audit says not to replay their positive `git cherry` commits.
 
 | Worktree | Branch | Tip | Dirty | Reachability vs dev `46f2660d` | Disposition record | Action |
 | --- | --- | --- | --- | --- | --- | --- |
-| `assurance-review-followup` | `lane/assurance-review-followup` | `48b2133c` | 0 | 0 `+` (0 subject-unlanded), 2 `-` | not mentioned | removed; tip kept by `lane/assurance-review-followup` |
+| `assurance-review-followup` | `lane/assurance-review-followup` | `48b2133c` | 0 | 0 `+` (0 subject-unlanded), 2 `-` | not mentioned | removed; tip kept by `lane/assurance-review-followup`. Later ([kept branches](kept-worktrees-2026-09-24.md)): branch superseded |
 | `assurance-status-refresh` | `docs/assurance-status-refresh` | `bcd7e607` | 0 | 0 `+` (0 subject-unlanded), 1 `-` | not mentioned | removed; tip kept by `docs/assurance-status-refresh` |
-| `author-key-lifecycle` | `lane/author-key-lifecycle` | `a12f523e` | 0 | 3 `+` (0 subject-unlanded), 1 `-` | evidence tip patch-equivalent; source/proof in dev | removed; tip kept by `lane/author-key-lifecycle` |
+| `author-key-lifecycle` | `lane/author-key-lifecycle` | `a12f523e` | 0 | 3 `+` (0 subject-unlanded), 1 `-` | evidence tip patch-equivalent; source/proof in dev | removed; tip kept by `lane/author-key-lifecycle`. Later ([kept branches](kept-worktrees-2026-09-24.md)): branch superseded |
 | `bp-a1-selection-assurance` | `DETACHED` | `f81f429b` | 0 | 4 `+` (0 subject-unlanded), 9 `-` | owner: integrated/superseded | removed; tip kept by `archive/bp-a1-selection-assurance` |
 | `bp-counterexample-completion` | `DETACHED` | `24508145` | 0 | ancestor | not mentioned | removed; tip kept by `dev` |
 | `bp-d1b` | `implement/bp-d1b` | `846b5d13` | 0 | 32 `+` (15 subject-unlanded), 2 `-` | not mentioned | kept: unlanded-uncovered |
@@ -72,15 +72,15 @@ successors". The audit says not to replay their positive `git cherry` commits.
 | `byte-store-k568` | `implement/byte-store-k568` | `af679760` | 0 | 24 `+` (7 subject-unlanded), 3 `-` | adapted into dev or superseded | removed; tip kept by `implement/byte-store-k568` |
 | `byte-store-k6-cost` | `fix/byte-store-k6-cost` | `8b71f6e6` | 0 | 1 `+` (0 subject-unlanded), 4 `-` | not mentioned | removed; tip kept by `fix/byte-store-k6-cost` |
 | `byte-store-native-topic` | `fix/byte-store-native-topic` | `9c0b393e` | 0 | 2 `+` (0 subject-unlanded), 1 `-` | not mentioned | removed; tip kept by `fix/byte-store-native-topic` |
-| `certified-claims-audit` | `lane/certified-claims-audit` | `ff81313e` | 0 | 0 `+` (0 subject-unlanded), 1 `-` | not mentioned | removed; tip kept by `lane/certified-claims-audit` |
+| `certified-claims-audit` | `lane/certified-claims-audit` | `ff81313e` | 0 | 0 `+` (0 subject-unlanded), 1 `-` | not mentioned | removed; tip kept by `lane/certified-claims-audit`. Later ([kept branches](kept-worktrees-2026-09-24.md)): branch superseded |
 | `consumer-envelope` | `implement/consumer-envelope` | `f3428a7d` | 0 | 1 `+` (0 subject-unlanded), 0 `-` | f3428a7d integrated as eba44cb4 | removed; tip kept by `implement/consumer-envelope` |
 | `consumer-finish-composed` | `fix/consumer-finish-composed` | `368bf7ee` | 0 | 1 `+` (0 subject-unlanded), 5 `-` | not mentioned | removed; tip kept by `fix/consumer-finish-composed` |
 | `consumer-index-topic` | `implement/consumer-index-topic` | `5443e9b6` | 0 | 1 `+` (0 subject-unlanded), 0 `-` | consumer index: adapted or superseded | removed; tip kept by `implement/consumer-index-topic` |
 | `consumer-kernel` | `implement/consumer-kernel` | `306f62d9` | 0 | 7 `+` (5 subject-unlanded), 5 `-` | not mentioned | kept: unlanded-uncovered |
 | `consumer-poll-factor` | `fix/consumer-poll-factor` | `1579d3b7` | 0 | 0 `+` (0 subject-unlanded), 2 `-` | not mentioned | removed; tip kept by `fix/consumer-poll-factor` |
 | `consumer-poll-host-fix` | `fix/consumer-poll-request` | `2ce86ca3` | 0 | 1 `+` (0 subject-unlanded), 10 `-` | not mentioned | removed; tip kept by `fix/consumer-poll-request` |
-| `consumer-topic-trace` | `lane/consumer-topic-trace` | `45566a16` | 0 | 0 `+` (0 subject-unlanded), 4 `-` | not mentioned | removed; tip kept by `lane/consumer-topic-trace` |
-| `consumer-topic-trace-evidence` | `lane/consumer-topic-trace-evidence` | `f0abd74c` | 0 | 0 `+` (0 subject-unlanded), 1 `-` | not mentioned | removed; tip kept by `lane/consumer-topic-trace-evidence` |
+| `consumer-topic-trace` | `lane/consumer-topic-trace` | `45566a16` | 0 | 0 `+` (0 subject-unlanded), 4 `-` | not mentioned | removed; tip kept by `lane/consumer-topic-trace`. Later ([kept branches](kept-worktrees-2026-09-24.md)): branch superseded |
+| `consumer-topic-trace-evidence` | `lane/consumer-topic-trace-evidence` | `f0abd74c` | 0 | 0 `+` (0 subject-unlanded), 1 `-` | not mentioned | removed; tip kept by `lane/consumer-topic-trace-evidence`. Later ([kept branches](kept-worktrees-2026-09-24.md)): branch superseded |
 | `human-durable-outbox` | `feature/human-durable-outbox` | `13e7032d` | 0 | 1 `+` (0 subject-unlanded), 3 `-` | not mentioned | removed; tip kept by `feature/human-durable-outbox` |
 | `image-0143-snapshot` | none | none | n/a | not a registered git worktree | not mentioned | kept: plain directory, outside `git worktree remove` |
 | `image-1d26-snapshot` | none | none | n/a | not a registered git worktree | not mentioned | kept: plain directory, outside `git worktree remove` |
@@ -91,11 +91,11 @@ successors". The audit says not to replay their positive `git cherry` commits.
 | `ion-observation-binding` | `feature/ion-observation-binding` | `7d49ce2c` | 0 | 1 `+` (0 subject-unlanded), 3 `-` | handoff | removed; tip kept by `feature/ion-observation-binding` |
 | `luna-feature-consumer-status` | `implement/luna-consumer-status` | `e0066871` | 0 | 0 `+` (0 subject-unlanded), 6 `-` | not mentioned | removed; tip kept by `implement/luna-consumer-status` |
 | `luna-feature-cursor-inspect` | `implement/luna-feature-cursor-inspect` | `28f49e0f` | 0 | 0 `+` (0 subject-unlanded), 1 `-` | not mentioned | removed; tip kept by `implement/luna-feature-cursor-inspect` |
-| `luna-feature-review` | `lane/luna-feature-review` | `8ab153a4` | 0 | 2 `+` (1 subject-unlanded), 16 `-` | not mentioned | kept: unlanded-uncovered |
+| `luna-feature-review` | `lane/luna-feature-review` | `8ab153a4` | 0 | 2 `+` (1 subject-unlanded), 16 `-` | not mentioned | kept: unlanded-uncovered. Later ([kept branches](kept-worktrees-2026-09-24.md)): superseded; worktree to remove |
 | `luna-feature-web-pages` | `luna-feature-web-pages` | `90fbe689` | 0 | 0 `+` (0 subject-unlanded), 5 `-` | not mentioned | removed; tip kept by `luna-feature-web-pages` |
-| `luna-owner-config-cost` | `lane/luna-owner-config-cost` | `e548b15b` | 1 (planning/evidence/owner-config-proof-cost-luna-2026-09-24.md) | 0 `+` (0 subject-unlanded), 1 `-` | not mentioned | kept: dirty |
-| `luna-owner-config-cost-4b` | `lane/luna-owner-config-cost-4b` | `c332ed5d` | 0 | 0 `+` (0 subject-unlanded), 2 `-` | not mentioned | removed; tip kept by `lane/luna-owner-config-cost-4b` |
-| `luna-trial-docs` | `lane/luna-trial-docs` | `f3ec7227` | 0 | 0 `+` (0 subject-unlanded), 1 `-` | not mentioned | removed; tip kept by `lane/luna-trial-docs` |
+| `luna-owner-config-cost` | `lane/luna-owner-config-cost` | `e548b15b` | 1 (planning/evidence/owner-config-proof-cost-luna-2026-09-24.md) | 0 `+` (0 subject-unlanded), 1 `-` | not mentioned | kept: dirty. Later ([kept branches](kept-worktrees-2026-09-24.md)): superseded, dirt saved; worktree to remove with `--force` |
+| `luna-owner-config-cost-4b` | `lane/luna-owner-config-cost-4b` | `c332ed5d` | 0 | 0 `+` (0 subject-unlanded), 2 `-` | not mentioned | removed; tip kept by `lane/luna-owner-config-cost-4b`. Later ([kept branches](kept-worktrees-2026-09-24.md)): branch superseded |
+| `luna-trial-docs` | `lane/luna-trial-docs` | `f3ec7227` | 0 | 0 `+` (0 subject-unlanded), 1 `-` | not mentioned | removed; tip kept by `lane/luna-trial-docs`. Later ([kept branches](kept-worktrees-2026-09-24.md)): branch superseded |
 | `mini-p2-portable` | `implement/mini-p2-portable` | `36869776` | 0 | 4 `+` (2 subject-unlanded), 11 `-` | not mentioned | kept: unlanded-uncovered |
 | `native-863-freeze` | `DETACHED` | `4764d923` | 0 | 0 `+` (0 subject-unlanded), 1 `-` | owner: integrated/superseded | removed; tip kept by `archive/native-863-freeze` |
 | `native-b074-freeze` | `DETACHED` | `564d0e6a` | 0 | 0 `+` (0 subject-unlanded), 2 `-` | owner: integrated/superseded | removed; tip kept by `archive/native-b074-freeze` |
@@ -172,3 +172,12 @@ successors". The audit says not to replay their positive `git cherry` commits.
   `bp-codec-cost`, `bp-progress-guards`, `bp-selection-invariant`,
   `check-ratchet`, `plan-consolidate`, `proof-cost-regressions` and
   `worktree-retire`. None of the live lanes was touched.
+
+## Later status
+
+The [kept-branch disposition](kept-worktrees-2026-09-24.md) (against `dev`
+`00d291d0`) found that every commit on the fifteen `lane/*` branches still
+ahead of `dev` is carried on `dev` by a cherry-picked commit with the same subject. The Action cells
+above mark those rows. Of this table's kept worktrees, `luna-feature-review`
+and `luna-owner-config-cost` are now ready to remove. The other kept trees were
+outside that lane's scope.
