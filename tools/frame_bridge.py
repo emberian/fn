@@ -413,12 +413,21 @@ class FrameSession:
             "(fn-store-obligation-id-of " + _octets(msgid) + " "
             + _octets(subject) + ")"))
 
-    def post_boundary(self, msgid: bytes, payload_length: int,
+    def post_boundary(self, profile, msgid: bytes, payload_length: int,
                       group_count: int, charge: int) -> str:
-        """The whole POST admission boundary, decided once in ACL2."""
+        """The whole POST admission boundary, decided once in ACL2.
+
+        `profile` is the six values `metadata_config_decode` returned at
+        open, handed back unchanged; the payload bound is ACL2's reading of
+        it (`fn-sbud-post-boundary`)."""
+        format_id, capacity, max_payload, max_recovery, max_transactions, frontier = profile
+        literal = "'(({}) {} {} {} {} ({}))".format(
+            " ".join(str(byte) for byte in format_id), int(capacity),
+            int(max_payload), int(max_recovery), int(max_transactions),
+            " ".join(str(byte) for byte in frontier))
         value = self.call(
-            "(fn-store-post-boundary {} {} {} {})".format(
-                _octets(msgid), int(payload_length), int(group_count),
+            "(fn-store-post-boundary {} {} {} {} {})".format(
+                literal, _octets(msgid), int(payload_length), int(group_count),
                 int(charge)))
         if not isinstance(value, Keyword):
             raise BridgeError("ACL2 returned an unexpected boundary verdict")

@@ -50,7 +50,7 @@ def served_stored_payload(store: Path, message_id: str, source: bytes) -> str:
     frame unframed and decoded by fn-store-event-decode-exact
     (fn-bs-record-of-octets), the decoder the host's fn-store-decode-records
     applies to the unframed octets it passes.  The posting configuration is
-    fn-owner-post-config's, fn-oag-post-config under *fn-store-max-payload*;
+    fn-owner-post-config's, fn-oag-post-config under *fn-record-max-payload*;
     the node is the one fn-cpo-open-observed opens.  Only the config inputs are read here; the
     article octets are derived, never read off the store.  A refused decision
     or an unopenable history yields nil, which frames no stored article.
@@ -75,7 +75,7 @@ def served_decision_bindings(store: Path, message_id: str, source: bytes) -> str
         "  (fn-cpr-replay config-records events))))"
         " (clock (fn-clock-observation 0 (fn-nntp-unix-dtn-ms {{unix_ms}}) 0 t))"
         " (decision (fn-own-operator-decision"
-        "  (fn-oag-post-config cfg *fn-store-max-payload*) clock"
+        "  (fn-oag-post-config cfg *fn-record-max-payload*) clock"
         "  (fn-sn-node (fn-sn-open-state opened))"
         "  '{msgid} '({group}) '{source}))").format(
             configs=config_octets,

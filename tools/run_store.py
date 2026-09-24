@@ -1598,9 +1598,11 @@ def conservative_charge(payload, bridge=None):
 def validate_post_boundary(msgid, payload, groups, charge, config, bridge=None):
     """One call: `fn-store-post-boundary` applies every bound in the model."""
     session = frame_bridge.session(bridge)
-    if config["max_payload_bytes"] > session.constants["max_store"]:
-        raise StoreFault("configured payload bound disagrees with the model")
-    verdict = session.post_boundary(msgid, len(payload), len(groups), charge)
+    profile = (config["format"].encode("ascii"), config["capacity"],
+               config["max_payload_bytes"], config["max_recovery_record_bytes"],
+               config["max_transactions"],
+               config["allocation_frontier_format"].encode("ascii"))
+    verdict = session.post_boundary(profile, msgid, len(payload), len(groups), charge)
     if verdict == "ok":
         return
     raise StoreError({
