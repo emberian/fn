@@ -1,0 +1,32 @@
+# test tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin  start 2026-09-24T15:30:07Z  cwd /tank/fn/scratch/bp-app-txid/repro/tree
+# cmd: python3 -m unittest -v tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CORE_SHA256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd
+# env FN_NATIVE_CRASH_HOST=/tank/fn/scratch/bp-app-txid/repro/tree/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=9b38ba45ed4ce31ca1997e3e4165873203e09d8e41fa176eb3fedbfee95741d0
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/scratch/bp-app-txid/repro/tree/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=5d42db2d8929ba256677ecb3bdfe957edc54176e0f5a1492b24376aa21ae1d9d
+# env FN_NATIVE_HOST=/tank/fn/scratch/bp-app-txid/repro/tree/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+# env FN_NATIVE_LAUNCHER_SHA256=
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/bp-app-txid/repro/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/bp-app-txid/diag/repro-1a9dd747
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_request_retry_queues_distinct_receipt_carriers_and_releases_pin (tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin) ... FAIL
+
+======================================================================
+FAIL: test_request_retry_queues_distinct_receipt_carriers_and_releases_pin (tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bp-app-txid/repro/tree/tests/test_bp_node_native.py", line 471, in test_request_retry_queues_distinct_receipt_carriers_and_releases_pin
+    self.assertEqual(second.returncode, 0, err)
+AssertionError: 4 != 0 : b'store: ACL2 returned a non-natural\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 8.814s
+
+FAILED (failures=1)
+# rc=1 wall=9s end 2026-09-24T15:30:16Z

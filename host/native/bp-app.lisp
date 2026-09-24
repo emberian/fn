@@ -81,6 +81,11 @@
       (unless adu (fnn-fault "durable BP application receipt did not replay"))
       adu)))
 
+(defun fnn-bpapp-planned-txid (txid)
+  (unless (and (integerp txid) (>= txid 0))
+    (fnn-fault "BP application dispatcher asked to plan without a planned txid"))
+  txid)
+
 (defun fnn-bpapp-accept-locked
     (service journal inbound-id request node-id bundle-identity
              ingress bundle-source bundle-destination)
@@ -93,8 +98,11 @@ The caller holds SERVICE's mutex for this whole function."
                bundle-destination)
               :ready)
     (return-from fnn-bpapp-accept-locked (values :refused nil)))
+  ;; TXID is the planned transaction of the durable intent, or of the plan
+  ;; that will become one.  Only :persist-intent and :submit consume it; a
+  ;; request already bound before this process started may carry none.
   (let ((generation (fnn-nat (fnn-global 'fn-owner-app-generation)))
-        (txid (fnn-nat (fnn-global 'fn-owner-app-txid)))
+        (txid (fnn-global 'fn-owner-app-txid))
         (planned (fnn-global 'fn-owner-app-planned-result))
         (application-result nil))
     (dotimes (step 8)
@@ -110,7 +118,7 @@ The caller holds SERVICE's mutex for this whole function."
         (case (first action)
           (:persist-intent
            (fnn-bpapp-request-intent journal inbound-id request generation
-                                     txid planned))
+                                     (fnn-bpapp-planned-txid txid) planned))
           (:submit
            (let ((msgid (fnn-octets (fnn-global 'fn-owner-app-msgid)))
                  (payload (fnn-octets (fnn-global 'fn-owner-app-article)))
@@ -132,13 +140,14 @@ The caller holds SERVICE's mutex for this whole function."
                         (lambda () (fnn-owner-action 'fn-owner-app-submit))
                         msgid payload
                         (fnn-octets (fnn-global 'fn-owner-app-stored))
-                        groups evidence generation txid
+                        groups evidence generation (fnn-bpapp-planned-txid txid)
                         (fnn-global 'fn-owner-app-obligation-id)
                         (fnn-global 'fn-owner-app-stored-subject))
                      (fnn-owner-complete-bound-submission
                       service
                       (lambda () (fnn-owner-action 'fn-owner-app-submit))
-                      msgid payload groups evidence generation txid)))
+                      msgid payload groups evidence generation
+                      (fnn-bpapp-planned-txid txid))))
              (unless (member application-result '(:accepted :duplicate))
                (return-from fnn-bpapp-accept-locked
                  (values application-result nil)))))
