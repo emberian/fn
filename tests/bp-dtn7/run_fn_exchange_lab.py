@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import platform
 from pathlib import Path
 import subprocess
@@ -54,7 +55,10 @@ def main():
     a = LabBpa(checkout, run, 'a', 'bp-a', 'receipts', 'fn.lab', 32401, 32411, 32412)
     b = LabBpa(checkout, run, 'b', 'fn.lab', 'inbox', 'bp-a', 32402, 32412, 32411)
     report = {'schema': 1, 'status': 'running', 'pinned_bpa': pinned,
-              'revision': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
+              # A gate tree is a `git archive` extract with no repository;
+              # it names its revision as the four-node lab's does.
+              'revision': (os.environ.get('FN_GATE_REVISION') or
+                           subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()),
               'a_policy': 'explicitly trusted loopback lab, no cryptographic verification',
               'run': str(run), 'assertions': {}}
     report['invocation'] = [sys.executable, *sys.argv]
@@ -125,10 +129,11 @@ def main():
         inbox = workflow_journal.WorkflowJournal(run / 'a-inbox', inbox_only)
         inbox.open()
         try:
-            report = run_bp_ingress.identify_bundle(receipt_bid,
-                                                    a.client.download_bundle)
+            # Not `report`: that name is the run record the finally block writes.
+            identified = run_bp_ingress.identify_bundle(receipt_bid,
+                                                        a.client.download_bundle)
             staged = run_bp_ingress._staged_item(
-                inbox, workflow_journal, receipt_bid, report.identity,
+                inbox, workflow_journal, receipt_bid, identified.identity,
                 a.client.inventory, a.download)
             staged_bid, _staged_identity, receipt = workflow_journal.decode_inbound(
                 staged.read_bytes())
