@@ -25,6 +25,36 @@ revision and theorem hypotheses when sharing a proof so its scope is clear.
 
 ## Current coordination — 2026-09-24
 
+### Complete capability wave — 06:06 UTC
+
+The [capability plan](capability-wave-2026-09-24.md) supersedes earlier serial
+implementation holds. Topic v2, local key lifecycle, pack retirement, human
+drafts/outbox and the experimental ION observer are integrated. Root is
+converging their source; `native_qualification` owns the next shared image pair
+from an immutable checkout and the current b074 runtime evidence packet.
+
+- `bp_foundation` and `bp_counterexample_completion` are joining dispatch,
+  forwarding, session/MRU and cached journal debt on the actual native path.
+- `consumer_contract` repairs configured-owner index rebuild and maintains the
+  Store/topic/crash relation; `topic_metadata` supplies cooperating v2 witnesses.
+- `storage_kernel_completion` owns retention record publication/cuts;
+  `status_codec_proof` supplies the actual configured-owner retention entry.
+- `assurance_review_followup` now extends the per-principal lifecycle proof
+  through Store/replay. `retire_old_worktrees` owns preservation cut fidelity
+  and mixed topic/pack native tests, not further housekeeping.
+- `mini_reply_join` shares the qualifier's two protected Stores for the actual
+  report/ACK/reply experiment. Mini changes stay in its isolated evidence lane.
+- `review_branch_inventory` has transferred from human client work to the
+  ION observation/current-attempt/receipt join. `stamp_review` completed its
+  bounded Astra handoff; further transport implementation is Sol work.
+
+The root's `ca68b5a1` fixes the native BP identity vector/string comparison.
+Its raw actual-function test passed; both N03 and interrupted-fragment native
+retests need the next image. The configured-owner missing consumer index is a
+distinct runtime defect, owned by `consumer_contract`. Existing failed logs
+are evidence, not discarded fixture noise. Combined proof capacity remains
+four jobs, scoped runs coordinated separately; agents reuse matching caches.
+
 ### Recovery repair, BP prerequisites and complete exchanges — 05:28 UTC
 
 Root integrated pure BP debt and dispatch codec prerequisites through

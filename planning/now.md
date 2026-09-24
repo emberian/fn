@@ -1,5 +1,35 @@
 # Current work — 2026-09-24
 
+## Capability convergence — 06:06 UTC
+
+The broad wave is landing on dev while qualification continues independently.
+Source through `26980a25` includes v2 topic administrator-generation binding,
+per-principal local hybrid key rotation/revocation, superseded pack retirement,
+durable human drafts/outbox, the experimental ION bundle-ID observer, and both
+modeled root-directory EIO choices. Each packet retains its scoped proof and
+native-test limitations. This is not a new qualified image or a v0 declaration.
+
+The exact `b074f94e` closure passed and its production/developer images were
+built. Native active-reader reclamation and the newer separate human client's
+draft/restart/lost-response fixture passed against that image. Indexed consumer
+polling measured about 58 ms including CLI overhead at two positions; it does
+not establish asymptotic behavior. The qualifier retains exact raw logs and is
+assembling the evidence packet.
+
+Two actual native defects were found: BP transit compared identity octet vectors
+with `string=` (fixed in `ca68b5a1`, actual-function stub regression passed;
+image retest pending), and configured-owner observed-open omitted the rebuilt
+consumer event index (repair in progress). These findings do not invalidate the
+component theorems; they identify uncovered called-path joins. Interrupted
+fragment and post-ACK reopen tests remain failed until their repaired images
+pass. Live `/tank/fn/node` is unchanged.
+
+BP forwarding/session/debt integration, maintained topic crash/replay,
+retention publication correspondence, ION durable attempt binding and the
+two-Store Mini report/reply continue in cooperating lanes. The next shared
+image joins the newly landed capabilities; no lane waits for that image before
+continuing independent implementation.
+
 ## Broad capability wave — 05:37 UTC
 
 The user requested a larger concurrent implementation step with later
