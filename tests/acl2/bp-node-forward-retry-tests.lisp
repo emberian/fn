@@ -258,3 +258,132 @@
        (fn-bpnp-step *bpfr-pending-over*
                      (list :persist-result (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect)
                            :durable))))))))
+
+;; ---------------------------------------------------------------------
+;; The retry count survives recovery from the durable rows themselves.
+;; Unlike bpfr-recover above (which hands recovery the in-memory held list),
+;; each restart here starts from the fresh initial state and recovers from
+;; the framed FNBS rows the effects asked the host to publish: kind 5, kind
+;; 6 and every kind 8, each at its own process epoch.  Witness of
+;; fn-bpnp-recovery-success-installs-the-replayed-held and
+;; fn-bpnp-host-recovery-installs-the-durable-replay
+;; (books/bp-node-progress-premises.lisp).
+(defun bpfr-row (effect)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((rec (if (equal (car effect) :persist)
+                 (fn-bpnf-stored-record (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect)
+                                        (fn-bpn-nth 3 effect))
+               (fn-bpn-nth 3 effect))))
+    (list (fn-bpnf-stored-record-name (fn-bpn-nth 1 rec) (fn-bpn-nth 2 rec))
+          (cond ((equal (car rec) :bpnf-stored) (fn-bpnf-stored-record-frame rec))
+                ((equal (car rec) :bpnf-dispatched) (fn-bpnp-dispatch-frame rec))
+                (t (fn-bpnp-attempt-frame rec))))))
+(defun bpfr-restart (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bpnf-answer-state
+   (fn-bpnp-step *bpfr-raw-s0*
+                 (fn-bpnf-family-recover-auto-event *bpfr-raw-s0* nil :ready rows))))
+(make-event `(defconst *bpfr-rows0*
+  ',(list (bpfr-row (car (fn-bpnf-answer-effects *bpfr-a-proposal*)))
+        (bpfr-row (car (fn-bpnf-answer-effects *bpfr-dispatch*)))
+        (bpfr-row (car (fn-bpnf-answer-effects *bpfr-open*))))))
+(make-event `(defconst *bpfr-d1* ',(bpfr-restart *bpfr-rows0*)))
+(make-event `(defconst *bpfr-d1-open* ',(bpfr-reopen *bpfr-d1*)))
+(make-event `(defconst *bpfr-rows1* ',(append *bpfr-rows0* (list (bpfr-row (car (fn-bpnf-answer-effects *bpfr-d1-open*)))))))
+(make-event `(defconst *bpfr-d2* ',(bpfr-restart *bpfr-rows1*)))
+(make-event `(defconst *bpfr-d2-open* ',(bpfr-reopen *bpfr-d2*)))
+(make-event `(defconst *bpfr-rows2* ',(append *bpfr-rows1* (list (bpfr-row (car (fn-bpnf-answer-effects *bpfr-d2-open*)))))))
+(make-event `(defconst *bpfr-d3* ',(bpfr-restart *bpfr-rows2*)))
+(make-event `(defconst *bpfr-d3-open* ',(bpfr-reopen *bpfr-d3*)))
+(make-event `(defconst *bpfr-rows3* ',(append *bpfr-rows2* (list (bpfr-row (car (fn-bpnf-answer-effects *bpfr-d3-open*)))))))
+(make-event `(defconst *bpfr-d4* ',(bpfr-restart *bpfr-rows3*)))
+(make-event `(defconst *bpfr-d4-open* ',(bpfr-reopen *bpfr-d4*)))
+
+(defun bpfr-replayed (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bpn-nth 1 (fn-bpnf-family-replay-rows rows (fn-bpnf-base *bpfr-raw-s0*))))
+(assert-event
+ (and (equal (fn-bpnf-held-list *bpfr-d1*) (bpfr-replayed *bpfr-rows0*))
+      (equal (fn-bpnf-held-list *bpfr-d2*) (bpfr-replayed *bpfr-rows1*))
+      (equal (fn-bpnf-held-list *bpfr-d3*) (bpfr-replayed *bpfr-rows2*))
+      (equal (fn-bpnf-held-list *bpfr-d4*) (bpfr-replayed *bpfr-rows3*))
+      (equal (fn-bpnp-attempt-retries (bpfr-slot *bpfr-d1*)) 0)
+      (equal (fn-bpnp-attempt-retries (bpfr-slot *bpfr-d2*)) 1)
+      (equal (fn-bpnp-attempt-retries (bpfr-slot *bpfr-d3*)) 2)
+      (equal (fn-bpnp-attempt-retries (bpfr-slot *bpfr-d4*)) 3)
+      (equal (car (car (fn-bpnf-answer-effects *bpfr-d1-open*))) :persist-attempt)
+      (equal (car (car (fn-bpnf-answer-effects *bpfr-d3-open*))) :persist-attempt)
+      ;; Four restarts, four durable kind 8: stranded, not offered again.
+      (equal (fn-bpnf-answer-effects *bpfr-d4-open*)
+             (list (list :forward-stranded 0 *bpfr-dest* 3)))))
+;; The :restart-ready hypothesis: the same durable rows under a fenced
+;; clock-domain decision answer :restart-fault and install nothing.
+(make-event
+ `(defconst *bpfr-fenced*
+    ',(fn-bpnp-step *bpfr-raw-s0*
+                    (append (fn-bpnf-family-recover-auto-event
+                             *bpfr-raw-s0* nil :ready *bpfr-rows3*)
+                            (list '(:fence :test))))))
+(assert-event
+ (equal (car (car (fn-bpnf-answer-effects *bpfr-fenced*))) :restart-fault))
+(must-fail
+ (assert-event
+  (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpfr-fenced*))
+         (bpfr-replayed *bpfr-rows3*))))
+
+;; ---------------------------------------------------------------------
+;; Teeth of the sender's refusal reading (books/bp-node-forward-retry.lisp).
+;; fn-bpnp-tcpcl-outcome-keeps-the-refusal-reason: witness, reason 3
+;; (Retransmission not acceptable); hypothesis dropped, no peer reason is
+;; :failed, not a refusal result.
+(assert-event (equal (fn-bpnp-tcpcl-outcome :refused 3) '(:refused 3)))
+(assert-event (equal (fn-bpnp-tcpcl-outcome :refused nil) :failed))
+(must-fail
+ (assert-event (equal (fn-bpnp-tcpcl-outcome :refused nil) (list :refused nil))))
+(assert-event (equal (fn-bpnp-tcpcl-outcome :accepted nil) :sent))
+(assert-event (equal (fn-bpnp-tcpcl-outcome :uncertain nil) :fence))
+
+(defun bpfr-result (st outcome session)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((effect (car (fn-bpnf-answer-effects *bpfr-p1*))))
+    (fn-bpnp-step st (list :forward-result (fn-bpn-nth 3 effect) (fn-bpn-nth 4 effect)
+                           session outcome *bpfr-obs*))))
+(defconst *bpfr-p1-session* (fn-bpn-nth 2 (car (fn-bpnf-answer-effects *bpfr-p1*))))
+(make-event `(defconst *bpfr-refuse1*
+               ',(bpfr-result *bpfr-s4* (fn-bpnp-tcpcl-outcome :refused 1) *bpfr-p1-session*)))
+(make-event `(defconst *bpfr-refuse3*
+               ',(bpfr-result *bpfr-s4* (fn-bpnp-tcpcl-outcome :refused 3) *bpfr-p1-session*)))
+(make-event `(defconst *bpfr-refuse1-settled* ',(bpfr-durable *bpfr-refuse1*)))
+(make-event `(defconst *bpfr-refuse3-settled* ',(bpfr-durable *bpfr-refuse3*)))
+;; fn-bpnp-step-forward-result-records-the-transport-outcome: witness, the
+;; kind-9 record of reason 3 carries (:refused 3); effect hypothesis dropped,
+;; a stale session's answer is :forward-stale and records nothing.
+(assert-event
+ (let ((effect (car (fn-bpnf-answer-effects *bpfr-refuse3*))))
+   (and (equal (car effect) :persist-forward-result)
+        (equal (fn-bpn-nth 8 (fn-bpn-nth 3 effect)) '(:refused 3)))))
+(make-event `(defconst *bpfr-stale*
+               ',(bpfr-result *bpfr-s4* '(:refused 3) (cons 99 99))))
+(assert-event (equal (car (car (fn-bpnf-answer-effects *bpfr-stale*))) :forward-stale))
+(must-fail
+ (assert-event
+  (equal (fn-bpn-nth 8 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *bpfr-stale*))))
+         '(:refused 3))))
+;; fn-bpnp-completed-refusal-settles-as-sent: witness, reason 1 settles the
+;; row exactly as the :sent settle above did (no hypothesis to drop).
+(assert-event
+ (and (equal (car (car (fn-bpnf-answer-effects *bpfr-refuse1-settled*))) :forward-ready)
+      (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpfr-refuse1-settled*))
+             (fn-bpnf-held-list (fn-bpnf-answer-state *bpfr-settled*)))
+      (equal (fn-bpn-nth 12 (car (fn-bpnf-held-list
+                                  (fn-bpnf-answer-state *bpfr-refuse1-settled*))))
+             '(:dispatch-done))))
+;; fn-bpnp-other-refusal-is-not-settled: witness, reason 3 leaves the row
+;; forward pending with its attempt cleared; hypothesis dropped, reason 1 is
+;; terminal.
+(assert-event
+ (let ((h (car (fn-bpnf-held-list (fn-bpnf-answer-state *bpfr-refuse3-settled*)))))
+   (and (equal (fn-bpn-nth 12 h) '(:forward-pending))
+        (null (fn-bpn-nth 13 h)))))
+(must-fail
+ (assert-event (not (fn-bpnp-forward-terminalp (fn-bpnp-tcpcl-outcome :refused 1)))))
