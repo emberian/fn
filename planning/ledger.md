@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 683 |
-| Certification roots in the Makefile | 672 |
-| Books inside the root closure | 681 |
-| `defthm` and `defthmd` events | 9208 |
-| `defun` events | 6651 |
+| Books read | 685 |
+| Certification roots in the Makefile | 674 |
+| Books inside the root closure | 683 |
+| `defthm` and `defthmd` events | 9226 |
+| `defun` events | 6653 |
 | Functions with verified guards | 2038 |
-| Functions declared `:verify-guards nil` and never verified | 417 |
+| Functions declared `:verify-guards nil` and never verified | 418 |
 | Functions left at the default with an explicit guard | 3309 |
-| Functions left at the default with no guard | 887 |
-| `assert-event` checks | 10048 |
-| `must-fail` checks | 690 |
+| Functions left at the default with no guard | 888 |
+| `assert-event` checks | 10083 |
+| `must-fail` checks | 693 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
 | Export-hygiene warnings | 109 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 48 |
-| Include-hygiene warnings | 659 |
+| Include-hygiene warnings | 661 |
 | Host-names warnings | 813 |
 | Hand-written-record warnings | 18 |
 
@@ -248,6 +248,7 @@ that `make certify` requests.
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 0 |
 | `books/codec-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/config-crash-replay.lisp` | root | 18 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/config-invariants.lisp` | root | 34 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/config-observed.lisp` | root | 5 | 4 | 3/0/1/0 | 0 | 0 | 0 |
 | `books/config-owner-advance-invariants.lisp` | root | 21 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -602,6 +603,7 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/codec-seam-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
+| `tests/acl2/config-crash-replay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 35 | 3 | 0 |
 | `tests/acl2/config-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
 | `tests/acl2/config-owner-advance-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
 | `tests/acl2/config-owner-advance-reader-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
