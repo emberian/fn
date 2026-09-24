@@ -5,20 +5,29 @@ reconstruct the last 300 first-parent landings, distinguish integrated work
 from the substantive branch backlog, and propose the next complete agent and
 BP exchanges. The proposal changes no release requirements or deployment.
 
-Current integrated source `e657b1cf` passes its repaired combined incremental
-ACL2 qualification: 575 certificates reused and ten newly certified, with
-14.452 seconds of certification at four jobs. The
-[record](evidence/bp-repaired-e657-2026-09-24.md) preserves the original
-manifest and its scope. This supersedes the BP source failures below; a
-source-matched native campaign is still owed. The earlier `1d26e01f` native
-consumer/reader/clone evidence remains valid for that image. The live node
-remains `da5fd8cb`.
+The repaired BP baseline `e657b1cf` passed combined incremental ACL2
+qualification: 575 certificates reused and ten newly certified, with 14.452
+seconds of certification at four jobs. The [record](evidence/bp-repaired-e657-2026-09-24.md)
+retains its exact scope. Later ADVANCE, indexed OVER, allocator correspondence
+and consumer-index foundation packets are now integrated, with combined
+qualification pending. The foundation still needs its actual owner/Store join;
+it does not yet establish bounded served polling.
 
-Active joins are Mini's final observed-poll/transaction/ACK/reply path, native
-BP fragment custody with expiry-safe reassembly, topic Store admission, and
-the maintained consumer index. Qualified ADVANCE, OVER and allocator proof
-packets await coherent integration. The review lists their exact branches;
-old worktree counts are not a feature backlog.
+The [live Mini join](evidence/native-mini-live-join-2026-09-24.md) passed using
+the earlier `1d26e01f` image: native poll, Mini's durable signed transaction and
+Q, reopen, advancing fn ACK, and empty repeat poll. Its later killed reply was
+a duplicate ACK; the earlier 1d26 campaign supplies positive advancing-ACK
+lost-reply evidence. Posting a stable signed fn reply from Q remains open.
+The protected live node remains `da5fd8cb`.
+
+Active joins are native BP fragment custody with expiry-safe reassembly,
+topic Store admission, the maintained consumer index on the actual served
+path, and the full allocator byte/kernel relation. Two bounded Luna trials
+cover a client verdict display and proof-cost diagnosis. The client change
+landed after an article/verdict association correction; no proof speedup has
+yet been demonstrated. [Cleanup and recovery](worktree-recovery-2026-09-24.md)
+records 97 verified worktree archives and recovery from an external accidental
+checkout reset. Old branch counts are not a feature backlog.
 
 The dated checkpoints below are historical observations, not competing
 descriptions of current source.

@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 593 |
 | Certification roots in the Makefile | 583 |
 | Books inside the root closure | 588 |
-| `defthm` and `defthmd` events | 8440 |
+| `defthm` and `defthmd` events | 8447 |
 | `defun` events | 6267 |
 | Functions with verified guards | 2030 |
 | Functions declared `:verify-guards nil` and never verified | 371 |
 | Functions left at the default with an explicit guard | 3067 |
 | Functions left at the default with no guard | 799 |
-| `assert-event` checks | 9137 |
+| `assert-event` checks | 9139 |
 | `must-fail` checks | 484 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 76 |
@@ -209,7 +209,7 @@ that `make certify` requests.
 | `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/byte-store-programs.lisp` | root | 1 | 31 | 0/31/0/0 | 33 | 0 | 0 |
 | `books/byte-store-record-fence.lisp` | root | 41 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/byte-store-record-provenance.lisp` | root | 182 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/byte-store-record-provenance.lisp` | root | 188 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-relation.lisp` | root | 12 | 8 | 0/5/0/3 | 0 | 0 | 0 |
 | `books/byte-store-scan.lisp` | root | 134 | 35 | 1/29/0/5 | 0 | 0 | 1 |
 | `books/byte-store-stable-prefix.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -239,7 +239,7 @@ that `make certify` requests.
 | `books/consumer-event-index.lisp` | - | 16 | 10 | 2/1/7/0 | 0 | 0 | 0 |
 | `books/consumer-local-control.lisp` | root | 0 | 15 | 15/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-owner-local.lisp` | root | 1 | 11 | 11/0/0/0 | 0 | 0 | 0 |
-| `books/consumer-poll-index.lisp` | - | 6 | 7 | 6/1/0/0 | 0 | 0 | 0 |
+| `books/consumer-poll-index.lisp` | - | 7 | 7 | 6/1/0/0 | 0 | 0 | 0 |
 | `books/consumer-poll-projection.lisp` | root | 2 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-position.lisp` | root | 56 | 29 | 28/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |
@@ -522,7 +522,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/byte-store-program-invariants-tests.lisp` | root | 0 | 3 | 0/1/0/2 | 9 | 8 | 0 |
 | `tests/acl2/byte-store-record-fence-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 7 | 5 | 0 |
-| `tests/acl2/byte-store-record-provenance-tests.lisp` | root | 1 | 32 | 0/1/0/31 | 36 | 44 | 0 |
+| `tests/acl2/byte-store-record-provenance-tests.lisp` | root | 1 | 32 | 0/1/0/31 | 37 | 44 | 0 |
 | `tests/acl2/byte-store-relation-tests.lisp` | root | 1 | 5 | 0/0/0/5 | 12 | 12 | 0 |
 | `tests/acl2/byte-store-scan-tests.lisp` | root | 2 | 18 | 0/0/0/18 | 32 | 4 | 0 |
 | `tests/acl2/byte-store-stable-prefix-tests.lisp` | root | 1 | 11 | 0/0/0/11 | 4 | 2 | 0 |
@@ -550,7 +550,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-event-index-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 8 | 2 | 0 |
 | `tests/acl2/consumer-local-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
 | `tests/acl2/consumer-owner-local-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 0 | 0 |
-| `tests/acl2/consumer-poll-index-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 4 | 1 | 0 |
+| `tests/acl2/consumer-poll-index-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/consumer-poll-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 36 | 8 | 0 |
 | `tests/acl2/consumer-store-events-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 6 | 1 | 0 |
