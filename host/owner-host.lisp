@@ -40,6 +40,7 @@
 ; service log lines (fn-olog-*): both ACL2's, read here and nowhere computed.
 (include-book "../books/owner-agent")
 (include-book "../books/owner-log")
+(include-book "../books/topic-history-local-proposals")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -398,6 +399,30 @@
       (let ((state (fn-owner-step
                     (list :store (list :prepare-consumer event)) state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+
+; ACL2 constructs the exact topic event before this host boundary. Store's
+; carried historical projection decides whether it may be staged.
+(defun fn-owner-prepare-topic (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((s (fn-owner-store state)))
+    (if (not (fn-th-topic-eventp event))
+        (value :invalid)
+      (let ((state (fn-owner-step
+                    (list :store (list :prepare-topic event)) state)))
+        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+
+; This is the one owner-side proposal read. ACL2 selects an exact earlier T10
+; event and snapshot from the carried topic projection; neither the control
+; peer nor host may supply an external verified/source verdict.
+(defun fn-owner-topic-propose (operation source-sequence observed-uid
+                                         entropy-id quota state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (projection (fn-sn-topic s))
+         (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
+    (value
+     (fn-th-local-propose operation projection txid source-sequence
+                          observed-uid entropy-id quota))))
 
 ; The local-control socket binds its one OS owner to fn-col's fixed principal.
 ; These ACL2 calls alone choose the operation, current cursor scope and Store

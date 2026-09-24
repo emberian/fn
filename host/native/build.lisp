@@ -191,6 +191,7 @@
         ; entry retains its separate diagnostic surface.
         (load "host/native/feed-service.lisp")
         (load "host/native/control.lisp")
+        (load "host/native/topic-local.lisp")
         (load "host/native/consumer-local.lisp")
         (load "host/native/hybrid-control.lisp")
         ; Public operator grammar follows the owner so its normalized run

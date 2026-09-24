@@ -2,6 +2,9 @@
 (in-package "ACL2")
 (include-book "store-node-traces")
 (include-book "records-seam")
+; Resolution proofs use the Store's exported selector facts.  Opening the
+; fourteen-field constructor in every file transition obscures those facts.
+(local (in-theory (disable fn-sn-make-v6)))
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
@@ -168,9 +171,10 @@
                             (node (fn-sn-node s))
                             (recorded-txid
                              (fn-sf-frontier (fn-sn-files s)))))
-           :in-theory (e/d (fn-sn-refuse-reservation fn-sn-update fn-sn-statep)
+           :in-theory (e/d (fn-sn-refuse-reservation fn-sn-update
+                            fn-sn-statep fn-sn-shapep)
                            (fn-sf-refuse-reservation
-                            fn-replay-advance-txid)))))
+                            fn-replay-advance-txid fn-sn-make-v6)))))
 
 (defthm fn-sn-known-abort-files-preserves-state
   (implies (fn-sf-statep files)
@@ -488,6 +492,7 @@
                              fn-record-shape-vocabulary
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-th-topic-eventp fn-th-prefix-step
                              fn-replay-apply-record
                              fn-replay-apply-retention-event)))))
 
@@ -519,6 +524,7 @@
     (:prepare-retention (fn-sn-prepare-retention s (cadr event)))
     (:prepare-identity (fn-sn-prepare-identity s (cadr event)))
     (:prepare-consumer (fn-sn-prepare-consumer s (cadr event)))
+    (:prepare-topic (fn-sn-prepare-topic s (cadr event)))
     (otherwise (fn-snt-step s event))))
 
 (defun fn-snrt-run (s events)
@@ -537,7 +543,7 @@
   :hints (("Goal" :in-theory (disable fn-snt-relation fn-sn-prepare fn-sn-io
                       fn-sn-finish fn-sn-crash fn-sn-recover
                       fn-sn-prepare-retention fn-sn-prepare-identity
-                      fn-sn-prepare-consumer))))
+                      fn-sn-prepare-consumer fn-sn-prepare-topic))))
 
 (defthm fn-snrt-mixed-trace-preserves-live-history-relation
   (implies (fn-snt-relation s)
@@ -627,7 +633,8 @@
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
                 (not (fn-stxa-p (fn-sn-completion-record s)))
-                (not (fn-cpe-eventp (fn-sn-completion-record s))))
+                (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (and (fn-sn-record-bindsp (fn-sn-node s) (fn-sn-completion-record s))
                 (equal (fn-sn-node next)
                        (fn-node-complete (fn-sn-node s)
@@ -645,7 +652,7 @@
                              fn-sn-committed-recordp fn-node-complete
                              fn-record-shape-vocabulary
                              fn-store-event-p fn-store-retention-event-p
-                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p fn-th-topic-eventp
                              fn-replay-apply-record
                              fn-replay-apply-retention-event
                              fn-sn-prepare-retention fn-sn-prepare-identity

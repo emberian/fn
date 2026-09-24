@@ -30,10 +30,13 @@ peering/restart, topic inspection, INN interoperability and live configuration.
 The P3 codec now has general constructor bounds/inverse and host-called
 authored-field binding proofs. Canonical folding and a bounded larger header
 envelope accommodate the maximum topic profile in ACL2; the exact maximum
-profile passed native inspection on frozen `86323c89`, while durable topic
-admission remains open. The candidate selector now binds controller/keyset to
-verified authorship; its historical route requires the exact schema-1 source
-and enrollment snapshot. This does not establish topic admission or governance.
+profile passed native inspection on frozen `86323c89`. The historical
+candidate selector binds controller and keyset to the exact schema-1 T10
+source and enrollment snapshot. The experimental root-only Store projection
+now completes administrator installation, root anchors and roster/parent/quota
+gated report events and replays them separately on reopen. Its source-level
+native owner caller is present; a combined saved-image admission/reopen run
+and physical qualification remain open. No succession or fork policy follows.
 K6 now carries exact typed Store-event frames
 through the modeled surviving-link crash. The ordered whole-list scanner
 join now holds under the actual pair-10 byte/kernel relation; general K0 must

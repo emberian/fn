@@ -115,6 +115,9 @@
 (defun fnn-control-reply-octets (status)
   (let ((reply
           (cond
+            ((and (consp status) (eq (first status) :topic-reply))
+             (fnn-core 'fn-native-control-host-topic-reply-encode
+                       (second status)))
             ((and (consp status) (eq (first status) :consumer-poll-reply))
              (fnn-core 'fn-native-control-host-consumer-poll-reply-encode
                        (second status) (third status) (fourth status)))
@@ -274,6 +277,10 @@ joins it before the process exits."
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-admin-decode
                                        (fnn-octet-list frame))))
+                      (topic
+                        (and (typep frame 'fnn-octets)
+                             (fnn-core 'fn-native-control-host-topic-request-decode
+                                       (fnn-octet-list frame))))
                       (consumer
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-consumer-request-decode
@@ -281,6 +288,15 @@ joins it before the process exits."
                  (cond
                    ((and *fnn-hybrid-control-handler*
                          (funcall *fnn-hybrid-control-handler* service frame)))
+                   ((and (consp topic) (eq (first topic) :topic))
+                    (multiple-value-bind (owner-p uid)
+                        (fnn-control-peer-is-owner-p socket)
+                      (if owner-p
+                          (list :topic-reply
+                                (fnn-owner-topic-local-serialized
+                                 service (second topic) (third topic)
+                                 (fourth topic) uid))
+                        (list :topic-reply :refused))))
                    ((and (consp consumer) (eq (car consumer) :consumer))
                       (if (fnn-control-peer-is-owner-p socket)
                         (fnn-owner-consumer-local-serialized
@@ -325,8 +341,9 @@ joins it before the process exits."
     ;; not receive it, conservatively reports :uncertain.
     (fnn-control-test-after-submit
      (if (and (consp status)
-              (member (first status) '(:consumer-reply :consumer-poll-reply
-                                       :consumer-status-reply)))
+              (member (first status)
+                      '(:topic-reply :consumer-reply :consumer-poll-reply
+                        :consumer-status-reply)))
          (second status) status))
     (fnn-control-send-reply socket status)))
 
@@ -540,6 +557,46 @@ joins it before the process exits."
                                         :uncertain :fault))
                        status
                      (fnn-control-transport-outcome stage)))))
+           (error () (fnn-control-transport-outcome stage)))
+      (when socket (fnn-socket-shut socket)))))
+
+(defun fnn-control-topic-local (path-octets operation sequence quota)
+  "Send an ACL2-framed local topic operation to the authenticated owner."
+  (let ((request-list
+          (fnn-core 'fn-native-control-host-topic-request-encode
+                    operation sequence quota))
+        (socket nil) (stage :before-submission))
+    (unless (fnn-octet-list-p request-list)
+      (fnn-fault "ACL2 refused local topic request"))
+    (unwind-protect
+         (handler-case
+             (progn
+               (setq socket (fnn-control-connect
+                             (fnn-octets-string path-octets)))
+               (let ((fd (fnn-socket-fd socket)))
+                 (setq stage :after-submission)
+                 (fnn-send-all fd (fnn-octets request-list)
+                               +fnn-control-io-seconds+)
+                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
+                 (let* ((frame (fnn-control-read-frame
+                                socket (fnn-core
+                                        'fn-native-control-host-max-frame)))
+                        (reply (and (typep frame 'fnn-octets)
+                                    (fnn-core
+                                     'fn-native-control-host-topic-reply-decode
+                                     (fnn-octet-list frame))))
+                        (ordinary
+                          (and (typep frame 'fnn-octets)
+                               (fnn-core 'fn-native-control-host-reply-decode
+                                         (fnn-octet-list frame)))))
+                   (cond
+                    ((and (consp reply) (eq (first reply) :topic-reply)
+                          (member (second reply)
+                                  '(:accepted :refused :uncertain :fault)))
+                     (second reply))
+                    ((member ordinary '(:refused :uncertain :fault :busy))
+                     (if (eq ordinary :busy) :refused ordinary))
+                    (t (fnn-control-transport-outcome stage))))))
            (error () (fnn-control-transport-outcome stage)))
       (when socket (fnn-socket-shut socket)))))
 

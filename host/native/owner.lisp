@@ -809,6 +809,47 @@ the current connection."
           (fnn-refuse "canonical Store refused consumer event")))
       (fnn-owner-publish-prepared service "consumer"))))
 
+(defun fnn-owner-topic-commit (service event)
+  "Publish one ACL2-constructed topic event through the Store durability gate."
+  (let ((store (fnn-owner-service-store service)))
+    (when (>= (fnn-owner-service-records service)
+              (fnn-config-max-transactions store))
+      (fnn-refuse "Store transaction capacity exhausted"))
+    (fnn-owner-preflight-publication service
+                                     (fnn-core 'fn-store-event-kind event))
+    (let ((*fnn-observe-callback* #'fnn-owner-observe)
+          (*fnn-finish-callback* #'fnn-owner-finish))
+      (fnn-advance-frontier store
+                            (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
+      (let ((prepared (fnn-owner-action 'fn-owner-prepare-topic event)))
+        (unless (eq prepared :prepared)
+          (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
+            (fnn-indeterminate "owner could not consume refused topic reservation"))
+          (fnn-refuse "canonical Store refused topic event")))
+      (fnn-owner-publish-prepared service "topic"))))
+
+(defun fnn-owner-topic-local-serialized
+    (service operation source-sequence quota observed-uid)
+  "Use the OS-observed UID only as input to ACL2's installed-ID decision."
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let* ((entropy-id
+              (and (eq operation :install)
+                   (fnn-octet-list (fnn-anchor-csprng-nonce 32))))
+            (proposal
+              (fnn-owner-core 'fn-owner-topic-propose
+                              operation source-sequence observed-uid
+                              entropy-id quota)))
+       (if (not (and (consp proposal) (eq (first proposal) :ok)
+                     (consp (cdr proposal))))
+           :refused
+         (progn
+           (unless (eq (fnn-owner-topic-commit service (second proposal))
+                       :durable)
+             (fnn-fault "topic publication lacked durable completion"))
+           :accepted))))))
+
 (defun fnn-owner-consumer-entropy-observation ()
   "Observe 64 OS entropy octets; ACL2 validates and owns the identities."
   (let ((bytes (make-array 64 :element-type '(unsigned-byte 8))))
