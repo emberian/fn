@@ -26,19 +26,31 @@ log that lived here is [archive/now-2026-09-24.md](archive/now-2026-09-24.md).
 | `books/bp-node-progress-selection-invariants` | `fn-bpnp-step-progress-preserves-held-and-issued`, non-clock `:progress` Subgoal 40.2' | bp-selection-invariant |
 | `tests/acl2/bp-node-machine-teeth-tests` | blocked by the uncertified selection include, not its own counterexample | follows bp-selection-invariant |
 
-## The goal now: v0 (set 2026-09-24 ~08:00 EDT)
+## The goal now: v0 deployed, then the milestones (re-pointed 2026-09-24 ~11:30 EDT)
 
-The night goal (image, join, cost, planning) is met; see the
-[restart record](handoff-2026-09-24-night.md). ember's next goal is v0 itself,
-as [plan §2.2](plan-2026-09-22-trajectory.md) defines it: P1 to P11 each held
-as a theorem over the host-called function, with teeth, observed on the
-deployed image; one matrix run on that image agreeing with every row it
-reaches; the cut campaign passing on the production image. The scoreboard is
-[v0-scoreboard.md](v0-scoreboard.md) (one row per P: theorem / host-called
-subject / teeth / observed on image / obstruction); a P is DONE or names its
-obstruction there. Deploying an image to the hbox node happens only after the
-matrix and campaign pass on it, in place with the store kept and the previous
-release retained. Proof cost stays a failing check.
+ember's correction: the v0 push had become an audit of the present state.
+The plan's forward work is what the lanes point at from here, with the
+[scoreboard](v0-scoreboard.md) as the check, not the goal:
+
+1. **T0, the deployed node.** Cut image `6c0626c5` (every fix of today:
+   signed ingress, W1 to W3, reconfiguration in ACL2, retention, recovery),
+   all four images (default and DTN, production and developer), run the
+   matrix, the cut campaign, the production kill campaign and every native
+   module on it, then upgrade the hbox node in place with the store kept and
+   the previous release retained. The node's page says which of P1 to P11
+   hold on it.
+2. **M4, disconnected exchange.** The kind-8 retry policy (default adopted,
+   pending ember), death-after-kind-8 exactly-once on a DTN image, an
+   interrupted contact on a real BPA (dtn7-rs lab), the four-node lab.
+3. **v1 (b), the Message-ID index on the served path** (T17) with its
+   measured cost sentence.
+4. **M6, the human web interface** ember, yue and tulip can use against the
+   deployed node.
+5. **M5, bounded long-lived operation**: headroom and refusal explicit and
+   observed; compaction with its preservation proof.
+
+Decisions for ember stay listed on the scoreboard; defaults are adopted where
+the plan or the M4 evidence already implies one, and marked as such.
 
 ## Lanes
 
