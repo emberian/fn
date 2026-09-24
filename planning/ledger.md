@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 671 |
-| Certification roots in the Makefile | 660 |
-| Books inside the root closure | 669 |
-| `defthm` and `defthmd` events | 8988 |
-| `defun` events | 6583 |
+| Books read | 673 |
+| Certification roots in the Makefile | 662 |
+| Books inside the root closure | 671 |
+| `defthm` and `defthmd` events | 9004 |
+| `defun` events | 6586 |
 | Functions with verified guards | 2036 |
-| Functions declared `:verify-guards nil` and never verified | 407 |
-| Functions left at the default with an explicit guard | 3294 |
+| Functions declared `:verify-guards nil` and never verified | 408 |
+| Functions left at the default with an explicit guard | 3296 |
 | Functions left at the default with no guard | 846 |
-| `assert-event` checks | 9725 |
-| `must-fail` checks | 583 |
+| `assert-event` checks | 9764 |
+| `must-fail` checks | 590 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
-| Export-hygiene warnings | 107 |
+| Export-hygiene warnings | 108 |
 | Enabled-projection warnings | 37 |
-| Teeth-form warnings | 47 |
-| Include-hygiene warnings | 645 |
+| Teeth-form warnings | 48 |
+| Include-hygiene warnings | 647 |
 | Host-names warnings | 816 |
 | Hand-written-record warnings | 18 |
 
@@ -251,6 +251,7 @@ that `make certify` requests.
 | `books/config-owner-advance-invariants.lisp` | root | 21 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-owner-advance-reader-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-owner-live.lisp` | root | 106 | 10 | 0/0/10/0 | 0 | 0 | 0 |
+| `books/config-owner-publish.lisp` | root | 16 | 3 | 0/1/2/0 | 0 | 0 | 0 |
 | `books/config-owner-read-invariants.lisp` | root | 16 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/config-physical-replay.lisp` | root | 6 | 5 | 3/0/2/0 | 0 | 0 | 0 |
 | `books/config-records.lisp` | root | 15 | 15 | 2/0/13/0 | 0 | 0 | 0 |
@@ -597,6 +598,7 @@ that `make certify` requests.
 | `tests/acl2/config-owner-advance-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
 | `tests/acl2/config-owner-advance-reader-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
 | `tests/acl2/config-owner-live-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 43 | 1 | 0 |
+| `tests/acl2/config-owner-publish-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 39 | 7 | 0 |
 | `tests/acl2/config-owner-read-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 3 | 0 |
 | `tests/acl2/config-physical-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/config-store-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |

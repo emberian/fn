@@ -514,6 +514,8 @@
     "books/config-owner-read-invariants",
     "tests/acl2/config-owner-read-invariants-tests",
     "tests/acl2/config-owner-live-tests",
+    "books/config-owner-publish",
+    "tests/acl2/config-owner-publish-tests",
     "books/owner-config",
     "books/ideal",
     "books/nntp-index",
@@ -664,25 +666,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 671,
-    "books_in_root_closure": 669,
-    "roots": 660,
-    "theorems": 8988,
-    "functions": 6583,
-    "assert_events": 9725,
-    "must_fails": 583,
+    "books": 673,
+    "books_in_root_closure": 671,
+    "roots": 662,
+    "theorems": 9004,
+    "functions": 6586,
+    "assert_events": 9764,
+    "must_fails": 590,
     "encapsulates": 30,
     "guards": {
       "verified": 2036,
-      "declared-off": 407,
-      "default-guarded": 3294,
+      "declared-off": 408,
+      "default-guarded": 3296,
       "default-unguarded": 846
     },
     "suspect_theorems": 83,
-    "export_hygiene_warnings": 107,
+    "export_hygiene_warnings": 108,
     "enabled_projection_warnings": 37,
-    "teeth_form_warnings": 47,
-    "include_hygiene_warnings": 645,
+    "teeth_form_warnings": 48,
+    "include_hygiene_warnings": 647,
     "host_names_warnings": 816,
     "hand_written_record_warnings": 18
   },
@@ -5064,6 +5066,32 @@
       "includes": [
         "config-store-traces",
         "owner-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-owner-publish.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-live",
+        "owner-agent"
       ],
       "system_includes": [],
       "suspects": [],
@@ -14388,6 +14416,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/config-owner-publish-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 39,
+      "must_fails": 7,
+      "defconsts": 20,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-owner-publish",
+        "config-owner-live-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/config-owner-read-invariants-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19577,6 +19633,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-ocl-complete-success-publishes-the-store-configuration",
+        "book": "books/config-owner-publish.lisp",
+        "line": 147,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-jrec-article-sequence-agrees",
         "book": "books/config-records.lisp",
         "line": 100,
@@ -20436,6 +20498,12 @@
         "check": "fn-ocl-read-without-historical-input-is-not-preserved",
         "book": "tests/acl2/config-owner-live-tests.lisp",
         "line": 136,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-ocl-request-deltas-of-any-kind-are-nonempty",
+        "book": "tests/acl2/config-owner-publish-tests.lisp",
+        "line": 192,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -21755,6 +21823,13 @@
         "line": 5,
         "include": "config-owner-read-invariants",
         "included": "books/config-owner-read-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/config-owner-publish.lisp",
+        "line": 23,
+        "include": "owner-agent",
+        "included": "books/owner-agent.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -24023,6 +24098,13 @@
         "line": 6,
         "include": "config-observed-tests",
         "included": "tests/acl2/config-observed-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-owner-publish-tests.lisp",
+        "line": 10,
+        "include": "config-owner-live-tests",
+        "included": "tests/acl2/config-owner-live-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -30840,28 +30922,28 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 452,
+        "line": 439,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 452,
+        "line": 439,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 887,
+        "line": 874,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1359,
+        "line": 1346,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
