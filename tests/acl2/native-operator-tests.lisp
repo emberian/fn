@@ -309,6 +309,41 @@
                      (list (fn-record-string-octets "fn.letters")
                            (fn-record-string-octets "fn.test"))))
 
+; `store upgrade-profile PROFILE': an offline store action whose plan names
+; the profile keyword; the verdict (upgrade or refusal) is the store's
+; (books/store-profile-upgrade.lisp), so both named words are plans here.
+(defconst *fn-nop-upgrade*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("store" "upgrade-profile" "scale"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-upgrade*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-upgrade*)
+                     :upgrade-profile))
+(assert-event (equal (fn-native-operator-result-upgrade-profile *fn-nop-upgrade*) :scale))
+(assert-event (equal (fn-native-operator-result-upgrade-profile
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("store" "upgrade-profile" "development"))))
+                     :development))
+; An init plan names no upgrade profile, and malformed store commands are
+; usage: an unknown word, a missing word, an extra word, another subcommand.
+(assert-event (equal (fn-native-operator-result-upgrade-profile *fn-nop-init*) nil))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "upgrade-profile" "huge"))))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "upgrade-profile"))))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "upgrade-profile" "scale" "x"))))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "downgrade"))))
+                     5))
+
 ; Teeth, one hypothesis at a time: a bare `init` names no group and is a
 ; usage error rather than a store with a guessed group table; a word that
 ; `fn-record-group-namep` does not admit is a usage error; a repeated name is

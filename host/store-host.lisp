@@ -19,6 +19,7 @@
 (include-book "../books/frame-trailer")
 (include-book "../books/byte-store-frame")
 (include-book "../books/byte-store-txn-name")
+(include-book "../books/store-profile-upgrade")
 (include-book "../books/article-fields")
 
 (defconst *fn-store-capacity* 1048576)
@@ -80,12 +81,14 @@
         (fn-bs-txn-observation-pairs names 0)
       :invalid)))
 
+; The bound and the grammar are `fn-profile-txn-observation'
+; (books/store-profile-upgrade.lisp), whose monotonicity in the profile is
+; `fn-profile-upgrade-keeps-txn-observation'; this wrapper converts octets.
 (defun fn-store-txn-observation-selected (observed maximum selected-lower)
   (declare (xargs :mode :program))
   (let ((names (fn-store-octet-lists->strings observed)))
-    (if (and (natp maximum) (natp selected-lower) (true-listp observed)
-             (not (equal names :bad)) (<= (len names) maximum))
-        (fn-bs-txn-observation-selected names selected-lower)
+    (if (and (true-listp observed) (not (equal names :bad)))
+        (fn-profile-txn-observation names maximum selected-lower)
       :invalid)))
 
 (defun fn-store-txn-covered-names (pairs selected-lower)
@@ -400,6 +403,18 @@
                                      prospective-payload-octets)
       :admissible
     :refused))
+
+;; The offline profile upgrade (books/store-profile-upgrade.lisp): the replay
+;; bound every open checks per record, the verdict of the upgrade verb, and
+;; the developer entry's profile word.
+(defun fn-store-profile-replay-within-bound (profile aggregate)
+  (fn-profile-replay-within-boundp profile aggregate))
+
+(defun fn-store-profile-upgrade-verdict (current target)
+  (fn-profile-upgrade-verdict current target))
+
+(defun fn-store-profile-word (octets)
+  (fn-profile-word-octets octets))
 
 (defun fn-store-publication-kind-ceiling (kind)
   (fn-store-publication-ceiling kind))

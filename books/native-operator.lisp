@@ -152,9 +152,24 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
           (t (fn-nop-result :accepted :plan "init" config
                             (list :init groups profile))))))
 
+; `store upgrade-profile PROFILE': the offline profile upgrade
+; (books/store-profile-upgrade.lisp).  The same two profile words as init;
+; whether the named profile is an upgrade of the store's is decided at the
+; store, by `fn-profile-upgrade-verdict', not here.
+(defun fn-nop-parse-store (words config)
+  (declare (xargs :guard t))
+  (if (and (consp words) (equal (car words) "upgrade-profile")
+           (consp (cdr words)) (null (cddr words)))
+      (let ((profile (fn-nop-init-profile-word (cadr words))))
+        (if (null profile)
+            (fn-nop-usage :invalid-store-profile "store" config words)
+          (fn-nop-result :accepted :plan "store" config
+                         (list :upgrade-profile profile))))
+    (fn-nop-usage :invalid-store-command "store" config words)))
+
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "status" "recover" "group" "capacity" "peer" "bp-boundary" "policy" "principal")))
+  (member-equal subject '("help" "init" "run" "post" "status" "recover" "store" "group" "capacity" "peer" "bp-boundary" "policy" "principal")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -166,6 +181,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status") "usage: fn operator CONFIG status")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
+        ((equal subject "store")
+         "usage: fn operator CONFIG store upgrade-profile development|scale (offline; refused while an owner runs)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "peer")
@@ -177,7 +194,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list|set-password NAME [--principal HEX] [--posting|--no-posting]}")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|status|recover|group|capacity|peer|bp-boundary|policy|principal}")))
+        (t "usage: fn operator CONFIG {help|init|run|post|status|recover|store|group|capacity|peer|bp-boundary|policy|principal}")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -235,6 +252,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
              (if (null rest)
                  (fn-nop-result :accepted :plan "recover" config (list :recover))
                (fn-nop-usage :unexpected-arguments "recover" config rest)))
+            ((equal command "store") (fn-nop-parse-store rest config))
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
                  (equal command "policy"))
@@ -494,6 +512,15 @@ is installed into the owner for both served and control submission."
         (if (member-equal profile '(:development :scale)) profile nil))
     nil))
 
+(defun fn-native-operator-result-upgrade-profile (result)
+  "The profile keyword an accepted `store upgrade-profile' plan names, else nil."
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "store"))
+      (let ((profile (fn-ncfg-second (fn-native-operator-result-arguments result))))
+        (if (member-equal profile '(:development :scale)) profile nil))
+    nil))
+
 (defun fn-native-operator-init-outcome (result observed)
   "The tagged outcome for one accepted init plan and one store observation.
 
@@ -575,6 +602,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "post") :post)
           ((equal (fn-native-operator-result-command result) "status") :status)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
+          ((equal (fn-native-operator-result-command result) "store") :upgrade-profile)
           ((or (equal (fn-native-operator-result-command result) "group")
                (equal (fn-native-operator-result-command result) "capacity")
                (equal (fn-native-operator-result-command result) "peer")
