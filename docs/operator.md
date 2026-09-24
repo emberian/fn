@@ -385,6 +385,39 @@ node's PORT names a listener the far node would use if it connected
 directly; it must differ from the relay's so the two boundaries stay
 distinguishable on the channel.
 
+#### Stranded forwarding rows
+
+A forwarding attempt whose process died after its kind-8 record was durable
+and before its kind-9 result was is **uncertain**: the peer may or may not
+hold the bundle. The node re-offers it, with its original identity, on each
+later session to the same next hop, and counts every re-offer in the durable
+kind-8 history, so restarting the node does not reset the count. After
+three such re-offers (`*fn-bpnp-max-forward-retries*`) the row is
+**stranded**, and a session to that peer that has nothing else to offer
+logs
+
+```
+BP forwarding stranded arrival=A retries=3 (held; no session or restart re-offers it)
+```
+
+What that means, and what resumes it:
+
+- The row is kept, never dropped: its bundle, its attempt and its reserved
+  result debt stay held, and `bp-node` keeps counting it in its storage and
+  credit. Nothing was lost and nothing was delivered by this node's account.
+- No new session, contact or restart resumes it. The count is derived from
+  the durable kind-8 rows, so a restart replays it at the bound.
+- There is no operator verb yet that releases the row or re-arms its
+  budget. That is an open item, not a policy: until it lands, resolving a
+  stranded row means confirming out of band whether the peer holds the
+  bundle (its own logs or store) and treating the row as occupying its
+  storage until then.
+
+A peer that answers a re-offer with TCPCL XFER_REFUSE reason code 1
+(Completed) settles the row exactly as an acknowledged transfer does; any
+other refusal reason is logged and recorded as that reason and the row
+stays pending for a later session, without counting toward the bound.
+
 ## Install
 
 The development service needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified
@@ -762,6 +795,25 @@ writing one needs the exclusive writer lock the running owner holds, so
 <name>` retires a name: the articles already bound to it and its watermark
 are kept, and the name stops being served. Creating a retired name again
 revives it with its numbering intact.
+
+**Special-purpose names are a local agreement, not ordinary groups.** RFC
+5536 section 3.1.4 names two kinds of restricted `<newsgroup-name>`. The
+reserved ones (a first or only component `example`, and `poster`) are
+refused at `group create` and `init`. The specific-purpose ones MUST NOT be
+used as normal newsgroups but MAY be used for their purpose or by local
+agreement, and `group create` admits them on that footing. They are
+patterns, not a list: a first or only component `to` or `control`
+(`to.peer`, `control.cancel`), any component `all` or `ctl` (`fn.all`,
+`a.ctl.b`), and exactly `junk`; case is folded
+(`fn-native-admin-group-name-special-purposep`, books/native-admin.lisp).
+Create one only for a convention your peers have agreed to. Such a group is
+not a globally compatible newsgroup name: another server may treat
+`control.*` or `junk` as its own, read `all` as a wildcard, or refuse it.
+In fn the name confers nothing. fn does not read control-message,
+point-to-point (`to.*` with `ihave`), wildcard or junk handling from a
+group's name, and the name grants no creation, moderation, deletion or
+forwarding authority. The plan for creating one is exactly the plan for any
+other valid name (`fn-native-admin-plan-create-ignores-special-purpose`).
 
 ## Back up
 

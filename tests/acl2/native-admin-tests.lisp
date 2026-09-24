@@ -798,3 +798,84 @@
  (equal (fn-native-admin-result-reason
          (fn-native-admin-peer-plan (append *fn-na-base-words* (list "carries"))))
         :carries))
+
+; RFC 5536 s3.1.4 specific-purpose names (`fn-native-admin-group-name-
+; special-purposep'): the patterns, each case and its near misses.
+(defun fn-na-test-special-listp (names want)
+  (if (consp names)
+      (and (equal (fn-native-admin-group-name-special-purposep (car names)) want)
+           (fn-na-test-special-listp (cdr names) want))
+    t))
+(assert-event
+ (fn-na-test-special-listp
+  '("to" "to.peer" "TO.peer" "control" "control.cancel" "Control.x"
+    "all" "fn.all" "all.fn" "a.all.b" "ctl" "fn.ctl" "a.CTL.b" "junk" "JUNK")
+  t))
+; Not first component, not the whole component, not exactly "junk".
+(assert-event
+ (fn-na-test-special-listp
+  '("fn.to" "fn.control" "toy" "to_x" "controls.x" "allx" "fn.alle" "ctls"
+    "junk.x" "fn.junk" "junky" "fn.test")
+  nil))
+; The components the recognizer reads are the dot-separated ones.
+(assert-event (equal (fn-native-admin-name-components '(97 46 98 46 99))
+                     '((97) (98) (99))))
+
+; Local agreement: every special-purpose name above is creatable, and its
+; `group create' plan is the same accepted :create-group any other name gets.
+; Witness of `fn-native-admin-plan-create-ignores-special-purpose'.
+(defun fn-na-test-create-plan-is-plainp (names)
+  (if (consp names)
+      (let ((argv (fn-na-test-argv (list "group" "create" (car names)))))
+        (and (fn-native-admin-group-name-creatablep (car names))
+             (equal (fn-native-admin-plan argv)
+                    (fn-native-admin-result :accepted nil :create-group
+                                            (caddr argv) 0 nil nil))
+             (fn-na-test-create-plan-is-plainp (cdr names))))
+    t))
+(assert-event
+ (fn-na-test-create-plan-is-plainp
+  '("to.peer" "control.cancel" "a.all.b" "ctl" "junk" "fn.test")))
+; The same fields, compared across a special and an ordinary name: status,
+; reason, kind, capacity, rows and policy are equal; only the name differs.
+(defconst *fn-na-create-to*
+  (fn-native-admin-plan (fn-na-test-argv '("group" "create" "to.peer"))))
+(defconst *fn-na-create-plain*
+  (fn-native-admin-plan (fn-na-test-argv '("group" "create" "fn.peer"))))
+(assert-event
+ (and (equal (fn-native-admin-result-status *fn-na-create-to*)
+             (fn-native-admin-result-status *fn-na-create-plain*))
+      (equal (fn-native-admin-result-kind *fn-na-create-to*)
+             (fn-native-admin-result-kind *fn-na-create-plain*))
+      (equal (len (fn-native-admin-plan-deltas *fn-na-create-to*)) 1)
+      (equal (len (fn-native-admin-plan-deltas *fn-na-create-plain*)) 1)))
+
+; Teeth for `fn-native-admin-plan-create-ignores-special-purpose', one
+; `must-fail' per hypothesis.
+; (1) Without `fn-native-admin-argvp': an improper argv of the same words is
+; refused :argv.
+(defconst *fn-na-improper-special-argv*
+  (list* (fn-record-string-octets "group") (fn-record-string-octets "create")
+         (fn-record-string-octets "to.peer") 'tail))
+(assert-event (equal (fn-native-admin-words *fn-na-improper-special-argv*)
+                     '("group" "create" "to.peer")))
+(must-fail
+ (assert-event
+  (equal (fn-native-admin-plan *fn-na-improper-special-argv*)
+         (fn-native-admin-result :accepted nil :create-group
+                                 (caddr *fn-na-improper-special-argv*) 0 nil nil))))
+; (2) Without the `group create' words: `group retire to.peer' plans a
+; :remove-group.
+(must-fail
+ (assert-event
+  (let ((argv (fn-na-test-argv '("group" "retire" "to.peer"))))
+    (equal (fn-native-admin-plan argv)
+           (fn-native-admin-result :accepted nil :create-group
+                                   (caddr argv) 0 nil nil)))))
+; (3) Without creatability: a reserved name is refused.
+(must-fail
+ (assert-event
+  (let ((argv (fn-na-test-argv '("group" "create" "example.to"))))
+    (equal (fn-native-admin-plan argv)
+           (fn-native-admin-result :accepted nil :create-group
+                                   (caddr argv) 0 nil nil)))))

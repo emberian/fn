@@ -379,9 +379,7 @@ decoded as source-address for durable command compatibility."
 ;; The comparison folds ASCII case (a stronger fn guarantee): s3.1.4 notes
 ;; that some systems match names case-insensitively, and s3.2.6 lets agents
 ;; recognise "Poster" as the keyword, so "Example.a" and "POSTER" are
-;; refused too.  The five further names s3.1.4 reserves for specific
-;; purposes ("to.*", "control.*", "all", "ctl", "junk") MAY be used for that
-;; purpose or by local agreement and are not refused here.
+;; refused too.
 (defconst *fn-native-admin-reserved-example* '(101 120 97 109 112 108 101))
 (defconst *fn-native-admin-reserved-poster* '(112 111 115 116 101 114))
 
@@ -407,6 +405,46 @@ decoded as source-address for durable command compatibility."
       (or (fn-native-admin-group-name-reservedp (car names))
           (fn-native-admin-some-group-name-reservedp (cdr names)))
     nil))
+
+;; RFC 5536 s3.1.4 specific-purpose names: these "MUST NOT be used for the
+;; names of normal newsgroups" and "MAY be used for their specific purpose
+;; or by local agreement".  The cases are patterns, not five strings: a
+;; first (or only) component "to" or "control"; any component "all" or
+;; "ctl"; exactly "junk".  Case is folded as for the reserved names above.
+;;
+;; fn's profile is an explicit local agreement: `group create' admits such
+;; a name, so an operator can stand up e.g. "to.peer" or "control.cancel"
+;; for a site convention.  It is not an ordinary, globally compatible group
+;; name, and it confers nothing: fn has no code path that reads a group's
+;; name as control, point-to-point, wildcard or junk authority, and the
+;; plan for creating one is exactly the plan any other creatable name gets
+;; (`fn-native-admin-plan-create-ignores-special-purpose', below).  This
+;; recognizer classifies; nothing grants or refuses on it.
+(defconst *fn-native-admin-special-to* '(116 111))
+(defconst *fn-native-admin-special-control* '(99 111 110 116 114 111 108))
+(defconst *fn-native-admin-special-all* '(97 108 108))
+(defconst *fn-native-admin-special-ctl* '(99 116 108))
+(defconst *fn-native-admin-special-junk* '(106 117 110 107))
+
+;; The dot-separated components of XS, in order ("a.b" is ("a" "b")).
+(defun fn-native-admin-name-components (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (let ((rest (fn-native-admin-name-components (cdr xs))))
+        (if (equal (car xs) 46)
+            (cons nil rest)
+          (cons (cons (car xs) (car rest)) (cdr rest))))
+    (list nil)))
+
+(defun fn-native-admin-group-name-special-purposep (text)
+  (declare (xargs :guard t))
+  (let* ((xs (fn-native-admin-fold-octets (fn-record-string-octets text)))
+         (components (fn-native-admin-name-components xs)))
+    (or (equal (car components) *fn-native-admin-special-to*)
+        (equal (car components) *fn-native-admin-special-control*)
+        (if (member-equal *fn-native-admin-special-all* components) t nil)
+        (if (member-equal *fn-native-admin-special-ctl* components) t nil)
+        (equal xs *fn-native-admin-special-junk*))))
 
 ;; The predicate group creation applies: `group create' below, the operator's
 ;; `init' (`fn-nop-parse-init', books/native-operator.lisp) and the initial
@@ -936,6 +974,13 @@ shared immutable publication state before raw Lisp may execute an I/O action."
                                       fn-native-admin-fold-octets
                                       fn-record-string-octets))))
 
+; The first component the special-purpose recognizer reads is the one the
+; reserved-name rule reads (`fn-record-group-first-component').
+(defthm fn-native-admin-name-components-first-is-the-first-component
+  (equal (car (fn-native-admin-name-components xs))
+         (fn-record-group-first-component xs))
+  :hints (("Goal" :in-theory (enable fn-record-group-first-component))))
+
 ; KEYSTONE (RFC 5536 s3.1.4 reserved names at `group create').  The subject
 ; is `fn-native-admin-plan', which host/native-admin-host.lisp:7 calls
 ; (`fn-native-admin-host-plan', reached from `fnn-admin-plan' and
@@ -968,3 +1013,31 @@ shared immutable publication state before raw Lisp may execute an I/O action."
                                    fn-native-admin-decimalp
                                    fn-native-admin-decimal-value))
            :use ((:instance fn-native-admin-len-of-words)))))
+
+; KEYSTONE (RFC 5536 s3.1.4 specific-purpose names, local agreement).  The
+; subject is `fn-native-admin-plan' (called as below).  For every creatable
+; name, special-purpose or not, `group create' plans exactly one accepted
+; :create-group of the name the operator typed, with no capacity, rows or
+; policy: no plan field depends on the name's special-purpose class, so
+; creating "to.x", "control.x", "a.all", "ctl" or "junk" derives no control,
+; moderation, deletion, forwarding or wildcard authority from its name.
+(defthm fn-native-admin-plan-create-ignores-special-purpose
+  (implies (and (fn-native-admin-argvp argv)
+                (equal (fn-native-admin-words argv) (list "group" "create" name))
+                (fn-native-admin-group-name-creatablep name))
+           (equal (fn-native-admin-plan argv)
+                  (fn-native-admin-result :accepted nil :create-group
+                                          (caddr argv) 0 nil nil)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-plan
+                                   fn-native-admin-group-name-creatablep)
+                                  (fn-native-admin-group-name-reservedp
+                                   fn-native-admin-words fn-native-admin-argvp
+                                   fn-native-admin-peer-plan
+                                   fn-native-admin-bp-boundary-plan
+                                   fn-record-group-namep fn-path-identityp
+                                   fn-native-admin-decimalp
+                                   fn-native-admin-decimal-value
+                                   fn-native-admin-result))
+           :use ((:instance fn-native-admin-len-of-words)))))
+

@@ -1483,7 +1483,7 @@
     },
     {
       "id": "HST-005",
-      "title": "A host fault costs one connection, not the service",
+      "title": "A connection-local fault costs that connection; a fault inside a shared owner action fences the store and stops the service (exit 4)",
       "specification": "specs/host.md#core-interface",
       "milestone": "M3",
       "status": "specified",

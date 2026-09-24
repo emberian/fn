@@ -49,7 +49,10 @@
 (defstruct (fnn-tcl-conn (:conc-name fnn-tclc-))
   fd tag spool session (carry nil) (held nil) (closing nil) (broken nil)
   (pending nil) (trace nil) (inbound 0)
-  (accepted 0) (refused 0) (uncertain 0) (outcome nil))
+  (accepted 0) (refused 0) (uncertain 0) (outcome nil)
+  ;; The Reason Code of the peer's XFER_REFUSE for the outbound transfer, as
+  ;; ACL2's :outbound-refused event carried it; nil when none arrived.
+  (refusal nil))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The clock.  One monotonic reading per wakeup, in milliseconds, handed to
@@ -307,7 +310,8 @@ and faults without following or deleting anything."
          (fnn-tcl-log conn "refused" "inbound xfer=~d reason=~a" (second event) (third event)))
         (:outbound-refused
          (incf (fnn-tclc-refused conn))
-         (setf (fnn-tclc-outcome conn) :refused (fnn-tclc-pending conn) nil)
+         (setf (fnn-tclc-outcome conn) :refused (fnn-tclc-pending conn) nil
+               (fnn-tclc-refusal conn) (fourth event))
          (fnn-tcl-log conn "refused" "outbound xfer=~d reason=~a" (second event) (fourth event)))
         (:outbound-sent
          (incf (fnn-tclc-accepted conn))

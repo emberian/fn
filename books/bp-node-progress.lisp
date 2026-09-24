@@ -146,10 +146,20 @@
              (null (fn-bpn-nth 14 (car held))))
         (fn-bpnp-has-forward-pendingp (cdr held) peer))))
 
-(defun fn-bpnp-tcpcl-outcome (observed)
+; The sender's reading of one TCPCL transfer (RFC 9174 5.2.4).  OBSERVED is
+; the connection's outcome word; REASON is the Reason Code of the peer's
+; XFER_REFUSE for this transfer, or nil when no XFER_REFUSE arrived.  A peer
+; refusal keeps its reason in the kind-9 result: Completed (1) says the peer
+; already holds the complete bundle, and fn-bpnp-forward-terminalp settles it
+; exactly as :sent; every other reason is a distinct non-terminal result.  A
+; refusal with no peer reason (the session machine declined to start the
+; transfer) is :failed.  Neither is the application's retention receipt.
+(defun fn-bpnp-tcpcl-outcome (observed reason)
   (declare (xargs :guard t))
   (cond ((equal observed :accepted) :sent)
-        ((equal observed :refused) :failed)
+        ((and (equal observed :refused) (fn-frame-natp reason))
+         (list :refused reason))
+        ((and (equal observed :refused) (null reason)) :failed)
         (t :fence)))
 
 (defun fn-bpnp-wait-for (key waits)
