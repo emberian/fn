@@ -488,6 +488,92 @@ class NativeHybridAuthorTest(unittest.TestCase):
             for owner in reversed(owners):
                 self.stop_owner(owner)
 
+    def test_unenrolled_receiver_refuses_authored_carrier_once_and_both_sides_log_it(self):
+        """A receiver without its own enrollment of the principal refuses.
+
+        The refusal is 439 (refused, not deferred), so the sender drops the
+        entry and does not re-offer it; each side writes exactly one
+        ACL2-rendered line naming the refusal (books/owner-log.lisp
+        fn-olog-transit-line, fn-olog-feed-reply-line).  This is the 1a9dd747
+        failure-8 configuration with its silence removed.
+        """
+        other_store = self.root / "receiver"
+        other_control = self.root / "receiver.sock"
+        other_log = self.root / "receiver.log"
+        other_port = free_port()
+        other_config = self.root / "receiver.toml"
+        other_config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
+                other_store, other_port, other_control, other_log), encoding="ascii")
+
+        def ok(*args):
+            result = self.invoke(*map(str, args), timeout=180)
+            self.assertEqual(result.returncode, 0,
+                             result.stderr.decode("utf-8", "replace"))
+            return result
+
+        ok("store", other_store, "init", "fn.test")
+        for config, identity, peer, peer_port in (
+                (self.config, "author.example.invalid", "relay.example.invalid", other_port),
+                (other_config, "relay.example.invalid", "author.example.invalid", self.port)):
+            ok("operator", config, "policy", "set", "path-identity", identity)
+            ok("operator", config, "peer", "add", "other", peer,
+               "127.0.0.1", peer_port, "fn.*", "fn.*", "127.0.0.1", "true")
+        msgid = "<hybrid-unenrolled-relay@example.invalid>"
+        source = self.root / "unenrolled-source.eml"
+        source.write_bytes(
+            b"From: author@example.invalid\r\n"
+            b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+            b"Newsgroups: fn.test\r\nSubject: unenrolled relay\r\n"
+            b"Message-ID: " + msgid.encode() + b"\r\n\r\nbody\r\n")
+        signed = ok("hybrid-sign", self.principal, self.ed_public,
+                    self.ed_secret, self.ml_public, self.ml_private, source)
+        parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+        ed_sig, ml_sig = self.root / "unenrolled-ed.sig", self.root / "unenrolled-ml.sig"
+        ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+        ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+        owners = []
+        try:
+            for config in (self.config, other_config):
+                proc = subprocess.Popen(
+                    [str(IMAGE), "--fn", "operator", str(config), "run"],
+                    cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                owners.append(proc)
+                wait_for_announcement(proc, b"LISTENING ")
+            ok("hybrid-enroll", self.control, "1", self.principal,
+               self.ed_public, self.ml_public)
+            ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
+            sender_line = ("refused feed peer=other message-id=" + msgid + " code=439 ")
+            receiver_line = ("refused transit connection=")
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                sent = self.service_log.read_text() if self.service_log.exists() else ""
+                if sender_line in sent:
+                    break
+                time.sleep(0.2)
+            self.assertIn(sender_line, sent)
+            received = other_log.read_text()
+            refusals = [line for line in received.splitlines()
+                        if line.startswith(receiver_line)]
+            self.assertEqual(len(refusals), 1, received)
+            self.assertIn(" message-id=" + msgid + " code=439 decision=want ", refusals[0])
+            self.assertIn(" detail=local-enrollment ", refusals[0])
+            # Refused is final: no re-offer after several backoff periods.
+            time.sleep(4)
+            self.assertEqual(self.service_log.read_text().count(sender_line), 1)
+            self.assertEqual(
+                sum(1 for line in other_log.read_text().splitlines()
+                    if line.startswith(receiver_line)), 1)
+            with socket.create_connection(("127.0.0.1", other_port), timeout=15) as sock:
+                with sock.makefile("rwb", buffering=0) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+                    stream.write(b"STAT " + msgid.encode() + b"\r\n")
+                    self.assertTrue(stream.readline().startswith(b"430 "))
+        finally:
+            for owner in reversed(owners):
+                self.stop_owner(owner)
+
 
 if __name__ == "__main__":
     unittest.main()
