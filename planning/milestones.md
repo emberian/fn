@@ -1,10 +1,13 @@
-Current development and qualification are tracked in [now.md](now.md) and the
-[broad capability wave](capability-wave-2026-09-24.md). The exact `863c2141`
-source passed structural checks and is in combined ACL2 qualification; it is
-not a release declaration. The [two-Store preflight](evidence/e160-two-store-preflight-gap-2026-09-24.md)
+Current state is the [wind-down handoff](handoff-2026-09-24-winddown.md), with
+qualification tracked in [now.md](now.md). All current fn packets are on dev;
+the exact `863c2141` combined closure and image builds passed, while the final
+`8a1b31f9` source still has a known BP guard/build obligation. Neither is a
+release declaration. The [two-Store preflight](evidence/e160-two-store-preflight-gap-2026-09-24.md)
 identified missing receiver-side durable native verdicts after peering. Shared
-NNTP/BP verified transit and A-side durable reply consumption are being built
-to close that real composition boundary. The dated evidence below retains the
+NNTP/BP verified transit is now implemented with scoped proof/component tests;
+the new receiver restart and consumer projection fixture awaits its matching
+image. Mini's A-side durable reply consumer is committed in its isolated
+branch, without a complete two-Store run. The dated evidence below retains the
 scope of earlier demonstrated legs.
 
 Previously demonstrated selected-v1 join: native fn poll feeds Mini's signed durable
