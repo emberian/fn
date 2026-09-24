@@ -666,10 +666,21 @@ class WaitTests(unittest.TestCase):
         # per-book marker, so every progress line read "0 books certified".
         script = farm.progress_script(Path("/remote/root"), "run-x")
         self.assertIn("build/acl2/certify-*/", script)
-        self.assertIn("grep -l FN_CERTIFY_SUCCESS", script)
+        self.assertIn("grep -lE '^(ACL2 [^[:space:]]*>)?FN_CERTIFY_SUCCESS", script)
         self.assertIn("*.certify.log", script)
         self.assertIn("STARTED", script)
         self.assertNotIn("grep -c FN_CERTIFY_SUCCESS build/farm", script)
+
+    def test_live_progress_does_not_count_an_echoed_driver_form(self):
+        marker = "FN_CERTIFY_SUCCESS " + "a" * 32 + " " + "b" * 12
+        echoed = f'(cw "{marker}~%")\n'
+        actual = f"ACL2 !>{marker}\n"
+        self.assertEqual(subprocess.run(
+            ["grep", "-E", farm.SUCCESS_LINE], input=echoed,
+            text=True, capture_output=True, check=False).returncode, 1)
+        self.assertEqual(subprocess.run(
+            ["grep", "-E", farm.SUCCESS_LINE], input=actual,
+            text=True, capture_output=True, check=False).returncode, 0)
 
 
 class StatusTests(unittest.TestCase):

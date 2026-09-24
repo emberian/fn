@@ -6,8 +6,12 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import stat
+import subprocess
 import tempfile
+import threading
+import time
 import unittest
 from unittest import mock
 
@@ -18,6 +22,112 @@ SPEC = importlib.util.spec_from_file_location(
 )
 runner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(runner)
+
+
+class LiveBookLogTests(unittest.TestCase):
+    """A qualifier can see the exact child and its output while it runs."""
+
+    def executable(self, root: Path, body: str) -> Path:
+        path = root / "fake-acl2.sh"
+        path.write_text("#!/bin/sh\n" + body, encoding="utf-8")
+        path.chmod(path.stat().st_mode | stat.S_IXUSR)
+        return path
+
+    def test_output_and_pid_are_visible_before_child_exits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            release = root / "release"
+            acl2 = self.executable(root,
+                'cat >/dev/null\nprintf "first goal\\n"\n'
+                'while [ ! -f "$FAKE_RELEASE" ]; do sleep 0.02; done\n'
+                'printf "last goal\\n"\n')
+            log = root / "books--slow.certify.log"
+            activity = root / "books--slow.active.json"
+            result = []
+            errors = []
+
+            def run():
+                try:
+                    result.append(runner.run_acl2(acl2, "driver", 5,
+                        log_path=log, book="books/slow"))
+                except Exception as error:  # propagated after the release
+                    errors.append(error)
+
+            with mock.patch.dict(os.environ, {"FAKE_RELEASE": str(release)}):
+                thread = threading.Thread(target=run)
+                thread.start()
+                try:
+                    deadline = time.monotonic() + 3
+                    while time.monotonic() < deadline:
+                        if activity.exists() and log.exists() and b"first goal" in log.read_bytes():
+                            break
+                        time.sleep(0.02)
+                    else:
+                        self.fail("running child did not expose its PID and first goal")
+                    live = json.loads(activity.read_text())
+                    self.assertEqual((live["book"], live["wave"], live["status"]),
+                                     ("books/slow", None, "running"))
+                    self.assertEqual(live["log"], log.name)
+                    os.kill(live["pid"], 0)
+                    self.assertEqual(log.read_bytes(), b"first goal\n")
+                finally:
+                    release.touch()
+                    thread.join(timeout=5)
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(errors, [])
+            self.assertEqual(result[0].stdout, b"first goal\nlast goal\n")
+            self.assertEqual(log.read_bytes(), result[0].stdout)
+            done = json.loads(activity.read_text())
+            self.assertEqual((done["status"], done["exit_code"]), ("exited", 0))
+            self.assertGreaterEqual(done["elapsed_seconds"], 0)
+
+    def test_timeout_keeps_last_output_and_marks_exact_child(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            acl2 = self.executable(root,
+                'cat >/dev/null\nprintf "unfinished goal\\n"\nexec sleep 5\n')
+            log = root / "books--slow.pcert-convert.certify.log"
+            with self.assertRaises(subprocess.TimeoutExpired) as raised:
+                runner.run_acl2(acl2, "driver", 0.2, log_path=log,
+                                book="books/slow", wave="convert")
+            self.assertEqual(raised.exception.output, b"unfinished goal\n")
+            self.assertEqual(log.read_bytes(), raised.exception.output)
+            activity = json.loads((root / "books--slow.pcert-convert.active.json").read_text())
+            self.assertEqual((activity["status"], activity["wave"]),
+                             ("timed-out", "convert"))
+
+    def test_external_sigterm_keeps_partial_log_and_negative_exit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            acl2 = self.executable(root,
+                'cat >/dev/null\nprintf "last open goal\\n"\nexec sleep 5\n')
+            log = root / "books--slow.certify.log"
+            activity_path = root / "books--slow.active.json"
+            result = []
+            thread = threading.Thread(target=lambda: result.append(
+                runner.run_acl2(acl2, "driver", 10,
+                                log_path=log, book="books/slow")))
+            thread.start()
+            try:
+                deadline = time.monotonic() + 3
+                while time.monotonic() < deadline:
+                    if activity_path.exists() and log.exists() and b"last open goal" in log.read_bytes():
+                        break
+                    time.sleep(0.02)
+                else:
+                    self.fail("child did not publish its live output before SIGTERM")
+                pid = json.loads(activity_path.read_text())["pid"]
+                os.kill(pid, signal.SIGTERM)
+                thread.join(timeout=3)
+                self.assertFalse(thread.is_alive())
+                self.assertEqual(result[0].returncode, -signal.SIGTERM)
+                self.assertEqual(result[0].stdout, b"last open goal\n")
+                self.assertEqual(log.read_bytes(), result[0].stdout)
+                self.assertEqual(json.loads(activity_path.read_text())["status"], "exited")
+            finally:
+                if thread.is_alive() and activity_path.exists():
+                    os.kill(json.loads(activity_path.read_text())["pid"], signal.SIGKILL)
+                    thread.join(timeout=3)
 
 
 FAKE_ACL2 = r"""#!/bin/sh
@@ -318,6 +428,12 @@ class ParallelScheduleTests(unittest.TestCase):
             for book in self.ORDER:
                 self.assertGreater(manifest["book_wall_seconds"][book], 0)
             self.assertGreater(manifest["certify_wall_seconds"], 0)
+            run_dir = next((repository.root / "build").glob("acl2-*/certify-*"))
+            activity = json.loads((run_dir / "books--base.active.json").read_text())
+            self.assertEqual((activity["book"], activity["wave"], activity["status"]),
+                             ("books/base", None, "exited"))
+            self.assertIn("FN_CERTIFY_SUCCESS",
+                          (run_dir / "books--base.certify.log").read_text())
 
     def test_the_run_names_itself_and_is_filed_where_a_reader_can_open_it(self):
         """The run directory is under `build/`, which no reader ever sees.
@@ -431,6 +547,11 @@ class ProvisionalCertificationTests(unittest.TestCase):
                 self.assertTrue(
                     (run_dir / f"{flat}.pcert-{wave}.certify.log").is_file()
                     or wave != "create")
+                if (run_dir / f"{flat}.pcert-{wave}.certify.log").is_file():
+                    activity = json.loads(
+                        (run_dir / f"{flat}.pcert-{wave}.active.json").read_text())
+                    self.assertEqual((activity["book"], activity["wave"],
+                                      activity["status"]), (book, wave, "exited"))
         combined = (run_dir / "books--leaf.certify.log").read_text()
         self.assertIn("FN_PCERT_WAVE CONVERT books/leaf", combined)
         # The cascade sentence ACL2 wraps, as the Complete wave prints it.

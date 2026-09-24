@@ -546,14 +546,17 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
     return identifier
 
 
+SUCCESS_LINE = r"^(ACL2 [^[:space:]]*>)?FN_CERTIFY_SUCCESS [0-9a-f]{32} [0-9a-f]{12}$"
+
+
 def progress_script(root: Path, identifier: str) -> str:
     """The run's status file, its success count, its started count, its tail.
 
-    The runner captures each ACL2's output into that book's own log under
+    The runner streams each ACL2's output into that book's own log under
     the run directory, `build/acl2/certify-<stamp>-<pid>/<book>.certify.log`,
-    and writes the success marker there; the farm log carries nothing per
-    book until the end.  Until 2026-09-22 this counted markers in the farm
-    log and every progress line read "0 books certified" (three real runs
+    with a matching `.active.json` mapping the live child PID to its book;
+    the farm log carries nothing per book until the end. Until 2026-09-22 this
+    counted markers in the farm log and every progress line read "0 books certified" (three real runs
     checked, all 0).  The running run's directory is the newest one.
     """
     log = f"build/farm/{identifier}.log"
@@ -563,7 +566,7 @@ def progress_script(root: Path, identifier: str) -> str:
         f"printf 'STATUS %s\\n' \"$(cat build/farm/{identifier}.status "
         f"2>/dev/null || echo running)\"; "
         f"d={newest}; "
-        f"printf 'MARKERS %s\\n' \"$(grep -l FN_CERTIFY_SUCCESS \"$d\"*.certify.log "
+        f"printf 'MARKERS %s\\n' \"$(grep -lE '{SUCCESS_LINE}' \"$d\"*.certify.log "
         f"2>/dev/null | wc -l | tr -d ' ')\"; "
         f"printf 'STARTED %s\\n' \"$(ls \"$d\"*.certify.log 2>/dev/null | wc -l "
         f"| tr -d ' ')\"; "
