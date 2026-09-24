@@ -1,20 +1,23 @@
 # Current work — 2026-09-24
 
-## Consolidated for takeover — 07:16 UTC
+## Final convergence — 07:22 UTC
 
 All current fn implementation packets are integrated into dev. The
 [wind-down handoff](handoff-2026-09-24-winddown.md) is the restart entry point;
 it supersedes the active-lane descriptions below. Mini's new reply consumer
 remains committed separately on `implement/fn-evidence`, as described there.
 No implementation lane is still editing. The final combined qualification
-of immutable `8a1b31f9` is finishing; its structural check passed.
+of immutable `8a1b31f9` finished: structural checks passed, but three ACL2
+roots remain red. The [final record](evidence/final-cut-8a1b31f9-2026-09-24.md)
+names the progress guard, selection invariant and BP machine test failures.
+No new image was built.
 
 The last completed shared image pair is still `863c2141`. The new BP guard
 book has a confirmed persvati timeout at `fn-bpnp-issued-debt-delta`: proving
 the maintained base invariant across the inner report step is an actual
 native-build prerequisite. Do not drop the guard include, add a whole-state
 scan to the served path, or borrow an old certificate to build around it.
-The final hbox record will distinguish the remaining combined failures.
+The final hbox record distinguishes the combined failures.
 
 The next useful sequence is that guard/preservation repair, a matching image
 run of the BP identity and pack-namespace fixes plus signed receiver restart,
