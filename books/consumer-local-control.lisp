@@ -179,6 +179,109 @@
           (list :consumer-status-reply status nil nil nil))
          (t (list :refused :reply)))))))
 
+; The status encoder uses the same host framing composition as the native
+; control encoder.  Keep the frame codec closed except in this decoding proof.
+(defthm fn-ncl-status-open-of-sealed-payload
+  (implies (and (fn-cbor-octet-listp payload)
+                (<= (len payload) *fn-ncl-status-max-payload*))
+           (equal (fn-ncl-status-open
+                   (fn-nctrl-seal *fn-ncl-status-reply-kind* payload))
+                  (fn-frame-ok *fn-nctrl-magic* *fn-nctrl-version*
+                               *fn-ncl-status-reply-kind* payload)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-frame-decode-of-host-framing
+                            (magic *fn-nctrl-magic*)
+                            (version *fn-nctrl-version*)
+                            (kind *fn-ncl-status-reply-kind*)
+                            (max-payload *fn-ncl-status-max-payload*)))
+           :in-theory (e/d (fn-ncl-status-open fn-nctrl-seal
+                            fn-frame-inputp fn-frame-magicp
+                            fn-frame-protected fn-frame-header
+                            fn-cbor-u32-bytes-are-octets
+                            fn-frame-octet-listp-of-append)
+                           (fn-frame-decode fn-frame-trailer
+                            fn-frame-protected-prefix
+                            fn-frame-decode-of-host-framing)))))
+
+(defthm fn-ncl-status-accepted-payload-inputp
+  (implies (and (fn-cp-uintp ack) (fn-cp-uintp frontier)
+                (fn-cp-uintp gap))
+           (and (fn-cbor-octet-listp
+                 (append '(0) (fn-cbor-u32-bytes ack)
+                         (fn-cbor-u32-bytes frontier)
+                         (fn-cbor-u32-bytes gap)))
+                (equal (len (append '(0) (fn-cbor-u32-bytes ack)
+                                    (fn-cbor-u32-bytes frontier)
+                                    (fn-cbor-u32-bytes gap)))
+                       *fn-ncl-status-max-payload*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-cp-uintp fn-cbor-u32-bytes-are-octets
+                 fn-frame-octet-listp-of-append fn-cp-u32-bytes-four
+                 fn-frame-len-of-append)
+                (fn-cbor-u32-bytes binary-append)))))
+
+(defthm fn-ncl-status-fields-roundtrip
+  (implies (and (fn-cp-uintp ack) (fn-cp-uintp frontier)
+                (fn-cp-uintp gap))
+           (equal (fn-cp-read-fields
+                   (append (fn-cbor-u32-bytes ack)
+                           (fn-cbor-u32-bytes frontier)
+                           (fn-cbor-u32-bytes gap))
+                   '(:uint :uint :uint))
+                  (list :ok (list ack frontier gap) nil)))
+  :hints (("Goal"
+           :use ((:instance fn-cp-fields-roundtrip
+                            (vals (list ack frontier gap))
+                            (kinds '(:uint :uint :uint)) (rest nil)))
+           :in-theory (e/d (fn-cp-fields-encode fn-cp-fields-validp)
+                           (fn-cp-read-fields fn-cp-fields-roundtrip)))))
+
+; KEYSTONE PRF-068: the native host calls the status encoder and decoder in
+; host/native-control-host.lisp.  The four premises are precisely the scalar
+; and distance constraints accepted by the encoder; none names a decoder arm.
+(defthm fn-ncl-status-accepted-reply-roundtrip
+  (implies (and (fn-cp-uintp ack)
+                (fn-cp-uintp frontier)
+                (<= ack frontier)
+                (equal gap (- frontier ack)))
+           (equal (fn-ncl-status-reply-decode
+                   (fn-ncl-status-reply-encode :accepted ack frontier gap))
+                  (list :consumer-status-reply :accepted
+                        ack frontier gap)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ncl-status-open-of-sealed-payload
+                            (payload
+                             (append '(0) (fn-cbor-u32-bytes ack)
+                                     (fn-cbor-u32-bytes frontier)
+                                     (fn-cbor-u32-bytes gap))))
+                 (:instance fn-ncl-status-accepted-payload-inputp))
+           :in-theory (e/d (fn-ncl-status-reply-encode
+                            fn-ncl-status-reply-decode
+                            fn-ncl-status-code fn-ncl-code-status
+                            fn-cp-uintp)
+                           (fn-ncl-status-open fn-nctrl-seal
+                            fn-cp-read-fields fn-frame-decode)))))
+
+(defthm fn-ncl-status-nonaccepted-reply-roundtrip
+  (implies (member-eq status '(:refused :uncertain :fault))
+           (equal (fn-ncl-status-reply-decode
+                   (fn-ncl-status-reply-encode status nil nil nil))
+                  (list :consumer-status-reply status nil nil nil)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ncl-status-open-of-sealed-payload
+                            (payload (list (fn-ncl-status-code status)))))
+           :in-theory (e/d (fn-ncl-status-reply-encode
+                            fn-ncl-status-reply-decode
+                            fn-ncl-status-code fn-ncl-code-status)
+                           (fn-ncl-status-open fn-nctrl-seal
+                            fn-cp-read-fields fn-frame-decode
+                            (:executable-counterpart
+                             fn-ncl-status-reply-encode))))))
+
 ; Poll carries one exact accepted Store event at most.  The two lengths make
 ; the cursor and report unambiguous without asking raw Lisp to parse either.
 (defun fn-ncl-poll-event-bytesp (bytes)
