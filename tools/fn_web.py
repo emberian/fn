@@ -17,6 +17,7 @@ import re
 import secrets
 import threading
 from types import SimpleNamespace
+from typing import Optional, Tuple
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 import fn_client
@@ -81,8 +82,8 @@ class Backend:
     def groups(self):
         return self.using(lambda client: client.groups())
 
-    def recent(self, group: str, start: int | None = None,
-               end: int | None = None):
+    def recent(self, group: str, start: Optional[int] = None,
+               end: Optional[int] = None):
         # Validate before opening a connection. Explicit bounds identify one
         # stable local-number window; a newer GROUP high-water mark never
         # silently slides that window.
@@ -276,7 +277,7 @@ def group_token(value: str) -> bool:
         c.isascii() and (c.isalnum() or c in ".-_+") for c in value)
 
 
-def article_window(values: dict) -> tuple[int, int] | None:
+def article_window(values: dict) -> Optional[Tuple[int, int]]:
     """Parse one bounded explicit window, or None for initial recent view."""
     has_start, has_end = "start" in values, "end" in values
     if not has_start and not has_end:
