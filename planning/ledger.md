@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 616 |
-| Certification roots in the Makefile | 606 |
-| Books inside the root closure | 614 |
-| `defthm` and `defthmd` events | 8619 |
-| `defun` events | 6359 |
+| Books read | 622 |
+| Certification roots in the Makefile | 612 |
+| Books inside the root closure | 620 |
+| `defthm` and `defthmd` events | 8674 |
+| `defun` events | 6381 |
 | Functions with verified guards | 2036 |
-| Functions declared `:verify-guards nil` and never verified | 378 |
-| Functions left at the default with an explicit guard | 3134 |
+| Functions declared `:verify-guards nil` and never verified | 380 |
+| Functions left at the default with an explicit guard | 3154 |
 | Functions left at the default with no guard | 811 |
-| `assert-event` checks | 9385 |
-| `must-fail` checks | 526 |
+| `assert-event` checks | 9410 |
+| `must-fail` checks | 529 |
 | `encapsulate` events | 27 |
-| Theorems flagged SUSPECT by shape | 81 |
+| Theorems flagged SUSPECT by shape | 82 |
 | Export-hygiene warnings | 103 |
-| Enabled-projection warnings | 35 |
+| Enabled-projection warnings | 37 |
 | Teeth-form warnings | 41 |
-| Include-hygiene warnings | 548 |
+| Include-hygiene warnings | 561 |
 | Host-names warnings | 801 |
 | Hand-written-record warnings | 18 |
 
@@ -154,6 +154,10 @@ that `make certify` requests.
 | `books/bp-node-machine-guards.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-invariants.lisp` | root | 83 | 1 | 0/1/0/0 | 0 | 0 | 2 |
 | `books/bp-node-machine.lisp` | root | 70 | 95 | 47/3/45/0 | 0 | 0 | 1 |
+| `books/bp-node-progress-guards.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/bp-node-progress-selection-invariants.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-node-progress.lisp` | root | 0 | 21 | 0/1/20/0 | 0 | 0 | 0 |
 | `books/bp-node-receive-boundary.lisp` | root | 1 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-records.lisp` | root | 4 | 13 | 12/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-report-step.lisp` | root | 2 | 4 | 0/3/1/0 | 0 | 0 | 0 |
@@ -246,7 +250,7 @@ that `make certify` requests.
 | `books/consumer-poll-projection.lisp` | root | 2 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-position.lisp` | root | 56 | 29 | 28/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |
-| `books/consumer-store-invariants.lisp` | root | 80 | 5 | 0/5/0/0 | 0 | 0 | 0 |
+| `books/consumer-store-invariants.lisp` | root | 101 | 5 | 0/5/0/0 | 0 | 0 | 0 |
 | `books/consumer-store-projection.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
@@ -390,7 +394,7 @@ that `make certify` requests.
 | `books/store-node-invariants.lisp` | root | 159 | 2 | 0/1/0/1 | 0 | 0 | 2 |
 | `books/store-node-resolution.lisp` | root | 37 | 8 | 6/0/0/2 | 0 | 0 | 2 |
 | `books/store-node-traces.lisp` | root | 91 | 8 | 5/0/1/2 | 0 | 0 | 1 |
-| `books/store-node.lisp` | root | 96 | 65 | 36/2/27/0 | 0 | 0 | 1 |
+| `books/store-node.lisp` | root | 118 | 65 | 36/2/27/0 | 0 | 0 | 1 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 39 | 16 | 15/0/1/0 | 0 | 0 | 1 |
 | `books/store-prepare-correspondence.lisp` | root | 19 | 4 | 2/0/0/2 | 0 | 0 | 0 |
@@ -495,6 +499,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 19 | 2 | 0 |
 | `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-node-machine-authorization-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 21 | 4 | 0 |
+| `tests/acl2/bp-node-machine-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 7 | 3 | 0 |
 | `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 47 | 4 | 0 |
 | `tests/acl2/bp-node-receive-boundary-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 1 | 0 |
 | `tests/acl2/bp-node-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 2 | 0 |
@@ -570,6 +575,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 4 | 0 |
 | `tests/acl2/consumer-store-node-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 22 | 0 | 0 |
 | `tests/acl2/consumer-store-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
+| `tests/acl2/consumer-topic-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/defrecord-tests.lisp` | root | 37 | 20 | 9/0/11/0 | 39 | 1 | 2 |
@@ -733,6 +739,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpn-sf-host-reserve-is-core-reserve` | `books/bp-sequence-fidelity.lisp` | 278 | definition-restated: the conclusion is the body of fn-bpn-sf-host-reserve; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-step-emits-no-release` | `books/bp-node-machine.lisp` | 997 | instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing |
 | `fn-bpnfg-car-is-car` | `books/bp-node-fragment-guards.lisp` | 141 | definition-restated: the conclusion is the body of fn-cbor-ag-car; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-bpnp-primary-of-held` | `books/bp-node-progress-invariants.lisp` | 7 | definition-restated: the conclusion is the body of fn-bpnp-primary |
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 94 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
 | `fn-bs-names-outcomes-of-no-ops` | `books/byte-store-scan.lisp` | 310 | branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value |
 | `fn-bs-pack-reclaim-plan-is-selected-covered-names` | `books/byte-store-compaction-correspondence.lisp` | 47 | branch-of-definition: the hypothesis negates a branch test of fn-bs-pack-reclaim-plan and the conclusion is that branch's value |
@@ -775,7 +782,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 327 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
 | `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 411 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
 | `fn-sf-stable-records-outside-the-window` | `books/store-files-invariants.lisp` | 91 | branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value |
-| `fn-sn-article-record-without-a-usable-clock-is-refused` | `books/store-node.lisp` | 828 | branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value |
+| `fn-sn-article-record-without-a-usable-clock-is-refused` | `books/store-node.lisp` | 1024 | branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value |
 | `fn-sn-composite-delta-of-typed-article` | `books/store-node-invariants.lisp` | 1414 | branch-of-definition: the hypothesis is a branch test of fn-sn-composite-delta and the conclusion is that branch's value |
 | `fn-sn-finish-disabled-is-no-op` | `books/store-node-invariants.lisp` | 553 | branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value |
 | `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 157 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |

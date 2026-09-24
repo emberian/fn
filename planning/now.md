@@ -1,5 +1,34 @@
 # Current work — 2026-09-24
 
+## Repaired consumer/topic and BP progress batch — 04:52 UTC
+
+Source through `2b3a8d31` integrates the consumer Store projection repair and
+its reachable mixed consumer/topic/reopen witness, the host-called BP progress
+extension and N03 route-wait/younger-local trace, and the Store v6 selector
+export interface. The [consumer evidence](evidence/consumer-topic-store-trace-2026-09-24.md),
+[BP evidence](evidence/bp-progress-route-wait-2026-09-24.md), and
+[Store interface evidence](evidence/store-v6-export-interface-2026-09-24.md)
+carry scoped certificates and limitations. Existing consumer theorem statements
+were retained; the topic arm now preserves the dense consumer frontier while
+leaving application ACK unchanged. BP recovery faults retain volatile waits;
+successful recovery clears them. Full N03 selection, N04 forwarding/session
+policy and N05 durable debt remain open.
+
+The next ordinary combined run must qualify this union before image building.
+In particular, closing Store updater definitions may expose downstream proofs
+that relied on expansion rather than exported selector laws. There is no new
+image claim yet; `e160442f` remains the last shared qualified image and
+`da5fd8cb` the protected live node. The earlier failed manifests remain retained.
+Native qualification will use one production/developer pair for topic retry,
+indexed consumer/status, fragment/recovery and the new BP progress fixture.
+
+In parallel, the allocator lane is proving the actual failed root-directory
+barrier path; Mini's compiled replay profiling has localized most reply staging
+cost to historical admission; and a preservation lane is adding active-reader
+exclusion/reclaim/reopen evidence. Six more landed worktrees were archived with
+verified restore manifests and removed, leaving their branches and all remote
+evidence intact.
+
 ## Wide Sol cycle — convergence after the 8c61 gate
 
 Source through `c7a722ed` integrates native topic admission, indexed owner
