@@ -186,6 +186,9 @@
     "tests/acl2/byte-store-stable-prefix-tests",
     "books/byte-store-record-fence",
     "tests/acl2/byte-store-record-fence-tests",
+    "books/byte-store-record-provenance-bytes",
+    "books/byte-store-record-provenance-node",
+    "books/byte-store-record-provenance-owner",
     "books/byte-store-record-provenance",
     "tests/acl2/byte-store-record-provenance-tests",
     "books/byte-store-k0",
@@ -712,9 +715,9 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 719,
-    "books_in_root_closure": 717,
-    "roots": 708,
+    "books": 722,
+    "books_in_root_closure": 720,
+    "roots": 711,
     "theorems": 9583,
     "functions": 6838,
     "assert_events": 10534,
@@ -730,7 +733,7 @@
     "export_hygiene_warnings": 116,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 59,
-    "include_hygiene_warnings": 691,
+    "include_hygiene_warnings": 692,
     "host_names_warnings": 826,
     "hand_written_record_warnings": 18
   },
@@ -4658,10 +4661,66 @@
       "read_error": null
     },
     {
-      "book": "books/byte-store-record-provenance.lisp",
+      "book": "books/byte-store-record-provenance-bytes.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 255,
+      "theorems": 132,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-frame",
+        "byte-store-program-invariants",
+        "byte-store-relation",
+        "frame-trailer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-record-provenance-node.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 93,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-native-correspondence",
+        "byte-store-record-provenance-bytes",
+        "store-node",
+        "store-node-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-record-provenance-owner.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 30,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -4676,15 +4735,36 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "byte-store-frame",
-        "byte-store-native-correspondence",
-        "byte-store-program-invariants",
-        "byte-store-relation",
-        "frame-trailer",
+        "byte-store-record-provenance-node",
         "owner-config",
-        "owner-invariants",
-        "store-node",
-        "store-node-invariants"
+        "owner-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-record-provenance.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-record-provenance-bytes",
+        "byte-store-record-provenance-node",
+        "byte-store-record-provenance-owner"
       ],
       "system_includes": [],
       "suspects": [],
@@ -23187,31 +23267,38 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/byte-store-record-provenance.lisp",
-        "line": 4,
+        "book": "books/byte-store-record-provenance-bytes.lisp",
+        "line": 7,
         "include": "byte-store-relation",
         "included": "books/byte-store-relation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/byte-store-record-provenance.lisp",
-        "line": 5,
+        "book": "books/byte-store-record-provenance-bytes.lisp",
+        "line": 8,
         "include": "byte-store-program-invariants",
         "included": "books/byte-store-program-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/byte-store-record-provenance.lisp",
-        "line": 7,
+        "book": "books/byte-store-record-provenance-bytes.lisp",
+        "line": 10,
         "include": "byte-store-frame",
         "included": "books/byte-store-frame.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/byte-store-record-provenance.lisp",
-        "line": 4874,
+        "book": "books/byte-store-record-provenance-node.lisp",
+        "line": 2114,
         "include": "byte-store-native-correspondence",
         "included": "books/byte-store-native-correspondence.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/byte-store-record-provenance.lisp",
+        "line": 13,
+        "include": "byte-store-record-provenance-owner",
+        "included": "books/byte-store-record-provenance-owner.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
