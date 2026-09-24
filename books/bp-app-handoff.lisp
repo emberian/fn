@@ -123,22 +123,198 @@
        (fn-bpaj-source-decision-trustedp
         (fn-bpah-view-source-decision view cfg))))
 
+;; D23, question 3: author publication.  AUTHOR (a principal) is this
+;; node's own direct enrollment for SOURCE (a BP source EID) at GENERATION:
+;; its trust profile and transport-bp row.  It is the enrollment a carried
+;; request is judged under (`fn-bpaj-ingress-peer' names this principal to
+;; the transit plan); the inbound groups and limits under that principal are
+;; the plan's own scope check and are not repeated here.
+(defun fn-bpah-author-publication-authorizedp (cfg author generation source)
+  (declare (xargs :guard t))
+  (and (fn-bpaj-principal-idp author)
+       (fn-bpaj-source-eidp source)
+       (fn-bpaj-current-peer-eidp cfg (fn-bpaj-tagged-value author) generation
+                                  (fn-bpaj-tagged-value source))))
+
+;; D23, question 4, its issuer half (the whole question, with the held
+;; obligation, is `fn-bpah-receipt-authorizes-releasep' in
+;; bp-release-authority).  The delivering neighbour CARRIER may bring a
+;; receipt issued by ISSUER (a release-issuer EID) when ISSUER is the
+;; carrier's own enrolled EID -- a neighbour speaking for itself, the direct
+;; trusted-local-observation-v0 profile -- or ISSUER is on the carrier's
+;; release list (`bp-boundary-releases-for').  The carried list is not an
+;; input: a neighbour allowed to carry Alice's article is not thereby
+;; entitled to assert Bob's receipt.  In the trusted-relay profile the
+;; release list is a finite delegation: the node trusts that CARRIER
+;; faithfully relays ISSUER's receipts; nothing here authenticates ISSUER.
+(defun fn-bpah-release-issuer-authorizedp (cfg carrier generation issuer)
+  (declare (xargs :guard t))
+  (and (fn-bpaj-issuer-eidp issuer)
+       (or (fn-bpaj-current-peer-eidp cfg carrier generation
+                                      (fn-bpaj-tagged-value issuer))
+           (fn-bpaj-release-issuer-listedp cfg carrier generation issuer))))
+
+(defun fn-bpah-view-carrier (view)
+  (declare (xargs :guard t))
+  (fn-bpnf-ingress-principal (fn-bpn-nth 4 view)))
+
+(defun fn-bpah-view-generation (view)
+  (declare (xargs :guard t))
+  (fn-bpn-nth 5 (fn-bpn-nth 4 view)))
+
+; The receipt ADU of a view, or nil.
+(defun fn-bpah-view-receipt (view)
+  (declare (xargs :guard t))
+  (let ((decoded (fn-bpa-decode-exact (fn-bpn-nth 3 view))))
+    (if (and (fn-bpa-result-okp decoded)
+             (fn-bpa-receiptp (fn-bpa-result-message decoded)))
+        (fn-bpa-result-message decoded)
+      nil)))
+
+; The host's receipt gate reads the release question, not the carriage one.
 (defun fn-bpah-receipt-trustedp (view cfg)
   (declare (xargs :guard t))
   (and (consp view)
        (equal (car view) :delivery)
        (equal (fn-bpah-view-class view) :receipt)
-       (fn-bpaj-source-decision-trustedp
-        (fn-bpah-view-source-decision view cfg))
-       (let ((decoded (fn-bpa-decode-exact (fn-bpn-nth 3 view))))
-         (and (fn-bpa-result-okp decoded)
-              (fn-bpa-receiptp (fn-bpa-result-message decoded))
-              (equal (fn-bpa-receipt-issuer
-                      (fn-bpa-result-message decoded))
-                     (fn-bpn-nth 6 view))
-              (equal (fn-bpa-receipt-peer-eid
-                      (fn-bpa-result-message decoded))
+       (fn-bpnf-cl-ingressp (fn-bpn-nth 4 view))
+       (stringp (fn-bpn-nth 6 view))
+       (fn-bpah-release-issuer-authorizedp
+        cfg (fn-bpah-view-carrier view) (fn-bpah-view-generation view)
+        (fn-bpaj-issuer-eid (fn-bpn-nth 6 view)))
+       (let ((receipt (fn-bpah-view-receipt view)))
+         (and receipt
+              (equal (fn-bpa-receipt-issuer receipt) (fn-bpn-nth 6 view))
+              (equal (fn-bpa-receipt-peer-eid receipt)
                      (fn-bpn-nth 6 view))))))
+
+; ACL2's reason for the issuer half, as a keyword the host prints and the
+; kind-7 delivery row keeps.
+(defun fn-bpah-release-issuer-verdict (view cfg)
+  (declare (xargs :guard t))
+  (let ((carrier (fn-bpah-view-carrier view))
+        (generation (fn-bpah-view-generation view))
+        (source (fn-bpn-nth 6 view)))
+    (cond ((not (and (fn-bpnf-cl-ingressp (fn-bpn-nth 4 view))
+                     (stringp source)))
+           :ingress)
+          ((not (and (fn-cfgp cfg) (equal generation (fn-cfg-generation cfg))))
+           :generation)
+          ((not (fn-bpah-view-receipt view)) :not-a-receipt)
+          ((fn-bpaj-current-peer-eidp cfg carrier generation source)
+           :self-issued)
+          ((fn-bpaj-release-issuer-listedp cfg carrier generation
+                                           (fn-bpaj-issuer-eid source))
+           :listed-issuer)
+          ((fn-bpaj-origin-carriage-permittedp cfg carrier generation
+                                               (fn-bpaj-source-eid source))
+           :carried-not-released)
+          (t :issuer-not-released))))
+
+(defun fn-bpah-release-verdict-name (verdict)
+  (declare (xargs :guard t))
+  (cond ((equal verdict :self-issued) "self-issued")
+        ((equal verdict :listed-issuer) "listed-issuer")
+        ((equal verdict :carried-not-released) "carried-not-released")
+        ((equal verdict :issuer-not-released) "issuer-not-released")
+        ((equal verdict :generation) "generation")
+        ((equal verdict :not-a-receipt) "not-a-receipt")
+        ((equal verdict :obligation-mismatch) "obligation-mismatch")
+        ((equal verdict :workflow-refused) "workflow-refused")
+        (t "ingress")))
+
+(defconst *fn-bpah-release-verdicts*
+  '(:self-issued :listed-issuer :carried-not-released :issuer-not-released
+    :generation :not-a-receipt :obligation-mismatch :workflow-refused
+    :ingress))
+
+(defun fn-bpah-release-verdict-of-name (name verdicts)
+  (declare (xargs :guard t))
+  (if (consp verdicts)
+      (if (equal (fn-bpah-release-verdict-name (car verdicts)) name)
+          (car verdicts)
+        (fn-bpah-release-verdict-of-name name (cdr verdicts)))
+    nil))
+
+; The kind-7 delivery detail of a receipt: "release=<verdict>" as octets.
+; With the kind-5 row's ingress (received from R, at generation G) and the
+; bundle's source (claimed S) it is the durable provenance of the receipt.
+(defun fn-bpah-release-detail (verdict)
+  (declare (xargs :guard t))
+  (fn-record-string-octets
+   (string-append "release=" (fn-bpah-release-verdict-name verdict))))
+
+; The line the host prints for a receipt, before its gate.
+(defun fn-bpah-release-line (view cfg)
+  (declare (xargs :guard t))
+  (let ((carrier (fn-bpah-view-carrier view))
+        (issuer (fn-bpn-nth 6 view)))
+    (string-append
+     (fn-bpah-release-verdict-name (fn-bpah-release-issuer-verdict view cfg))
+     (string-append
+      " carrier="
+      (string-append
+       (fn-record-octets-string carrier)
+       (string-append " issuer=" (if (stringp issuer) issuer "")))))))
+
+;; Durable provenance (D23): a reader of the FNBS journal tells apart the
+;; four facts of a delivered item from its held row alone.  R and G are the
+;; kind-5 ingress stamp; S is the bundle's primary source; V is the kind-7
+;; release detail for a receipt; P is the configuration row V names, of R's
+;; boundary for S.  A request's kind-7 detail is its receipt id, so for a
+;; request V and P are re-derived from R, G, S and the configuration record
+;; of generation G (`fn-bpah-held-source-decision').
+
+(defun fn-bpah-held-received-from (h)
+  (declare (xargs :guard t))
+  (let ((ingress (fn-bpn-nth 4 h)))
+    (list :received-from
+          (fn-bpaj-principal-id (fn-bpnf-ingress-principal ingress))
+          (fn-bpaj-eid-text (fn-bpn-nth 3 ingress))
+          (fn-bpn-nth 5 ingress))))
+
+(defun fn-bpah-held-claimed-source (h)
+  (declare (xargs :guard t))
+  (let* ((bundle (fn-bpnf-held-bundle h))
+         (primary (fn-bpb-bundle-primary bundle)))
+    (fn-bpaj-source-eid
+     (if (and (fn-bpb-bundlep bundle) (fn-bpp-blockp primary))
+         (fn-bpaj-eid-text (fn-bpp-source primary))
+       nil))))
+
+(defun fn-bpah-held-verdict (h)
+  (declare (xargs :guard t))
+  (let* ((marker (fn-bpn-nth 10 h))
+         (detail (fn-bpn-nth 2 marker)))
+    (if (and (equal (fn-bpn-nth 0 marker) :delivered)
+             (member-equal (fn-bpn-nth 1 marker)
+                           '(:receipt-accepted :receipt-refused))
+             (fn-cbor-octet-listp detail)
+             (< 8 (len detail))
+             (equal (take 8 detail) (fn-record-string-octets "release=")))
+        (fn-bpah-release-verdict-of-name
+         (fn-record-octets-string (nthcdr 8 detail))
+         *fn-bpah-release-verdicts*)
+      nil)))
+
+(defun fn-bpah-held-policy-row (h)
+  (declare (xargs :guard t))
+  (let ((verdict (fn-bpah-held-verdict h))
+        (name (fn-record-octets-string
+               (fn-bpnf-ingress-principal (fn-bpn-nth 4 h))))
+        (source (fn-bpaj-tagged-value (fn-bpah-held-claimed-source h))))
+    (cond ((equal verdict :self-issued)
+           (fn-cfg-row-make name "transport-bp" source 0))
+          ((equal verdict :listed-issuer)
+           (fn-cfg-row-make name "bp-boundary-releases-for" source 0))
+          (t nil))))
+
+(defun fn-bpah-held-source-decision (h cfg)
+  (declare (xargs :guard t))
+  (let ((ingress (fn-bpn-nth 4 h)))
+    (fn-bpaj-carried-source-decision
+     cfg (fn-bpnf-ingress-principal ingress) (fn-bpn-nth 5 ingress)
+     (fn-bpaj-tagged-value (fn-bpah-held-claimed-source h)))))
 
 ; The line the host prints for every dispatched request or receipt: ACL2's
 ; decision, its principal(s) as configured names, or its refusal reason.
@@ -255,13 +431,17 @@
           node)
          nil))
 
-(defthm fn-bpah-untrusted-source-never-authorizes-receipt
-  (implies (not (fn-bpaj-source-decision-trustedp
-                 (fn-bpah-view-source-decision view cfg)))
+; The receipt gate is the release question's issuer half: without it no
+; receipt is trusted, whatever the carried list says.
+(defthm fn-bpah-unauthorized-issuer-never-authorizes-receipt
+  (implies (not (fn-bpah-release-issuer-authorizedp
+                 cfg (fn-bpah-view-carrier view)
+                 (fn-bpah-view-generation view)
+                 (fn-bpaj-issuer-eid (fn-bpn-nth 6 view))))
            (not (fn-bpah-receipt-trustedp view cfg)))
   :hints (("Goal" :in-theory (e/d (fn-bpah-receipt-trustedp)
-                                  (fn-bpah-view-source-decision
-                                   fn-bpaj-source-decision-trustedp)))))
+                                  (fn-bpah-release-issuer-authorizedp
+                                   fn-bpah-view-receipt)))))
 
 (defthm fn-bpah-untrusted-source-never-authorizes-request
   (implies (not (fn-bpaj-source-decision-trustedp

@@ -595,6 +595,84 @@
                                (fn-config-replay
                                 0 510 (list *fn-cfg-default-record*)))))))
 
+;; D23: `releases-for EID ...' after the carried list (or alone) names the
+;; issuers whose receipts the neighbour may relay: a separate row kind.
+(defconst *fn-na-bp-releases*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("bp-boundary" "add" "relay"
+                       "relay.example.invalid" "dtn://relay/" "4557"
+                       "carries" "dtn://sender/"
+                       "releases-for" "dtn://receiver/"))))
+(defconst *fn-na-bp-releases-only*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("bp-boundary" "add" "relay"
+                       "relay.example.invalid" "dtn://relay/" "4557"
+                       "fn.*" "32768" "16" "releases-for" "ipn:9.1"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-bp-releases*)
+                     :accepted))
+(assert-event (equal (fn-native-admin-result-status *fn-na-bp-releases-only*)
+                     :accepted))
+(assert-event
+ (and (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
+                                     "dtn://sender/" 0)
+                    (fn-na-test-plan-rows *fn-na-bp-releases*))
+      (member-equal (fn-cfg-row-make "relay" "bp-boundary-releases-for"
+                                     "dtn://receiver/" 0)
+                    (fn-na-test-plan-rows *fn-na-bp-releases*))
+      (member-equal (fn-cfg-row-make "relay" "bp-boundary-releases-for"
+                                     "ipn:9.1" 0)
+                    (fn-na-test-plan-rows *fn-na-bp-releases-only*))))
+; The two lists stay apart: a carried EID is not a release row, a release
+; EID is not a carried row.
+(assert-event
+ (and (not (member-equal (fn-cfg-row-make "relay" "bp-boundary-releases-for"
+                                          "dtn://sender/" 0)
+                         (fn-na-test-plan-rows *fn-na-bp-releases*)))
+      (not (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
+                                          "dtn://receiver/" 0)
+                         (fn-na-test-plan-rows *fn-na-bp-releases*)))
+      (not (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
+                                          "ipn:9.1" 0)
+                         (fn-na-test-plan-rows *fn-na-bp-releases-only*)))))
+; Without the clause no release row exists (the default is empty).
+(assert-event
+ (not (member-equal (fn-cfg-row-make "relay" "bp-boundary-releases-for"
+                                     "dtn://sender/" 0)
+                    (fn-na-test-plan-rows *fn-na-bp-carries*))))
+; Malformed clauses are refused: an empty release list, a non-EID, a
+; repeated EID, and the clauses out of order.
+(assert-event
+ (and (fn-na-test-bp-refusedp
+       '("bp-boundary" "add" "relay" "relay.example.invalid" "dtn://relay/"
+         "4557" "releases-for"))
+      (fn-na-test-bp-refusedp
+       '("bp-boundary" "add" "relay" "relay.example.invalid" "dtn://relay/"
+         "4557" "releases-for" "receiver"))
+      (fn-na-test-bp-refusedp
+       '("bp-boundary" "add" "relay" "relay.example.invalid" "dtn://relay/"
+         "4557" "releases-for" "dtn://r/" "dtn://r/"))
+      (fn-na-test-bp-refusedp
+       '("bp-boundary" "add" "relay" "relay.example.invalid" "dtn://relay/"
+         "4557" "releases-for" "dtn://r/" "carries" "dtn://s/"))
+      (fn-na-test-bp-refusedp
+       '("bp-boundary" "add" "relay" "relay.example.invalid" "dtn://relay/"
+         "4557" "carries" "releases-for" "dtn://r/"))))
+; The release rows ride the configuration record and replay.
+(defconst *fn-na-bp-releases-record*
+  (fn-cfg-record-make 1 1 2 (fn-native-admin-plan-deltas *fn-na-bp-releases*)
+                      *fn-cfg-default-stamp*))
+(assert-event (fn-cfg-recordp *fn-na-bp-releases-record*))
+(assert-event
+ (equal (fn-cfg-decode-exact (fn-cfg-encode *fn-na-bp-releases-record*))
+        (fn-record-parse-ok *fn-na-bp-releases-record* nil)))
+(assert-event
+ (member-equal (fn-cfg-row-make "relay" "bp-boundary-releases-for"
+                                "dtn://receiver/" 0)
+               (fn-cfg-peers
+                (fn-cfg-value
+                 (fn-config-replay 0 510 (list *fn-cfg-default-record*
+                                               *fn-na-bp-releases-record*))))))
+
 ; -----------------------------------------------------------------------------
 ; RFC 5536 s3.1.4 reserved names at `group create'
 ; (`fn-native-admin-group-name-reservedp', `fn-native-admin-plan').

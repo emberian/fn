@@ -201,3 +201,101 @@
 (must-fail (assert-event (bpat-unenrolledp *bpat-unenrolled-cfg* *bpat-p* 8)))
 (must-fail (assert-event (bpat-unenrolledp *bpat-uncarried-cfg* *bpat-p* 7)))
 (must-fail (assert-event (bpat-unenrolledp *bpat-carried-cfg* *bpat-p* 7)))
+
+; D23 second half: typed identities, origin carriage and the release list.
+; "peer" carries dtn://x/ and, in the released configuration, also lists
+; dtn://x/ as a release issuer.  The two lists are separate row kinds and
+; their accessors return separate identity domains.
+(defconst *bpat-releases-x*
+  (list (fn-cfg-row-make "peer" "bp-boundary-releases-for" "dtn://x/" 0)))
+(defconst *bpat-released-cfg*
+  (bpat-cfg (append *bpat-rows* *bpat-carries-x* *bpat-releases-x*
+                    *bpat-x-rows*)))
+(defconst *bpat-release-only-cfg*
+  (bpat-cfg (append *bpat-rows* *bpat-releases-x* *bpat-x-rows*)))
+(assert-event (fn-cfgp *bpat-released-cfg*))
+(assert-event (fn-cfgp *bpat-release-only-cfg*))
+(assert-event
+ (equal (fn-bpaj-boundary-carried-sources *bpat-released-cfg* *bpat-p*)
+        (list (fn-bpaj-source-eid "dtn://x/"))))
+(assert-event
+ (equal (fn-bpaj-boundary-release-issuers *bpat-released-cfg* *bpat-p*)
+        (list (fn-bpaj-issuer-eid "dtn://x/"))))
+(assert-event
+ (null (fn-bpaj-boundary-release-issuers *bpat-carried-cfg* *bpat-p*)))
+(assert-event (fn-bpaj-source-eidp (fn-bpaj-source-eid "dtn://x/")))
+(assert-event (not (fn-bpaj-source-eidp (fn-bpaj-issuer-eid "dtn://x/"))))
+(assert-event (not (fn-bpaj-issuer-eidp (fn-bpaj-source-eid "dtn://x/"))))
+(assert-event (not (fn-bpaj-principal-idp (fn-bpaj-source-eid "dtn://x/"))))
+; Neighbour admission is the session admission.
+(assert-event
+ (fn-bpaj-neighbor-admittedp *bpat-carried-cfg* *bpat-channel* *bpat-eid*))
+; Origin carriage reads the carried list and takes only a source EID.
+(assert-event
+ (fn-bpaj-origin-carriage-permittedp *bpat-carried-cfg* *bpat-p* 7
+                                     (fn-bpaj-source-eid "dtn://x/")))
+(assert-event
+ (not (fn-bpaj-origin-carriage-permittedp *bpat-carried-cfg* *bpat-p* 7
+                                          (fn-bpaj-issuer-eid "dtn://x/"))))
+(assert-event
+ (not (fn-bpaj-origin-carriage-permittedp *bpat-release-only-cfg* *bpat-p* 7
+                                          (fn-bpaj-source-eid "dtn://x/"))))
+; The release list reads its own rows and takes only an issuer EID.
+(assert-event
+ (fn-bpaj-release-issuer-listedp *bpat-released-cfg* *bpat-p* 7
+                                 (fn-bpaj-issuer-eid "dtn://x/")))
+(assert-event
+ (not (fn-bpaj-release-issuer-listedp *bpat-carried-cfg* *bpat-p* 7
+                                      (fn-bpaj-issuer-eid "dtn://x/"))))
+(assert-event
+ (not (fn-bpaj-release-issuer-listedp *bpat-released-cfg* *bpat-p* 7
+                                      (fn-bpaj-source-eid "dtn://x/"))))
+; A release row grants no carriage: with only a release row the source is
+; not carried (fn-bpaj-release-row-is-not-carriage, reachable witness).
+(assert-event
+ (equal (fn-bpaj-carried-source-decision *bpat-release-only-cfg* *bpat-p* 7
+                                         "dtn://x/")
+        '(:refused :source-not-carried)))
+; Teeth for fn-bpaj-release-row-is-not-carriage: with the carries row the
+; conclusion fails.
+(must-fail
+ (assert-event
+  (not (fn-bpaj-origin-carriage-permittedp
+        *bpat-released-cfg* *bpat-p* 7 (fn-bpaj-source-eid "dtn://x/")))))
+; fn-bpaj-carried-decision-requires-origin-carriage: a direct decision is
+; not a carriage permission (the hypothesis matters).
+(must-fail
+ (assert-event
+  (fn-bpaj-origin-carriage-permittedp *bpat-carried-cfg* *bpat-p* 7
+                                      (fn-bpaj-source-eid "dtn://peer/"))))
+; fn-bpaj-source-decision-ignores-release-rows, witness: adding the release
+; row changes no decision.
+(assert-event
+ (equal (fn-bpaj-carried-source-decision *bpat-released-cfg* *bpat-p* 7
+                                         "dtn://x/")
+        (fn-bpaj-carried-source-decision *bpat-carried-cfg* *bpat-p* 7
+                                         "dtn://x/")))
+; Teeth, one per hypothesis: configurations that differ in a non-release
+; row, in generation, or in well-formedness decide differently.
+(must-fail
+ (assert-event
+  (equal (fn-bpaj-carried-source-decision *bpat-released-cfg* *bpat-p* 7
+                                          "dtn://x/")
+         (fn-bpaj-carried-source-decision *bpat-release-only-cfg* *bpat-p* 7
+                                          "dtn://x/"))))
+(must-fail
+ (assert-event
+  (equal (fn-bpaj-carried-source-decision *bpat-released-cfg* *bpat-p* 7
+                                          "dtn://x/")
+         (fn-bpaj-carried-source-decision
+          (fn-cfg-make 8 (fn-cfg-value *bpat-released-cfg*)) *bpat-p* 7
+          "dtn://x/"))))
+(must-fail
+ (assert-event
+  (equal (fn-bpaj-carried-source-decision *bpat-released-cfg* *bpat-p* 7
+                                          "dtn://x/")
+         (fn-bpaj-carried-source-decision
+          (fn-cfg-make 7 (fn-cfg-value-make '(junk) 0 nil nil nil
+                           (append *bpat-rows* *bpat-carries-x*
+                                   *bpat-x-rows*) nil))
+          *bpat-p* 7 "dtn://x/"))))
