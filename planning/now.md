@@ -75,9 +75,10 @@ offline cursor inspection, and read-only local consumer status. A four-job
 hbox run qualified all default, DTN and ACL2 test roots at that revision;
 the [shared image](evidence/native-luna-e160-selected-2026-09-24.md) has
 passed the feature-specific native web, cursor and status tests. The status
-codec's general roundtrip theorem `PRF-068` remains
-open, so runtime examples and guard certification are not a claim of a
-fully proved codec. The trial records Luna repairs, Sol proof and fixture
+codec's general accepted and nonaccepted roundtrip theorems now have
+[selected ACL2 book, tooth and host-wrapper certification](evidence/consumer-status-codec-prf068-2026-09-24.md).
+`PRF-068` remains in progress until the joined topic/index composition has
+matching native qualification. The trial records Luna repairs, Sol proof and fixture
 repair, root review assistance, and a session-cost proxy; future bounded
 Luna fn work keeps proof development with Sol. Topic, consumer-index, BP
 activation and allocator packets remain separate integration work.

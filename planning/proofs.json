@@ -2363,7 +2363,7 @@
     {
       "id": "PRF-068",
       "title": "Local consumer status reports the scoped committed journal distance",
-      "statement": "The experimental local-owner command `consumer status CONTROL ID` reports the registered consumer ACK, committed journal frontier and their event-distance from fixed committed Store projections after the same local principal, query-version and view-version scope checks used by position and poll. The diagnostic leaves owner state unchanged. This target remains in progress: the attempted general kind-9 FNCT accepted roundtrip for uint32 fields is not yet proved, while the native command passed selected status and durable-ACK tests on frozen e160442f. The subsequent topic/index composition requires its own native qualification. This does not prove native filesystem recovery or article unreadness/application processing; Store recovery authority remains PRF-064.",
+      "statement": "The experimental local-owner command `consumer status CONTROL ID` reports the registered consumer ACK, committed journal frontier and their event-distance from fixed committed Store projections after the same local principal, query-version and view-version scope checks used by position and poll. The diagnostic leaves owner state unchanged. For the exact host-called kind-9 FNCT codec, decoding an encoded accepted reply returns its ACK, frontier and gap when ACK and frontier are uint32 values, ACK is no greater than frontier, and gap equals frontier minus ACK; decoding an encoded refused, uncertain or fault reply returns that status with empty fields under the constrained frame-digest shape. This target remains in progress because the subsequent topic/index composition requires its own native qualification. The codec theorem does not prove concrete hash security, native filesystem recovery or article unreadness/application processing; Store recovery authority remains PRF-064.",
       "milestone": "M4",
       "requirements": [
         "CNS-001"
@@ -2371,7 +2371,9 @@
       "depends_on": [
         "PRF-064"
       ],
-      "assumptions": [],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
       "status": "in-progress",
       "evidence": [
         "books/consumer-owner-local.lisp",
@@ -2386,9 +2388,16 @@
         "tests/test_native_consumer_e2.py",
         "planning/evidence/manifests/certify-20260924T031621Z-3631800.json",
         "planning/evidence/native-luna-e160-selected-2026-09-24.md",
-        "planning/evidence/manifests/certify-20260924T031327Z-785374.json"
+        "planning/evidence/manifests/certify-20260924T031327Z-785374.json",
+        "planning/evidence/consumer-status-codec-prf068-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T035424Z-832192.json",
+        "planning/evidence/manifests/certify-20260924T035738Z-838647.json"
       ],
-      "progress_note": "The ACL2 local status codec, owner scope decision and native-control host test passed the scoped status/index run. The earlier e160442f image passed unknown-consumer refusal, read-only status, advancing ACK and recovered status checks; its general codec roundtrip theorem remains open. The joined topic/index source has scoped certification but has not yet run on a matching saved image. The diagnostic does not assert application processing or discharge."
+      "progress_note": "The ACL2 local status codec, owner scope decision and native-control host test passed the scoped status/index run. The general accepted and nonaccepted kind-9 codec roundtrips and their isolating teeth certified in the selected hbox book/test roots at the exact new source bytes; these are proof-only changes to the executable codec. The earlier e160442f image passed unknown-consumer refusal, read-only status, advancing ACK and recovered status checks. The joined topic/index source has scoped certification but has not yet run on a matching saved image. The diagnostic does not assert application processing or discharge.",
+      "events": [
+        "fn-ncl-status-accepted-reply-roundtrip",
+        "fn-ncl-status-nonaccepted-reply-roundtrip"
+      ]
     }
   ]
 }

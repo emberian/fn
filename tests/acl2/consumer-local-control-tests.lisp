@@ -57,14 +57,37 @@
  (equal (fn-ncl-status-reply-decode
          (fn-ncl-status-reply-encode :accepted 3 11 8))
         '(:consumer-status-reply :accepted 3 11 8)))
+; PRF-068 keystone witness also reaches the uint32 ceiling with a nonzero gap.
+(assert-event
+ (equal (fn-ncl-status-reply-decode
+         (fn-ncl-status-reply-encode
+          :accepted 1 *fn-cbor-max-uint* (1- *fn-cbor-max-uint*)))
+        (list :consumer-status-reply :accepted
+              1 *fn-cbor-max-uint* (1- *fn-cbor-max-uint*))))
 (assert-event
  (equal (fn-ncl-status-reply-decode
          (fn-ncl-status-reply-encode :refused nil nil nil))
         '(:consumer-status-reply :refused nil nil nil)))
 (assert-event
  (equal (fn-ncl-status-reply-decode
+         (fn-ncl-status-reply-encode :uncertain nil nil nil))
+        '(:consumer-status-reply :uncertain nil nil nil)))
+(assert-event
+ (equal (fn-ncl-status-reply-decode
+         (fn-ncl-status-reply-encode :fault nil nil nil))
+        '(:consumer-status-reply :fault nil nil nil)))
+(must-fail
+ (assert-event
+  (equal (fn-ncl-status-reply-decode
+          (fn-ncl-status-reply-encode :other nil nil nil))
+         '(:consumer-status-reply :other nil nil nil))))
+(assert-event
+ (equal (fn-ncl-status-reply-decode
          (fn-ncl-status-reply-encode :accepted 3 11 8))
         '(:consumer-status-reply :accepted 3 11 8)))
+; The next four must-fail cases isolate, in theorem order, the ACK uint32,
+; frontier uint32, ACK<=frontier and exact-distance hypotheses.  Each keeps
+; every other premise true and falsifies the claimed decoded value.
 (must-fail
  (assert-event
   (equal (fn-ncl-status-reply-decode
