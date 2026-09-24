@@ -1,0 +1,55 @@
+# module tests.test_native_checkpoint  start 2026-09-24T15:16:49Z  cwd /tank/fn/scratch/native-subsets-1a9dd747/tree
+# cmd: python3 -m unittest -v tests.test_native_checkpoint
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CORE_SHA256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=9b38ba45ed4ce31ca1997e3e4165873203e09d8e41fa176eb3fedbfee95741d0
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=5d42db2d8929ba256677ecb3bdfe957edc54176e0f5a1492b24376aa21ae1d9d
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+# env FN_NATIVE_LAUNCHER_SHA256=60e14e2afe8703574a9d74d89dc632a6c030a668fa261a74d92dd7589bb686d9
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-1a9dd747/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-1a9dd747/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_acl2_namespace_codec_rejects_alias_overflow_and_excess (tests.test_native_checkpoint.NativeCheckpointTests.test_acl2_namespace_codec_rejects_alias_overflow_and_excess) ... ok
+test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin (tests.test_native_checkpoint.NativeCheckpointTests.test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin) ... ok
+test_arbitrary_covered_deletion_image_recovers_and_resumes (tests.test_native_checkpoint.NativeCheckpointTests.test_arbitrary_covered_deletion_image_recovers_and_resumes) ... ok
+test_clone_refuses_canonical_parent_alias_above_path_bound (tests.test_native_checkpoint.NativeCheckpointTests.test_clone_refuses_canonical_parent_alias_above_path_bound) ... ok
+test_clone_reopens_historical_authorship_verdict (tests.test_native_checkpoint.NativeCheckpointTests.test_clone_reopens_historical_authorship_verdict) ... ok
+test_corrupt_unselected_generation_is_invisible (tests.test_native_checkpoint.NativeCheckpointTests.test_corrupt_unselected_generation_is_invisible) ... ok
+test_death_after_each_covered_unlink_preserves_exact_suffix_and_resumes (tests.test_native_checkpoint.NativeCheckpointTests.test_death_after_each_covered_unlink_preserves_exact_suffix_and_resumes) ... ok
+test_differential_mismatch_is_always_corruption (tests.test_native_checkpoint.NativeCheckpointTests.test_differential_mismatch_is_always_corruption) ... ok
+test_fenced_clone_rollover_after_selected_pack_reclaim (tests.test_native_checkpoint.NativeCheckpointTests.test_fenced_clone_rollover_after_selected_pack_reclaim) ... ok
+test_known_and_ambiguous_failures_keep_distinct_exit_codes (tests.test_native_checkpoint.NativeCheckpointTests.test_known_and_ambiguous_failures_keep_distinct_exit_codes) ... ok
+test_missing_retained_suffix_gap_fails_closed_without_reclamation (tests.test_native_checkpoint.NativeCheckpointTests.test_missing_retained_suffix_gap_fails_closed_without_reclamation) ... ok
+test_native_and_python_frames_cross_open_byte_identically (tests.test_native_checkpoint.NativeCheckpointTests.test_native_and_python_frames_cross_open_byte_identically) ... ok
+test_pack_generation_retirement_death_reopens_and_retries (tests.test_native_checkpoint.NativeCheckpointTests.test_pack_generation_retirement_death_reopens_and_retries) ... ok
+test_pack_prefix_reclaim_process_death_recovers_from_selected_pack (tests.test_native_checkpoint.NativeCheckpointTests.test_pack_prefix_reclaim_process_death_recovers_from_selected_pack) ... ok
+test_partial_multi_file_prefix_reclaim_resumes_from_selected_pack (tests.test_native_checkpoint.NativeCheckpointTests.test_partial_multi_file_prefix_reclaim_resumes_from_selected_pack) ... ok
+test_process_death_at_every_native_checkpoint_cut_reopens (tests.test_native_checkpoint.NativeCheckpointTests.test_process_death_at_every_native_checkpoint_cut_reopens) ... ok
+test_process_death_at_every_selection_cut_preserves_event_bytes (tests.test_native_checkpoint.NativeCheckpointTests.test_process_death_at_every_selection_cut_preserves_event_bytes) ... ok
+test_retiring_old_pack_generations_keeps_exact_retained_sources (tests.test_native_checkpoint.NativeCheckpointTests.test_retiring_old_pack_generations_keeps_exact_retained_sources) ... ok
+test_selected_corruption_is_reported_without_rollback_or_lost_replay (tests.test_native_checkpoint.NativeCheckpointTests.test_selected_corruption_is_reported_without_rollback_or_lost_replay) ... ok
+test_selected_lossless_pack_splices_before_generic_replay (tests.test_native_checkpoint.NativeCheckpointTests.test_selected_lossless_pack_splices_before_generic_replay) ... ok
+test_selected_pack_missing_or_corrupt_fails_closed (tests.test_native_checkpoint.NativeCheckpointTests.test_selected_pack_missing_or_corrupt_fails_closed) ... ok
+test_selected_pack_reclaims_physical_prefix_and_replays_suffix (tests.test_native_checkpoint.NativeCheckpointTests.test_selected_pack_reclaims_physical_prefix_and_replays_suffix) ... ok
+test_surviving_covered_transaction_conflict_fails_closed (tests.test_native_checkpoint.NativeCheckpointTests.test_surviving_covered_transaction_conflict_fails_closed) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 40.074s
+
+OK
+# rc=0 wall=40.1 end 2026-09-24T15:17:30Z

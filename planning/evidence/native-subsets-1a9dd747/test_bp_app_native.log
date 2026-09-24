@@ -1,0 +1,67 @@
+# module tests.test_bp_app_native  start 2026-09-24T14:53:32Z  cwd /tank/fn/scratch/native-subsets-1a9dd747/tree
+# cmd: python3 -m unittest -v tests.test_bp_app_native
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CORE_SHA256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=9b38ba45ed4ce31ca1997e3e4165873203e09d8e41fa176eb3fedbfee95741d0
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=5d42db2d8929ba256677ecb3bdfe957edc54176e0f5a1492b24376aa21ae1d9d
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+# env FN_NATIVE_LAUNCHER_SHA256=60e14e2afe8703574a9d74d89dc632a6c030a668fa261a74d92dd7589bb686d9
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-1a9dd747/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-1a9dd747/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_application_receipt_releases_forward_pin_only_after_durable_record (tests.test_bp_app_native.NativeBpApplicationTests.test_application_receipt_releases_forward_pin_only_after_durable_record) ... ERROR
+test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance) ... FAIL
+test_unsupported_receipt_profile_refuses_before_file_read (tests.test_bp_app_native.NativeBpApplicationTests.test_unsupported_receipt_profile_refuses_before_file_read) ... ok
+test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt) ... ERROR
+
+======================================================================
+ERROR: test_application_receipt_releases_forward_pin_only_after_durable_record (tests.test_bp_app_native.NativeBpApplicationTests.test_application_receipt_releases_forward_pin_only_after_durable_record)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_bp_app_native.py", line 180, in test_application_receipt_releases_forward_pin_only_after_durable_record
+    sender_out, sender_err = sender.communicate(timeout=180)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer', '--fn', 'bp', 'send', '127.0.0.1', '34947', '/tmp/fn-native-bp-app-i0nkf_mq/request.adu', '/tmp/fn-native-bp-app-i0nkf_mq/sender-spool', 'dtn://sender/', 'dtn://receiver/', '3600000', '2', '32', '1048576', '1', '-', '0']' timed out after 180 seconds
+
+======================================================================
+ERROR: test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_bp_app_native.py", line 319, in test_visible_decision_namespace_eio_fences_before_receipt
+    sender_out, sender_err = sender.communicate(timeout=180)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer', '--fn', 'bp', 'send', '127.0.0.1', '39483', '/tmp/fn-native-bp-app-1yageogz/request.adu', '/tmp/fn-native-bp-app-1yageogz/sender-spool', 'dtn://sender/', 'dtn://receiver/', '3600000', '2', '32', '1048576', '1', '-', '0']' timed out after 180 seconds
+
+======================================================================
+FAIL: test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_bp_app_native.py", line 254, in test_lost_receipt_restart_replays_without_second_acceptance
+    self.fail(receiver.stderr.read().decode("utf-8", "replace"))
+AssertionError
+
+----------------------------------------------------------------------
+Ran 4 tests in 559.627s
+
+FAILED (failures=1, errors=2)
+# rc=1 wall=559.7 end 2026-09-24T15:02:52Z

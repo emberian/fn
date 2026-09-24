@@ -1,0 +1,39 @@
+# module tests.test_native_recovery  start 2026-09-24T14:49:23Z  cwd /tank/fn/scratch/native-subsets-1a9dd747/tree
+# cmd: python3 -m unittest -v tests.test_native_recovery
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CORE_SHA256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=9b38ba45ed4ce31ca1997e3e4165873203e09d8e41fa176eb3fedbfee95741d0
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=5d42db2d8929ba256677ecb3bdfe957edc54176e0f5a1492b24376aa21ae1d9d
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+# env FN_NATIVE_LAUNCHER_SHA256=60e14e2afe8703574a9d74d89dc632a6c030a668fa261a74d92dd7589bb686d9
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-1a9dd747/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-1a9dd747/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_atomic_hybrid_article_without_enrollment_faults_and_retains_bytes (tests.test_native_recovery.NativeRecoveryFidelityTests.test_atomic_hybrid_article_without_enrollment_faults_and_retains_bytes)
+ACL2 emits kind-4 history whose missing kind-3 predecessor is fatal. ... ok
+test_every_host_staging_prefix_is_swept (tests.test_native_recovery.NativeRecoveryFidelityTests.test_every_host_staging_prefix_is_swept) ... ok
+test_missing_staging_is_a_current_native_fault (tests.test_native_recovery.NativeRecoveryFidelityTests.test_missing_staging_is_a_current_native_fault) ... ok
+test_orphans_beyond_one_observation_go_with_foreign_names_kept (tests.test_native_recovery.NativeRecoveryFidelityTests.test_orphans_beyond_one_observation_go_with_foreign_names_kept) ... ok
+test_over_limit_unrecognized_names_refuse_without_removing_them (tests.test_native_recovery.NativeRecoveryFidelityTests.test_over_limit_unrecognized_names_refuse_without_removing_them) ... ok
+test_post_unlink_eio_is_uncertain_then_a_new_process_recovers (tests.test_native_recovery.NativeRecoveryFidelityTests.test_post_unlink_eio_is_uncertain_then_a_new_process_recovers) ... ok
+test_recover_removes_only_acl2_stage_names_and_preserves_unknown_names (tests.test_native_recovery.NativeRecoveryFidelityTests.test_recover_removes_only_acl2_stage_names_and_preserves_unknown_names) ... ok
+test_sigkill_after_one_unlink_restarts_and_reconciles_remaining_stage (tests.test_native_recovery.NativeRecoveryFidelityTests.test_sigkill_after_one_unlink_restarts_and_reconciles_remaining_stage) ... ok
+test_sixty_five_allocation_orphans_are_swept_in_rounds (tests.test_native_recovery.NativeRecoveryFidelityTests.test_sixty_five_allocation_orphans_are_swept_in_rounds)
+Finding F2 of planning/evidence/campaign-dabebb84-2026-09-22.md. ... ok
+test_acquire_checks_staging_and_recovery_calls_the_acl2_sweep_subject (tests.test_native_recovery.NativeRecoverySourceMapTests.test_acquire_checks_staging_and_recovery_calls_the_acl2_sweep_subject) ... ok
+test_every_prefix_the_host_stages_under_is_an_acl2_staging_prefix (tests.test_native_recovery.NativeRecoverySourceMapTests.test_every_prefix_the_host_stages_under_is_an_acl2_staging_prefix)
+A stage kind added without a sweep entry would orphan like F2. ... ok
+test_missing_enrollment_fixture_is_acl2_encoded_and_nonempty (tests.test_native_recovery.NativeRecoverySourceMapTests.test_missing_enrollment_fixture_is_acl2_encoded_and_nonempty) ... ok
+test_sweep_rounds_collect_sixty_five_allocation_orphans (tests.test_native_recovery.StagingSweepDecisionTests.test_sweep_rounds_collect_sixty_five_allocation_orphans) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 11.967s
+
+OK
+# rc=0 wall=12.0 end 2026-09-24T14:49:35Z

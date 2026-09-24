@@ -1,0 +1,42 @@
+# module tests.test_native_storage_codec  start 2026-09-24T14:49:36Z  cwd /tank/fn/scratch/native-subsets-1a9dd747/tree
+# cmd: python3 -m unittest -v tests.test_native_storage_codec
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CORE_SHA256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=9b38ba45ed4ce31ca1997e3e4165873203e09d8e41fa176eb3fedbfee95741d0
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=5d42db2d8929ba256677ecb3bdfe957edc54176e0f5a1492b24376aa21ae1d9d
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+# env FN_NATIVE_LAUNCHER_SHA256=60e14e2afe8703574a9d74d89dc632a6c030a668fa261a74d92dd7589bb686d9
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-1a9dd747/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-1a9dd747/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_native_config_scan_is_bounded_and_acl2_bound (tests.test_native_storage_codec.NativeConfigNamespaceSourceTests.test_native_config_scan_is_bounded_and_acl2_bound) ... ok
+test_acl2_frontier_maximum_refuses_before_staging (tests.test_native_storage_codec.NativeStorageCodecTests.test_acl2_frontier_maximum_refuses_before_staging) ... ok
+test_injected_allocator_barrier_failure_consumes_the_id_after_recovery (tests.test_native_storage_codec.NativeStorageCodecTests.test_injected_allocator_barrier_failure_consumes_the_id_after_recovery) ... ok
+test_injected_record_barrier_failure_replays_visible_publication (tests.test_native_storage_codec.NativeStorageCodecTests.test_injected_record_barrier_failure_replays_visible_publication) ... ok
+test_legacy_json_is_retained_and_requires_offline_migration (tests.test_native_storage_codec.NativeStorageCodecTests.test_legacy_json_is_retained_and_requires_offline_migration) ... ok
+test_native_and_python_cross_open_identical_acl2_frames (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_and_python_cross_open_identical_acl2_frames) ... FAIL
+test_native_config_namespace_refuses_mismatched_name_and_symlink (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_config_namespace_refuses_mismatched_name_and_symlink) ... ok
+test_native_namespace_codec_binds_filename_to_decoded_record_sequence (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_namespace_codec_binds_filename_to_decoded_record_sequence) ... ok
+test_native_publication_cut_stays_uncertain_until_recovery (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_publication_cut_stays_uncertain_until_recovery) ... ok
+test_native_refuses_truncated_or_malformed_metadata (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_refuses_truncated_or_malformed_metadata) ... ok
+test_native_scan_uses_bounded_acl2_transaction_observation (tests.test_native_storage_codec.NativeTransactionNamespaceSourceTests.test_native_scan_uses_bounded_acl2_transaction_observation) ... ok
+
+======================================================================
+FAIL: test_native_and_python_cross_open_identical_acl2_frames (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_and_python_cross_open_identical_acl2_frames)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_native_storage_codec.py", line 134, in test_native_and_python_cross_open_identical_acl2_frames
+    self.assertEqual(
+AssertionError: b'FNS[357 chars]G\xf5%\xce?a\xf8\xb6I\xb4j\x03\x0b\x8a"\xf9a\x[42 chars]x12*' != b'FNS[357 chars]G\xf5!wOW\xb3\x03y\xdf\xd8\xf4X\xb7\xc3\n\r\x0[50 chars]\x80'
+
+----------------------------------------------------------------------
+Ran 11 tests in 52.516s
+
+FAILED (failures=1)
+# rc=1 wall=52.6 end 2026-09-24T14:50:28Z

@@ -1,0 +1,16 @@
+test_authored_carrier_survives_native_peering_and_receiver_restart (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_authored_carrier_survives_native_peering_and_receiver_restart)
+Real owner/feed/receiver path; portable verification is independent. ... FAIL
+
+======================================================================
+FAIL: test_authored_carrier_survives_native_peering_and_receiver_restart (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_authored_carrier_survives_native_peering_and_receiver_restart)
+Real owner/feed/receiver path; portable verification is independent.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_native_hybrid_author.py", line 446, in test_authored_carrier_survives_native_peering_and_receiver_restart
+    self.assertIsNotNone(received, "native feed did not deliver authored article")
+AssertionError: unexpectedly None : native feed did not deliver authored article
+
+----------------------------------------------------------------------
+Ran 1 test in 45.995s
+
+FAILED (failures=1)
