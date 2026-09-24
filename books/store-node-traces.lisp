@@ -1,6 +1,7 @@
 ; fn: inductive mixed traces of the actual live node/file composition.
 (in-package "ACL2")
 (include-book "store-node-invariants")
+(include-book "topic-history-identity-disjoint")
 (include-book "store-files-traces")
 (include-book "records-seam")
 (local (include-book "arithmetic/top" :dir :system))
@@ -247,6 +248,9 @@
                 (eq (car (fn-cpe-projection-step
                           (fn-sn-consumer s) record
                           (fn-sn-identity-next s))) :ok))
+               ((fn-th-topic-eventp record)
+                (eq (fn-th-at 0
+                             (fn-th-prefix-step (fn-sn-topic s) record)) :ok))
                (t (equal (fn-stxk-context-kind
                           (fn-replay-identity-step
                            (fn-sn-identity-context s) record)) :ok)))
@@ -599,6 +603,20 @@
                              (:d fn-record-payloadp)
                              (:d fn-record-groups-validp)
                              (:d fn-record-metadata-bytes-p))))))
+
+(local
+ (defthm fn-snt-topic-event-is-not-identity-event
+   (implies (fn-th-topic-eventp event)
+            (and (not (fn-stxe-p event))
+                 (not (fn-stxk-p event))
+                 (not (fn-stxa-p event))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-th-topic-eventp fn-stxe-p fn-stxk-p fn-stxa-p
+                   fn-stxe-shapep fn-stxk-shapep fn-stxa-shapep
+                   fn-stxe-sequence fn-stxk-sequence fn-stxa-sequence
+                   fn-th-local-admin-eventp fn-th-at)
+                 (fn-th-source-id-p fn-th-auth-ref-p
+                  fn-th-exact-octets-p))))))
 
 (local
  (defthm fn-snt-store-event-fields-of-an-article-record
@@ -996,10 +1014,13 @@
                      fn-snt-completion-linkp
                      fn-record-shape-vocabulary fn-record-record-vocabulary
                      fn-store-event-p fn-store-retention-event-p
-                     fn-stxe-p fn-stxk-p fn-stxa-p)))
+                     fn-stxe-p fn-stxk-p fn-stxa-p fn-th-topic-eventp)))
           ; Subgoal 1 is the case in which the gate above holds.
           ("Subgoal 1"
     :use (fn-sn-prepare-identity-preserves-state
+          fn-th-topic-event-is-not-stxe
+          fn-th-topic-event-is-not-stxk
+          fn-th-topic-event-is-not-stxa
           (:instance fn-snt-an-article-record-is-no-other-store-event
             (record event))
           (:instance fn-snt-candidate-is-frontier-predecessor
@@ -1037,9 +1058,53 @@
                      fn-snt-completion-linkp
                      fn-record-shape-vocabulary fn-record-record-vocabulary
                      fn-store-event-p fn-store-retention-event-p
-                     fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp)))
+                     fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                     fn-th-topic-eventp fn-th-prefix-step)))
           ("Subgoal 1"
     :use (fn-sn-prepare-consumer-preserves-state
+          fn-snt-topic-event-is-not-consumer-event
+          (:instance fn-snt-an-article-record-is-no-other-store-event
+            (record event))
+          (:instance fn-snt-candidate-is-frontier-predecessor
+            (record event)
+            (records (fn-sf-records (fn-sn-files s)))
+            (frontier (fn-sf-frontier (fn-sn-files s))))
+          (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
+          (:instance fn-snt-deferred-preparation-outcome
+            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
+            (history (fn-sf-records (fn-sn-files s)))
+            (txid (+ -1 (fn-sf-frontier (fn-sn-files s)))))))))
+
+(defthm fn-snt-prepare-topic-preserves-relation
+  (implies (fn-snt-relation s)
+           (fn-snt-relation (fn-sn-prepare-topic s event)))
+  :hints (("Goal"
+    :cases ((and (fn-sn-statep s)
+                 (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                 (fn-th-topic-eventp event)
+                 (eq (fn-th-at 0 (fn-th-prefix-step (fn-sn-topic s) event)) :ok)
+                 (consp (fn-replay-apply-record (fn-sn-node s) event))
+                 (equal (fn-sf-phase (fn-sf-prepare-record
+                                      (fn-sn-files s) event
+                                      (fn-sn-groups s) (fn-sn-capacity s)))
+                        :record-staged)))
+    :in-theory (e/d (fn-sf-prepare-record fn-sn-prepare-topic)
+                    (fn-sn-statep fn-sn-record-bindsp fn-sf-history-recoverablep
+                     fn-sn-completion-enabledp fn-sn-completion-record
+                     fn-sf-recover fn-sf-record-listp
+                     fn-replay-apply-record fn-replay-apply-retention-event
+                     fn-replay-apply-identity-neutral fn-replay-composite-record
+                     fn-th-prefix-step
+                     fn-snt-completion-linkp
+                     fn-record-shape-vocabulary fn-record-record-vocabulary
+                     fn-store-event-p fn-store-retention-event-p
+                     fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                     fn-th-topic-eventp fn-th-local-admin-eventp)))
+          ("Subgoal 1"
+    :use (fn-sn-prepare-topic-preserves-state
+          fn-snt-topic-event-is-not-retention-event
+          fn-snt-topic-event-is-not-consumer-event
+          fn-snt-topic-event-is-not-identity-event
           (:instance fn-snt-an-article-record-is-no-other-store-event
             (record event))
           (:instance fn-snt-candidate-is-frontier-predecessor
@@ -1267,7 +1332,7 @@
                             fn-record-shape-vocabulary
                             fn-record-record-vocabulary
                             fn-store-event-p fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p fn-th-topic-eventp
                             fn-replay-apply-record
                             fn-replay-apply-retention-event
                             fn-replay-apply-identity-neutral
@@ -1328,7 +1393,7 @@
                         fn-snt-completion-linkp
                      fn-record-shape-vocabulary
                         fn-store-event-p fn-store-retention-event-p
-                        fn-stxe-p fn-stxk-p fn-stxa-p
+                        fn-stxe-p fn-stxk-p fn-stxa-p fn-th-topic-eventp
                         fn-replay-apply-record
                         fn-replay-apply-retention-event
                         fn-replay-apply-identity-neutral
