@@ -1093,11 +1093,21 @@ on them are named in `planning/now.md`.
   Combined closures at higher job counts are recorded but do not ratchet.
 
 Adopted defaults ember did not overrule, standing until said otherwise:
-P5's sentence (a fault inside a shared owner action stops the service with
-exit 4, by design); D02's scope covering a served POST (the 2026-09-24 entry
-above); the kind-8 retry default with a duplicate re-offer acknowledged
-rather than refused; the five specific-purpose group names (`to.*`,
-`control.*`, `all`, `ctl`, `junk`) left allowed at init and create.
+P5's sentence, restated with its fault domain (2026-09-24 evening, after
+gpt-6's direction review): a demonstrably connection-local fault costs that
+connection; a fault inside a shared owner action fences the store and stops
+the service (exit 4) because the shared authority is uncertain (specs/host.md
+HST-005); D02's scope covering a served POST (the 2026-09-24 entry above);
+the kind-8 retry default with a duplicate re-offer acknowledged rather than
+refused, the retry count derived from the durable kind-8 rows so a restart
+cannot reset it, a stranded row reported and held with no automatic resume
+(an operator release verb is open), and on the sender a TCPCL XFER_REFUSE
+reason 1 (Completed) settled as `:sent` while every other reason is kept as
+its own kind-9 result (spec bp-node-machine 4.3.1); RFC 5536 s3.1.4's
+specific-purpose group names, by its patterns (first or only component `to`
+or `control`, any component `all` or `ctl`, exactly `junk`), admitted at init
+and create as an explicit local-agreement profile that confers no authority
+(docs/operator.md, Add a group).
 
 ### 2026-09-24: a store identity on the wire (candidate, not implemented; pending ember)
 

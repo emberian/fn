@@ -68,10 +68,16 @@ completion distinctly. Recovery owns reconciliation after uncertainty; socket
 disconnect does not establish storage rollback. Adapter/platform validation is
 required in addition to ACL2 proofs.
 
-HST-005: a fault in the host costs the connection that caused it and nothing
-else. An unexpected exception while serving one connection must not end the
-process, because a news server faces untrusted peers and one peer's input
-would then be a denial of service against every other. The host decides only
+HST-005: the property names its fault domain. A demonstrably
+connection-local fault costs that connection; a fault inside a shared owner action fences the store and
+stops the service (exit 4) because the shared authority is uncertain. An
+unexpected exception while serving one connection, outside the shared owner
+action, must not end the process, because a news server faces untrusted
+peers and one peer's input would then be a denial of service against every
+other. Conversely the host does not keep mutating shared state to honour
+the connection-local half: an indeterminate persistence observation fences
+at exit 3 and any other failure inside the serialized owner action at exit
+4, whichever connection it arose on. The host decides only
 whether it still trusts that socket; the reply, the scope and everything the
 state owner forgets are the core's one fault transition, which closes the
 connection, clears the submission it had in flight and the transaction it
