@@ -310,6 +310,23 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(refs[-3:], ids[-3:])
         self.assertEqual(fn_web.reply_references("", "<p@x>"), "<p@x>")
 
+    def test_unread_is_exact_with_the_nodes_list_counts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            marks = fn_web.ReadMarks(Path(temporary) / "m.json", "127.0.0.1:1119", "ember")
+            marks.mark("fn.agents", 3, "<three@x>")
+            marks.mark("fn.agents", 5, "<five@x>")
+            # No count (a node without LIST COUNTS): the span, an upper bound.
+            self.assertEqual(marks.unread({"group": "fn.agents", "first": 1, "last": 10,
+                                           "count": None}), (8, False))
+            # The count fills the span: every number holds an article.
+            self.assertEqual(marks.unread({"group": "fn.agents", "first": 1, "last": 10,
+                                           "count": 10}), (8, True))
+            # Gaps: the node's LISTGROUP numbers decide; 5 was removed.
+            self.assertEqual(marks.unread({"group": "fn.agents", "first": 1, "last": 10,
+                                           "count": 4, "numbers": [1, 3, 7, 10]}), (3, True))
+            self.assertEqual(marks.unread({"group": "fn.empty", "first": 1, "last": 0,
+                                           "count": 0}), (0, True))
+
     def test_read_marks_are_local_per_principal_and_refuse_a_foreign_file(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "marks" / "m.json"

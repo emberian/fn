@@ -542,6 +542,25 @@ class NativeProtectedWebClientTests(unittest.TestCase):
              "id": stored["message_id"]}))
         self.assertIn("Nothing newer", last[2])
 
+        # The 409 page's lookup carries the group, and the node answers the
+        # article's local number there (RFC 3977 section 6.2.1.2), so the
+        # lookup is a resume point; without a group it has none.
+        self.assertIn("/find?" + html.escape(urlencode(
+            {"id": reply_article["message_id"], "group": "fn.agents"})), wrong[2])
+        found = self.http(server, "GET", "/find?" + urlencode(
+            {"id": reply_article["message_id"], "group": "fn.agents"}))
+        self.assertEqual(found[0], 200)
+        self.assertIn("Local #%d in fn.agents" % reply_number, found[2])
+        self.assertIn("/resume?" + html.escape(urlencode(
+            {"group": "fn.agents", "number": reply_number,
+             "id": reply_article["message_id"]})), found[2])
+        bare = self.http(server, "GET", "/find?" + urlencode(
+            {"id": root_article["message_id"]}))
+        self.assertEqual(bare[0], 200)
+        self.assertNotIn("Local #", bare[2])
+        # LIST COUNTS: the group card says how many articles the node holds.
+        self.assertIn("%d articles" % high, self.http(server, "GET", "/")[2])
+
         marked = self.http(server, "POST", "/mark", {"group": "fn.agents",
                                                      "through": str(high)})
         self.assertEqual(marked[0], 200)

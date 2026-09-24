@@ -66,18 +66,23 @@ small grey text says who you are and where: `ember at 192.168.50.39:1119 ·
 TLSv1.3, certificate verified`. On the right is "Local outbox" when `--outbox`
 is set, otherwise "local reader".
 
-**Groups (home).** One card per group from `LIST ACTIVE`. The group name is a
+**Groups (home).** One card per group from `LIST COUNTS` (RFC 6048 §2.2;
+`LIST ACTIVE` on a node that does not answer it). The group name is a
 link; beside it is a pill, "3 unread" or "nothing unread". Under it, "Local
-article numbers 1–4 · posting allowed" is the node's own water marks and
-status. If you have opened something in the group, a third line reads "Resume
+article numbers 1–4 · 4 articles · posting allowed" is the node's own water
+marks, its count and status. If you have opened something in the group, a third line reads "Resume
 from local #1 `<message-id>` · continue after it". At the bottom a collapsed
 "Resume from a (group, local number, Message-ID)" section holds a three-field
 form.
 
-- The unread count is the number of local article numbers in the node's
-  current range that this client has not opened. It is an upper bound: `LIST
-  ACTIVE` gives water marks, not a count, so a removed number inside the range
-  still counts until it is opened.
+- The unread count is the number of articles the node holds in the group
+  that this client has not opened, and it is exact: the node's count is the
+  length of its LISTGROUP list (`fn-nntp-group-count-is-listgroup-length`,
+  `books/nntp-list-counts.lisp`). When the count fills the water-mark range
+  every number in it holds an article; when it does not, the client asks the
+  node for that group's LISTGROUP numbers. Against a node without `LIST
+  COUNTS` the pill says "at most N unread": water marks alone are an upper
+  bound.
 - Read marks live in `~/.fn-web/<host>_<port>_<user>.json`, one file per node
   and principal, because local article numbers belong to one node. They are
   not an fn record, not a processing acknowledgement, and not the consumer
@@ -163,8 +168,13 @@ the check for a store replaced under the same address, which the command-line
 watermark cannot make.
 
 **Lookup by Message-ID.** `/find?id=<M>` shows the article if the node serves
-it. `ARTICLE <M>` does not report a local number, so that view has no resume
-triple and no verdict (`HDR :fn-verified` needs a group and number); it says so.
+it. With `&group=<G>` the client selects the group first, and the node answers
+the article's local number there (RFC 3977 §6.2.1.2, `fn-nntp-msgid-local-number`),
+or 0 when the article is not in it; a positive number is a resume point, and
+the page links "continue after it" and "open the group from here". The 409
+"not the same article" page links the lookup with its group. Without a group
+the node answers 0, so that view has no resume triple and no verdict
+(`HDR :fn-verified` needs a group and number); it says so.
 
 ## What it does not do
 

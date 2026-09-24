@@ -145,7 +145,26 @@ class Backend:
             client.close()
 
     def groups(self):
-        return self.using(lambda client: client.groups())
+        """The group list with exact counts when the node answers LIST COUNTS.
+
+        Each row carries `count` (RFC 6048 section 2.2, the node's count of
+        the articles it holds in the group).  Where the count is smaller than
+        the water-mark span, the group has gaps, and the row also carries the
+        node's LISTGROUP numbers so unread counts are exact there too.  A node
+        without LIST COUNTS gets LIST ACTIVE and rows with `count` None.
+        """
+        def query(client):
+            counted = client.counts()
+            if counted.word != fn_client.DONE:
+                return client.groups()
+            for row in counted.data["groups"]:
+                if row["count"] and row["count"] != fn_client.span(row["first"], row["last"]):
+                    listed = client.listgroup(row["group"])
+                    if listed.word != fn_client.DONE:
+                        return listed
+                    row["numbers"] = listed.data["numbers"]
+            return counted
+        return self.using(query)
 
     def recent(self, group: str, start: Optional[int] = None,
                end: Optional[int] = None):
@@ -688,11 +707,29 @@ class ReadMarks:
             entry = self.groups.get(group)
             return bool(entry) and (number <= entry["through"] or number in entry["read"])
 
+    def unread(self, row: dict):
+        """(unread, exact) for one group row of Backend.groups.
+
+        With the node's LIST COUNTS count the answer is exact: when the count
+        fills the water-mark span every number in it holds an article, and
+        otherwise the row carries the node's LISTGROUP numbers.  A node
+        without LIST COUNTS leaves only the span, an upper bound.
+        """
+        low, high, count = row.get("first"), row.get("last"), row.get("count")
+        if count is None:
+            return self.unread_upper(row["group"], low, high), False
+        if count == 0:
+            return 0, True
+        numbers = row.get("numbers")
+        if numbers is None:
+            return self.unread_upper(row["group"], low, high), True
+        return sum(1 for n in set(numbers) if not self.is_read(row["group"], n)), True
+
     def unread_upper(self, group: str, low, high) -> int:
         """Number slots in the node's current low..high this principal has not opened.
 
-        An upper bound: LIST ACTIVE gives water marks, not a count, so a
-        removed number inside the range still counts until it is opened.
+        Exact when every number in the span holds an article (the node's
+        LIST COUNTS count equals the span); otherwise an upper bound.
         """
         if low is None or high is None or high < low:
             return 0
@@ -865,6 +902,8 @@ def group_summary(row: dict) -> str:
     first, last = row["first"], row["last"]
     address = ("No local articles yet" if first is None or last is None or last < first else
                "Local article numbers %s–%s" % (first, last))
+    if row.get("count") is not None:
+        address += " · %d article%s" % (row["count"], "" if row["count"] == 1 else "s")
     policy = {"y": "posting allowed", "n": "read only", "m": "moderated"}.get(
         row["status"], "status " + row["status"])
     return address + " · " + policy
@@ -1151,13 +1190,14 @@ class Handler(BaseHTTPRequestHandler):
                 marks = self.server.marks
                 cards = []
                 for row in result.data["groups"]:
-                    unread = marks.unread_upper(row["group"], row["first"], row["last"])
+                    unread, exact = marks.unread(row)
                     last = marks.last(row["group"])
                     cards.append(
                         "<article><h2><a href='" + e(href("/g", name=row["group"])) +
                         "'>" + e(row["group"]) + "</a> <span class='badge" +
                         (" unread" if unread else "") + "'>" +
-                        e("%d unread" % unread if unread else "nothing unread") +
+                        e(("%d unread" if exact else "at most %d unread") % unread
+                          if unread else "nothing unread") +
                         "</span></h2><p class='meta'>" + e(group_summary(row)) + "</p>" +
                         ("<p class='meta resume'>Resume from local #" + e(last["number"]) +
                          " <code>" + e(last["message_id"]) + "</code> · <a href='" +
@@ -1334,12 +1374,17 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError("invalid submission identifier")
                 self.submission_result(token, settle=(path == "/settle"))
             elif path == "/find":
-                msgid = values.get("id", "")
+                msgid, within = values.get("id", ""), values.get("group", "")
                 if not (len(msgid) <= 250 and msgid.startswith("<") and msgid.endswith(">")
                         and "\r" not in msgid and "\n" not in msgid):
                     raise ValueError("invalid Message-ID")
+                if within and not group_token(within):
+                    raise ValueError("invalid group name")
+                # With a group, the node selects it first and answers the
+                # article's local number there, or 0 when it is not in it
+                # (RFC 3977 section 6.2.1.2): that number is a resume point.
                 result = self.run_backend(lambda: self.server.backend.using(
-                    lambda client: client.show(msgid, "")))
+                    lambda client: client.show(msgid, within)))
                 if result is None:
                     return
                 if result.word != fn_client.DONE:
@@ -1347,11 +1392,26 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 one = result.data["articles"][0]
                 groups = (fn_client.first(one["headers"], "newsgroups") or "").split(",")
+                found = one["number"] if within else None
+                if found:
+                    where = ("<p class='meta resume'>Local #" + e(found) + " in " + e(within) +
+                             " · <a href='" + e(href("/resume", group=within, number=found,
+                                                    id=msgid)) +
+                             "'>continue after it</a> · <a href='" +
+                             e(href("/g", name=within, start=found,
+                                    end=min(MAX_ARTICLE_NUMBER, found + MAX_RECENT - 1))) +
+                             "'>open the group from here</a></p>")
+                elif within:
+                    where = ("<p class='meta'>The node does not carry it in " + e(within) +
+                             " (it answered local number 0).</p>")
+                else:
+                    where = ""
+                shown = within if found else (groups[0].strip() if group_token(
+                    groups[0].strip()) else "")
                 self.page(fn_client.first(one["headers"], "subject") or "Article",
                           "<p><span class='badge done'>served</span> The node serves "
-                          "<code>" + e(msgid) + "</code>.</p>" +
-                          self.article_html(groups[0].strip() if group_token(
-                              groups[0].strip()) else "", None, one, None, False))
+                          "<code>" + e(msgid) + "</code>.</p>" + where +
+                          self.article_html(shown, found or None, one, None, False))
             elif path == "/resume":
                 group, raw, msgid = (values.get("group", ""), values.get("number", ""),
                                      values.get("id", ""))
@@ -1387,7 +1447,7 @@ class Handler(BaseHTTPRequestHandler):
                           e(group) + " is not <code>" + e(msgid) + "</code></h2><p>Now " +
                           now + ". The article was removed, or this node's local numbering "
                           "is not the one the resume point was taken from. The client does not "
-                          "guess a new position.</p><p><a href='" + e(href("/find", id=msgid)) +
+                          "guess a new position.</p><p><a href='" + e(href("/find", id=msgid, group=group)) +
                           "'>Look up the Message-ID</a> · <a href='" +
                           e(href("/g", name=group)) + "'>Open the newest articles</a></p>"
                           "</article>", 409)

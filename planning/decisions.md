@@ -1055,6 +1055,7 @@ unenrolled signature should instead be accepted as unverified is ember's
 question, listed with the other P8 decisions on the scoreboard. Evidence:
 [p8-signed-post](evidence/p8-signed-post-2026-09-24.md).
 
+<<<<<<< HEAD
 ### 2026-09-24: ember's answers to the day's open questions (~22:30 UTC)
 
 Asked by the coordinator with the recommended option first; ember chose the
@@ -1095,3 +1096,42 @@ exit 4, by design); D02's scope covering a served POST (the 2026-09-24 entry
 above); the kind-8 retry default with a duplicate re-offer acknowledged
 rather than refused; the five specific-purpose group names (`to.*`,
 `control.*`, `all`, `ctl`, `junk`) left allowed at init and create.
+=======
+### 2026-09-24: a store identity on the wire (candidate, not implemented; pending ember)
+
+The M6 web client keeps read marks and resume points per (node, group,
+local number). A node whose store is replaced (a fresh `store init` behind
+the same host, port and configuration) restarts its local numbers at 1, and
+the client's marks then name different articles. The m6-list-counts lane
+was asked for the smallest honest wire value that lets a client detect it,
+to be implemented only if it is a rendered value of an existing ACL2 state.
+
+**No existing ACL2 value identifies a store instance.** What the Store holds
+(`fn-sn-state`: groups, capacity, keyring snapshots, the statement identity
+sequence, the acceptance state) is a function of the configuration and of
+what was accepted, so two stores initialised from one configuration and
+serving the same first posts are indistinguishable by it. The Path identity
+names the node, not the store. A digest of the initial configuration record
+is equal across a re-initialisation with the same configuration, which is
+exactly the replacement to detect. So nothing was added to the wire.
+
+**What already detects it, now.** A resume point is (group, local number,
+Message-ID) and `/resume` checks the Message-ID the node serves at that
+number (409 "not the same article"). Since this lane, `ARTICLE`/`STAT`
+`<msgid>` after `GROUP` answer the article's local number there (RFC 3977
+§6.2.1.2), so a client can check any remembered (group, number, Message-ID)
+triple in one command. That detects a replaced store whenever the client
+remembers one Message-ID per group, which the web client already does (the
+resume point), without a new wire value.
+
+**Candidate (for ember):** a store incarnation created by ACL2 at `store
+init` from a host-supplied random observation, persisted in the Store's
+first record, carried in `fn-sn-state`, and rendered by ACL2 as a private
+capability label (RFC 3977 §3.3.1 reserves labels beginning with `X` for
+private use), for example `XFN-STORE <hex>`. Cost: a new Store record field
+and its codec, recovery and upgrade proofs (the profile upgrade must carry
+it), and an assumption that the observation is unpredictable (`A-*`, an
+`encapsulate` in `books/assumptions.lisp`). Alternative: rely on the
+Message-ID check above and add nothing. The lane's recommendation is the
+alternative until a client that keeps marks without a Message-ID exists.
+>>>>>>> lane/m6-list-counts

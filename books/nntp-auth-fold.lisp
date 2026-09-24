@@ -138,6 +138,7 @@
                   fn-nntp-group-result fn-nntp-listgroup-command
                   fn-nntp-listgroup-result
                   fn-nntp-list-command fn-nntp-list-response
+                  fn-nntp-list-counts-command fn-nntp-list-counts
                   fn-nntp-list-active fn-nntp-list-active-times
                   fn-nntp-list-active-or-newsgroups
                   fn-nntp-list-newsgroups
@@ -160,6 +161,16 @@
                 (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
                  fn-nntp-keywordp fn-nntp-stuff-lines
                  fn-nntp-crlf fn-nntp-string-octets)))))
+
+(defthm fn-auth-fold-gidx-list-counts-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-gidx-list-counts-command session archive buckets args))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-gidx-list-counts-command)
+                           (fn-gidx-counts-lines fn-post-offeredp
+                            fn-nntp-filter-groups-by-wildmat fn-wildmat-parse
+                            fn-nntp-single fn-nntp-multi)))))
 
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp

@@ -3,7 +3,7 @@
 Status: the selected reader profile is implemented and advertised, and POST is
 advertised exactly on the connections that may use it. `books/nntp.lisp` always
 advertises `VERSION 2`, `READER`, `OVER MSGID`, `HDR`, `NEWNEWS` and
-`LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT`. Every clause RFC 3977
+`LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT`. Every clause RFC 3977
 appendix B assigns to those labels is marked proved or tested in
 [the clause matrix](nntp-audit.md#the-reader-clause-matrix); none is open.
 `POST` (RFC 3977 §5.2.2) is advertised when, and only when, this connection's

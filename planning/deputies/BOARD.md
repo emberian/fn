@@ -1763,3 +1763,7 @@ CLAIM human-durable-outbox -> everyone: `WEB-001` and `SCN-036` name the
 separate opt-in local human web submission outbox contract and its restart,
 duplicate, lost-reply and persistence-fault scenario. These IDs do not change
 the native node's POST semantics or fn retention obligations.
+
+CLAIM m6-list-counts -> everyone: identifier `PRF-073` is taken, for LIST
+COUNTS over the pinned buckets and the numbered Message-ID answer (RFC 6048
+section 2.2, RFC 3977 section 6.2.1.2).

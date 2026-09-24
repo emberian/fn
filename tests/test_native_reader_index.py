@@ -92,7 +92,7 @@ class NativeReaderIndexTest(unittest.TestCase):
         status = stream.readline(4096)
         self.assertTrue(status, "missing NNTP reply to " + line)
         rows = []
-        if multiline and status[:1] == b"2":
+        if multiline and status[:1] in (b"1", b"2"):
             while True:
                 row = stream.readline(32769)
                 self.assertTrue(row, "unterminated reply to " + line)
@@ -263,6 +263,57 @@ class NativeReaderIndexTest(unittest.TestCase):
                          [b"1\r\n", b"2\r\n"])
         self.assertEqual(self.listgroup(recovered, "fn.live", "1-9")[1],
                          [b"1\r\n"])
+        recovered[1].close()
+        recovered[0].close()
+        self.stop_owner(restarted)
+
+    def test_list_counts_and_numbered_msgid_lookup(self):
+        # RFC 6048 section 2.2 LIST COUNTS from the pinned buckets, and RFC
+        # 3977 section 6.2.1.2's number for a Message-ID retrieval: the
+        # article's number in the selected group, 0 without one or when the
+        # article is not in it (books/nntp-list-counts.lisp).
+        self.run_native("operator", self.config, "group", "create", "fn.live")
+        owner = self.start_owner()
+        one, two = "<counts-one@example.invalid>", "<counts-two@example.invalid>"
+        self.post(one, 201)
+        self.post(two, 202, ("fn.test", "fn.live"))
+        reader = self.reader()
+        status, caps = self.command(reader, "CAPABILITIES", True)
+        self.assertTrue(status.startswith(b"101"), status)
+        self.assertIn(b"LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT\r\n",
+                      caps)
+        status, rows = self.command(reader, "LIST COUNTS", True)
+        self.assertEqual(status, b"215 list of newsgroups follows\r\n")
+        self.assertEqual(sorted(rows), [b"fn.live 1 1 1 y\r\n", b"fn.test 2 1 2 y\r\n"])
+        status, rows = self.command(reader, "list counts fn.l*", True)
+        self.assertEqual(rows, [b"fn.live 1 1 1 y\r\n"])
+        self.assertEqual(self.command(reader, "LIST COUNTS a b")[0],
+                         b"501 syntax error\r\n")
+
+        self.assertEqual(self.command(reader, "STAT " + two)[0],
+                         ("223 0 %s retrieved\r\n" % two).encode("ascii"))
+        self.assertTrue(self.command(reader, "GROUP fn.live")[0].startswith(b"211 1 1 1 "))
+        self.assertEqual(self.command(reader, "STAT " + two)[0],
+                         ("223 1 %s retrieved\r\n" % two).encode("ascii"))
+        self.assertEqual(self.command(reader, "STAT " + one)[0],
+                         ("223 0 %s retrieved\r\n" % one).encode("ascii"))
+        self.assertTrue(self.command(reader, "GROUP fn.test")[0].startswith(b"211 2 1 2 "))
+        status, _ = self.command(reader, "ARTICLE " + two, True)
+        self.assertEqual(status, ("220 2 %s article follows\r\n" % two).encode("ascii"))
+        # The number names the same article in a second command (section
+        # 6.2.1.2), and the Message-ID form did not move the cursor.
+        self.assertEqual(self.command(reader, "STAT")[0],
+                         ("223 1 %s retrieved\r\n" % one).encode("ascii"))
+        self.assertEqual(self.command(reader, "STAT 2")[0],
+                         ("223 2 %s retrieved\r\n" % two).encode("ascii"))
+        reader[1].close()
+        reader[0].close()
+        self.stop_owner(owner)
+
+        restarted = self.start_owner()
+        recovered = self.reader()
+        self.assertEqual(sorted(self.command(recovered, "LIST COUNTS", True)[1]),
+                         [b"fn.live 1 1 1 y\r\n", b"fn.test 2 1 2 y\r\n"])
         recovered[1].close()
         recovered[0].close()
         self.stop_owner(restarted)
