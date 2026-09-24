@@ -32,6 +32,7 @@
 (include-book "../books/config-owner-publish")
 (include-book "../books/owner-tls-prefix")
 (include-book "../books/owner-config-observe")
+(include-book "../books/owner-served-carried")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
@@ -1302,12 +1303,17 @@
 ; (fn-ocfg-read-tls-prefix-is-full-read); fn-owner-consumed names the exact
 ; physical prefix.  The native adapter leaves any suffix for the TLS record
 ; layer instead of parsing STARTTLS in raw Lisp.
+; The call is fn-scar-ocfg-read-tls-prefix (books/owner-served-carried.lisp),
+; which equals fn-ocfg-read-tls-prefix under the configured owner's relation
+; (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation): it takes the
+; store node's fn-node-statep from that relation instead of re-evaluating it,
+; O(N^2) in the archive, four times per read.
 (defun fn-owner-chunk (id octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((result (fn-ocfg-read-tls-prefix
+      (let* ((result (fn-scar-ocfg-read-tls-prefix
                       (fn-owner-ocfg state) id octets))
              (state (fn-owner-install-ocfg
                      (fn-own-tls-result-owner result) state))
