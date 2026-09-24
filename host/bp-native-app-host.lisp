@@ -68,6 +68,15 @@
 (defun fn-bpapp-receive-source (r) (declare (xargs :guard t :mode :program)) (nth 4 r))
 (defun fn-bpapp-receive-destination (r) (declare (xargs :guard t :mode :program)) (nth 5 r))
 
+; REASON is nil for a ready plan and the refusal's keyword otherwise.  It is
+; left in `fn-owner-app-refusal-reason' for fn-owner-app-refusal-log, which
+; renders the receiver's line (books/owner-log.lisp
+; fn-olog-bp-app-refusal-line).
+(defun fn-owner-app-plan-answer (reason state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-app-refusal-reason reason state)))
+    (value (if reason :refused :ready))))
+
 (defun fn-owner-app-plan-install-legacy
   (inbound-id request-octets node-id bundle-identity state)
   (declare (xargs :stobjs state :mode :program))
@@ -99,17 +108,20 @@
                               (and (equal (car fields) :ok) (caddr fields)) state))
          (state (f-put-global 'fn-owner-app-article
                               (and request (fn-bpa-request-article request)) state)))
-    (value
-     (cond ((not request) :refused)
-           ((not (equal (car fields) :ok)) :refused)
-           ((not (fn-bpaj-request-subjectp request)) :refused)
+    (fn-owner-app-plan-answer
+     (cond ((not request) :request)
+           ((not (equal (car fields) :ok)) :article-fields)
+           ((not (fn-bpaj-request-subjectp request)) :request-subject)
            ((not (equal (fn-bpa-request-source-eid request)
-                        (f-get-global 'fn-owner-app-bundle-source state))) :refused)
+                        (f-get-global 'fn-owner-app-bundle-source state)))
+            :bundle-source)
            ((not (equal (fn-bpa-request-destination-eid request)
-                        (f-get-global 'fn-owner-app-bundle-destination state))) :refused)
-           ((not evidence) :refused)
-           ((not planned-result) :refused)
-           (t :ready)))))
+                        (f-get-global 'fn-owner-app-bundle-destination state)))
+            :bundle-destination)
+           ((not evidence) :provenance)
+           ((not planned-result) :store-lookup)
+           (t nil))
+     state)))
 
 (defun fn-owner-app-plan-install
   (inbound-id request-octets node-id bundle-identity ingress source-eid state)
@@ -143,7 +155,8 @@
      (oldp
       (fn-owner-app-plan-install-legacy
        inbound-id request-octets node-id bundle-identity state))
-     ((not (member-equal status '(:new :intent))) (value :refused))
+     ((not (member-equal status '(:new :intent)))
+      (fn-owner-app-plan-answer :request-status state))
      (t
       (let* ((request (fn-bpaj-request request-octets))
              (cfg (fn-owner-config state))
@@ -211,13 +224,24 @@
                                   (and plan (fn-bpaj-nth 8 plan)) state))
              (state (f-put-global 'fn-owner-app-stored-subject
                                   (and plan (fn-bpaj-nth 9 plan)) state)))
-        (value (if (and (or freshp retryp)
-                        (equal (fn-bpa-request-source-eid request)
-                               (f-get-global 'fn-owner-app-bundle-source state))
-                        (equal (fn-bpa-request-destination-eid request)
-                               (f-get-global 'fn-owner-app-bundle-destination
-                                             state)))
-                   :ready :refused)))))))
+        ; The planner's own refusal comes first: fn-bpaj-transit-plan's
+        ; (:refused :no-principal) or (:refused :request), or the deferral
+        ; reason of a (:busy reason) plan, which this install still answers
+        ; :refused.
+        (fn-owner-app-plan-answer
+         (cond ((not request) :request)
+               ((member-equal (car plan) '(:refused :busy))
+                (or (fn-bpaj-nth 1 plan) (car plan)))
+               ((not (or freshp retryp)) :intent)
+               ((not (equal (fn-bpa-request-source-eid request)
+                            (f-get-global 'fn-owner-app-bundle-source state)))
+                :bundle-source)
+               ((not (equal (fn-bpa-request-destination-eid request)
+                            (f-get-global 'fn-owner-app-bundle-destination
+                                          state)))
+                :bundle-destination)
+               (t nil))
+         state))))))
 
 (defun fn-owner-app-plan
   (inbound-id request-octets node-id bundle-identity ingress
@@ -225,9 +249,27 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-app-bundle-source bundle-source state))
          (state (f-put-global 'fn-owner-app-bundle-destination
-                              bundle-destination state)))
+                              bundle-destination state))
+         (state (f-put-global 'fn-owner-app-refusal-reason nil state)))
     (fn-owner-app-plan-install inbound-id request-octets node-id
                                bundle-identity ingress bundle-source state)))
+
+; The receiver's line for transfer XFER-ID that fnn-bpapp-accept-locked
+; answered RESULT, with the reason the last plan left (nil when the plan was
+; ready and a later step answered).  Leaves the line in `fn-owner-log-line'
+; for host/native/owner.lisp fnn-owner-log and answers the line's class
+; (:refused, :deferred or :uncertain; :accepted or :duplicate never reach
+; here), which the host returns to the convergence layer.
+(defun fn-owner-app-refusal-log (result xfer-id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global
+                'fn-owner-log-line
+                (fn-olog-bp-app-refusal-line
+                 result
+                 (f-get-global 'fn-owner-app-refusal-reason state)
+                 xfer-id)
+                state)))
+    (value (fn-olog-bp-app-class result))))
 
 (defun fn-owner-app-current-generation (state)
   (declare (xargs :stobjs state :mode :program))

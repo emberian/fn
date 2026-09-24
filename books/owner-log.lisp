@@ -295,6 +295,38 @@ for one), or nil."
                                   (fn-olog-text "none")))
          (fn-olog-field "error" (fn-olog-name-octets text)))))
 
+;; The BP application receiver's line for a transfer the owner did not
+;; accept (host/native/bp-app.lisp fnn-bpapp-deliver, through
+;; host/bp-native-app-host.lisp fn-owner-app-refusal-log).  RESULT is the
+;; word fnn-bpapp-accept-locked returned; REASON is the application planner's
+;; refusal (fn-bpaj-transit-plan's `:no-principal' or `:request', or the
+;; install check that failed), or nil when the plan was ready and a later
+;; step answered.  A busy owner defers rather than refuses, and a word the
+;; receiver does not know is uncertain: the three outcomes stay distinct.
+(defun fn-olog-bp-app-class (result)
+  (declare (xargs :guard t))
+  (cond ((equal result :accepted) :accepted)
+        ((equal result :duplicate) :duplicate)
+        ((member-equal result '(:refused :clock-unusable)) :refused)
+        ((equal result :busy) :deferred)
+        (t :uncertain)))
+
+(defun fn-olog-bp-app-class-word (class)
+  (declare (xargs :guard t))
+  (if (equal class :deferred)
+      (fn-olog-text "deferred")
+    (fn-olog-class-word class)))
+
+(defun fn-olog-bp-app-refusal-line (result reason xfer-id)
+  "The line for BP application transfer XFER-ID answered RESULT for REASON."
+  (declare (xargs :guard t))
+  (fn-olog-join
+   (list (fn-olog-bp-app-class-word (fn-olog-bp-app-class result))
+         (fn-olog-text "bp-application")
+         (fn-olog-field "xfer" (fn-olog-decimal xfer-id))
+         (fn-olog-field "result" (fn-olog-symbol-text result))
+         (fn-olog-field "reason" (fn-olog-symbol-text reason)))))
+
 ; -----------------------------------------------------------------------------
 ; A line is one line
 
@@ -382,6 +414,18 @@ for one), or nil."
   :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-symbol-text
                                       fn-olog-name-octets))))
 
+(local
+ (defthm fn-olog-bp-app-class-word-has-no-break
+   (fn-olog-no-breakp (fn-olog-bp-app-class-word class))
+   :hints (("Goal" :in-theory (enable fn-olog-bp-app-class-word
+                                      fn-olog-class-word fn-olog-text
+                                      fn-olog-no-breakp)))))
+
+(defthm fn-olog-bp-app-refusal-line-is-one-line
+  (fn-olog-no-breakp (fn-olog-bp-app-refusal-line result reason xfer-id))
+  :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-bp-app-class-word
+                                      fn-olog-symbol-text))))
+
 ; -----------------------------------------------------------------------------
 ; The log says what the reply says
 
@@ -440,3 +484,16 @@ for one), or nil."
            (fn-olog-code-class-word (fn-feed-response-code response))))
   :hints (("Goal" :in-theory (e/d (fn-olog-code-class-word fn-olog-text)
                                   (fn-olog-field fn-olog-decimal fn-olog-time)))))
+
+; KEYSTONE (BP application receiver).  The line says `refused' exactly when
+; the receiver's answer was a refusal -- never for a deferral (busy) or for a
+; word the receiver does not know, which read `deferred' and `uncertain'.
+(defthm fn-olog-bp-app-refusal-line-says-refused-iff-refused
+  (equal (equal (fn-olog-line-word
+                 (fn-olog-bp-app-refusal-line result reason xfer-id))
+                (fn-olog-text "refused"))
+         (if (member-equal result '(:refused :clock-unusable)) t nil))
+  :hints (("Goal" :in-theory (e/d (fn-olog-bp-app-class-word
+                                   fn-olog-class-word fn-olog-text)
+                                  (fn-olog-field fn-olog-decimal
+                                   fn-olog-symbol-text)))))

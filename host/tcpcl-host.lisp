@@ -69,6 +69,22 @@
 (defun fn-tcl-host-terminate (s now)
   (fn-tcl-host-triple (fn-tcl-terminate s *fn-tcl-term-unknown* now)))
 
+; Whether the active entity ends the session now (RFC 9174 section 6.1: only
+; it initiates SESS_TERM here).  The session machine has no effect that says
+; "nothing more to send or await"; this is that decision, over facts the
+; machine's own events set.  The transfer the host was given must have an
+; outcome (:outbound-sent, :outbound-refused, :outbound-failed or a decided
+; :send-refused cleared it), and then either the EXPECT inbound transfers
+; have arrived, or that outcome is not an acceptance: a receipt answers an
+; accepted bundle, so a refused or uncertain one is awaited for nothing
+; (planning/evidence/stale-native-tests-2026-09-24.md, finding 3).
+(defun fn-tcl-host-active-closep (s bundlep pendingp outcome inbound expect)
+  (and (equal (fn-tcl-session-phase s) :established)
+       (not pendingp)
+       (or (not bundlep) (and outcome t))
+       (or (and bundlep (member-equal outcome '(:refused :uncertain)) t)
+           (>= (nfix inbound) (nfix expect)))))
+
 ; -----------------------------------------------------------------------------
 ; Reading a result out.  The host asks; it does not compute.
 
