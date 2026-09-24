@@ -1,13 +1,15 @@
 (in-package "ACL2")
 (include-book "native-control")
-(include-book "hybrid-store")
+(include-book "hybrid-lifecycle")
 (include-book "native-admin")
 
 (defconst *fn-nhctrl-enroll-kind* 4)
 (defconst *fn-nhctrl-author-kind* 5)
+(defconst *fn-nhctrl-revoke-kind* 6)
 (defconst *fn-nhctrl-max-payload* 65536)
 (defconst *fn-nhctrl-enroll-spec* '(:nat :blob :blob :blob))
 (defconst *fn-nhctrl-author-spec* '(:nat :blob :blob :blob :text))
+(defconst *fn-nhctrl-revoke-spec* '(:nat :blob))
 
 (defun fn-native-hybrid-control-uint32 (text)
   (declare (xargs :guard t))
@@ -107,3 +109,20 @@
              (fn-hsig-exact-octets-p (nth 2 v) 64)
              (fn-hsig-exact-octets-p (nth 3 v) 3309))
         (cons :hybrid-author v) nil)))
+
+(defun fn-native-hybrid-control-revoke-encode (keyring-generation principal)
+  (declare (xargs :guard t))
+  (if (not (and (fn-record-uint32p keyring-generation)
+                (fn-hsig-exact-octets-p principal 32))) :bad
+    (fn-nhctrl-seal *fn-nhctrl-revoke-kind* *fn-nhctrl-revoke-spec*
+                    (list keyring-generation principal))))
+
+(defun fn-native-hybrid-control-revoke-decode (octets)
+  (declare (xargs :guard t))
+  (let ((v (fn-nhctrl-open-values octets *fn-nhctrl-revoke-kind*
+                                  *fn-nhctrl-revoke-spec*)))
+    (if (and (true-listp v)
+             (equal (len v) 2)
+             (fn-record-uint32p (nth 0 v))
+             (fn-hsig-exact-octets-p (nth 1 v) 32))
+        (cons :hybrid-revoke v) nil)))

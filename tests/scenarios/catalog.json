@@ -1185,6 +1185,33 @@
         "tools/fn_web.py"
       ],
       "execution_scope": "Real local HTTP and fake NNTP socket tests exercise this separate client's behavior. A source-matched native-node run, physical power-loss qualification, and general external-web security audit remain open."
+    },
+    {
+      "id": "SCN-037",
+      "title": "Local hybrid author rotation and revocation preserve unrelated and historical authority",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "OBJ-007"
+      ],
+      "steps": [
+        "Enroll A at generation 1 and B at generation 2; authorize fresh signed sources from both after B is enrolled.",
+        "Rotate A at generation 3; try a new correctly signed A source under generation 1, then accept one under generation 3.",
+        "Revoke A at generation 4; try a newly signed A source under generation 3 and a fresh B source under generation 2.",
+        "Stop the owner, reopen the Store, inspect the ordered key history and the first accepted A article's recorded verdict. Independently verify its portable carrier."
+      ],
+      "expected": [
+        "B enrollment does not retire A; only A's old generation loses new local author permission on rotation.",
+        "The tombstone refuses new A authorship while B remains authorized; malformed/wrong-principal/old-generation lifecycle requests refuse without publishing.",
+        "Historical A snapshot and kind-4 verdict remain unchanged after reopen; portable artifact verification is separate from current local permission."
+      ],
+      "evidence": [
+        "tests/acl2/hybrid-lifecycle-tests.lisp",
+        "tests/acl2/native-hybrid-control-tests.lisp",
+        "tests/test_native_hybrid_author.py",
+        "planning/evidence/author-key-lifecycle-2026-09-24.md"
+      ],
+      "execution_scope": "ACL2 source tests cover ordered snapshot/replay and the control codec. The opt-in native owner, saved-image and restart fixture is source-present but not yet qualified on a matching image; no remote revocation or cryptographic succession policy follows."
     }
   ]
 }

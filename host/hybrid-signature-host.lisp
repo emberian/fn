@@ -1,6 +1,7 @@
 ; ACL2-facing boundary for native hybrid signing and verification.
 (in-package "ACL2")
 (include-book "../books/hybrid-store")
+(include-book "../books/hybrid-lifecycle")
 (include-book "../books/hybrid-carrier")
 
 (defun fn-hsig-host-received-carrier-plan (received)
@@ -40,6 +41,24 @@
   (declare (xargs :mode :program))
   (fn-hsig-keyring-event sequence txid generation keyring-generation
                          principal keys))
+
+(defun fn-hl-host-enroll-event
+    (sequence txid generation keyring-generation principal keys snapshots)
+  (declare (xargs :mode :program))
+  (fn-hl-enroll-event sequence txid generation keyring-generation
+                      principal keys snapshots))
+
+(defun fn-hl-host-revoke-event
+    (sequence txid generation keyring-generation principal snapshots)
+  (declare (xargs :mode :program))
+  (fn-hl-revoke-event sequence txid generation keyring-generation
+                      principal snapshots))
+
+(defun fn-hl-host-store-history (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((snapshots
+         (fn-sn-keyring-snapshots (f-get-global 'fn-store-sn state))))
+    (value (fn-hl-history-rows snapshots snapshots))))
 
 (defun fn-hsig-host-keyring-snapshot-value (snapshot)
   (declare (xargs :mode :program))

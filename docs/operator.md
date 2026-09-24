@@ -46,6 +46,29 @@ packaging/fn-native operator /path/to/fn.toml policy set path-identity news.exam
 packaging/fn-native operator /path/to/fn.toml run
 ```
 
+The native author-key lifecycle is a separate local-control interface in
+current development source. After starting the owner, an authorized local
+operator can publish a hybrid public-key enrollment or rotation, then revoke
+one principal's current local permission:
+
+```sh
+packaging/fn-native hybrid-enroll CONTROL 1 PRINCIPAL.bin ED-PUBLIC.bin ML-PUBLIC.pem
+packaging/fn-native hybrid-enroll CONTROL 2 PRINCIPAL.bin NEW-ED-PUBLIC.bin NEW-ML-PUBLIC.pem
+packaging/fn-native hybrid-revoke CONTROL 3 PRINCIPAL.bin
+```
+
+The generation must be the next global keyring-snapshot generation. A later
+enrollment for another principal leaves the first principal active; rotation
+or revocation affects only the named principal's new local `hybrid-author`
+requests. Refusal exits 1; an uncertain publication is distinct and requires
+reopen/inspection before retry. With the writer stopped, `hybrid-key-history
+STORE` opens the replayed Store read-only and prints each generation's status
+and principal, newest first. It does not print key payloads or read secrets.
+The private signing keys remain with the author; none enters a Store snapshot.
+Existing accepted verdicts stay pinned to their historical enrollment.
+These commands have scoped ACL2 source evidence; a matching native image run
+is still pending, so this paragraph is not a deployed-node claim.
+
 `init` creates the store `[store] path` names and admits the groups the
 operator named, so a node is stood up with the same binary that runs it; the
 image's low-level `--fn store ROOT init` entry stays a diagnostic. There is no

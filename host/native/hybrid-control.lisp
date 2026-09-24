@@ -9,9 +9,26 @@
        (destructuring-bind (sequence txid generation)
            (fnn-owner-core 'fn-owner-next-store-coordinates)
          (let* ((keys (list (cons :ed25519 ed-key) (cons :ml-dsa-65 ml-key)))
-                (event (fnn-core 'fn-hsig-host-keyring-event
+                (snapshots (fnn-owner-core 'fn-owner-hybrid-snapshots))
+                (event (fnn-core 'fn-hl-host-enroll-event
                                  sequence txid generation keyring-generation
-                                 principal keys)))
+                                 principal keys snapshots)))
+           (if event
+               (progn (fnn-owner-identity-commit service event) :accepted)
+             :refused)))))))
+
+(defun fnn-hybrid-control-revoke (service request)
+  (destructuring-bind (tag keyring-generation principal) request
+    (declare (ignore tag))
+    (fnn-owner-serialized
+     service nil
+     (lambda ()
+       (destructuring-bind (sequence txid generation)
+           (fnn-owner-core 'fn-owner-next-store-coordinates)
+         (let* ((snapshots (fnn-owner-core 'fn-owner-hybrid-snapshots))
+                (event (fnn-core 'fn-hl-host-revoke-event
+                                 sequence txid generation keyring-generation
+                                 principal snapshots)))
            (if event
                (progn (fnn-owner-identity-commit service event) :accepted)
              :refused)))))))
@@ -28,19 +45,17 @@
        (unless (integerp (fnn-core 'fn-record-stamp-of-observation
                                    (fnn-owner-core 'fn-owner-clock-observation)))
          (return-from fnn-hybrid-control-author :clock-unusable))
-       (let* ((snapshot
-               (fnn-owner-core 'fn-owner-keyring-snapshot keyring-generation))
-              (enrollment
-               (and snapshot
-                    (fnn-core 'fn-hsig-host-keyring-snapshot-value snapshot))))
-         (unless (and snapshot enrollment) (return-from fnn-hybrid-control-author :refused))
+       (let* ((selected (fnn-owner-core 'fn-owner-hybrid-current-enrollment
+                                         keyring-generation))
+              (snapshot (first selected))
+              (principal (second selected))
+              (keys (third selected)))
+         (unless selected (return-from fnn-hybrid-control-author :refused))
          (let* ((fields (fnn-core 'fn-hsig-host-authored-source-fields source)))
            (unless fields (return-from fnn-hybrid-control-author :refused))
            (let* ((msgid (fnn-octets (fnn-string-octets (first fields))))
                 (groups (mapcar (lambda (g) (fnn-octets (fnn-string-octets g)))
                                 (second fields)))
-                (principal (first enrollment))
-                (keys (second enrollment))
                 (signatures
                  (list (cons :ed25519 ed-signature)
                        (cons :ml-dsa-65 ml-signature)))
@@ -88,9 +103,11 @@
   (when (typep frame 'fnn-octets)
     (let* ((octets (fnn-octet-list frame))
            (enroll (fnn-core 'fn-native-hybrid-control-host-enroll-decode octets))
-           (author (fnn-core 'fn-native-hybrid-control-host-author-decode octets)))
+           (author (fnn-core 'fn-native-hybrid-control-host-author-decode octets))
+           (revoke (fnn-core 'fn-native-hybrid-control-host-revoke-decode octets)))
       (cond (enroll (fnn-hybrid-control-enroll service enroll))
             (author (fnn-hybrid-control-author service author))
+            (revoke (fnn-hybrid-control-revoke service revoke))
             (t nil)))))
 
 (setq *fnn-hybrid-control-handler* #'fnn-hybrid-control-handle)
@@ -155,9 +172,45 @@
       (fnn-core 'fn-native-control-host-status-exit-code
                 (fnn-hybrid-control-send control request)))))
 
+(defun fnn-command-hybrid-revoke (args)
+  (unless (= (length args) 3)
+    (error 'fnn-usage-error
+           :message "hybrid-revoke CONTROL GENERATION PRINCIPAL"))
+  (destructuring-bind (control generation principal-path) args
+    (let* ((generation-value
+            (fnn-core 'fn-native-hybrid-control-host-uint32 generation))
+           (request
+            (fnn-core 'fn-native-hybrid-control-host-revoke-encode
+                      generation-value
+                      (fnn-hsig-command-read-exact principal-path 32 "principal"))))
+      (fnn-core 'fn-native-control-host-status-exit-code
+                (fnn-hybrid-control-send control request)))))
+
+(defun fnn-command-hybrid-key-history (args)
+  "Inspect replayed local kind-3 history with the writer stopped."
+  (unless (= (length args) 1)
+    (error 'fnn-usage-error :message "hybrid-key-history STORE"))
+  (multiple-value-bind (store records) (fnn-open-live-store (first args) nil)
+    (declare (ignore records))
+    (unwind-protect
+         (progn
+           (dolist (row (fnn-core-state 'fn-hl-host-store-history))
+             (destructuring-bind (generation status principal) row
+               (fnn-out "generation=~d state=~(~a~) principal=~a"
+                        generation status
+                        (if principal (fnn-hex (fnn-octets principal)) "-"))))
+           +fnn-exit-ok+)
+      (fnn-store-close store))))
+
 (fnn-register-verb "hybrid-enroll"
                    (lambda (first rest)
                      (fnn-command-hybrid-enroll (cons first rest))))
 (fnn-register-verb "hybrid-author"
                    (lambda (first rest)
                      (fnn-command-hybrid-author (cons first rest))))
+(fnn-register-verb "hybrid-revoke"
+                   (lambda (first rest)
+                     (fnn-command-hybrid-revoke (cons first rest))))
+(fnn-register-verb "hybrid-key-history"
+                   (lambda (first rest)
+                     (fnn-command-hybrid-key-history (cons first rest))))

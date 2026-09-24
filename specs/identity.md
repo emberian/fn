@@ -3,7 +3,7 @@
 Status: local engineering substrate with a selected native signature suite.
 D09 now requires Ed25519 **and** ML-DSA-65 from the first release (user decision,
 2026-09-21). The native profile and runtime primitive boundary are implemented;
-key custody, durable article composition and deployment qualification remain
+key custody, remote succession authority and deployment qualification remain
 open, and no public ABI is frozen (D08).
 Cryptographic unforgeability remains an A-CRYPTO assumption in
 [failures](failures.md), not an ACL2 theorem.
@@ -46,6 +46,35 @@ source projection rather than re-running injection, so older accepted
 pathless schema-1 records remain readable. Missing, unknown, or substituted
 enrollment generations are refusals. This local operator path is not yet the
 portable authenticated author transport.
+
+The local operator lifecycle uses the same ordered kind-3 Store history.
+`hybrid-enroll CONTROL GENERATION PRINCIPAL ED-PUBLIC ML-PUBLIC-PEM` requires
+the next global snapshot generation; it enrolls or rotates only the named
+principal's active public-key pair. Another principal's later enrollment does
+not retire it. `hybrid-revoke CONTROL GENERATION PRINCIPAL` requires the next
+global generation and an actively enrolled matching principal; it publishes a
+kind-3 event with the distinct `fn-hybrid-revoked-v1` profile and an exactly
+32-octet principal payload. The old `fn-hybrid-v1` snapshot encoding is
+unchanged. The new profile cannot decode as an enrollment; unknown profiles
+retain their opaque replay meaning. A later explicit local enrollment can
+restore operator-local capability, but supplies no proof of key-holder
+succession or remote recovery authority. `hybrid-author` now selects the
+requested generation only when it is that principal's newest recognized
+enrollment. It refuses an older rotated generation and a revoked principal,
+without disabling another principal. `hybrid-key-history STORE` gives an
+offline, read-only replay view of generation, active/retired/revoked/opaque
+status and principal; the writer must be stopped so the Store lock can be
+acquired. The view omits public-key payloads and never reads private keys.
+Kind-4 accepted events continue to name their exact historical snapshot and
+replay their recorded verdict after rotation or revocation. Portable
+`hybrid-verify-source` checks an artifact's signatures against its supplied
+public key independently of this node's current operator permission; a
+delayed remote artifact is not retroactively invalidated by a local tombstone.
+The per-principal scan is over ordered keyring snapshots, not the whole
+article Store; an indexed active-key table and its correspondence remain a
+cost obligation if this history becomes large. This is local same-owner
+control policy, not an offline revocation or portable principal-succession
+protocol.
 
 `fn-hsig-subject-body-injective` proves that equality of two valid authored
 subject bodies implies equality of their principal, ordered Ed25519 and
@@ -235,8 +264,10 @@ list resolves to the expected key with the expected trail.
 A keyring is a list of `(id . public key)` entries, the node's resolved view
 of principals; `fn-prin-verifiedp s keyring` holds when the creator is a known
 principal and the statement verifies under that key. An unknown creator never
-verifies. How a keyring is persisted, and revocation under partition, are in
-the decision packet; the policy theorems are conditional on the keyring.
+verifies. The operator-local hybrid snapshot/tombstone history above is a
+separate, persisted D09 profile; it does not settle this general keyring's
+portable succession or revocation under partition. Those policies remain in
+the decision packet, and their theorems are conditional on the keyring.
 
 ## Assumed
 

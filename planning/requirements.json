@@ -163,7 +163,8 @@
         "PRF-039",
         "PRF-048",
         "PRF-050",
-        "PRF-063"
+        "PRF-063",
+        "PRF-069"
       ],
       "verification": [
         "proof",
@@ -176,7 +177,7 @@
         "tests/test_auth.py",
         "planning/evidence/auth-w10-2026-09-20.md"
       ],
-      "implementation_note": "D09 requires both Ed25519 and ML-DSA-65 over ACL2's exact authored-source preimage. The native primitives and ACL2 conjunction fail closed for absent, invalid or unsupported components. Kind-4 schema 1 retains the received carrier, exact authored source, its identity, enrolled snapshot and historical verdict; replay checks their structural binding without recomputing present keyring capability. A legacy fn-r record contains no verdict bytes: its live verification observation is explicitly non-durable and recovery reports no historical verdict. Persisting equivalent legacy authority remains an implemented-behavior evidence gap; key custody, reader exposure and combined native recovery qualification remain open.",
+      "implementation_note": "D09 requires both Ed25519 and ML-DSA-65 over ACL2's exact authored-source preimage. The native primitives and ACL2 conjunction fail closed for absent, invalid or unsupported components. Kind-4 schema 1 retains the received carrier, exact authored source, its identity, enrolled snapshot and historical verdict; replay checks their structural binding without recomputing present keyring capability. A legacy fn-r record contains no verdict bytes: its live verification observation is explicitly non-durable and recovery reports no historical verdict. Persisting equivalent legacy authority remains an implemented-behavior evidence gap; key custody, reader exposure and combined native recovery qualification remain open. The current operator-local kind-3 lifecycle requires next-global-generation enrollments, selects the newest known snapshot per principal for new hybrid-author submissions, and persists a distinct principal-only revocation tombstone without altering historical kind-4 verdicts. Portable succession/recovery authority and source-matched native lifecycle qualification remain open.",
       "note": "PRF-013 has no events. books/crypto-seam and books/statement certify, but they are an abstract seam: nothing there is a real signature, and AGENTS.md forbids reading an abstract model as a signature claim."
     },
     {

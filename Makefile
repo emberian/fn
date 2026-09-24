@@ -119,6 +119,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-operator-host-tests \
 	books/native-control \
 	books/native-hybrid-control \
+	books/hybrid-lifecycle \
+	tests/acl2/hybrid-lifecycle-tests \
 	tests/acl2/native-hybrid-control-tests \
 	tests/acl2/native-control-tests \
 	tests/acl2/native-control-host-tests \
