@@ -74,6 +74,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bprv-` | `bp-receiver-*-invariants`, `bp-receiver-evolving-*-invariants` | Receiver relation invariants over a Store, contexts, decisions and replay; the history-indexed relation over an evolving Store |
 | `fn-bpr-live-` | `bp-receiver-evolving-store-invariants` | Live receiver trace model over the host's call sequence (`tools/run_bp_receive.py`): Store global, receiver global, journal on disk |
 | `fn-bpnp-` | `bp-node-progress` | ACL2-owned one-event held progress selection and per-key dependency waits over the existing FNBS owner; the native service calls this outer step |
+| `fn-bpnpp-` | `bp-node-progress-premises` | Local proof helpers showing the served `fn-bpnp-step` keeps its own guard premises; no executable behaviour |
 | `fn-bpnd-` | `bp-node-debt` | Exact received-FNBS physical record credit and held/attempt/handoff/fragment debt projections; served transitions carry the cached debt and update it from one row |
 | `fn-bpo-` | `bp-outbound` | Outbound projection of sender work to request ADUs and receipt validation |
 | `fn-bpio-` | `bp-ion-observation` | Pinned-ION observation decode and exact durable-attempt identity gate |
