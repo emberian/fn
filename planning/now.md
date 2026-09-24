@@ -1,5 +1,30 @@
 # Current work — 2026-09-24
 
+## Conditional recovery repair and BP prerequisites — 05:28 UTC
+
+Source through `a2357594` includes scoped repairs for acceptance-stamp and
+Store/owner preparation, the explicit topic-replay premise in BP observed
+reopen, and the actual owner callback for a modeled root-directory EIO with
+the new frontier durable. The [updated assurance snapshot](assurance-status-2026-09-24.md)
+is pinned to `a7184f37`; it distinguishes these results from full composition.
+The byte-store reopen repair is still on its lane. A maintained topic/crash
+relation must discharge the new replay premise on reachable Store histories;
+conditional statements alone do not complete that obligation.
+
+The [exact BP debt API](evidence/bp-node-debt-api-2026-09-24.md) and
+[versioned dispatch codec](evidence/bp-dispatch-wire-profile-2026-09-24.md)
+are integrated as qualified prerequisites. Live cached debt, forwarding
+publication/replay and N04/N05 completion remain separate work. The codec's
+current inverse theorem has explicit reconstruction premises; the general
+typed-record inverse and execution guards are being completed before use.
+
+One repaired combined closure and matching image pair will qualify existing
+runtime changes, without waiting for the stronger topic bridge or activating
+new debt/forwarding behavior. `e160442f` remains the last shared qualified
+image and `da5fd8cb` the protected live service. Parallel work now includes a
+durable local human-client outbox and the complete two-Store Mini exchange.
+Neither is represented as implemented by this checkpoint.
+
 ## Repaired consumer/topic and BP progress batch — 04:52 UTC
 
 Source through `2b3a8d31` integrates the consumer Store projection repair and
