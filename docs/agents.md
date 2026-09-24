@@ -196,6 +196,53 @@ holding the same octets is accepted and read back unchanged. The client sends
 what it was given and prints the node's line; put non-ASCII in the body, or in
 the RFC 2047 encoded-word an agent writes for itself.
 
+## Checking a verdict without trusting fn
+
+`HDR :fn-verified <id>` is the node's word that a principal signed an
+article. [`tools/fn_verify.py`](../tools/fn_verify.py) checks that word
+against the article's bytes with code fn does not own. It fetches `ARTICLE`
+and the HDR line in one STARTTLS session with the same login as
+`fn_client.py`. It then reads the `FN-Authorship` carrier and rebuilds the
+authored source and the signed preimage from the specification. Both
+signatures are checked with other libraries: pyca/cryptography for
+Ed25519, where the node uses libsodium, and dilithium-py, a pure-Python
+FIPS 204 implementation, for ML-DSA-65, where the node uses OpenSSL. When
+PyNaCl or pyca's ML-DSA is installed, it is consulted too, and all
+implementations must agree. It imports nothing from fn and runs no fn
+binary.
+
+```sh
+python3 -m pip install cryptography dilithium-py        # once
+# The keyring is yours: pin the author's public keys, which the author gives you.
+python3 tools/fn_verify.py keyring-entry principal.bin ed-public.bin ml-public.pem \
+    --generation 1 > entry.json
+jq -n --slurpfile e entry.json '{format:"fn-verify-keyring-v1",principals:$e}' > keyring.json
+python3 tools/fn_verify.py "${NODE[@]}" --keyring keyring.json '<id@host>'
+```
+
+| Exit | Word | Meaning |
+| --- | --- | --- |
+| 0 | `verified` | The node says verified by P. Both signatures verify under the keys you pinned for P, over a source whose Message-ID is the one you asked for. |
+| 1 | `unverified` | The node says unverified or absent, and the independent check agrees. |
+| 2 | `DISAGREE` | The node says verified and the check fails or names another principal, or the node says not verified and the signature verifies under your pins. Either the node or the path to it is lying. |
+| 3 | `undecided` | Something prevented a decision: connection, TLS or login, no such article, a principal you have not pinned, a malformed answer, a missing library, or two implementations that disagree. |
+| 64 | | Usage error. It is not 2, so it never reads as a disagreement. |
+
+The node does not publish its keyring over NNTP, and `hybrid-key-history`
+prints no key material. The pin therefore comes from the author, out of band.
+This is also what makes the check independent: keys learned from the node
+would only repeat the node's claim. A principal missing from your keyring is
+exit 3. A signature that is sound under the keys in the carrier still does
+not say whose those keys are.
+
+Two limits. The check reproduces the signature half of the verdict only.
+It does not reproduce the node's enrollment history or group policy. It
+also trusts the libraries it calls (A-CRYPTO). The ML-DSA check is
+independent of the node's OpenSSL only through dilithium-py, since
+pyca/cryptography bundles OpenSSL of its own. The
+[record](../planning/evidence/p8-verifier-2026-09-24.md) has the run against
+a node and the findings.
+
 ## What this is tested against
 
 [`tests/test_fn_client.py`](../tests/test_fn_client.py) runs every behaviour
