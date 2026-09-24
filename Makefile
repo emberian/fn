@@ -240,6 +240,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-pack-retire-tests \
 	books/checkpoint-compaction \
 	tests/acl2/checkpoint-compaction-tests \
+	books/checkpoint-compaction-preservation \
+	tests/acl2/checkpoint-compaction-preservation-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \

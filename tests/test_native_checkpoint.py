@@ -925,5 +925,174 @@ class NativeCheckpointTests(unittest.TestCase):
         self.assertEqual(self.transaction_bytes(store),
                          {suffix_name: before[suffix_name]})
 
+    # -- M5 compaction: the served view across a reclaim -------------------
+
+    def owner_config(self, store, name):
+        control = self.base / (name + "-control.sock")
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        config = self.base / (name + ".toml")
+        config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
+            'port = {}\n[control]\npath = "{}"\n'.format(store, port, control),
+            encoding="ascii")
+        return config, port
+
+    def run_owner(self, config):
+        process = subprocess.Popen(
+            [str(IMAGE), "--fn", "operator", str(config), "run"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        wait_for_announcement(process, b"LISTENING ")
+        return process
+
+    def stop_owner(self, process):
+        diagnostic = stop_and_diagnostics(process, timeout=60)
+        self.assertEqual(process.returncode, 0, diagnostic)
+
+    def operator_post(self, config, msgid, subject):
+        article = self.base / ("post-" + subject + ".eml")
+        article.write_bytes(
+            b"From: author@example.invalid\r\n"
+            b"Date: Thu, 24 Sep 2026 12:00:00 +0000\r\n"
+            b"Newsgroups: fn.letters\r\n"
+            b"Subject: " + subject.encode("ascii") + b"\r\n"
+            b"Message-ID: " + msgid.encode("ascii") +
+            b"\r\n\r\nbody of " + subject.encode("ascii") + b"\r\n")
+        posted = self.native("operator", config, "post", "--message-id", msgid,
+                             "--payload", article, "--group", "fn.letters")
+        self.assertIn("accepted operator post", posted.stderr)
+
+    def served_view(self, config, port, msgids):
+        """GROUP, every ARTICLE by number and by Message-ID, HDR Subject."""
+        owner = self.run_owner(config)
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
+                sock.settimeout(10)
+                with sock.makefile("rwb", buffering=0) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+
+                    def command(line):
+                        stream.write(line.encode("ascii") + b"\r\n")
+                        return stream.readline()
+
+                    def block():
+                        lines = []
+                        while True:
+                            line = stream.readline()
+                            self.assertTrue(line, "multi-line response ended early")
+                            if line == b".\r\n":
+                                return b"".join(lines)
+                            lines.append(line)
+
+                    group = command("GROUP fn.letters")
+                    self.assertTrue(group.startswith(b"211 "), group)
+                    _, count, low, high = (int(x) for x in group.split()[:4])
+                    view = {"group": group}
+                    for number in range(low, high + 1):
+                        status = command("ARTICLE {}".format(number))
+                        self.assertTrue(status.startswith(b"220 "), status)
+                        view[number] = (status, block())
+                    for msgid in msgids:
+                        status = command("ARTICLE {}".format(msgid))
+                        self.assertTrue(status.startswith(b"220 "), status)
+                        view[msgid] = (status, block())
+                    status = command("HDR Subject {}-{}".format(low, high))
+                    self.assertTrue(status.startswith(b"225 "), status)
+                    view["hdr"] = block()
+                    command("QUIT")
+        finally:
+            self.stop_owner(owner)
+        return view
+
+    def compaction_fixture(self, name, covered=4, suffix=2):
+        store = self.initialized(name, article=False)
+        config, port = self.owner_config(store, name)
+        msgids = []
+        owner = self.run_owner(config)
+        try:
+            for number in range(covered):
+                msgids.append("<{}-c{}@example.invalid>".format(name, number))
+                self.operator_post(config, msgids[-1], "{}-c{}".format(name, number))
+        finally:
+            self.stop_owner(owner)
+        packed = self.native("checkpoint", "pack", store, "select")
+        self.assertIn("selected=yes", packed.stdout)
+        self.covered_names = set(self.transaction_bytes(store))
+        owner = self.run_owner(config)
+        try:
+            for number in range(suffix):
+                msgids.append("<{}-s{}@example.invalid>".format(name, number))
+                self.operator_post(config, msgids[-1], "{}-s{}".format(name, number))
+        finally:
+            self.stop_owner(owner)
+        return store, config, port, msgids
+
+    def assert_view_kept_and_next_number(self, store, config, port, msgids,
+                                         before, before_retention, name):
+        after = self.served_view(config, port, msgids)
+        self.assertEqual(after, before)
+        self.assertEqual(self.native("store", store, "retention").stdout,
+                         before_retention)
+        high = int(before["group"].split()[3])
+        owner = self.run_owner(config)
+        try:
+            self.operator_post(config, "<{}-next@example.invalid>".format(name),
+                               name + "-next")
+        finally:
+            self.stop_owner(owner)
+        grown = self.served_view(config, port,
+                                 msgids + ["<{}-next@example.invalid>".format(name)])
+        self.assertEqual(int(grown["group"].split()[3]), high + 1)
+        self.assertIn(b"<" + name.encode("ascii") + b"-next@example.invalid>",
+                      grown[high + 1][1])
+        for key, value in before.items():
+            if key not in ("group", "hdr"):
+                self.assertEqual(grown[key], value)
+
+    def test_reclaim_keeps_served_view_watermarks_and_next_number(self):
+        name = "reclaim-view"
+        store, config, port, msgids = self.compaction_fixture(name)
+        before = self.served_view(config, port, msgids)
+        self.assertEqual(int(before["group"].split()[1]), 6)
+        before_retention = self.native("store", store, "retention").stdout
+        suffix = {n: raw for n, raw in self.transaction_bytes(store).items()
+                  if n not in self.covered_names}
+        self.assertTrue(suffix)
+        reclaimed = self.native("checkpoint", "pack-reclaim", store)
+        self.assertIn("reclaimed transaction-prefix=", reclaimed.stdout)
+        self.assertIn("reclaimed transaction-prefix={}".format(
+            len(self.covered_names)), reclaimed.stdout)
+        self.assertEqual(self.transaction_bytes(store), suffix)
+        self.assert_view_kept_and_next_number(store, config, port, msgids,
+                                              before, before_retention, name)
+
+    def test_reclaim_cuts_keep_served_view_and_next_number(self):
+        # Every reclaim cut of fn-bs-pack-reclaim-steps: each covered unlink
+        # (by occurrence) and the closing directory barrier.
+        self.compaction_fixture("reclaim-count")
+        covered = len(self.covered_names)
+        self.assertGreater(covered, 1)
+        cuts = [("pack-reclaim-unlink", k) for k in range(1, covered + 1)]
+        cuts.append(("pack-reclaim-directory", 1))
+        for point, occurrence in cuts:
+            with self.subTest(point=point, occurrence=occurrence):
+                name = "cut-{}-{}".format(point.split("-")[-1], occurrence)
+                store, config, port, msgids = self.compaction_fixture(name)
+                before = self.served_view(config, port, msgids)
+                before_retention = self.native("store", store, "retention").stdout
+                suffix = {n: raw for n, raw in self.transaction_bytes(store).items()
+                          if n not in self.covered_names}
+                self.stopped_then_killed(("checkpoint", "pack-reclaim", store),
+                                         point, occurrence=occurrence)
+                after_cut = self.transaction_bytes(store)
+                # Old-or-new per covered name, the suffix byte for byte.
+                self.assertEqual({n: after_cut[n] for n in suffix}, suffix)
+                self.assertTrue(set(after_cut) - set(suffix) <= self.covered_names)
+                self.assert_view_kept_and_next_number(
+                    store, config, port, msgids, before, before_retention, name)
+                self.native("checkpoint", "pack-reclaim", store)
+
 if __name__ == "__main__":
     unittest.main()

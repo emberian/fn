@@ -7,6 +7,7 @@
 (include-book "../books/checkpoint-compaction")
 (include-book "../books/checkpoint-pack-retire")
 (include-book "../books/checkpoint-auxiliary")
+(include-book "../books/checkpoint-compaction-preservation")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -176,40 +177,17 @@
   (declare (xargs :mode :program))
   *fn-cc-max-octets*)
 
+;; The subjects of books/checkpoint-compaction-preservation: the reclaim
+;; preservation theorems are stated over these two functions.
 (defun fn-store-checkpoint-compaction-observe (framed digest observed frontier)
   (declare (xargs :mode :program))
-  (if (or (not (fn-cbor-octet-listp framed))
-          (< (len framed) *fn-frame-trailer-octets*))
-      '(:error :frame)
-    (let* ((n (- (len framed) *fn-frame-trailer-octets*))
-           (payload (take n framed))
-           (trailer (nthcdr n framed))
-           (decoded (and (equal trailer digest) (fn-cc-decode-exact payload))))
-      (if (or (not (consp decoded)) (not (equal (car decoded) :ok)))
-          '(:error :integrity)
-        (let* ((summary (cadr decoded))
-               (answer (fn-cc-recover-observation summary observed frontier)))
-          answer)))))
+  (fn-ccp-observe-framed framed digest observed frontier))
 
 ; Inspect the selected authority before the host slices its bounded physical
 ; observation.  ACL2 returns the only accepted coverage boundary.
 (defun fn-store-checkpoint-compaction-coverage (framed digest observed-count frontier)
   (declare (xargs :mode :program))
-  (if (or (not (fn-cbor-octet-listp framed))
-          (< (len framed) *fn-frame-trailer-octets*))
-      '(:error :frame)
-    (let* ((n (- (len framed) *fn-frame-trailer-octets*))
-           (payload (take n framed))
-           (trailer (nthcdr n framed))
-           (decoded (and (equal trailer digest) (fn-cc-decode-exact payload))))
-      (if (or (not (consp decoded)) (not (equal (car decoded) :ok)))
-          '(:error :integrity)
-        (let ((summary (car (cdr decoded))))
-          (if (or (< observed-count (fn-cc-sequence summary))
-                  (< frontier (fn-cc-frontier summary)))
-              '(:error :coverage)
-            (list :ok (fn-cc-sequence summary)
-                  (fn-cc-frontier summary))))))))
+  (fn-ccp-coverage-framed framed digest observed-count frontier))
 
 (defun fn-store-checkpoint-publication-initial
   (generations proposed-generation exclusivep final-absentp)
