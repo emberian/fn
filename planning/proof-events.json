@@ -2479,6 +2479,31 @@
           "kind": "theorem",
           "name": "fn-own-read-hdr-fn-verified-is-the-pinned-verdict",
           "note": "Keystone, reader side, over fn-own-read: host/native/owner.lisp (fnn-owner-action 'fn-owner-chunk ...) runs host/owner-host.lisp fn-owner-chunk, i.e. fn-ocfg-read-tls-prefix, equal to fn-ocfg-read by fn-ocfg-read-tls-prefix-is-full-read, whose reply is (car (fn-own-read ...)). One read whose octets frame nothing until the last, which frames HDR :fn-verified <msgid>, on an ungated reader (non-peer, not awaiting, projected) answers the 225 block whose field is (fn-stx-reader-item (fn-stx-reader-lookup msgid (fn-own-conn-verdicts conn))). Lemmas: fn-served-step-hdr-fn-verified-is-the-pinned-verdict, fn-served-step-of-one-framed-event, fn-served-dispatch-hdr-fn-verified-msgid, fn-nntp-verdict-hdr-msgid-is-recorded. Framing is a premise, not proved from the wire. Must-fail per hypothesis only for: article absent from the pin (reader A, 430), last octet not framing (read cut before LF), item not :fn-verified (HDR Subject). No teeth yet for the auth gate, peer, awaiting-article or wire-closed premises. Book 5.3 s, persvati run-20260924T144834Z-7de2."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-authorized-event-binds-the-post",
+          "note": "Signed served POST (books/owner-signed-post). Subject fn-pa-authorized-event, which host/owner-host.lisp fn-owner-peer-carried-event calls from fnn-owner-attempt-transit, the attempt the served NNTP POST now reaches through fnn-owner-attempt-served (host/native/owner.lisp fnn-owner-drain-one and fnn-owner-complete-bound-submission). A non-nil event implies the current plan is :ok, the event is a kind-4 acceptance, and its decoded verdict event names the POST's Message-ID and the plan's enrollment generation. Lemmas: fn-record-round-trip-succeeds, fn-stxa-bindsp. Teeth in tests/acl2/owner-signed-post-tests.lisp: reachable served-POST trace; the event is nil with no enrollment. Book 4.5 s, persvati run-20260924T175630Z-4d05."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-signed-post-finish-records-its-verdict",
+          "note": "Keystone, served POST valid arm. Over fn-own-step (:complete), which host/owner-host.lisp fn-owner-finish runs as the identity commit's finish callback: when the Store's completion record is the event fn-pa-authorized-event built for the POST and completion is enabled, the finished Store's verdict lookup at the POST's Message-ID is that event's (token detail) verdict at the plan's generation. Lemmas: fn-sn-finish-of-a-kind-4-acceptance-records-its-verdict, fn-osp-authorized-event-binds-the-post. The premise that the prepared and published completion record is that event is not proved here. That the token is :verified is shown on the witness only (no fn-stxe codec round trip exists). Must-fail: no enrollment (no event), another authorized event (generation 2) not the record, gate closed."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-reader-after-signed-post-reports-its-verdict",
+          "note": "A reader fn-own-open creates after that (:complete) has fn-stx-reader-verdict at the POST's Message-ID equal to the recorded verdict's item; with fn-own-read-hdr-fn-verified-is-the-pinned-verdict that is the HDR :fn-verified reply. Lemma: fn-own-reader-opened-after-completion-pins-the-finished-verdicts. Witness: the served trace's reader answers `0 verified <principal> keyring 1` through fn-own-read. Must-fail: connection bound full, gate closed."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-served-refusal-renders-its-reason",
+          "note": "Keystone, served POST refused arm, over fn-own-outcome (host/owner-host.lisp fn-owner-outcome) with the word fn-pa-served-word gives (fn-owner-served-carried-word): for a relayed reason and no completion consumed after the take, the reply is fn-nntp-post-outcome's line for that reason (its own 441 line, books/nntp-post.lisp fn-post-store-refusal-line) and Store, ledger, feeds and connections are unchanged. With fn-osp-plan-refusal-is-a-served-reason: a refused plan is never carrier-absent and its reason is relayed. Must-fail per hypothesis: a Store word not relayed, completion consumed, another connection, no submission in flight, connection gone."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-plan-refusal-is-a-served-reason",
+          "note": "A present carrier the plan refuses is never :absent (never the unsigned arm), and its reason is one of :article :carrier :carrier-shape :local-enrollment. Witness: :local-enrollment with no enrollment, :carrier for a malformed field."
         }
       ]
     },
