@@ -1,0 +1,62 @@
+{
+  "image": "/tank/fn/scratch/advance-projection/after-tree/build/fn-host-developer",
+  "launcher_sha256": "b44c1d50de1ba3019c1a42022f8856799668676ade660fa60de8643a788d3328",
+  "core_sha256": "c9203881fdff52a860824a0afb4b2bf8c947524d1dfb0ed00e4ae1f96f36dfc0",
+  "articles": 120,
+  "samples": 16,
+  "port": 42573,
+  "load_seconds": 0.3226830894127488,
+  "post_first_quarter": {
+    "n": 30,
+    "min_ms": 2.551604062318802,
+    "median_ms": 2.7054911479353905,
+    "p95_ms": 2.7966201305389404,
+    "max_ms": 3.8779592141509056
+  },
+  "post_last_quarter": {
+    "n": 30,
+    "min_ms": 2.5330111384391785,
+    "median_ms": 2.6317178271710873,
+    "p95_ms": 2.7651414275169373,
+    "max_ms": 2.863827161490917
+  },
+  "rss_after_load_kib": 546452,
+  "stat_present": {
+    "n": 16,
+    "min_ms": 0.0920705497264862,
+    "median_ms": 0.09484682232141495,
+    "p95_ms": 0.09892694652080536,
+    "max_ms": 0.12214109301567078
+  },
+  "stat_absent": {
+    "n": 16,
+    "min_ms": 0.08392799645662308,
+    "median_ms": 0.08567236363887787,
+    "p95_ms": 0.08954666554927826,
+    "max_ms": 0.11862535029649734
+  },
+  "rss_after_stat_kib": 550292,
+  "peer_mode_stream": "203 streaming permitted",
+  "ihave_duplicate": {
+    "n": 16,
+    "min_ms": 1.501983031630516,
+    "median_ms": 1.6055838204920292,
+    "p95_ms": 1.6872258856892586,
+    "max_ms": 1.8228106200695038
+  },
+  "check_duplicate": {
+    "n": 16,
+    "min_ms": 1.5802960842847824,
+    "median_ms": 1.6399519518017769,
+    "p95_ms": 1.7286017537117004,
+    "max_ms": 1.8555885180830956
+  },
+  "check_absent": {
+    "n": 16,
+    "min_ms": 1.5587061643600464,
+    "median_ms": 1.5997178852558136,
+    "p95_ms": 1.7079608514904976,
+    "max_ms": 1.7283009365200996
+  },
+  "rss_after_peer_kib": 1673108
+}
