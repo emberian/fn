@@ -1423,6 +1423,48 @@ class InnRowTests(unittest.TestCase):
                              "/tank/fn/OpenSSL 3.5.8")
 
 
+class NewnewsSyntaxTests(unittest.TestCase):
+    """V0-READ-NEWNEWS-SYNTAX: its feature is the 501, not the verb's absence.
+
+    The 1a9dd747 run recorded it not-built on '501 syntax error' because the
+    read phase read every 501 as an unsupported verb before the row saw it."""
+
+    READS = {"GROUP": "211 1 1 1 fn.letters", "group_count": 1}
+
+    def rows(self, **replies):
+        payload = dict(self.READS, **replies)
+
+        class Step:
+            command = "python3 matrix.py surface"
+            output = json.dumps(payload)
+            first_line = output
+
+        with tempfile.TemporaryDirectory() as home:
+            gate = native_gate(home)
+            gate.matrix = lambda *args, **kwargs: Step()
+            node = gate.a
+            node.port = 11190
+            gate.read_surface(node)
+            return {row.id: row for row in gate.rows}
+
+    def test_a_malformed_newnews_answered_501_is_the_refusal(self):
+        rows = self.rows(**{"NEWNEWS": "230 list follows",
+                            "NEWNEWS SYNTAX": "501 syntax error"})
+        self.assertEqual(rows["V0-READ-NEWNEWS-SYNTAX-A"].verdict, v0_matrix.REFUSED)
+        self.assertIs(rows["V0-READ-NEWNEWS-SYNTAX-A"].agrees, True)
+
+    def test_without_newnews_the_501_is_the_verb_missing(self):
+        rows = self.rows(**{"NEWNEWS": "500 command not recognized",
+                            "NEWNEWS SYNTAX": "501 syntax error"})
+        self.assertEqual(rows["V0-READ-NEWNEWS-SYNTAX-A"].verdict, v0_matrix.NOT_BUILT)
+        self.assertEqual(rows["V0-READ-NEWNEWS-A"].verdict, v0_matrix.NOT_BUILT)
+
+    def test_a_malformed_newnews_the_node_takes_disagrees(self):
+        rows = self.rows(**{"NEWNEWS": "230 list follows",
+                            "NEWNEWS SYNTAX": "230 list follows"})
+        self.assertIs(rows["V0-READ-NEWNEWS-SYNTAX-A"].agrees, False)
+
+
 class FromMailboxTests(unittest.TestCase):
     """V0-POST-FROM-MAILBOX: RFC 5536 3.1.2, the agents run's `From: yue`.
 

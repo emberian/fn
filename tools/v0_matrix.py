@@ -2811,9 +2811,17 @@ else echo NONE; fi
         count = result.get("group_count", 0)
         self.group_counts[node.name] = count
         served_by = "served by `{}` on port {}".format(node.kind, node.port)
+        # Two rows whose feature IS a 500/501 answer: the unknown verb, and a
+        # malformed NEWNEWS once NEWNEWS itself is dispatched (RFC 3977 3.2.1:
+        # 501 is a syntax error in a command the server has).  Only when the
+        # well-formed NEWNEWS is also 5xx-unsupported is the malformed one's
+        # 501 the verb's absence.
+        answers_by_row = {"V0-READ-UNKNOWN"}
+        if result.get("NEWNEWS") and not unsupported(result.get("NEWNEWS", "")):
+            answers_by_row.add("V0-READ-NEWNEWS-SYNTAX")
         for key, command in self.READ_COMMANDS:
             status = result.get(command, "")
-            if key != "V0-READ-UNKNOWN" and unsupported(status):
+            if key not in answers_by_row and unsupported(status):
                 self.emit(key, NOT_BUILT, step.command, status, node=node.name,
                           blocker="`{}` answered '{}' on this commit; the entry point "
                                   "that started is `{}`".format(command, status, node.kind),
