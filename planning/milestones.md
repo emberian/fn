@@ -1,4 +1,13 @@
-Current selected-v1 join: native fn poll now feeds Mini's signed durable
+Current development and qualification are tracked in [now.md](now.md) and the
+[broad capability wave](capability-wave-2026-09-24.md). The exact `863c2141`
+source passed structural checks and is in combined ACL2 qualification; it is
+not a release declaration. The [two-Store preflight](evidence/e160-two-store-preflight-gap-2026-09-24.md)
+identified missing receiver-side durable native verdicts after peering. Shared
+NNTP/BP verified transit and A-side durable reply consumption are being built
+to close that real composition boundary. The dated evidence below retains the
+scope of earlier demonstrated legs.
+
+Previously demonstrated selected-v1 join: native fn poll feeds Mini's signed durable
 transaction and immutable Q; after reopen Mini ACKs, and fn returns the durable
 position and no repeat article. The [live synthetic evidence](evidence/native-mini-live-join-2026-09-24.md)
 uses the earlier `1d26e01f` image. A separately pinned [B3 reply experiment](evidence/mini-b3-e160-native-join-2026-09-24.md)

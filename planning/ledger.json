@@ -118,6 +118,8 @@
     "books/native-hybrid-control",
     "books/hybrid-lifecycle",
     "tests/acl2/hybrid-lifecycle-tests",
+    "books/hybrid-lifecycle-store-invariants",
+    "tests/acl2/hybrid-lifecycle-store-invariants-tests",
     "tests/acl2/native-hybrid-control-tests",
     "tests/acl2/native-control-tests",
     "tests/acl2/native-control-host-tests",
@@ -562,6 +564,9 @@
     "books/topic-history-authorship",
     "books/topic-history-admission",
     "books/topic-history-store-events",
+    "books/topic-history-prefix-invariants",
+    "books/topic-history-store-invariants",
+    "books/topic-history-recovery-invariants",
     "books/topic-history-local-proposals",
     "books/topic-history-local-control",
     "tests/acl2/topic-history-metadata-tests",
@@ -570,6 +575,10 @@
     "tests/acl2/topic-history-store-events-tests",
     "tests/acl2/topic-history-store-union-tests",
     "tests/acl2/topic-history-prefix-tests",
+    "tests/acl2/topic-history-prefix-invariants-tests",
+    "tests/acl2/topic-history-store-invariants-tests",
+    "tests/acl2/topic-history-recovery-invariants-tests",
+    "tests/acl2/topic-history-v2-crash-tests",
     "tests/acl2/topic-history-local-admin-tests",
     "tests/acl2/topic-history-store-node-tests",
     "tests/acl2/consumer-topic-store-tests",
@@ -625,25 +634,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 631,
-    "books_in_root_closure": 629,
-    "roots": 621,
-    "theorems": 8736,
-    "functions": 6440,
-    "assert_events": 9479,
-    "must_fails": 547,
+    "books": 640,
+    "books_in_root_closure": 638,
+    "roots": 630,
+    "theorems": 8799,
+    "functions": 6443,
+    "assert_events": 9540,
+    "must_fails": 557,
     "encapsulates": 27,
     "guards": {
       "verified": 2036,
-      "declared-off": 382,
-      "default-guarded": 3202,
+      "declared-off": 384,
+      "default-guarded": 3203,
       "default-unguarded": 820
     },
     "suspect_theorems": 82,
-    "export_hygiene_warnings": 103,
+    "export_hygiene_warnings": 105,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 47,
-    "include_hygiene_warnings": 574,
+    "include_hygiene_warnings": 586,
     "host_names_warnings": 807,
     "hand_written_record_warnings": 18
   },
@@ -5961,6 +5970,32 @@
       "read_error": null
     },
     {
+      "book": "books/hybrid-lifecycle-store-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "hybrid-lifecycle",
+        "store-node-resolution"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/hybrid-lifecycle.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8867,7 +8902,7 @@
       "book": "books/store-identity-sequence-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 27,
+      "theorems": 28,
       "functions": 1,
       "guards": {
         "verified": 1,
@@ -9881,6 +9916,31 @@
       "read_error": null
     },
     {
+      "book": "books/topic-history-prefix-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "topic-history-prefix"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/topic-history-prefix.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -9900,6 +9960,31 @@
       "encapsulates": 0,
       "includes": [
         "store-events"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/topic-history-recovery-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-observed"
       ],
       "system_includes": [],
       "suspects": [],
@@ -9930,6 +10015,32 @@
       "suspects": [
         "fn-th-topic-decode-refuses-oversize"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/topic-history-store-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 42,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-store-invariants",
+        "topic-history-prefix-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -14488,6 +14599,36 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/hybrid-lifecycle-store-invariants-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 17,
+      "must_fails": 2,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/hybrid-lifecycle-store-invariants",
+        "../../books/store-identity-sequence-invariants",
+        "store-identity-traces-tests"
+      ],
+      "system_includes": [
+        "std/testing/assert-equal",
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/hybrid-lifecycle-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -16393,9 +16534,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 19,
-      "must_fails": 1,
-      "defconsts": 5,
+      "assert_events": 29,
+      "must_fails": 4,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -17243,6 +17384,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/topic-history-prefix-invariants-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 1,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/topic-history-prefix-invariants",
+        "topic-history-prefix-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/topic-history-prefix-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -17272,6 +17441,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/topic-history-recovery-invariants-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 9,
+      "must_fails": 2,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/topic-history-recovery-invariants",
+        "consumer-topic-store-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/topic-history-store-events-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -17293,6 +17490,33 @@
         "../../books/topic-history-store-events",
         "topic-history-admission-tests",
         "topic-history-local-admin-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/topic-history-store-invariants-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 1,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/topic-history-store-invariants"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -17352,6 +17576,34 @@
         "topic-history-store-events-tests"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/topic-history-v2-crash-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 18,
+      "must_fails": 1,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/topic-history-store-invariants",
+        "consumer-topic-store-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -18697,6 +18949,18 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-thr-successful-recover-rebuilds-topic-by-definition",
+        "book": "books/topic-history-recovery-invariants.lisp",
+        "line": 17,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-thr-observed-open-rebuilds-exact-topic",
+        "book": "books/topic-history-recovery-invariants.lisp",
+        "line": 31,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-th-topic-decode-refuses-oversize",
         "book": "books/topic-history-store-events.lisp",
         "line": 198,
@@ -19127,18 +19391,20 @@
         "book": "books/stx-keyring-records.lisp",
         "line": 132,
         "stated_in": [
+          "books/hybrid-lifecycle-store-invariants.lisp",
           "books/store-node.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-verdicts",
         "book": "books/stx-keyring-records.lisp",
         "line": 137,
         "stated_in": [
+          "books/hybrid-lifecycle-store-invariants.lisp",
           "books/store-node.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-transfer-work-value",
@@ -20549,6 +20815,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/hybrid-lifecycle-store-invariants.lisp",
+        "line": 3,
+        "include": "hybrid-lifecycle",
+        "included": "books/hybrid-lifecycle.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/hybrid-signature.lisp",
         "line": 11,
         "include": "hybrid-profile",
@@ -21022,6 +21295,20 @@
         "line": 4,
         "include": "topic-history-local-admin",
         "included": "books/topic-history-local-admin.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/topic-history-store-invariants.lisp",
+        "line": 4,
+        "include": "consumer-store-invariants",
+        "included": "books/consumer-store-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/topic-history-store-invariants.lisp",
+        "line": 5,
+        "include": "topic-history-prefix-invariants",
+        "included": "books/topic-history-prefix-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -22691,6 +22978,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/hybrid-lifecycle-store-invariants-tests.lisp",
+        "line": 3,
+        "include": "../../books/hybrid-lifecycle-store-invariants",
+        "included": "books/hybrid-lifecycle-store-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/hybrid-lifecycle-store-invariants-tests.lisp",
+        "line": 5,
+        "include": "store-identity-traces-tests",
+        "included": "tests/acl2/store-identity-traces-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/hybrid-lifecycle-tests.lisp",
         "line": 2,
         "include": "../../books/hybrid-lifecycle",
@@ -23419,6 +23720,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/topic-history-prefix-invariants-tests.lisp",
+        "line": 2,
+        "include": "../../books/topic-history-prefix-invariants",
+        "included": "books/topic-history-prefix-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-prefix-invariants-tests.lisp",
+        "line": 3,
+        "include": "topic-history-prefix-tests",
+        "included": "tests/acl2/topic-history-prefix-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/topic-history-prefix-tests.lisp",
         "line": 3,
         "include": "topic-history-admission-tests",
@@ -23430,6 +23745,20 @@
         "line": 4,
         "include": "topic-history-local-admin-tests",
         "included": "tests/acl2/topic-history-local-admin-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-recovery-invariants-tests.lisp",
+        "line": 3,
+        "include": "../../books/topic-history-recovery-invariants",
+        "included": "books/topic-history-recovery-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-recovery-invariants-tests.lisp",
+        "line": 4,
+        "include": "consumer-topic-store-tests",
+        "included": "tests/acl2/consumer-topic-store-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -23454,6 +23783,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/topic-history-store-invariants-tests.lisp",
+        "line": 2,
+        "include": "../../books/topic-history-store-invariants",
+        "included": "books/topic-history-store-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/topic-history-store-node-tests.lisp",
         "line": 5,
         "include": "topic-history-local-admin-tests",
@@ -23472,6 +23808,20 @@
         "line": 3,
         "include": "topic-history-store-events-tests",
         "included": "tests/acl2/topic-history-store-events-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-v2-crash-tests.lisp",
+        "line": 4,
+        "include": "../../books/topic-history-store-invariants",
+        "included": "books/topic-history-store-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-v2-crash-tests.lisp",
+        "line": 5,
+        "include": "consumer-topic-store-tests",
+        "included": "tests/acl2/consumer-topic-store-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -1,5 +1,33 @@
 # Current work — 2026-09-24
 
+## Shared qualification and continued implementation — 06:17 UTC
+
+Frozen `863c2141` passed `make check`. Its ordinary incremental combined ACL2
+run is `run-20260924T061318Z-cd11` on hbox, under
+`/tank/fn/gates/capability-863c2141-20260924`, from the clean detached
+`build/lanes/native-863-freeze` checkout. It uses four jobs and a 300-second
+per-book discovery bound. No matching image or runtime pass is claimed yet.
+The BP identity-octet and configured-owner index repairs are both in this
+qualification subject. New proof work continues on dev after that revision.
+
+The [two-Store preflight](evidence/e160-two-store-preflight-gap-2026-09-24.md)
+found that protected peering preserves the signed carrier but does not persist
+the receiver's acceptance-time native verdict. Its consumer event is legacy
+`fn-r`, so Mini correctly refuses the required native projection. The receiver
+lane is implementing one verified transit path shared by NNTP and BP, with
+local enrollment policy, exact source and separate gateway provenance. Mini's
+lane is adding durable A-side reply consumption; neither capability is already
+demonstrated by the preflight.
+
+The [maintained topic proof checkpoint](evidence/topic-maintained-store-bridge-2026-09-24.md)
+is integrated after the freeze, with current-source certification and full
+transition/trace induction still open. The local author lifecycle completion
+and historical-verdict preservation packet also landed after the freeze; its
+scoped proof-book time fell from 100.676 to 2.479 seconds by closing an
+unnecessary selector/codec expansion, without changing statements. The next
+physical preservation effort extends the isolated device-error campaign;
+physical power-loss qualification remains open.
+
 ## Capability convergence — 06:06 UTC
 
 The broad wave is landing on dev while qualification continues independently.
