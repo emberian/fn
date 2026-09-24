@@ -19773,14 +19773,14 @@
       },
       {
         "book": "books/bp-receiver-evolving-store-invariants.lisp",
-        "line": 10,
+        "line": 11,
         "include": "bp-receiver-evolving-node-invariants",
         "included": "books/bp-receiver-evolving-node-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bp-receiver-evolving-store-invariants.lisp",
-        "line": 12,
+        "line": 13,
         "include": "consumer-store-invariants",
         "included": "books/consumer-store-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
