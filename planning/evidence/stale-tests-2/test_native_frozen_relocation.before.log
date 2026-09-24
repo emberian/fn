@@ -1,0 +1,40 @@
+# image /tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4; image.sha256 OK
+test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup) ... 
+  test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup) [stdin closed] ... FAIL
+  test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup) [stdin held open] ... FAIL
+test_relocated_image_uses_bundled_tls_and_ml_dsa (tests.test_native_frozen_relocation.FrozenRelocationTest.test_relocated_image_uses_bundled_tls_and_ml_dsa) ... ok
+
+======================================================================
+FAIL: test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup) [stdin closed]
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/stale-tests-2/treelane/tests/test_native_frozen_relocation.py", line 142, in test_missing_bundled_openssl_refuses_startup
+    self.assertEqual(proc.returncode, 5, (label, out, err))
+AssertionError: 1 != 5 : ('stdin closed', b'* ', b'Unhandled FNN-TLS-UNAVAILABLE in thread #<SB-THREAD:THREAD tid=1751950 "main thread" RUNNING\n                                           {1200068003}>:\n  native TLS: no complete OpenSSL libcrypto/libssl pair exists\n\nBacktrace for: #<SB-THREAD:THREAD tid=1751950 "main thread" RUNNING {1200068003}>\n0: (SB-DEBUG::DEBUGGER-DISABLED-HOOK #<FNN-TLS-UNAVAILABLE {120F11E903}> #<unused argument> :QUIT T)\n1: (SB-DEBUG::RUN-HOOK SB-EXT:*INVOKE-DEBUGGER-HOOK* #<FNN-TLS-UNAVAILABLE {120F11E903}>)\n2: (INVOKE-DEBUGGER #<FNN-TLS-UNAVAILABLE {120F11E903}>)\n3: (ERROR #<FNN-TLS-UNAVAILABLE {120F11E903}>)\n4: ((FLET SB-THREAD::WITH-MUTEX-THUNK :IN FNN-TLS-INITIALIZE))\n5: ((FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX))\n6: (SB-THREAD::FAST-CALL-WITH-MUTEX #<FUNCTION (FLET SB-THREAD::WITH-MUTEX-THUNK :IN FNN-TLS-INITIALIZE) {B801BE985B}> #<SB-THREAD:MUTEX "fn native TLS initialization" taken owner=main thread>)\n7: ((FLET SB-THREAD::WITH-MUTEX-THUNK :IN FNN-HSIG-INITIALIZE))\n8: ((FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX))\n9: (SB-THREAD::FAST-CALL-WITH-MUTEX #<FUNCTION (FLET SB-THREAD::WITH-MUTEX-THUNK :IN FNN-HSIG-INITIALIZE) {B801BEEABB}> #<SB-THREAD:MUTEX "fn ML-DSA provider initialization" taken owner=main thread>)\n10: (FN-NATIVE-ENTRY #<unused argument>)\n11: (RAW-EV-FNCALL #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument>)\n12: (EV #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument>)\n13: (EV-FOR-TRANS-EVAL (FN-NATIVE-ENTRY STATE) (NIL NIL STATE) TOP-LEVEL #<unavailable argument> #<unavailable argument> NIL)\n14: (LD-READ-EVAL-PRINT #<unavailable argument>)\n15: (LD-LOOP #<unavailable argument>)\n16: (LD-FN-BODY ((FN-NATIVE-ENTRY STATE) (VALUE :Q)) #<unavailable argument> #<unavailable argument>)\n17: (LD-FN0 #<unavailable argument> #<unavailable argument> NIL)\n18: (LD-FN #<unavailable argument> ACL2_INVISIBLE::|The Live State Itself| #<unavailable argument>)\n19: (LP)\n20: (SB-INT:SIMPLE-EVAL-IN-LEXENV (LP) #<NULL-LEXENV>)\n21: (EVAL (LP))\n22: (SB-INT:SIMPLE-EVAL-IN-LEXENV (SBCL-RESTART) #<NULL-LEXENV>)\n23: (EVAL (SBCL-RESTART))\n24: (SB-IMPL::PROCESS-EVAL/LOAD-OPTIONS ((:EVAL . "(acl2::sbcl-restart)")))\n25: (SB-IMPL::TOPLEVEL-INIT)\n26: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))\n27: ((FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP))\n28: (SB-IMPL::%START-LISP)\n\nunhandled condition in --disable-debugger mode, quitting\n')
+
+======================================================================
+FAIL: test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup) [stdin held open]
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/stale-tests-2/treelane/tests/test_native_frozen_relocation.py", line 132, in test_missing_bundled_openssl_refuses_startup
+    proc.wait(timeout=10)
+  File "/usr/lib/python3.12/subprocess.py", line 1264, in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2045, in _wait
+    raise TimeoutExpired(self.args, timeout)
+subprocess.TimeoutExpired: Command '['/tmp/fn-frozen-relocation-9fbvbs7g/missing-pair/fn-host', '--fn', 'store', '/tmp/fn-frozen-relocation-9fbvbs7g/bad-store--1', 'init', 'fn.test']' timed out after 10 seconds
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tank/fn/scratch/stale-tests-2/treelane/tests/test_native_frozen_relocation.py", line 136, in test_missing_bundled_openssl_refuses_startup
+    self.fail("refused start still running after 10 s ({}): {}".format(
+AssertionError: refused start still running after 10 s (stdin held open): b'unavailable argument>)\n19: (LP)\n20: (SB-INT:SIMPLE-EVAL-IN-LEXENV (LP) #<NULL-LEXENV>)\n21: (EVAL (LP))\n22: (SB-INT:SIMPLE-EVAL-IN-LEXENV (SBCL-RESTART) #<NULL-LEXENV>)\n23: (EVAL (SBCL-RESTART))\n24: (SB-IMPL::PROCESS-EVAL/LOAD-OPTIONS ((:EVAL . "(acl2::sbcl-restart)")))\n25: (SB-IMPL::TOPLEVEL-INIT)\n26: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))\n27: ((FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP))\n28: (SB-IMPL::%START-LISP)\n\nunhandled condition in --disable-debugger mode, quitting\n'
+
+----------------------------------------------------------------------
+Ran 2 tests in 11.846s
+
+FAILED (failures=2)
+# rc=1 end 2026-09-24T18:02:35Z
+# after: image.sha256 OK

@@ -1,0 +1,10 @@
+# image /tank/fn/scratch/stale-tests-2/img-lane; image.sha256 OK
+test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup) ... ok
+test_relocated_image_uses_bundled_tls_and_ml_dsa (tests.test_native_frozen_relocation.FrozenRelocationTest.test_relocated_image_uses_bundled_tls_and_ml_dsa) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.122s
+
+OK
+# rc=0 end 2026-09-24T18:02:37Z
+# after: image.sha256 OK
