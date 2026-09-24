@@ -219,12 +219,15 @@
                (fn-sn-node s))
         (equal (fn-sn-consumer (fn-sn-set-keyring s keyring))
                (fn-sn-consumer s))
+        (equal (fn-sn-topic (fn-sn-set-keyring s keyring))
+               (fn-sn-topic s))
         (equal (fn-sn-identity-next (fn-sn-set-keyring s keyring))
                (fn-sn-identity-next s)))
    :hints (("Goal" :in-theory (enable fn-sn-set-keyring
                                       fn-sn-groups fn-sn-capacity
                                       fn-sn-files fn-sn-node
-                                      fn-sn-consumer fn-sn-identity-next)))))
+                                      fn-sn-consumer fn-sn-topic
+                                      fn-sn-identity-next)))))
 
 (local
  (defthm fn-spc-set-keyring-keeps-completion-record
@@ -266,6 +269,7 @@
                              fn-record-record-vocabulary
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-th-topic-eventp
                              fn-replay-apply-record
                              fn-replay-apply-retention-event
                              fn-replay-apply-identity-neutral
