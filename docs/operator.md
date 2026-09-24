@@ -131,6 +131,45 @@ rename is a refusal (1), at or after it an uncertain outcome (3) that the next
 (`capacity DECIMAL-UINT32`). Any profile word other than `development` or
 `scale` is a usage error (5), at `init` and at `store upgrade-profile`.
 
+Compaction is the other offline store step. It replaces the transaction
+files of the committed history with one lossless pack:
+
+```text
+fn operator /path/to/fn.toml store compact
+compacted steps=pack,select,reclaim,retire records=7 generation=0 reclaimed=7 retired=0
+```
+
+It opens the store as `recover` does, so it is refused (1, `store is already
+locked`) while an owner runs. ACL2 decides what it does
+(`fn-cverb-decide`, `books/store-compact-verb.lisp`) and the host carries out
+exactly that:
+
+- `pack,select,reclaim,retire`: capture every committed record's exact bytes
+  into the next pack generation, publish it, select it, unlink the
+  transaction files it covers and retire the older pack generations. The open
+  afterwards hands replay the identical record list
+  (`fn-ccp-reclaim-preserves-reconstructed-history`), so every article, number,
+  watermark, retention pin and the next article number are unchanged.
+- `reclaim,retire`: the selected pack already covers every committed record
+  (a rerun after an interrupted compaction); no new pack is written.
+- refused (1), nothing written, with the reason: `already-compact` (nothing
+  to pack, reclaim or retire), `empty-history`, `temporary-space` (the files
+  already present plus the new pack would exceed the profile's aggregate
+  record bound, 24 MiB for `development`, 768 MiB for `scale`: the pack is
+  written beside the files it replaces), `exceeds-compaction-unit` (the
+  history's pack would exceed 4 MiB, the unit one pack holds; the open reads
+  a pack as one bounded read, and compacting a larger history needs chained
+  packs, which do not exist yet).
+
+A death or an I/O error at any step leaves a store the next `recover` opens
+with the same history; an I/O error after a durable change is uncertain (3),
+and rerunning `store compact` finishes the job. Compaction removes transaction
+files, not transactions: the budget above counts committed records, and a
+compacted store has the same `transactions-used` as before. A lost newest
+transaction file is not detected at open (the allocation frontier is reserved
+before the record is written, so the loss looks like an abandoned
+reservation; `planning/evidence/m5-compact-verb-2026-09-24.md`, finding 1).
+
 `status` prints the headroom beside the counts, from ACL2
 (`fn-sbud-headroom`), not from a host count:
 
