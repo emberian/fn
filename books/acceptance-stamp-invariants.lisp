@@ -286,8 +286,7 @@
                    (fn-replay-apply-record
                     (fn-sn-node s) (fn-sn-completion-record s))))
    :hints (("Goal" :in-theory
-            (e/d (fn-sn-finish fn-sn-finish-identity fn-sn-node
-                  fn-sn-make-v6)
+            (e/d (fn-sn-finish fn-sn-finish-identity)
                  (fn-sn-completion-enabledp fn-sn-statep
                   fn-sn-completion-record fn-store-retention-event-p
                   fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
