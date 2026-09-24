@@ -60,3 +60,42 @@
                  fn-sf-replay-node fn-replay-identity
                  fn-cpe-projection-replay fn-th-prefix-project
                  fn-cei-build fn-cei-build-aux)))))
+
+(defthm fn-ceis-state-has-file-state
+  (implies (fn-sn-statep s)
+           (fn-sf-statep (fn-sn-files s)))
+  :hints (("Goal" :in-theory (enable fn-sn-statep))))
+
+(defthm fn-ceis-io-preserves-related
+  (implies (and (fn-sn-statep s) (fn-ceis-relatedp s)
+                (not (member-eq (fn-sf-phase (fn-sn-files s))
+                                '(:replaying :fault))))
+           (fn-ceis-relatedp (fn-sn-io s operation result)))
+  :hints (("Goal" :cases ((and (eq operation :record-directory)
+                                (eq result :ok)
+                                (eq (fn-sf-phase (fn-sn-files s))
+                                    :record-attempted)))
+           :use ((:instance fn-ceis-record-directory-extension
+                            (files (fn-sn-files s))
+                            (index (fn-sn-event-index s))))
+           :in-theory (e/d (fn-ceis-relatedp fn-sn-io fn-sn-file-step
+                            fn-sf-record-dir-result
+                            fn-store-files-traces-vocabulary)
+                           (fn-sn-update fn-sn-with-event-index fn-sn-make-v6
+                            fn-sf-statep fn-store-event-p
+                            fn-cei-correspondencep fn-cei-build
+                            fn-cei-build-aux fn-cei-put fn-cei-put-digits
+                            fn-cei-branch-put fn-sn-statep)))))
+
+(defthm fn-ceis-prepare-consumer-preserves-related
+  (implies (and (fn-sn-statep s) (fn-ceis-relatedp s)
+                (not (member-eq (fn-sf-phase (fn-sn-files s))
+                                '(:replaying :fault))))
+           (fn-ceis-relatedp (fn-sn-prepare-consumer s event)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-ceis-relatedp fn-sn-prepare-consumer
+                  fn-store-files-traces-vocabulary)
+                (fn-sn-update fn-sn-make-v6
+                 fn-sn-statep fn-sf-statep fn-store-event-p
+                 fn-cei-correspondencep fn-cei-build
+                 fn-cei-build-aux)))))
