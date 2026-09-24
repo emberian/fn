@@ -70,6 +70,11 @@
 (define-condition fnn-store-fault (fnn-store-error) ())
 (define-condition fnn-input-overbound (fnn-store-fault) ())
 (define-condition fnn-store-indeterminate (fnn-store-error) ())
+;; A Store write that failed before publication, after which ACL2 consumed the
+;; reservation as a known failure: nothing was stored.  It is a refusal (exit
+;; 1, like its parent), and the owner relays its kind as :storage-failed so
+;; the wire names the reason (books/nntp-post.lisp fn-post-store-refusal-line).
+(define-condition fnn-store-io-refusal (fnn-store-error) ())
 (define-condition fnn-usage-error (fnn-store-error) ())
 
 ;; One POSIX failure, reported the way Python's OSError prints itself.
@@ -87,6 +92,8 @@
   (error 'fnn-store-fault :message (apply #'format nil control args)))
 (defun fnn-overbound (control &rest args)
   (error 'fnn-input-overbound :message (apply #'format nil control args)))
+(defun fnn-refuse-io (control &rest args)
+  (error 'fnn-store-io-refusal :message (apply #'format nil control args)))
 (defun fnn-indeterminate (control &rest args)
   (error 'fnn-store-indeterminate :message (apply #'format nil control args)))
 (defun fnn-os-fail (errno &optional path)
@@ -1543,7 +1550,7 @@ after the syscall."
           (setf (fnn-store-fenced store) t)
           (fnn-indeterminate "allocation-frontier update is indeterminate"))
         (fnn-observe store :frontier-file :known-fail)
-        (fnn-refuse "known pre-publication allocator failure: ~a" e)))))
+        (fnn-refuse-io "known pre-publication allocator failure: ~a" e)))))
 
 (defun fnn-publish (store sequence record)
   (fnn-require-writer store)
@@ -1594,7 +1601,7 @@ after the syscall."
         (when attempted
           (setf (fnn-store-fenced store) t)
           (fnn-indeterminate "transaction publication outcome is indeterminate"))
-        (fnn-refuse "known pre-publication store failure: ~a" e)))))
+        (fnn-refuse-io "known pre-publication store failure: ~a" e)))))
 
 (defun fnn-finish (store)
   "Open the writer gate only after exact fn-sn durable completion."
@@ -1602,7 +1609,17 @@ after the syscall."
   (unless (and (fnn-store-fenced store) (fnn-store-completion-pending store))
     (fnn-indeterminate "durable completion was not pending"))
   (setf (fnn-store-completion-pending store) nil)
-  (fnn-at store :finish-consumed)
+  ;; Both cut points lie after publication: the record is durable.  An OS
+  ;; error at either is therefore never a refusal (campaign W2, 2026-09-24:
+  ;; one escaped to the owner's refusal clause and a durable article was
+  ;; answered `441 ... refused').  At :finish-consumed ACL2 has not consumed
+  ;; the completion; at :finish-durable it has, and the owner then renders any
+  ;; word but :durable as uncertain (fn-own-consumed-completion-is-240-or-
+  ;; uncertain).  Either way the store is fenced and recovery decides.
+  (handler-case (fnn-at store :finish-consumed)
+    (fnn-os-error (e)
+      (setf (fnn-store-fenced store) t)
+      (fnn-indeterminate "completion interrupted after publication: ~a" e)))
   (let ((completion (handler-case (funcall *fnn-finish-callback*)
                       ((or fnn-store-error fnn-os-error) ()
                         (setf (fnn-store-fenced store) t)
@@ -1611,7 +1628,10 @@ after the syscall."
       (setf (fnn-store-fenced store) t)
       (fnn-indeterminate "ACL2 rejected durable completion after publication"))
     (setf (fnn-store-fenced store) nil)
-    (fnn-at store :finish-durable)
+    (handler-case (fnn-at store :finish-durable)
+      (fnn-os-error (e)
+        (setf (fnn-store-fenced store) t)
+        (fnn-indeterminate "writer reopening interrupted after the consumed completion: ~a" e)))
     completion))
 
 (defun fnn-identity-text (identity)

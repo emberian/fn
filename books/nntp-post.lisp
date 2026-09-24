@@ -34,7 +34,8 @@
 ; acceptance path the command-line `post` uses (tools/run_store.py, through
 ; fn-node-prepare and fn-node-complete) and then call `fn-nntp-post-outcome`
 ; with what it observed.  The three observations stay distinct out to the
-; wire: :durable is 240, :refused is one 441 line and :uncertain is another.
+; wire: :durable is 240, each Store refusal kind is its own 441 line
+; (fn-post-store-refusal-line) and :uncertain is another.
 
 (in-package "ACL2")
 (include-book "nntp-effects")
@@ -262,6 +263,42 @@
 ; (fn-post-outcome-separates-a-malformed-session below), and it makes the
 ; next missed wrapper a visible failure on the wire and in the test book
 ; instead of a silent one.
+;
+; A Store refusal names the kind the Store decided (P2: "441 refused names
+; its reason").  The owner renders the word it was handed only when the
+; completion is a refusal (books/owner.lisp fn-own-outcome-rendering), so a
+; kind here is never reached after a consumed completion.  :duplicate and
+; :conflict are fn-sn-existing-action's two answers (books/store-node.lisp);
+; :malformed is fn-owner-prepare's :invalid; :unaffordable is a refusal of
+; the persisted profile (fn-store-publication-admissibility) or of the
+; transaction capacity; :storage-failed is a Store write that failed before
+; publication and whose reservation ACL2 consumed as a known abort, so
+; nothing was stored.  :refused remains the kind for a refusal the Store did
+; not name.  RFC 3977 section 6.3.1 allows 441 for all of them; the
+; distinct text is the stronger fn guarantee.  The exact words are a local
+; policy choice pending ember's decision on the wire vocabulary.
+(defun fn-post-store-refusalp (completion)
+  (declare (xargs :guard t))
+  (and (member-equal completion
+                     '(:refused :duplicate :conflict :malformed :unaffordable
+                       :storage-failed))
+       t))
+
+(defun fn-post-store-refusal-line (kind)
+  (declare (xargs :guard t))
+  (cond
+   ((equal kind :duplicate)
+    "441 posting failed; this article is already stored here")
+   ((equal kind :conflict)
+    "441 posting failed; a different article with this Message-ID is stored here")
+   ((equal kind :malformed)
+    "441 posting failed; the store refused the article as malformed")
+   ((equal kind :unaffordable)
+    "441 posting failed; the store has no capacity for this article")
+   ((equal kind :storage-failed)
+    "441 posting failed; the store could not write the article, nothing was stored")
+   (t "441 posting failed; the article was refused")))
+
 (defconst *fn-post-malformed-session-line*
   "403 internal fault; the posting session is malformed")
 
@@ -277,8 +314,8 @@
       (cond ((equal completion :durable) "240 article received OK")
             ((equal completion :clock-unusable)
              (fn-post-refusal-line :clock-unusable))
-            ((equal completion :refused)
-             "441 posting failed; the article was refused")
+            ((fn-post-store-refusalp completion)
+             (fn-post-store-refusal-line completion))
             (t "441 posting failed; the outcome is uncertain, do not repost")))
      nil)))
 
@@ -290,6 +327,8 @@
 (verify-guards fn-post-make-result)
 (verify-guards fn-post-offeredp)
 (verify-guards fn-post-refusal-line)
+(verify-guards fn-post-store-refusalp)
+(verify-guards fn-post-store-refusal-line)
 (verify-guards fn-post-body-octets)
 (verify-guards fn-post-single)
 (verify-guards fn-nntp-post-step)
@@ -475,6 +514,41 @@
                                    fn-nntp-initial-status-linep))))
   :rule-classes nil)
 
+; A Store refusal is never the uncertain line, and two Store refusal kinds
+; never share a line: a client can tell "not stored, and here is why" from
+; "do not repost", and one reason from another.
+(defthm fn-post-outcome-store-refusal-is-not-uncertain
+  (implies (and (fn-post-sessionp ps)
+                (fn-post-store-refusalp completion))
+           (not (equal (fn-post-result-effects
+                        (fn-nntp-post-outcome ps completion))
+                       (fn-post-result-effects
+                        (fn-nntp-post-outcome ps :uncertain)))))
+  :hints (("Goal" :in-theory (e/d (fn-post-single fn-nntp-single
+                                   fn-post-store-refusalp)
+                                  (fn-nntp-replyp fn-post-sessionp
+                                   fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep))))
+  :rule-classes nil)
+
+; Only OTHER need be a refusal kind: any non-refusal completion renders the
+; 240, the clock line or the uncertain line, none of which is a Store
+; refusal line, so a hypothesis on KIND would have no violating value.
+(defthm fn-post-outcome-store-refusal-kinds-are-distinct
+  (implies (and (fn-post-sessionp ps)
+                (fn-post-store-refusalp other)
+                (not (equal kind other)))
+           (not (equal (fn-post-result-effects
+                        (fn-nntp-post-outcome ps kind))
+                       (fn-post-result-effects
+                        (fn-nntp-post-outcome ps other)))))
+  :hints (("Goal" :in-theory (e/d (fn-post-single fn-nntp-single
+                                   fn-post-store-refusalp)
+                                  (fn-nntp-replyp fn-post-sessionp
+                                   fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep))))
+  :rule-classes nil)
+
 ; -----------------------------------------------------------------------------
 ; Two submissions on one connection
 ;
@@ -575,6 +649,7 @@
 (deftheory fn-nntp-post-vocabulary
   (quote (fn-post-sessionp fn-post-open-session fn-post-session-consistentp
           fn-post-offeredp fn-post-refusal-line fn-post-single
+          fn-post-store-refusalp fn-post-store-refusal-line
           fn-post-body-octets
           fn-nntp-post-step fn-nntp-post-outcome)))
 
