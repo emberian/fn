@@ -102,7 +102,8 @@ UID; changing the owner UID cannot rewrite historical admissions or silently
 inherit the old binding. The first root-only profile has no replacement or
 succession operation. Reuse of the same OS account remains inside the local
 operator trust boundary; a later replacement or revocation must be explicit.
-This binding/event/native join is still open.
+The event and Store replay join are now executable; authenticated native
+installation and publication remain open.
 
 `books/topic-history-local-admin.lisp` now defines the logical immutable
 install event and the caller-facing root proposal wrapper. Installation
@@ -111,8 +112,8 @@ observation; an existing installation refuses replacement. The wrapper
 derives the caller ID only when the current authenticated UID matches the
 installed UID, then passes the installed ID to root preparation. Its theorem
 proves that successful root preparation requires that historical binding and
-UID match. The install event is not yet encoded into the Store journal, and
-the native owner does not yet call the wrapper.
+UID match. The install event has a canonical Store encoding and historical
+replay; the native owner caller is not yet qualified.
 
 A report proposal resolves the retained T10 event/snapshot again. It requires
 the selected root policy to be active, the verified author reference in the
@@ -134,26 +135,32 @@ the root administrator/quota or report topic/policy/parent metadata. The codec
 prechecks 1,024 octets, uses at most 24 canonical CBOR items, and re-encodes
 decoded values exactly before accepting them. The Store event union now
 recognizes this distinct grammar and assigns its sequence, transaction,
-generation and publication-size fields. Replay still refuses a topic event:
-the prior T10 source and installed local administrator have no joined
-historical projection yet, so decoded bytes alone cannot confer authority.
+generation and publication-size fields. Store completion checks the carried
+historical projection before admitting the event, then advances the exact
+sequence and transaction with article acceptance contents unchanged.
 
 `books/topic-history-prefix.lisp` is the recovery-side ordered projector. It
 collects preceding T10 accepted events and keyring snapshots and resolves
 each topic event's exact authorship reference only from that earlier prefix.
 It then invokes the same `fn-th-commit-anchor` or `fn-th-commit-report`
 transition and faults on a missing source, snapshot, mismatched administrator
-or invalid report. It must run with Store/T10 replay validation and is not
-yet the carried Store slot or a native publication caller.
+or invalid report. Store carries this projection in slot 12 and reconstructs
+it from the completed journal at observed reopen. Article, identity and
+consumer replay success alone cannot authorize a topic history: observed
+reopen separately requires topic replay success. Configuration updates use a
+shared Store updater proved to preserve the file, consumer and topic slots.
 
-This is a certified executable component, not a durable Store or native owner
-path yet: Store replay join, owner publication, historical administrator
-configuration lookup and retention pins have not landed. It is root-only.
+This is a certified logical Store completion and recovery path. The native
+owner/control source now calls the ACL2 proposal dispatcher and Store
+publication gate, but its saved-image execution is not yet qualified.
+Historical administrator installation
+and T10 authorship are taken from the completed prefix, not current UID or
+unverified metadata. It is root-only.
 No control successor, fork healing, automatic policy
 adoption, alias rewrite or Mini application operation is inferred. PRF-066 and
-SCN-034 track the component and the remaining joined boundary.
-Store topic events, durable admission and current-policy status remain the
-next P3 composition steps and need their own host-called theorems and physical
-evidence. RFC 5536 header syntax comes from the article parser. The one-field,
+SCN-034 track the Store path and remaining native boundary. Physical
+publication, owner recovery and current-policy status require source-matched
+native evidence before a served-admission claim. RFC 5536 header syntax comes
+from the article parser. The one-field,
 canonical metadata and size choices are stronger local fn experimental rules,
 not RFC requirements.
