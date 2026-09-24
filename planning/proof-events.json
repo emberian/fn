@@ -121,6 +121,11 @@
           "kind": "theorem",
           "name": "fn-scar-ocfg-read-keeps-store",
           "note": "The carried served read leaves the owner's store unchanged, with no hypothesis, so the store node's fn-node-statep, the carried read's premise, survives every read; across commits fn-ocl-relation's preservation theorems (books/config-owner-live.lisp) carry it. Teeth: tests/acl2/owner-served-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-own-finish-preserves-sn-statep",
+          "note": "The carried commit's premise survives it: if the store satisfies fn-sn-statep, so does the store after fn-ccar-own-finish, with nothing else assumed (fn-sn-finish-preserves-state over the reference). Teeth: tests/acl2/owner-commit-carried-tests.lisp."
         }
       ]
     },
@@ -790,6 +795,16 @@
           "kind": "theorem",
           "name": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
           "note": "The per-read owner transition the host calls (host/owner-host.lisp fn-owner-chunk calls fn-scar-ocfg-read-tls-prefix) equals fn-ocfg-read-tls-prefix under fn-ocl-relation; it takes the store node's fn-node-statep from that relation instead of evaluating it (O(N^2) in the archive) four times per read. Teeth: tests/acl2/owner-served-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-own-finish-is-own-finish",
+          "note": "The owner commit the host calls (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) equals fn-own-finish, word and owner, for every owner and configuration, and has fn-own-finish's guard, fn-sn-statep of the store; its guard-verified raw code finds the completion record at its sequence position instead of searching the whole history through fn-record-p ten times per commit. Teeth: tests/acl2/owner-commit-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-seek-is-find-record",
+          "note": "On a record list whose sequence numbers run contiguously from SEQ (fn-sf-record-listp, carried inside fn-sn-statep), the seek that skips to position (car pair) and compares one pair equals the whole-history fn-sn-find-record, for every pair. Teeth: tests/acl2/owner-commit-carried-tests.lisp."
         }
       ]
     },
@@ -856,6 +871,11 @@
           "kind": "theorem",
           "name": "fn-own-240-follows-consumed-completion",
           "pending_subject": "Subject is fn-own-finish (books/owner-served-invariants.lisp), the (:complete) event with its word computed in ACL2. The host still runs (:complete) through fn-owner-step and decides :durable by comparing phases and ledger lengths in fn-owner-finish (host/owner-host.lisp:495-507), then passes that word to fn-own-outcome (host/owner-host.lisp:1034). Under that host word a 240 over a completion of another record is reachable (tests/acl2/owner-served-invariants-tests.lisp, *own-240*). Met when fn-owner-finish returns (car (fn-own-finish o))."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-own-finish-is-own-finish",
+          "note": "Transfers fn-own-240-follows-consumed-completion to the function the host calls: fn-owner-finish-submission (host/owner-host.lisp) calls fn-ccar-own-finish, equal to fn-own-finish for every owner and configuration. Teeth: tests/acl2/owner-commit-carried-tests.lisp."
         }
       ]
     },

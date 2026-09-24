@@ -33,6 +33,7 @@
 (include-book "../books/owner-tls-prefix")
 (include-book "../books/owner-config-observe")
 (include-book "../books/owner-served-carried")
+(include-book "../books/owner-commit-carried")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
@@ -556,12 +557,18 @@
 ; not an article completion at all, and the answer is :fault with nothing
 ; changed.  Retention, identity and config completions still use
 ; fn-owner-finish above: they have no article submission to name.
+;; The call is fn-ccar-own-finish (books/owner-commit-carried.lisp), equal
+;; to fn-own-finish for every owner and configuration
+;; (fn-ccar-own-finish-is-own-finish) under the same guard, fn-sn-statep of
+;; the store, which the owner relation carries from open.  It finds the
+;; completion record at its sequence position instead of searching the
+;; whole history through fn-record-p, ten times per commit.
 (defun fn-owner-finish-submission (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((oc (fn-owner-ocfg state)))
     (if (fn-ocfg-staged oc)
         (value :fault)
-      (let* ((result (fn-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)))
+      (let* ((result (fn-ccar-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)))
              (state (fn-owner-replace-core (cdr result) state)))
         (value (car result))))))
 
