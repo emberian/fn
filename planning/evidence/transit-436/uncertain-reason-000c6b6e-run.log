@@ -1,0 +1,6 @@
+CONTROL /tank/fn/scratch/transit-436/unc-000c6b6e/control.sock
+LISTENING 42029
+Store outcome uncertain; the store needs recovery: indeterminate injected failure after final publication
+uncertain post path=control message-id=<unc@example.invalid> time=2026-09-24T16:20:37Z
+control request uncertain; owner fenced: owner bound Store outcome is uncertain
+uncertain operator run
