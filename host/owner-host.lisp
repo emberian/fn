@@ -31,6 +31,7 @@
 (include-book "../books/config-owner-live")
 (include-book "../books/config-owner-publish")
 (include-book "../books/owner-tls-prefix")
+(include-book "../books/owner-config-observe")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
@@ -1301,7 +1302,13 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((obs (fn-clock-observation monotonic wall wall-error has-wall))
          (outcome (fn-own-observe-outcome (fn-owner-core state) obs))
-         (state (fn-owner-step (list :observe obs) state)))
+         ; fn-ocfg-observe, not fn-owner-step: it is fn-ocfg-step's
+         ; (:observe obs) arm (fn-ocfg-step-observe-is-fn-ocfg-observe,
+         ; books/owner-config-observe.lisp) with guard t, so the reading the
+         ; host takes before every socket read no longer evaluates the
+         ; whole-store guard of the unverified fn-ocfg-step.
+         (state (fn-owner-install-ocfg
+                 (fn-ocfg-observe (fn-owner-ocfg state) obs) state)))
     (value outcome)))
 
 (defun fn-owner-declare-group (name-octets state)
