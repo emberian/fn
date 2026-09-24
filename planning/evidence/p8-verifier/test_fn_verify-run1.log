@@ -1,0 +1,32 @@
+test_a_lying_node_is_2 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_lying_node_is_2) ... ok
+test_agreement_on_a_valid_signature_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_on_a_valid_signature_is_0) ... ok
+test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1) ... ok
+test_noncanonical_carrier_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_noncanonical_carrier_is_refused) ... ok
+test_usage_error_never_reads_as_disagreement (tests.test_fn_verify.FakeNodeVerifyTests.test_usage_error_never_reads_as_disagreement) ... ok
+test_what_cannot_be_decided_is_3 (tests.test_fn_verify.FakeNodeVerifyTests.test_what_cannot_be_decided_is_3) ... ok
+test_fabricated_hdr_answers_are_2 (tests.test_fn_verify.NativeVerifyTests.test_fabricated_hdr_answers_are_2) ... ok
+test_signed_post_verifies_independently_0 (tests.test_fn_verify.NativeVerifyTests.test_signed_post_verifies_independently_0) ... FAIL
+test_tampered_bytes_under_the_nodes_verified_line_are_2 (tests.test_fn_verify.NativeVerifyTests.test_tampered_bytes_under_the_nodes_verified_line_are_2) ... ok
+test_tampered_post_is_not_stored_so_nothing_is_decided_3 (tests.test_fn_verify.NativeVerifyTests.test_tampered_post_is_not_stored_so_nothing_is_decided_3) ... ok
+test_the_node_accepted_the_signed_and_unsigned_posts_and_refused_the_tampered (tests.test_fn_verify.NativeVerifyTests.test_the_node_accepted_the_signed_and_unsigned_posts_and_refused_the_tampered) ... ok
+test_unsigned_post_both_say_unverified_1 (tests.test_fn_verify.NativeVerifyTests.test_unsigned_post_both_say_unverified_1) ... ok
+
+======================================================================
+FAIL: test_signed_post_verifies_independently_0 (tests.test_fn_verify.NativeVerifyTests.test_signed_post_verifies_independently_0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/p8-verifier/tree/tests/test_fn_verify.py", line 432, in test_signed_post_verifies_independently_0
+    self.assertIn("AUTHINFO PASS ****", report["transcript"])
+AssertionError: 'AUTHINFO PASS ****' not found in ['< 201 fn-nntp experimental reader ready', '> STARTTLS', '< 382 continue with TLS negotiation', '> AUTHINFO USER verify-reader', '< 381 password required', '> AUTHINFO PASS ****', '< 281 authentication accepted', '> ARTICLE <verify-signed@example.invalid>', '< 220 0 <verify-signed@example.invalid> article follows', '> HDR :fn-verified <verify-signed@example.invalid>', '< 225 headers follow', '> QUIT', '< 205 closing connection']
+
+----------------------------------------------------------------------
+Ran 12 tests in 7.038s
+
+FAILED (failures=1)
+
+forged verified: 0 verified 5555555555555555555555555555555555555555555555555555555555555555 keyring 1 | the node claims verified by 5555555555555555555555555555555555555555555555555555555555555555, the independent check says no-carrier
+forged absent: 0 absent no-record | the node says absent, but the signature verifies under the pinned keys of 5555555555555555555555555555555555555555555555555555555555555555
+
+tampered-in-flight: 0 verified 5555555555555555555555555555555555555555555555555555555555555555 keyring 1 | the node claims verified by 5555555555555555555555555555555555555555555555555555555555555555, the independent check says signature
+
+unsigned: 0 absent no-field | not verified: the node says absent and the independent check says no-carrier
