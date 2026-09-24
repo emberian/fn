@@ -561,6 +561,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/topic-history-prefix-tests \
 	tests/acl2/topic-history-local-admin-tests \
 	tests/acl2/topic-history-store-node-tests \
+	tests/acl2/consumer-topic-store-tests \
 	tests/acl2/topic-history-local-proposals-tests \
 	tests/acl2/topic-history-local-control-tests \
 	tests/acl2/topic-history-native-vector-tests \
