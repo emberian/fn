@@ -1,0 +1,6 @@
+$ fn bp-contact tick /tank/fn/scratch/m4-app-receipt/final/four-dtn7/four-node-tpyd956w/dtn7/b-fnbs dtn://receiver/ dtn://sender/ 0 60000 3600000 2 32 1048576 843601005154 60000
+BP FNBS recovered held=1
+BP queue recovered jobs=0
+BP contact closed peer=dtn://sender/
+
+# rc=0

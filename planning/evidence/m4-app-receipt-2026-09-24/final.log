@@ -1,0 +1,19 @@
+built build/fn-host-dtn profile=production (120M core)
+undefined lines: 0
+built build/fn-host-dtn-developer profile=developer (120M core)
+undefined lines: 0
+14134daa777754f5a3d4d88592806438728246b1584c940fb4e1d97c47cfec70  build/fn-host-dtn
+28dc0fcc829aebfe029e5b9f465473df05111e3f4be3ec8497333397b048cb5f  build/fn-host-dtn.core
+6c2cb94c886869f18fb4e835767e6835650e7775c6012d497173afdf9f62a849  build/fn-host-dtn-developer
+face0c52040771840ccf7e00d73abf31ff44c116a37a9327567b46ba7288c210  build/fn-host-dtn-developer.core
+control rc=0
+dtn7-neighbour rc=0
+dtn7-source rc=0
+four-dtn7 rc=0 {"status": "passed", "seconds": 76.5, "evidence": "/tank/fn/scratch/m4-app-receipt/final/four-dtn7/four-node-tpyd956w/evidence.json"}
+four-mock rc=1 tools.workflow_journal.JournalError: ACL2 rejected workflow durable history before publication
+test_bp_node_native.final rc=0 OK
+test_bp_service_native.final rc=0 OK
+test_bp_contact_relay_native.final rc=0 OK
+test_bp_contact_native.final rc=0 OK
+test_bp_receive_integrity_native.final rc=0 OK
+ALLDONE

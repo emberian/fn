@@ -1,0 +1,4 @@
+$ fn app-journal workflow-init /tank/fn/scratch/m4-app-receipt/final/dtn7-source/a-store /tank/fn/scratch/m4-app-receipt/final/dtn7-source/a-fnwf dtn://sender/ dtn://receiver/ native-policy dtn://receiver/ 3600000 origin-native wire-auth
+workflow durable records=1
+
+# rc=0
