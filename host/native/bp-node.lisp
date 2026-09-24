@@ -503,8 +503,15 @@
                        (let ((conn
                                (fnn-tcl-session
                                 (fnn-socket-fd socket) :passive
+                                ;; No expected TCPCL peer: the neighbour is
+                                ;; whichever node the enrolled boundary names,
+                                ;; decided by ACL2's fn-bpaj-session-principal
+                                ;; from the announced EID and the observed
+                                ;; channel (fnn-bp-deliver-node).  PEER-ID is
+                                ;; the application peer (receipt routes), and
+                                ;; through a relay it is not the neighbour.
                                 (fnn-tcl-params
-                                 node-id peer-id +fnn-tcl-keepalive+
+                                 node-id nil +fnn-tcl-keepalive+
                                  +fnn-tcl-segment-mru+ transfer-mru)
                                 "bp-node" (fnn-bps-root bp))))
                          (fnn-tcl-summary conn)
