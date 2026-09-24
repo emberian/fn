@@ -314,6 +314,8 @@
     "tests/acl2/bp-fnbs-forward-replay-tests",
     "books/bp-node-progress-invariants",
     "books/bp-node-progress-guards",
+    "books/bp-node-progress-premises",
+    "tests/acl2/bp-node-progress-premises-tests",
     "books/bp-node-progress-selection-invariants",
     "tests/acl2/bp-node-machine-teeth-tests",
     "books/bp-fnbs-dispatch-codec",
@@ -660,25 +662,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 667,
-    "books_in_root_closure": 665,
-    "roots": 656,
-    "theorems": 8916,
-    "functions": 6571,
-    "assert_events": 9678,
-    "must_fails": 570,
+    "books": 669,
+    "books_in_root_closure": 667,
+    "roots": 658,
+    "theorems": 8950,
+    "functions": 6576,
+    "assert_events": 9684,
+    "must_fails": 574,
     "encapsulates": 30,
     "guards": {
       "verified": 2036,
-      "declared-off": 404,
+      "declared-off": 407,
       "default-guarded": 3294,
-      "default-unguarded": 837
+      "default-unguarded": 839
     },
-    "suspect_theorems": 82,
+    "suspect_theorems": 83,
     "export_hygiene_warnings": 107,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 47,
-    "include_hygiene_warnings": 638,
+    "include_hygiene_warnings": 643,
     "host_names_warnings": 816,
     "hand_written_record_warnings": 18
   },
@@ -2895,6 +2897,34 @@
       "system_includes": [],
       "suspects": [
         "fn-bpnp-primary-of-held"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-node-progress-premises.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 34,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node-machine-invariants",
+        "bp-node-progress"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-bpnpp-premises-components"
       ],
       "read_error": null
     },
@@ -12675,6 +12705,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-node-progress-premises-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 4,
+      "defconsts": 27,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-node-progress-premises",
+        "../../books/bp-node-receive-boundary",
+        "../../books/codec-attach"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-node-receive-boundary-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -18724,6 +18783,14 @@
       ]
     },
     {
+      "theorem": "fn-bpnpp-premises-components",
+      "book": "books/bp-node-progress-premises.lisp",
+      "line": 132,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bpnp-step-guard-premisesp"
+      ]
+    },
+    {
       "theorem": "fn-bpr-context-from-request-is-constructor",
       "book": "books/bp-receiver-state-invariants.lisp",
       "line": 94,
@@ -20109,12 +20176,13 @@
           "books/bp-node-machine-invariants.lisp",
           "books/bp-node-machine.lisp",
           "books/bp-node-progress-guards.lisp",
+          "books/bp-node-progress-premises.lisp",
           "books/bp-node-progress-selection-invariants.lisp",
           "books/bp-node-report-step.lisp",
           "books/bp-report-author.lisp",
           "books/hybrid-signature.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 11 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 12 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-cbor-ag-cdr",
@@ -21143,6 +21211,20 @@
         "line": 5,
         "include": "bp-node-progress",
         "included": "books/bp-node-progress.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-progress-premises.lisp",
+        "line": 20,
+        "include": "bp-node-progress",
+        "included": "books/bp-node-progress.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-progress-premises.lisp",
+        "line": 21,
+        "include": "bp-node-machine-invariants",
+        "included": "books/bp-node-machine-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -23122,6 +23204,27 @@
       {
         "book": "tests/acl2/bp-node-machine-tests.lisp",
         "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-progress-premises-tests.lisp",
+        "line": 6,
+        "include": "../../books/bp-node-progress-premises",
+        "included": "books/bp-node-progress-premises.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-progress-premises-tests.lisp",
+        "line": 7,
+        "include": "../../books/bp-node-receive-boundary",
+        "included": "books/bp-node-receive-boundary.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-progress-premises-tests.lisp",
+        "line": 8,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
