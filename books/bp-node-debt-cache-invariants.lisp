@@ -18,6 +18,17 @@
             (fn-bpnd-handoffs-debt rest)))
   :rule-classes nil)
 
+(defthm fn-bpnd-stored-held-debt-delta
+  (equal
+   (fn-bpnd-debt
+    (update-nth 2 (cons row (fn-bpnf-held-list st)) st) node)
+   (+ (fn-bpnd-debt st node)
+      (fn-bpnd-held-debt row node)))
+  :hints (("Goal" :in-theory (enable fn-bpnd-debt
+                                    fn-bpnd-debt-with-plans
+                                    fn-bpnd-held-list-debt)))
+  :rule-classes nil)
+
 (defthm fn-bpnd-delivery-replacement-debt-delta
   (implies
    (mv-nth 0 (fn-bpah-apply-delivery record held))
