@@ -1703,10 +1703,14 @@
         "planning/evidence/manifests/certify-20260924T031621Z-3631800.json",
         "planning/evidence/manifests/certify-20260924T031835Z-3652118.json",
         "planning/evidence/topic-history-historical-retry-p3-2026-09-24.md",
-        "planning/evidence/manifests/certify-20260924T042906Z-890015.json"
+        "planning/evidence/manifests/certify-20260924T042906Z-890015.json",
+        "planning/evidence/topic-admin-generation-v2-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T053527Z-710097.json",
+        "planning/evidence/manifests/certify-20260924T054048Z-760063.json",
+        "tests/fixtures/topic-history/matched-second-root.source"
       ],
-      "implementation_note": "The bounded experimental fixed-controller ACL2 model carries administrator installation, root anchor and report admission in Store slot 12, checks earlier T10 exact source and historical key context, finite quota, roster and same-topic parents, and replays topic history separately on reopen. The owner-called report selector returns a retained admission on exact historical retry; native control now maps this to a distinct success without staging another event. Scoped retry proof and codec tests have passed; source-matched native execution is pending.",
-      "note": "This local experiment is not a universal governance contract. A source-matched native install/root/report/reopen/retry image, broad reverse closure and physical publication qualification remain open before served durable-admission status. The v1 anchor records the installed administrator ID but omits the installed event's separate configuration generation; replay checks ID, while generation binding requires a versioned migration. Succession, fork healing and automatic policy adoption are not inferred."
+      "implementation_note": "The bounded experimental fixed-controller model carries administrator installation, root anchor and report admission in Store slot 12, binds earlier T10 exact source and historical key context, and checks finite quota, roster and same-topic parents. Fresh version-2 anchors additionally bind the exact earlier administrator-install event generation; historical version-1 anchors retain ID-only replay meaning and cannot be freshly staged. The owner-called report selector returns retained admission on exact historical retry without another Store event. Scoped v2 codec, proposal and Store prepare evidence passed; dual-image native migration and maintained topic/crash relation remain open.",
+      "note": "This local experiment is not a universal governance contract. The pre-v2 b074 image is retained for a disposable migration witness, but no v2 saved image or source-matched dual-image run exists yet. The maintained Store topic relation needed to derive topic-valid physical crash images is still open; BP and byte reopen remain conditional. No succession, fork healing or automatic policy adoption is inferred."
     },
     {
       "id": "WEB-001",
@@ -1715,8 +1719,14 @@
       "milestone": "M6",
       "status": "implemented",
       "proof_targets": [],
-      "verification": ["test", "scenario"],
-      "evidence": ["tools/fn_web.py", "tests/test_fn_web.py"],
+      "verification": [
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "tools/fn_web.py",
+        "tests/test_fn_web.py"
+      ],
       "implementation_note": "The separate loopback client persists an exact in-flight POST intent before opening NNTP, restores in-flight records as uncertain, retains three distinct replies and read-only ARTICLE observations, and never automatically retries an identifier. Private locked bounded spool writes use atomic replacement and file/directory fsync.",
       "note": "Real local HTTP and fake NNTP socket tests cover restart, lost reply, duplicate/concurrent handlers, full spool, target mismatch, and persistence failures before and after network. This is client behavior, not native-node qualification, a physical power-loss proof, server acceptance, or an fn retention record."
     }

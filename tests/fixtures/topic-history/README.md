@@ -22,3 +22,10 @@ admission, an existing signed-carrier image independently verified both
 fixed sources and reported `controller-matched` for the root. A source-matched
 image must still run the admission/reopen test; the fixtures alone do not
 prove publication.
+
+`matched-second-root.source` is the same ACL2-encoded root profile with a
+different 32-octet nonce (`02` repeated) and a distinct Message-ID. Its field
+is checked by `topic-history-native-vector-tests.lisp`; the exact source is
+pinned by SHA-256 in the dual-image migration test. That test creates a v1
+history with the older image, then admits this separate root through the v2
+image under the same immutable local administrator installation.

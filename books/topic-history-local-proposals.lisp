@@ -140,7 +140,7 @@
                                   (fn-stxk-find
                                    (fn-stxa-keyring-generation
                                     (fn-th-prefix-find-accepted-sequence
-                                     source-sequence (fn-th-at 3 projection))))
+                                     source-sequence (fn-th-at 3 projection)))
                                    (fn-th-at 2 projection))))
                             (installed (fn-th-at 5 projection))
                             (anchors (fn-th-at 4 projection)))))))

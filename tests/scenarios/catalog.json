@@ -1110,7 +1110,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -1124,13 +1124,15 @@
         "From an already accepted schema-1 root and historical key snapshot, prepare and commit a finite local anchor under the installed administrator ID. Repeat with a different caller, changed snapshot and the same already anchored root.",
         "Construct an accepted report signed by a roster author, propose and commit its admission, then retry the exact source after the finite quota is consumed and after native Store reopen; compare transaction filenames and bytes before and after each retry.",
         "Construct separate accepted reports under a non-roster signer, with an unadmitted same-topic parent and after quota exhaustion. Compare the projection before preparation and after completion.",
-        "Complete a valid administrator install, anchor and report in Store; reopen the completed prefix, then try a structurally valid duplicate administrator install image."
+        "Complete a valid administrator install, anchor and report in Store; reopen the completed prefix, then try a structurally valid duplicate administrator install image.",
+        "Create a completed version-1 administrator/root/report history with a pre-v2 source-matched image. Reopen it under a v2 image, retry the old exact report, then admit a distinct root under the same installed administrator using version 2 and reopen the mixed history. Attempt to reopen a fresh v2 anchor under the pre-v2 image."
       ],
       "expected": [
         "Only the matching administrator/root context yields a proposed anchor; the same root cannot be anchored twice.",
         "The report receives one historical admission. Exact retry returns a distinct successful replayed-historical status with no admission bytes over control, no second Store event and no additional charge, including after reopen; proposal alone does not change state.",
         "Non-roster author, missing parent and no remaining quota each refuse fresh admission; no ordinary article acceptance is undone.",
-        "Completed topic events advance Store sequence/transaction and carried topic state while preserving article acceptance; observed reopen rejects the duplicate-install topic history with :replay."
+        "Completed topic events advance Store sequence/transaction and carried topic state while preserving article acceptance; observed reopen rejects the duplicate-install topic history with :replay.",
+        "Old version-1 bytes retain ID-only historical admission and unchanged retry counts; the newly emitted version-2 anchor binds the earlier installed administrator generation, survives v2 reopen, and is refused by the old unknown-version decoder. Fresh version-1 anchor staging and cross-version anchor shape confusion refuse."
       ],
       "evidence": [
         "tests/acl2/topic-history-admission-tests.lisp",
@@ -1149,16 +1151,21 @@
         "planning/evidence/manifests/certify-20260924T031621Z-3631800.json",
         "planning/evidence/manifests/certify-20260924T031835Z-3652118.json",
         "planning/evidence/topic-history-historical-retry-p3-2026-09-24.md",
-        "planning/evidence/manifests/certify-20260924T042906Z-890015.json"
+        "planning/evidence/manifests/certify-20260924T042906Z-890015.json",
+        "planning/evidence/topic-admin-generation-v2-2026-09-24.md",
+        "tests/fixtures/topic-history/matched-second-root.source",
+        "planning/evidence/manifests/certify-20260924T053944Z-748903.json"
       ],
-      "execution_scope": "The merged ACL2 topic/index Store, observed reopen, local proposal/control and native-control roots passed on persvati; after status kind 9 joined, its affected scope/index/native-control roots also passed. The source-matched native install/root/report/reopen scenario and whole reverse closure remain unqualified."
+      "execution_scope": "Scoped v2 codec, prefix, owner-called proposal, Store prepare and source-vector ACL2 roots passed on persvati. The pre-v2 b074 image is qualified and retained. The prepared dual-image v1-to-v2/mixed-history native test, v2 saved image, whole reverse closure, and maintained topic/crash relation have not yet qualified."
     },
     {
       "id": "SCN-036",
       "title": "Durable local human submission without automatic repost",
       "milestone": "M6",
       "status": "implemented",
-      "requirements": ["WEB-001"],
+      "requirements": [
+        "WEB-001"
+      ],
       "steps": [
         "Compose one article with a persistent outbox, race two HTTP POST handlers, restart the web client, and submit the same identifier again.",
         "Lose the NNTP reply after article bytes, restart with both a recorded uncertain reply and a bare in-flight intent, and make a read-only ARTICLE settlement observation.",
@@ -1169,7 +1176,10 @@
         "In-flight and lost-reply outcomes remain uncertain; an ARTICLE lookup records only what is currently served.",
         "An intent write failure sends no article; a reply-record write failure retains the known node answer in the running process and fences new submissions; a full spool preserves all prior records."
       ],
-      "evidence": ["tests/test_fn_web.py", "tools/fn_web.py"],
+      "evidence": [
+        "tests/test_fn_web.py",
+        "tools/fn_web.py"
+      ],
       "execution_scope": "Real local HTTP and fake NNTP socket tests exercise this separate client's behavior. A source-matched native-node run, physical power-loss qualification, and general external-web security audit remain open."
     }
   ]

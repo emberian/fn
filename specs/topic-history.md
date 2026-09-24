@@ -102,8 +102,12 @@ UID; changing the owner UID cannot rewrite historical admissions or silently
 inherit the old binding. The first root-only profile has no replacement or
 succession operation. Reuse of the same OS account remains inside the local
 operator trust boundary; a later replacement or revocation must be explicit.
-The event and Store replay join are now executable; authenticated native
-installation and publication remain open.
+The event and Store replay join are executable. Fresh anchors carry both the
+installed ID and the generation of that earlier immutable installation in a
+version-2 anchor event. Historical version-1 anchors retain their original
+ID-only meaning; replay never invents a generation for them. Authenticated
+native installation, publication and version-migration qualification remain
+separate from this source contract.
 
 `books/topic-history-local-admin.lisp` now defines the logical immutable
 install event and the caller-facing root proposal wrapper. Installation
@@ -131,8 +135,11 @@ bound source/context before changing bounded state. The report record retains
 its topic, policy, T10 source reference, parent list and committed sequence.
 
 `books/topic-history-store-events.lisp` assigns this experimental component a
-distinct `fnto` version-1 Store payload grammar for `:topic-anchor` and
-`:topic-admit` proposals. Coordinates share the Store's unsigned 32-bit
+distinct `fnto` Store payload grammar: historical eight-field anchors,
+administrator installation and report admission retain version 1; fresh
+nine-field anchors use version 2 and carry the installed administrator event's
+generation. Cross-version shape confusion and unknown future versions refuse
+without fallback. Coordinates share the Store's unsigned 32-bit
 sequence/transaction/generation shape. An event refers to a strictly earlier
 T10 accepted source, records its local source/authorship reference, and carries
 the root administrator/quota or report topic/policy/parent metadata. The codec
@@ -146,23 +153,23 @@ sequence and transaction with article acceptance contents unchanged.
 `books/topic-history-prefix.lisp` is the recovery-side ordered projector. It
 collects preceding T10 accepted events and keyring snapshots and resolves
 each topic event's exact authorship reference only from that earlier prefix.
-It then invokes the same `fn-th-commit-anchor` or `fn-th-commit-report`
-transition and faults on a missing source, snapshot, mismatched administrator
-or invalid report. Store carries this projection in slot 12 and reconstructs
+It invokes the historical `fn-th-commit-anchor` for v1 anchors and the
+installed-event generation check before that same transition for v2 anchors;
+reports use `fn-th-commit-report`. It faults on a missing source, snapshot,
+mismatched administrator, generation or invalid report. Store carries this projection in slot 12 and reconstructs
 it from the completed journal at observed reopen. Article, identity and
 consumer replay success alone cannot authorize a topic history: observed
 reopen separately requires topic replay success. Configuration updates use a
 shared Store updater proved to preserve the file, consumer and topic slots.
 
-This is a certified logical Store completion and recovery path. The native
-owner/control source now calls the ACL2 proposal dispatcher and Store
-publication gate, but its saved-image execution is not yet qualified.
-The version-1 anchor event carries its own Store generation and the installed
-administrator ID, but not the separate generation of the earlier administrator
-installation. Replay binds the ID to historical installation; the stronger
-install-generation equality promised above needs a versioned event migration
-and remains open. This gap does not alter historical retry's exact T10 source
-and admission matching.
+The owner/control source calls the ACL2 proposal dispatcher and Store
+publication gate. The fresh Store prepare gate refuses a v1 anchor, preventing
+a current submission from downgrading to historical ID-only binding; observed
+reopen still accepts valid old v1 bytes. The version-2 codec and called
+proposal path have scoped ACL2 evidence, while their affected reverse closure,
+dual-image migration and source-matched native execution remain open. The
+separate maintained topic/crash relation must still derive topic-valid
+observed images from actual Store traces before a universal reopen claim.
 Historical administrator installation
 and T10 authorship are taken from the completed prefix, not current UID or
 unverified metadata. It is root-only.

@@ -16,6 +16,7 @@ from tests.native_process import stop_and_diagnostics, wait_for_announcement
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
                             ROOT / "build" / "fn-host-developer"))
+LEGACY_IMAGE = Path(os.environ.get("FN_NATIVE_TOPIC_V1_HOST", ""))
 FIXTURES = ROOT / "tests" / "fixtures" / "topic-history"
 PRINCIPAL = bytes([85]) * 32
 ED_PUBLIC = bytes.fromhex(
@@ -36,6 +37,9 @@ def free_port():
                      "requires a source-matched topic saved image")
 class NativeTopicLocalTest(unittest.TestCase):
     def setUp(self):
+        self.image = (LEGACY_IMAGE
+                      if self._testMethodName == "test_v1_history_reopens_under_v2"
+                      and LEGACY_IMAGE.is_file() else IMAGE)
         self.temp = tempfile.TemporaryDirectory(prefix="fn-topic-local-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -64,13 +68,13 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.ml_private = FIXTURES / "ml-dsa-65-test-private.pem"
 
     def invoke(self, *words):
-        return subprocess.run([str(IMAGE), "--fn", *map(str, words)],
+        return subprocess.run([str(self.image), "--fn", *map(str, words)],
                               cwd=ROOT, env=self.env, capture_output=True,
                               timeout=120, check=False)
 
     def start_owner(self):
         proc = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
+            [str(self.image), "--fn", "operator", str(self.config), "run"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, bufsize=0)
         self.addCleanup(self.reap, proc)
@@ -161,6 +165,75 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.assertEqual(self.transactions(), admitted_files)
         self.topic("report", "99", expected=1)
         self.assertEqual(self.transactions(), admitted_files)
+        self.stop_owner(reopened)
+
+    def test_v1_history_reopens_under_v2(self):
+        if not LEGACY_IMAGE.is_file() or not os.access(LEGACY_IMAGE, os.X_OK):
+            self.skipTest("requires exact pre-v2 topic image")
+        owner = self.start_owner()
+        enrolled = self.invoke("hybrid-enroll", self.control, "1",
+                               self.principal, self.ed_public, self.ml_public)
+        self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+        self.author(FIXTURES / "matched-root.source", "legacy-root")
+        self.topic("install", expected=0)
+        self.topic("anchor", "1", "1", expected=0)
+        self.author(FIXTURES / "matched-report.source", "legacy-report")
+        self.topic("report", "4", expected=0)
+        historical = self.transactions()
+        self.stop_owner(owner)
+
+        self.image = IMAGE
+        reopened = self.start_owner()
+        self.assertIn(b"replayed-historical",
+                      self.topic("report", "4", expected=0).stdout)
+        self.assertEqual(self.transactions(), historical)
+        self.topic("anchor", "1", "1", expected=1)
+        self.assertEqual(self.transactions(), historical)
+        self.assertEqual(
+            hashlib.sha256((FIXTURES / "matched-second-root.source").read_bytes()).hexdigest(),
+            "b89c2e45cb7dccdf3295109d010c1f8739aad9402f140c7e4ad8d069eb3b530c")
+        self.author(FIXTURES / "matched-second-root.source", "v2-second-root")
+        self.topic("anchor", "6", "1", expected=0)
+        mixed = self.transactions()
+        self.assertGreater(len(mixed), len(historical))
+        self.assertIn(b"replayed-historical",
+                      self.topic("report", "4", expected=0).stdout)
+        self.assertEqual(self.transactions(), mixed)
+        self.stop_owner(reopened)
+
+        final = self.start_owner()
+        self.topic("anchor", "6", "1", expected=1)
+        self.assertIn(b"replayed-historical",
+                      self.topic("report", "4", expected=0).stdout)
+        self.assertEqual(self.transactions(), mixed)
+        self.stop_owner(final)
+
+    def test_fresh_v2_anchor_refuses_legacy_reopen(self):
+        if not LEGACY_IMAGE.is_file() or not os.access(LEGACY_IMAGE, os.X_OK):
+            self.skipTest("requires exact pre-v2 topic image")
+        owner = self.start_owner()
+        enrolled = self.invoke("hybrid-enroll", self.control, "1",
+                               self.principal, self.ed_public, self.ml_public)
+        self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+        self.author(FIXTURES / "matched-root.source", "v2-root")
+        self.topic("install", expected=0)
+        self.topic("anchor", "1", "1", expected=0)
+        self.stop_owner(owner)
+
+        legacy = subprocess.Popen(
+            [str(LEGACY_IMAGE), "--fn", "operator", str(self.config), "run"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        try:
+            out, err = legacy.communicate(timeout=40)
+        except subprocess.TimeoutExpired:
+            legacy.kill()
+            legacy.communicate(timeout=10)
+            self.fail("pre-v2 image unexpectedly opened a v2 topic anchor")
+        self.assertNotEqual(legacy.returncode, 0, out + err)
+
+        reopened = self.start_owner()
+        self.topic("anchor", "1", "1", expected=1)
         self.stop_owner(reopened)
 
 
