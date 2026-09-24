@@ -320,6 +320,16 @@ about 800 simple lifecycles, fewer with attempts, reports and fragments.
 Rotation (§3.6, D-13) starts a new physical generation; logical frontiers do
 not reset.
 
+The first received-FNBS debt API is now executable in `bp-node-debt.lisp`.
+Its physical occupancy cap is the existing received namespace planner's
+`2 × 4096 = 8192` final names, distinct from the outbound lifecycle's
+4096-record generation bound above. It computes this section's exact current
+held, attempt and owed-handoff debt and has separate local deltas, including
+the `+1` debt change when two received fragments become a whole local
+request through kind 18. Its cached serving-state/replay correspondence and
+admission gates on existing birth, family replacement and forwarding are
+still being integrated; the API alone does not close N05.
+
 ### 2.2 A held bundle
 
 ```lisp
