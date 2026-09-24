@@ -36,7 +36,7 @@
                 (fn-cbor-octet-listp wire)
                 (fn-cbor-at-mostp wire *fn-bpnf-max-held-image*)))
       (list :refused :receive-boundary)
-    (let* ((decision (fn-bpn-receive config wire observation))
+    (let* ((decision (fn-bpn-receive-carrier config wire observation))
            (bundle (fn-bpn-outcome-bundle decision)))
       (cond
        ((fn-bpn-refusedp decision)
@@ -94,8 +94,9 @@
          (fn-cbor-octet-listp (fn-bpn-nth 5 event))
          (<= (len (fn-bpn-nth 5 event)) 256)))
    ((equal (fn-cbor-ag-car event) :family)
-    (and (true-listp event) (equal (len event) 2)
-         (fn-frame-natp (fn-bpn-nth 1 event)) t))
+    (and (true-listp event) (equal (len event) 3)
+         (fn-frame-natp (fn-bpn-nth 1 event))
+         (fn-clock-observationp (fn-bpn-nth 2 event)) t))
    ((equal (fn-cbor-ag-car event) :expire-held)
     (and (true-listp event) (equal (len event) 3)
          (fn-clock-observationp (fn-bpn-nth 1 event))
@@ -150,7 +151,8 @@
                          (fn-bpnf-receive-wire-event
                           config wire observation ingress)))
                        observation)))
-  :hints (("Goal" :in-theory (disable fn-bpn-receive fn-bpb-encode)))
+          :hints (("Goal" :in-theory (disable fn-bpn-receive-carrier
+                                            fn-bpb-encode)))
   :rule-classes nil)
 
 (verify-guards fn-bpnf-initial-state)

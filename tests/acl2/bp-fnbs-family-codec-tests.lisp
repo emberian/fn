@@ -24,3 +24,28 @@
   (equal (fn-bpnf-family-unframe
           (append (fn-bpnf-family-frame *bpnf-family-row*) '(0)))
          *bpnf-family-row*)))
+
+(defconst *bpnf-family-v1-row*
+  (fn-bpnf-family-record-at
+   2 5 0 3 '(159 0) (fn-clock-observation 12 345 1 t)))
+(assert-event (fn-bpnf-family-record-atp *bpnf-family-v1-row*))
+(assert-event
+ (equal (fn-bpnf-family-v1-unframe
+         (fn-bpnf-family-v1-frame *bpnf-family-v1-row*))
+        *bpnf-family-v1-row*))
+(assert-event
+ (not (equal (fn-bpnf-family-v1-frame *bpnf-family-v1-row*)
+             (fn-bpnf-family-frame *bpnf-family-row*))))
+(assert-event
+ (null (fn-bpnf-family-v1-unframe
+        (fn-bpnf-family-frame *bpnf-family-row*))))
+(assert-event
+ (equal (fn-bpnf-family-v1-frame
+         (fn-bpnf-family-record-at
+          2 5 0 3 '(159 0) (fn-clock-observation -1 0 0 nil)))
+        :bad))
+(must-fail
+ (assert-event
+  (equal (fn-bpnf-family-v1-unframe
+          (fn-bpnf-family-frame *bpnf-family-row*))
+         *bpnf-family-v1-row*)))

@@ -8,7 +8,7 @@
   (declare (xargs :guard t))
   (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :family))
 
-(defun fn-bpnf-family-propose-step (st anchor-arrival)
+(defun fn-bpnf-family-propose-step (st anchor-arrival observation)
   (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
                   :verify-guards nil))
   (if (or (fn-bpnf-issued st)
@@ -22,15 +22,15 @@
       (fn-bpnf-answer st nil)
     (let* ((anchor (fn-bpnf-find-arrival
                     anchor-arrival (fn-bpnf-held-list st)))
-           (plan (fn-bpnf-family-plan st anchor))
-           (record (fn-bpnf-family-record
+           (plan (fn-bpnf-family-plan-at st anchor observation))
+           (record (fn-bpnf-family-record-at
                     (fn-bpnf-epoch st) (fn-bpnf-next-op st)
                     anchor-arrival (fn-bpnf-next-arrival st)
-                    (fn-bpn-nth 2 plan))))
+                    (fn-bpn-nth 2 plan) observation)))
       (if (not (and (equal (car plan) :ready)
-                    (fn-bpnf-family-recordp record)
-                    (not (equal (fn-bpnf-family-frame record) :bad))
-                    (equal (car (fn-bpnf-family-apply
+                    (fn-bpnf-family-record-atp record)
+                    (not (equal (fn-bpnf-family-v1-frame record) :bad))
+                    (equal (car (fn-bpnf-family-apply-at
                                  st record (fn-bpnf-next-arrival st)))
                            :ready)))
           (fn-bpnf-answer st nil)
@@ -61,7 +61,7 @@
                (arrival (fn-bpn-nth 4 record))
                (applied
                 (if (equal (fn-bpnf-next-arrival st) (1+ (fix arrival)))
-                    (fn-bpnf-family-apply st record arrival)
+                    (fn-bpnf-family-apply-at st record arrival)
                   (list :fault :family-frontier))))
           (if (not (equal (fn-cbor-ag-car applied) :ready))
               (fn-bpnf-answer
@@ -110,10 +110,11 @@
     (fn-bpnf-family-persist-step
      st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event) (fn-bpn-nth 3 event)))
    ((equal (fn-cbor-ag-car event) :family)
-    (fn-bpnf-family-propose-step st (fn-bpn-nth 1 event)))
+    (fn-bpnf-family-propose-step
+     st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)))
    (t (fn-bpnf-step st event))))
 
-(defun fn-bpnf-family-next-aux (st held)
+(defun fn-bpnf-family-next-aux (st held observation)
   (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
                   :measure (acl2-count held)
                   :verify-guards nil))
@@ -122,18 +123,19 @@
         (if (and (fn-bpnf-active-fragmentp h)
                  (equal (fn-bpnf-arrival-count
                          (fn-bpn-nth 3 h) (fn-bpnf-held-list st)) 1)
-                 (equal (fn-cbor-ag-car (fn-bpnf-family-plan st h)) :ready))
+                 (equal (fn-cbor-ag-car
+                         (fn-bpnf-family-plan-at st h observation)) :ready))
             (list :ready (fn-bpn-nth 3 h))
-          (fn-bpnf-family-next-aux st (cdr held))))
+          (fn-bpnf-family-next-aux st (cdr held) observation)))
     nil))
 
-(defun fn-bpnf-family-next (st)
+(defun fn-bpnf-family-next (st observation)
   (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
                   :verify-guards nil))
   (if (or (fn-bpnf-issued st) (fn-bpnf-waits st)
           (not (fn-frame-natp (fn-bpnf-next-arrival st))))
       nil
-    (fn-bpnf-family-next-aux st (fn-bpnf-held-list st))))
+    (fn-bpnf-family-next-aux st (fn-bpnf-held-list st) observation)))
 
 (defthm fn-bpnf-fragment-step-delegates-ordinary-events
   (implies (and (not (fn-bpnf-family-issuedp st))
@@ -146,11 +148,11 @@
 (defthm fn-bpnf-family-proposal-retains-held
   (equal (fn-bpnf-held-list
           (fn-bpnf-answer-state
-           (fn-bpnf-family-propose-step st anchor-arrival)))
+           (fn-bpnf-family-propose-step st anchor-arrival observation)))
          (fn-bpnf-held-list st))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-bpnf-family-plan
-                               fn-bpnf-family-apply
-                               fn-bpnf-family-frame
-                               fn-bpnf-family-recordp)))
+           :in-theory (disable fn-bpnf-family-plan-at
+                               fn-bpnf-family-apply-at
+                               fn-bpnf-family-v1-frame
+                               fn-bpnf-family-record-atp)))
   :rule-classes nil)

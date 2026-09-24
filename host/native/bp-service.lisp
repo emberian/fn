@@ -490,12 +490,16 @@
   ;; The ACL2 selector chooses an exact ready family from the one held list.
   ;; Each durable :family-ready retires at least one fragment and invokes
   ;; this once more; a refusal/uncertainty does not loop.
-  (let ((candidate (fnn-core 'fn-bpnf-family-next
-                             (fnn-bps-state service))))
+  (let* ((tally (fnn-bps-tally service))
+         (observation (fnn-bp-observation
+                       (fnn-bp-tally-wall tally)
+                       (fnn-bp-tally-wall-error tally)))
+         (candidate (fnn-core 'fn-bpnf-family-next
+                              (fnn-bps-state service) observation)))
     (when (and (consp candidate) (eq (first candidate) :ready))
       (fnn-bps-drive-effects
        service (fnn-bps-foundation-step
-                service (list :family (second candidate))))))
+                service (list :family (second candidate) observation)))))
   service)
 
 (defun fnn-bps-receive (service ingress wire)
