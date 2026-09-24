@@ -161,10 +161,65 @@
   (update-nth 4 (list :cl (cons 2 2) 1 *bpah-local*
                       (fn-record-string-octets "relay") 7)
               *bpah-receipt-view*))
+;; D23 second half: carrying the receiver's EID is not release authority.
+;; The relay carries dtn://receiver/ but does not release for it: its
+;; receipt is not trusted.  With a releases-for row it is.
+(must-fail
+ (assert-event
+  (fn-bpah-receipt-trustedp *bpah-carried-receipt-view*
+                            (bpah-cfg-with (append *bpah-relay-rows*
+                                                   *bpah-relay-carries*)))))
+(defconst *bpah-relay-releases*
+  (list (fn-cfg-row-make "relay" "bp-boundary-releases-for"
+                         "dtn://receiver/" 0)))
 (assert-event
  (fn-bpah-receipt-trustedp *bpah-carried-receipt-view*
                            (bpah-cfg-with (append *bpah-relay-rows*
-                                                  *bpah-relay-carries*))))
+                                                  *bpah-relay-carries*
+                                                  *bpah-relay-releases*))))
+; The release list alone suffices for the receipt gate; the carried list
+; alone does not.
+(assert-event
+ (fn-bpah-receipt-trustedp *bpah-carried-receipt-view*
+                           (bpah-cfg-with (append *bpah-relay-rows*
+                                                  *bpah-relay-releases*))))
+(assert-event
+ (equal (fn-bpah-release-line
+         *bpah-carried-receipt-view*
+         (bpah-cfg-with (append *bpah-relay-rows* *bpah-relay-carries*)))
+        "carried-not-released carrier=relay issuer=dtn://receiver/"))
+(assert-event
+ (equal (fn-bpah-release-line
+         *bpah-carried-receipt-view*
+         (bpah-cfg-with (append *bpah-relay-rows* *bpah-relay-carries*
+                                *bpah-relay-releases*)))
+        "listed-issuer carrier=relay issuer=dtn://receiver/"))
+(assert-event
+ (equal (fn-bpah-release-line *bpah-carried-receipt-view*
+                              (bpah-cfg-with *bpah-relay-rows*))
+        "issuer-not-released carrier=relay issuer=dtn://receiver/"))
+(assert-event
+ (equal (fn-bpah-release-line *bpah-receipt-view* *bpah-receipt-cfg*)
+        "self-issued carrier=receiver-peer issuer=dtn://receiver/"))
+; fn-bpah-unauthorized-issuer-never-authorizes-receipt: teeth -- with the
+; release row the issuer is authorized and the receipt is trusted, so the
+; conclusion fails without the hypothesis.
+(must-fail
+ (assert-event
+  (not (fn-bpah-receipt-trustedp
+        *bpah-carried-receipt-view*
+        (bpah-cfg-with (append *bpah-relay-rows* *bpah-relay-releases*))))))
+; Author publication: the receiver's own enrollment, not the relay's.
+(assert-event
+ (fn-bpah-author-publication-authorizedp
+  (bpah-cfg-with *bpah-relay-rows*)
+  (fn-bpaj-principal-id (fn-record-string-octets "receiver-peer")) 7
+  (fn-bpaj-source-eid "dtn://receiver/")))
+(assert-event
+ (not (fn-bpah-author-publication-authorizedp
+       (bpah-cfg-with (append *bpah-relay-rows* *bpah-relay-carries*))
+       (fn-bpaj-principal-id (fn-record-string-octets "relay")) 7
+       (fn-bpaj-source-eid "dtn://receiver/"))))
 (assert-event
  (equal (fn-bpah-source-decision-line
          *bpah-carried-receipt-view*
@@ -178,3 +233,57 @@
  (equal (fn-bpah-source-decision-line *bpah-carried-receipt-view*
                                       (bpah-cfg-with *bpah-relay-rows*))
         "refused reason=source-not-carried"))
+
+; D23 durable provenance.  A delivered receipt's held row: its kind-5
+; ingress (received from the relay at generation 7), its bundle's source
+; (claimed dtn://receiver/), and its kind-7 marker carrying ACL2's release
+; verdict.  Each fact has its own accessor.
+(defconst *bpah-receipt-bundle*
+  (fn-bpn-send-bundle *bpah-config* *bpah-local* *bpah-receipt-adu* 9
+                      *bpah-obs*))
+(defconst *bpah-relay-ingress*
+  (list :cl (cons 2 2) 1 *bpah-local* (fn-record-string-octets "relay") 7))
+(defun bpah-delivered-receipt (verdict status)
+  (fn-bpnf-held (fn-record-string-octets "relay")
+                (fn-bpb-bundle-id *bpah-receipt-bundle*) 0
+                *bpah-relay-ingress* nil nil *bpah-receipt-bundle*
+                (fn-bpb-encode *bpah-receipt-bundle*)
+                nil
+                (list :delivered status (fn-bpah-release-detail verdict))
+                nil '(:dispatch-done) nil nil 0))
+(defconst *bpah-listed* (bpah-delivered-receipt :listed-issuer
+                                                :receipt-accepted))
+(defconst *bpah-unreleased*
+  (bpah-delivered-receipt :carried-not-released :receipt-refused))
+(assert-event
+ (equal (fn-bpah-held-received-from *bpah-listed*)
+        (list :received-from
+              (fn-bpaj-principal-id (fn-record-string-octets "relay"))
+              (fn-bpaj-eid-text *bpah-local*) 7)))
+(assert-event
+ (equal (fn-bpah-held-claimed-source *bpah-listed*)
+        (fn-bpaj-source-eid "dtn://sender/")))
+(assert-event (equal (fn-bpah-held-verdict *bpah-listed*) :listed-issuer))
+(assert-event (equal (fn-bpah-held-verdict *bpah-unreleased*)
+                     :carried-not-released))
+(assert-event
+ (equal (fn-bpah-held-policy-row *bpah-listed*)
+        (fn-cfg-row-make "relay" "bp-boundary-releases-for"
+                         "dtn://sender/" 0)))
+(assert-event (null (fn-bpah-held-policy-row *bpah-unreleased*)))
+; Every verdict name decodes back to its verdict.
+(assert-event
+ (equal (fn-bpah-release-verdict-of-name "obligation-mismatch"
+                                         *fn-bpah-release-verdicts*)
+        :obligation-mismatch))
+(defun bpah-all-round-trip (vs)
+  (if (consp vs)
+      (and (equal (fn-bpah-release-verdict-of-name
+                   (fn-bpah-release-verdict-name (car vs))
+                   *fn-bpah-release-verdicts*)
+                  (car vs))
+           (bpah-all-round-trip (cdr vs)))
+    t))
+(assert-event (bpah-all-round-trip *fn-bpah-release-verdicts*))
+; The detail is a valid kind-7 detail (non-empty, at most 256 octets).
+(assert-event (<= (len (fn-bpah-release-detail :obligation-mismatch)) 256))

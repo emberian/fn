@@ -292,22 +292,65 @@ decoded as source-address for durable command compatibility."
            (fn-native-admin-bp-carried-wordsp (cdr words)))
     (null words)))
 
+; D23: the release-issuer EIDs whose receipts the neighbour may relay, one
+; (NAME "bp-boundary-releases-for" EID 0) row each.  A separate row kind from
+; the carried list: a carried source is not a release issuer.
+(defun fn-native-admin-bp-releases-rows (name eids)
+  (declare (xargs :guard t))
+  (if (consp eids)
+      (cons (fn-cfg-row-make name "bp-boundary-releases-for" (car eids) 0)
+            (fn-native-admin-bp-releases-rows name (cdr eids)))
+    nil))
+
+(defun fn-native-admin-bp-list-keywordp (word)
+  (declare (xargs :guard t))
+  (or (equal word "carries") (equal word "releases-for")))
+
+; The clauses after the base form: [carries EID ...] [releases-for EID ...],
+; each list non-empty, in that order.  (mv ok carried releases).
+(defun fn-native-admin-bp-before-releases (words)
+  (declare (xargs :guard t))
+  (if (or (atom words) (equal (car words) "releases-for"))
+      nil
+    (cons (car words) (fn-native-admin-bp-before-releases (cdr words)))))
+
+(defun fn-native-admin-bp-list-clauses (tail)
+  (declare (xargs :guard t))
+  (let* ((tail (if (true-listp tail) tail nil))
+         (rel (member-equal "releases-for" tail))
+         (head (fn-native-admin-bp-before-releases tail)))
+    (cond ((not (or (null head)
+                    (and (equal (car head) "carries")
+                         (consp (cdr head))
+                         (fn-native-admin-bp-carried-wordsp (cdr head)))))
+           (mv nil nil nil))
+          ((not (or (null rel)
+                    (and (consp (cdr rel))
+                         (fn-native-admin-bp-carried-wordsp (cdr rel)))))
+           (mv nil nil nil))
+          (t (mv t (cdr head) (cdr rel))))))
+
 ; `bp-boundary add NAME PATH BP-EID PORT [INBOUND MAX-OCTETS MAX-INFLIGHT]
-; [carries EID ...]': the base form's length (6 or 9) and the carried list.
+; [carries EID ...] [releases-for EID ...]': the base form's length (6 or 9),
+; the carried list and the release list.  A malformed clause gives base 0,
+; which the plan refuses.
 (defun fn-native-admin-bp-boundary-split (words)
   (declare (xargs :guard t))
-  (cond ((and (true-listp words) (< 7 (len words))
-              (equal (nth 6 words) "carries")
-              (fn-native-admin-bp-carried-wordsp (nthcdr 7 words)))
-         (mv 6 (nthcdr 7 words)))
-        ((and (true-listp words) (< 10 (len words))
-              (equal (nth 9 words) "carries")
-              (fn-native-admin-bp-carried-wordsp (nthcdr 10 words)))
-         (mv 9 (nthcdr 10 words)))
-        (t (mv (len words) nil))))
+  (let ((words (if (true-listp words) words nil)))
+    (cond ((and (< 6 (len words))
+                (fn-native-admin-bp-list-keywordp (nth 6 words)))
+           (mv-let (ok carried releases)
+             (fn-native-admin-bp-list-clauses (nthcdr 6 words))
+             (if ok (mv 6 carried releases) (mv 0 nil nil))))
+          ((and (< 9 (len words))
+                (fn-native-admin-bp-list-keywordp (nth 9 words)))
+           (mv-let (ok carried releases)
+             (fn-native-admin-bp-list-clauses (nthcdr 9 words))
+             (if ok (mv 9 carried releases) (mv 0 nil nil))))
+          (t (mv (len words) nil nil)))))
 
 (defun fn-native-admin-bp-boundary-rows
-  (name path eid port inbound max-octets max-inflight carried)
+  (name path eid port inbound max-octets max-inflight carried releases)
   (declare (xargs :guard t))
   (append
    (list (fn-cfg-row-make name "path-identity" path 0)
@@ -324,11 +367,12 @@ decoded as source-address for durable command compatibility."
         (fn-cfg-row-make name "bp-boundary-translation" "none" 0)
         (fn-cfg-row-make name "bp-boundary-originators"
                          "all-co-resident" 0))
-   (fn-native-admin-bp-carries-rows name carried)))
+   (fn-native-admin-bp-carries-rows name carried)
+   (fn-native-admin-bp-releases-rows name releases)))
 
 (defun fn-native-admin-bp-boundary-plan (words)
   (declare (xargs :guard t))
-  (mv-let (base carried) (fn-native-admin-bp-boundary-split words)
+  (mv-let (base carried releases) (fn-native-admin-bp-boundary-split words)
   (if (and (true-listp words) (member-equal base '(6 9))
            (equal (nth 0 words) "bp-boundary")
            (equal (nth 1 words) "add")
@@ -365,7 +409,7 @@ decoded as source-address for durable command compatibility."
                     (if (equal base 9)
                         (fn-native-admin-decimal-value
                          (coerce (nth 8 words) 'list)) 0)
-                    carried)))
+                    carried releases)))
         (fn-native-admin-result :accepted nil :set-bp-boundary
                                 (fn-record-string-octets name) 0 nil rows))
     (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil))))
@@ -599,7 +643,9 @@ decoded as source-address for durable command compatibility."
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan fn-native-admin-words)
                                   (fn-native-admin-peer-plan fn-record-group-namep
                                    fn-path-identityp fn-native-admin-decimalp
-                                   fn-native-admin-decimal-value fn-native-admin-argvp))
+                                   fn-native-admin-decimal-value fn-native-admin-argvp
+                                   fn-native-admin-bp-boundary-split
+                                   fn-native-admin-bp-boundary-rows))
            :use ((:instance fn-native-admin-peer-plan-kind
                             (words (fn-native-admin-words argv)))))))
 )

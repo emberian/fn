@@ -149,7 +149,9 @@
 ; directly from A (an ingress naming A at the same generation) is decided
 ; `:direct' under A, both host trust checks answer the same, and the Store
 ; plan is the same plan: the peer, inbound scope and transfer decision are
-; A's, and the carrier's enrollment does not enter.
+; A's, and the carrier's enrollment does not enter.  The receipt gate is not
+; part of this: a carried receipt is judged by the release question
+; (bp-release-authority), which the carried list does not answer.
 (defthm fn-bpaj-carried-request-is-judged-as-the-authors-direct-request
   (let* ((d (fn-bpaj-carried-source-decision
              cfg (fn-bpnf-ingress-principal carried)
@@ -167,8 +169,6 @@
                   (fn-bpah-request-trustedp (update-nth 2 :request cview) cfg)
                   (equal (fn-bpah-request-trustedp cview cfg)
                          (fn-bpah-request-trustedp dview cfg))
-                  (equal (fn-bpah-receipt-trustedp cview cfg)
-                         (fn-bpah-receipt-trustedp dview cfg))
                   (equal (fn-bpaj-transit-plan node cfg carried src req clock)
                          (fn-bpaj-transit-plan node cfg direct src req
                                                clock)))))
@@ -185,7 +185,7 @@
                  (:instance fn-bpaj-transit-plan-reads-ingress-only-through-peer
                             (a carried) (b direct)))
            :in-theory (e/d (fn-bpah-view-source-decision
-                            fn-bpah-request-trustedp fn-bpah-receipt-trustedp
+                            fn-bpah-request-trustedp
                             fn-bpn-nth)
                            (fn-bpaj-carried-ingress-peer-is-the-authors
                             fn-bpaj-transit-plan-reads-ingress-only-through-peer
@@ -215,7 +215,6 @@
                   (not (fn-bpaj-boundary-rowp rows name "bp-boundary-carries"
                                                src 0)))
              (and (not (fn-bpah-request-trustedp view cfg))
-                  (not (fn-bpah-receipt-trustedp view cfg))
                   (equal (fn-bpaj-transit-plan node cfg ingress src req clock)
                          '(:refused :no-principal)))))
   :hints (("Goal"
@@ -225,7 +224,7 @@
                             (generation (fn-bpn-nth 5 ingress))
                             (source src)))
            :in-theory (e/d (fn-bpah-view-source-decision
-                            fn-bpah-request-trustedp fn-bpah-receipt-trustedp
+                            fn-bpah-request-trustedp
                             fn-bpaj-ingress-peer fn-bpaj-transit-plan
                             fn-bpn-nth)
                            (fn-bpaj-unlisted-source-is-not-trusted
@@ -255,7 +254,6 @@
              (and (equal (fn-bpah-view-source-decision view cfg)
                          '(:refused :carried-source-unenrolled))
                   (not (fn-bpah-request-trustedp view cfg))
-                  (not (fn-bpah-receipt-trustedp view cfg))
                   (equal (fn-bpaj-transit-plan node cfg ingress src req clock)
                          '(:refused :no-principal)))))
   :hints (("Goal"
@@ -268,7 +266,7 @@
                             (principal (fn-bpnf-ingress-principal ingress))
                             (source src)))
            :in-theory (e/d (fn-bpah-view-source-decision
-                            fn-bpah-request-trustedp fn-bpah-receipt-trustedp
+                            fn-bpah-request-trustedp
                             fn-bpaj-ingress-peer fn-bpaj-transit-plan
                             fn-bpn-nth)
                            (fn-bpaj-carried-unenrolled-source-is-refused
@@ -281,3 +279,25 @@
                             fn-bpa-receiptp fn-bpa-result-message
                             fn-bpa-receipt-issuer fn-bpa-receipt-peer-eid))))
   :rule-classes nil)
+
+; D23: release rows are not carriage.  The transit plan's principal is the
+; same under two configurations at one generation that agree once
+; `bp-boundary-releases-for' rows are dropped (bp-session-admission's
+; `fn-bpaj-source-decision-ignores-release-rows').
+(defthm fn-bpaj-ingress-peer-ignores-release-rows
+  (implies (and (equal (fn-cfgp cfg1) (fn-cfgp cfg2))
+                (equal (fn-cfg-generation cfg1) (fn-cfg-generation cfg2))
+                (equal (fn-bpaj-without-release-rows
+                        (fn-cfg-peers (fn-cfg-value cfg1)))
+                       (fn-bpaj-without-release-rows
+                        (fn-cfg-peers (fn-cfg-value cfg2)))))
+           (equal (fn-bpaj-ingress-peer cfg1 ingress src)
+                  (fn-bpaj-ingress-peer cfg2 ingress src)))
+  :hints (("Goal" :in-theory (e/d (fn-bpaj-ingress-peer)
+                                  (fn-bpaj-carried-source-decision
+                                   fn-bpaj-source-decision-ignores-release-rows
+                                   fn-bpaj-without-release-rows))
+           :use ((:instance fn-bpaj-source-decision-ignores-release-rows
+                            (principal (fn-bpnf-ingress-principal ingress))
+                            (generation (fn-bpn-nth 5 ingress))
+                            (source src))))))
