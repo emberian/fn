@@ -134,3 +134,47 @@
   (fn-bpah-request-trustedp
    (fn-bpah-pending-view *bpah-partial-state* *bpah-local*)
    *bpah-request-cfg*)))
+
+; D23: the host's decision line, and a receipt carried by a relay whose
+; boundary lists the receiver's EID, judged under the receiver's own
+; enrollment.
+(assert-event
+ (equal (fn-bpah-source-decision-line *bpah-request-view* *bpah-request-cfg*)
+        "direct principal=sender-peer"))
+(assert-event
+ (equal (fn-bpah-source-decision-line
+         *bpah-request-view* (fn-cfg-make 8 (fn-cfg-value *bpah-request-cfg*)))
+        "refused reason=generation"))
+(defconst *bpah-relay-rows*
+  (list (fn-cfg-row-make "relay" "path-identity" "relay.example.invalid" 0)
+        (fn-cfg-row-make "relay" "auth-principal"
+                         "bp-only-no-nntp-principal" 0)
+        (fn-cfg-row-make "relay" "bp-trust" "network" 0)
+        (fn-cfg-row-make "relay" "transport-bp" "dtn://relay/" 0)))
+(defconst *bpah-relay-carries*
+  (list (fn-cfg-row-make "relay" "bp-boundary-carries" "dtn://receiver/" 0)))
+(defun bpah-cfg-with (rows)
+  (fn-cfg-make 7 (fn-cfg-value-make nil 0 nil nil nil
+                   (append (fn-cfg-peers (fn-cfg-value *bpah-receipt-cfg*))
+                           rows) nil)))
+(defconst *bpah-carried-receipt-view*
+  (update-nth 4 (list :cl (cons 2 2) 1 *bpah-local*
+                      (fn-record-string-octets "relay") 7)
+              *bpah-receipt-view*))
+(assert-event
+ (fn-bpah-receipt-trustedp *bpah-carried-receipt-view*
+                           (bpah-cfg-with (append *bpah-relay-rows*
+                                                  *bpah-relay-carries*))))
+(assert-event
+ (equal (fn-bpah-source-decision-line
+         *bpah-carried-receipt-view*
+         (bpah-cfg-with (append *bpah-relay-rows* *bpah-relay-carries*)))
+        "carried carrier=relay author=receiver-peer"))
+(must-fail
+ (assert-event
+  (fn-bpah-receipt-trustedp *bpah-carried-receipt-view*
+                            (bpah-cfg-with *bpah-relay-rows*))))
+(assert-event
+ (equal (fn-bpah-source-decision-line *bpah-carried-receipt-view*
+                                      (bpah-cfg-with *bpah-relay-rows*))
+        "refused reason=source-not-carried"))

@@ -101,30 +101,35 @@
   (declare (xargs :guard t))
   (fn-bpn-nth 2 view))
 
+;; D23: the one source decision for a delivered view.  The ingress is the
+;; TCPCL neighbour stamped at reception; element 6 is the bundle's source EID
+;; text.  `fn-bpaj-carried-source-decision' (bp-session-admission) decides
+;; direct, carried (judged under the author's own enrollment) or refused.
+(defun fn-bpah-view-source-decision (view cfg)
+  (declare (xargs :guard t))
+  (let ((ingress (fn-bpn-nth 4 view)))
+    (if (and (fn-bpnf-cl-ingressp ingress)
+             (stringp (fn-bpn-nth 6 view)))
+        (fn-bpaj-carried-source-decision
+         cfg (fn-bpnf-ingress-principal ingress)
+         (fn-bpn-nth 5 ingress) (fn-bpn-nth 6 view))
+      (list :refused :ingress))))
+
 (defun fn-bpah-request-trustedp (view cfg)
   (declare (xargs :guard t))
   (and (consp view)
        (equal (car view) :delivery)
        (equal (fn-bpah-view-class view) :request)
-       (let ((ingress (fn-bpn-nth 4 view)))
-         (and (fn-bpnf-cl-ingressp ingress)
-              (stringp (fn-bpn-nth 6 view))
-              (fn-bpaj-current-peer-eidp
-               cfg (fn-bpnf-ingress-principal ingress)
-               (fn-bpn-nth 5 ingress) (fn-bpn-nth 6 view))))))
+       (fn-bpaj-source-decision-trustedp
+        (fn-bpah-view-source-decision view cfg))))
 
 (defun fn-bpah-receipt-trustedp (view cfg)
   (declare (xargs :guard t))
   (and (consp view)
        (equal (car view) :delivery)
        (equal (fn-bpah-view-class view) :receipt)
-       (let* ((ingress (fn-bpn-nth 4 view))
-              (peer-eid (fn-bpn-nth 6 view)))
-         (and (fn-bpnf-cl-ingressp ingress)
-              (stringp peer-eid)
-              (fn-bpaj-current-peer-eidp
-               cfg (fn-bpnf-ingress-principal ingress)
-               (fn-bpn-nth 5 ingress) peer-eid)))
+       (fn-bpaj-source-decision-trustedp
+        (fn-bpah-view-source-decision view cfg))
        (let ((decoded (fn-bpa-decode-exact (fn-bpn-nth 3 view))))
          (and (fn-bpa-result-okp decoded)
               (fn-bpa-receiptp (fn-bpa-result-message decoded))
@@ -134,6 +139,30 @@
               (equal (fn-bpa-receipt-peer-eid
                       (fn-bpa-result-message decoded))
                      (fn-bpn-nth 6 view))))))
+
+; The line the host prints for every dispatched request or receipt: ACL2's
+; decision, its principal(s) as configured names, or its refusal reason.
+(defun fn-bpah-source-decision-line (view cfg)
+  (declare (xargs :guard t))
+  (let ((d (fn-bpah-view-source-decision view cfg)))
+    (cond ((equal (car d) :direct)
+           (string-append "direct principal="
+                          (fn-record-octets-string (fn-bpn-nth 1 d))))
+          ((equal (car d) :carried)
+           (string-append
+            "carried carrier="
+            (string-append
+             (fn-record-octets-string (fn-bpn-nth 1 d))
+             (string-append " author="
+                            (fn-record-octets-string (fn-bpn-nth 2 d))))))
+          (t (string-append
+              "refused reason="
+              (let ((r (fn-bpn-nth 1 d)))
+                (cond ((equal r :generation) "generation")
+                      ((equal r :source-not-carried) "source-not-carried")
+                      ((equal r :carried-source-unenrolled)
+                       "carried-source-unenrolled")
+                      (t "ingress"))))))))
 
 ; The owed handoff is an application obligation, not TCPCL custody evidence.
 ; Bind it back to the exact delivered held request before the host asks FNRJ
@@ -226,16 +255,18 @@
           node)
          nil))
 
-(defthm fn-bpah-untrusted-ingress-never-authorizes-receipt
-  (implies (not (fn-bpaj-current-peer-eidp
-                 cfg (fn-bpnf-ingress-principal (fn-bpn-nth 4 view))
-                 (fn-bpn-nth 5 (fn-bpn-nth 4 view)) (fn-bpn-nth 6 view)))
+(defthm fn-bpah-untrusted-source-never-authorizes-receipt
+  (implies (not (fn-bpaj-source-decision-trustedp
+                 (fn-bpah-view-source-decision view cfg)))
            (not (fn-bpah-receipt-trustedp view cfg)))
-  :hints (("Goal" :in-theory (enable fn-bpah-receipt-trustedp))))
+  :hints (("Goal" :in-theory (e/d (fn-bpah-receipt-trustedp)
+                                  (fn-bpah-view-source-decision
+                                   fn-bpaj-source-decision-trustedp)))))
 
-(defthm fn-bpah-untrusted-ingress-never-authorizes-request
-  (implies (not (fn-bpaj-current-peer-eidp
-                 cfg (fn-bpnf-ingress-principal (fn-bpn-nth 4 view))
-                 (fn-bpn-nth 5 (fn-bpn-nth 4 view)) (fn-bpn-nth 6 view)))
+(defthm fn-bpah-untrusted-source-never-authorizes-request
+  (implies (not (fn-bpaj-source-decision-trustedp
+                 (fn-bpah-view-source-decision view cfg)))
            (not (fn-bpah-request-trustedp view cfg)))
-  :hints (("Goal" :in-theory (enable fn-bpah-request-trustedp))))
+  :hints (("Goal" :in-theory (e/d (fn-bpah-request-trustedp)
+                                  (fn-bpah-view-source-decision
+                                   fn-bpaj-source-decision-trustedp)))))

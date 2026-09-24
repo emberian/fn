@@ -261,9 +261,13 @@ def main(argv=None):
     ap.add_argument("--work", required=True, type=Path)
     ap.add_argument("--relays", type=int, default=1, choices=(0, 1, 2))
     ap.add_argument("--settle", type=float, default=40.0)
-    ap.add_argument("--b-trusts", choices=("neighbour", "source"), default="neighbour",
+    ap.add_argument("--b-trusts", choices=("carried", "neighbour", "source"),
+                    default="carried",
                     help="the EID B's boundary enrols: the TCPCL neighbour's "
-                         "(dtn7's node ID) or the request's source (fn A's)")
+                         "(dtn7's node ID) or the request's source (fn A's); "
+                         "`carried' (D23, the default) enrols the neighbour with "
+                         "`carries' naming the far fn node, and the far node "
+                         "under its own EID, on each side")
     args = ap.parse_args(argv)
     if args.relays and not args.dtn7_repo:
         ap.error("--dtn7-repo is required unless --relays 0")
@@ -320,23 +324,37 @@ def main(argv=None):
             setup.append(lab.fn(tag, *argv).returncode)
         # The last hop each side sees: dtn7's node ID, or the fn peer directly.
         b_neighbour = ("dtn://dtn7-r{}/".format(args.relays)
-                       if args.relays and args.b_trusts == "neighbour" else SENDER)
+                       if args.relays and args.b_trusts in ("neighbour", "carried")
+                       else SENDER)
         report["b_trusts"] = dict(mode=args.b_trusts, eid=b_neighbour)
         a_neighbour = "dtn://dtn7-r1/" if args.relays else RECEIVER
-        for side, store, path_id, name, remote, eid, port, scope in (
+        carried = bool(args.relays) and args.b_trusts == "carried"
+        b_scope = ["fn.test", "32768", "16"]
+        # D23: the neighbour's boundary carries the far fn node's EID; the far
+        # node is enrolled under its own EID (on a port nothing listens on),
+        # and its request is judged under that enrolment and its scope.
+        for side, store, path_id, name, remote, eid, port, scope, far in (
                 ("a", a_store, "sender.bp.gate.invalid", "return-boundary",
                  "r1.bp.gate.invalid" if args.relays else "receiver.bp.gate.invalid",
-                 a_neighbour, a_port, []),
+                 a_neighbour, a_port, [],
+                 ("receiver-author", "receiver.bp.gate.invalid", RECEIVER, [])),
                 ("b", b_store, "receiver.bp.gate.invalid", "ingress-boundary",
                  "rn.bp.gate.invalid" if args.relays else "sender.bp.gate.invalid",
-                 b_neighbour, b_port, ["fn.test", "32768", "16"])):
+                 b_neighbour, b_port, [] if carried else b_scope,
+                 ("sender-author", "sender.bp.gate.invalid", SENDER, b_scope))):
             config = lab.path("{}.toml".format(side))
             config.write_text('[store]\npath = "{}"\n'.format(store), encoding="ascii")
             setup.append(lab.fn("setup-{}-path".format(side), "operator", config, "policy",
                                 "set", "path-identity", path_id).returncode)
+            carries = ["carries", far[2]] if carried else []
             setup.append(lab.fn("setup-{}-boundary".format(side), "operator", config,
                                 "bp-boundary", "add", name, remote, eid, port,
-                                *scope).returncode)
+                                *scope, *carries).returncode)
+            if carried:
+                setup.append(lab.fn("setup-{}-author".format(side), "operator", config,
+                                    "bp-boundary", "add", far[0], far[1], far[2],
+                                    free_port(), *far[3]).returncode)
+        report["b_trusts"]["carried"] = carried
         report["setup_rcs"] = setup
         report["a_pinned_before"] = lab.fn("a-status-0", "bp-obligation", "status",
                                            a_store, a_wf, WORK).stdout.strip()
@@ -423,6 +441,7 @@ def main(argv=None):
              transport_accepted=sum(1 for l in blines if l.startswith("BP accepted")),
              channel_refusals=[l for l in blines if "admission refused" in l],
              application=[l for l in blines if l.startswith("BP node delivery")],
+             source_decisions=[l for l in blines if l.startswith("BP node source")],
              receipts_queued=[l for l in blines if "receipt queued" in l],
              b_fnbs_lifecycle_frames=len(kind5), b_fnbs_frame_names=kind5)
         # --- 4. the receipt toward A ---------------------------------------
@@ -443,6 +462,7 @@ def main(argv=None):
              matched.group(1) if matched else "no-receipt", ["b-4-tick", "a-serve"],
              tick_outcome=outcome_of(tick.returncode),
              a_receipt_lines=[l for l in alines if l.startswith("BP node delivery")],
+             a_source_decisions=[l for l in alines if l.startswith("BP node source")],
              a_inbound_custody=[l for l in alines if l.startswith(
                  ("BP accepted", "BP received carrier"))],
              a_obligation=status.stdout.strip())

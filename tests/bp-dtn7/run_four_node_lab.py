@@ -479,6 +479,11 @@ def run_dtn7(lab: Lab, run: Path, started: float, dtn7_repo: Path, image: Path) 
         lab.check("no receipt is inferred from transport delivery",
                   accepted or (steps["4"]["outcome"] == "no-receipt"
                                and "pinned=yes" in inner["a_pinned_after"]))
+        # D23 (the exchange's default trust mode): each carrier's boundary
+        # lists the far fn node, so the request and its receipt are accepted.
+        lab.check("an accepted request is receipted at home and unpins it",
+                  not accepted or (steps["4"]["outcome"] == "receipt-accepted"
+                                   and "pinned=no" in inner["a_pinned_after"]))
         report["observed"] = {
             "application": steps["3"]["outcome"],
             "receipt_at_home": steps["4"]["outcome"],

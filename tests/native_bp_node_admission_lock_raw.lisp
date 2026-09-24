@@ -8,6 +8,9 @@
 (defvar *calls* nil)
 (defun fnn-owner-core (name &rest arguments)
   (declare (ignore arguments))
+  ;; The D23 decision line is printed, never branched on.
+  (when (eq name 'fn-owner-bp-source-decision-line)
+    (return-from fnn-owner-core "direct principal=stub"))
   (unless (member name '(fn-owner-bp-request-trustedp
                          fn-owner-bp-receipt-trustedp))
     (error "unexpected core call ~s" name))
@@ -47,9 +50,12 @@
   "receipt")
 (defun fnn-bpo-canonical-release (&rest arguments)
   (declare (ignore arguments)) nil)
+(defun fnn-out (control &rest arguments)
+  (apply #'format t control arguments) (terpri))
 
 (with-open-file (stream "host/native/bp-node.lisp")
-  (dolist (wanted '(fnn-bpnode-request-result fnn-bpnode-receipt-result))
+  (dolist (wanted '(fnn-bpnode-source-decision fnn-bpnode-request-result
+                   fnn-bpnode-receipt-result))
     (file-position stream 0)
     (let ((found nil))
       (loop for form = (read stream nil :eof) until (eq form :eof)
