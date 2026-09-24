@@ -164,6 +164,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-retention-tests \
 	books/store-budget \
 	tests/acl2/store-budget-tests \
+	books/store-profile-upgrade \
+	books/byte-store-profile-program \
+	tests/acl2/store-profile-upgrade-tests \
 	books/store-node-resolution \
 	books/store-identity-sequence-invariants \
 	tests/acl2/store-identity-sequence-invariants-tests \
