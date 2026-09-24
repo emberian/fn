@@ -20,14 +20,31 @@ MRU/attempt/result and cache teeth). Earlier failed selected attempts exposed
 fixture include/token errors and are superseded by these passing manifests.
 
 The native N04 interrupted-contact/restart test is source-only pending a
-saved image at this revision. The existing source-matched image still predates
-this packet and exposed an independent A3 character/octet boundary error;
+saved image at this revision. The prior image predates this packet and exposed
+an A3 character/octet boundary error that has since received a source fix;
 it cannot establish native forwarding success. The actual outer cold-recovery
 cache theorem is not admitted; five local projection lemmas and byte-replay
-teeth are certified. `books/bp-node-progress-guards` does not certify at this
-source: `verify-guards fn-bpnp-credit-blockedp` lacks the rational `free`
-premise, and later new helper guards have not been checked. No guarded native
-execution claim follows from this checkpoint. Post-kind-8 ambiguous TCPCL
-outcome keeps the attempt active and fences the host; a defined recovery
-settlement policy for that active attempt remains open. The full N03 class
-fairness and general carried-debt invariant also remain open.
+teeth are certified.
+
+The forwarding frame codec passed the selected persvati run
+`run-20260924T070020Z-c470` (manifest
+`certify-20260924T070026Z-1507216.json`). The lower dispatch, forward-image,
+and attempt/result guard book passed `run-20260924T070624Z-556c` (manifest
+`certify-20260924T070630Z-1564034.json`). The composed host-called progress
+guard root **did not certify** in `run-20260924T070716Z-108a` (manifest
+`certify-20260924T070729Z-1573594.json`): ten parents passed, then
+`verify-guards fn-bpnp-issued-debt-delta` timed out at 120 seconds. Its first
+remaining guard goal requires `fn-bpn-machine-statep` of the retained base for
+the `:family` arm because `fn-bpnf-family-apply-at` has that guard. The
+delegate's input carries this invariant, but the helper is called on an inner
+`fn-bpn-report-author-step` result; the next proof must establish preservation
+for that actual result without scanning the whole base on every served step.
+No guarded native execution claim follows from this packet.
+
+After durable kind 8, process death before the host sends or publishes kind 9
+replays a `:forwarding` row while recovery clears the session and pending
+image. The current session selector does not re-offer that row, leaving its
+reserved debt stranded. Automatic retry after a possible send would raise a
+duplicate-control policy question, so this remains an explicit crash-recovery
+liveness obligation. The full N03 class fairness and general carried-debt
+invariant also remain open.
