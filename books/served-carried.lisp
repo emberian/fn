@@ -22,14 +22,17 @@
 ;
 ; The step functions also take `trie' and `arts', the owner view's
 ; Message-ID trie and the article list it indexes, and hand them to the peer
-; step (fn-pix-peer-step-pinned, books/peer-offer-indexed.lisp), whose
-; IHAVE/CHECK history test answers from the trie.  Their equations add the
+; arm (fn-pgc-peer-arm, books/peer-guard-carried.lisp), whose IHAVE/CHECK
+; history test answers from the trie and whose guard names no node
+; recognizer, so a peer event tests the session's node by the same pointer
+; comparison a reader event does.  Their equations add the
 ; premise (fn-midx-correspondencep trie arts), which the owner carries
 ; (fn-scar-view-indexedp, books/owner-served-carried.lisp).
 
 (in-package "ACL2")
 (include-book "served-tls-prefix")
 (include-book "peer-offer-indexed")
+(include-book "peer-guard-carried")
 
 (defun fn-scar-node-statep (node live)
   (declare (xargs :guard t))
@@ -85,23 +88,32 @@
                                   (fn-scar-peer-sessionp fn-peer-sessionp
                                    fn-node-statep)))))
 
+; The carried session test is the peer arm's guard: a peer session that
+; passes it satisfies fn-pgc-peer-sessionp, whose node conjunct is gone.
+(defthm fn-scar-peer-sessionp-gives-pgc-peer-sessionp
+  (implies (and (fn-scar-peer-sessionp x live) (fn-peer-session-peer x))
+           (fn-pgc-peer-sessionp x))
+  :hints (("Goal" :in-theory (enable fn-scar-peer-sessionp
+                                     fn-pgc-peer-sessionp))))
+
 ; A reader session (no peer) is served by the POST-composed step without a
-; further recognizer.  A peer session goes to fn-pix-peer-step-pinned, the
-; reference with its history test indexed; it still tests fn-peer-sessionp
-; per event: its transit arms call fn-peer-command, whose guard is
-; fn-peer-sessionp, and the offer decision, whose guard is fn-node-statep, so
-; a guard-verified copy could not skip that evaluation (the finding in
-; planning/evidence/served-path-cost-2026-09-24.md).
+; further recognizer.  A peer session goes to fn-pgc-peer-arm
+; (books/peer-guard-carried.lisp), the reference's peer branches with the
+; IHAVE/CHECK history test indexed and no session recognizer of its own: its
+; guard is fn-pgc-peer-sessionp, which the carried test above implies, so the
+; session's node is tested once per event by a pointer comparison against
+; `live' and never by fn-node-statep when the session holds the owner's node.
 (defun fn-scar-peer-step-pinned
     (ps live trie arts archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-scar-peer-sessionp)))))
   (cond
    ((not (fn-scar-peer-sessionp ps live)) (fn-post-make-result ps nil nil))
    ((null (fn-peer-session-peer ps))
     (fn-peer-delegate-pinned ps archive index verdicts config observation
                              injection wire-event))
-   (t (fn-pix-peer-step-pinned ps trie arts archive index verdicts config
-                               observation injection wire-event))))
+   (t (fn-pgc-peer-arm ps trie arts archive index verdicts config
+                       observation injection wire-event))))
 
 (defthm fn-scar-peer-step-pinned-is-peer-step-pinned
   (implies (and (fn-node-statep live)
@@ -113,7 +125,7 @@
   :hints (("Goal" :in-theory (e/d (fn-scar-peer-step-pinned fn-peer-step-pinned)
                                   (fn-midx-correspondencep fn-scar-peer-sessionp fn-peer-sessionp
                                    fn-node-statep fn-peer-delegate-pinned
-                                   fn-peer-step fn-peer-command)))))
+                                   fn-peer-step fn-peer-command fn-pgc-peer-arm)))))
 
 (defun fn-scar-auth-delegate-pinned
     (as live trie arts archive index verdicts config observation injection wire-event)

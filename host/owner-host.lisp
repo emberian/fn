@@ -1361,7 +1361,10 @@
 ; one trie lookup instead of a scan of the node's articles and bindings
 ; (books/peer-offer-indexed.lisp, fn-pix-history-hasp-is-peer-history-hasp);
 ; the trie premise fn-scar-view-indexedp is carried by every owner transition
-; (books/owner-offer-indexed.lisp).
+; (books/owner-offer-indexed.lisp).  A peer session's events run
+; fn-pgc-peer-arm (books/peer-guard-carried.lisp, D24), whose guard names no
+; node recognizer, so no peer event evaluates fn-node-statep either
+; (fn-pgc-peer-arm-is-peer-step-pinned).
 (defun fn-owner-chunk (id octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((owner (fn-owner-core state)))
