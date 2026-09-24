@@ -419,13 +419,8 @@
          (projection (fn-sn-topic s))
          (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
     (value
-     (case operation
-       (:install (fn-th-local-propose-install projection txid observed-uid
-                                              entropy-id))
-       (:anchor (fn-th-local-propose-anchor projection txid source-sequence
-                                           observed-uid quota))
-       (:report (fn-th-local-propose-report projection txid source-sequence))
-       (otherwise (fn-stmt-error :operation))))))
+     (fn-th-local-propose operation projection txid source-sequence
+                          observed-uid entropy-id quota))))
 
 (defun fn-owner-known-abort (state)
   (declare (xargs :stobjs state :mode :program))
