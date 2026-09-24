@@ -9,18 +9,6 @@
       "host": "hbox",
       "verdict": "passed"
     },
-    "books/bp-fnbs-byte-invariants": {
-      "seconds": 22.911,
-      "run": "certify-20260924T070931Z-1040432",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/bp-fnbs-codec-invariants": {
-      "seconds": 27.174,
-      "run": "certify-20260924T070931Z-1040432",
-      "host": "hbox",
-      "verdict": "passed"
-    },
     "books/bp-fragment-invariants": {
       "seconds": 13.342,
       "run": "certify-20260923T175847Z-4039310",
@@ -35,12 +23,6 @@
     },
     "books/bp-node-fragment-guards": {
       "seconds": 11.548,
-      "run": "certify-20260924T070931Z-1040432",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/bp-node-fragment-plan": {
-      "seconds": 36.91,
       "run": "certify-20260924T070931Z-1040432",
       "host": "hbox",
       "verdict": "passed"
@@ -89,12 +71,6 @@
     },
     "books/checkpoint-codec": {
       "seconds": 12.097,
-      "run": "certify-20260924T070931Z-1040432",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/checkpoint-compaction": {
-      "seconds": 66.668,
       "run": "certify-20260924T070931Z-1040432",
       "host": "hbox",
       "verdict": "passed"
@@ -177,15 +153,9 @@
       "host": "nextop.local",
       "verdict": "passed"
     },
-    "books/records-canonicality": {
-      "seconds": 45.385,
-      "run": "certify-20260923T155856Z-97680",
-      "host": "nextop.local",
-      "verdict": "passed"
-    },
     "books/replay": {
-      "seconds": 90.775,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 70.638,
+      "run": "certify-20260924T090657Z-1117779",
       "host": "hbox",
       "verdict": "passed"
     },
@@ -196,20 +166,20 @@
       "verdict": "passed"
     },
     "books/store-node": {
-      "seconds": 28.228,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 23.828,
+      "run": "certify-20260924T090657Z-1117779",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/store-node-invariants": {
-      "seconds": 124.853,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 106.539,
+      "run": "certify-20260924T090657Z-1117779",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/store-node-traces": {
-      "seconds": 68.64,
-      "run": "certify-20260924T070931Z-1040432",
+      "seconds": 65.208,
+      "run": "certify-20260924T090657Z-1117779",
       "host": "hbox",
       "verdict": "passed"
     },
@@ -220,8 +190,8 @@
       "verdict": "passed"
     },
     "books/tcpcl-session": {
-      "seconds": 24.17,
-      "run": "certify-20260923T175847Z-4039310",
+      "seconds": 12.75,
+      "run": "certify-20260924T091450Z-1130783",
       "host": "hbox",
       "verdict": "passed"
     },
