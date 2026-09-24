@@ -1562,12 +1562,52 @@
         {
           "kind": "theorem",
           "name": "fn-bpn-sf-step-preserves-nonreuse",
-          "pending_subject": "Observed-file trace model calls the native core recover/reserve subjects through named equations; raw syscall observations, ordering and the confirmed-frontier durability premise still require host/platform correspondence."
+          "pending_subject": "Model-only (reach_check orphan): the subject is the fn-bpn-sf observed-file model, whose wrappers equal fn-bpn-sequence-reserve/-recover. The served fn-bpnp-step allocates no sequence; the host reserves one outside it (fnn-bp-reserve-sequence, host/native/bp.lisp:152, through fn-bpn-host-sequence-reserve/-recover in the uncertified host/bp-node-host.lisp:83-104, called at host/native/bp.lisp:168-174 and bp-service.lisp:158) or reuses one via fn-bpn-host-existing-sequence (host/bp-node-machine-host.lisp:21, bp-service.lisp:799-806), and passes it to fn-bpnp-step as an :enqueue operand. No served-path theorem exists until those host functions move into a certified book and a theorem shows the existing-sequence reuse binds one bundle."
         },
         {
           "kind": "theorem",
           "name": "fn-bpn-sf-trace-preserves-safety",
-          "pending_subject": "Observed-file trace model calls the native core recover/reserve subjects through named equations; raw syscall observations, ordering and the confirmed-frontier durability premise still require host/platform correspondence."
+          "pending_subject": "Model-only (reach_check orphan): the subject is the fn-bpn-sf observed-file model, whose wrappers equal fn-bpn-sequence-reserve/-recover. The served fn-bpnp-step allocates no sequence; the host reserves one outside it (fnn-bp-reserve-sequence, host/native/bp.lisp:152, through fn-bpn-host-sequence-reserve/-recover in the uncertified host/bp-node-host.lisp:83-104, called at host/native/bp.lisp:168-174 and bp-service.lisp:158) or reuses one via fn-bpn-host-existing-sequence (host/bp-node-machine-host.lisp:21, bp-service.lisp:799-806), and passes it to fn-bpnp-step as an :enqueue operand. No served-path theorem exists until those host functions move into a certified book and a theorem shows the existing-sequence reuse binds one bundle."
+        }
+      ]
+    },
+    {
+      "id": "PRF-046",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-base-event-refines-fn-bpn-step",
+          "note": "Subject-equating keystone (AGENTS.md rule 1) for the lower machine keystones below: on (:base E), which fnn-bps-step (bp-service.lisp:178-179) builds for every lower machine event, host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step and answers exactly fn-bpn-step's base state and effects when nothing is issued and no delivery is uncertain, otherwise no effect with the base unchanged. Teeth: tests/acl2/bp-node-counterexamples-tests (witness plus one must-fail per hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-emits-no-release-and-no-receipt-prepare",
+          "note": "Over every event of the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step), no hypotheses: no :release and no :receipt-prepare effect. The release path is the bp-release receipt join. Teeth: reachable kind-8/kind-9 witnesses and a release mutant in tests/acl2/bp-node-counterexamples-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-preserves-guard-premises",
+          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): the base machine invariant, session table and held-list shape survive every host event. Teeth: tests/acl2/bp-node-progress-premises-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-progress-preserves-held",
+          "note": "Over the called fn-bpnp-step on a :progress event. Teeth: tests/acl2/bp-node-machine-teeth-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch",
+          "note": "Over the called fn-bpnp-step on a :progress event. Teeth: tests/acl2/bp-node-machine-teeth-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-step-preserves-lifecycle-invariant",
+          "note": "Subject fn-bpn-step; holds of the called fn-bpnp-step's base on (:base E) events through fn-bpnp-step-base-event-refines-fn-bpn-step. Not proved over the served step's other arms (receive, delivery, family, forwarding, recovery), which change the base through fn-bpn-propose and fn-bpn-restart-step."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record",
+          "note": "Subject fn-bpn-step; bridged to the called fn-bpnp-step on (:base E) by fn-bpnp-step-base-event-refines-fn-bpn-step. The served forwarding arm's own :cl-send (kind 8, fn-bpnp-attempt-persist-step) has no authorization keystone yet."
         }
       ]
     },
