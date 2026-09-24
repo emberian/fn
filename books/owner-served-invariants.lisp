@@ -67,6 +67,30 @@
                                 (fn-peer-submission-octets d))
       (fn-inj-decision-octets d))))
 
+;; The two arms, named by definition (they are not keystones).  A local or
+;; control submission's staged octets are its own: nothing is prepended, so
+;; for served POST the keystone below compares with the submission's octets
+;; exactly as before.  A transit submission's are fn-peer-relayed-octets of
+;; the received octets, whose Path is the received Path with this node's
+;; identity and diagnostic prepended when a Path identity is set
+;; (books/peer-inbound-invariants.lisp
+;; fn-peer-relayed-octets-keep-the-received-path-tail).
+(defthm fn-own-sub-stored-octets-of-a-local-submission-by-definition
+  (implies (not (fn-peer-submissionp (fn-own-sub-decision sub)))
+           (equal (fn-own-sub-stored-octets cfg sub)
+                  (fn-own-sub-octets sub)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
+
+(defthm fn-own-sub-stored-octets-of-a-transit-submission-by-definition
+  (implies (fn-peer-submissionp (fn-own-sub-decision sub))
+           (equal (fn-own-sub-stored-octets cfg sub)
+                  (fn-peer-relayed-octets
+                   cfg (fn-peer-submission-peer (fn-own-sub-decision sub))
+                   (fn-own-sub-octets sub))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
+
 (defun fn-own-completion-names-submission-p (o cfg)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
   (let ((sub (fn-own-inflight o))

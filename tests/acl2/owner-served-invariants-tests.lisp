@@ -215,6 +215,37 @@
 (assert-event (not (osi-p2-240p *osi-transit-unstaged* 4)))
 (must-fail (assert-event (osi-p2-conclusion *osi-transit-unstaged* 4)))
 
+; Negative: a completion for a different article.  The record carries the
+; staged octets but another Message-ID; the finish still faults.
+(defconst *osi-transit-other*
+  (fn-own-run (own-with-inflight *own-taken* *osi-transit-sub*)
+              (osi-drop-last
+               (own-post-events
+                (fn-record-make 2 2 2 "<other@example.invalid>"
+                                *osi-transit-stored* '("fn.letters")
+                                "own-pin:<other@example.invalid>"
+                                "own-content:<other@example.invalid>"
+                                "own-release:<other@example.invalid>"
+                                2 841000000)))))
+(assert-event (fn-own-relation *osi-transit-other*))
+(assert-event (fn-sn-completion-enabledp (fn-own-store *osi-transit-other*)))
+(assert-event (equal (car (fn-own-finish *osi-transit-other* *osi-cfg*)) :fault))
+(assert-event (not (osi-p2-240p *osi-transit-other* 4)))
+(must-fail (assert-event (osi-p2-conclusion *osi-transit-other* 4)))
+
+; The transit arm's Path shape on the witness (P7's
+; fn-peer-relayed-octets-keep-the-received-path-tail, concretely): the staged
+; octets are the received ones with "own.example!<diagnostic>!" inserted
+; before the received Path contents, and nothing else changed.
+(defconst *osi-received-path-line*
+  (fn-nntp-string-octets "Path: peer.example!x"))
+(assert-event (equal (take (len *osi-received-path-line*) *osi-transit-received*)
+                     *osi-received-path-line*))
+(assert-event (equal (nthcdr 6 *osi-transit-received*)
+                     (let ((tail (nthcdr 6 *osi-transit-stored*)))
+                       (nthcdr (- (len tail) (len (nthcdr 6 *osi-transit-received*)))
+                               tail))))
+
 ; -----------------------------------------------------------------------------
 ; P3: fn-own-pinned-view-survives-other-post.
 
