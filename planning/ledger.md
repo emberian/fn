@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 627 |
 | Certification roots in the Makefile | 617 |
 | Books inside the root closure | 625 |
-| `defthm` and `defthmd` events | 8687 |
+| `defthm` and `defthmd` events | 8698 |
 | `defun` events | 6414 |
 | Functions with verified guards | 2036 |
 | Functions declared `:verify-guards nil` and never verified | 382 |
 | Functions left at the default with an explicit guard | 3177 |
 | Functions left at the default with no guard | 819 |
-| `assert-event` checks | 9430 |
-| `must-fail` checks | 538 |
+| `assert-event` checks | 9435 |
+| `must-fail` checks | 539 |
 | `encapsulate` events | 27 |
 | Theorems flagged SUSPECT by shape | 82 |
 | Export-hygiene warnings | 103 |
@@ -127,7 +127,7 @@ that `make certify` requests.
 | `books/bp-fnbs-delivery-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-delivery-replay.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-dispatch-codec.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-dispatch-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-dispatch-invariants.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-family-codec.lisp` | root | 0 | 13 | 0/0/13/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-family-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-family-replay.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -479,7 +479,7 @@ that `make certify` requests.
 | `tests/acl2/bp-fnbs-delivery-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
 | `tests/acl2/bp-fnbs-delivery-publication-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/bp-fnbs-delivery-replay-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 20 | 2 | 0 |
-| `tests/acl2/bp-fnbs-dispatch-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
+| `tests/acl2/bp-fnbs-dispatch-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 1 | 0 |
 | `tests/acl2/bp-fnbs-family-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 2 | 0 |
 | `tests/acl2/bp-fnbs-family-publication-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 8 | 1 | 0 |
 | `tests/acl2/bp-fnbs-family-replay-tests.lisp` | root | 0 | 8 | 0/8/0/0 | 14 | 1 | 0 |
