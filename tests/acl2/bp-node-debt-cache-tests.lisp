@@ -59,5 +59,69 @@
        (fn-bpnf-find-arrival (fn-bpn-nth 3 *bpndc-record*) nil)
        (fn-bpah-delivered-held
         (fn-bpnf-find-arrival (fn-bpn-nth 3 *bpndc-record*) nil)
-        *bpndc-record*)
+       *bpndc-record*)
        *bpnd-local*)))))
+
+; The actual kind-5 rows above are encoded into the received namespace's
+; ordered name/byte input.  The same auto-event that the native host calls
+; replays those bytes and carries their physical count, even though one row
+; may later cease to be live held work.
+(defconst *bpndc-row0-record*
+  (fn-bpnf-stored-record 0 0 *bpnd-old-held*))
+(defconst *bpndc-row1-record*
+  (fn-bpnf-stored-record 0 1 *bpnd-new-held*))
+(defconst *bpndc-rows*
+  (list (list (fn-bpnf-stored-record-name 0 0)
+              (fn-bpnf-stored-record-frame *bpndc-row0-record*))
+        (list (fn-bpnf-stored-record-name 0 1)
+              (fn-bpnf-stored-record-frame *bpndc-row1-record*))))
+(defconst *bpndc-replay*
+  (fn-bpnf-family-replay-rows *bpndc-rows* (fn-bpnf-base *bpnd-s2*)))
+(defconst *bpndc-recover-event*
+  (fn-bpnf-family-recover-auto-event *bpnd-s2* nil :ready *bpndc-rows*))
+(defconst *bpndc-recovered*
+  (fn-bpnp-step *bpnd-s2* *bpndc-recover-event*))
+(assert-event
+ (and (fn-bpnf-stored-recordp *bpndc-row0-record*)
+      (fn-bpnf-stored-recordp *bpndc-row1-record*)
+      (equal (car *bpndc-replay*) :ready)
+      (equal (fn-bpn-nth 1 *bpndc-replay*)
+             (fn-bpnf-held-list *bpnd-s2*))
+      (equal (fn-bpn-nth 5 *bpndc-recover-event*) 2)
+      (fn-bpnp-host-eventp *bpndc-recover-event*)
+      (equal (car (car (fn-bpnf-answer-effects *bpndc-recovered*)))
+             :restart-ready)
+      (equal (fn-bpnp-used (fn-bpnf-answer-state *bpndc-recovered*)) 2)
+      (equal (fn-bpnp-debt (fn-bpnf-answer-state *bpndc-recovered*))
+             (fn-bpnd-debt (fn-bpnf-answer-state *bpndc-recovered*)
+                           *bpnd-local*))
+      (equal (fn-bpnp-debt (fn-bpnf-answer-state *bpndc-recovered*)) 7)))
+
+; A damaged observed final still counts as an observed name, but its replay
+; faults.  The failed recovery cannot replace the live cache or obligations.
+(defconst *bpndc-corrupt-rows*
+  (cons (list (fn-bpnf-stored-record-name 0 0)
+              (cons 255
+                    (cdr (fn-bpnf-stored-record-frame
+                          *bpndc-row0-record*))))
+        (cdr *bpndc-rows*)))
+(defconst *bpndc-fault-event*
+  (fn-bpnf-family-recover-auto-event
+   (fn-bpnf-answer-state *bpndc-recovered*) nil :ready
+   *bpndc-corrupt-rows*))
+(defconst *bpndc-fault*
+  (fn-bpnp-step (fn-bpnf-answer-state *bpndc-recovered*)
+                *bpndc-fault-event*))
+(assert-event
+ (and (equal (car (fn-bpnf-family-replay-rows
+                   *bpndc-corrupt-rows*
+                   (fn-bpnf-base (fn-bpnf-answer-state *bpndc-recovered*))))
+             :fault)
+      (fn-bpnp-host-eventp *bpndc-fault-event*)
+      (equal (car (car (fn-bpnf-answer-effects *bpndc-fault*)))
+             :restart-fault)
+      (equal (fn-bpnp-used (fn-bpnf-answer-state *bpndc-fault*)) 2)
+      (equal (fn-bpnp-debt (fn-bpnf-answer-state *bpndc-fault*)) 7)
+      (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpndc-fault*))
+             (fn-bpnf-held-list
+              (fn-bpnf-answer-state *bpndc-recovered*)))))
