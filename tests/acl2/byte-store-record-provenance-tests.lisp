@@ -1203,3 +1203,85 @@
                            ".allocation-native-k0" :ok))
    (bsk0-native-frontier-entry)
    ".allocation-native-k0" (fn-bs-frontier-encode 1))))
+
+; The shared native owner installs fn-owner-io as its observation callback.
+; Its exact :store/:io event chain projects to the same four Store-node
+; callbacks and reaches the same byte interpreter pair 12/pair 14.
+(defun bsk0-owner-frontier-returnp (bs oc stage octets)
+  (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+         (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok))))
+         (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok))))
+         (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok))))
+         (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :ok))))
+         (run (fn-bs-run bs (fn-sn-files s)
+                         (fn-bs-frontier-program stage octets)
+                         nil (fn-sn-groups s) (fn-sn-capacity s)))
+         (file-pair (nth 12 run))
+         (return-pair (nth 14 run)))
+    (and (equal (fn-sn-files (fn-own-store (fn-ocfg-owner oc3)))
+                (cdr file-pair))
+         (equal (car return-pair) (car file-pair))
+         (equal (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))
+                (cdr return-pair))
+         (fn-bs-store-relation
+          (car return-pair)
+          (fn-sn-files (fn-own-store (fn-ocfg-owner oc4))))
+         (equal (fn-sf-phase
+                 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4))))
+                :reserved))))
+
+(defun bsk0-owner-frontier-entry ()
+  (fn-ocfg-make (fn-own-start (bsk0-native-frontier-entry) 2) nil nil nil))
+
+(assert-event
+ (let* ((bs (bsk5-initial))
+        (oc (bsk0-owner-frontier-entry))
+        (s (fn-own-store (fn-ocfg-owner oc)))
+        (stage ".allocation-owner-k0")
+   (and (fn-sn-statep s)
+        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-frontier-inputp (fn-sn-files s) stage
+                                (fn-bs-frontier-encode 1))
+        (not (fn-bs-lookup bs :staging stage))
+        (equal (fn-own-store
+                (fn-ocfg-owner
+                 (fn-ocfg-step oc '(:store (:io :start-frontier :ok)))))
+               (fn-sn-io s :start-frontier :ok))
+        (bsk0-owner-frontier-returnp
+         bs oc stage (fn-bs-frontier-encode 1)))))
+
+(must-fail
+ (assert-event
+  (let* ((bs (bsk5-initial))
+         (oc0 (bsk0-owner-frontier-entry))
+         (o (fn-ocfg-owner oc0))
+         (s0 (fn-own-store o))
+         (s (fn-sn-update s0 (fn-sn-files s0) :bad))
+         (oc (fn-ocfg-make (fn-own-start s 2) nil nil nil)))
+    (bsk0-owner-frontier-returnp bs oc ".allocation-owner-k0"
+                                  (fn-bs-frontier-encode 1)))))
+
+(must-fail
+ (assert-event
+  (let* ((bs (bsk5-initial))
+         (bad (fn-bs-make (fn-bs-unit bs)
+                          (fn-bs-put-assoc 0 '(65) (fn-bs-inodes bs))
+                          (fn-bs-dirs bs) (fn-bs-pending bs)
+                          (fn-bs-next-ino bs))))
+    (bsk0-owner-frontier-returnp bad (bsk0-owner-frontier-entry)
+                                  ".allocation-owner-k0"
+                                  (fn-bs-frontier-encode 1)))))
+
+(must-fail
+ (assert-event
+  (bsk0-owner-frontier-returnp
+   (bsk5-initial) (bsk0-owner-frontier-entry)
+   ".allocation-owner-k0" (fn-bs-frontier-encode 0))))
+
+(must-fail
+ (assert-event
+  (bsk0-owner-frontier-returnp
+   (mv-nth 1 (fn-bs-create (bsk5-initial) :staging
+                           ".allocation-owner-k0" :ok))
+   (bsk0-owner-frontier-entry)
+   ".allocation-owner-k0" (fn-bs-frontier-encode 1))))
