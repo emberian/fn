@@ -232,7 +232,7 @@
           (fn-sn-completion-record s))
    :hints (("Goal" :use fn-spc-set-keyring-keeps-store-components
             :in-theory (e/d (fn-sn-completion-record)
-                            (fn-sn-set-keyring fn-sn-make-v6)))))
+                            (fn-sn-set-keyring fn-sn-make-v6))))))
 
 ; Reconfiguration keeps the snapshot list and the identity cursor, so it
 ; keeps the identity replay context `6e992351' and `4bb7bb3d' made
