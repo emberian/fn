@@ -241,7 +241,8 @@
             (and (not (fn-store-retention-event-p record))
                  (not (fn-stxe-p record))
                  (not (fn-stxk-p record))
-                 (not (fn-cpe-eventp record))))
+                 (not (fn-cpe-eventp record))
+                 (not (fn-th-topic-eventp record))))
    :hints (("Goal"
             :do-not-induct t
             :in-theory
@@ -249,6 +250,7 @@
                   fn-stxe-p fn-stxe-shapep fn-stxe-msgid
                   fn-stxk-p fn-stxk-shapep
                   fn-cpe-eventp
+                  fn-th-topic-eventp
                   fn-store-retention-event-p fn-record-msgidp)
                  (fn-stxe-bounded-octetsp
                   fn-record-metadata-bytes-p))))))
@@ -267,6 +269,7 @@
                  fn-replay-article-eventp)
                  (fn-record-shape-vocabulary fn-replay-apply-record
                   fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                  fn-th-topic-eventp
                   fn-store-retention-event-p))))))
 
 (defthm fn-sn-finish-installs-the-stamp-the-composite-carries
