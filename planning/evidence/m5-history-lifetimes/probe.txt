@@ -1,0 +1,17 @@
+# hbox, 2026-09-24.  `fn-host-developer --fn store ROOT probe 120` (fnn-command-probe:
+# 120 commits of the development profile's maximum payload, 32768 octets, in one
+# process, then close and reopen).  before = developer image of 5181e0ea
+# (core b6c9ee00..., no marker); after = developer image of 7023c777 (core a84dc2d9...,
+# marker written per commit).  Runs interleaved before/after, three each, per filesystem.
+/dev/shm/m5-hist-probe before 1 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":13.1402,"reopen_seconds":6.9811,"status":"passed"}
+/dev/shm/m5-hist-probe after 1 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":13.0422,"reopen_seconds":6.8491,"status":"passed"}
+/dev/shm/m5-hist-probe before 2 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":13.0822,"reopen_seconds":7.0251,"status":"passed"}
+/dev/shm/m5-hist-probe after 2 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":12.9323,"reopen_seconds":6.9161,"status":"passed"}
+/dev/shm/m5-hist-probe before 3 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":13.3433,"reopen_seconds":6.9941,"status":"passed"}
+/dev/shm/m5-hist-probe after 3 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":12.9583,"reopen_seconds":6.8571,"status":"passed"}
+/tank/fn/scratch/m5-hist/probe before 1 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":33.4557,"reopen_seconds":7.0541,"status":"passed"}
+/tank/fn/scratch/m5-hist/probe after 1 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":43.0128,"reopen_seconds":7.3751,"status":"passed"}
+/tank/fn/scratch/m5-hist/probe before 2 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":43.1678,"reopen_seconds":9.9802,"status":"passed"}
+/tank/fn/scratch/m5-hist/probe after 2 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":52.9610,"reopen_seconds":8.1352,"status":"passed"}
+/tank/fn/scratch/m5-hist/probe before 3 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":40.6438,"reopen_seconds":8.0461,"status":"passed"}
+/tank/fn/scratch/m5-hist/probe after 3 {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":43.6458,"reopen_seconds":7.6071,"status":"passed"}

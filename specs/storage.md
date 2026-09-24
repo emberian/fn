@@ -167,6 +167,169 @@ opening the seed's empty node. The negative composed trace in
 `tests/acl2/store-identity-traces-tests.lisp` exercises this separation;
 fresh certification and native corrupt-history startup evidence remain open.
 
+## History classes and lifetimes
+
+STO-010: every class of durable state the store holds has a stated lifetime,
+the future decision that needs it, and the capabilities that may remove it,
+each under a named proof obligation; no other operation removes it.
+
+Status: contract for M5 (review of 2026-09-24,
+[direction review](../planning/review-2026-09-24-gpt6-direction.md) §M5). The
+committed-history marker (STO-009) is implemented. History compaction and
+content reclamation are not; their rows below are the obligations an
+implementation must discharge. Where a lifetime depends on policy that is
+not decided, the row says **open**.
+
+Three capabilities may ever remove durable state. They are different
+promises and each has its own proof obligation:
+
+- **Packing** (P) moves bytes into fewer filesystem objects. It keeps the
+  history and its semantic contents. Obligation: the open after the removal,
+  at every cut, hands replay the identical record list (PRF-073). Today's
+  `pack`, `pack-reclaim`, `pack-retire` and `operator CONFIG store compact`
+  are this capability and nothing else.
+- **History compaction** (H) replaces a prefix of records by a versioned
+  summary. Obligation: for every future permitted input, every decision
+  computed from summary plus suffix equals the one computed from the full
+  history. That covers acceptance, duplicate and conflict verdicts, number
+  allocation, charges, release admissibility, statement lookup and
+  equivocation, and consumer decisions. Showing that current reads look the
+  same is not enough. Not implemented. It needs D13 and a summary format
+  with its own version.
+- **Content reclamation** (C) removes object bytes. Obligation: no retention
+  obligation holds them (D03: only an explicit authorized release ends one),
+  and no active reference pins them: a reader's pinned archive, a consumer
+  cursor or an unresolved BP handoff. The record that the bytes existed, and
+  their identity, stay (see anti-resurrection). Not implemented for article
+  content.
+
+Only these three remove state. A capability not named in a class's row
+never removes that class. "Forever" means under D03: until an authorized
+policy that this contract does not yet have says otherwise.
+
+| Class (where it lives; codec) | Future decision that needs it | Lifetime | May remove it |
+| --- | --- | --- | --- |
+| Article record (Store transaction, `fn-r` schema 0/1, `books/records*`) | Message-ID duplicate and conflict verdict (D25); serving by number and Message-ID; content identity; group numbering; the obligation undertaken at acceptance (STO-002); provenance (RET-007) | Record: forever. Payload bytes: until their obligation is released and no reference pins them | P: the record, byte-exact. H: only into a summary that keeps the Message-ID and content-identity binding, the group allocations (anti-resurrection, frontiers) and any open obligation. C: the payload only, after release |
+| Retention undertaking (`fn-e` `:undertake`, `books/store-events`) | Capacity charge; the hold on content; admissibility of a later release; the operator's `store retention` | Until the matching authorized release | P. H: an open undertaking must stay in the summary with its charge, subject and evidence. C: never removes it |
+| Retention release (`fn-e` `:release`) | That the hold ended and on whose authority; reclamation's permission; refusing a second release | Until superseded by a summary that keeps the released identity and its evidence (**open**: D13) | P. H: into the anti-resurrection summary only |
+| Identity and key policy evidence (`:statement-verdict` `fn-stxe`, `:keyring-snapshot` `fn-stxk`, `:accepted-statement` `fn-stxa`) | Verifying historical signed articles at recovery (STO-008: a missing enrollment is a fault); equivocation (`fn-sn-equivocatorp`); statement lookup; key and epoch evolution | Forever (**open**: a keyring-epoch summary that answers every historical verification identically) | P. H: only with a summary proved to answer `fn-sn-statement-lookup` and `fn-sn-equivocatorp` the same for every future query |
+| Consumer cursor pins (`:consumer` `fnce`: bootstrap, register, ack, rebase, unregister, rollover; `books/consumer-*`) | What each consumer acknowledged; which history an unacknowledged consumer still pins; the next registration epoch | Each entry until superseded by the next ack, rebase or unregister for that consumer. The epoch scalar: forever | P. H: into the latest entry per consumer plus `next-epoch` (the state `books/consumer-position` already carries). Its pins bound C |
+| Topic admission (`:topic-admin-install`, `:topic-anchor`, `:topic-admit`) | Admitting later topic events (parents, authorship, admin) | Forever (**open**: experimental) | P only |
+| Submission outcomes | Local POST: the accepted article record, which answers a retry with the same Message-ID as a duplicate. Refused and uncertain outcomes are not persisted beyond the burned reservation. BP submissions: the workflow and handoff records | As the article record / as the BP rows below | As those rows |
+| Unresolved BP handoffs and obligations (FNBS directory: dispatch, delivery, deletion, conflict, family, forward rows; `books/bp-fnbs-*`) | Custody, retry, delivery and deletion reports, conflict evidence | Until resolved; then an outcome summary for duplicate and replay refusal (**open**) | Separate namespace. None of P, H or C touches it today (**open**) |
+| Allocation frontier (`allocation-frontier.json`, FNSM kind 2) | Next transaction ID; an ID once reserved is never reused, including burned ones | Forever; one monotone value | None |
+| Committed-history marker (`committed-history.json`, FNSM kind 3, STO-009) | Detecting a lost committed suffix at open | Forever; one monotone value | None. H must write a summary whose record count the marker still bounds (the summary counts as the records it replaces) |
+| Local number frontiers and watermarks (per-group next number) | Allocating a number never used before in that group | Forever. Today derived by replay from article records | H must carry every group's high-water in the summary (numbers are never reused, even for removed articles) |
+| Anti-resurrection summary | Refusing, or deciding by policy, a re-offer of a removed Message-ID or content identity; never reusing its numbers | Forever, once it exists | None. It does not exist yet: D13 is its precondition, and H and C are not admissible without it |
+| Store profile (`config.json`, FNSM kind 1) | Every open-time bound; the budget | Forever; changed only by the offline upgrade | None |
+| Configuration history (`config/`, generations) | Current served groups and domain; the generation that local-post provenance cites | Current generation: forever. Older generations: while a record's provenance cites them (**open**) | Not in the Store transaction namespace. No capability today |
+| Pack generations and selection marker (`packs/`) | The selected pack reconstructs the covered prefix | The selected generation: while it is selected. Older generations: redundant | P (`pack-retire`: older generations only) |
+| Whole-state checkpoints and auxiliary images | A differential comparison at open. Derived, never authoritative | While selected | May be discarded; replay remains authoritative |
+| Staging names (`staging/`) | None: never authority (`books/store-sweep`) | Until the recovery sweep | The sweep |
+
+**What today's compaction relieves.** It relieves the transaction-file count
+and per-file overhead: inodes, directory entries and the open's one read per
+file. It relieves no other limit. The transaction budget counts committed
+records, and packing leaves them unchanged. The replay input is the same
+record list. Because the pack is one 4 MiB unit, the history must fit in
+that unit. The operator headroom line (`operator CONFIG status`, `headroom
+transactions-used=N transactions-budget=B`) should say this beside it:
+`compaction relieves files, not transactions`. Only H under D13 raises
+admission headroom. Only C frees content bytes. That line is part of this
+contract and is not printed yet (**open**).
+
+**Bounded operation.** M5 promises bounded execution and metadata behaviour
+under a stated workload and retention/release policy, with explicit refusal
+when a promise cannot be funded. It does not promise unbounded distinct
+content on finite storage. Under D03's indefinite retention with no release,
+every class above grows monotonically until admission refuses by name
+(`fn-sbud-prepare`, `:unaffordable`).
+
+### The committed-history boundary
+
+STO-009: a committed-history boundary is written after each commit and before
+its acknowledgement, and every open refuses, by name, a record history
+shorter than it; a burned allocation never trips it.
+
+The namespace gate admits a history and every proper prefix of it
+(`fn-cverb-open-history-gate-admits-a-lost-suffix`). The allocation frontier
+cannot tell a lost newest record from a burned reservation, because the
+frontier is reserved before the record. `committed-history.json` is the
+witness written after the commit:
+
+- What it holds: `fn-hm-after-commit SEQUENCE` is the FNSM kind-3 frame of
+  the count `SEQUENCE + 1` (`books/store-history-marker.lisp`).
+- When it is written: `fnn-mark-committed` (`host/native/io.lisp`) runs after
+  `fnn-publish` returned `:durable` (the record passed its
+  transaction-directory barrier) and before `fnn-finish`. It is called at
+  the three publish sites: `store post`, the capacity probe, and the owner's
+  `fnn-owner-publish-prepared`. No reservation, abort, refusal or recovery
+  writes it.
+- The byte program (`*fn-hm-marker-program*`): create a `.stage-` name in
+  `staging/`, write it, fsync the file, rename it onto
+  `committed-history.json`, fsync the root directory. Each step has a cut:
+  `marker-created`, `-written`, `-staged-durable`, `-replaced`, `-durable`.
+  They are selectable on a developer image as `FN_NATIVE_POST_FAULT=CUT:kill|eio`
+  from ACL2's table `fn-hm-marker-cut-names`. Any OS error is uncertain:
+  the store is fenced, the transaction is not acknowledged, and recovery
+  decides. So every acknowledged record is below a durable marker.
+- The open's check: `fn-hm-open-verdict`, evaluated once in `fnn-recover`
+  against the length of the reconstructed record list (pack events plus
+  suffix files, so a reclaim does not shorten it). A count below the marker
+  is a fault that names `history-short-of-marker`. A frame that is not
+  kind 3 names `marker-damaged`. An absent marker is admitted as
+  `:unmarked`: that is every store written before the marker, and the first
+  commit on such a store writes the marker.
+- Proved (PRF-076), over a model whose crash table is rename atomicity for
+  this one program: no history the host can produce is refused. Such a
+  history is any interleaving of burned reservations, uncertain
+  publications, and commits crashed at any marker cut
+  (`fn-hm-run-keeps-every-open-admitted`). A lost suffix that contains an
+  acknowledged record is refused as `history-short-of-marker`, whatever
+  history follows it (`fn-hm-open-refuses-a-lost-acknowledged-record`).
+- Cost: one more staged write, two fsyncs and a rename per committed
+  record, in every profile. Measured with the in-process commit probe (120
+  commits of 32 KiB, hbox, three runs each): on tmpfs, 110 ms per commit
+  before and 108 ms after, which is within noise. On ZFS (`/tank`), 326 ms
+  before and 388 ms after: 62 ms more per commit (+19%). The ZFS runs vary
+  (before: 279 to 360 ms per commit). See
+  [the record](../planning/evidence/m5-history-lifetimes-2026-09-24.md).
+- Not detected: losing the marker together with the files it covers (reads
+  as `:unmarked`); an unacknowledged record that survived above the marker
+  (`fnn-publish` uncertain, or a crash before the marker's rename); replacing
+  the whole store with an older valid copy, which needs a freshness anchor
+  (D14); the configuration history and the BP stores. The crash table is
+  not yet derived from the `fn-bs` byte model, which has no program for the
+  marker (**open**).
+
+### Chained packs (not implemented)
+
+The 4 MiB compaction unit is permanent per store today, because each
+compaction repacks the whole history. Chaining lifts that limit without
+raising the open's largest single allocation. It needs:
+
+1. A pack that covers events `[lower, boundary)` and names its predecessor:
+   the predecessor's generation, boundary and frame digest. The first pack
+   has `lower = 0` and no predecessor.
+2. Contiguity: each pack's `lower` is its predecessor's `boundary`. The
+   selection marker names the newest pack. The open walks the chain from
+   the newest, reads one pack at a time, and checks each link's digest.
+3. A chain-length bound in the profile, so the open's work stays bounded
+   before any pack is read. The aggregate replay bound (field 3) must also
+   count pack events; today it counts suffix files only (finding 3 of the
+   compact-verb record).
+4. Retire keeps every generation the selected chain names, and removes only
+   generations outside it.
+5. The preservation theorem generalized: the chain's concatenated
+   reconstruction plus the suffix is the identical record list (PRF-073 over
+   a chain). Each crash cut of publishing a new link leaves the previous
+   chain selected.
+6. A compaction then packs only the uncovered suffix, at most 4 MiB, into a
+   new link. It never repacks what earlier links cover.
+
+Chaining is still packing. It does not relieve the transaction budget or the
+replay input. That is H's job.
+
 ## First executable scope
 
 Model logical transactions before selecting sector alignment, frame lengths,

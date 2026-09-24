@@ -2877,6 +2877,23 @@
           "name": "fn-bpaj-carried-unenrolled-request-is-refused"
         }
       ]
+    },
+    {
+      "id": "PRF-076",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hm-run-keeps-every-open-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hm-open-refuses-a-lost-acknowledged-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hm-decode-of-encode"
+        }
+      ]
     }
   ]
 }

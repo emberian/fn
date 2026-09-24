@@ -1,0 +1,600 @@
+......ss...s..F.............s....EEEEEEEEEEEEEEEEEEEE.sss...........F......FF
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+ERROR: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 218, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_profile_upgrade.py", line 192, in run_cut
+    room = self.headroom()
+           ^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 441, in headroom
+    status = self.operator("status")
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_operator_verbs.py", line 142, in operator
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tank/fn/scratch/m5-hist/src/build/fn-host'
+
+======================================================================
+FAIL: test_native_and_python_frames_cross_open_byte_identically (tests.test_native_checkpoint.NativeCheckpointTests.test_native_and_python_frames_cross_open_byte_identically)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_checkpoint.py", line 405, in test_native_and_python_frames_cross_open_byte_identically
+    py_status = self.python_checkpoint(native_store, "status")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_checkpoint.py", line 56, in python_checkpoint
+    self.assertEqual(result.returncode, expected,
+AssertionError: 4 != 0 : python checkpoint status returned 4
+stdout=
+stderr=checkpoint: [Errno 2] No such file or directory: 'acl2'
+
+
+======================================================================
+FAIL: test_swallowed_arm_needs_one_log_line (tests.test_native_nntp_post_probe.JudgeTeethTests.test_swallowed_arm_needs_one_log_line)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_nntp_post_probe.py", line 106, in test_swallowed_arm_needs_one_log_line
+    self.assertEqual(probe.judge_cut(good), [])
+AssertionError: Lists differ: ["repost '441 posting failed; a different [120 chars]n']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"repost '441 posting failed; a different article with this Message-ID is stored here\\r\\n' not in ['441 posting failed; this article is already stored here\\r\\n']"
+
++ []
+- ["repost '441 posting failed; a different article with this Message-ID is "
+-  "stored here\\r\\n' not in ['441 posting failed; this article is already "
+-  "stored here\\r\\n']"]
+
+======================================================================
+FAIL: test_the_6c0626c5_runs_fail_only_on_the_silent_swallow (tests.test_native_nntp_post_probe.RecordedRunTests.test_the_6c0626c5_runs_fail_only_on_the_silent_swallow) [campaign-6c0626c5]
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_nntp_post_probe.py", line 140, in test_the_6c0626c5_runs_fail_only_on_the_silent_swallow
+    self.check_run(path)
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_nntp_post_probe.py", line 145, in check_run
+    self.assertEqual(list(failed), ["record-stage-unlinked eio"])
+AssertionError: Lists differ: ['record-linked kill', 'record-durable kill', 'rec[144 chars]ill'] != ['record-stage-unlinked eio']
+
+First differing element 0:
+'record-linked kill'
+'record-stage-unlinked eio'
+
+First list contains 7 additional elements.
+First extra element 1:
+'record-durable kill'
+
+- ['record-linked kill',
+-  'record-durable kill',
+-  'record-completing eio',
+-  'record-stage-unlinked kill',
+-  'record-stage-unlinked eio',
+? ^                           ^
+
++ ['record-stage-unlinked eio']
+? ^                           ^
+
+-  'finish-consumed kill',
+-  'finish-consumed eio',
+-  'finish-durable kill']
+
+======================================================================
+FAIL: test_the_6c0626c5_runs_fail_only_on_the_silent_swallow (tests.test_native_nntp_post_probe.RecordedRunTests.test_the_6c0626c5_runs_fail_only_on_the_silent_swallow) [probe-tables]
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_nntp_post_probe.py", line 140, in test_the_6c0626c5_runs_fail_only_on_the_silent_swallow
+    self.check_run(path)
+  File "/tank/fn/scratch/m5-hist/src/tests/test_native_nntp_post_probe.py", line 145, in check_run
+    self.assertEqual(list(failed), ["record-stage-unlinked eio"])
+AssertionError: Lists differ: ['record-linked eio', 'record-durable kill', 'reco[120 chars]eio'] != ['record-stage-unlinked eio']
+
+First differing element 0:
+'record-linked eio'
+'record-stage-unlinked eio'
+
+First list contains 6 additional elements.
+First extra element 1:
+'record-durable kill'
+
+- ['record-linked eio',
+-  'record-durable kill',
+-  'record-completing eio',
+-  'record-stage-unlinked eio',
+? ^                           ^
+
++ ['record-stage-unlinked eio']
+? ^                           ^
+
+-  'record-staging-cleaned eio',
+-  'finish-consumed kill',
+-  'finish-consumed eio']
+
+----------------------------------------------------------------------
+Ran 57 tests in 28.320s
+
+FAILED (failures=4, errors=20, skipped=7)
+profile cuts: []
