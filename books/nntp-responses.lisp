@@ -86,15 +86,34 @@
               (fn-nntp-article-response session article number kind t group)
             (fn-nntp-single session "423 no article with that number")))))))
 
+;
+; RFC 3977 section 6.2.1.2 (and 6.2.4.2 for STAT): in the Message-ID form
+; the number "MUST be replaced with zero, unless there is a currently
+; selected newsgroup and the article is present in that group, in which case
+; the server MAY use the article's number in that group", and it "MUST NOT
+; provide an article number unless use of that number in a second ARTICLE
+; command immediately following this one would return the same article".
+; This is the article's available number in the selected group: 0 with no
+; group selected, 0 when the article is not in it.  It reads the article's
+; own membership list, never the archive.  The second-ARTICLE clause is
+; fn-nntp-msgid-local-number-names-the-same-article (books/nntp-invariants).
+(defun fn-nntp-msgid-local-number (session article)
+  (let ((group (fn-nntp-session-group session)))
+    (if group
+        (fn-nntp-article-number group article)
+      0)))
+
 (defun fn-nntp-msgid-retrieval (session archive kind token)
   (if (not (fn-nntp-message-id-tokenp token))
       (fn-nntp-single session "501 syntax error")
     (let ((article (fn-find-article (fn-nntp-token-string token)
                                     (fn-state-articles archive))))
       (if (consp article)
-          ; RFC 3977 permits zero for a message-id retrieval.  It deliberately
-          ; does not alter either selected group or current article number.
-          (fn-nntp-article-response session article 0 kind nil nil)
+          ; It deliberately does not alter either the selected group or the
+          ; current article number (section 6.2.1.2).
+          (fn-nntp-article-response
+           session article (fn-nntp-msgid-local-number session article)
+           kind nil nil)
         (fn-nntp-single session "430 no article with that message-id")))))
 
 (defthm fn-nntp-msgid-preserves-session
@@ -156,6 +175,31 @@
             (fn-nntp-active-lines archive (cdr groups)))
     nil))
 
+; RFC 6048 section 2.2.2: LIST COUNTS answers name, high, low, count and
+; status, "in the opposite order to the 211 response".  The three numbers are
+; the GROUP summary's (RFC 3977 section 6.1.1), so a client reading both sees
+; one value; the status field is LIST ACTIVE's.  The count is the number of
+; articles available in the group, not an estimate:
+; fn-nntp-group-count-is-listgroup-length (books/nntp-invariants).
+; The line is rendered from a summary so the pinned bucket summary
+; (fn-gidx-counts-line, books/nntp.lisp) shares this renderer.
+(defun fn-nntp-counts-summary-line (group summary)
+  (fn-nntp-append-pieces
+   (list (fn-nntp-string-octets group) '(32)
+         (fn-nntp-decimal-field (fn-nntp-summary-high summary)) '(32)
+         (fn-nntp-decimal-field (fn-nntp-summary-low summary)) '(32)
+         (fn-nntp-decimal-field (fn-nntp-summary-count summary))
+         (fn-nntp-string-octets " y"))))
+
+(defun fn-nntp-counts-line (archive group)
+  (fn-nntp-counts-summary-line group (fn-nntp-group-summary archive group)))
+
+(defun fn-nntp-counts-lines (archive groups)
+  (if (consp groups)
+      (cons (fn-nntp-counts-line archive (car groups))
+            (fn-nntp-counts-lines archive (cdr groups)))
+    nil))
+
 (defun fn-nntp-newsgroup-lines (groups)
   ; RFC 3977 section 7.6.6: the group name, one or more space or TAB (the
   ; usual practice is a single TAB), then a short description.  fn's
@@ -202,6 +246,25 @@
 (defun fn-nntp-list-active (session archive groups)
   (fn-nntp-multi session "215 list of active newsgroups follows"
                  (fn-nntp-active-lines archive groups)))
+
+(defun fn-nntp-list-counts (session archive groups)
+  (fn-nntp-multi session "215 list of newsgroups follows"
+                 (fn-nntp-counts-lines archive groups)))
+
+; LIST COUNTS [wildmat] (RFC 6048 section 2.2.1): the same argument grammar
+; as LIST ACTIVE, the wildmat parsed once per command.
+(defun fn-nntp-list-counts-command (session archive args)
+  (if (null args)
+      (fn-nntp-list-counts session archive (fn-state-groups archive))
+    (if (and (consp args) (null (cdr args)))
+        (let ((parsed (fn-wildmat-parse (car args))))
+          (if (fn-wildmat-result-okp parsed)
+              (fn-nntp-list-counts
+               session archive
+               (fn-nntp-filter-groups-by-wildmat
+                (fn-wildmat-result-value parsed) (fn-state-groups archive)))
+            (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session "501 syntax error"))))
 
 (defun fn-nntp-list-newsgroups (session groups)
   (fn-nntp-multi session "215 list of newsgroups follows"
@@ -371,7 +434,7 @@
             (fn-nntp-string-octets "HDR")
             (fn-nntp-string-octets "NEWNEWS")
             (fn-nntp-string-octets
-             "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT")
+             "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT")
             (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab"))
     (list (fn-nntp-string-octets "VERSION 2")
           (fn-nntp-string-octets "READER")
@@ -379,7 +442,7 @@
           (fn-nntp-string-octets "HDR")
           (fn-nntp-string-octets "NEWNEWS")
           (fn-nntp-string-octets
-           "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT")
+           "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT")
           (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab"))))
 
 (defun fn-nntp-unadvertised-capability-lines ()
@@ -1087,6 +1150,8 @@
 
 (verify-guards fn-nntp-number-retrieval)
 
+(verify-guards fn-nntp-msgid-local-number)
+
 (verify-guards fn-nntp-msgid-retrieval)
 
 (verify-guards fn-nntp-retrieval)
@@ -1097,6 +1162,12 @@
 
 (verify-guards fn-nntp-active-lines)
 
+(verify-guards fn-nntp-counts-summary-line)
+
+(verify-guards fn-nntp-counts-line)
+
+(verify-guards fn-nntp-counts-lines)
+
 (verify-guards fn-nntp-newsgroup-lines)
 
 (verify-guards fn-nntp-group-matches-parsed-wildmatp)
@@ -1106,6 +1177,10 @@
 (verify-guards fn-nntp-list-active)
 
 (verify-guards fn-nntp-list-newsgroups)
+
+(verify-guards fn-nntp-list-counts)
+
+(verify-guards fn-nntp-list-counts-command)
 
 (verify-guards fn-nntp-list-filtered-response)
 
@@ -2032,11 +2107,17 @@
   ; the environment's creation facts; every other variant is decided by
   ; fn-nntp-list-response above, which needs no environment.  This is the
   ; function books/nntp.lisp calls for LIST.
+  ; COUNTS (RFC 6048 section 2.2) is decided here too, so the variants
+  ; fn-nntp-list-response decides keep their existing effect proofs.
   (if (and (consp args)
            (fn-nntp-keyword-tokenp (car args))
            (fn-nntp-keywordp (car args) "ACTIVE.TIMES"))
       (fn-nntp-list-active-times session env (cdr args))
-    (fn-nntp-list-response session archive args)))
+    (if (and (consp args)
+             (fn-nntp-keyword-tokenp (car args))
+             (fn-nntp-keywordp (car args) "COUNTS"))
+        (fn-nntp-list-counts-command session archive (cdr args))
+      (fn-nntp-list-response session archive args))))
 
 (verify-guards fn-nntp-xover-range)
 (verify-guards fn-nntp-xover-response)
@@ -2119,8 +2200,11 @@
 (deftheory fn-nntp-responses-vocabulary
   '(fn-nntp-retrieval-initial fn-nntp-article-response
     fn-nntp-current-retrieval fn-nntp-number-retrieval
+    fn-nntp-msgid-local-number
     fn-nntp-msgid-retrieval fn-nntp-retrieval fn-nntp-next-or-last
     fn-nntp-active-line fn-nntp-active-lines fn-nntp-newsgroup-lines
+    fn-nntp-counts-summary-line fn-nntp-counts-line fn-nntp-counts-lines fn-nntp-list-counts
+    fn-nntp-list-counts-command
     fn-nntp-group-matches-parsed-wildmatp fn-nntp-filter-groups-by-wildmat
     fn-nntp-list-active fn-nntp-list-newsgroups
     fn-nntp-list-filtered-response fn-nntp-list-active-or-newsgroups
@@ -2202,7 +2286,9 @@
         (fn-nntp-msgid-retrieval session archive kind token)
       (let ((article (fn-midx-lookup (fn-nntp-token-string token) index)))
         (if (consp article)
-            (fn-nntp-article-response session article 0 kind nil nil)
+            (fn-nntp-article-response
+             session article (fn-nntp-msgid-local-number session article)
+             kind nil nil)
           (fn-nntp-single session "430 no article with that message-id"))))))
 
 (defthm fn-nntp-msgid-retrieval-indexed-refines-scan

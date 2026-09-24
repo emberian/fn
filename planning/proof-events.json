@@ -2759,6 +2759,39 @@
           "name": "fn-bs-selected-reclaim-crash-preserves-suffix-payload"
         }
       ]
+    },
+    {
+      "id": "PRF-074",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-list-counts-command-is-the-archive-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-pinned-list-counts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-group-count-is-listgroup-length"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-counts-work-of-build-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-msgid-number-retrieves-the-same-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-list-counts-is-the-archive-counts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-msgid-retrieval-carries-the-local-number"
+        }
+      ]
     }
   ]
 }

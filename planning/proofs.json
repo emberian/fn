@@ -2854,6 +2854,41 @@
         "fn-ccp-profile-upgrade-keeps-reclaim-plan",
         "fn-bs-selected-reclaim-crash-preserves-suffix-payload"
       ]
+    },
+    {
+      "id": "PRF-074",
+      "title": "LIST COUNTS is the archive's exact count from the pinned buckets; a Message-ID retrieval's number names the same article",
+      "statement": "For a projection archive and the group buckets the owner carries (the build of its articles), fn-gidx-list-counts-command-is-the-archive-fold equates the served LIST COUNTS reply, read from the pinned buckets, with the archive fold fn-nntp-list-counts-command, for every argument list; fn-nntp-archive-command-pinned-list-counts states it at the pinned dispatcher; fn-nntp-group-count-is-listgroup-length makes the count field the length of LISTGROUP's number list for the group, with no hypothesis; fn-gidx-counts-work-of-build-bound bounds the reply's bucket work by G*B + M for G distinct listed groups, B buckets and M memberships (linear per group in B plus its own entries, each visited a constant number of passes; an empty group adds one lookup in the next-number table). For ARTICLE, HEAD, BODY and STAT with a Message-ID the number is fn-nntp-msgid-local-number: the article's available number in the selected group, else 0 (RFC 3977 section 6.2.1.2); under fn-statep (fresh local numbers) fn-nntp-msgid-number-retrieves-the-same-article shows a positive number, sent back as any number token reading as it, retrieves the same article in the same group, the section's second-ARTICLE clause. fn-served-step-list-counts-is-the-archive-counts and fn-served-step-msgid-retrieval-carries-the-local-number carry both to fn-served-step, which fn-own-read runs (fn-own-read-is-served-step-on-pinned-prefix; host/owner-host.lisp fn-owner-chunk), under the trie and bucket relations fn-own-relation carries and one framed command line. Excluded: HDR/XHDR/GROUP/NEXT/LAST, which still fold the archive; elapsed-time performance.",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-006"
+      ],
+      "depends_on": [
+        "PRF-067"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/nntp-list-counts.lisp",
+        "books/owner-list-counts-read.lisp",
+        "books/nntp-responses.lisp",
+        "books/nntp.lisp",
+        "tests/acl2/nntp-list-counts-tests.lisp",
+        "tests/test_native_reader_index.py",
+        "tests/test_fn_web_native.py",
+        "planning/evidence/m6-list-counts-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T214755Z-939221.json",
+        "planning/evidence/manifests/certify-20260924T220328Z-1075905.json"
+      ],
+      "events": [
+        "fn-gidx-list-counts-command-is-the-archive-fold",
+        "fn-nntp-archive-command-pinned-list-counts",
+        "fn-nntp-group-count-is-listgroup-length",
+        "fn-gidx-counts-work-of-build-bound",
+        "fn-nntp-msgid-number-retrieves-the-same-article",
+        "fn-served-step-list-counts-is-the-archive-counts",
+        "fn-served-step-msgid-retrieval-carries-the-local-number"
+      ]
     }
   ]
 }

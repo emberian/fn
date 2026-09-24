@@ -194,9 +194,66 @@
 (include-book "nntp-verdict")
 (include-book "nntp-range-indexed")
 
+; LIST COUNTS (RFC 6048 section 2.2) on the served path.  Each group's
+; line reads that group's pinned membership bucket only: at most
+; fn-gidx-lookup-work bucket headers (never more than the number of buckets)
+; and the bucket's own entries, so a group costs O(B + E_g) for B buckets and
+; E_g memberships in the group, and the whole reply O(G*B + M) for G listed
+; groups and M memberships.  No archive article is visited.
+; fn-gidx-list-counts-command-is-the-archive-fold (books/nntp-list-counts)
+; equates the reply with fn-nntp-list-counts-command's under the carried
+; bucket relation.
+(defun fn-gidx-counts-line (archive buckets group)
+  (fn-nntp-counts-summary-line
+   group (fn-gidx-group-summary archive buckets group)))
+
+(defun fn-gidx-counts-lines (archive buckets groups)
+  (if (consp groups)
+      (cons (fn-gidx-counts-line archive buckets (car groups))
+            (fn-gidx-counts-lines archive buckets (cdr groups)))
+    nil))
+
+(defun fn-gidx-list-counts-command (session archive buckets args)
+  (if (null args)
+      (fn-nntp-multi session "215 list of newsgroups follows"
+                     (fn-gidx-counts-lines archive buckets
+                                           (fn-state-groups archive)))
+    (if (and (consp args) (null (cdr args)))
+        (let ((parsed (fn-wildmat-parse (car args))))
+          (if (fn-wildmat-result-okp parsed)
+              (fn-nntp-multi session "215 list of newsgroups follows"
+                             (fn-gidx-counts-lines
+                              archive buckets
+                              (fn-nntp-filter-groups-by-wildmat
+                               (fn-wildmat-result-value parsed)
+                               (fn-state-groups archive))))
+            (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session "501 syntax error"))))
+
+(verify-guards fn-gidx-counts-line)
+(verify-guards fn-gidx-counts-lines)
+(verify-guards fn-gidx-list-counts-command)
+
+(defthm fn-gidx-list-counts-command-preserves-session
+  (equal (fn-nntp-result-session
+          (fn-gidx-list-counts-command session archive buckets args))
+         session)
+  :hints (("Goal" :in-theory (e/d (fn-gidx-list-counts-command)
+                                  (fn-gidx-counts-lines)))))
+
+(in-theory (disable fn-gidx-counts-line fn-gidx-counts-lines
+                    fn-gidx-list-counts-command))
+
 (defun fn-nntp-archive-command-pinned
     (session archive index verdicts env keyword args)
   (cond
+   ((and (fn-nntp-keywordp keyword "LIST")
+         (fn-gidx-pinp index)
+         (consp args)
+         (fn-nntp-keyword-tokenp (car args))
+         (fn-nntp-keywordp (car args) "COUNTS"))
+    (fn-gidx-list-counts-command
+     session archive (fn-gidx-pin-buckets index) (cdr args)))
    ((and (or (fn-nntp-keywordp keyword "ARTICLE")
              (fn-nntp-keywordp keyword "HEAD")
              (fn-nntp-keywordp keyword "BODY")
