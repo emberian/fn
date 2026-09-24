@@ -3,48 +3,6 @@
   "threshold_seconds": 10.0,
   "tolerance": 0.25,
   "books": {
-    "books/bp-channel-ingress": {
-      "seconds": 13.437,
-      "run": "certify-20260924T102224Z-3270826",
-      "host": "persvati",
-      "verdict": "passed"
-    },
-    "books/bp-fragment-invariants": {
-      "seconds": 13.342,
-      "run": "certify-20260923T175847Z-4039310",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/bp-node-foundation": {
-      "seconds": 17.256,
-      "run": "certify-20260924T070931Z-1040432",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/bp-node-fragment-guards": {
-      "seconds": 10.433,
-      "run": "certify-20260924T102224Z-3270826",
-      "host": "persvati",
-      "verdict": "passed"
-    },
-    "books/bp-node-machine-guards": {
-      "seconds": 11.496,
-      "run": "certify-20260924T070931Z-1040432",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/bp-primary": {
-      "seconds": 10.368,
-      "run": "certify-20260923T015321Z-2477288",
-      "host": "persvati",
-      "verdict": "passed"
-    },
-    "books/bp-primary-invariants": {
-      "seconds": 16.188,
-      "run": "certify-20260923T015321Z-2477288",
-      "host": "persvati",
-      "verdict": "passed"
-    },
     "books/byte-store-record-provenance": {
       "seconds": 13.188,
       "run": "certify-20260924T102224Z-3270826",
@@ -94,9 +52,9 @@
       "verdict": "passed"
     },
     "books/owner-invariants": {
-      "seconds": 24.965,
-      "run": "certify-20260924T102224Z-3270826",
-      "host": "persvati",
+      "seconds": 29.03,
+      "run": "certify-20260924T105037Z-1249009",
+      "host": "hbox",
       "verdict": "passed"
     },
     "books/peer-inbound": {
@@ -109,6 +67,12 @@
       "seconds": 11.658,
       "run": "certify-20260923T155856Z-97680",
       "host": "nextop.local",
+      "verdict": "passed"
+    },
+    "books/store-node-traces": {
+      "seconds": 10.542,
+      "run": "certify-20260924T103543Z-1230417",
+      "host": "hbox",
       "verdict": "passed"
     },
     "books/tcpcl-octets": {
