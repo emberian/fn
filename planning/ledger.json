@@ -581,7 +581,7 @@
     "books": 580,
     "books_in_root_closure": 579,
     "roots": 574,
-    "theorems": 8312,
+    "theorems": 8313,
     "functions": 6239,
     "assert_events": 9088,
     "must_fails": 465,
@@ -3084,7 +3084,7 @@
       "book": "books/bp-report-guards.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
+      "theorems": 3,
       "functions": 0,
       "guards": {
         "verified": 0,
