@@ -1,0 +1,476 @@
+#!/usr/bin/env python3
+"""tools/fn_verify.py: the node's verdict against an independent check.
+
+Two layers.
+
+`FakeNodeVerifyTests` serves articles from an in-process fake NNTP node.  Its
+carriers are signed here with pyca/cryptography (Ed25519) and dilithium-py
+(ML-DSA-65) over the preimage this file writes from the specification, so it
+tests the verifier's comparison logic and its refusals, and says nothing
+about whether fn signs what the specification says.
+
+`NativeVerifyTests` (FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2,
+FN_TEST_OPENSSL) runs a scratch owner from a saved image with STARTTLS and a
+required login.  The article is signed by the image's own
+`hybrid-sign-carrier` (libsodium and OpenSSL) and POSTed over NNTP; the
+verifier checks it with the other libraries.  That is the independent half.
+A proxy that holds a real login and rewrites what the node said is the
+lying node.
+"""
+import base64
+import json
+import os
+from pathlib import Path
+import socket
+import subprocess
+import sys
+import tempfile
+import threading
+import unittest
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+import fn_verify  # noqa: E402
+
+TOOL = ROOT / "tools" / "fn_verify.py"
+
+try:
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+    from dilithium_py.ml_dsa import ML_DSA_65
+    HAVE_LIBS = True
+except ImportError:
+    HAVE_LIBS = False
+
+
+def dot_stuff(octets):
+    return b"".join((b"." + line if line.startswith(b".") else line)
+                    for line in octets.splitlines(keepends=True))
+
+
+def run_verifier(*args, env=None):
+    result = subprocess.run([sys.executable, str(TOOL), *map(str, args), "--json"],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            timeout=300, env=env, check=False)
+    try:
+        report = json.loads(result.stdout.decode())
+    except ValueError:
+        report = {"stdout": result.stdout.decode(), "stderr": result.stderr.decode()}
+    return result.returncode, report
+
+
+class FakeNode:
+    """A plain NNTP responder: ARTICLE and HDR :fn-verified from two tables."""
+
+    def __init__(self, articles, verdicts):
+        self.articles, self.verdicts = articles, verdicts
+        self.listener = socket.socket()
+        self.listener.bind(("127.0.0.1", 0))
+        self.listener.listen(8)
+        self.port = self.listener.getsockname()[1]
+        threading.Thread(target=self.serve, daemon=True).start()
+
+    def serve(self):
+        while True:
+            try:
+                conn, _ = self.listener.accept()
+            except OSError:
+                return
+            threading.Thread(target=self.session, args=(conn,), daemon=True).start()
+
+    def session(self, conn):
+        with conn, conn.makefile("rwb", buffering=0) as stream:
+            stream.write(b"200 fake node\r\n")
+            for raw in stream:
+                verb, _, arg = raw.decode().strip().partition(" ")
+                if verb == "QUIT":
+                    stream.write(b"205 bye\r\n")
+                    return
+                if verb == "ARTICLE":
+                    if arg in self.articles:
+                        stream.write(b"220 0 " + arg.encode() + b"\r\n"
+                                     + dot_stuff(self.articles[arg]) + b".\r\n")
+                    else:
+                        stream.write(b"430 no such article\r\n")
+                elif verb == "HDR":
+                    msgid = arg.split(" ", 1)[1]
+                    if msgid in self.verdicts:
+                        stream.write(b"225 Headers follow\r\n0 "
+                                     + self.verdicts[msgid].encode() + b"\r\n.\r\n")
+                    else:
+                        stream.write(b"430 no such article\r\n")
+                else:
+                    stream.write(b"500 what\r\n")
+
+    def close(self):
+        self.listener.close()
+
+
+def fold_carrier(value):
+    """fn-hc-field-lines: 72 characters on the first line, tab-folded after."""
+    chunks = [value[i:i + 72] for i in range(0, len(value), 72)]
+    return b"FN-Authorship: " + chunks[0] + b"\r\n" + b"".join(
+        b"\t" + chunk + b"\r\n" for chunk in chunks[1:])
+
+
+class Signer:
+    def __init__(self, principal):
+        self.principal = principal
+        self.ed = ed25519.Ed25519PrivateKey.generate()
+        self.ed_public = self.ed.public_key().public_bytes_raw()
+        self.ml_public, self.ml_secret = ML_DSA_65.keygen()
+
+    def entry(self):
+        return {"principal": self.principal.hex(), "ed25519": self.ed_public.hex(),
+                "ml-dsa-65": self.ml_public.hex(), "generation": 1}
+
+    def carried(self, source):
+        preimage = (fn_verify.cbor_bytes_head(len(fn_verify.DOMAIN_TAG))
+                    + fn_verify.DOMAIN_TAG + bytes([1, 1]) + self.principal
+                    + bytes([1]) + self.ed_public + bytes([2]) + self.ml_public
+                    + len(source).to_bytes(2, "big") + source)
+        items = [bytes([1]), bytes([1]), b"\x58\x20" + self.principal, bytes([1]),
+                 b"\x58\x20" + self.ed_public, bytes([2]),
+                 b"\x59\x07\xa0" + self.ml_public,
+                 b"\x58\x40" + self.ed.sign(preimage),
+                 b"\x59\x0c\xed" + ML_DSA_65.sign(self.ml_secret, preimage)]
+        value = base64.b64encode(b"".join(items))
+        return (b"Path: node.example.invalid!not-for-mail\r\n"
+                + fold_carrier(value) + source)
+
+
+def source_for(msgid, body=b"exact post source\r\n"):
+    return (b"From: agent@example.invalid\r\nDate: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+            b"Newsgroups: fn.test\r\nSubject: signed\r\nMessage-ID: "
+            + msgid.encode() + b"\r\n\r\n.dot-prefixed line\r\n" + body)
+
+
+@unittest.skipUnless(HAVE_LIBS, "pip install cryptography dilithium-py")
+class FakeNodeVerifyTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory(prefix="fn-verify-")
+        root = Path(cls.temp.name)
+        cls.author = Signer(bytes([0x55]) * 32)
+        cls.stranger = Signer(bytes([0x66]) * 32)
+        impostor = Signer(bytes([0x55]) * 32)       # same principal, other keys
+        cls.keyring = root / "keyring.json"
+        cls.keyring.write_text(json.dumps({"format": "fn-verify-keyring-v1",
+                                           "principals": [cls.author.entry()]}))
+        good = cls.author.carried(source_for("<good@x.invalid>"))
+        tampered = cls.author.carried(source_for("<tampered@x.invalid>")).replace(
+            b"exact post source", b"Exact post source")
+        other = cls.author.carried(source_for("<other@x.invalid>"))
+        a, p = "verified " + "55" * 32 + " keyring 1", "55" * 32
+        cls.node = FakeNode(
+            articles={
+                "<good@x.invalid>": good,
+                "<lie-verified@x.invalid>": tampered.replace(b"<tampered@", b"<lie-verified@"),
+                "<tampered@x.invalid>": tampered,
+                "<unsigned@x.invalid>": source_for("<unsigned@x.invalid>"),
+                "<lie-absent@x.invalid>": cls.author.carried(source_for("<lie-absent@x.invalid>")),
+                "<wrong-principal@x.invalid>": cls.author.carried(source_for("<wrong-principal@x.invalid>")),
+                "<swapped@x.invalid>": other,
+                "<unpinned@x.invalid>": cls.stranger.carried(source_for("<unpinned@x.invalid>")),
+                "<impostor@x.invalid>": impostor.carried(source_for("<impostor@x.invalid>")),
+                "<no-hdr@x.invalid>": good,
+                "<garbled@x.invalid>": good,
+            },
+            verdicts={
+                "<good@x.invalid>": a,
+                "<lie-verified@x.invalid>": a,
+                "<tampered@x.invalid>": "unverified signature keyring 1",
+                "<unsigned@x.invalid>": "absent no-record",
+                "<lie-absent@x.invalid>": "absent no-record",
+                "<wrong-principal@x.invalid>": "verified " + "77" * 32 + " keyring 1",
+                "<swapped@x.invalid>": a,
+                "<unpinned@x.invalid>": "verified " + "66" * 32 + " keyring 1",
+                "<impostor@x.invalid>": a,
+                "<garbled@x.invalid>": "maybe",
+            })
+        cls.principal = p
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.node.close()
+        cls.temp.cleanup()
+
+    def verify(self, msgid):
+        return run_verifier(msgid, "--node", "127.0.0.1:{}".format(self.node.port),
+                            "--plain", "--keyring", self.keyring)
+
+    def test_agreement_on_a_valid_signature_is_0(self):
+        code, report = self.verify("<good@x.invalid>")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["independent"]["principal"], self.principal)
+        used = report["independent"]["implementations"]
+        self.assertIn("pyca/cryptography Ed25519", used)
+        self.assertIn("dilithium-py ML-DSA-65 (pure Python FIPS 204)", used)
+
+    def test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1(self):
+        code, report = self.verify("<tampered@x.invalid>")
+        self.assertEqual((code, report["independent"]["reason"]), (1, "signature"), report)
+        code, report = self.verify("<unsigned@x.invalid>")
+        self.assertEqual((code, report["independent"]["reason"]), (1, "no-carrier"), report)
+
+    def test_a_lying_node_is_2(self):
+        for msgid, reason in (("<lie-verified@x.invalid>", "signature"),
+                              ("<lie-absent@x.invalid>", None),
+                              ("<wrong-principal@x.invalid>", None),
+                              ("<swapped@x.invalid>", "message-id"),
+                              ("<impostor@x.invalid>", "key-not-pinned")):
+            code, report = self.verify(msgid)
+            self.assertEqual(code, 2, (msgid, report))
+            if reason:
+                self.assertEqual(report["independent"]["reason"], reason, msgid)
+
+    def test_what_cannot_be_decided_is_3(self):
+        for msgid in ("<unpinned@x.invalid>", "<absent@x.invalid>",
+                      "<no-hdr@x.invalid>", "<garbled@x.invalid>"):
+            code, report = self.verify(msgid)
+            self.assertEqual(code, 3, (msgid, report))
+        code, _ = run_verifier("<good@x.invalid>", "--node", "127.0.0.1:1", "--plain",
+                               "--keyring", self.keyring)
+        self.assertEqual(code, 3)
+
+    def test_usage_error_never_reads_as_disagreement(self):
+        code, _ = run_verifier("not-a-msgid", "--node", "x", "--plain",
+                               "--keyring", self.keyring)
+        self.assertEqual(code, fn_verify.EXIT_USAGE)
+
+    def test_noncanonical_carrier_is_refused(self):
+        with self.assertRaises(ValueError):
+            fn_verify.decode_carrier(b"\x18\x01" + bytes(10))
+
+
+# ---------------------------------------------------------------- native
+
+IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host-developer"))
+OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
+# `fn principal set-password` derives the verifier in ACL2 over
+# books/auth-secret, so it runs from a tree whose certificates exist (a
+# gate tree, read-only); by default this one.
+AUTH_TREE = Path(os.environ.get("FN_VERIFY_AUTH_TREE", ROOT))
+
+
+class LyingProxy:
+    """A node that holds a real login upstream and rewrites what it says."""
+
+    def __init__(self, upstream, rewrite_article=None, rewrite_hdr=None):
+        self.upstream = upstream
+        self.rewrite_article = rewrite_article or (lambda b: b)
+        self.rewrite_hdr = rewrite_hdr or (lambda b: b)
+        self.listener = socket.socket()
+        self.listener.bind(("127.0.0.1", 0))
+        self.listener.listen(4)
+        self.port = self.listener.getsockname()[1]
+        threading.Thread(target=self.serve, daemon=True).start()
+
+    def serve(self):
+        while True:
+            try:
+                conn, _ = self.listener.accept()
+            except OSError:
+                return
+            threading.Thread(target=self.session, args=(conn,), daemon=True).start()
+
+    def session(self, conn):
+        node = self.upstream()
+        with conn, conn.makefile("rwb", buffering=0) as stream:
+            stream.write(b"200 proxy\r\n")
+            for raw in stream:
+                command = raw.decode().strip()
+                if command == "QUIT":
+                    stream.write(b"205 bye\r\n")
+                    break
+                status = node.command(command)
+                if status.startswith(("220", "225")):
+                    data = node.multiline()
+                    data = (self.rewrite_article if status.startswith("220")
+                            else self.rewrite_hdr)(data)
+                    stream.write(status.encode() + b"\r\n" + dot_stuff(data) + b".\r\n")
+                else:
+                    stream.write(status.encode() + b"\r\n")
+        node.close()
+
+    def close(self):
+        self.listener.close()
+
+
+@unittest.skipUnless(os.environ.get("FN_RUN_VERIFY_E2E") == "1",
+                     "set FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2, FN_TEST_OPENSSL")
+@unittest.skipUnless(HAVE_LIBS, "pip install cryptography dilithium-py")
+class NativeVerifyTests(unittest.TestCase):
+    USER, PASSWORD = "verify-reader", "correct-horse-verify"
+
+    @classmethod
+    def invoke(cls, *args, timeout=180):
+        result = subprocess.run([str(IMAGE), "--fn", *map(str, args)], cwd=ROOT,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                timeout=timeout, check=False)
+        if result.returncode != 0:
+            raise AssertionError("{} -> {}: {}".format(args[:2], result.returncode,
+                                                       result.stderr.decode()[-2000:]))
+        return result
+
+    @classmethod
+    def setUpClass(cls):
+        from tests.native_process import wait_for_announcement
+        cls.temp = tempfile.TemporaryDirectory(prefix="fn-verify-native-")
+        root = cls.root = Path(cls.temp.name)
+        store, control, auth = root / "store", root / "control.sock", root / "auth.toml"
+        cls.invoke("store", store, "init", "fn.test")
+        cls.cert, key = root / "node-cert.pem", root / "node-key.pem"
+        subprocess.run([OPENSSL, "req", "-x509", "-newkey", "rsa:2048", "-keyout", str(key),
+                        "-out", str(cls.cert), "-sha256", "-days", "1", "-nodes",
+                        "-subj", "/CN=localhost", "-addext", "subjectAltName=IP:127.0.0.1"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       timeout=60, check=True)
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            cls.port = probe.getsockname()[1]
+        cls.config = root / "fn.toml"
+        cls.config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            'tls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n'
+            '[auth]\nrequired = true\nprotected_only = true\npath = "{}"\n'
+            .format(store, cls.port, cls.cert, key, control, auth), encoding="ascii")
+        env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
+        env.pop("FN_HOST", None)
+        enrolled = subprocess.run(
+            [sys.executable, str(AUTH_TREE / "bin" / "fn"), "--config", str(cls.config), "principal",
+             "set-password", cls.USER, "--password", cls.PASSWORD, "--posting"],
+            cwd=AUTH_TREE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env,
+            timeout=900, check=False)
+        assert enrolled.returncode == 0, enrolled.stderr.decode()
+        cls.creds = root / "creds"
+        cls.creds.write_text("{} {}\n".format(cls.USER, cls.PASSWORD))
+        os.chmod(cls.creds, 0o600)
+
+        cls.principal = root / "principal.bin"
+        cls.principal.write_bytes(bytes([0x55]) * 32)
+        cls.ed_public, cls.ed_secret = root / "ed-public.bin", root / "ed-secret.bin"
+        cls.ed_public.write_bytes(bytes.fromhex(
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        cls.ed_secret.write_bytes(bytes.fromhex(
+            "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        cls.ml_private, cls.ml_public = root / "ml-private.pem", root / "ml-public.pem"
+        subprocess.run([OPENSSL, "genpkey", "-algorithm", "ML-DSA-65", "-out",
+                        str(cls.ml_private)], timeout=60, check=True)
+        subprocess.run([OPENSSL, "pkey", "-in", str(cls.ml_private), "-pubout",
+                        "-out", str(cls.ml_public)], timeout=60, check=True)
+        entry = subprocess.run([sys.executable, str(TOOL), "keyring-entry", cls.principal,
+                                cls.ed_public, cls.ml_public, "--generation", "1"],
+                               stdout=subprocess.PIPE, timeout=60, check=True)
+        cls.keyring = root / "keyring.json"
+        cls.keyring.write_text(json.dumps({"format": "fn-verify-keyring-v1",
+                                           "principals": [json.loads(entry.stdout)]}))
+
+        cls.owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(cls.config), "run"],
+                                     cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        line = wait_for_announcement(cls.owner, b"LISTENING ")
+        assert line.startswith(b"LISTENING "), line
+        cls.invoke("hybrid-enroll", control, "1", cls.principal, cls.ed_public, cls.ml_public)
+
+        cls.replies = {}
+        for stem, tamper, signed in (("verify-signed", False, True),
+                                     ("verify-tampered", True, True),
+                                     ("verify-unsigned", False, False)):
+            source = root / (stem + ".eml")
+            source.write_bytes(source_for("<{}@example.invalid>".format(stem)))
+            if signed:
+                carried = root / (stem + "-carried.eml")
+                cls.invoke("hybrid-sign-carrier", cls.principal, cls.ed_public,
+                           cls.ed_secret, cls.ml_public, cls.ml_private, source, carried)
+                octets = carried.read_bytes()
+            else:
+                octets = source.read_bytes()
+            if tamper:
+                octets = octets.replace(b"exact post source", b"Exact post source", 1)
+            cls.replies[stem] = cls.post(octets)
+
+    @classmethod
+    def upstream(cls):
+        return fn_verify.Node("127.0.0.1", cls.port, cafile=str(cls.cert),
+                              credentials=(cls.USER, cls.PASSWORD))
+
+    @classmethod
+    def post(cls, octets):
+        node = cls.upstream()
+        try:
+            status = node.command("POST")
+            assert status.startswith("340"), status
+            node.sock.sendall(dot_stuff(octets) + b".\r\n")
+            return node.line()
+        finally:
+            node.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        from tests.native_process import stop_and_diagnostics
+        stop_and_diagnostics(cls.owner, timeout=60)
+        cls.temp.cleanup()
+
+    def verify(self, msgid, port=None):
+        if port is None:
+            return run_verifier(msgid, "--node", "127.0.0.1:{}".format(self.port),
+                                "--cafile", self.cert, "--credentials", self.creds,
+                                "--keyring", self.keyring)
+        return run_verifier(msgid, "--node", "127.0.0.1:{}".format(port), "--plain",
+                            "--keyring", self.keyring)
+
+    def test_the_node_accepted_the_signed_and_unsigned_posts_and_refused_the_tampered(self):
+        self.assertTrue(self.replies["verify-signed"].startswith("240"), self.replies)
+        self.assertTrue(self.replies["verify-unsigned"].startswith("240"), self.replies)
+        self.assertEqual(self.replies["verify-tampered"],
+                         "441 posting failed; the author signature does not verify")
+
+    def test_signed_post_verifies_independently_0(self):
+        code, report = self.verify("<verify-signed@example.invalid>")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["node"]["principal"], "55" * 32)
+        self.assertIn("> AUTHINFO PASS ****", report["transcript"])
+        print("\nsigned:", json.dumps({k: report[k] for k in ("node-hdr", "detail")}))
+        print("implementations:", report["independent"]["implementations"])
+
+    def test_unsigned_post_both_say_unverified_1(self):
+        code, report = self.verify("<verify-unsigned@example.invalid>")
+        self.assertEqual(code, 1, report)
+        self.assertEqual(report["node"]["outcome"], "absent")
+        print("\nunsigned:", report["node-hdr"], "|", report["detail"])
+
+    def test_tampered_post_is_not_stored_so_nothing_is_decided_3(self):
+        code, report = self.verify("<verify-tampered@example.invalid>")
+        self.assertEqual(code, 3, report)
+        self.assertIn("holds no article", report["detail"])
+
+    def test_tampered_bytes_under_the_nodes_verified_line_are_2(self):
+        proxy = LyingProxy(self.upstream, rewrite_article=lambda b: b.replace(
+            b"exact post source", b"Exact post source"))
+        try:
+            code, report = self.verify("<verify-signed@example.invalid>", proxy.port)
+        finally:
+            proxy.close()
+        self.assertEqual((code, report["independent"]["reason"]), (2, "signature"), report)
+        print("\ntampered-in-flight:", report["node-hdr"], "|", report["detail"])
+
+    def test_fabricated_hdr_answers_are_2(self):
+        forged = b"0 verified " + b"55" * 32 + b" keyring 1\r\n"
+        proxy = LyingProxy(self.upstream, rewrite_hdr=lambda b: forged)
+        try:
+            code, report = self.verify("<verify-unsigned@example.invalid>", proxy.port)
+        finally:
+            proxy.close()
+        self.assertEqual(code, 2, report)
+        print("\nforged verified:", report["node-hdr"], "|", report["detail"])
+        proxy = LyingProxy(self.upstream, rewrite_hdr=lambda b: b"0 absent no-record\r\n")
+        try:
+            code, report = self.verify("<verify-signed@example.invalid>", proxy.port)
+        finally:
+            proxy.close()
+        self.assertEqual(code, 2, report)
+        print("forged absent:", report["node-hdr"], "|", report["detail"])
+
+
+if __name__ == "__main__":
+    unittest.main()
