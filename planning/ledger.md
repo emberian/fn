@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 685 |
-| Certification roots in the Makefile | 674 |
-| Books inside the root closure | 683 |
-| `defthm` and `defthmd` events | 9226 |
-| `defun` events | 6653 |
+| Books read | 688 |
+| Certification roots in the Makefile | 677 |
+| Books inside the root closure | 686 |
+| `defthm` and `defthmd` events | 9269 |
+| `defun` events | 6666 |
 | Functions with verified guards | 2038 |
 | Functions declared `:verify-guards nil` and never verified | 418 |
-| Functions left at the default with an explicit guard | 3309 |
-| Functions left at the default with no guard | 888 |
-| `assert-event` checks | 10083 |
-| `must-fail` checks | 693 |
+| Functions left at the default with an explicit guard | 3311 |
+| Functions left at the default with no guard | 899 |
+| `assert-event` checks | 10145 |
+| `must-fail` checks | 700 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
 | Export-hygiene warnings | 109 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 48 |
-| Include-hygiene warnings | 661 |
+| Include-hygiene warnings | 663 |
 | Host-names warnings | 813 |
 | Hand-written-record warnings | 18 |
 
@@ -365,6 +365,7 @@ that `make certify` requests.
 | `books/owner-feed.lisp` | root | 84 | 77 | 0/0/77/0 | 0 | 0 | 0 |
 | `books/owner-invariants.lisp` | root | 154 | 8 | 0/0/6/2 | 0 | 0 | 1 |
 | `books/owner-log.lisp` | root | 11 | 16 | 0/0/16/0 | 0 | 0 | 0 |
+| `books/owner-numbering.lisp` | root | 41 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/owner-prepare-correspondence.lisp` | root | 19 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/owner-retention-preparation.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-served-invariants.lisp` | root | 14 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -686,9 +687,11 @@ that `make certify` requests.
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
 | `tests/acl2/owner-agent-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 3 | 0 |
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 149 | 1 | 0 |
+| `tests/acl2/owner-fault-tests.lisp` | root | 2 | 5 | 0/0/0/5 | 37 | 4 | 0 |
 | `tests/acl2/owner-feed-port-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 2 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 2 | 3 | 0/0/2/1 | 133 | 6 | 0 |
 | `tests/acl2/owner-log-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 25 | 2 | 0 |
+| `tests/acl2/owner-numbering-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 25 | 3 | 0 |
 | `tests/acl2/owner-operator-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 34 | 8 | 0 |
 | `tests/acl2/owner-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 26 | 1 | 0 |
 | `tests/acl2/owner-retention-preparation-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 5 | 1 | 0 |
