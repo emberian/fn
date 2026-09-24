@@ -419,8 +419,13 @@ completed-prefix relation is being strengthened before its native CLI joins. Con
 from fn cursor acknowledgements, transport-attempt ACKs and retention receipts.
 The separate bounded human web reader/composer is integrated and exercised
 through native NNTP and a browser. Repeated form submissions preserve exact
-source and Message-ID in bounded process memory; they are not a durable client
-spool. See [the client contract](../docs/human-web-client.md).
+source and Message-ID in bounded process memory by default. The optional
+client-owned durable outbox now records exact in-flight
+POST intent before NNTP, restores uncertain attempts without repost, and keeps
+the original three-way answer separate from later ARTICLE observations. Its
+local HTTP/fake-NNTP restart and write-fault fixture passed; source-matched
+native-node and physical power-loss qualification remain open. See
+[the client contract](../docs/human-web-client.md) and WEB-001/SCN-036.
 
 The295 image also passed the [ordinary INN exchange lab](evidence/inn-lab-295bbe35-2026-09-23.md).
 A separate authored-carrier peering test exposed a missing local injection

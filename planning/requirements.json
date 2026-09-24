@@ -1707,6 +1707,18 @@
       ],
       "implementation_note": "The bounded experimental fixed-controller ACL2 model carries administrator installation, root anchor and report admission in Store slot 12, checks earlier T10 exact source and historical key context, finite quota, roster and same-topic parents, and replays topic history separately on reopen. The owner-called report selector returns a retained admission on exact historical retry; native control now maps this to a distinct success without staging another event. Scoped retry proof and codec tests have passed; source-matched native execution is pending.",
       "note": "This local experiment is not a universal governance contract. A source-matched native install/root/report/reopen/retry image, broad reverse closure and physical publication qualification remain open before served durable-admission status. The v1 anchor records the installed administrator ID but omits the installed event's separate configuration generation; replay checks ID, while generation binding requires a versioned migration. Succession, fork healing and automatic policy adoption are not inferred."
+    },
+    {
+      "id": "WEB-001",
+      "title": "Optional durable local human submission outbox",
+      "specification": "specs/human-client.md#separate-human-client-submission-contract",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": ["test", "scenario"],
+      "evidence": ["tools/fn_web.py", "tests/test_fn_web.py"],
+      "implementation_note": "The separate loopback client persists an exact in-flight POST intent before opening NNTP, restores in-flight records as uncertain, retains three distinct replies and read-only ARTICLE observations, and never automatically retries an identifier. Private locked bounded spool writes use atomic replacement and file/directory fsync.",
+      "note": "Real local HTTP and fake NNTP socket tests cover restart, lost reply, duplicate/concurrent handlers, full spool, target mismatch, and persistence failures before and after network. This is client behavior, not native-node qualification, a physical power-loss proof, server acceptance, or an fn retention record."
     }
   ]
 }
