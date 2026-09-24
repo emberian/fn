@@ -1699,11 +1699,37 @@
                                       fn-own-conn-boundedp fn-own-outcome-completion
                                       fn-own-find-conn-id))))
 
+; Only the :store, :complete and :reopen events move the store; every other
+; event leaves it as it was, so the prefix is reflexive there and the
+; store-changing lemmas are needed only for those three kinds.
+(local
+ (defthm fn-own-step-store-of-other-events
+   (implies (not (member-equal (car event) '(:store :complete :reopen)))
+            (equal (fn-own-store (fn-own-step o event)) (fn-own-store o)))
+   :hints (("Goal" :in-theory (e/d (fn-own-step)
+                                   (fn-served-step fn-served-dispatch
+                                    fn-served-post-outcome fn-served-open
+                                    fn-own-conn-boundedp fn-own-outcome-completion
+                                    fn-own-find-conn-id))))))
+
+(local
+ (defthm fn-own-step-of-store-changing-events
+   (and (implies (equal (car event) :store)
+                 (equal (fn-own-step o event) (fn-own-store-step o (cadr event))))
+        (implies (equal (car event) :complete)
+                 (equal (fn-own-step o event) (fn-own-complete o)))
+        (implies (equal (car event) :reopen)
+                 (equal (fn-own-step o event)
+                        (fn-own-reopen o (cadr event) (caddr event)))))
+   :hints (("Goal" :in-theory '(fn-own-step)))))
+
 (defthm fn-own-step-records-prefix
   (implies (fn-own-relation o)
            (fn-sf-prefixp (fn-sf-records (fn-sn-files (fn-own-store o)))
                           (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event))))))
   :hints (("Goal"
+           :cases ((equal (car event) :store) (equal (car event) :complete)
+                   (equal (car event) :reopen))
            :use ((:instance fn-own-snrt-step-records-prefix
                             (s (fn-own-store o)) (event (cadr event)))
                  (:instance fn-snt-finish-keeps-records (s (fn-own-store o)))
@@ -1718,7 +1744,7 @@
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (frontier (cadr event)) (records (caddr event))))
            :in-theory (e/d (fn-own-relation)
-                           (fn-own-snrt-step-records-prefix fn-snt-finish-keeps-records
+                           (fn-own-step fn-own-snrt-step-records-prefix fn-snt-finish-keeps-records
                             fn-own-related-records-true-list fn-sf-prefixp-reflexive
                             fn-own-crash-image-extends-records
                             fn-sn-open-observed-success-exact-history
@@ -2134,6 +2160,66 @@
 (local (defthm fn-own-auth-base-of-fn-auth-with-base
   (equal (fn-auth-session-base (fn-auth-with-base as base)) base)
   :hints (("Goal" :in-theory (enable (:d fn-auth-with-base))))))
+;; The re-pinned session is an auth session and keeps its group and cursor.
+;; Stated over a general auth session and cursor so the bounded-connection
+;; proof below rewrites with them instead of opening every session
+;; recognizer at the served session's full depth.
+(local
+ (defthm fn-own-repinned-cursor-fields
+   (and (equal (fn-nntp-session-group (fn-nntp-set-cursor s g c)) g)
+        (equal (fn-nntp-session-current (fn-nntp-set-cursor s g c)) c))
+   :hints (("Goal" :in-theory (enable fn-nntp-set-cursor fn-nntp-make-session
+                                      fn-nntp-session-group
+                                      fn-nntp-session-current)))))
+(local
+ (defthm fn-own-post-session-awaiting-is-boolean
+   (implies (fn-post-sessionp x)
+            (booleanp (fn-post-session-awaiting x)))
+   :hints (("Goal" :in-theory (enable fn-post-sessionp)))))
+(local
+ (defthm fn-own-repinned-auth-sessionp
+   (implies (and (fn-auth-sessionp as)
+                 (or (stringp g) (null g))
+                 (or (posp c) (null c)))
+            (fn-auth-sessionp
+             (fn-auth-with-base
+              as
+              (fn-peer-with-base
+               (fn-auth-session-base as)
+               (fn-post-make-session
+                (fn-nntp-set-cursor (fn-nntp-open-session archive) g c)
+                (fn-post-session-awaiting
+                 (fn-peer-session-base (fn-auth-session-base as))))))))
+   :hints (("Goal"
+            :use (fn-own-auth-sessionp-forward-bases
+                  (:instance fn-nntp-consistent-session-is-session
+                             (session (fn-nntp-open-session archive))
+                             (archive archive))
+                  (:instance fn-nntp-open-session-is-consistent (archive archive))
+                  (:instance fn-nntp-set-cursor-sessionp
+                             (session (fn-nntp-open-session archive))
+                             (group g) (current c)))
+            :in-theory (e/d (fn-post-sessionp)
+                            (fn-auth-sessionp fn-nntp-sessionp
+                             fn-own-auth-sessionp-forward-bases
+                             (:d fn-peer-sessionp) (:d fn-peer-with-base)
+                             fn-nntp-set-cursor fn-nntp-open-session
+                             fn-nntp-set-cursor-sessionp
+                             fn-nntp-consistent-session-is-session
+                             fn-nntp-open-session-is-consistent))))))
+(local
+ (defthm fn-own-served-group-is-a-string
+   (implies (and (fn-auth-sessionp as)
+                 (fn-nntp-session-group
+                  (fn-post-session-base
+                   (fn-peer-session-base (fn-auth-session-base as)))))
+            (stringp (fn-nntp-session-group
+                      (fn-post-session-base
+                       (fn-peer-session-base (fn-auth-session-base as))))))
+   :hints (("Goal" :use fn-own-auth-sessionp-forward-bases
+                   :in-theory (e/d (fn-post-sessionp fn-nntp-sessionp)
+                                   (fn-auth-sessionp
+                                    fn-own-auth-sessionp-forward-bases))))))
 (local
  (defthm fn-own-advanced-session-is-bounded
    (implies (and (fn-own-conn-boundedp conn groups)
@@ -2165,74 +2251,14 @@
                                archive config observation)
              groups))
    :hints (("Goal"
-            :use ((:instance fn-nntp-consistent-session-is-session
-                             (session (fn-nntp-open-session archive))
-                             (archive archive))
-                  (:instance fn-nntp-open-session-is-consistent (archive archive))
-                  (:instance fn-peer-sessionp-forward-fields
-                             (x (fn-auth-session-base (fn-own-conn-session conn))))
-                  (:instance fn-nntp-set-cursor-sessionp
-                             (session (fn-nntp-open-session archive))
-                             (group (fn-nntp-session-group
-                                     (fn-post-session-base
-                                      (fn-peer-session-base
-                                       (fn-auth-session-base
-                                        (fn-own-conn-session conn))))))
-                             (current (fn-nntp-session-current
-                                       (fn-post-session-base
-                                        (fn-peer-session-base
-                                         (fn-auth-session-base
-                                          (fn-own-conn-session conn)))))))
-                  (:instance fn-peer-sessionp-of-fn-peer-with-base
-                             (ps (fn-auth-session-base (fn-own-conn-session conn)))
-                             (base (fn-post-make-session
-                                    (fn-nntp-set-cursor
-                                     (fn-nntp-open-session archive)
-                                     (fn-nntp-session-group
-                                      (fn-post-session-base
-                                       (fn-peer-session-base
-                                        (fn-auth-session-base
-                                         (fn-own-conn-session conn)))))
-                                     (fn-nntp-session-current
-                                      (fn-post-session-base
-                                       (fn-peer-session-base
-                                        (fn-auth-session-base
-                                         (fn-own-conn-session conn))))))
-                                    (fn-post-session-awaiting
-                                     (fn-peer-session-base
-                                      (fn-auth-session-base
-                                       (fn-own-conn-session conn))))))))
-            ; Every instance above reaches the SERVED session's full depth,
-            ; auth then peer then post.  `1019c97' merged w10/auth-served's
-            ; three-wrapper statement over w6/peering-inbound-2's
-            ; two-wrapper hints, so `fn-peer-sessionp-forward-fields',
-            ; `fn-nntp-set-cursor-sessionp' and
-            ; `fn-peer-sessionp-of-fn-peer-with-base' were each instantiated
-            ; at `(fn-peer-session-base (fn-own-conn-session conn))', which
-            ; is a peer session's base only when there is no auth wrapper.
-            ; Their hypotheses were then false rather than absent, which is
-            ; why the goal read `(not (fn-post-session-shapep ...))' at
-            ; `Subgoal 572.108.80' instead of naming a missing fact.
-            ; fn-peer-sessionp stays CLOSED: the rebuilt session is a peer
-            ; session by fn-peer-sessionp-of-fn-peer-with-base
-            ; (books/peer-inbound.lisp), which cannot match if the
-            ; recognizer opens into its eight conjuncts.
-            ; Everything stays closed but fn-own-conn-boundedp and the
-            ; two-field POST record: fn-peer-sessionp-of-fn-peer-with-base,
-            ; fn-peer-sessionp-forward-fields (books/peer-inbound.lisp) and
-            ; fn-nntp-set-cursor-sessionp (books/nntp-invariants.lisp) each
-            ; stop matching if their subject opens.
-            ; fn-nntp-set-cursor may open now: the session fact about it
-            ; is supplied by :use above, so the two stay in step, and
-            ; opening is what shows the re-pinned cursor is the old one.
-            :in-theory (e/d (fn-own-conn-boundedp fn-post-sessionp
-                             fn-nntp-set-cursor fn-nntp-make-session
-                             fn-nntp-sessionp
-                             fn-nntp-session-group fn-nntp-session-current)
-                            ((:d fn-peer-sessionp) (:d fn-peer-with-base)
-                             fn-nntp-open-session
-                             fn-nntp-consistent-session-is-session
-                             fn-nntp-open-session-is-consistent))))))
+            :cases ((fn-nntp-session-group
+                     (fn-post-session-base
+                      (fn-peer-session-base
+                       (fn-auth-session-base (fn-own-conn-session conn))))))
+            :in-theory (e/d (fn-own-conn-boundedp)
+                            (fn-auth-sessionp fn-post-sessionp fn-nntp-sessionp
+                             (:d fn-peer-sessionp) (:d fn-peer-with-base)
+                             fn-nntp-set-cursor fn-nntp-open-session))))))
 
 (local
  (defthm fn-own-advance-repins-the-connection

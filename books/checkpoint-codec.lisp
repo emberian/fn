@@ -779,7 +779,13 @@
                   (fn-record-parse-ok x more)))
   :hints (("Goal" :induct (fn-cpc-tree-induct x fuel more)
            :in-theory (e/d (fn-cpc-decode-tree)
-                           (fn-cpc-octet-list-tagp fn-cbor-octetp)))))
+                           (fn-cpc-octet-list-tagp fn-cbor-octetp
+                            append-atom-under-list-equiv natp-posp
+                            fn-cpc-depth-below-encoding
+                            fn-cpc-u32-from-append fn-cpc-u16-from-append
+                            fn-record-ascii-implies-octets
+                            fn-record-ascii-octet-listp
+                            fn-cp-id-length-bound fn-cp-idp)))))
 
 
 (defthm fn-cpc-decode-tree-of-encoding-exact
@@ -860,7 +866,15 @@
                        octets)))
   :rule-classes nil
   :hints (("Goal" :induct (fn-cpc-decode-tree octets fuel)
-           :in-theory (enable fn-cpc-decode-tree fn-cpc-octet-list-tagp))))
+           :in-theory (e/d (fn-cpc-decode-tree fn-cpc-octet-list-tagp)
+                           (append-atom-under-list-equiv natp-posp
+                            fn-cpc-depth-below-encoding
+                            fn-cpc-u32-from-append fn-cpc-u16-from-append
+                            fn-record-ascii-implies-octets
+                            fn-record-ascii-octet-listp
+                            fn-cp-id-length-bound fn-cp-idp
+                            fn-cpc-encode-tree-octets member-equal
+                            fn-frame-item fn-record-octets-chars)))))
 
 (defthm fn-cpc-decode-tree-value-treep
   (implies (and (fn-cbor-octet-listp octets)
@@ -1440,7 +1454,12 @@
                             fn-cpc-encodablep fn-cpc-result-okp
                             fn-record-parse-okp fn-cbor-ag-car
                             fn-cpc-result-value fn-frame-item)
-                           (fn-cpc-decode-tree-reencode))
+                           (fn-cpc-decode-tree-reencode
+                            fn-cp-id-length-bound fn-cp-idp
+                            fn-record-ascii-implies-octets
+                            fn-record-ascii-octet-listp
+                            append-atom-under-list-equiv
+                            fn-cpc-u32-from-append fn-cpc-u16-from-append))
            :use
            ((:instance fn-cpc-decode-tree-reencode
                        (octets
