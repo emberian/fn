@@ -221,29 +221,6 @@
   (list groups capacity files node keyring index keyring-generation verdicts
         snapshots identity-next config-history consumer topic event-index))
 
-; A physical configuration install changes these four fields and carries
-; every other Store projection, including this derived index.  Slot-specific
-; copies at each caller have previously dropped newly appended projections.
-(defun fn-sn-with-configuration (s groups capacity node config-history)
-  (declare (xargs :guard (true-listp s)))
-  (update-nth 10 config-history
-   (update-nth 3 node
-    (update-nth 1 capacity
-     (update-nth 0 groups s)))))
-
-(defthm fn-sn-store-event-nth-is-nth
-  (implies (and (natp n) (true-listp x))
-           (equal (fn-store-event-nth n x) (nth n x)))
-  :hints (("Goal" :induct (fn-store-event-nth n x)
-           :in-theory (enable fn-store-event-nth nth))))
-
-(defthm fn-sn-event-index-of-fn-sn-with-configuration
-  (implies (true-listp s)
-           (equal (fn-sn-event-index
-                   (fn-sn-with-configuration
-                    s groups capacity node config-history))
-                  (fn-sn-event-index s))))
-
 (defthm fn-sn-event-index-of-fn-sn-make-v6
   (equal (fn-sn-event-index
           (fn-sn-make-v6 groups capacity files node keyring index
@@ -297,6 +274,15 @@
                   (nth k s)))
   :hints (("Goal" :in-theory
            (e/d (fn-sn-with-configuration) (nth update-nth)))))
+
+(defthm fn-sn-event-index-of-fn-sn-with-configuration
+  (equal (fn-sn-event-index
+          (fn-sn-with-configuration
+           s groups capacity node config-history))
+         (fn-sn-event-index s))
+  :hints (("Goal" :use ((:instance
+                           fn-sn-with-configuration-preserves-unselected-slot
+                           (k 13))))))
 
 (defthm fn-sn-consumer-of-fn-sn-make-v2
   (equal (fn-sn-consumer
@@ -687,6 +673,18 @@
               (fn-sn-topic s) (fn-sn-event-index s)))
 
 (verify-guards fn-sn-update)
+(defthm fn-sn-files-of-fn-sn-update
+  (equal (fn-sn-files (fn-sn-update s files node)) files)
+  :hints (("Goal" :in-theory (enable fn-sn-files fn-sn-make-v6))))
+(defthm fn-sn-event-index-of-fn-sn-update
+  (equal (fn-sn-event-index (fn-sn-update s files node))
+         (fn-sn-event-index s))
+  :hints (("Goal" :in-theory (enable fn-sn-event-index fn-sn-make-v6))))
+(defthm fn-sn-event-index-raw-of-fn-sn-update
+  (equal (fn-store-event-nth 13 (fn-sn-update s files node))
+         (fn-store-event-nth 13 s))
+  :hints (("Goal" :in-theory (enable fn-sn-update fn-sn-make-v6
+                                     fn-store-event-nth))))
 (defun fn-sn-update-indexed (s files node index)
   (declare (xargs :guard t :verify-guards nil))
   (fn-sn-make-v6 (fn-sn-groups s) (fn-sn-capacity s) files node
@@ -746,6 +744,21 @@
    (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
    (fn-sn-identity-next s) (fn-sn-config-history s)
    (fn-sn-consumer s) (fn-sn-topic s) event-index))
+
+(defthm fn-sn-event-index-of-fn-sn-with-event-index
+  (equal (fn-sn-event-index (fn-sn-with-event-index s event-index))
+         event-index)
+  :hints (("Goal" :in-theory (enable fn-sn-event-index fn-sn-make-v6))))
+(defthm fn-sn-event-index-raw-of-fn-sn-with-event-index
+  (equal (fn-store-event-nth 13
+                             (fn-sn-with-event-index s event-index))
+         event-index)
+  :hints (("Goal" :in-theory (enable fn-sn-with-event-index
+                                     fn-sn-make-v6 fn-store-event-nth))))
+(defthm fn-sn-files-of-fn-sn-with-event-index
+  (equal (fn-sn-files (fn-sn-with-event-index s event-index))
+         (fn-sn-files s))
+  :hints (("Goal" :in-theory (enable fn-sn-files fn-sn-make-v6))))
 
 (defthm fn-sn-verdict-listp-of-recorded-cons
   (implies (and (fn-sn-verdict-listp verdicts)
