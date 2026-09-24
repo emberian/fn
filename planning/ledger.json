@@ -18925,7 +18925,7 @@
     {
       "theorem": "fn-nntp-block-scan-start-without-a-dot",
       "book": "books/nntp-effects.lisp",
-      "line": 463,
+      "line": 466,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]
@@ -18989,7 +18989,7 @@
     {
       "theorem": "fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session",
       "book": "books/owner-invariants.lisp",
-      "line": 776,
+      "line": 788,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value"
       ]
@@ -19512,7 +19512,7 @@
       {
         "theorem": "fn-ocl-connection-archive-has-pinned-domain",
         "book": "books/config-owner-live.lisp",
-        "line": 1324,
+        "line": 1329,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
