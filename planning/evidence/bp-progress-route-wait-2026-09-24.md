@@ -1,6 +1,7 @@
 # BP held progress route-wait slice
 
-Source `62c1e171` on `11c91419` changes the native `bp-node` caller to issue
+Source `62c1e171` on `11c91419`, with recovery correction `1d207ddb`,
+changes the native `bp-node` caller to issue
 `(:progress node observation routes generation)` through its existing
 `fnn-bps-foundation-step` handle. That handle now calls `fn-bpnp-step`, which
 delegates ordinary events to `fn-bpn-report-author-step` on the same FNBS
@@ -33,7 +34,12 @@ one job and a 90-second per-book cap; the manifest contains each source and
 dependency digest. The first run failed on a missing include, and the next
 run exposed shallow-selector correspondence and the outer event guard. Those
 were repaired with a direct selector equality, admitted-primary shape lemma,
-and narrow event-boundary lemma. The final exact-source selected run passed.
+and narrow event-boundary lemma. The selected run passed at the initial
+guarded source bytes. The recovery correction was recertified on persvati in
+`run-20260924T043911Z-2091`,
+[manifest](manifests/certify-20260924T043918Z-178337.json): the same three
+progress roots passed at the corrected source bytes under the same ACL2
+toolchain identity and a 90-second per-book cap.
 The edited native `bp-node.lisp` and `bp-service.lisp` also passed an SBCL
 reader check with `sb-bsd-sockets` and `sb-posix` loaded; this checks source
 syntax, not saved-image behavior.
