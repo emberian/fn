@@ -628,10 +628,10 @@
     "books": 631,
     "books_in_root_closure": 629,
     "roots": 621,
-    "theorems": 8734,
+    "theorems": 8736,
     "functions": 6440,
-    "assert_events": 9473,
-    "must_fails": 544,
+    "assert_events": 9479,
+    "must_fails": 547,
     "encapsulates": 27,
     "guards": {
       "verified": 2036,
@@ -642,7 +642,7 @@
     "suspect_theorems": 82,
     "export_hygiene_warnings": 103,
     "enabled_projection_warnings": 37,
-    "teeth_form_warnings": 44,
+    "teeth_form_warnings": 47,
     "include_hygiene_warnings": 574,
     "host_names_warnings": 807,
     "hand_written_record_warnings": 18
@@ -4433,7 +4433,7 @@
       "book": "books/checkpoint-pack-retire.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
+      "theorems": 10,
       "functions": 10,
       "guards": {
         "verified": 0,
@@ -13296,8 +13296,8 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
-      "must_fails": 5,
+      "assert_events": 19,
+      "must_fails": 8,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
@@ -13427,7 +13427,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 22,
+      "assert_events": 24,
       "must_fails": 0,
       "defconsts": 8,
       "defmacros": 0,
@@ -19232,21 +19232,39 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "fn-cprt-slot-without-generation-membership",
+        "book": "tests/acl2/checkpoint-pack-retire-tests.lisp",
+        "line": 31,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-cprt-slot-without-issued-attempt",
+        "book": "tests/acl2/checkpoint-pack-retire-tests.lisp",
+        "line": 38,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-cprt-slot-without-unretained-image",
+        "book": "tests/acl2/checkpoint-pack-retire-tests.lisp",
+        "line": 45,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "fn-cprt-selected-survives-without-membership",
         "book": "tests/acl2/checkpoint-pack-retire-tests.lisp",
-        "line": 35,
+        "line": 69,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-cprt-selected-survives-without-issued-prefix",
         "book": "tests/acl2/checkpoint-pack-retire-tests.lisp",
-        "line": 42,
+        "line": 76,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-cprt-next-without-capacity",
         "book": "tests/acl2/checkpoint-pack-retire-tests.lisp",
-        "line": 80,
+        "line": 114,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
