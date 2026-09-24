@@ -92,6 +92,25 @@ its argument, then repeat the relevant experiment on the new image. The
 [node record](../planning/evidence/node-hbox-dabebb84-2026-09-22.md) remains
 the authority for what that deployed image demonstrated.
 
+## Process completion was mistaken for proof completion
+
+The [67d combined run](../planning/evidence/wide-combined-67d026ad-red-2026-09-24.md)
+initially received a count of 273 successful books from activity files. Its
+terminal manifest instead records 263 passed and eleven failed books, including
+four actual theorem failures and seven missing-certificate dependents. ACL2 can
+exit zero after a failed theorem. The correction changed `farm.py status` to
+label unfinished-process observations separately from terminal manifest book
+verdicts. Activity records are not PID-liveness checks either.
+
+That same batch separated two kinds of proof failure. The stamp and Store
+prepare hints exposed record internals before the exported selector laws could
+match; keeping those internals closed proved the unchanged statements. The BP
+and byte reopen claims instead lacked the topic replay condition enforced by
+the newer Store opener. Their conditional corrections leave a maintained
+topic-history/crash correspondence to establish. A common failing batch does
+not imply a common remedy, and a repaired conditional theorem does not close
+that composition obligation.
+
 ## Finding the local transcripts
 
 The guide paraphrases the sessions; it does not publish their contents. These
