@@ -1,0 +1,2 @@
+accepted post path=control message-id=<hybrid-unenrolled-relay@example.invalid> time=2026-09-24T15:55:29Z
+refused feed peer=other message-id=<hybrid-unenrolled-relay@example.invalid> code=439 time=2026-09-24T15:55:29Z

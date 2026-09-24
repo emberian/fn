@@ -1,0 +1,12 @@
+1487522 11:28:50.021359 close(9)        = 0
+1487512 11:28:50.378796 connect(11, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110 <unfinished ...>
+1487525 11:28:50.378803 close(9)        = 0
+1487512 11:28:50.382439 --- SIGSEGV {si_signo=SIGSEGV, si_code=SEGV_MAPERR, si_addr=NULL} ---
+1487512 11:28:50.384077 connect(9, {sa_family=AF_INET, sin_port=htons(60269), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+1487512 11:28:50.435057 write(9, "MODE STREAM\r\n", 13) = 13
+1487512 11:28:50.485622 read(9, "203 streaming permitted\r\n", 512) = 25
+1487512 11:28:50.559006 write(9, "CHECK <hybrid-native-relay@example.invalid>\r\n", 45) = 45
+1487512 11:28:50.609487 read(9, "238 <hybrid-native-relay@example.invalid>\r\n", 512) = 43
+1487512 11:28:50.625891 write(9, "TAKETHIS <hybrid-native-relay@example.invalid>\r\nPath: author.example.invalid!not-for-mail\r\nInjection-Date: Thu, 24 Sep 202
+1487512 11:28:50.727154 read(9, "439 <hybrid-native-relay@example.invalid>\r\n", 512) = 43
+1487512 11:29:35.508658 close(9)        = 0

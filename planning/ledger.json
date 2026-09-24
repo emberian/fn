@@ -680,14 +680,14 @@
     "books_in_root_closure": 681,
     "roots": 672,
     "theorems": 9210,
-    "functions": 6654,
-    "assert_events": 10036,
+    "functions": 6655,
+    "assert_events": 10037,
     "must_fails": 684,
     "encapsulates": 30,
     "guards": {
       "verified": 2036,
       "declared-off": 417,
-      "default-guarded": 3314,
+      "default-guarded": 3315,
       "default-unguarded": 887
     },
     "suspect_theorems": 83,
@@ -8077,11 +8077,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 16,
-      "functions": 24,
+      "functions": 25,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 24,
+        "default-guarded": 25,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -16793,7 +16793,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 35,
+      "assert_events": 36,
       "must_fails": 5,
       "defconsts": 20,
       "defmacros": 0,
@@ -20042,7 +20042,7 @@
       {
         "theorem": "fn-olog-control-post-line-says-the-control-result",
         "book": "books/owner-log.lisp",
-        "line": 366,
+        "line": 373,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -20954,7 +20954,7 @@
       {
         "check": "olt-feed-line-always-classed",
         "book": "tests/acl2/owner-log-tests.lisp",
-        "line": 259,
+        "line": 263,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
