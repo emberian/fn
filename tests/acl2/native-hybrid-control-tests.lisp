@@ -27,3 +27,16 @@
  (fn-native-hybrid-control-enroll-encode
   7 '(1) *nhc-ed-key* *nhc-ml-key*)
  :bad)
+
+(assert-equal
+ (fn-native-hybrid-control-revoke-decode
+  (fn-native-hybrid-control-revoke-encode 8 *nhc-principal*))
+ (list :hybrid-revoke 8 *nhc-principal*))
+
+(assert-equal
+ (fn-native-hybrid-control-revoke-encode 8 '(1)) :bad)
+
+(assert-equal
+ (fn-native-hybrid-control-enroll-decode
+  (fn-native-hybrid-control-revoke-encode 8 *nhc-principal*))
+ nil)

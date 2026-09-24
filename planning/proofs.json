@@ -2440,6 +2440,36 @@
         "fn-ncl-status-accepted-reply-roundtrip",
         "fn-ncl-status-nonaccepted-reply-roundtrip"
       ]
+    },
+    {
+      "id": "PRF-069",
+      "title": "Operator-local hybrid key lifecycle preserves per-principal authority and historical verdicts",
+      "statement": "The host-called local enrollment and revocation constructors require the next durable keyring generation; new hybrid-author requests use only the named principal's newest recognized enrollment, leaving unrelated principals active, while identity replay retains earlier snapshots and accepted verdicts byte-exact across rotation and revocation.",
+      "milestone": "M3",
+      "requirements": [
+        "OBJ-007"
+      ],
+      "depends_on": [
+        "PRF-048",
+        "PRF-050"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/hybrid-lifecycle.lisp",
+        "books/native-hybrid-control.lisp",
+        "tests/acl2/hybrid-lifecycle-tests.lisp",
+        "tests/acl2/native-hybrid-control-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/hybrid-control.lisp",
+        "tests/test_native_hybrid_author.py",
+        "planning/evidence/author-key-lifecycle-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T054706Z-820554.json",
+        "planning/evidence/manifests/certify-20260924T055039Z-854201.json"
+      ],
+      "progress_note": "The per-principal ACL2 selector, next-generation event constructors and versioned tombstone are implemented; a selected ACL2 trace covers A/B independence, A rotation/revocation, retained snapshots and historical verdict. The host calls these functions under the serialized owner. Source-matched native execution, a maintained reachable Store relation through every lifecycle event, and cost/index correspondence for a large snapshot history remain open. This local permission does not define portable succession or retroactive signature invalidation."
     }
   ]
 }

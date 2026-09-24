@@ -117,6 +117,16 @@ Key custody on agent hosts, human signing workflow, rotation/recovery authority
 and offline revocation semantics remain to be specified. Private-group encryption
 is a separate decision and is not selected by this signature choice.
 
+The local-control implementation may let a same-owner operator install the
+next durable public-key snapshot or a principal-specific revocation tombstone.
+That is a choice about this Store's permission for *new local* `hybrid-author`
+requests: the newest recognized snapshot for A supersedes A's older local
+permission, while enrolling or revoking B does not change A. It is not a
+decision that the operator speaks for the principal at remote sites, that an
+old signature ceases to verify, or that accepted historical verdicts change.
+The separate [succession proposal](author-key-succession-proposal.md) keeps
+the unselected custody, portable authority and partition policies explicit.
+
 ### D03 and D13: keeping a letter versus keeping a promise
 
 A local archive pin can have an explicit owner-controlled release operation.

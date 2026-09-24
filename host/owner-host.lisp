@@ -47,6 +47,7 @@
 ; be a book both sessions include.  See books/frame-trailer.lisp.
 (include-book "../books/feed-journal")
 (include-book "../books/consumer-owner-local")
+(include-book "../books/hybrid-lifecycle")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -1091,6 +1092,15 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-stxk-find generation
                        (fn-sn-keyring-snapshots (fn-owner-store state)))))
+
+(defun fn-owner-hybrid-snapshots (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sn-keyring-snapshots (fn-owner-store state))))
+
+(defun fn-owner-hybrid-current-enrollment (generation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-hl-current-enrollment
+          generation (fn-sn-keyring-snapshots (fn-owner-store state)))))
 
 (defun fn-owner-article-count (state)
   (declare (xargs :stobjs state :mode :program))

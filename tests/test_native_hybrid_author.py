@@ -145,18 +145,51 @@ class NativeHybridAuthorTest(unittest.TestCase):
             next_result = self.invoke("hybrid-author", *signed_variant(fresh, "fresh"))
             self.assertEqual(next_result.returncode, 0,
                              next_result.stderr.decode() or next_result.stdout.decode())
-            wrong_ed = self.root / "wrong-ed-public.bin"
-            wrong_ed.write_bytes(bytes([99]) * 32)
             enrolled_b = self.invoke("hybrid-enroll", str(self.control), "2",
-                                  str(self.principal), str(wrong_ed), str(self.ml_public_b))
+                                  str(self.principal), str(self.ed_public), str(self.ml_public_b))
             self.assertEqual(enrolled_b.returncode, 0, enrolled_b.stderr.decode())
-            wrong_generation = self.invoke(
-                "hybrid-author", str(self.control), "2", str(article), str(ed_sig),
-                str(ml_sig), str(self.ml_public_b))
-            self.assertEqual(wrong_generation.returncode, 1,
-                             wrong_generation.stderr.decode())
+            retired_source = self.root / "retired.eml"
+            retired_source.write_bytes(article.read_bytes().replace(
+                msgid.encode(), b"<hybrid-retired@example.invalid>"))
+            retired_generation = self.invoke(
+                "hybrid-author", *signed_variant(retired_source, "retired"))
+            self.assertEqual(retired_generation.returncode, 1,
+                             retired_generation.stderr.decode())
+            rotated_source = self.root / "rotated.eml"
+            rotated_source.write_bytes(article.read_bytes().replace(
+                msgid.encode(), b"<hybrid-rotated@example.invalid>"))
+            def sign_rotated(source, stem):
+                result = self.invoke("hybrid-sign", str(self.principal),
+                                     str(self.ed_public), str(self.ed_secret),
+                                     str(self.ml_public_b), str(self.ml_private_b),
+                                     str(source))
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+                values = dict(line.split() for line in result.stdout.decode().splitlines())
+                ed_path = self.root / (stem + "-ed.sig")
+                ml_path = self.root / (stem + "-ml.sig")
+                ed_path.write_bytes(bytes.fromhex(values["ed25519"]))
+                ml_path.write_bytes(bytes.fromhex(values["ml-dsa-65"]))
+                return [str(self.control), "2", str(source), str(ed_path),
+                        str(ml_path), str(self.ml_public_b)]
+            rotated = self.invoke("hybrid-author", *sign_rotated(rotated_source, "rotated"))
+            self.assertEqual(rotated.returncode, 0, rotated.stderr.decode())
+            after_revoke = self.root / "after-revoke.eml"
+            after_revoke.write_bytes(article.read_bytes().replace(
+                msgid.encode(), b"<hybrid-after-revoke@example.invalid>"))
+            delayed = sign_rotated(after_revoke, "after-revoke")
+            revoked = self.invoke("hybrid-revoke", str(self.control), "3",
+                                  str(self.principal))
+            self.assertEqual(revoked.returncode, 0, revoked.stderr.decode())
+            self.assertEqual(self.invoke("hybrid-author", *delayed).returncode, 1)
         finally:
             self.stop_owner(owner)
+        history = self.invoke("hybrid-key-history", str(self.store))
+        self.assertEqual(history.returncode, 0, history.stderr.decode())
+        self.assertEqual(history.stdout.decode().splitlines(), [
+            "generation=3 state=revoked principal=" + self.principal.read_bytes().hex(),
+            "generation=2 state=retired principal=" + self.principal.read_bytes().hex(),
+            "generation=1 state=retired principal=" + self.principal.read_bytes().hex(),
+        ])
         owner = self.start_owner()
         try:
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
@@ -262,6 +295,64 @@ class NativeHybridAuthorTest(unittest.TestCase):
             str(large_source), str(refused_output))
         self.assertEqual(refused.returncode, 1, refused.stderr.decode())
         self.assertFalse(refused_output.exists())
+
+    def test_local_revocation_targets_one_principal(self):
+        other_principal = self.root / "other-principal.bin"
+        other_principal.write_bytes(bytes([86]) * 32)
+
+        def source(stem):
+            path = self.root / (stem + ".eml")
+            path.write_bytes(
+                b"From: author@example.invalid\r\n"
+                b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+                b"Newsgroups: fn.test\r\nSubject: local lifecycle\r\n"
+                b"Message-ID: <" + stem.encode() + b"@example.invalid>\r\n\r\nbody\r\n")
+            return path
+
+        def author(generation, principal, ml_public, ml_private, stem):
+            article = source(stem)
+            signed = self.invoke("hybrid-sign", str(principal), str(self.ed_public),
+                                 str(self.ed_secret), str(ml_public), str(ml_private),
+                                 str(article))
+            self.assertEqual(signed.returncode, 0, signed.stderr.decode())
+            parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+            ed_path = self.root / (stem + ".ed.sig")
+            ml_path = self.root / (stem + ".ml.sig")
+            ed_path.write_bytes(bytes.fromhex(parts["ed25519"]))
+            ml_path.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+            return self.invoke("hybrid-author", str(self.control), str(generation),
+                               str(article), str(ed_path), str(ml_path), str(ml_public))
+
+        owner = self.start_owner()
+        try:
+            for generation, principal, ml_public in (
+                    (1, self.principal, self.ml_public),
+                    (2, other_principal, self.ml_public_b)):
+                enrolled = self.invoke("hybrid-enroll", str(self.control),
+                                       str(generation), str(principal),
+                                       str(self.ed_public), str(ml_public))
+                self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+            # B's later global generation leaves A's local capability intact.
+            self.assertEqual(author(1, self.principal, self.ml_public,
+                                    self.ml_private, "a-after-b").returncode, 0)
+            self.assertEqual(author(2, other_principal, self.ml_public_b,
+                                    self.ml_private_b, "b-before-revoke").returncode, 0)
+            revoked = self.invoke("hybrid-revoke", str(self.control), "3",
+                                  str(other_principal))
+            self.assertEqual(revoked.returncode, 0, revoked.stderr.decode())
+            self.assertEqual(author(1, self.principal, self.ml_public,
+                                    self.ml_private, "a-after-b-revoke").returncode, 0)
+            self.assertEqual(author(2, other_principal, self.ml_public_b,
+                                    self.ml_private_b, "b-after-revoke").returncode, 1)
+        finally:
+            self.stop_owner(owner)
+        history = self.invoke("hybrid-key-history", str(self.store))
+        self.assertEqual(history.returncode, 0, history.stderr.decode())
+        self.assertEqual(history.stdout.decode().splitlines(), [
+            "generation=3 state=revoked principal=" + other_principal.read_bytes().hex(),
+            "generation=2 state=retired principal=" + other_principal.read_bytes().hex(),
+            "generation=1 state=active principal=" + self.principal.read_bytes().hex(),
+        ])
 
     def test_authored_carrier_survives_native_peering_and_receiver_restart(self):
         """Real owner/feed/receiver path; portable verification is independent.

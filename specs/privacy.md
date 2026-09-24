@@ -2,7 +2,9 @@
 
 Status: design discussion. The user requires a sound cryptographic design rather
 than a naive encryption feature. D04 selects shared community groups first with
-privacy boundaries designed now. D09 and the later group protocol remain open.
+privacy boundaries designed now. D09's mandatory public signing suite is
+selected, while custody/portable succession and the later group protocol
+remain open.
 No encrypted-group protocol
 or library has been selected, implemented, or audited for fn.
 
@@ -69,6 +71,16 @@ authorship evidence, where signatures live, and whether group-specific identitie
 are needed. D02 does not imply publishing private metadata outside encryption.
 Plaintext hashes and cross-group deduplication indexes must not silently leak
 content equality or guesses in a private profile.
+
+The current public `FN-Authorship` carrier contains a stable principal and
+both public keys alongside transferable signatures. A relay or reader of a
+public article can correlate that identity across postings; local key
+rotation cannot erase earlier carriers or historical verdicts. The local
+kind-3 revocation tombstone contains only the principal and is read from the
+operator's Store, while the offline `hybrid-key-history` view omits key
+payloads and never reads private keys. Neither artifact is an encryption
+protocol. Reusing a public carrier or tombstone for a future private group
+would expose linkable identity metadata and requires a separate SEC-003 choice.
 
 SEC-004: before selecting/shipping group encryption, exercise offline membership
 changes, delayed messages, device loss/rejoin, compromise, replay, backups, and
