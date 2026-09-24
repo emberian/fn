@@ -22,17 +22,26 @@ class NativeCut:
     occurrence: int = 1
 
 
+# frontier-created/-written, record-created/-written and record-stage-unlinked
+# were model sites with no host cut until lane p10-k0 (campaign 1a9dd747,
+# "the coverage runs one way only"); host/native/io.lisp now has an `fnn-at'
+# at each (fnn-write-staged-at, and inside fnn-publish's best-effort cleanup).
 POST_CUTS = (
+    NativeCut("frontier-created", "fn-bs-frontier-program", "absent"),
+    NativeCut("frontier-written", "fn-bs-frontier-program", "absent"),
     NativeCut("frontier-staged-durable", "fn-bs-frontier-program", "absent"),
     NativeCut("frontier-replaced", "fn-bs-frontier-program", "absent"),
     NativeCut("frontier-attempted", "fn-bs-frontier-program", "absent"),
     NativeCut("frontier-durable", "fn-bs-frontier-program", "absent"),
     NativeCut("frontier-reserved", "fn-bs-frontier-program", "absent"),
+    NativeCut("record-created", "fn-bs-record-program", "absent"),
+    NativeCut("record-written", "fn-bs-record-program", "absent"),
     NativeCut("record-staged-durable", "fn-bs-record-program", "absent"),
     NativeCut("record-linked", "fn-bs-record-program", "either"),
     NativeCut("record-attempted", "fn-bs-record-program", "present"),
     NativeCut("record-durable", "fn-bs-record-program", "present"),
     NativeCut("record-completing", "fn-bs-record-program", "present"),
+    NativeCut("record-stage-unlinked", "fn-bs-record-program", "present"),
     NativeCut("record-staging-cleaned", "fn-bs-record-program", "present"),
     NativeCut("finish-consumed", "fn-bs-finish-program", "present"),
     NativeCut("finish-durable", "fn-bs-finish-program", "present"),
