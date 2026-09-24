@@ -567,6 +567,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-feed-subject \
 	books/owner-prepare-correspondence \
 	books/owner-served-invariants \
+	books/owner-numbering \
 	books/owner-retention-preparation \
 	books/owner-agent \
 	books/owner-log \
@@ -582,6 +583,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
 	tests/acl2/owner-served-invariants-tests \
+	tests/acl2/owner-numbering-tests \
+	tests/acl2/owner-fault-tests \
 	tests/acl2/owner-verdict-tests \
 	tests/acl2/owner-verdict-read-tests \
 	tests/acl2/owner-operator-tests \
