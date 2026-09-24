@@ -277,7 +277,7 @@
           (equal (fn-th-at 4 prior) (fn-th-auth-ref-of accepted)))))
   :rule-classes nil
   :hints (("Goal" :in-theory
-           (e/d (fn-th-prepare-report)
+           (e/d (fn-th-prepare-report fn-stmt-ok)
                 (fn-th-select-accepted-event fn-th-auth-ref-of
                  fn-th-find-anchor fn-th-find-admission)))))
 
