@@ -63,7 +63,8 @@
 ; carry.  A proof that reads one of them enables it in its hint.
 (local (in-theory (disable fn-cp-idp-true-listp fn-cp-id-length-bound
                            fn-replay-identity-step fn-th-topic-v1-anchorp
-                           fn-snt-history-recoverable-under-record-bound)))
+                           fn-snt-history-recoverable-under-record-bound
+                           fn-sn-new-success-requires-actual-matching-durable-node-completion)))
 
 (defthm fn-snt-recoverable-prefix-facts
   (implies (fn-sf-history-recoverablep groups capacity history frontier)
