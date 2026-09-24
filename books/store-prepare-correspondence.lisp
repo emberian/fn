@@ -241,7 +241,9 @@
  (defthm fn-spc-set-keyring-keeps-identity-context
    (equal (fn-sn-identity-context (fn-sn-set-keyring s keyring))
           (fn-sn-identity-context s))
-   :hints (("Goal" :in-theory (e/d (fn-sn-set-keyring fn-sn-identity-context)
+   :hints (("Goal" :in-theory (e/d (fn-sn-set-keyring fn-sn-identity-context
+                                    fn-sn-identity-next
+                                    fn-sn-keyring-snapshots)
                                    (fn-stx-index-of-store))))))
 
 ; The five event recognizers and the three appliers stay closed: since
