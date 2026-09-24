@@ -60,7 +60,104 @@
 (assert-event
  (and (eq (symbol-class 'fn-acar-own-outcome (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-acar-own-advance-result (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-acar-session-node (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-acar-session-node (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-acar-nntp-projectionp (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-acar-open-session (w state)) :common-lisp-compliant)))
+
+; -----------------------------------------------------------------------------
+; The pinned view's projection recognizer, carried (fn-acar-nntp-projectionp).
+
+; Witness: the committed configured owner's view archive (3 records, an
+; article among them) is an acceptance state; the carried recognizer agrees
+; with fn-nntp-projectionp there, both true, and the re-pinned reader session
+; records the projection.
+(defconst *acar-t-archive* (fn-own-view-archive (fn-own-view *acar-t-o*)))
+(assert-event (consp (fn-state-articles *acar-t-archive*)))
+(assert-event (fn-acar-view-statep *acar-t-o*))
+(assert-event (fn-acar-nntp-projectionp *acar-t-archive*))
+(assert-event (fn-nntp-projectionp *acar-t-archive*))
+(assert-event (equal (fn-acar-open-session *acar-t-archive*)
+                     (fn-nntp-open-session *acar-t-archive*)))
+(assert-event
+ (equal (fn-nntp-session-projected
+         (fn-auth-reader-session
+          (fn-own-conn-session
+           (fn-own-find-conn 1 (fn-own-conns
+                                (cdr (fn-acar-own-advance-result *acar-t-o* 1)))))))
+        t))
+(assert-event (equal (fn-own-view (cdr (fn-acar-own-advance-result *acar-t-o* 1)))
+                     (fn-own-view *acar-t-o*)))
+; The commit keeps the premise: before and after it on the witness.
+(assert-event (fn-acar-view-statep (fn-ocfg-owner *acar-t-completing*)))
+
+; The hypothesis.  The same owner with an extra non-article in its view
+; archive (test-only surgery).  The group list, next numbers and count bound
+; still hold, so the carried recognizer says t while fn-statep, and with it
+; fn-nntp-projectionp, fails: the re-pinned session would claim a projection
+; the reference denies.  The relation fails on it.
+(defconst *acar-t-bad-archive*
+  (let ((a *acar-t-archive*))
+    (fn-make-state (fn-state-groups a) (fn-state-nexts a)
+                   (cons 'junk (fn-state-articles a))
+                   (fn-state-next-txid a) (fn-state-pending a)
+                   (fn-state-fenced a))))
+(defconst *acar-t-bad-view-o*
+  (let ((o *acar-t-o*))
+    (fn-own-make (fn-own-store o)
+                 (update-nth 2 *acar-t-bad-archive* (fn-own-view o))
+                 (fn-own-conns o)
+                 (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
+                 (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                 (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
+                 (fn-own-feeds o))))
+(defconst *acar-t-bad-view-oc*
+  (fn-ocfg-make *acar-t-bad-view-o* (fn-ocfg-config *acar-t-committed*)
+                (fn-ocfg-pins *acar-t-committed*) (fn-ocfg-staged *acar-t-committed*)))
+(assert-event (equal (fn-own-view-archive (fn-own-view *acar-t-bad-view-o*))
+                     *acar-t-bad-archive*))
+(assert-event (fn-acar-conn-sessionp *acar-t-bad-view-o* 1))
+(assert-event (not (fn-acar-view-statep *acar-t-bad-view-o*)))
+(assert-event (not (fn-ocl-relation *acar-t-bad-view-oc*)))
+(assert-event (not (fn-ocl-view-historyp *acar-t-bad-view-o*)))
+(assert-event (fn-acar-nntp-projectionp *acar-t-bad-archive*))
+(assert-event (not (fn-nntp-projectionp *acar-t-bad-archive*)))
+(assert-event (equal (car (fn-acar-own-advance-result *acar-t-bad-view-o* 1)) :advanced))
+; fn-acar-nntp-projectionp-is-nntp-projectionp without (fn-statep archive).
+(must-fail
+ (defthm fn-acar-t-projection-without-statep
+   (equal (fn-acar-nntp-projectionp *acar-t-bad-archive*)
+          (fn-nntp-projectionp *acar-t-bad-archive*))))
+; fn-acar-open-session-is-open-session without (fn-statep archive).
+(must-fail
+ (defthm fn-acar-t-open-session-without-statep
+   (equal (fn-acar-open-session *acar-t-bad-archive*)
+          (fn-nntp-open-session *acar-t-bad-archive*))))
+; fn-acar-own-advance-result-is-own-advance-result without fn-acar-view-statep
+; (its other hypothesis holds on this owner).
+(must-fail
+ (defthm fn-acar-t-advance-without-view-statep
+   (equal (fn-acar-own-advance-result *acar-t-bad-view-o* 1)
+          (fn-own-advance-result *acar-t-bad-view-o* 1))))
+; fn-acar-view-historyp-carries-view-statep and
+; fn-acar-ocl-relation-carries-view-statep without their hypotheses.
+(must-fail
+ (defthm fn-acar-t-view-statep-without-history
+   (fn-acar-view-statep (fn-ocfg-owner *acar-t-bad-view-oc*))))
+; The outcome keystone without the relation, the connections intact: a
+; submission of connection 1 in flight with a completion consumed.
+(defconst *acar-t-bad-view-inflight-o*
+  (let ((o *acar-t-bad-view-o*))
+    (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                 (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
+                 (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                 (fn-own-config o) (fn-own-queue o)
+                 (fn-own-sub-make 1 (fn-own-conn-version *acar-t-conn*) 0 nil)
+                 (fn-own-feeds o))))
+(assert-event (fn-acar-conn-sessionp *acar-t-bad-view-inflight-o* 1))
+(must-fail
+ (defthm fn-acar-t-outcome-without-view-statep
+   (equal (fn-acar-own-outcome *acar-t-bad-view-inflight-o* 1 :durable)
+          (fn-own-outcome *acar-t-bad-view-inflight-o* 1 :durable))))
 
 ; The hypothesis.  The committed owner with connection 1's session carrying
 ; a value that is not a node state (test-only surgery).  The connection no
@@ -83,7 +180,8 @@
 (assert-event (not (fn-ocl-relation *acar-t-bad-oc*)))
 (assert-event (equal (car (fn-acar-own-advance-result *acar-t-bad-o* 1)) :advanced))
 (assert-event (equal (car (fn-own-advance-result *acar-t-bad-o* 1)) :refused))
-; fn-acar-own-advance-result-is-own-advance-result without its hypothesis.
+; fn-acar-own-advance-result-is-own-advance-result without fn-acar-conn-sessionp
+; (the view is unchanged, so fn-acar-view-statep holds).
 (must-fail
  (defthm fn-acar-t-advance-without-session
    (equal (fn-acar-own-advance-result *acar-t-bad-o* 1)

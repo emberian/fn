@@ -25,10 +25,23 @@
 ; owner relations carry that premise, and the commit between the take and
 ; the outcome keeps the connections (fn-acar-own-finish-keeps-conns).
 ; host/owner-host.lisp fn-owner-outcome calls fn-acar-own-outcome.
+;
+; The re-pin also opens the reader session on the pinned view's archive with
+; fn-nntp-open-session, which records fn-nntp-projectionp of that archive and
+; so ran fn-statep of the whole archive once per durable POST: O(N^2) in the
+; article count through fn-articles-freshp, 10 to 13 percent of POST CPU at
+; N = 120 (planning/evidence/commit-path-2-2026-09-24.md).  The carried copy
+; opens it with fn-acar-nntp-projectionp, the same recognizer without the
+; fn-statep conjunct, equal to it when the archive is an acceptance state
+; (fn-acar-view-statep).  fn-ocl-view-historyp names the view archive as
+; fn-node-acceptance of a node satisfying fn-node-statep, so the configured
+; owner's relation carries that premise too; the advance keeps the view and
+; the POST commit keeps the relation.
 
 (in-package "ACL2")
 (include-book "owner-served-carried")
 (include-book "owner-commit-carried")
+(include-book "owner-commit-ocl")
 
 ; The node the connection's session carries.
 (defun fn-acar-session-node (conn)
@@ -41,6 +54,51 @@
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (or (null conn)
         (fn-auth-sessionp (fn-own-conn-session conn)))))
+
+; The second premise: the pinned view's archive is an acceptance state.
+; fn-ocl-view-historyp says the archive IS fn-node-acceptance of a node
+; satisfying fn-node-statep, so the configured owner's relation carries it
+; (fn-acar-ocl-relation-carries-view-statep) and it is never evaluated.
+(defun fn-acar-view-statep (o)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-statep (fn-own-view-archive (fn-own-view o))))
+
+; -----------------------------------------------------------------------------
+; The projection recognizer of the pinned view, carried.
+;
+; fn-nntp-open-session (books/nntp-session.lisp) records whether the archive
+; satisfies fn-nntp-projectionp, whose first conjunct is fn-statep of the
+; whole archive: fn-articles-freshp is quadratic in the article count and
+; fn-article-listp reads every article.  The re-pin opens a session on the
+; view archive after every durable POST, so that recognizer ran once per POST
+; over a value the owner's relation already describes.  The carried
+; recognizer keeps the three remaining conjuncts: the group list and the
+; next-number table (both O(G)) and the article count (O(N) pointer steps).
+
+(defun fn-acar-nntp-projectionp (archive)
+  (declare (xargs :guard t))
+  (and (fn-nntp-safe-group-listp (fn-state-groups archive))
+       (fn-nntp-nexts-boundedp (fn-state-nexts archive))
+       (<= (len (fn-state-articles archive)) *fn-nntp-max-article-number*)))
+
+(defthm fn-acar-nntp-projectionp-is-nntp-projectionp
+  (implies (fn-statep archive)
+           (equal (fn-acar-nntp-projectionp archive)
+                  (fn-nntp-projectionp archive)))
+  :hints (("Goal" :in-theory (enable fn-nntp-projectionp))))
+
+(defun fn-acar-open-session (archive)
+  (declare (xargs :guard t))
+  (fn-nntp-make-session t nil nil
+                        (if (fn-acar-nntp-projectionp archive) t nil)))
+
+(defthm fn-acar-open-session-is-open-session
+  (implies (fn-statep archive)
+           (equal (fn-acar-open-session archive)
+                  (fn-nntp-open-session archive)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-open-session)
+                                  (fn-acar-nntp-projectionp
+                                   fn-nntp-projectionp fn-statep)))))
 
 ; -----------------------------------------------------------------------------
 ; The recognizer of a rebuilt session, at the old session's node.
@@ -130,7 +188,7 @@
                          (fn-peer-with-base
                           pold
                           (fn-post-make-session
-                           (fn-nntp-set-cursor (fn-nntp-open-session archive)
+                           (fn-nntp-set-cursor (fn-acar-open-session archive)
                                                (fn-nntp-session-group base)
                                                (fn-nntp-session-current base))
                            (fn-post-session-awaiting told)))))
@@ -154,19 +212,21 @@
       (cons :absent o))))
 
 (defthm fn-acar-own-advance-result-is-own-advance-result
-  (implies (fn-acar-conn-sessionp o id)
+  (implies (and (fn-acar-conn-sessionp o id)
+                (fn-acar-view-statep o))
            (equal (fn-acar-own-advance-result o id)
                   (fn-own-advance-result o id)))
   :hints (("Goal" :in-theory (e/d (fn-acar-own-advance-result
                                    fn-own-advance-result
-                                   fn-acar-conn-sessionp
+                                   fn-acar-conn-sessionp fn-acar-view-statep
                                    fn-scar-conn-boundedp fn-own-conn-boundedp
                                    fn-acar-session-node)
                                   (fn-scar-auth-sessionp fn-auth-sessionp
                                    fn-auth-with-base fn-peer-with-base
                                    fn-own-set-conns fn-own-replace-conn
                                    fn-own-conn-make-group-indexed
-                                   fn-nntp-open-session fn-nntp-set-cursor
+                                   fn-nntp-open-session fn-acar-open-session
+                                   fn-statep fn-nntp-set-cursor
                                    fn-post-make-session)))))
 
 (defun fn-acar-own-outcome (o id word)
@@ -203,18 +263,20 @@
 ; The function host/owner-host.lisp fn-owner-outcome calls: the reference
 ; outcome whenever the connection the id names holds a session.
 (defthm fn-acar-own-outcome-is-own-outcome
-  (implies (fn-acar-conn-sessionp o id)
+  (implies (and (fn-acar-conn-sessionp o id)
+                (fn-acar-view-statep o))
            (equal (fn-acar-own-outcome o id word)
                   (fn-own-outcome o id word)))
   :hints (("Goal" :in-theory (e/d (fn-acar-own-outcome fn-own-outcome
-                                   fn-own-advance fn-acar-conn-sessionp)
+                                   fn-own-advance fn-acar-conn-sessionp
+                                   fn-acar-view-statep)
                                   (fn-acar-own-advance-result
                                    fn-own-advance-result
                                    fn-auth-sessionp
                                    fn-own-outcome-completion
                                    fn-own-outcome-rendering
                                    fn-own-feed-durable
-                                   fn-served-post-outcome))
+                                   fn-served-post-outcome fn-statep))
            :use ((:instance fn-acar-own-advance-result-is-own-advance-result
                   (o (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                                   (fn-own-next-id o) (fn-own-max-conns o)
@@ -267,6 +329,45 @@
   :hints (("Goal" :in-theory (e/d (fn-own-relation fn-acar-conn-sessionp)
                                   (fn-auth-sessionp fn-own-conns-okp
                                    fn-snt-relation fn-own-view-okp)))))
+; The pinned view's archive is an acceptance state under the configured
+; owner's relation: fn-ocl-view-historyp names it as fn-node-acceptance of a
+; node that satisfies fn-node-statep.
+(defthm fn-acar-node-acceptance-statep
+  (implies (fn-node-statep node)
+           (fn-statep (fn-node-acceptance node)))
+  :hints (("Goal" :in-theory (enable fn-node-statep))))
+
+(defthm fn-acar-view-historyp-carries-view-statep
+  (implies (fn-ocl-view-historyp o)
+           (fn-acar-view-statep o))
+  :hints (("Goal" :in-theory (e/d (fn-ocl-view-historyp fn-acar-view-statep)
+                                  (fn-statep fn-node-statep
+                                   fn-cst-replay-node)))))
+
+(defthm fn-acar-ocl-relation-carries-view-statep
+  (implies (fn-ocl-relation oc)
+           (fn-acar-view-statep (fn-ocfg-owner oc)))
+  :hints (("Goal" :in-theory (e/d (fn-ocl-relation)
+                                  (fn-acar-view-statep fn-ocl-view-historyp
+                                   fn-auth-sessionp fn-ocl-conns-historyp
+                                   fn-cst-relation fn-ocl-config-historyp
+                                   fn-ocl-view-configp)))))
+
+; The advance changes only the connections, so it keeps the premise; the
+; commit keeps it through fn-ocmt-post-commit-preserves-ocl-relation
+; (fn-acar-view-statep-after-commit below).
+(defthm fn-acar-own-advance-result-keeps-view
+  (equal (fn-own-view (cdr (fn-acar-own-advance-result o id)))
+         (fn-own-view o))
+  :hints (("Goal" :in-theory (enable fn-acar-own-advance-result
+                                     fn-own-set-conns))))
+
+(defthm fn-acar-view-statep-after-advance
+  (equal (fn-acar-view-statep (cdr (fn-acar-own-advance-result o id)))
+         (fn-acar-view-statep o))
+  :hints (("Goal" :in-theory (e/d (fn-acar-view-statep)
+                                  (fn-acar-own-advance-result fn-statep)))))
+
 (defthm fn-acar-own-finish-keeps-conns
   (equal (fn-own-conns (cdr (fn-ccar-own-finish o cfg)))
          (fn-own-conns o))
@@ -283,31 +384,47 @@
 
 ; KEYSTONE for host/owner-host.lisp fn-owner-outcome: under the configured
 ; owner's relation the carried outcome is the reference outcome, for every
-; connection identifier and every observed word.
+; connection identifier and every observed word.  The relation carries both
+; premises: every held connection holds a session, and the pinned view's
+; archive is an acceptance state.
 (defthm fn-acar-own-outcome-is-reference-under-ocl-relation
   (implies (fn-ocl-relation oc)
            (equal (fn-acar-own-outcome (fn-ocfg-owner oc) id word)
                   (fn-own-outcome (fn-ocfg-owner oc) id word)))
-  :hints (("Goal" :in-theory (disable fn-acar-conn-sessionp fn-ocl-relation))))
+  :hints (("Goal" :in-theory (disable fn-acar-conn-sessionp fn-acar-view-statep
+                                      fn-ocl-relation))))
 
 ; The same across the commit that precedes the outcome on the host's path
 ; (fn-owner-finish-submission installs (cdr (fn-ccar-own-finish ...))): the
-; commit keeps the connections, so the premise the relation gave before it
-; holds after it without the relation being re-established there.
+; commit keeps the configured owner's relation
+; (fn-ocmt-post-commit-preserves-ocl-relation), so both premises hold after
+; it.
 (defthm fn-acar-own-outcome-after-commit-is-reference
   (implies (fn-ocl-relation oc)
            (equal (fn-acar-own-outcome
                    (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg)) id word)
                   (fn-own-outcome
                    (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg)) id word)))
-  :hints (("Goal" :in-theory (disable fn-acar-conn-sessionp fn-ocl-relation
-                                      fn-ccar-own-finish-is-own-finish))))
+  :hints (("Goal" :in-theory (disable fn-acar-conn-sessionp fn-acar-view-statep
+                                      fn-ocl-relation fn-acar-own-outcome
+                                      fn-own-outcome
+                                      fn-ccar-own-finish-is-own-finish)
+           :use ((:instance fn-ocmt-post-commit-preserves-ocl-relation)
+                 (:instance fn-acar-own-outcome-is-reference-under-ocl-relation
+                  (oc (fn-ocfg-with-owner
+                       oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg)))))))))
 
+; The static owner's relation carries the first premise only; its view is
+; fn-own-prefix-archive, whose acceptance state needs the prefix's
+; recoverability, so here the second premise is stated.
 (defthm fn-acar-own-outcome-is-reference-under-relation
-  (implies (fn-own-relation o)
+  (implies (and (fn-own-relation o)
+                (fn-acar-view-statep o))
            (equal (fn-acar-own-outcome o id word)
                   (fn-own-outcome o id word)))
-  :hints (("Goal" :in-theory (disable fn-acar-conn-sessionp fn-own-relation))))
+  :hints (("Goal" :in-theory (disable fn-acar-conn-sessionp fn-acar-view-statep
+                                      fn-own-relation))))
 
 (in-theory (disable fn-acar-own-advance-result fn-acar-own-outcome
-                    fn-acar-conn-sessionp))
+                    fn-acar-conn-sessionp fn-acar-view-statep
+                    fn-acar-nntp-projectionp fn-acar-open-session))
