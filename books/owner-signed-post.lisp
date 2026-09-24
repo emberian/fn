@@ -365,7 +365,7 @@
                                fn-pa-carried-event-is-a-carried-record
                                fn-record-round-trip-succeeds
                                fn-hls-kind4-verdict-event
-                               fn-record-encode fn-record-decode-exact
+                               fn-record-encode
                                fn-record-stamp-of-observation))))
 
 ; Replay's dispatch: a carried composite is recorded by the carried branch,

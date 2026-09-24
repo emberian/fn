@@ -266,7 +266,7 @@
                  fn-stxa-bindsp fn-stxa-p
                  fn-stxa-make-carried fn-stxe-encode fn-record-encode
                  fn-record-make fn-hsig-carried-record-metadatap
-                 fn-stxe-decode-exact fn-record-decode-exact
+                 fn-stxe-decode-exact
                  fn-hc-received-plan fn-hsig-authored-source-id)))))
 
 (defthm fn-pa-absent-is-only-parser-confirmed-absence

@@ -338,21 +338,46 @@ reopen predicate, writer-lock observation and observed final namespace."
                       state)))
           (value :refused))))))
 
+; D23: the boundary's carried-source list (books/peer-authored-accept.lisp
+; *fn-pa-carries-slot*), one row per principal after the record's rows.  A
+; principal is the 64 lowercase hexadecimal characters HDR :fn-verified and
+; `auth-principal' use; anything else refuses the delta as :carries.
+(defun fn-store-cfg-carries-rows (name carries)
+  (declare (xargs :mode :program))
+  (if (consp carries)
+      (let ((hex (fn-store-octets->string (car carries)))
+            (rest (fn-store-cfg-carries-rows name (cdr carries))))
+        (if (or (equal hex :bad) (equal rest :bad)
+                (not (equal (length hex) 64))
+                (not (subsetp (coerce hex 'list)
+                              (coerce "0123456789abcdef" 'list))))
+            :bad
+          (cons (fn-cfg-row-make name "carries-principal" hex 0) rest)))
+    nil))
+
 (defun fn-store-cfg-set-peer (name-octets path-octets host-octets port
                               in-groups-octets in-max-octets in-inflight
                               out-groups-octets out-streaming out-max-queue
-                              out-backoff auth-kind auth-octets
+                              out-backoff auth-kind auth-octets carries
                               monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((p (fn-store-cfg-peer-record
-            name-octets path-octets host-octets port in-groups-octets
-            in-max-octets in-inflight out-groups-octets out-streaming
-            out-max-queue out-backoff auth-kind auth-octets)))
-    (if (null p)
-        (let ((state (f-put-global 'fn-store-cfg-last-reason :peer-record state)))
-          (value :refused))
-      (fn-store-cfg-peer-delta-record (list (fn-cfg-set-peer-delta p))
-                                      monotonic wall state))))
+  (let* ((p (fn-store-cfg-peer-record
+             name-octets path-octets host-octets port in-groups-octets
+             in-max-octets in-inflight out-groups-octets out-streaming
+             out-max-queue out-backoff auth-kind auth-octets))
+         (extra (and p (fn-store-cfg-carries-rows (fn-cfg-peer-name p)
+                                                  carries))))
+    (cond ((null p)
+           (let ((state (f-put-global 'fn-store-cfg-last-reason :peer-record state)))
+             (value :refused)))
+          ((equal extra :bad)
+           (let ((state (f-put-global 'fn-store-cfg-last-reason :carries state)))
+             (value :refused)))
+          (t
+           (fn-store-cfg-peer-delta-record
+            (list (fn-cfg-set-peer (fn-cfg-peer-name p)
+                                   (append (fn-cfg-peer-rows p) extra)))
+            monotonic wall state)))))
 
 ; The node's own policy slots (`fn policy set|get`).  The one peering needs
 ; is "path-identity": `fn-peer-local-identity` (books/peer-inbound.lisp)
