@@ -18,8 +18,10 @@ The 600-second per-book setting was longer than the agreed 300-second
 diagnostic bound. Live `.active.json` files and streamed logs were monitored;
 no book exceeded 100 seconds, so no child needed bounded termination. The
 manifest records 612 requested roots, 352 cached book certificates installed,
-274 new certification attempts, and 273 clean book results. It is **failed**:
-four direct theorem failures caused seven missing-certificate dependents.
+274 new certification attempts, of which 263 passed and 11 failed. It is
+**failed**: four direct theorem failures caused seven missing-certificate
+dependents. The manifest records 263 observed success markers against 274
+expected markers.
 Certification wall time was 379.439 seconds; submission and transport are
 additional. The toolchain identity is
 `d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0`.
