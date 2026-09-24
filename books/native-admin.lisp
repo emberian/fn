@@ -837,7 +837,8 @@ shared immutable publication state before raw Lisp may execute an I/O action."
 ; store operation.  `group retire' of such a name stays admitted: a store
 ; that already carries one can still remove it.
 (local (defthm fn-native-admin-len-of-words
-  (equal (len (fn-native-admin-words argv)) (len argv))))
+  (equal (len (fn-native-admin-words argv)) (len argv))
+  :rule-classes nil))
 
 (defthm fn-native-admin-plan-refuses-a-reserved-group-create
   (implies (and (fn-native-admin-argvp argv)

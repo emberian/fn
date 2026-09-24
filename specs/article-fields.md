@@ -69,6 +69,10 @@ semantic fields, documented here rather than silently normalized.
 
 ### Group names the node creates
 
+NNT-009: a group name is an RFC 5536 §3.1.4 `<newsgroup-name>` of at most 128
+octets, and the node never creates a group whose first (or only) component is
+`example`, or the group `poster`.
+
 A group name the node stores or serves is `fn-record-group-namep`
 (`books/records-shape.lisp`): exactly the §3.1.4 `<newsgroup-name>` grammar
 (`fn-record-group-namep-is-the-rfc-5536-grammar`), plus fn's local bound of
