@@ -35,3 +35,7 @@ administrator install/reopen, root/report admission and missing-source
 refusal. Combined native image, reverse owner closure and physical
 source-matched publication evidence remain open. No succession, fork healing,
 automatic policy adoption or Mini application operation is inferred.
+
+The field values themselves are checked against `fn-th-field-encode` by
+`tests/acl2/topic-history-native-vector-tests.lisp`, which passed on persvati
+in [`certify-20260924T022329Z-3173943.json`](manifests/certify-20260924T022329Z-3173943.json).

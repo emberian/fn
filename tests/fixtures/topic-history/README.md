@@ -5,7 +5,9 @@ ML-DSA-65 pair. The Ed25519 test pair and principal are constants in
 `tests/test_native_topic_local.py`; no production key is present.
 
 The two `FN-Topic` field files are exact results of ACL2
-`fn-th-field-encode`, not a Python CBOR/base64 implementation. The root value
+`fn-th-field-encode`, not a Python CBOR/base64 implementation.
+`tests/acl2/topic-history-native-vector-tests.lisp` certifies both expected
+field values against the executable encoder. The root value
 is `(:root [1]×32 [85]×32 KEYSET "fn.test" (([85]×32 KEYSET)))`, where
 `KEYSET` is the 48-octet `fn-th-verified-author-ref` keyset ID
 `666e2f7375626a6563742f7631000101c9a3b20836655e1acfc6f495998f5a34fa8122d10254c74ac89306b04460c478`.
