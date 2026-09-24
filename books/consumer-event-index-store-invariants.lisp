@@ -156,13 +156,18 @@
 (defthm fn-ceis-finish-keeps-index
   (equal (fn-sn-event-index (fn-sn-finish s))
          (fn-sn-event-index s))
+  ; The state constructor and its accessor stay closed: each updater
+  ; unfolds to one `fn-sn-make-v6' call and fn-sn-event-index-of-fn-sn-make-v6
+  ; reads the field.  With both open every arm walked `fn-store-event-nth'
+  ; over the fourteen-field state (14.3 s, 4.1 million frames on
+  ; `fn-store-event-nth'; 0.02 s closed, persvati 2026-09-24).
   :hints (("Goal" :in-theory
            (e/d (fn-sn-finish fn-sn-finish-identity
                   fn-sn-advance-identity-next
                   fn-sn-with-topic fn-sn-with-consumer
-                  fn-sn-update-indexed fn-sn-update-accepted
-                  fn-sn-make-v6 fn-sn-event-index)
-                (fn-sn-completion-enabledp fn-sn-completion-record
+                  fn-sn-update-indexed fn-sn-update-accepted)
+                (fn-sn-make-v6 fn-sn-event-index
+                 fn-sn-completion-enabledp fn-sn-completion-record
                  fn-store-retention-event-p fn-stxe-p fn-stxk-p
                  fn-stxa-p fn-cpe-eventp fn-th-topic-eventp
                  fn-replay-apply-record fn-replay-apply-retention-event
@@ -173,14 +178,19 @@
 (defthm fn-ceis-finish-keeps-records
   (equal (fn-sf-records (fn-sn-files (fn-sn-finish s)))
          (fn-sf-records (fn-sn-files s)))
+  ; Closed as in fn-ceis-finish-keeps-index; the two file-kernel footprint
+  ; lemmas (withdrawn at store-files-traces' export) carry the records
+  ; through the completion (11.1 s open, 0.04 s closed).
   :hints (("Goal" :in-theory
            (e/d (fn-sn-finish fn-sn-finish-identity
                   fn-sn-advance-identity-next
                   fn-sn-with-topic fn-sn-with-consumer
                   fn-sn-update-indexed fn-sn-update-accepted
-                  fn-sn-make-v6 fn-sn-files
-                  fn-sf-core-completion fn-sf-emit-success)
-                (fn-sn-completion-enabledp fn-sn-completion-record
+                  fn-sf-records-of-core-completion
+                  fn-sf-records-of-emit-success)
+                (fn-sn-make-v6 fn-sn-files
+                 fn-sf-core-completion fn-sf-emit-success
+                 fn-sn-completion-enabledp fn-sn-completion-record
                  fn-store-retention-event-p fn-stxe-p fn-stxk-p
                  fn-stxa-p fn-cpe-eventp fn-th-topic-eventp
                  fn-replay-apply-record fn-replay-apply-retention-event

@@ -4,6 +4,13 @@
 (include-book "consumer-store-invariants")
 (include-book "topic-history-prefix-invariants")
 
+; `fn-th-local-admin-eventp' is still enabled where topic-history-store-events
+; exports it, and fn-sti-local-admin-is-topic-event backchains into it on
+; every `fn-th-topic-eventp' literal: it unfolded the anchor/admission shape
+; 3058 times in fn-sti-prepare-identity-preserves-live alone (3.9 s; 1.2 s
+; closed).  No proof here reads it (persvati REPL, 2026-09-24).
+(local (in-theory (disable fn-th-local-admin-eventp)))
+
 (defun fn-sti-completed-prefixp (s)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((n (fn-sn-identity-next s))
@@ -665,7 +672,16 @@
                             fn-sf-statep fn-th-prefix-step
                             fn-th-topic-eventp fn-sn-io fn-sn-file-step
                             fn-sn-update fn-sn-with-event-index
-                            fn-sn-make-v6 fn-cei-put)))))
+                            fn-sn-make-v6 fn-cei-put
+                            ; fn-csi-io-preserves-live, used above, is the
+                            ; consumer fact; re-deriving it through the full
+                            ; relation took 2.7 s (0.9 s closed).
+                            fn-csi-normal-full-relation-implies-live
+                            fn-csi-full-relationp fn-snt-consumerp
+                            fn-csi-live-ready-exact-replay
+                            fn-csi-related-current-history-strict-replay
+                            fn-sn-new-success-requires-actual-matching-durable-node-completion
+                            fn-cp-idp)))))
 
 (defthm fn-sti-finish-preserves-live
   (implies (fn-sti-livep s)
