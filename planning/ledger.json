@@ -613,22 +613,22 @@
     "books": 616,
     "books_in_root_closure": 614,
     "roots": 606,
-    "theorems": 8562,
-    "functions": 6354,
-    "assert_events": 9354,
-    "must_fails": 508,
+    "theorems": 8614,
+    "functions": 6356,
+    "assert_events": 9370,
+    "must_fails": 521,
     "encapsulates": 27,
     "guards": {
       "verified": 2035,
       "declared-off": 379,
       "default-guarded": 3133,
-      "default-unguarded": 807
+      "default-unguarded": 809
     },
-    "suspect_theorems": 77,
+    "suspect_theorems": 78,
     "export_hygiene_warnings": 103,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 41,
-    "include_hygiene_warnings": 547,
+    "include_hygiene_warnings": 548,
     "host_names_warnings": 801,
     "hand_written_record_warnings": 18
   },
@@ -687,7 +687,7 @@
       "book": "books/acceptance-stamp-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 23,
+      "theorems": 24,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -3930,7 +3930,7 @@
       "book": "books/byte-store-record-provenance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 188,
+      "theorems": 225,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3946,10 +3946,12 @@
       "encapsulates": 0,
       "includes": [
         "byte-store-frame",
+        "byte-store-native-correspondence",
         "byte-store-program-invariants",
         "byte-store-relation",
         "frame-trailer",
-        "store-node"
+        "store-node",
+        "store-node-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -4696,7 +4698,7 @@
       "book": "books/consumer-local-control.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 5,
       "functions": 18,
       "guards": {
         "verified": 18,
@@ -4723,7 +4725,7 @@
       "book": "books/consumer-owner-index-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
+      "theorems": 6,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -4739,7 +4741,8 @@
       "encapsulates": 0,
       "includes": [
         "consumer-event-index-store-invariants",
-        "consumer-owner-local"
+        "consumer-owner-local",
+        "store-node-traces"
       ],
       "system_includes": [],
       "suspects": [],
@@ -4776,7 +4779,7 @@
       "book": "books/consumer-poll-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 7,
+      "theorems": 11,
       "functions": 6,
       "guards": {
         "verified": 5,
@@ -4795,7 +4798,9 @@
         "replay"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-col-poll-index-get-non-uint-is-nil-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -10152,9 +10157,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 55,
-      "must_fails": 14,
-      "defconsts": 20,
+      "assert_events": 61,
+      "must_fails": 15,
+      "defconsts": 21,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -12604,16 +12609,16 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 32,
+      "functions": 34,
       "guards": {
         "verified": 0,
         "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 31
+        "default-unguarded": 33
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
-      "must_fails": 44,
+      "assert_events": 40,
+      "must_fails": 54,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
@@ -13353,8 +13358,8 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 31,
-      "must_fails": 4,
+      "assert_events": 34,
+      "must_fails": 5,
       "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
@@ -13380,9 +13385,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 6,
-      "must_fails": 1,
-      "defconsts": 2,
+      "assert_events": 11,
+      "must_fails": 2,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -15806,7 +15811,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
+      "assert_events": 17,
       "must_fails": 0,
       "defconsts": 3,
       "defmacros": 0,
@@ -17331,6 +17336,14 @@
       ]
     },
     {
+      "theorem": "fn-col-poll-index-get-non-uint-is-nil-by-definition",
+      "book": "books/consumer-poll-index.lisp",
+      "line": 113,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-cei-get and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-cpc-uint32p-bridge",
       "book": "books/checkpoint-codec.lisp",
       "line": 1305,
@@ -17480,7 +17493,7 @@
     {
       "theorem": "fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session",
       "book": "books/owner-invariants.lisp",
-      "line": 760,
+      "line": 776,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value"
       ]
@@ -19762,6 +19775,13 @@
         "line": 7,
         "include": "byte-store-frame",
         "included": "books/byte-store-frame.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/byte-store-record-provenance.lisp",
+        "line": 4874,
+        "include": "byte-store-native-correspondence",
+        "included": "books/byte-store-native-correspondence.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -44,13 +44,28 @@ They do not grant exclusive ownership.
 | `status_codec_proof` | Prove the general kind-9 status codec roundtrip with concrete full-antecedent and premise witnesses. |
 | `assurance_review_followup` | Reuse existing event/digest/closure checks to warn about unsupported certified registry claims; no proof farm required. |
 
-Shared qualification: hbox `run-20260924T033100Z-4833`, gate
-`/tank/fn/gates/topic-index-8c61c098-20260924`, w28 ACL2, shared
-`/tank/fn/certcache`, four jobs, plain default/DTN/test roots. Submission reused
-329 of 618 closure books and selected 289 for certification. This is an
-in-flight run, not a PASS. Lanes coordinate scoped two-job runs through the
-existing shared pools; they do not acquire extra process capacity by adding
-agents. Native tests use disposable stores, never `/tank/fn/node`.
+The first shared qualification at `8c61c098` failed; its original manifest
+and finite failure classification are [preserved](evidence/topic-index-8c61-full-gate-red-2026-09-24.md).
+All seven independent causes now have scoped source repairs integrated,
+including the newly exposed K7 dependent proof. Root also landed the BP
+activation/live-selection, consumer relation, status codec and allocator
+packets. The next combined freeze follows generated-ledger/static convergence;
+`native_qualification` owns its one four-job hbox run and shared image pair.
+
+Active follow-on work: `storage_kernel_completion` joins the shared owner
+callback chain; the two BP lanes cooperate on actual foundation progress and
+its N03/N04/N05 contracts; `consumer_contract` prepares real indexed-poll
+measurements; `mini_reply_join` repairs and exercises B3 on the existing
+qualified e160 image; `assurance_review_followup` aggregates current proof-cost
+evidence. Root keeps native qualification distinct from lane certificates.
+The general status codec proof and the earlier idle/replay and K6 cost fixes
+are now integrated; their old open notes below are historical.
+
+Lane runs stay within shared pools, at most two jobs each; combined runs use
+four. Live `.active.json` and per-book logs now identify actual work before
+completion. Native tests use disposable stores, never `/tank/fn/node`.
+
+### Previous cycle checkpoint
 
 Root recovered the two accidental main-checkout operations; see
 [recovery](worktree-recovery-2026-09-24.md). ADVANCE, OVER, allocator frontier
