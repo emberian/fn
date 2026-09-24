@@ -1,0 +1,326 @@
+{
+  "description": "Hand-maintained input to tools/current_view.py, which writes planning/current.md. Per capability a person decides only: the contract sentence, the keystone, bridge and host function names, which image or lab record tested it, its profile, and three prose lines (latest positive result with its record, remaining obstruction, next positive gate). Implemented, proved, qualified and deployed are computed.",
+  "images": {
+    "18c91321": {
+      "source": "18c913213863dfd99e9ac763cccd3b003df12dbb",
+      "qualification": "planning/evidence/qual-18c91321-2026-09-24.md",
+      "closure_manifest": "certify-20260924T210828Z-1892761",
+      "host_sha256": {
+        "host/bp-native-app-host.lisp": "dcd759b0d351e317889c748b419c1505e1570cc808a8b5f68fa5e88b12058482",
+        "host/checkpoint-host.lisp": "7e5c6f7852f45c407e0a4cc4e1de1bf722e0967e7aca824916deafac27b9d7d2",
+        "host/native/bp-service.lisp": "09dfc3155e8498e6ad409f2cde320d512e137f40daf5893a9795698969025ec9",
+        "host/owner-host.lisp": "f8de2831c92bb16367127469050a32436491d57ba09c21bac8a6b064905bebbf"
+      }
+    }
+  },
+  "deployment": {
+    "where": "hbox `/tank/fn/node`",
+    "image": "18c91321",
+    "record": "planning/evidence/node-hbox-18c91321-2026-09-24.md",
+    "profiles": [
+      "default"
+    ],
+    "profile_text": "production default image, store profile scale (4096 transactions), LAN-only, no peers configured, DTN profile not deployed; `fn-47bdb9a4` and `fn-da5fd8cb` kept for rollback"
+  },
+  "superseded": [
+    "planning/evidence/node-hbox-47bdb9a4-2026-09-24.md",
+    "planning/evidence/matrix-47bdb9a4-2026-09-24.md",
+    "planning/evidence/campaign-47bdb9a4-2026-09-24.md",
+    "planning/evidence/native-subsets-47bdb9a4-2026-09-24.md",
+    "planning/evidence/matrix-6c0626c5-2026-09-24.md",
+    "planning/evidence/campaign-6c0626c5-2026-09-24.md",
+    "planning/evidence/native-subsets-6c0626c5-2026-09-24.md",
+    "planning/evidence/native-cut-1a9dd747-2026-09-24.md",
+    "planning/evidence/matrix-1a9dd747-2026-09-24.md",
+    "planning/evidence/campaign-1a9dd747-2026-09-24.md",
+    "planning/evidence/native-subsets-1a9dd747-2026-09-24.md",
+    "planning/evidence/863-native-cut-2026-09-24.md",
+    "planning/evidence/final-cut-8a1b31f9-2026-09-24.md"
+  ],
+  "capabilities": [
+    {
+      "id": "P1",
+      "name": "protected channel",
+      "contract": "A gated command before login is answered 480 and changes nothing, AUTHINFO on a clear connection under `protected_only` is 483, and POST needs the principal's posting flag.",
+      "host": {
+        "function": "fn-scar-ocfg-read-tls-prefix",
+        "file": "host/owner-host.lisp"
+      },
+      "bridge": "fn-scar-auth-step-pinned-is-auth-step-pinned",
+      "keystone": "fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing",
+      "tested": {
+        "image": "18c91321",
+        "profile": "native-operator matrix and native modules, production and developer"
+      },
+      "profile": "default",
+      "latest": "matrix AUTH-GATED-A/B 480 before login, AUTH-LOGIN 281, AUTH-WRONG 481, every TLS/AUTHINFO transit row; auth 4/4, starttls 2/2, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "the 483 clause is not observed in the matrix (its nodes run `[auth] required` over clear loopback, not `protected_only`).",
+      "next": "a matrix row against a `protected_only` node answering AUTHINFO on the clear connection 483."
+    },
+    {
+      "id": "P2",
+      "name": "240 after a consumed completion",
+      "contract": "After the owner consumes an article's completion the POST reply is 240 or uncertain, never a refusal, and each refusal kind stays distinct.",
+      "host": {
+        "function": "fn-ccar-own-finish",
+        "file": "host/owner-host.lisp"
+      },
+      "bridge": "fn-ccar-own-finish-is-own-finish",
+      "keystone": "fn-own-240-follows-consumed-completion",
+      "tested": {
+        "image": "18c91321",
+        "profile": "developer twin for the cuts, production for the kill run"
+      },
+      "profile": "default",
+      "latest": "50/50 cut observations, probe 40/40, served_crash_model 3/3 over 18 cuts, 90 production SIGKILLs with 0 torn, 0 lost 240, 0 reused numbers ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "uncertainty raised as a condition outside the Store word closes without a line; the EIO rows run on the developer image only.",
+      "next": "D25 at the served boundary: signed and unsigned POST, lost reply then retry at a later second, the old record and number kept, a changed source refused distinctly (review, normal posting and retry)."
+    },
+    {
+      "id": "P3",
+      "name": "reading resumes",
+      "contract": "A reader's pinned view answers the same across other connections' posts, and a local number naming an article is never reassigned.",
+      "host": {
+        "function": "fn-scar-ocfg-read-tls-prefix",
+        "file": "host/owner-host.lisp"
+      },
+      "bridge": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
+      "keystone": "fn-own-pinned-view-survives-other-post",
+      "tested": {
+        "image": "18c91321",
+        "profile": "native-operator matrix and native modules"
+      },
+      "profile": "default",
+      "latest": "reader_index 4/4, served_differential 7/7, the matrix reader rows with 0 disagreed ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "the NEWNEWS and stamp migration cases skip for want of a frozen pre-T2 image.",
+      "next": "the web reader's resume path qualified against the deployed image (review, human and agent use)."
+    },
+    {
+      "id": "P4",
+      "name": "one owner decides duplicate versus conflict",
+      "contract": "A resubmission with the same poster bytes (the octets without Path, Xref, Injection-Date, Injection-Info and a node-generated Date) is answered already stored; different poster bytes under the same Message-ID are a conflict.",
+      "host": {
+        "function": "fn-pb-existing-action",
+        "file": "host/owner-host.lisp"
+      },
+      "bridge": "fn-pb-existing-action-refines-the-byte-identity-decision",
+      "keystone": "fn-pb-same-poster-bytes-is-answered-already-stored",
+      "tested": {
+        "record": "planning/evidence/d25-dup-conflict-2026-09-24.md",
+        "source": "9cb82454",
+        "profile": "the matrix postcycle phase against one owner"
+      },
+      "profile": "default",
+      "latest": "a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).",
+      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review §D25) is open.",
+      "next": "the shared qualification of an image carrying D25, with the transit duplicate rows and K1's died-present resubmissions answered duplicate."
+    },
+    {
+      "id": "P5",
+      "name": "a connection-local fault costs one connection",
+      "contract": "A connection-local fault closes that connection and keeps every other, and an open at `max-conns` answers nothing and leaves the owner unchanged; a fault in a shared owner action fail-stops.",
+      "host": {
+        "function": "fn-ocfg-fault",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-ocfg-fault-keeps-every-other-connection",
+      "tested": {
+        "image": "18c91321",
+        "profile": "native modules, image's own tests"
+      },
+      "profile": "default",
+      "latest": "owner 18/18 (local fault, disconnect, reset), control 14/14 with the busy ceiling, POST-CONCURRENT accepted ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "the property's sentence still says any fault; the review restates it as connection-local containment with fail-stop of uncertain shared authority, not yet in the plan.",
+      "next": "the restated P5 in the plan and scoreboard, with a native case showing a shared-action fault exits 4 and leaves no half state."
+    },
+    {
+      "id": "P6",
+      "name": "live reconfiguration",
+      "contract": "No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.",
+      "host": {
+        "function": "fn-ocl-publish",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-ocl-no-reader-observes-a-half-change",
+      "tested": {
+        "image": "18c91321",
+        "profile": "native-operator matrix and native modules"
+      },
+      "profile": "default",
+      "latest": "CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "none named for the half-change property; the node's own reconfiguration is operator-driven and not exercised on the deployed store.",
+      "next": "a live group creation on the deployed node through the operator verb, recorded against its generation."
+    },
+    {
+      "id": "P7",
+      "name": "two nodes exchange both ways",
+      "contract": "An accepted article is offered to every configured peer except the one it came from and those its Path names, and a relayed article keeps the received Path tail.",
+      "host": {
+        "function": "fn-own-submission-intent-records",
+        "file": "host/owner-host.lisp"
+      },
+      "bridge": "fn-own-submission-targets-are-feed-targets",
+      "keystone": "fn-own-submission-never-targets-a-loop",
+      "tested": {
+        "image": "18c91321",
+        "profile": "two-node native-operator matrix with INN"
+      },
+      "profile": "default",
+      "latest": "all 22 TRANSIT-*-AB/BA rows and INN 33/33; peering 5/5 with the Path-identity transit, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "D23 relay carriage over NNTP is proved and its three-node native chain is written but not run ([d23-nntp-relay](evidence/d23-nntp-relay-2026-09-24.md)); the deployed node has no peers.",
+      "next": "the three-node D23 chain on a shared image: an unenrolled relay listing the author stores and relays with a `carried` verdict, an unlisted author 439."
+    },
+    {
+      "id": "P8",
+      "name": "signature verdict visible",
+      "contract": "A reader's `HDR :fn-verified` reports the verdict the completion recorded for the article, and a carried article reads `carried`, never `verified`.",
+      "host": {
+        "function": "fn-scar-ocfg-read-tls-prefix",
+        "file": "host/owner-host.lisp"
+      },
+      "bridge": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
+      "keystone": "fn-own-read-hdr-fn-verified-is-the-pinned-verdict",
+      "tested": {
+        "image": "18c91321",
+        "profile": "native modules, developer and production"
+      },
+      "profile": "default",
+      "latest": "hybrid_author 6/6 including a signed POST over NNTP getting the transit classification; consumer_e2 signed poll 1/1 with a dated source ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "the published completion record is not proved to be the event ACL2 built; library trust is not a named assumption; `fn_verify.py` is not on the image; consumer_e2 fails with an undated source.",
+      "next": "a signed article posted to the deployed node read back `verified` by `tools/fn_verify.py` from another machine."
+    },
+    {
+      "id": "P9",
+      "name": "keep until release, refuse the unaffordable",
+      "contract": "An article prepare at the store profile's transaction budget is refused `unaffordable` by name, and below it is exactly the owner's prepare.",
+      "host": {
+        "function": "fn-pcar-sbud-prepare",
+        "file": "host/owner-host.lisp"
+      },
+      "bridge": "fn-pcar-sbud-prepare-is-sbud-prepare",
+      "keystone": "fn-sbud-prepare-refuses-at-budget",
+      "tested": {
+        "image": "18c91321",
+        "profile": "native-operator matrix, operator verbs, kill run"
+      },
+      "profile": "default",
+      "latest": "CAP-REFUSE-A/B refused, CAP-SET accepted; operator_verbs budget cases, bp_obligation 4/4, app_journal 10/10 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "compaction does not relieve the transaction budget (it counts committed records); admission headroom beyond it needs D13 history pruning.",
+      "next": "the deployed node's `operator status` headroom recorded after its scale upgrade, and a refusal observed at a development-profile budget on a copy of its store."
+    },
+    {
+      "id": "P10",
+      "name": "every cut is a model crash point",
+      "contract": "Every recovery cut coordinate, from every crash image of a related state, reopens to a kernel related to the recovered model state.",
+      "host": {
+        "function": "fn-cpo-open-observed",
+        "file": "host/owner-host.lisp"
+      },
+      "bridge": "fn-bs-host-reopened-kernel-is-the-recovered-kernel",
+      "keystone": "fn-bs-recover-program-keeps-relation-at-every-cut",
+      "tested": {
+        "image": "18c91321",
+        "profile": "developer twin for the cuts, production refuses selectors"
+      },
+      "profile": "default",
+      "latest": "all 25 cuts pass through both entries; production refuses 30/30 selector starts with exit 5; checkpoint 23/23, recovery 13/13 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "no general per-step K0; in-process recovery (admin re-running `fnn-recover`) has no entry theorem; 6 checkpoint cuts and about 12 BP/TCPCL/owner kill points lack an `fn-bs-*` coordinate; process death on ZFS only.",
+      "next": "`fn-bs-program-step-preserves-relation`, the general per-step K0, certified."
+    },
+    {
+      "id": "P11",
+      "name": "bundles across an outage",
+      "contract": "After a contact is lost the node re-offers the same held bundle within the retry budget and then holds it stranded, never releasing it without a receipt.",
+      "host": {
+        "function": "fn-bpnp-step",
+        "file": "host/native/bp-service.lisp"
+      },
+      "keystone": "fn-bpnp-step-session-offer-is-the-scan-choice",
+      "tested": {
+        "image": "18c91321",
+        "profile": "DTN developer image, bp_node and bp_app modules"
+      },
+      "profile": "dtn",
+      "latest": "bp_node 17/17 with N08 on both developer images, bp_app 5/5, contact_relay 1/1 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "the no-release and lifecycle keystones are over `fn-bpn-step` with a state-only bridge; `bp-node serve` forwarding still expects the application peer as its TCPCL neighbour; the retry budget is not yet persisted across restarts (review, retry budget).",
+      "next": "a real-BPA contact loss and recovery ending in the receiver's own acceptance, a returned receipt and the exact pin released (review, relayed application workflow)."
+    },
+    {
+      "id": "M4",
+      "name": "disconnected exchange",
+      "contract": "A request carried by a relay listed on the receiver's boundary is judged as its author's own direct request; an unlisted carrier is refused.",
+      "host": {
+        "function": "fn-bpah-request-trustedp",
+        "file": "host/bp-native-app-host.lisp"
+      },
+      "keystone": "fn-bpaj-carried-request-is-judged-as-the-authors-direct-request",
+      "tested": {
+        "record": "planning/evidence/d23-bp-carrier-2026-09-24.md",
+        "source": "dc27d36d",
+        "profile": "DTN developer image through dtn7-rs 0.21.0, one and two relays"
+      },
+      "profile": "dtn",
+      "latest": "request accepted under the author's enrollment, receipt authored by B and carried back, A's obligation `receipted pinned=no` ([d23-bp-carrier](evidence/d23-bp-carrier-2026-09-24.md)).",
+      "obstruction": "native request authoring from the workflow and `bp-node serve` forwarding through a BPA are open; an anonymous ingress reports `reason=generation`; the images were scratch, not a shared cut.",
+      "next": "the same lab on a frozen shared DTN image, with native request authoring and the direct and unauthorized-carrier controls."
+    },
+    {
+      "id": "M5",
+      "name": "maintenance: operator compaction",
+      "contract": "`operator CONFIG store compact` is decided in ACL2: the pack it writes fits the profile's temporary-space budget, and a reclaim keeps the reconstructed history.",
+      "host": {
+        "function": "fn-cverb-decide",
+        "file": "host/checkpoint-host.lisp"
+      },
+      "keystone": "fn-cverb-pack-fits-the-profile-budget",
+      "tested": {
+        "record": "planning/evidence/m5-compact-verb-2026-09-24.md",
+        "source": "5181e0ea",
+        "profile": "developer image, checkpoint cuts through both entries"
+      },
+      "profile": "default",
+      "latest": "10 of 10 checkpoint cuts pass through both entries on the developer image ([m5-compact-verb](evidence/m5-compact-verb-2026-09-24.md)).",
+      "obstruction": "a lost newest transaction file is not detectable at open (a post-commit witness is ember's decision); the pack unit caps compaction at 4 MiB of history; covered files are checked at open, not proved.",
+      "next": "the deployed store compacted offline by the procedure in the record, with headroom stated before and after and which bound it does not relieve."
+    },
+    {
+      "id": "M6",
+      "name": "the human client",
+      "contract": "LIST COUNTS answers each group's high, low and count from the connection's pinned view, and a numbered Message-ID lookup retrieves the same article, which the web reader renders.",
+      "host": {
+        "function": "fn-scar-ocfg-read-tls-prefix",
+        "file": "host/owner-host.lisp"
+      },
+      "bridge": "fn-own-read-is-served-step-on-pinned-prefix",
+      "keystone": "fn-served-step-list-counts-is-the-archive-counts",
+      "tested": {
+        "record": "planning/evidence/m6-list-counts-2026-09-24.md",
+        "source": "lane/m6-list-counts",
+        "profile": "developer image of the lane branch"
+      },
+      "profile": "default",
+      "latest": "reader_index 5/5 with LIST COUNTS and the numbered lookup; `test_fn_web_native` 4/4 ([m6-list-counts](evidence/m6-list-counts-2026-09-24.md)).",
+      "obstruction": "never run against the deployed node or with real credentials; no `verified` badge observed on an image (the client does not sign).",
+      "next": "ember, yue and tulip reading and posting through `tools/fn_web.py` against the deployed node on the current image."
+    },
+    {
+      "id": "T17",
+      "name": "the Message-ID index on the served path",
+      "contract": "A reader's Message-ID retrieval is answered from the connection's pinned trie and equals the archive scan, with no whole-store check per command.",
+      "host": {
+        "function": "fn-scar-ocfg-read-tls-prefix",
+        "file": "host/owner-host.lisp"
+      },
+      "bridge": "fn-ocfg-read-tls-prefix-is-full-read",
+      "keystone": "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan",
+      "tested": {
+        "image": "18c91321",
+        "profile": "native reader and peering modules"
+      },
+      "profile": "default",
+      "latest": "reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
+      "obstruction": "the per-event `fn-peer-sessionp` evaluation, not the history scan, is the served cost at the N the CLI reaches (ember's decision); the fast path's reuse after refresh is not a theorem.",
+      "next": "the measured cost sentence for the indexed read and the IHAVE/CHECK path at the scale profile, with its exponent and distance from the bound."
+    }
+  ]
+}
