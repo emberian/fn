@@ -7,6 +7,7 @@
 ; obligation log.
 (in-package "ACL2")
 (include-book "records-seam")
+(include-book "statement-seam")
 (include-book "stx-accept-records")
 (include-book "consumer-store-events")
 (include-book "topic-history-store-events")
