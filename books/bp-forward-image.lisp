@@ -2,7 +2,7 @@
 ; Canonical block replacement happens in ACL2 at the attempt observation;
 ; native TCPCL receives only the resulting octets after kind 8 is durable.
 (in-package "ACL2")
-(include-book "bp-node-progress")
+(include-book "bp-node-fragment-replacement")
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnp-forward-anchor (h)
@@ -68,7 +68,7 @@
     (if (not (and (fn-bpb-bundlep bundle)
                   (fn-bpp-previous-nodep node)
                   (fn-clock-observationp observation)
-                  (equal (fn-bpnp-held-expiry h observation) :live)))
+                  (equal (fn-bpah-held-expiry h observation) :live)))
         (list :fault :forward-eligibility)
       (let ((blocks
              (fn-bpnp-forward-blocks
