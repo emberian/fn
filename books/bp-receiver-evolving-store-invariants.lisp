@@ -4,8 +4,9 @@
 ; (tools/run_bp_receive.py), whose state is the replay of its journal.
 ;
 ; Restated 2026-09-23 (PRF-007): the reopen theorems carry
-; `(fn-sn-observed-identity-okp records)', the kernel's own reopen hypothesis
-; since 4857c648 (see fn-bprv-observed-reopen-facts below).
+; The observed Store opener now also requires the independent topic-prefix
+; replay.  Consumer replay follows from the full consumer relation and the
+; crash image; topic replay has no such receiver-owned implication.
 (in-package "ACL2")
 (include-book "bp-receiver-evolving-node-invariants")
 (include-book "store-observed")
@@ -409,7 +410,8 @@
 (defthm fn-bprv-observed-reopen-facts
   (implies (and (fn-csi-full-relationp s)
                 (fn-sf-crash-imagep (fn-sn-files s) frontier records)
-                (fn-sn-observed-identity-okp records))
+                (fn-sn-observed-identity-okp records)
+                (fn-sn-observed-topic-okp records))
            (let ((opened (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
                                               frontier records)))
              (and (fn-sn-open-okp opened)
@@ -438,13 +440,16 @@
                             fn-sn-open-observed-succeeds-on-recoverable-image
                             fn-sn-open-observed-success-has-live-history-relation
                             fn-sn-open-observed-success-exact-history
-                            fn-sf-statep fn-sf-record-listp fn-sf-records)))))
+                            fn-sf-statep fn-sf-record-listp fn-sf-records
+                            fn-sn-observed-identity-okp
+                            fn-sn-observed-topic-okp)))))
 
 (defthm fn-bprv-evolving-invariant-survives-observed-reopen
   (implies (and (fn-bprv-system-invariantp store st journal)
                 (fn-csi-full-relationp store)
                 (fn-sf-crash-imagep (fn-sn-files store) frontier records)
-                (fn-sn-observed-identity-okp records))
+                (fn-sn-observed-identity-okp records)
+                (fn-sn-observed-topic-okp records))
            (let ((opened (fn-sn-open-observed (fn-sn-groups store) (fn-sn-capacity store)
                                               frontier records)))
              (and (fn-sn-open-okp opened)
@@ -670,6 +675,7 @@
                   (equal (fn-bprr-replay (car live) (caddr live)) (list t (cadr live)))
                   (fn-sf-crash-imagep (fn-sn-files (car final)) frontier records)
                   (fn-sn-observed-identity-okp records)
+                  (fn-sn-observed-topic-okp records)
                   (equal (fn-bprv-phase probe) :ready))
              (and (fn-sn-open-okp opened)
                   (equal (cadr installed) (cadr final))
