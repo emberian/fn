@@ -92,3 +92,46 @@
       (not (fn-bpnf-issued *bpfx-s2*))
       (equal (fn-bpnd-held-debt *bpfx-old-held* *bpfx-local*) 2)
       (equal (fn-bpnd-held-debt *bpfx-new-held* *bpfx-local*) 2)))
+
+; Both received rows become forward-pending only after their own durable
+; kind-6 finals.  This trace enters the same outer step called by bp-service.
+(defconst *bpfx-routes* (list (list *bpfx-dest* *bpfx-dest*)))
+(defconst *bpfx-progress-event*
+  (list :progress *bpfx-local* *bpfx-observation* *bpfx-routes* 1))
+(make-event
+ `(defconst *bpfx-old-dispatch*
+    ',(fn-bpnp-step *bpfx-s2* *bpfx-progress-event*)))
+(defconst *bpfx-old-dispatch-effect*
+  (car (fn-bpnf-answer-effects *bpfx-old-dispatch*)))
+(defconst *bpfx-s3-answer*
+  (fn-bpnp-step
+   (fn-bpnf-answer-state *bpfx-old-dispatch*)
+   (list :persist-result (fn-bpn-nth 1 *bpfx-old-dispatch-effect*)
+         (fn-bpn-nth 2 *bpfx-old-dispatch-effect*) :durable)))
+(defconst *bpfx-s3* (fn-bpnf-answer-state *bpfx-s3-answer*))
+(make-event
+ `(defconst *bpfx-new-dispatch*
+    ',(fn-bpnp-step *bpfx-s3* *bpfx-progress-event*)))
+(defconst *bpfx-new-dispatch-effect*
+  (car (fn-bpnf-answer-effects *bpfx-new-dispatch*)))
+(defconst *bpfx-s4-answer*
+  (fn-bpnp-step
+   (fn-bpnf-answer-state *bpfx-new-dispatch*)
+   (list :persist-result (fn-bpn-nth 1 *bpfx-new-dispatch-effect*)
+         (fn-bpn-nth 2 *bpfx-new-dispatch-effect*) :durable)))
+(defconst *bpfx-s4* (fn-bpnf-answer-state *bpfx-s4-answer*))
+
+(assert-event
+ (and (fn-bpnp-host-eventp *bpfx-progress-event*)
+      (equal (car *bpfx-old-dispatch-effect*) :persist-dispatch)
+      (equal (fn-bpn-nth 3 (fn-bpn-nth 3 *bpfx-old-dispatch-effect*)) 0)
+      (equal (car (car (fn-bpnf-answer-effects *bpfx-s3-answer*)))
+             :dispatch-ready)
+      (equal (car *bpfx-new-dispatch-effect*) :persist-dispatch)
+      (equal (fn-bpn-nth 3 (fn-bpn-nth 3 *bpfx-new-dispatch-effect*)) 1)
+      (equal (car (car (fn-bpnf-answer-effects *bpfx-s4-answer*)))
+             :dispatch-ready)
+      (equal (fn-bpnp-used *bpfx-s4*) 4)
+      (equal (fn-bpnp-debt *bpfx-s4*) 4)
+      (equal (fn-bpnp-debt *bpfx-s4*)
+             (fn-bpnd-debt *bpfx-s4* *bpfx-local*))))
