@@ -1,0 +1,280 @@
+; Teeth for books/owner-signed-post (P8 / PRF-026, the signed served POST).
+;
+; The witness is the host's own sequence over the owner: a connection POSTs
+; an FN-Authorship carrier through fn-own-read, the writer takes it, ACL2
+; plans over the staged (injected) octets and this Store's enrollment,
+; fn-pa-authorized-event builds the kind-4 event, the Store prepares and
+; publishes it, (:complete) finishes, fn-own-outcome answers 240, and a reader
+; opened afterwards is answered HDR :fn-verified from its pin.  The
+; primitive observations are :verified here; the signatures are fixtures.
+(in-package "ACL2")
+(include-book "../../books/owner-signed-post")
+(include-book "peer-authored-accept-tests")
+(include-book "store-identity-traces-tests")
+(include-book "std/testing/must-fail" :dir :system)
+
+(defconst *ospt-groups* '("fn.test"))
+(defconst *ospt-msgid* "<topic-binding@example.invalid>")
+(defconst *ospt-agent*
+  '(102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100))
+(defconst *ospt-config*
+  (fn-inj-make-config t *ospt-agent* (list (fn-nntp-string-octets "fn.test"))
+                      32768))
+(defconst *ospt-obs* (fn-clock-observation 2000000 1600000010000 500 t))
+(defconst *ospt-post-command* (append (fn-nntp-string-octets "POST") '(13 10)))
+
+; The Store after this node enrolled the author (keyring generation 1).
+(make-event `(defconst *ospt-enrollment*
+               ',(fn-hsig-keyring-event 0 0 0 1 *tha-principal* *tha-keys*)))
+(make-event `(defconst *ospt-enrolled*
+               ',(fn-sit-commit-identity (fn-sn-initial *ospt-groups* 32)
+                                         *ospt-enrollment*)))
+(assert-event (equal (fn-sn-keyring-snapshots *ospt-enrolled*)
+                     (list *ospt-enrollment*)))
+
+; Reader A (connection 0) before the post; the poster is connection 1.
+(make-event
+ `(defconst *ospt-open*
+    ',(let* ((o (fn-own-run (fn-own-start *ospt-enrolled* 4)
+                            (list (list :configure *ospt-config*)
+                                  (list :observe *ospt-obs*))))
+             (o (cdr (fn-own-open o nil))))
+        (cdr (fn-own-open o nil)))))
+(defconst *ospt-poster* 1)
+(defun ospt-submit (o octets)
+  (let* ((offered (cdr (fn-own-read o *ospt-poster* *ospt-post-command*))))
+    (cdr (fn-own-read offered *ospt-poster* (append octets '(46 13 10))))))
+(make-event
+ `(defconst *ospt-taken*
+    ',(fn-own-step (ospt-submit *ospt-open* *tha-received*) '(:take))))
+(assert-event (equal (fn-own-sub-id (fn-own-inflight *ospt-taken*)) *ospt-poster*))
+
+; The octets the host attempts are the staged injected ones; the carrier
+; survives injection and the plan selects this Store's enrollment.
+(defconst *ospt-staged* (fn-inj-decision-octets
+                         (fn-own-sub-decision (fn-own-inflight *ospt-taken*))))
+(assert-event (not (equal *ospt-staged* *tha-received*)))
+(defconst *ospt-snapshots* (fn-sn-keyring-snapshots (fn-own-store *ospt-taken*)))
+(assert-event
+ (equal (fn-pa-current-plan *ospt-staged* *ospt-snapshots*)
+        (list :ok *tha-root-source* *tha-principal* *tha-keys*
+              *tha-signatures* *ospt-enrollment* 1)))
+
+(defun ospt-event (received snapshots)
+  (let ((coordinates
+         (let ((s (fn-own-store *ospt-taken*)))
+           (list (fn-sn-identity-next s)
+                 (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))))
+    (fn-pa-authorized-event
+     (first coordinates) (second coordinates) (second coordinates)
+     *ospt-msgid* received *ospt-groups*
+     (fn-record-octets-string
+      (fn-id-text (fn-id-obligation-of (fn-record-string-octets *ospt-msgid*)
+                                       (fn-id-subject-of-payload received))))
+     (fn-record-octets-string (fn-id-text (fn-id-subject-of-payload received)))
+     "served-post-evidence" (fn-charge-for-payload (len received))
+     snapshots *tha-ml-key* :verified :verified *ospt-obs*)))
+(make-event `(defconst *ospt-event* ',(ospt-event *ospt-staged* *ospt-snapshots*)))
+(assert-event (fn-stxa-p *ospt-event*))
+(defun ospt-store-events (event)
+  (list '(:store (:io :start-frontier nil))
+        '(:store (:io :frontier-file :ok))
+        '(:store (:io :frontier-replace :ok))
+        '(:store (:io :frontier-directory :ok))
+        (list :store (list :prepare-identity event))
+        '(:store (:io :record-file :ok))
+        '(:store (:io :record-link :ok))
+        '(:store (:io :record-directory :ok))))
+(make-event
+ `(defconst *ospt-completing*
+    ',(fn-own-run *ospt-taken* (ospt-store-events *ospt-event*))))
+(make-event
+ `(defconst *ospt-finished* ',(fn-own-step *ospt-completing* '(:complete))))
+
+; ---------------------------------------------------------------------------
+; fn-osp-signed-post-finish-records-its-verdict: reachable witness.
+(defun ospt-finish-conclusion (o received snapshots)
+  (let* ((e (ospt-event received snapshots))
+         (v (fn-hls-kind4-verdict-event e)))
+    (equal (fn-sn-verdict-lookup (fn-own-store (fn-own-step o '(:complete)))
+                                 *ospt-msgid*)
+           (fn-stx-make-verdict (fn-stxe-token v) (fn-stxe-detail v)
+                                (nth 6 (fn-pa-current-plan received snapshots))))))
+(assert-event (fn-sn-completion-enabledp (fn-own-store *ospt-completing*)))
+(assert-event (equal (fn-sn-completion-record (fn-own-store *ospt-completing*))
+                     *ospt-event*))
+(assert-event (null (fn-sn-verdict-lookup (fn-own-store *ospt-completing*)
+                                          *ospt-msgid*)))
+(assert-event (ospt-finish-conclusion *ospt-completing* *ospt-staged*
+                                      *ospt-snapshots*))
+; The recorded token on this trace is :verified, bound to the principal.
+(assert-event (equal (fn-stxe-token (fn-hls-kind4-verdict-event *ospt-event*))
+                     :verified))
+(assert-event (equal (fn-stxe-detail (fn-hls-kind4-verdict-event *ospt-event*))
+                     *tha-principal*))
+
+; Without the event (no enrollment selected: the plan refuses and
+; fn-pa-authorized-event is nil).  The completion record is then not that
+; nil event either; an enabled completion always has a record, so this
+; hypothesis cannot fail alone.
+(assert-event (null (ospt-event *ospt-staged* nil)))
+(must-fail (assert-event (ospt-finish-conclusion *ospt-completing*
+                                                 *ospt-staged* nil)))
+; Without completion-record = event: another authorized event (the same
+; carrier under a generation-2 enrollment) is not the record completing.
+(make-event `(defconst *ospt-g2*
+               ',(list (fn-hsig-keyring-event 0 0 0 2 *tha-principal* *tha-keys*))))
+(assert-event (ospt-event *ospt-staged* *ospt-g2*))
+(assert-event (not (equal (ospt-event *ospt-staged* *ospt-g2*) *ospt-event*)))
+(must-fail (assert-event (ospt-finish-conclusion *ospt-completing*
+                                                 *ospt-staged* *ospt-g2*)))
+; Without fn-sn-completion-enabledp: the same completion record with the
+; identity sequence one ahead; the gate is closed and nothing is recorded.
+(defun ospt-with-store (o s)
+  (fn-own-make s (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
+(make-event
+ `(defconst *ospt-off*
+    ',(ospt-with-store *ospt-completing*
+                       (fn-sn-advance-identity-next
+                        (fn-own-store *ospt-completing*)))))
+(assert-event (not (fn-sn-completion-enabledp (fn-own-store *ospt-off*))))
+(assert-event (equal (fn-sn-completion-record (fn-own-store *ospt-off*))
+                     *ospt-event*))
+(must-fail (assert-event (ospt-finish-conclusion *ospt-off* *ospt-staged*
+                                                 *ospt-snapshots*)))
+
+; ---------------------------------------------------------------------------
+; The served outcome: 240 after the finish (fn-osp-finished-post-outcome-is-
+; durable), and a reader opened afterwards answers HDR :fn-verified with the
+; recorded verdict (fn-osp-reader-after-signed-post-reports-its-verdict,
+; then fn-own-read, the host-called fold).
+(assert-event (equal (fn-own-outcome-completion *ospt-finished* :durable)
+                     :durable))
+(defconst *ospt-240* (fn-own-outcome *ospt-finished* *ospt-poster* :durable))
+(assert-event (equal (fn-served-reply-octets (car *ospt-240*))
+                     (append (fn-nntp-string-octets "240 article received OK")
+                             '(13 10))))
+(defun ospt-reader-verdict (o)
+  (let* ((o2 (cdr (fn-own-open (fn-own-step o '(:complete)) nil)))
+         (conn (fn-own-find-conn (fn-own-next-id o) (fn-own-conns o2))))
+    (and conn
+         (fn-stx-reader-verdict *ospt-msgid* (fn-own-conn-verdicts conn)))))
+(assert-event
+ (equal (ospt-reader-verdict *ospt-completing*)
+        (fn-stx-reader-item
+         (fn-stx-make-verdict :verified *tha-principal* 1))))
+(make-event
+ `(defconst *ospt-reader-b* ',(cdr (fn-own-open (cdr *ospt-240*) nil))))
+(defconst *ospt-hdr*
+  (append (fn-nntp-string-octets
+           "HDR :fn-verified <topic-binding@example.invalid>") '(13 10)))
+(defconst *ospt-read-b*
+  (fn-own-read *ospt-reader-b* (fn-own-next-id (cdr *ospt-240*)) *ospt-hdr*))
+(assert-event
+ (equal (fn-served-reply-octets (car *ospt-read-b*))
+        (append (fn-nntp-string-octets "225 headers follow")
+                '(13 10 48 32)
+                (fn-nntp-string-octets "verified ")
+                (fn-stx-hex-octets *tha-principal*)
+                (fn-nntp-string-octets " keyring 1")
+                '(13 10 46 13 10))))
+; Reader A, open before the post, keeps its pin and has no verdict.
+(assert-event
+ (not (equal (ospt-reader-verdict *ospt-completing*)
+             (fn-stx-reader-verdict
+              *ospt-msgid*
+              (fn-own-conn-verdicts
+               (fn-own-find-conn 0 (fn-own-conns *ospt-finished*)))))))
+; Without the connection bound: at max-conns the reader is not opened.
+(make-event
+ `(defconst *ospt-full*
+    ',(fn-own-make (fn-own-store *ospt-completing*) (fn-own-view *ospt-completing*)
+                   (fn-own-conns *ospt-completing*) (fn-own-next-id *ospt-completing*)
+                   (len (fn-own-conns *ospt-completing*))
+                   (fn-own-pending *ospt-completing*) (fn-own-ledger *ospt-completing*)
+                   (fn-own-clock *ospt-completing*) (fn-own-facts *ospt-completing*)
+                   (fn-own-config *ospt-completing*) (fn-own-queue *ospt-completing*)
+                   (fn-own-inflight *ospt-completing*) (fn-own-feeds *ospt-completing*))))
+(must-fail (assert-event (ospt-reader-verdict *ospt-full*)))
+; The other three hypotheses of the reader theorem are the finish theorem's:
+; with the gate closed the reader's pin has no verdict for the Message-ID.
+(must-fail
+ (assert-event (equal (ospt-reader-verdict *ospt-off*)
+                      (fn-stx-reader-item
+                       (fn-stx-make-verdict :verified *tha-principal* 1)))))
+
+; ---------------------------------------------------------------------------
+; The refused arm.  fn-osp-plan-refusal-is-a-served-reason and
+; fn-osp-served-refusal-renders-its-reason, on a POST in flight.
+(assert-event (equal (fn-pa-current-plan *ospt-staged* nil)
+                     '(:refused :local-enrollment)))
+(defconst *ospt-malformed*
+  (append (tha-line "FN-Authorship: !!!") *tha-root-source*))
+(assert-event (equal (fn-pa-current-plan *ospt-malformed* *ospt-snapshots*)
+                     '(:refused :carrier)))
+(assert-event (not (equal (fn-pa-carrier-form *ospt-malformed*) :absent)))
+; Without the refused plan, the plan's second element is not a reason.
+(must-fail
+ (assert-event
+  (member-equal (cadr (fn-pa-current-plan *ospt-staged* *ospt-snapshots*))
+                '(:article :carrier :carrier-shape :local-enrollment))))
+; An absent carrier is the unsigned arm with its word unchanged.
+(assert-event (equal (fn-pa-current-plan *tha-root-source* *ospt-snapshots*)
+                     :absent))
+(assert-event (equal (fn-pa-served-word :durable nil) :durable))
+(assert-event (equal (fn-pa-served-word :refused nil) :refused))
+
+(defun ospt-refusal-conclusion (o id detail)
+  (let* ((word (fn-pa-served-word :refused detail))
+         (conn (fn-own-find-conn id (fn-own-conns o)))
+         (r (fn-own-outcome o id word)))
+    (and (equal word detail)
+         (equal (car r)
+                (fn-post-result-effects
+                 (fn-nntp-post-outcome
+                  (fn-auth-post-session (fn-own-conn-session conn)) detail)))
+         (equal (fn-own-ledger (cdr r)) (fn-own-ledger o)))))
+(assert-event (ospt-refusal-conclusion *ospt-taken* *ospt-poster*
+                                       :local-enrollment))
+(assert-event
+ (equal (fn-served-reply-octets
+         (car (fn-own-outcome *ospt-taken* *ospt-poster*
+                              (fn-pa-served-word :refused :local-enrollment))))
+        (append (fn-nntp-string-octets
+                 "441 posting failed; the signer has no current enrollment here (local-enrollment)")
+                '(13 10))))
+(assert-event
+ (equal (fn-served-reply-octets
+         (car (fn-own-outcome *ospt-taken* *ospt-poster*
+                              (fn-pa-served-word :refused :signature))))
+        (append (fn-nntp-string-octets
+                 "441 posting failed; the author signature does not verify")
+                '(13 10))))
+; Without the reason in the relayed set: a Store word is not relayed.
+(must-fail (assert-event (ospt-refusal-conclusion *ospt-taken* *ospt-poster*
+                                                  :duplicate)))
+; Without a completion unconsumed: after the kind-4 finish the word is
+; :uncertain, never a refusal line.
+(must-fail (assert-event (ospt-refusal-conclusion *ospt-finished* *ospt-poster*
+                                                  :signature)))
+; Without the in-flight submission being this connection's: reader A.
+(must-fail (assert-event (ospt-refusal-conclusion *ospt-taken* 0 :signature)))
+; Without an in-flight submission: the queued POST before the take.
+(must-fail (assert-event (ospt-refusal-conclusion
+                          (ospt-submit *ospt-open* *tha-received*)
+                          *ospt-poster* :signature)))
+; Without the connection: the in-flight submission's connection is gone.
+(must-fail
+ (assert-event
+  (ospt-refusal-conclusion
+   (fn-own-make (fn-own-store *ospt-taken*) (fn-own-view *ospt-taken*)
+                (fn-own-remove-conn *ospt-poster* (fn-own-conns *ospt-taken*))
+                (fn-own-next-id *ospt-taken*) (fn-own-max-conns *ospt-taken*)
+                (fn-own-pending *ospt-taken*) (fn-own-ledger *ospt-taken*)
+                (fn-own-clock *ospt-taken*) (fn-own-facts *ospt-taken*)
+                (fn-own-config *ospt-taken*) (fn-own-queue *ospt-taken*)
+                (fn-own-inflight *ospt-taken*) (fn-own-feeds *ospt-taken*))
+   *ospt-poster* :signature)))
