@@ -6,9 +6,15 @@
 
 (set-verify-guards-eagerness 0)
 
+; Every received final name, whatever its FNBS record kind, consumes one
+; slot in this one physical namespace.  Replay and debt admission share this
+; bound; neither operation ids nor held-row count measure occupancy.
+(defconst *fn-bpnf-received-max-records*
+  (* 2 *fn-bpn-machine-max-records*))
+
 (defun fn-bpnf-namespace-max-entries ()
   (declare (xargs :guard t))
-  (+ (* 3 *fn-bpn-machine-max-records*)
+  (+ *fn-bpn-machine-max-records* *fn-bpnf-received-max-records*
      *fn-bpn-lifecycle-max-hidden-stages*))
 
 (defun fn-bpnf-legacy-name-candidatep (name)
@@ -56,7 +62,7 @@
              (cdr names) (cons name legacy) received hidden)
           (list :fault :legacy-record-bound)))
        ((fn-bpnf-kind-five-name-candidatep name)
-        (if (< (len received) (* 2 *fn-bpn-machine-max-records*))
+        (if (< (len received) *fn-bpnf-received-max-records*)
             (fn-bpnf-namespace-plan-aux
              (cdr names) legacy (cons name received) hidden)
           (list :fault :received-record-bound)))
