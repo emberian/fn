@@ -29,7 +29,7 @@ dev.
 5. For every book the branch adds, I checked which of its functions dev's host
    calls through `fnn-core '<name>`, and which dev books call the rest.
 
-Results. Every file the branch adds or changes exists on dev. 58 of the
+Results. Every file the branch adds or changes exists on dev. 53 of the
 non-ledger files are byte-identical at the branch tip and on dev. Where a file
 differs, dev has more lines (for example `bp-fnbs-family-codec` has 1 line
 only on the branch and 86 only on dev; `bp-node-fragment-guards` has 9 and
