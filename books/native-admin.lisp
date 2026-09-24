@@ -274,6 +274,52 @@ decoded as source-address for durable command compatibility."
                                 (fn-record-string-octets name) 0 nil rows))
     (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil)))
 
+;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
+;; RFC requirement): "Groups whose first (or only) <component> is
+;; \"example\"" and "The group \"poster\"" MUST NOT be used as the name of a
+;; newsgroup.  Syntax is `fn-record-group-namep' (books/records-shape.lisp)
+;; and is not repeated here; a store that already carries such a name is
+;; still replayed, served and retired, since the rule governs creation only.
+;; The comparison folds ASCII case (a stronger fn guarantee): s3.1.4 notes
+;; that some systems match names case-insensitively, and s3.2.6 lets agents
+;; recognise "Poster" as the keyword, so "Example.a" and "POSTER" are
+;; refused too.  The five further names s3.1.4 reserves for specific
+;; purposes ("to.*", "control.*", "all", "ctl", "junk") MAY be used for that
+;; purpose or by local agreement and are not refused here.
+(defconst *fn-native-admin-reserved-example* '(101 120 97 109 112 108 101))
+(defconst *fn-native-admin-reserved-poster* '(112 111 115 116 101 114))
+
+(defun fn-native-admin-fold-octets (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (cons (if (and (integerp (car xs)) (<= 65 (car xs)) (<= (car xs) 90))
+                (+ 32 (car xs))
+              (car xs))
+            (fn-native-admin-fold-octets (cdr xs)))
+    nil))
+
+(defun fn-native-admin-group-name-reservedp (text)
+  (declare (xargs :guard t))
+  (let ((xs (fn-native-admin-fold-octets (fn-record-string-octets text))))
+    (or (equal (fn-record-group-first-component xs)
+               *fn-native-admin-reserved-example*)
+        (equal xs *fn-native-admin-reserved-poster*))))
+
+(defun fn-native-admin-some-group-name-reservedp (names)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (or (fn-native-admin-group-name-reservedp (car names))
+          (fn-native-admin-some-group-name-reservedp (cdr names)))
+    nil))
+
+;; The predicate group creation applies: `group create' below, the operator's
+;; `init' (`fn-nop-parse-init', books/native-operator.lisp) and the initial
+;; configuration record (`fn-cfg-host-initial-octets', host/config-host.lisp).
+(defun fn-native-admin-group-name-creatablep (text)
+  (declare (xargs :guard t))
+  (and (fn-record-group-namep text)
+       (not (fn-native-admin-group-name-reservedp text))))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t))
@@ -282,6 +328,11 @@ decoded as source-address for durable command compatibility."
       (fn-native-admin-result :refused :argv nil nil nil nil nil)
     (let ((words (fn-native-admin-words argv)))
       (cond
+       ((and (equal (len words) 3)
+             (equal (car words) "group")
+             (equal (cadr words) "create")
+             (fn-native-admin-group-name-reservedp (caddr words)))
+        (fn-native-admin-result :refused :reserved-group-name nil nil 0 nil nil))
        ((and (equal (len words) 3)
              (equal (car words) "group")
              (equal (cadr words) "create")
@@ -732,3 +783,79 @@ shared immutable publication state before raw Lisp may execute an I/O action."
 
 (defthm fn-native-admin-config-name-refuses-overflow
   (equal (fn-native-admin-config-name *fn-native-admin-config-name-limit*) nil))
+
+; RFC 5536 s3.1.4 reserved names, stated over the octets the operator typed:
+; a creatable name is a valid group name whose case-folded octets are not
+; "example", do not begin "example.", and are not "poster".  The
+; recognizer reads "first (or only) component" through
+; `fn-record-group-first-component'; this equates it with the prefix
+; reading of "example.*".
+(local (defthm fn-native-admin-true-listp-of-fold-octets
+  (true-listp (fn-native-admin-fold-octets xs))))
+
+(local (defthm fn-native-admin-first-component-is-example
+  (implies (true-listp xs)
+           (equal (equal (fn-record-group-first-component xs)
+                         *fn-native-admin-reserved-example*)
+                  (or (equal xs *fn-native-admin-reserved-example*)
+                      (and (<= 8 (len xs))
+                           (equal (take 8 xs)
+                                  (append *fn-native-admin-reserved-example*
+                                          '(46)))))))
+  :hints (("Goal" :expand ((fn-record-group-first-component xs)
+                           (fn-record-group-first-component (cdr xs))
+                           (fn-record-group-first-component (cddr xs))
+                           (fn-record-group-first-component (cdddr xs))
+                           (fn-record-group-first-component (cddddr xs))
+                           (fn-record-group-first-component (cdr (cddddr xs)))
+                           (fn-record-group-first-component (cddr (cddddr xs)))
+                           (fn-record-group-first-component (cdddr (cddddr xs))))))))
+
+(defthm fn-native-admin-group-name-creatablep-is-the-rfc-5536-rule
+  (equal (fn-native-admin-group-name-creatablep text)
+         (and (fn-record-group-namep text)
+              (let ((xs (fn-native-admin-fold-octets
+                         (fn-record-string-octets text))))
+                (not (or (equal xs *fn-native-admin-reserved-example*)
+                         (and (<= 8 (len xs))
+                              (equal (take 8 xs)
+                                     (append *fn-native-admin-reserved-example*
+                                             '(46))))
+                         (equal xs *fn-native-admin-reserved-poster*))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-record-group-namep
+                                      fn-native-admin-fold-octets
+                                      fn-record-string-octets))))
+
+; KEYSTONE (RFC 5536 s3.1.4 reserved names at `group create').  The subject
+; is `fn-native-admin-plan', which host/native-admin-host.lisp:7 calls
+; (`fn-native-admin-host-plan', reached from `fnn-admin-plan' and
+; `fnn-owner-live-admin-serialized', host/native/admin.lisp).  A request to
+; create a reserved name is refused with its named reason and carries no
+; delta, so the live arm (`fn-native-admin-host-owner-reconfigure') stages
+; nothing; both host arms return :refused on a non-accepted plan before any
+; store operation.  `group retire' of such a name stays admitted: a store
+; that already carries one can still remove it.
+(local (defthm fn-native-admin-len-of-words
+  (equal (len (fn-native-admin-words argv)) (len argv))
+  :rule-classes nil))
+
+(defthm fn-native-admin-plan-refuses-a-reserved-group-create
+  (implies (and (fn-native-admin-argvp argv)
+                (equal (fn-native-admin-words argv) (list "group" "create" name))
+                (fn-native-admin-group-name-reservedp name))
+           (let ((plan (fn-native-admin-plan argv)))
+             (and (equal (fn-native-admin-result-status plan) :refused)
+                  (equal (fn-native-admin-result-reason plan)
+                         :reserved-group-name)
+                  (equal (fn-native-admin-plan-deltas plan) nil))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
+                                  (fn-native-admin-group-name-reservedp
+                                   fn-native-admin-words fn-native-admin-argvp
+                                   fn-native-admin-peer-plan
+                                   fn-native-admin-bp-boundary-plan
+                                   fn-record-group-namep fn-path-identityp
+                                   fn-native-admin-decimalp
+                                   fn-native-admin-decimal-value))
+           :use ((:instance fn-native-admin-len-of-words)))))

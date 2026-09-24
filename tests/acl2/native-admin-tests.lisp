@@ -516,3 +516,168 @@
                               "peer.example.invalid" "dtn://peer/" "4556"
                               "fn.*" "0" "16"))))
         :refused))
+
+; -----------------------------------------------------------------------------
+; RFC 5536 s3.1.4 reserved names at `group create'
+; (`fn-native-admin-group-name-reservedp', `fn-native-admin-plan').
+; The first (or only) component "example" and the whole name "poster" are
+; reserved; the comparison folds ASCII case, so "Example.a" and "POSTER" are
+; refused as well.  Every reserved witness is a valid group name, so the
+; refusal is the reservation, not the grammar.
+(defun fn-na-test-reserved-refusedp (names)
+  (if (consp names)
+      (let ((plan (fn-native-admin-plan
+                   (fn-na-test-argv (list "group" "create" (car names))))))
+        (and (fn-record-group-namep (car names))
+             (fn-native-admin-group-name-reservedp (car names))
+             (not (fn-native-admin-group-name-creatablep (car names)))
+             (equal (fn-native-admin-result-status plan) :refused)
+             (equal (fn-native-admin-result-reason plan) :reserved-group-name)
+             (null (fn-native-admin-plan-deltas plan))
+             (fn-na-test-reserved-refusedp (cdr names))))
+    t))
+(defconst *fn-na-reserved-names*
+  '("example" "example.test" "example.a.b" "Example.a" "EXAMPLE.test"
+    "poster" "POSTER" "Poster"))
+(assert-event (fn-na-test-reserved-refusedp *fn-na-reserved-names*))
+
+; Near misses are creatable: the rule is the first component and the whole
+; name, not a substring.
+(defun fn-na-test-creatable-acceptedp (names)
+  (if (consp names)
+      (let ((plan (fn-native-admin-plan
+                   (fn-na-test-argv (list "group" "create" (car names))))))
+        (and (fn-native-admin-group-name-creatablep (car names))
+             (equal (fn-native-admin-result-status plan) :accepted)
+             (equal (fn-native-admin-result-kind plan) :create-group)
+             (consp (fn-native-admin-plan-deltas plan))
+             (fn-na-test-creatable-acceptedp (cdr names))))
+    t))
+(defconst *fn-na-creatable-names*
+  '("fn.example" "examples.test" "exampl" "example_a" "xexample.a"
+    "poster.x" "posters" "fn.poster" "fn.test"))
+(assert-event (fn-na-test-creatable-acceptedp *fn-na-creatable-names*))
+
+; An invalid name is still the grammar's refusal, and `group retire' of a
+; reserved name a store already carries stays admitted.
+(assert-event (not (fn-native-admin-group-name-creatablep "fn..test")))
+(assert-event (equal (fn-native-admin-result-reason
+                      (fn-native-admin-plan
+                       (fn-na-test-argv '("group" "create" "fn..test"))))
+                     :syntax))
+(defconst *fn-na-retire-reserved*
+  (fn-native-admin-plan (fn-na-test-argv '("group" "retire" "example.test"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-retire-reserved*)
+                     :accepted))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-retire-reserved*)
+                     :remove-group))
+
+; Teeth for `fn-native-admin-plan-refuses-a-reserved-group-create', one
+; `must-fail' per hypothesis, each refuted by a ground value.
+; (1) Without `fn-native-admin-argvp': an improper argv of the same three
+; words is refused :argv, not :reserved-group-name.
+(defconst *fn-na-improper-reserved-argv*
+  (list* (fn-record-string-octets "group") (fn-record-string-octets "create")
+         (fn-record-string-octets "poster") 'tail))
+(assert-event (not (fn-native-admin-argvp *fn-na-improper-reserved-argv*)))
+(assert-event (equal (fn-native-admin-words *fn-na-improper-reserved-argv*)
+                     '("group" "create" "poster")))
+(assert-event (equal (fn-native-admin-result-reason
+                      (fn-native-admin-plan *fn-na-improper-reserved-argv*))
+                     :argv))
+(must-fail
+ (defthm fn-na-reserved-create-without-argvp
+   (implies (and (equal (fn-native-admin-words argv) (list "group" "create" name))
+                 (fn-native-admin-group-name-reservedp name))
+            (equal (fn-native-admin-result-reason (fn-native-admin-plan argv))
+                   :reserved-group-name))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
+                                   (fn-native-admin-group-name-reservedp
+                                    fn-native-admin-words fn-native-admin-argvp
+                                    fn-native-admin-peer-plan
+                                    fn-native-admin-bp-boundary-plan
+                                    fn-record-group-namep fn-path-identityp
+                                    fn-native-admin-decimalp
+                                    fn-native-admin-decimal-value))))))
+; (2) Without the `group create' words: `group retire example.test' is
+; accepted (the witness above).
+(must-fail
+ (defthm fn-na-reserved-without-create
+   (implies (and (fn-native-admin-argvp argv)
+                 (fn-native-admin-group-name-reservedp name))
+            (equal (fn-native-admin-result-status (fn-native-admin-plan argv))
+                   :refused))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
+                                   (fn-native-admin-group-name-reservedp
+                                    fn-native-admin-words fn-native-admin-argvp
+                                    fn-native-admin-peer-plan
+                                    fn-native-admin-bp-boundary-plan
+                                    fn-record-group-namep fn-path-identityp
+                                    fn-native-admin-decimalp
+                                    fn-native-admin-decimal-value))))))
+; (3) Without the reservation: `group create fn.test' is accepted.
+(must-fail
+ (defthm fn-na-create-refused-without-reservation
+   (implies (and (fn-native-admin-argvp argv)
+                 (equal (fn-native-admin-words argv) (list "group" "create" name)))
+            (equal (fn-native-admin-result-status (fn-native-admin-plan argv))
+                   :refused))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
+                                   (fn-native-admin-group-name-reservedp
+                                    fn-native-admin-words fn-native-admin-argvp
+                                    fn-native-admin-peer-plan
+                                    fn-native-admin-bp-boundary-plan
+                                    fn-record-group-namep fn-path-identityp
+                                    fn-native-admin-decimalp
+                                    fn-native-admin-decimal-value))))))
+
+; Teeth for `fn-native-admin-group-name-creatablep-is-the-rfc-5536-rule':
+; each disjunct of the reading is needed.  Without the case fold,
+; "Example.a" would be creatable; without the whole-name "example" disjunct,
+; "example" would; without the "example." prefix, "example.test" would.
+(assert-event (not (fn-native-admin-group-name-creatablep "Example.a")))
+(must-fail
+ (defthm fn-na-creatable-without-case-fold
+   (equal (fn-native-admin-group-name-creatablep text)
+          (and (fn-record-group-namep text)
+               (let ((xs (fn-record-string-octets text)))
+                 (not (or (equal xs *fn-native-admin-reserved-example*)
+                          (and (<= 8 (len xs))
+                               (equal (take 8 xs)
+                                      (append *fn-native-admin-reserved-example*
+                                              '(46))))
+                          (equal xs *fn-native-admin-reserved-poster*))))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-record-group-namep
+                                       fn-native-admin-fold-octets
+                                       fn-record-string-octets)))))
+(must-fail
+ (defthm fn-na-creatable-without-only-component
+   (equal (fn-native-admin-group-name-creatablep text)
+          (and (fn-record-group-namep text)
+               (let ((xs (fn-native-admin-fold-octets
+                          (fn-record-string-octets text))))
+                 (not (or (and (<= 8 (len xs))
+                               (equal (take 8 xs)
+                                      (append *fn-native-admin-reserved-example*
+                                              '(46))))
+                          (equal xs *fn-native-admin-reserved-poster*))))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-record-group-namep
+                                       fn-native-admin-fold-octets
+                                       fn-record-string-octets)))))
+(must-fail
+ (defthm fn-na-creatable-without-example-prefix
+   (equal (fn-native-admin-group-name-creatablep text)
+          (and (fn-record-group-namep text)
+               (let ((xs (fn-native-admin-fold-octets
+                          (fn-record-string-octets text))))
+                 (not (or (equal xs *fn-native-admin-reserved-example*)
+                          (equal xs *fn-native-admin-reserved-poster*))))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-record-group-namep
+                                       fn-native-admin-fold-octets
+                                       fn-record-string-octets)))))

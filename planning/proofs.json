@@ -2643,6 +2643,39 @@
         "fn-post-outcome-store-refusal-kinds-are-distinct",
         "fn-post-outcome-store-refusal-is-not-uncertain"
       ]
+    },
+    {
+      "id": "PRF-071",
+      "title": "Group names are the RFC 5536 section 3.1.4 grammar and reserved names are never created",
+      "statement": "fn-record-group-namep-is-the-rfc-5536-grammar: the recognizer every host site applies admits exactly an ASCII string of 1 to 128 octets (local bound) whose octets are an RFC 5536 section 3.1.4 <newsgroup-name>; four rejection theorems name a forbidden octet, a leading dot, an empty component and a trailing dot. fn-native-admin-plan-refuses-a-reserved-group-create: a well-formed `group create NAME` whose NAME is reserved (first component \"example\" or the name \"poster\", ASCII case folded) is refused :reserved-group-name and carries no configuration delta; the subject is fn-native-admin-plan, which host/native-admin-host.lisp:7 calls. fn-native-operator-run-refuses-a-reserved-init-group: an `init` naming a reserved group in any position is never an accepted plan; the subject is fn-native-operator-run, which host/native-operator-host.lisp:19 calls, and host/native/operator.lisp fnn-operator-dispatch-plan exits on a non-accepted plan before any store observation. fn-native-admin-group-name-creatablep-is-the-rfc-5536-rule: a creatable name is a valid group name whose case-folded octets are not \"example\", do not begin \"example.\", and are not \"poster\". Covered scope: the operator and admin command paths; the initial configuration record's refusal in fn-cfg-host-initial-octets (program mode) is witnessed, not proved.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-009"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/records-shape.lisp",
+        "tests/acl2/records-shape-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/test_native_operator_verbs.py",
+        "planning/evidence/manifests/certify-20260924T160912Z-2158325.json"
+      ],
+      "progress_note": "Lanes group-name-validity (grammar, 2026-09-24) and group-names-2 (reserved names, 2026-09-24). Teeth: records-shape-tests has the grammar witnesses and seven must-fails; native-admin-tests and native-operator-tests have the reserved witnesses (example, example.test, Example.a, EXAMPLE.test, poster, POSTER, Poster refused; fn.example, examples.test, poster.x, fn.poster accepted; retire of example.test accepted) and one must-fail per hypothesis. fn-record-group-namep-bounds-length-by-definition is the local bound by definition and is not cited.",
+      "events": [
+        "fn-record-group-namep-is-the-rfc-5536-grammar",
+        "fn-record-group-namep-rejects-a-forbidden-octet",
+        "fn-record-group-namep-rejects-a-leading-dot",
+        "fn-record-group-namep-rejects-an-empty-component",
+        "fn-record-group-namep-rejects-a-trailing-dot",
+        "fn-native-admin-plan-refuses-a-reserved-group-create",
+        "fn-native-operator-run-refuses-a-reserved-init-group",
+        "fn-native-admin-group-name-creatablep-is-the-rfc-5536-rule"
+      ]
     }
   ]
 }
