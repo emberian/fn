@@ -6,6 +6,7 @@
 (include-book "bp-app-handoff-time")
 (include-book "bp-node-receive-boundary")
 (include-book "bp-node-debt")
+(include-book "bp-fnbs-conflict-codec")
 (set-verify-guards-eagerness 0)
 
 (defconst *fn-bpnp-max-routes* 64)
@@ -919,6 +920,153 @@
                 epoch op :forward-result record :uncertain))
            (list (list :forward-answer :uncertain))))))))
 
+;; ---------------------------------------------------------------------
+;; The boot-domain gate on recovery (spec bp-node-machine 8, N07).
+;;
+;; A Bundle Age anchor (:observed-age age monotonic) is a reading of the
+;; CLOCK_BOOTTIME origin of one boot.  A process lives inside one boot, so
+;; the only event at which the boot can change under the machine is
+;; recovery.  A seven-field recovery event carries, as its last field, the
+;; boot-domain decision fn-bpnf-clock-domain-plan made from the durable
+;; clock-domain record and this boot's observed boot ID.  Unless that
+;; decision is :same (the durable domain is this boot) or :initialize with
+;; nothing retained, the machine fences: it installs no replay, compares no
+;; retained anchor, and every later event except another recovery is inert.
+;; The six-field recovery event (no domain) keeps its old meaning.
+(defun fn-bpnp-clock-domain-evidencep (plan)
+  (declare (xargs :guard t))
+  (and (consp plan) (true-listp plan)
+       (if (member-equal (car plan) '(:same :initialize :fence)) t nil)))
+
+(defun fn-bpnp-domain-recover-eventp (event)
+  (declare (xargs :guard t))
+  (and (equal (fn-cbor-ag-car event) :recover-fnbs)
+       (true-listp event)
+       (equal (len event) 7)))
+
+(defun fn-bpnp-clock-domain-admitsp (event)
+  (declare (xargs :guard t))
+  (let ((plan (fn-bpn-nth 6 event)))
+    (or (and (equal (fn-cbor-ag-car plan) :same)
+             (consp (fn-bpn-nth 1 plan)))
+        (and (equal (fn-cbor-ag-car plan) :initialize)
+             (null (fn-bpn-nth 2 event))
+             (equal (fn-bpn-nth 5 event) 0)))))
+
+(defun fn-bpnp-clock-domain-reason (plan)
+  (declare (xargs :guard t))
+  (if (equal (fn-cbor-ag-car plan) :fence)
+      (fn-bpn-nth 1 plan)
+    :domain-evidence))
+
+(defun fn-bpnp-clock-domain-fence (st plan)
+  (declare (xargs :guard t))
+  (fn-bpnf-answer
+   (fn-bpnp-with-issued
+    st (fn-bpnf-operation (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                          :clock-domain nil :uncertain))
+   (list (list :restart-fault :clock-domain
+               (fn-bpnp-clock-domain-reason plan)))))
+
+;; ---------------------------------------------------------------------
+;; The kind-14 conflict record (spec bp-node-machine 4.1 step 4, N11).
+;;
+;; The held row a valid :receive-bundle event conflicts with: the same
+;; conditions under which fn-bpnf-step answers :identity-conflict.
+(defun fn-bpnp-conflict-held (st event)
+  (declare (xargs :guard t))
+  (let ((bundle (fn-bpn-nth 1 event))
+        (wire (fn-bpn-nth 2 event))
+        (ingress (fn-bpn-nth 3 event)))
+    (and (equal (fn-cbor-ag-car event) :receive-bundle)
+         (true-listp event) (equal (len event) 5)
+         (not (fn-bpnf-issued st))
+         (not (fn-bpah-delivery-uncertainp st))
+         (fn-frame-natp (fn-bpnf-epoch st))
+         (fn-frame-natp (fn-bpnf-next-op st))
+         (fn-frame-natp (fn-bpnf-next-arrival st))
+         (not (equal (fn-bpnf-next-op st) *fn-frame-max-nat*))
+         (fn-bpnf-cl-ingressp ingress)
+         (fn-bpb-bundlep bundle)
+         (fn-cbor-octet-listp wire)
+         (fn-clock-observationp (fn-bpn-nth 4 event))
+         (equal wire (fn-bpb-encode bundle))
+         (equal (fn-bpnf-receive-decision (fn-bpnf-held-list st)
+                                          ingress bundle)
+                :identity-conflict)
+         (fn-bpnf-find-held
+          (fn-bpnf-held-key (fn-bpnf-ingress-principal ingress)
+                            (fn-bpb-bundle-id bundle))
+          (fn-bpnf-held-list st)))))
+
+(defun fn-bpnp-with-next-issued (st issued)
+  (declare (xargs :guard t))
+  (fn-bpnp-with-runtime
+   (fn-bpnp-with-credit
+    (fn-bpnp-with-waits
+     (fn-bpnf-state-with-arrival
+      (fn-bpnf-base st) (fn-bpnf-held-list st)
+      (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+      (fn-bpnf-correlation st) issued (fn-bpnf-waits st)
+      (fn-bpnf-epoch st) (1+ (nfix (fn-bpnf-next-op st)))
+      (fn-bpnf-next-arrival st))
+     (fn-bpnp-waits st))
+    (fn-bpnp-used st) (fn-bpnp-debt st))
+   (fn-bpnp-sessions st) (fn-bpnp-pending-image st)))
+
+(defun fn-bpnp-conflict-refusal (ingress)
+  (declare (xargs :guard t))
+  (list (list :receive-answer ingress :identity-conflict)))
+
+; Within the journal's credit (a kind-14 final is one received final with
+; zero debt) the machine proposes the record; otherwise it answers the
+; refusal alone.  Either way the ingress gets a refusal and H is kept.
+(defun fn-bpnp-conflict-propose-step (st event h)
+  (declare (xargs :guard t))
+  (let* ((ingress (fn-bpn-nth 3 event))
+         (record (fn-bpnf-conflict-of (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                                      h ingress (fn-bpn-nth 2 event))))
+    (if (and (fn-bpnf-conflict-recordp record)
+             (not (equal (fn-bpnf-conflict-frame record) :bad))
+             (fn-bpnd-admitp (fn-bpnp-used st) (fn-bpnp-debt st)
+                             *fn-bpnp-control-margin* 0 :spend))
+        (fn-bpnf-answer
+         (fn-bpnp-with-next-issued
+          st (fn-bpnf-operation (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                                :conflict (list record ingress) :pending))
+         (list (list :persist-conflict (fn-bpnf-epoch st)
+                     (fn-bpnf-next-op st) record)))
+      (fn-bpnf-answer st (fn-bpnp-conflict-refusal ingress)))))
+
+; The publication's outcome never changes the answer to the offering
+; ingress: its bundle is refused.  A durable record consumes one final of
+; credit; an uncertain one fences the machine until recovery.
+(defun fn-bpnp-conflict-persist-step (st epoch op result)
+  (declare (xargs :guard t))
+  (let* ((issued (fn-bpnf-issued st))
+         (ingress (fn-bpn-nth 1 (fn-bpn-nth 4 issued))))
+    (cond
+     ((or (equal (fn-bpn-nth 5 issued) :uncertain)
+          (not (fn-bpnf-operation-matchp issued epoch op)))
+      (fn-bpnf-answer st nil))
+     ((equal result :durable)
+      (fn-bpnf-answer
+       (fn-bpnp-with-waits
+        (fn-bpnp-with-credit (fn-bpnp-with-issued st nil)
+                             (1+ (nfix (fn-bpnp-used st))) (fn-bpnp-debt st))
+        (fn-bpnp-waits st))
+       (fn-bpnp-conflict-refusal ingress)))
+     ((equal result :refused)
+      (fn-bpnf-answer
+       (fn-bpnp-with-waits (fn-bpnp-with-issued st nil) (fn-bpnp-waits st))
+       (fn-bpnp-conflict-refusal ingress)))
+     (t
+      (fn-bpnf-answer
+       (fn-bpnp-with-issued
+        st (fn-bpnf-operation (fn-bpn-nth 1 issued) (fn-bpn-nth 2 issued)
+                              :conflict (fn-bpn-nth 4 issued) :uncertain))
+       (fn-bpnp-conflict-refusal ingress))))))
+
 (defun fn-bpnp-host-eventp (event)
   (declare (xargs :guard t))
   (case (fn-cbor-ag-car event)
@@ -950,6 +1098,14 @@
           (fn-bpnp-session-idp (fn-bpn-nth 3 event))
           (fn-bpnp-forward-outcomep (fn-bpn-nth 4 event))
           (fn-clock-observationp (fn-bpn-nth 5 event))))
+    (:recover-fnbs
+     (or (fn-bpnf-host-eventp event)
+         (and (true-listp event) (equal (len event) 7)
+              (true-listp (fn-bpn-nth 2 event))
+              (<= (len (fn-bpn-nth 2 event)) *fn-bpn-machine-max-records*)
+              (natp (fn-bpn-nth 5 event))
+              (<= (fn-bpn-nth 5 event) *fn-bpnf-received-max-records*)
+              (fn-bpnp-clock-domain-evidencep (fn-bpn-nth 6 event)))))
     (otherwise (fn-bpnf-host-eventp event))))
 
 (defun fn-bpnp-preserve-runtime-answer (answer st recovery)
@@ -1046,6 +1202,15 @@
            (not (equal (fn-cbor-ag-car event) :recover-fnbs)))
       (fn-bpnf-answer st nil)
   (cond
+   ((and (fn-bpnp-domain-recover-eventp event)
+         (not (fn-bpnp-clock-domain-admitsp event)))
+    (fn-bpnp-clock-domain-fence st (fn-bpn-nth 6 event)))
+   ((and (equal (fn-cbor-ag-car event) :persist-result)
+         (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :conflict))
+    (fn-bpnp-conflict-persist-step
+     st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event) (fn-bpn-nth 3 event)))
+   ((fn-bpnp-conflict-held st event)
+    (fn-bpnp-conflict-propose-step st event (fn-bpnp-conflict-held st event)))
    ((equal (fn-cbor-ag-car event) :session)
     (let* ((peer (fn-bpn-nth 1 event))
            (session (fn-bpn-nth 2 event))

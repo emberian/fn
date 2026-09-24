@@ -1923,6 +1923,36 @@
           "kind": "theorem",
           "name": "fn-bpnp-attempt-apply-bounds-retries",
           "note": "The kind-8 apply that both the served persist arm and ordered FNBS replay call keeps held retry counts within the bound. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through fn-bpnp-step, one must-fail per separable hypothesis, stranded after the bound)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-different-boot-fences",
+          "note": "N07 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): a seven-field recovery event carrying fn-bpnf-clock-domain-plan's decision, whose saved clock-domain record and observed boot ID both decode and differ, answers exactly (:restart-fault :clock-domain :different-boot). Scope: the host still builds the six-field recovery event (bp-service.lisp:752), which stays ungated until it passes the decision. Teeth: tests/acl2/bp-node-counterexamples-tests (N07 trace, one must-fail per hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-domain-disagreement-fences",
+          "note": "N07 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): a seven-field recovery whose domain decision is neither :same nor :initialize-with-nothing-retained keeps every held row, answers one :restart-fault naming the reason, and leaves a state in which every later non-recovery event is inert, so no retained Bundle Age anchor is compared. Teeth: tests/acl2/bp-node-counterexamples-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-ready-recovery-is-same-boot",
+          "note": "N07 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): a seven-field recovery carrying fn-bpnf-clock-domain-plan over the host's observations that answers :restart-ready happened in the boot the durable record names, or at first initialization with no legacy evidence, base records or received rows. Teeth: tests/acl2/bp-node-counterexamples-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-identity-conflict-is-refused-or-recorded",
+          "note": "N11 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): a host-admitted reception whose exact wire conflicts with a live held identity keeps every held row and answers either the refusal to its ingress or, exactly when the kind-14 record is well formed and journal credit admits one zero-debt final, the :persist-conflict proposal naming the held row, the ingress and the carrier's fn-digest content id. Needs the host's :persist-conflict publisher before merge into an image. Teeth: tests/acl2/bp-node-counterexamples-tests (the event-kind hypothesis has no separate must-fail)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-conflict-publication-answers-refusal",
+          "note": "N11 over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step): the matching persist result of a pending kind-14 operation answers the recorded ingress exactly :identity-conflict for every outcome, keeps every held row, clears the operation on :durable or :refused and fences otherwise; a durable record consumes one final of credit. Teeth: tests/acl2/bp-node-counterexamples-tests."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-conflict-record-round-trip",
+          "note": "Kind-14 FNBS codec: every fn-bpnf-conflict-recordp record is exactly what its frame decodes to (books/bp-fnbs-conflict-invariants). Replay (fn-bpnf-family-replay-rows-aux) applies a kind-14 row without changing held rows and faults on one naming no held arrival. Vectors: tests/acl2/bp-node-counterexamples-tests (N11)."
         }
       ]
     },
