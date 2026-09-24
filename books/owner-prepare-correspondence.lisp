@@ -226,6 +226,17 @@
                             fn-auth-sessionp fn-peer-sessionp fn-cfgp
                             fn-own-conn-make-group-indexed)))))
 
+; The configured ADVANCE calls fn-own-advance-result so it can decide whether
+; to replace the connection's configuration pin.  Its owner component is the
+; same transition already covered by fn-own-advance-preserves-relation.
+(local
+ (defthm fn-opc-advance-result-preserves-owner-relation
+   (implies (fn-own-relation o)
+            (fn-own-relation (cdr (fn-own-advance-result o id))))
+   :hints (("Goal"
+            :use ((:instance fn-own-advance-preserves-relation))
+            :in-theory (enable fn-own-advance)))))
+
 (defthm fn-opc-configured-step-preserves-owner-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))
            (fn-own-relation (fn-ocfg-owner (fn-ocfg-step oc event))))
@@ -242,7 +253,7 @@
           (:instance fn-own-read-step-preserves-relation
                      (o (fn-ocfg-owner oc)) (id (cadr event))
                      (event (caddr event)))
-          (:instance fn-own-advance-preserves-relation
+          (:instance fn-opc-advance-result-preserves-owner-relation
                      (o (fn-ocfg-owner oc)) (id (cadr event)))
           (:instance fn-own-close-preserves-relation
                      (o (fn-ocfg-owner oc)) (id (cadr event)))
@@ -265,7 +276,8 @@
           fn-own-read-step fn-own-advance fn-own-close fn-own-complete
           fn-own-step fn-own-open-preserves-relation
           fn-own-open-peer-preserves-relation fn-own-read-preserves-relation
-          fn-own-read-step-preserves-relation fn-own-advance-preserves-relation
+          fn-own-read-step-preserves-relation
+          fn-opc-advance-result-preserves-owner-relation
           fn-own-close-preserves-relation fn-own-complete-preserves-relation
           fn-own-step-preserves-relation fn-own-reader-context
           fn-opc-reader-context-preserves-relation)))))
