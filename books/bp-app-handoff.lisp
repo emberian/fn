@@ -147,17 +147,17 @@
   (let ((d (fn-bpah-view-source-decision view cfg)))
     (cond ((equal (car d) :direct)
            (string-append "direct principal="
-                          (fn-record-octets-string (fn-bpaj-nth 1 d))))
+                          (fn-record-octets-string (fn-bpn-nth 1 d))))
           ((equal (car d) :carried)
            (string-append
             "carried carrier="
             (string-append
-             (fn-record-octets-string (fn-bpaj-nth 1 d))
+             (fn-record-octets-string (fn-bpn-nth 1 d))
              (string-append " author="
-                            (fn-record-octets-string (fn-bpaj-nth 2 d))))))
+                            (fn-record-octets-string (fn-bpn-nth 2 d))))))
           (t (string-append
               "refused reason="
-              (let ((r (fn-bpaj-nth 1 d)))
+              (let ((r (fn-bpn-nth 1 d)))
                 (cond ((equal r :generation) "generation")
                       ((equal r :source-not-carried) "source-not-carried")
                       ((equal r :carried-source-unenrolled)

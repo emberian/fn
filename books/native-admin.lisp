@@ -236,6 +236,7 @@ decoded as source-address for durable command compatibility."
   (declare (xargs :guard t))
   (if (consp words)
       (and (fn-native-admin-bp-eid-wordp (car words))
+           (true-listp (cdr words))
            (not (member-equal (car words) (cdr words)))
            (fn-native-admin-bp-carried-wordsp (cdr words)))
     (null words)))
