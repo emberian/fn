@@ -1,0 +1,69 @@
+# target tests.test_native_operator_verbs  start 2026-09-24T15:47:45Z  cwd /tank/fn/scratch/native-subsets-6c0626c5/tree
+# cmd: python3 -m unittest -v tests.test_native_operator_verbs
+# sbcl on PATH: /tank/fn/scratch/native-subsets-6c0626c5/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=99cee8c066aec7ad1d011df32345bfc4539ed315b8687ad75c66b280cc9e07c0
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=f9ba0c633b5e3fe69f8983b3ed1a44e00ad3bff16021e9e14f1bd42d20335fad
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=6c0626c5ad5691966fdbbae475dcd886ec425f28
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-6c0626c5/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-6c0626c5/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/runtime/sbcl-home/
+test_a_locked_store_is_refused_without_the_lock_being_touched (tests.test_native_operator_verbs.NativeOperatorInitTests.test_a_locked_store_is_refused_without_the_lock_being_touched) ... ok
+test_help_names_init (tests.test_native_operator_verbs.NativeOperatorInitTests.test_help_names_init) ... ok
+test_init_creates_the_configured_store_and_then_refuses_it (tests.test_native_operator_verbs.NativeOperatorInitTests.test_init_creates_the_configured_store_and_then_refuses_it) ... FAIL
+test_init_without_a_group_is_usage_and_writes_nothing (tests.test_native_operator_verbs.NativeOperatorInitTests.test_init_without_a_group_is_usage_and_writes_nothing) ... FAIL
+test_an_added_peer_reads_back_in_the_grammar_that_wrote_it (tests.test_native_operator_verbs.NativeOperatorPeerListTests.test_an_added_peer_reads_back_in_the_grammar_that_wrote_it) ... ok
+test_listing_a_locked_store_refuses_and_publishes_nothing (tests.test_native_operator_verbs.NativeOperatorPeerListTests.test_listing_a_locked_store_refuses_and_publishes_nothing) ... ok
+test_peer_list_takes_no_argument (tests.test_native_operator_verbs.NativeOperatorPeerListTests.test_peer_list_takes_no_argument) ... ok
+test_a_lost_durable_outcome_exits_three_and_recover_resolves_it (tests.test_native_operator_verbs.NativeOperatorUncertainOutcomeTests.test_a_lost_durable_outcome_exits_three_and_recover_resolves_it) ... ok
+test_the_production_image_refuses_the_selector (tests.test_native_operator_verbs.NativeOperatorUncertainOutcomeTests.test_the_production_image_refuses_the_selector) ... ok
+test_init_outcome_is_acl2s_and_the_host_only_observes (tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_init_outcome_is_acl2s_and_the_host_only_observes) ... ok
+test_peer_list_is_a_query_and_the_host_asks_acl2_which (tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_peer_list_is_a_query_and_the_host_asks_acl2_which) ... ok
+test_the_uncertain_word_is_acl2s_control_vocabulary (tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_the_uncertain_word_is_acl2s_control_vocabulary) ... ok
+test_uncertain_fault_is_gated_on_the_saved_image_profile (tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_uncertain_fault_is_gated_on_the_saved_image_profile) ... ok
+
+======================================================================
+FAIL: test_init_creates_the_configured_store_and_then_refuses_it (tests.test_native_operator_verbs.NativeOperatorInitTests.test_init_creates_the_configured_store_and_then_refuses_it)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_native_operator_verbs.py", line 165, in test_init_creates_the_configured_store_and_then_refuses_it
+    self.assertIn(b"refused operator init STORE-EXISTS", again.stderr.upper())
+AssertionError: b'refused operator init STORE-EXISTS' not found in b'REFUSED OPERATOR INIT STORE-EXISTS\n'
+
+======================================================================
+FAIL: test_init_without_a_group_is_usage_and_writes_nothing (tests.test_native_operator_verbs.NativeOperatorInitTests.test_init_without_a_group_is_usage_and_writes_nothing)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_native_operator_verbs.py", line 191, in test_init_without_a_group_is_usage_and_writes_nothing
+    self.assertEqual(bad.returncode, EXIT_USAGE, bad.stderr.decode())
+AssertionError: 0 != 5 : accepted operator init
+
+
+----------------------------------------------------------------------
+Ran 13 tests in 2.460s
+
+FAILED (failures=2)
+# rc=1 wall=2.5 end 2026-09-24T15:47:48Z

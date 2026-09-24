@@ -1,0 +1,6 @@
+test_signed_composite_poll_and_lost_positive_ack_reply (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 11.046s
+
+OK

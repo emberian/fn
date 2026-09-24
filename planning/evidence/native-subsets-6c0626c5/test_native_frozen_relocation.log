@@ -1,0 +1,11 @@
+# target tests.test_native_frozen_relocation start 2026-09-24T16:04:43Z cwd /tank/fn/scratch/native-subsets-6c0626c5/tree
+# cmd: env -u LD_LIBRARY_PATH -u FN_OPENSSL_PREFIX FN_RUN_RELOCATION_E2E=1 FN_NATIVE_HOST=/tank/fn/scratch/native-subsets-6c0626c5/reloc/fn-image/fn-host FN_TEST_OPENSSL=/tank/fn/scratch/native-subsets-6c0626c5/bin/test-openssl python3 -m unittest -v tests.test_native_frozen_relocation
+# FN_BUILD_OPENSSL_PREFIX unset: the build prefix /tank/fn/toolchains/openssl-3.5.8 still exists on hbox; only the environment does not name it
+test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup) ... ok
+test_relocated_image_uses_bundled_tls_and_ml_dsa (tests.test_native_frozen_relocation.FrozenRelocationTest.test_relocated_image_uses_bundled_tls_and_ml_dsa) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 7.424s
+
+OK
+# rc=0 wall=7.5 end 2026-09-24T16:04:51Z
