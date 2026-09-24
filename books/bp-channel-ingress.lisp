@@ -41,6 +41,17 @@
 (verify-guards fn-bpaj-raw-announced-eid)
 (verify-guards fn-bpaj-tcpcl-ingress-result)
 
+; The theorems below name the selection by its call and never need its body.
+; The rules concluding `true-listp' (or `consp') from a recognizer backchain
+; into those recognizers on every list hypothesis here and never apply.
+(local (in-theory (disable fn-bpaj-session-principal
+                           fn-nntp-response-text-true-listp
+                           fn-cp-idp-true-listp
+                           fn-bpp-dtn-sspp-has-a-name-delimiter
+                           fn-bpp-vchar-listp-implies-true-listp
+                           fn-bpb-block-listp-implies-true-listp
+                           fn-nntp-article-idp-is-consp)))
+
 ; The native caller supplies the observed channel and the current durable
 ; configuration.  This theorem joins the external octets, the admission
 ; decision, and the exact typed provenance handed to the receive machine.

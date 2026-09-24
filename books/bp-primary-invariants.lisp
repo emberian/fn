@@ -103,14 +103,16 @@
                 (fn-cbor-octet-listp crc-octets)
                 (<= (len crc-octets) *fn-bpc-max-bytes*))
            (fn-bpc-shapep :item (fn-bpp-block-value b crc-octets)))
-  :hints (("Goal" :in-theory (disable fn-bpp-eid-value))))
+  :hints (("Goal" :in-theory (disable fn-bpp-eid-value fn-bpp-eidp fn-bpp-timep
+                                     fn-bpp-flag-setp))))
 
 (defthm fn-bpp-block-value-cost
   (implies (and (fn-bpp-blockp b)
                 (fn-cbor-octet-listp crc-octets))
            (<= (fn-bpc-cost :item (fn-bpp-block-value b crc-octets)) 59))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-bpp-eid-value))))
+  :hints (("Goal" :in-theory (disable fn-bpp-eid-value fn-bpp-eidp fn-bpp-timep
+                                     fn-bpp-flag-setp))))
 
 (defthm fn-bpp-zero-crc-is-octets
   (fn-cbor-octet-listp (fn-bpp-zero-crc type)))
@@ -226,7 +228,9 @@
 (defthm fn-bpp-value-block-of-block-value
   (implies (fn-bpp-blockp b)
            (equal (fn-bpp-value-block (fn-bpp-block-value b crc-octets)) b))
-  :hints (("Goal" :in-theory (disable fn-bpp-eid-value fn-bpp-value-eid))))
+  :hints (("Goal" :in-theory (disable fn-bpp-eid-value fn-bpp-value-eid
+                                     fn-bpp-eidp fn-bpp-timep
+                                     fn-bpp-flag-setp))))
 
 (defthm fn-bpp-value-crc-field-of-block-value
   (implies (and (fn-bpp-blockp b)
@@ -510,7 +514,9 @@
 (defthm fn-bpp-primary-identity-value-is-shape
   (implies (fn-bpp-blockp b)
            (fn-bpc-shapep :item (fn-bpp-primary-identity-value b)))
-  :hints (("Goal" :in-theory (disable fn-bpp-eid-value))))
+  :hints (("Goal" :in-theory (disable fn-bpp-eid-value fn-bpp-eidp fn-bpp-timep
+                                     fn-bpp-flag-setp fn-bpp-fragmentp
+                                     fn-bpp-blockp-is-consp))))
 
 ; No violating value exists for a `(fn-bpp-blockp b)` hypothesis here: every
 ; branch of `fn-bpc-enc` returns octets or nil, so `fn-bpc-enc-are-octets`

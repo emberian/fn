@@ -106,9 +106,12 @@
 
 (verify-guards fn-bpnf-recovery-heldp)
 
+; The restart step's guard is the caller's hypotheses verbatim; opening the
+; replay loop under it reached the wildmat decoder and took 11 s.
 (verify-guards fn-bpnf-recover-fnbs-step
   :hints (("Goal" :in-theory
-           (disable fn-bpn-machine-statep fn-bpn-machine-recordp))))
+           (disable fn-bpn-machine-statep fn-bpn-machine-recordp
+                    fn-bpn-replay-records))))
 
 (verify-guards fn-bpnf-step
   :hints (("Goal" :in-theory
