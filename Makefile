@@ -295,6 +295,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-report-outbox-tests \
 	books/bp-report-author \
 	tests/acl2/bp-report-author-tests \
+	books/bp-node-progress \
 	books/bp-report-observe \
 	tests/acl2/bp-report-observe-tests \
 	books/bp-report-guards \

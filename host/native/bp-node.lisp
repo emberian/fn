@@ -128,29 +128,31 @@
          (observation
            (fnn-bp-observation (fnn-bp-tally-wall tally)
                                 (fnn-bp-tally-wall-error tally)))
-         (decision (fnn-core 'fn-bpah-pending-decision-at
-                             (fnn-bps-state bp) (fnn-bp-eid node-id)
-                             observation))
-         (view (and (eq (first decision) :ready) (second decision)))
-         (key (and view (second view))))
+         (node (fnn-bp-eid node-id)))
     (when (eq (fnn-bps-outcome bp) :uncertain)
       (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
-    (when (eq (first decision) :uncertain)
-      (fnn-indeterminate
-       "BP node held carrier expiry is uncertain; recovery or clock evidence required"))
-    (unless view (return-from fnn-bpnode-dispatch-one nil))
-    (unless (member (third view) '(:request :receipt))
-      (fnn-out "BP node held ADU has unsupported application class")
-      (return-from fnn-bpnode-dispatch-one nil))
     (let ((effects
             (fnn-bps-foundation-step
-             bp (list :deliver key (fnn-bp-eid node-id)))))
+             bp (list :progress node observation nil 0))))
+      (unless effects (return-from fnn-bpnode-dispatch-one nil))
+      (when (and (= (length effects) 1)
+                 (eq (first (first effects)) :progress-wait))
+        (return-from fnn-bpnode-dispatch-one t))
+      (when (and (= (length effects) 1)
+                 (eq (first (first effects)) :progress-uncertain))
+        (fnn-indeterminate
+         "BP node held carrier expiry is uncertain; recovery or clock evidence required"))
       (unless (and (= (length effects) 1)
                    (eq (first (first effects)) :deliver)
-                   (= (length (first effects)) 5)
-                   (equal (fourth (first effects)) key))
+                   (= (length (first effects)) 5))
         (fnn-fault "BP node delivery marker was not issued exactly"))
-      (let ((effect (first effects)))
+      (let* ((effect (first effects))
+             (key (fourth effect))
+             (view (fnn-core 'fn-bpnp-delivery-view (fifth effect))))
+        (unless (and (consp view) (eq (first view) :delivery)
+                     (equal (second view) key)
+                     (member (third view) '(:request :receipt)))
+          (fnn-fault "BP node progress yielded an invalid local delivery"))
         (multiple-value-bind (status detail)
             (fnn-bpnode-app-result
              owner receipt-root workflow-root destination policy issuer

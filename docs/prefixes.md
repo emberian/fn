@@ -71,6 +71,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bprr-` | `bp-receipt-records` | Receiver journal record application and replay |
 | `fn-bprv-` | `bp-receiver-*-invariants`, `bp-receiver-evolving-*-invariants` | Receiver relation invariants over a Store, contexts, decisions and replay; the history-indexed relation over an evolving Store |
 | `fn-bpr-live-` | `bp-receiver-evolving-store-invariants` | Live receiver trace model over the host's call sequence (`tools/run_bp_receive.py`): Store global, receiver global, journal on disk |
+| `fn-bpnp-` | `bp-node-progress` | ACL2-owned one-event held progress selection and per-key dependency waits over the existing FNBS owner; the native service calls this outer step |
 | `fn-bpo-` | `bp-outbound` | Outbound projection of sender work to request ADUs and receipt validation |
 | `fn-bprl-` | `bp-release`, `bp-release-invariants`, `bp-workflow-constructors`, `bp-release-replay-status` | Sender-side forwarding-obligation release: typed release evidence and term, the `:forward` pin undertaking, the release decision over the node image, the `:undertake`/`:release` journal interpreter, canonical receipt-ADU-to-intent constructors for the native workflow caller, and host-called status replay refinement |
 | `fn-relay-` | `relay`, `relay-invariants`, `relay-crash-invariants` | Relay undertaking: receiver-then-sender composition over the receiver and sender public entry points, terms table, undertakings ledger, typed `:archived`/`:forwarding` receipts, crash-then-replay over both journals |
