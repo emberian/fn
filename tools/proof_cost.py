@@ -13,7 +13,12 @@ and host. The unfiltered history mode (what `make check` runs) exits 1 when a
 measured book is over the threshold and is absent from the baseline, or is
 more than 25% over its baseline seconds. A baseline book now under the
 threshold is reported "improved; remove from baseline". Unmeasured books stay
-warnings. `--write-baseline` rewrites the file from the current measurements:
+warnings. Decision D26: the ratchet's number is the scoped measurement,
+from a run whose manifest says it certified at `RATCHET_JOBS` (2) jobs or
+fewer (`jobs_effective`). A measurement at more jobs is still selected and
+printed as "RECORDED ... at N jobs" and never fails; a manifest without
+`jobs_effective` is unknown, and the ratchet skips its measurements with a
+warning naming the run. `--write-baseline` rewrites the file from the current measurements:
 it drops improved books and lowers numbers, never raises a number, and refuses
 to write at all when a book would be added or would exceed its tolerance,
 unless `--allow-regression` is given. The baseline only shrinks.
@@ -33,6 +38,9 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "planning" / "proof-cost-baseline.json"
 TOLERANCE = 0.25
+# D26: the ten-second rule is measured at this many concurrent jobs or fewer.
+RATCHET_JOBS = 2
+SCOPED, WIDE, UNKNOWN = "scoped", "wide", "unknown"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs  # noqa: E402
 import green_check  # noqa: E402
@@ -124,6 +132,10 @@ def report(path: Path, threshold: float) -> list[str]:
         f"toolchain={manifest.get('acl2_toolchain_identity') or 'unknown'} "
         f"host={manifest.get('hostname', 'unknown')} jobs={manifest.get('jobs_effective', 'unknown')}",
         source_scope(manifest),
+        ("ratchet: " + {SCOPED: f"eligible (<= {RATCHET_JOBS} jobs)",
+                        WIDE: f"recorded only (above {RATCHET_JOBS} jobs; D26)",
+                        UNKNOWN: "skipped (manifest has no jobs_effective)"}
+         [jobs_band(manifest_jobs(manifest))]),
         f"scope: installed={len(installed)} certified-attempted={len(results)} "
         f"measured-books={len(measured)}",
         f"wall: total={elapsed_seconds(manifest)}; "
@@ -151,6 +163,25 @@ class Measurement:
     run_id: str
     host: str
     toolchain: str
+    jobs: int | None = None
+
+    @property
+    def band(self) -> str:
+        return jobs_band(self.jobs)
+
+
+def manifest_jobs(manifest: dict) -> int | None:
+    """The run's certification concurrency, or None when it did not say."""
+    value = manifest.get("jobs_effective")
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 1:
+        return value
+    return None
+
+
+def jobs_band(jobs: int | None) -> str:
+    if jobs is None:
+        return UNKNOWN
+    return SCOPED if jobs <= RATCHET_JOBS else WIDE
 
 
 def current_books(root: Path) -> set[str]:
@@ -164,17 +195,21 @@ def current_books(root: Path) -> set[str]:
 def history(root: Path, books: set[str], *, toolchain: str | None = None,
             host: str | None = None,
             runs: list[tuple[green_check.Run, dict]] | None = None
-            ) -> tuple[dict[tuple[str, str, str], Measurement], set[str], int]:
+            ) -> tuple[dict[tuple[str, str, str, str], Measurement], set[str], int]:
     """Select timed attempts; certs owns current closure hashing/comparison.
 
     `book_wall_seconds` names work attempted in that run. An installed-only
     row never replaces an earlier measured attempt, and a failed attempt
     retains its failed verdict. Shared dependency bytes are memoized by
     certs.book_facts, and each requested book's closure is built only once.
+
+    The newest measurement is kept per book, host, toolchain and jobs band
+    (SCOPED, WIDE, UNKNOWN), so a newer wide run never hides the scoped
+    number the ratchet reads (D26).
     """
     runs = green_check.manifests(root) if runs is None else runs
     closures: dict[str, list[str] | None] = {}
-    selected: dict[tuple[str, str, str], Measurement] = {}
+    selected: dict[tuple[str, str, str, str], Measurement] = {}
     installed_current: set[str] = set()
     measured_rows = 0
 
@@ -206,6 +241,7 @@ def history(root: Path, books: set[str], *, toolchain: str | None = None,
         walls = manifest.get("book_wall_seconds") or {}
         results = manifest.get("book_results") or {}
         installed = manifest.get("installed_books") or {}
+        jobs = manifest_jobs(manifest)
         if not all(isinstance(field, dict) for field in (walls, results, installed)):
             continue
         for book in installed:
@@ -218,12 +254,12 @@ def history(root: Path, books: set[str], *, toolchain: str | None = None,
             measured_rows += 1
             if not matches(book, manifest):
                 continue
-            key = (book, machine, identity)
+            key = (book, machine, identity, jobs_band(jobs))
             # green_check.manifests is ordered by run-id timestamp; a newer
             # partial run only replaces the books it actually measured.
             selected[key] = Measurement(
                 book, float(seconds), str(results.get(book, "unknown")),
-                run.run_id, machine, identity)
+                run.run_id, machine, identity, jobs)
     return selected, installed_current, measured_rows
 
 
@@ -252,27 +288,43 @@ def history_report(root: Path, threshold: float, *, toolchain: str | None = None
         lines.append(f"filter: toolchain={toolchain}")
     if host:
         lines.append(f"filter: host={host}")
-    groups: dict[tuple[str, str], list[Measurement]] = {}
+    groups: dict[tuple[str, str, str], list[Measurement]] = {}
     for record in selected.values():
-        groups.setdefault((record.host, record.toolchain), []).append(record)
+        groups.setdefault((record.host, record.toolchain, record.band),
+                          []).append(record)
     slow_count = 0
-    for (machine, identity), records in sorted(groups.items()):
-        lines.append(f"origin: host={machine} toolchain={identity} "
+    recorded: list[str] = []
+    for (machine, identity, band), records in sorted(groups.items()):
+        lines.append(f"origin: host={machine} toolchain={identity} jobs={band} "
                      f"matching-measured-books={len(records)}")
         for record in sorted(records, key=lambda item: (-item.seconds, item.book)):
             if record.seconds <= threshold:
                 continue
-            slow_count += 1
             log = (root / "build/acl2" / record.run_id
                    / (record.book.replace("/", "--") + ".certify.log"))
             event = slowest_event(log)
             detail = (f"; slowest-event={event[0]} {event[1]:.2f}s"
                       if event else "; per-event=unavailable")
+            if band == WIDE:
+                recorded.append(
+                    f"RECORDED {record.book}: process-wall={record.seconds:.3f}s "
+                    f"> {threshold:g}s recorded at {record.jobs} jobs "
+                    f"(D26: above {RATCHET_JOBS}, does not ratchet) host={machine} "
+                    f"verdict={record.verdict} run={record.run_id}{detail}")
+                continue
+            slow_count += 1
             lines.append(f"WARNING {record.book}: process-wall={record.seconds:.3f}s "
-                         f"> {threshold:g}s verdict={record.verdict} "
-                         f"run={record.run_id}{detail}")
+                         f"> {threshold:g}s jobs={record.jobs or 'unknown'} "
+                         f"verdict={record.verdict} run={record.run_id}{detail}")
     if not slow_count:
         lines.append(f"No matching measured attempt exceeds {threshold:g}s.")
+    lines.extend(recorded)
+    unknown_runs = sorted({record.run_id for record in selected.values()
+                           if record.band == UNKNOWN})
+    if unknown_runs:
+        lines.append(f"WARNING jobs unknown: {len(unknown_runs)} manifest(s) without "
+                     f"jobs_effective supply current measurements the ratchet skips: "
+                     + ", ".join(unknown_runs))
     if missing:
         examples = ", ".join(sorted(missing)[:8])
         lines.append(f"WARNING unmeasured: {len(missing)} current books have no "
@@ -281,11 +333,17 @@ def history_report(root: Path, threshold: float, *, toolchain: str | None = None
     return lines
 
 
-def worst(selected: dict[tuple[str, str, str], Measurement]
+def worst(selected: dict[tuple[str, str, str, str], Measurement]
           ) -> dict[str, Measurement]:
-    """Each book's slowest current measurement over every host and toolchain."""
+    """Each book's slowest scoped measurement over every host and toolchain.
+
+    Only runs at RATCHET_JOBS jobs or fewer count (D26); wide and unknown
+    measurements are reported by history_report and never ratchet.
+    """
     found: dict[str, Measurement] = {}
     for record in selected.values():
+        if record.band != SCOPED:
+            continue
         prior = found.get(record.book)
         if prior is None or record.seconds > prior.seconds:
             found[record.book] = record
@@ -314,7 +372,7 @@ class Ratchet:
     proposed: dict[str, dict]
 
 
-def ratchet(selected: dict[tuple[str, str, str], Measurement], books: set[str],
+def ratchet(selected: dict[tuple[str, str, str, str], Measurement], books: set[str],
             baseline: dict[str, dict], threshold: float,
             tolerance: float = TOLERANCE) -> Ratchet:
     """Compare each book's worst current measurement with the baseline.
@@ -330,7 +388,8 @@ def ratchet(selected: dict[tuple[str, str, str], Measurement], books: set[str],
     proposed: dict[str, dict] = {}
     for book, record in sorted(slowest.items()):
         entry = {"seconds": round(record.seconds, 3), "run": record.run_id,
-                 "host": record.host, "verdict": record.verdict}
+                 "host": record.host, "jobs": record.jobs,
+                 "verdict": record.verdict}
         prior = baseline.get(book)
         if record.seconds <= threshold:
             if prior is not None:
@@ -342,14 +401,14 @@ def ratchet(selected: dict[tuple[str, str, str], Measurement], books: set[str],
         if prior is None:
             failing.append(
                 f"FAIL {book}: worst={record.seconds:.3f}s > {threshold:g}s "
-                f"host={record.host} run={record.run_id}; not in baseline")
+                f"host={record.host} jobs={record.jobs} run={record.run_id}; not in baseline")
             continue
         limit = float(prior["seconds"]) * (1 + tolerance)
         if record.seconds > limit:
             failing.append(
                 f"FAIL {book}: worst={record.seconds:.3f}s > baseline "
                 f"{float(prior['seconds']):.3f}s +{tolerance:.0%} = {limit:.3f}s "
-                f"host={record.host} run={record.run_id} "
+                f"host={record.host} jobs={record.jobs} run={record.run_id} "
                 f"(baseline run={prior.get('run', 'unknown')})")
             proposed[book] = dict(prior)
         elif record.seconds > float(prior["seconds"]):
@@ -371,10 +430,11 @@ def ratchet(selected: dict[tuple[str, str, str], Measurement], books: set[str],
     return Ratchet(failing, improved, kept, proposed)
 
 
-def regression_baseline(selected: dict[tuple[str, str, str], Measurement],
+def regression_baseline(selected: dict[tuple[str, str, str, str], Measurement],
                         threshold: float) -> dict[str, dict]:
     return {book: {"seconds": round(record.seconds, 3), "run": record.run_id,
-                   "host": record.host, "verdict": record.verdict}
+                   "host": record.host, "jobs": record.jobs,
+                   "verdict": record.verdict}
             for book, record in sorted(worst(selected).items())
             if record.seconds > threshold}
 
@@ -382,11 +442,13 @@ def regression_baseline(selected: dict[tuple[str, str, str], Measurement],
 def write_baseline(path: Path, entries: dict[str, dict], threshold: float) -> None:
     value = {
         "about": ("Books over the ten-second rule, with their worst current "
-                  "measurement over all hosts and toolchains. Generated by "
+                  f"measurement at {RATCHET_JOBS} jobs or fewer over all hosts "
+                  "and toolchains (D26). Generated by "
                   "python3 tools/proof_cost.py --write-baseline; only shrinks "
                   "without --allow-regression. See docs/proofs.md."),
         "threshold_seconds": threshold,
         "tolerance": TOLERANCE,
+        "max_jobs": RATCHET_JOBS,
         "books": dict(sorted(entries.items())),
     }
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
@@ -452,7 +514,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"proof_cost: wrote {args.baseline} with {len(entries)} book(s) "
                   f"(was {len(baseline)})")
             return 0
-        print(f"ratchet: baseline={len(baseline)} books; failing={len(verdict.failing)}; "
+        print(f"ratchet: scope=runs at <= {RATCHET_JOBS} jobs (D26); "
+              f"baseline={len(baseline)} books; failing={len(verdict.failing)}; "
               f"improved={len(verdict.improved)}; within-tolerance={len(verdict.kept)}; "
               f"unmeasured={unmeasured} (warning only); tolerance={TOLERANCE:.0%}")
         return 1 if verdict.failing else 0

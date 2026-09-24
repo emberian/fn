@@ -19,7 +19,8 @@ class ProofCostTests(unittest.TestCase):
     def fixture_run(self, stamp: str, *, host: str = "hbox", toolchain: str = "tool-A",
                     sources: dict[str, str], walls: dict[str, float],
                     installed: dict[str, str] | None = None,
-                    results: dict[str, str] | None = None):
+                    results: dict[str, str] | None = None,
+                    jobs: int | None = 2):
         run_id = f"certify-{stamp}-1"
         run = proof_cost.green_check.Run(run_id, host, True, sources)
         manifest = {
@@ -30,6 +31,8 @@ class ProofCostTests(unittest.TestCase):
             "book_results": results or {book: "passed" for book in walls},
             "installed_books": installed or {},
         }
+        if jobs is not None:
+            manifest["jobs_effective"] = jobs
         return run, manifest
 
     def test_report_names_slow_certified_book_and_omits_installed_book(self):
@@ -141,7 +144,7 @@ class ProofCostTests(unittest.TestCase):
             selected, _, _ = proof_cost.history(
                 root, {"books/slow", "books/fast"},
                 runs=[old, partial, wrong_closure])
-            slow = selected[("books/slow", "hbox", "tool-A")]
+            slow = selected[("books/slow", "hbox", "tool-A", "scoped")]
             self.assertEqual((slow.seconds, slow.run_id), (55.0, old[0].run_id))
             lines = proof_cost.history_report(
                 root, 10, books={"books/slow", "books/fast"},
@@ -183,13 +186,14 @@ class ProofCostTests(unittest.TestCase):
             ]
             selected, _, _ = proof_cost.history(root, {"books/x"}, runs=runs)
             self.assertEqual(set(selected), {
-                ("books/x", "hbox", "tool-A"),
-                ("books/x", "persvati", "tool-A"),
-                ("books/x", "hbox", "tool-B")})
-            self.assertEqual(selected[("books/x", "hbox", "tool-B")].verdict, "failed")
+                ("books/x", "hbox", "tool-A", "scoped"),
+                ("books/x", "persvati", "tool-A", "scoped"),
+                ("books/x", "hbox", "tool-B", "scoped")})
+            self.assertEqual(selected[("books/x", "hbox", "tool-B", "scoped")].verdict,
+                             "failed")
             filtered, _, _ = proof_cost.history(
                 root, {"books/x"}, toolchain="tool-A", host="hbox", runs=runs)
-            self.assertEqual(list(filtered), [("books/x", "hbox", "tool-A")])
+            self.assertEqual(list(filtered), [("books/x", "hbox", "tool-A", "scoped")])
 
     def test_installed_only_and_never_measured_are_not_zero_cost(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -210,9 +214,10 @@ class ProofCostTests(unittest.TestCase):
             self.assertIn("WARNING unmeasured: 2", "\n".join(lines))
 
 
-    def measurement(self, book, seconds, host="hbox", tool="tool-A", run="certify-x"):
-        return {(book, host, tool): proof_cost.Measurement(
-            book, seconds, "passed", run, host, tool)}
+    def measurement(self, book, seconds, host="hbox", tool="tool-A", run="certify-x",
+                    jobs=2):
+        record = proof_cost.Measurement(book, seconds, "passed", run, host, tool, jobs)
+        return {(book, host, tool, record.band): record}
 
     def test_ratchet_fails_new_and_regressed_books_and_names_improved(self):
         selected = {}
@@ -254,7 +259,7 @@ class ProofCostTests(unittest.TestCase):
         self.assertEqual(verdict.failing, [])
         self.assertEqual(verdict.proposed["books/held"],
                          {"seconds": 20.0, "run": "certify-new", "host": "hbox",
-                          "verdict": "passed"})
+                          "jobs": 2, "verdict": "passed"})
 
     def test_write_baseline_refuses_to_add_without_allow_regression(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -293,6 +298,82 @@ class ProofCostTests(unittest.TestCase):
             self.assertEqual(written["books/new"]["seconds"], 12.0)
             self.assertEqual(written["books/old"]["seconds"], 40.0,
                              "an allowance must not forget an unmeasured defect")
+
+    # D26: the ten-second rule's number is the scoped (<= 2 jobs) measurement.
+
+    def test_four_job_measurement_over_the_limit_does_not_fail(self):
+        selected = self.measurement("books/wide", 30.0, jobs=4)
+        verdict = proof_cost.ratchet(selected, {"books/wide"}, {}, 10)
+        self.assertEqual(verdict.failing, [])
+        self.assertEqual(verdict.proposed, {})
+        self.assertEqual(proof_cost.regression_baseline(selected, 10), {})
+
+    def test_two_job_measurement_over_the_limit_fails(self):
+        for jobs in (1, 2):
+            selected = self.measurement("books/scoped", 10.5, jobs=jobs)
+            verdict = proof_cost.ratchet(selected, {"books/scoped"}, {}, 10)
+            self.assertEqual(len(verdict.failing), 1)
+            self.assertIn(f"FAIL books/scoped: worst=10.500s > 10s host=hbox jobs={jobs}",
+                          verdict.failing[0])
+
+    def test_scoped_number_ratchets_while_a_wider_one_is_recorded(self):
+        # The same book at 2 jobs (9 s) and at 4 jobs (17 s): the baseline
+        # entry is improved by the scoped number; the wide one only prints.
+        selected = {}
+        selected.update(self.measurement("books/b", 9.0, host="persvati", jobs=2))
+        selected.update(self.measurement("books/b", 17.0, host="hbox", jobs=4))
+        verdict = proof_cost.ratchet(selected, {"books/b"},
+                                     {"books/b": {"seconds": 17.0}}, 10)
+        self.assertEqual(verdict.failing, [])
+        self.assertIn("IMPROVED books/b: worst=9.000s", "\n".join(verdict.improved))
+        self.assertEqual(verdict.proposed, {})
+
+    def test_newer_wide_run_does_not_hide_the_scoped_measurement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture_book(root, "books/x", '(in-package "ACL2")\n')
+            sources = {"books/x.lisp": proof_cost.certs.content_hash(
+                root / "books/x.lisp")}
+            runs = [self.fixture_run("20260901T010000Z", sources=sources,
+                                     walls={"books/x": 12.0}, jobs=2),
+                    self.fixture_run("20260902T010000Z", sources=sources,
+                                     walls={"books/x": 25.0}, jobs=8)]
+            selected, _, _ = proof_cost.history(root, {"books/x"}, runs=runs)
+            self.assertEqual(selected[("books/x", "hbox", "tool-A", "scoped")].seconds, 12.0)
+            self.assertEqual(selected[("books/x", "hbox", "tool-A", "wide")].jobs, 8)
+            lines = "\n".join(proof_cost.history_report(
+                root, 10, books={"books/x"}, runs=runs))
+            self.assertIn("WARNING books/x: process-wall=12.000s > 10s jobs=2", lines)
+            self.assertIn("RECORDED books/x: process-wall=25.000s > 10s recorded at 8 jobs",
+                          lines)
+            self.assertNotIn("WARNING books/x: process-wall=25", lines)
+
+    def test_manifest_without_jobs_is_unknown_skipped_and_named(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture_book(root, "books/x", '(in-package "ACL2")\n')
+            sources = {"books/x.lisp": proof_cost.certs.content_hash(
+                root / "books/x.lisp")}
+            run = self.fixture_run("20260901T010000Z", sources=sources,
+                                   walls={"books/x": 40.0}, jobs=None)
+            selected, _, _ = proof_cost.history(root, {"books/x"}, runs=[run])
+            self.assertEqual(list(selected), [("books/x", "hbox", "tool-A", "unknown")])
+            self.assertEqual(proof_cost.ratchet(selected, {"books/x"}, {}, 10).failing, [])
+            lines = "\n".join(proof_cost.history_report(
+                root, 10, books={"books/x"}, runs=[run]))
+            self.assertIn("WARNING jobs unknown: 1 manifest(s) without jobs_effective", lines)
+            self.assertIn(run[0].run_id, lines)
+            for bad in (0, True, "2", None):
+                self.assertIsNone(proof_cost.manifest_jobs({"jobs_effective": bad}))
+
+    def test_single_manifest_report_names_its_ratchet_scope(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "manifest.json"
+            for jobs, word in ((2, "eligible"), (4, "recorded only"), (None, "skipped")):
+                value = {} if jobs is None else {"jobs_effective": jobs}
+                path.write_text(json.dumps(value), encoding="utf-8")
+                self.assertIn(f"ratchet: {word}",
+                              "\n".join(proof_cost.report(path, 10)))
 
 
 if __name__ == "__main__":
