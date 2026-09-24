@@ -281,6 +281,13 @@ duplicate/resurrection argument; indefinite acceptance is not promised.
   is now an experiment: [a 9P2000 view](../specs/views-9p.md) of one committed
   store, mounted by the Linux kernel client and served entirely from the
   reader's own projection functions. Private messaging follows D04's scope.
+  The web interface ([the web reader](../docs/web.md)) now logs in over
+  verified STARTTLS to a protected node, threads by References, replies with
+  RFC 5537 References, keeps the three POST outcomes apart with the node's
+  reason line, shows the node's `HDR :fn-verified` report as a badge, keeps
+  client-only read marks, and resumes from (group, local number, Message-ID);
+  exercised on a developer image ([record](evidence/m6-web-2026-09-24.md)),
+  not yet against the deployed node.
 
 Exit: demonstrate actual adapter interoperability and report its version/profile.
 Operational mission qualification requires its own hardware, security, and

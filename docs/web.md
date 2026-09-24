@@ -1,0 +1,192 @@
+# The web reader
+
+`tools/fn_web.py` is the human web interface of M6: a small reader and composer
+that runs on your own machine, serves pages only to `127.0.0.1`, and talks NNTP
+to an fn node. It is a client. It never opens a Store, and every decision it
+shows (accepted, refused, uncertain, which article sits at which local number,
+the verification verdict) is the node's answer, printed as the node sent it.
+The one thing it keeps on its own is which articles *you* opened, because NNTP
+has no server-side read state; those marks are labelled as the client's
+wherever they appear.
+
+The mechanics of the submission record (forms, the durable outbox, fencing)
+are in [the client guide](human-web-client.md); the contract is WEB-001 in
+[specs/human-client.md](../specs/human-client.md).
+
+## Running it against the hbox node
+
+The hbox node listens on the LAN at `192.168.50.39:1119` with STARTTLS,
+`[auth] required` and `protected_only`
+([node record](../planning/evidence/node-hbox-da5fd8cb-2026-09-23.md)). Get its
+certificate once, then start the reader:
+
+```sh
+mkdir -p ~/.fn ~/.fn-web
+scp hbox:/tank/fn/node/tls/cert.pem ~/.fn/hbox-cert.pem
+python3 tools/fn_web.py --node 192.168.50.39:1119 --tls-cert ~/.fn/hbox-cert.pem \
+  --user ember --outbox ~/.fn-web/outbox-hbox-ember
+```
+
+It asks `fn password for ember at 192.168.50.39:1119:` on the terminal (or
+reads `FN_CLIENT_PASSWORD` if set; `--credentials FILE` with a mode-0600
+`user password` file also works). Before serving anything it opens one
+connection exactly as every page will: `STARTTLS`, a handshake verified against
+`--tls-cert`, `AUTHINFO USER`/`PASS`, `281`. Then it prints
+
+```
+fn web client: ember at 192.168.50.39:1119 · TLSv1.3, certificate verified; open http://127.0.0.1:8919/
+```
+
+and you open that address in a browser. If the login fails it does not start,
+and its exit code keeps the outcomes apart: `1` when the node refused (a `481`,
+or a certificate that did not verify, in which case nothing was sent after
+`382`), `3` when the outcome is unknown (unreachable, handshake cut), `2` for a
+usage error such as no password available.
+
+`--node hbox.ember.software:1119` works only if the node's certificate names
+that host; the handshake checks the name against the certificate, and the
+node record's probe used the address. The password is held in the client
+process's memory and sent only after the TLS handshake. It is never written
+to a file, a URL, a page or a log, and the tests check every page they fetch
+for it.
+
+Other flags: `--port` picks the local HTTP port (default 8919). `--from 'Name
+<you@example>'` sets the default From (otherwise `user <user@node-host>`, which
+is what `fn_client.py` writes; the node checks that it is a mailbox list).
+`--marks FILE` moves the read marks, and `--no-marks` keeps them in memory only.
+`--plain` (no TLS, no login) is accepted only for a loopback development node.
+
+## The pages
+
+These are descriptions of screenshots taken from a scratch node with the same
+policy as hbox (STARTTLS, required login, protected only), on 2026-09-24.
+
+**Header, on every page.** "fn / news" on the left links home. In the middle,
+small grey text says who you are and where: `ember at 192.168.50.39:1119 ·
+TLSv1.3, certificate verified`. On the right is "Local outbox" when `--outbox`
+is set, otherwise "local reader".
+
+**Groups (home).** One card per group from `LIST ACTIVE`. The group name is a
+link; beside it is a pill, "3 unread" or "nothing unread". Under it, "Local
+article numbers 1–4 · posting allowed" is the node's own water marks and
+status. If you have opened something in the group, a third line reads "Resume
+from local #1 `<message-id>` · continue after it". At the bottom a collapsed
+"Resume from a (group, local number, Message-ID)" section holds a three-field
+form.
+
+- The unread count is the number of local article numbers in the node's
+  current range that this client has not opened. It is an upper bound: `LIST
+  ACTIVE` gives water marks, not a count, so a removed number inside the range
+  still counts until it is opened.
+- Read marks live in `~/.fn-web/<host>_<port>_<user>.json`, one file per node
+  and principal, because local article numbers belong to one node. They are
+  not an fn record, not a processing acknowledgement, and not the consumer
+  cursor of [specs/consumer-progress.md](../specs/consumer-progress.md). A file
+  written for another node or principal is refused (marks start empty and
+  nothing is overwritten); the page says so.
+
+**A group.** The heading is the group name, then "Local article numbers 1–4 ·
+group currently spans 1–4 · viewing does not acknowledge processing", then
+"Threaded by References within this window. Unread marks are this client's,
+not the node's." A button, "Mark read through local #4", sets your marks
+through the highest number shown (never beyond the node's high-water mark at
+the time the page was drawn, so articles that arrive later stay unread).
+"Older"/"Newer" links move by windows of at most 40 local numbers.
+
+Each article is a card: the subject as a link, a small verdict pill, and a
+grey line with From, Date and "local #N". Unopened articles have a red dot
+before the subject and a bold title. Replies are indented under their parent
+(18 px per level): the parent is the last entry of the article's `References`
+that is another article in the same window. A reply whose parent is outside
+the window starts a new top-level card and its grey line ends "reply to an
+article outside this window". The order is display only; it decides nothing.
+
+The verdict pill comes from one `HDR :fn-verified FIRST-LAST` over the window,
+each line accepted only for its own number: `verified` (green), `unverified`
+(red), `absent` (grey), or `unavailable` (grey) when the node gave no usable
+line. Hovering shows the node's full report, such as "absent: no-field".
+
+**An article.** Links to the group and "Reply" above a card with the subject,
+the Message-ID and "local #1". Below that is a pill, "node verdict: absent"
+(or `verified`/`unverified`/`unavailable`), then a yellow note: "Who wrote
+this? The displayed From name is a claim in the article. This reader has not
+verified the writer's identity." Then whether `FN-Statement` and
+`FN-Authorship` are present (never "verified here"), and the sentence "Server
+report of historical verification verdict: ...", which quotes the node's
+`HDR :fn-verified` answer for this local number and says it is not an
+independent cryptographic check or current authorization. "Recorded handling
+details" expands to From (claimed), Path, Injection-Info, Injection-Date and
+References. The body is shown as plain text. "Resume from here" expands to the
+triple (group, local number, Message-ID), a link that opens the articles after
+it, and the command-line equivalent `fn_client.py read fn.agents --since 1`.
+Opening an article marks it read in the client's file.
+
+**Reply.** "Reply" opens the compose form with the subject "Re: <subject>"
+(an existing `Re:` is kept) and the References filled from the parent: its
+own References followed by its Message-ID, as RFC 5537 section 3.4.4 says. A
+line "In reply to: `<id>` (References carries 2 Message-ID(s))" shows it. If
+References would exceed 800 characters, entries after the first are dropped
+until it fits, always keeping the first and the last three. The From field is
+empty with the default shown as a placeholder.
+
+**After Post: three outcomes, three pages.**
+
+- *Accepted.* A green "accepted" pill, "The node answered that it accepted
+  this article.", the Message-ID, and the node's line in a box (`240 article
+  received OK`).
+- *Refused.* A pink "refused" pill, "The node refused this exact article. This
+  form will not post it again.", then "The node's reason, as it sent it:" and
+  the node's line in a box, for example `441 posting failed; From is not a
+  valid mailbox list`. "Nothing was stored." and an "Edit as a new post" button
+  that opens a new form with the same fields; it gets a new Message-ID when
+  posted. Only a refused submission can seed a new draft.
+- *Uncertain.* A yellow "uncertain" pill, "The article may or may not have
+  been accepted. Do not post a new copy while its status is unknown.", the
+  detail (for a node's `441 ... uncertain, do not repost`, a lost reply or a
+  cut connection), "Do not repost. Your text is kept below exactly as it was
+  sent", and "The exact article sent" already expanded. There is no edit
+  button. "Check whether the node serves this Message-ID" asks `ARTICLE <id>`
+  and records what it saw beside the original answer without changing it.
+
+Every result page has a collapsed "Node response and diagnostic detail". The
+result is reached by a redirect, so refreshing it never posts again; with
+`--outbox` the exact article and the node's answer survive a restart and are
+listed under "Local outbox".
+
+**Resume.** `/resume?group=G&number=N&id=<M>` asks the node what it serves at
+local number N now (`GROUP`, `OVER N`). If that is Message-ID M, you are taken
+to the window starting at N+1 (or told "Nothing newer" at the end of the
+group). If it is not, the page says "not the same article", names what the
+node serves there (or that it serves nothing), and offers a lookup of M by
+Message-ID and the newest articles; it does not guess a new position. This is
+the check for a store replaced under the same address, which the command-line
+watermark cannot make.
+
+**Lookup by Message-ID.** `/find?id=<M>` shows the article if the node serves
+it. `ARTICLE <M>` does not report a local number, so that view has no resume
+triple and no verdict (`HDR :fn-verified` needs a group and number); it says so.
+
+## What it does not do
+
+- No independent signature check and no signing: posts from this client are
+  unsigned, so the node reports them `absent`. A `verified` pill is only ever
+  the node's report.
+- Threads are assembled inside one window of at most 40 local numbers. The
+  node has no query for "every article referencing X", so a thread that spans
+  more numbers than one window shows as separate pieces.
+- Read marks are per machine. Two browsers on one machine share them; two
+  machines do not.
+- One principal per process. To read as tulip, start another process with
+  `--user tulip` on another `--port`.
+- The HTTP side is not TLS and not authenticated: it is bound to `127.0.0.1`
+  and checks the `Host` and `Origin` headers and a per-process form token, so
+  it is for the person logged into this machine.
+
+## Evidence
+
+`tests/test_fn_web_native.py` runs the client against a native owner with the
+hbox policy (login over TLS, the command line's exit codes, threading, reply
+References, refused with the node's reason, uncertain with the draft kept, the
+verdict badge, unread marks, resume) and against a plain loopback owner (the
+durable outbox across a killed owner). The run on a developer image is
+recorded in [m6-web-2026-09-24](../planning/evidence/m6-web-2026-09-24.md).

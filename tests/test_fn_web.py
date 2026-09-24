@@ -289,6 +289,55 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("Server report of historical verification verdict: absent: no-field", absent)
 
+    def test_thread_order_follows_the_last_present_reference_and_survives_cycles(self):
+        row = lambda n, mid, refs="": {"number": n, "message_id": mid, "references": refs,
+                                       "subject": "", "from": "", "date": ""}
+        rows = [row(1, "<a>"), row(2, "<b>"), row(3, "<c>", "<a>"),
+                row(4, "<d>", "<a> <c>"), row(5, "<e>", "<gone> <b>"),
+                row(6, "<f>", "<outside>"), row(7, "<x>", "<y>"), row(8, "<y>", "<x>")]
+        order = [(r["number"], depth, outside) for r, depth, outside in fn_web.thread_rows(rows)]
+        self.assertEqual(order, [(1, 0, False), (3, 1, False), (4, 2, False),
+                                 (2, 0, False), (5, 1, False), (6, 0, True),
+                                 (7, 0, True), (8, 0, True)])
+
+    def test_reply_subject_and_references_keep_first_and_last_three(self):
+        self.assertEqual(fn_web.reply_subject("hello"), "Re: hello")
+        self.assertEqual(fn_web.reply_subject("RE: hello"), "RE: hello")
+        ids = ["<%03d-%s@example.invalid>" % (n, "x" * 30) for n in range(40)]
+        refs = fn_web.reply_references(" ".join(ids[:-1]), ids[-1]).split()
+        self.assertLessEqual(len(" ".join(refs)), fn_web.MAX_REFERENCES)
+        self.assertEqual(refs[0], ids[0])
+        self.assertEqual(refs[-3:], ids[-3:])
+        self.assertEqual(fn_web.reply_references("", "<p@x>"), "<p@x>")
+
+    def test_read_marks_are_local_per_principal_and_refuse_a_foreign_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "marks" / "m.json"
+            marks = fn_web.ReadMarks(path, "127.0.0.1:1119", "ember")
+            self.assertEqual(marks.unread_upper("fn.agents", 1, 10), 10)
+            marks.mark("fn.agents", 1, "<one@x>")
+            marks.mark("fn.agents", 3, "<three@x>")
+            self.assertEqual(marks.unread_upper("fn.agents", 1, 10), 8)
+            self.assertEqual(json.loads(path.read_text())["groups"]["fn.agents"]["through"], 1)
+            self.assertEqual(oct(path.stat().st_mode & 0o777), "0o600")
+            again = fn_web.ReadMarks(path, "127.0.0.1:1119", "ember")
+            self.assertTrue(again.is_read("fn.agents", 3))
+            self.assertFalse(again.is_read("fn.agents", 2))
+            self.assertEqual(again.last("fn.agents"), {"number": 3, "message_id": "<three@x>"})
+            other = fn_web.ReadMarks(path, "127.0.0.1:1119", "yue")
+            self.assertIn("another node or principal", other.error)
+            other.mark("fn.agents", 9, "<nine@x>")
+            self.assertEqual(json.loads(path.read_text())["user"], "ember")
+
+    def test_verdict_badge_kind_never_invents_a_verdict(self):
+        self.assertEqual(fn_web.verdict_kind(None), "unavailable")
+        self.assertEqual(fn_web.verdict_kind(fn_web.parse_verdict_hdr(
+            "4 verified " + "ab" * 32 + " keyring 2", 4)), "verified")
+        self.assertEqual(fn_web.verdict_kind(fn_web.parse_verdict_hdr(
+            "4 unverified signature keyring 2", 4)), "unverified")
+        self.assertEqual(fn_web.verdict_kind(fn_web.parse_verdict_hdr(
+            "4 absent no-record", 4)), "absent")
+
     def test_verdict_parser_rejects_malformed_and_unbounded_values(self):
         self.assertIsNone(fn_web.parse_verdict_hdr("4 verified " + "a" * 100000, 4))
         self.assertIsNone(fn_web.parse_verdict_hdr("4 unverified signature", 4))
