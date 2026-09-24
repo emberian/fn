@@ -1658,6 +1658,26 @@
         {
           "kind": "theorem",
           "name": "fn-own-feed-targets-omit-no-offerable-peer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-never-offers-a-loop",
+          "note": "The loop keystone, over the unfiltered fn-own-feed-targets. It counts for the host only through fn-own-submission-targets-are-feed-targets."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-submission-targets-are-feed-targets",
+          "note": "The subject equation of AGENTS.md rule 1 (a bound, not an equality: tests/acl2/owner-tests shows the filter emptying the targets once the peer holds the Message-ID). fn-own-submission-targets is what host/owner-host.lisp fn-owner-submission-intent reaches through fn-own-submission-intent-records, and what fn-own-feed-durable and fn-own-feed-durable-records enqueue and journal."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-submission-never-targets-a-loop",
+          "note": "The loop statement over the host-called fn-own-submission-targets; its proof is the two events above."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-transit-outcome-never-enqueues-on-the-origin",
+          "note": "Over fn-own-transit-outcome, the transition host/owner-host.lisp fn-owner-transit-outcome installs: the origin peer's feed is unchanged whatever the decision and the store word. Replaces, for the host, the sibling fn-own-feed-accept-never-enqueues-on-the-origin (fn-own-feed-accept has no caller)."
         }
       ]
     },
@@ -1841,6 +1861,16 @@
           "kind": "theorem",
           "name": "fn-pu-relay-article-names-the-agent-in-every-path",
           "note": "The article-level keystone doing the work."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-relayed-octets-keep-the-received-path-tail",
+          "note": "One hypothesis (the node has a path identity) with a must-fail on the anonymous node. Over fn-peer-relayed-octets (host/owner-host.lisp fn-owner-take): each stored Path line's content is the received one with the identity, the diagnostic and two '!' in front."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pu-relay-article-keeps-the-received-path-tail",
+          "note": "The article-level keystone doing the work (books/path-update-tail.lisp)."
         }
       ]
     },

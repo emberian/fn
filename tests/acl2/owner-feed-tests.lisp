@@ -487,3 +487,77 @@
                                          "nodeB" (fn-own-feed-lost-one
                                                   "nodeB" *oft-done* *oft-obs*))))
                      :done))
+
+; -----------------------------------------------------------------------------
+; Teeth for fn-own-feed-targets-omit-no-offerable-peer and
+; fn-own-feed-never-offers-a-loop (PRF-029).  The host-called forms of both
+; are in books/owner-feed-subject.lisp, with teeth in tests/acl2/owner-tests.
+
+; -omit-no-offerable-peer, witness: nodeB is a peer of the table, passes the
+; scope decision, and is a target.
+(assert-event (fn-own-feed-entry-of "nodeB" *oft-tbl*))
+(assert-event (fn-own-feed-offerablep (fn-own-feed-record-of "nodeB" *oft-tbl*)
+                                      nil *oft-groups* *oft-path*))
+(assert-event (member-equal "nodeB" (fn-own-feed-targets *oft-tbl* nil *oft-groups* *oft-path*)))
+; Tooth (the scope decision): nodeC is a peer of a table the recognizer
+; accepts, its record fails the decision, and it is not a target.
+(assert-event (fn-own-feed-tablep *oft-tbl*))
+(assert-event (fn-own-feed-entry-of "nodeC" *oft-tbl*))
+(assert-event (not (fn-own-feed-offerablep (fn-own-feed-record-of "nodeC" *oft-tbl*)
+                                           nil *oft-groups* *oft-path*)))
+(must-fail (assert-event
+  (member-equal "nodeC" (fn-own-feed-targets *oft-tbl* nil *oft-groups* *oft-path*))))
+; The other two hypotheses (the table recognizer and the bound entry) have no
+; tooth because they are not needed: the conclusion follows from the scope
+; decision alone, over any list.  The first lookup a name finds is an entry
+; the targets walk also visits, and the record of no entry passes nothing.
+(defthm oft-no-record-is-not-offerable
+  (not (fn-own-feed-offerablep nil origin groups path))
+  :hints (("Goal" :in-theory (enable fn-own-feed-offerablep fn-own-feed-outboundp))))
+(defthm oft-omit-no-offerable-peer-needs-only-the-scope-decision
+  (implies (fn-own-feed-offerablep (fn-own-feed-record-of name tbl)
+                                   origin groups path)
+           (member-equal name (fn-own-feed-targets tbl origin groups path)))
+  :hints (("Goal" :induct (fn-own-feed-targets tbl origin groups path)
+           :in-theory (enable fn-own-feed-record-of fn-own-feed-entry-of
+                              fn-own-feed-targets fn-own-feed-entry-record))))
+
+; -never-offers-a-loop, witness: nodeB is a target, is not the origin, and
+; its path-identity is not in Path.
+(defun oft-loop-conclusion (tbl name origin path)
+  (and (not (equal name origin))
+       (not (fn-path-names-p
+             path (fn-record-string-octets
+                   (fn-cfg-peer-path-identity (fn-own-feed-record-of name tbl)))))))
+(assert-event (oft-loop-conclusion *oft-tbl* "nodeB" nil *oft-path*))
+; Tooth (membership), origin half: an article from nodeB, over a table the
+; recognizer accepts.  nodeB is not a target, and it is the origin.
+(assert-event (not (member-equal "nodeB" (fn-own-feed-targets *oft-tbl* "nodeB"
+                                                              *oft-groups* *oft-path*))))
+(must-fail (assert-event (oft-loop-conclusion *oft-tbl* "nodeB" "nodeB" *oft-path*)))
+; Tooth (membership), Path half: the article nodeB has already relayed.
+(defconst *oft-seen-path* (fn-own-feed-path-of *oft-seen*))
+(assert-event (not (member-equal "nodeB" (fn-own-feed-targets
+                                          *oft-tbl* nil
+                                          (fn-own-feed-groups-of *oft-seen*)
+                                          *oft-seen-path*))))
+(must-fail (assert-event (oft-loop-conclusion *oft-tbl* "nodeB" nil *oft-seen-path*)))
+; Tooth (table recognizer): two entries keyed nodeB, the first with nodeB's
+; record, the second with the record of a peer nodeE that feeds fn.*.  The
+; second passes the decision for the seen article, so nodeB is a target; the
+; lookup reads the first, whose path-identity the Path names.
+(defconst *oft-e*
+  (fn-cfg-peer-make "nodeE" "e.fn.test" '(:nntp "127.0.0.1" 1123)
+                    '("fn.*" 32768 16) '("fn.*" t 256 1000)
+                    '(:source-address "127.0.0.5")))
+(assert-event (fn-cfg-peerp *oft-e*))
+(defconst *oft-bad-loop-table*
+  (list (fn-own-feed-entry "nodeB" *oft-b* (fn-own-feed-find "nodeB" *oft-tbl*))
+        (fn-own-feed-entry "nodeB" *oft-e* (fn-own-feed-find "nodeB" *oft-tbl*))))
+(assert-event (not (fn-own-feed-tablep *oft-bad-loop-table*)))
+(assert-event (member-equal "nodeB" (fn-own-feed-targets
+                                     *oft-bad-loop-table* nil
+                                     (fn-own-feed-groups-of *oft-seen*)
+                                     *oft-seen-path*)))
+(must-fail (assert-event
+  (oft-loop-conclusion *oft-bad-loop-table* "nodeB" nil *oft-seen-path*)))

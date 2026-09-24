@@ -759,3 +759,58 @@
                                               (pt-o "<long@example.invalid>") *pt-long*
                                               nil "ob-long" "subject-long")
                      (fn-peer-decision :refuse :oversize)))
+
+; Keystone (RFC 5537 section 3.2.1): the stored Path is what arrived with this
+; node's identity, "!", the diagnostic and "!" in front.  Witness: INN's Path
+; line survives whole behind "fnA.hbox.test!!", and behind
+; "fnA.hbox.test!.MISMATCH.other.hbox.test!" for a peer expecting another
+; identity.
+(assert-event (equal (fn-pu-path-contents *pt-inn-fed*)
+                     (list (append (pt-o "inn.hbox.test!lab.example.invalid!not-for-mail")
+                                   '(13 10)))))
+(assert-event (equal (fn-pu-path-contents *pt-inn-stored*)
+                     (list (append (pt-o "fnA.hbox.test!!inn.hbox.test!lab.example.invalid!not-for-mail")
+                                   '(13 10)))))
+(defun pt-tail-expected (cfg peer octets)
+  (fn-pu-prepend-paths
+   (fn-pu-path-contents octets)
+   (fn-peer-local-identity cfg)
+   (fn-pu-diagnostic-octets
+    (fn-path-diagnostic
+     (fn-pu-expected
+      (fn-peer-expected-identity
+       (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))))
+     (fn-pu-received-path octets)))))
+(assert-event (fn-path-identityp (fn-peer-local-identity *pt-cfg*)))
+(assert-event (equal (fn-pu-path-contents
+                      (fn-peer-relayed-octets *pt-cfg* "innA" *pt-inn-fed*))
+                     (pt-tail-expected *pt-cfg* "innA" *pt-inn-fed*)))
+(assert-event (equal (fn-pu-path-contents
+                      (fn-peer-relayed-octets *pt-cfg-other-peer* "innA" *pt-inn-fed*))
+                     (list (append (pt-o "fnA.hbox.test!.MISMATCH.other.hbox.test!inn.hbox.test!lab.example.invalid!not-for-mail")
+                                   '(13 10)))))
+(assert-event (equal (fn-pu-path-contents
+                      (fn-peer-relayed-octets *pt-cfg-other-peer* "innA" *pt-inn-fed*))
+                     (pt-tail-expected *pt-cfg-other-peer* "innA" *pt-inn-fed*)))
+; A Path line that already begins with this node's identity is kept, not
+; prepended twice.
+(assert-event (equal (fn-pu-path-contents
+                      (fn-peer-relayed-octets *pt-cfg* "innA" *pt-inn-stored*))
+                     (fn-pu-path-contents *pt-inn-stored*)))
+(assert-event (equal (fn-pu-path-contents
+                      (fn-peer-relayed-octets *pt-cfg* "innA" *pt-inn-stored*))
+                     (pt-tail-expected *pt-cfg* "innA" *pt-inn-stored*)))
+; Tooth for the one hypothesis: a node with no path identity prepends
+; nothing, so the stored Path is the received one and the prepend form is
+; false of it.  The premise fails and the conclusion fails, on INN's article.
+(assert-event (not (fn-path-identityp (fn-peer-local-identity *pt-cfg-anon*))))
+(assert-event (equal (fn-pu-path-contents
+                      (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*))
+                     (fn-pu-path-contents *pt-inn-fed*)))
+(assert-event (not (equal (fn-pu-path-contents
+                           (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*))
+                          (pt-tail-expected *pt-cfg-anon* "innA" *pt-inn-fed*))))
+(must-fail
+ (assert-event (equal (fn-pu-path-contents
+                       (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*))
+                      (pt-tail-expected *pt-cfg-anon* "innA" *pt-inn-fed*))))
