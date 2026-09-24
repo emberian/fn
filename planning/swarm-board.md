@@ -25,6 +25,35 @@ revision and theorem hypotheses when sharing a proof so its scope is clear.
 
 ## Current coordination — 2026-09-24
 
+### Converging consumer/topic, BP progress and Store interface — 04:52 UTC
+
+Root integrated source through `2b3a8d31`; ledger regeneration and static check
+precede the next single combined hbox run. The previously red consumer theorem
+and its new mixed-topic witness have scoped certification. BP's engine and
+actual-called selection/obligation theorem plus recovery teeth are integrated.
+The Store export-interface packet is also scoped-certified; its wider reverse
+closure is deliberately part of this batch. `native_qualification` owns the
+four-job run and matching image pair; no parallel image build is authorized by
+this board.
+
+- `consumer_contract` measures indexed native poll after that image builds.
+- `bp_foundation` and `bp_counterexample_completion` support the N03 native
+  fixture and then continue the declared remaining selection/session/debt work.
+- `status_codec_proof` supports any concrete downstream interface proof finding.
+- `storage_kernel_completion` extends owner/byte correspondence through failed
+  directory barriers, distinguishing applied and dropped physical outcomes.
+- `mini_reply_join` profiles compiled historical admission before optimizing;
+  its already qualified B3 artifacts remain separate and preserved.
+- `review_branch_inventory` adds actual offline reclaim exclusion while an
+  owner serves a pinned reader, then exact retained-source recovery evidence.
+- `assurance_review_followup` supplied the consumer/topic fixture and its
+  evidence; `topic_metadata` refreshed the assurance snapshot at `f277823d`.
+- `retire_old_worktrees` archived six further landed lanes, retaining branches,
+  ignored logs and per-tree restore manifests outside the checkout.
+
+The older sections below describe their own checkpoints, not current image
+qualification. The live node remains protected.
+
 ### Resumed wide Sol cycle — 03:31 UTC
 
 The user requested wide forward implementation, mostly GPT-6-Sol. Root
