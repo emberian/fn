@@ -637,6 +637,106 @@ class NativeCheckpointTests(unittest.TestCase):
         recovered = self.native("store", store, "recover")
         self.assertIn("transactions=2 articles=2", recovered.stdout)
 
+    def test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin(self):
+        store = self.initialized("pack-active-reader", article=False)
+        msgid = "<pack-active-reader@example.invalid>"
+        article = self.base / "active-reader.eml"
+        article.write_bytes(
+            b"From: author@example.invalid\r\n"
+            b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+            b"Newsgroups: fn.letters\r\n"
+            b"Subject: pinned before reclaim\r\n"
+            b"Message-ID: " + msgid.encode("ascii") +
+            b"\r\n\r\naccepted source survives reclaim\r\n")
+        control = self.base / "active-reader-control.sock"
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        config = self.base / "active-reader.toml"
+        config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
+            'port = {}\n[control]\npath = "{}"\n'.format(store, port, control),
+            encoding="ascii")
+
+        def start_owner():
+            process = subprocess.Popen(
+                [str(IMAGE), "--fn", "operator", str(config), "run"],
+                cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+            wait_for_announcement(process, b"LISTENING ")
+            return process
+
+        owner = start_owner()
+        try:
+            posted = self.native("operator", config, "post", "--message-id",
+                                 msgid, "--payload", article, "--group",
+                                 "fn.letters")
+            self.assertIn("accepted", posted.stdout)
+        finally:
+            diagnostic = stop_and_diagnostics(owner, timeout=60)
+            self.assertEqual(owner.returncode, 0, diagnostic)
+
+        def inspect_source():
+            result = subprocess.run(
+                [str(IMAGE), "--fn", "store", str(store), "inspect", msgid],
+                cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=30, check=False)
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            return result.stdout
+
+        before_source = inspect_source()
+        self.assertTrue(before_source.endswith(article.read_bytes()))
+        before_retention = self.native("store", store, "retention").stdout
+        self.assertRegex(before_retention, r"^pins=1 reserved=[1-9][0-9]*\n$")
+        self.native("checkpoint", "pack", store, "select")
+        before_transactions = self.transaction_bytes(store)
+        selected_pack = store / "packs" / "generation-0.fncp"
+        before_pack = selected_pack.read_bytes()
+
+        owner = start_owner()
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
+                sock.settimeout(10)
+                with sock.makefile("rwb", buffering=0) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+
+                    def read_pinned_article():
+                        stream.write(("ARTICLE {}\r\n".format(msgid)).encode("ascii"))
+                        self.assertTrue(stream.readline().startswith(b"220 "))
+                        received = bytearray()
+                        while True:
+                            line = stream.readline()
+                            self.assertTrue(line, "pinned ARTICLE ended early")
+                            if line == b".\r\n":
+                                break
+                            received.extend(line[1:] if line.startswith(b"..") else line)
+                        return bytes(received)
+
+                    first_read = read_pinned_article()
+                    self.assertTrue(first_read.endswith(article.read_bytes()))
+                    # The operator holds the exclusive Store lock for the
+                    # lifetime of this pinned connection. Reclaim must refuse
+                    # before any unlink, with a definite refusal exit.
+                    refused = self.native("checkpoint", "pack-reclaim", store,
+                                          expected=run_store.EXIT_REFUSED)
+                    self.assertIn("store is already locked", refused.stderr)
+                    self.assertEqual(self.transaction_bytes(store), before_transactions)
+                    self.assertEqual(selected_pack.read_bytes(), before_pack)
+                    self.assertEqual(read_pinned_article(), first_read)
+        finally:
+            diagnostic = stop_and_diagnostics(owner, timeout=60)
+            self.assertEqual(owner.returncode, 0, diagnostic)
+
+        reclaimed = self.native("checkpoint", "pack-reclaim", store)
+        self.assertIn("reclaimed transaction-prefix=1", reclaimed.stdout)
+        self.assertEqual(self.transaction_bytes(store), {})
+        self.assertEqual(selected_pack.read_bytes(), before_pack)
+        self.assertIn("transactions=1 articles=1",
+                      self.native("store", store, "recover").stdout)
+        self.assertEqual(inspect_source(), before_source)
+        self.assertEqual(self.native("store", store, "retention").stdout,
+                         before_retention)
+
     def test_pack_prefix_reclaim_process_death_recovers_from_selected_pack(self):
         for point in ("pack-reclaim-unlink", "pack-reclaim-directory"):
             with self.subTest(point=point):

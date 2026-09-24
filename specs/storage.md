@@ -99,6 +99,12 @@ by unlinking only the ACL2-issued surviving covered names under the writer
 lease and fencing until the transaction-directory barrier succeeds.  The pack
 does not summarize or discard semantic history: generic replay still consumes
 the reconstructed full event stream, including retention and identity events.
+The current native `pack-reclaim` command opens the Store for writing and holds
+its exclusive lock through the last unlink and directory barrier. A live owner
+or read-only opener holds an incompatible Store lock while a reader uses its
+pinned archive, so this command refuses before deletion when such a reader is
+active. This is an offline exclusion rule for this command; it is not a general
+proof of concurrent physical reclamation under a different storage layout.
 One selected pack is limited to 4096 events and 4 MiB of encoded bytes.  Since
 this tranche stores the complete canonical prefix rather than a semantic
 summary, it cannot compact an arbitrarily large history; rolling packs or a

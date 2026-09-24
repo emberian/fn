@@ -574,7 +574,7 @@
         "tests/acl2/checkpoint-compaction-tests.lisp",
         "tests/test_native_checkpoint.py"
       ],
-      "note": "A lossless selected prefix pack now permits exact prefix-file reclamation and crash resumption while preserving every canonical Store event byte. Surviving covered files must match the pack and the uncovered suffix must be contiguous. Focused source and ACL2 tests do not yet establish active-reader safety, all physical crash cuts, filesystem qualification, or protected-closure reclamation of article objects."
+      "note": "A lossless selected prefix pack now permits exact prefix-file reclamation and crash resumption while preserving every canonical Store event byte. Surviving covered files must match the pack and the uncovered suffix must be contiguous. The current native pack-reclaim caller requires an exclusive Store lock, excluding a live owner or read-only opener before any unlink; a native active-reader fixture is pending a source-matched image run. General concurrent physical reclamation, all physical crash cuts, filesystem qualification, and protected-closure reclamation of article objects remain open."
     },
     {
       "id": "STO-008",

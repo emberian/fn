@@ -190,7 +190,7 @@
         "host/native/checkpoint.lisp",
         "tests/test_native_checkpoint.py"
       ],
-      "execution_scope": "Partial: selected lossless prefix packs reconstruct exact Store event bytes; focused tests cover corruption, missing selected authority, crash after a prefix unlink, resumed reclamation, and suffix replay. Active readers, article-object reclamation, every physical cut, and filesystem qualification remain open."
+      "execution_scope": "Partial: selected lossless prefix packs reconstruct exact Store event bytes; focused tests cover corruption, missing selected authority, crash after a prefix unlink, resumed reclamation, and suffix replay. The native active-reader lock-exclusion fixture is source-present but awaits a source-matched developer image run. General concurrent physical reclamation, article-object reclamation, every physical cut, and filesystem qualification remain open."
     },
     {
       "id": "SCN-006",
