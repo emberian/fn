@@ -1852,7 +1852,8 @@
   :hints (("Goal" :in-theory (e/d (fn-stx-index-invariantp)
                                   (fn-sf-crash fn-node-statep
                                    fn-node-initial-state
-                                   fn-stx-index-of-store fn-stx-store))
+                                   fn-stx-index-of-store fn-stx-store
+                                   fn-sn-make-v6))
            :use ((:instance fn-sn-crash-preserves-state)))))
 
 ; -by-recomputation: recovery's node comes from a replay, not from a step of
@@ -1863,7 +1864,7 @@
   :hints (("Goal" :in-theory (e/d (fn-stx-index-invariantp)
                                   (fn-sf-replay-node fn-sf-recover
                                    fn-node-statep fn-stx-index-of-store
-                                   fn-stx-store))
+                                   fn-stx-store fn-sn-make-v6))
            :use ((:instance fn-sn-recover-preserves-state)))))
 
 ; -by-recomputation: the reconfiguration transition recomputes over the whole
@@ -1873,7 +1874,8 @@
            (fn-sn-indexedp (fn-sn-set-keyring s keyring)))
   :hints (("Goal" :in-theory (e/d (fn-stx-index-invariantp fn-sn-statep)
                                   (fn-sf-statep fn-node-statep
-                                   fn-stx-index-of-store fn-stx-store)))))
+                                   fn-stx-index-of-store fn-stx-store
+                                   fn-sn-make-v6)))))
 
 ; -----------------------------------------------------------------------------
 ; The served query, and what licenses it
@@ -2327,6 +2329,7 @@
                              fn-replay-composite-record
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-cpe-eventp fn-th-topic-eventp
                              fn-record-record-vocabulary
                              fn-record-shape-vocabulary)))))
 
@@ -2390,6 +2393,7 @@
                              fn-replay-composite-record
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-cpe-eventp fn-th-topic-eventp
                              fn-record-record-vocabulary
                              fn-record-shape-vocabulary)))))
 
@@ -2419,6 +2423,7 @@
                              fn-replay-composite-record
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-cpe-eventp fn-th-topic-eventp
                              fn-record-record-vocabulary
                              fn-record-shape-vocabulary))))))
 

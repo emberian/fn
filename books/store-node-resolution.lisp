@@ -2,6 +2,9 @@
 (in-package "ACL2")
 (include-book "store-node-traces")
 (include-book "records-seam")
+; Resolution proofs use the Store's exported selector facts.  Opening the
+; fourteen-field constructor in every file transition obscures those facts.
+(local (in-theory (disable fn-sn-make-v6)))
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
@@ -168,9 +171,10 @@
                             (node (fn-sn-node s))
                             (recorded-txid
                              (fn-sf-frontier (fn-sn-files s)))))
-           :in-theory (e/d (fn-sn-refuse-reservation fn-sn-update fn-sn-statep)
+           :in-theory (e/d (fn-sn-refuse-reservation fn-sn-update
+                            fn-sn-statep fn-sn-shapep)
                            (fn-sf-refuse-reservation
-                            fn-replay-advance-txid)))))
+                            fn-replay-advance-txid fn-sn-make-v6)))))
 
 (defthm fn-sn-known-abort-files-preserves-state
   (implies (fn-sf-statep files)
