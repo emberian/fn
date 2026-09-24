@@ -1354,3 +1354,35 @@ The called reader-open function `fn-ocfg-open` has the focused theorem
 `fn-ocl-open-pins-current-physical-configuration`; a new connection pins
 the installed configuration even when existing connections retain older
 histories. Full owner-relation preservation across open remains open.
+
+### P6 publication as the host calls it (2026-09-24)
+
+`fn-owner-reconfigure-complete` now calls one ACL2 function,
+`fn-ocl-publish` in `books/config-owner-publish.lisp`, and installs the owner
+it returns: the refusal (nothing staged, or a durable generation other than
+the staged record's), `fn-ocl-complete`, the posting configuration of the
+published generation and the verdict are all its. The group request's delta
+list is `fn-ocl-request-deltas` in the same book; the host builds no delta.
+
+`fn-ocl-no-reader-observes-a-half-change` states headline 1 over those
+functions with no hypothesis: across staging through `fn-ocfg-step` and
+`fn-ocl-publish`, every open connection's record, every pin and every served
+table are unchanged; a non-durable verdict changes nothing; a durable one
+completes exactly the record the durable write named, appends it whole to
+the store's configuration history, publishes what that history replays to,
+clears the stage and installs the matching posting configuration.
+`fn-ocl-publish-installs-the-whole-staged-record` adds that the published
+configuration is `fn-cfg-apply-record` of the live configuration and the
+whole record, under `fn-ocl-config-historyp` (live configuration = physical
+replay of the store's history). The owner itself is not unchanged on the
+called path: the store and the posting configuration move, so the model
+statement's owner conjunct does not transfer
+(`fn-ocl-publish-agrees-with-ocfg-complete-on-readers` equates the called
+path with `(:complete)` only on pins, served tables, connection records and
+the stage).
+
+Still open: headline 2 (`fn-ocfg-crash-at-any-instant-recovers-the-live-generation`)
+is over `fn-cnode-config-replay`, which no host line calls; recovery calls
+`fn-cpr-replay`. The configuration half over `fn-cpr-replay` is
+`fn-ocl-cpr-loop-configuration-is-the-record-fold`; no theorem equates the
+two replays' `:ok` verdicts.

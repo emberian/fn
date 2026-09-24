@@ -517,6 +517,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-owner-read-invariants \
 	tests/acl2/config-owner-read-invariants-tests \
 	tests/acl2/config-owner-live-tests \
+	books/config-owner-publish \
+	tests/acl2/config-owner-publish-tests \
 	books/owner-config \
 	books/ideal \
 	books/nntp-index \
