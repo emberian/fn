@@ -72,7 +72,9 @@
         "books/store-prepare-correspondence.lisp",
         "tests/acl2/store-prepare-correspondence-tests.lisp",
         "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md",
-        "books/owner-served-carried.lisp"
+        "books/owner-served-carried.lisp",
+        "planning/evidence/manifests/certify-20260924T163534Z-2387827.json",
+        "planning/evidence/served-path-cost-2026-09-24.md"
       ],
       "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. The host-called store prepare projection now preserves that relation after observed open across the actual post-open mutators without replaying the appended history per prepare. Provenance, complete runtime guards and physical refinement remain open. BP joint durable/pending sender binding and fixed-Store receiver state/context/decision invariants now hold through actual transitions and arbitrary finite replay; changing-Store composition remains open. CHANGED 2026-09-22 (w31/freeze-3): `fn-snt-relation` (books/store-node-traces) now covers the two publications whose node effect is deferred to `fn-sn-finish` -- `fn-sn-prepare-retention` (`6ab2c783`) and `fn-sn-prepare-identity` (`4bb7bb3d`) -- and the fault arm `fn-sn-recover` grew in `40bb3f74`. Before this it was false of every state those three transitions produce, so `fn-snrt-step-preserves-relation`, `fn-own-step-preserves-relation` and `fn-opc-configured-step-preserves-owner-relation` above it were false with it and no run had said so. What the deferred arm says is weaker than the article arm by design: it carries the replayed node at the reservation's transaction id and the equation between the applied event and the replay of the extended history, and no proposal standing on the live node, because there is none until the directory barrier."
     },
@@ -699,7 +701,9 @@
         "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md",
         "books/served-carried.lisp",
         "books/owner-served-carried.lisp",
-        "tests/acl2/owner-served-carried-tests.lisp"
+        "tests/acl2/owner-served-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T163534Z-2387827.json",
+        "planning/evidence/served-path-cost-2026-09-24.md"
       ],
       "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open."
     },
@@ -1204,7 +1208,9 @@
         "tests/acl2/nntp-auth-fold-tests.lisp",
         "planning/evidence/manifests/certify-20260924T105650Z-3582222.json",
         "planning/evidence/manifests/certify-20260924T145426Z-1436530.json",
-        "books/served-carried.lisp"
+        "books/served-carried.lisp",
+        "planning/evidence/manifests/certify-20260924T163534Z-2387827.json",
+        "planning/evidence/served-path-cost-2026-09-24.md"
       ],
       "progress_note": "Historical W10 local admission and cache-origin limitations are superseded for the frozen03 closure and source-pinned native-auth continuation by their archived certification/build evidence. The native AUTHINFO startup receiver passes scoped live wrong-password/correct-password and reader-versus-peer cases. These results do not establish independent-client interoperability, native protected transport, or complete physical adapter correspondence. Native principal administration has scoped ACL2 and actual replacement/recovery evidence; public CLI composition remains open. The existing salted SHA-256 verifier is preserved without a password-hardening or secrecy theorem claim. Lane t7/auth-teeth, 2026-09-22: the events above are curated for the first time and tests/acl2/nntp-auth-teeth-tests.lisp is the teeth book, with a reachable non-degenerate witness for each keystone and one must-fail per hypothesis for the 480 gate (seven) and the 483 refusal (eight), plus separating witnesses for the three capability labels. OB-AUTH-FOLD now proves the local-submission exclusion through the served byte fold in books/nntp-auth-fold.lisp, with a reachable transit counterexample to the prior no-any-submission claim. Two of K1's four hypotheses (fn-served-connp and the not-handshaking one) are proof-support and have no must-fail, because K1 restated without them reaches an open case, a session that is fn-auth-sessionp but not consistent with its connection's archive. The 483-before-TLS and 281-after-STARTTLS behaviour on a deployed image is tools/node_probe.py's row and has not been run on one. K2 follow-up teeth isolate the no-pending-POST premise with a forged but fn-served-connp no-posters state after an actual 340 offer; it submits locally and is unreachable from a no-posters open under the preservation theorem. fn-served-connp is a structural carried connection invariant, not a separate permission test or a runtime whole-store scan.",
       "events": [
