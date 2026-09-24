@@ -57,6 +57,12 @@
       "host": "hbox",
       "verdict": "failed"
     },
+    "books/bp-node-progress-selection-invariants": {
+      "seconds": 11.148,
+      "run": "certify-20260924T085630Z-1101093",
+      "host": "nextop.local",
+      "verdict": "passed"
+    },
     "books/bp-primary": {
       "seconds": 10.368,
       "run": "certify-20260923T015321Z-2477288",
