@@ -715,22 +715,22 @@
     "books": 719,
     "books_in_root_closure": 717,
     "roots": 708,
-    "theorems": 9583,
-    "functions": 6838,
-    "assert_events": 10534,
-    "must_fails": 809,
+    "theorems": 9590,
+    "functions": 6841,
+    "assert_events": 10551,
+    "must_fails": 814,
     "encapsulates": 30,
     "guards": {
       "verified": 2046,
-      "declared-off": 439,
-      "default-guarded": 3400,
+      "declared-off": 440,
+      "default-guarded": 3402,
       "default-unguarded": 953
     },
     "suspect_theorems": 83,
     "export_hygiene_warnings": 116,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 59,
-    "include_hygiene_warnings": 691,
+    "include_hygiene_warnings": 692,
     "host_names_warnings": 826,
     "hand_written_record_warnings": 18
   },
@@ -8067,12 +8067,12 @@
       "book": "books/owner-advance-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
-      "functions": 4,
+      "theorems": 23,
+      "functions": 7,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
-        "default-guarded": 3,
+        "declared-off": 2,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8083,6 +8083,7 @@
       "encapsulates": 0,
       "includes": [
         "owner-commit-carried",
+        "owner-commit-ocl",
         "owner-served-carried"
       ],
       "system_includes": [],
@@ -17331,9 +17332,9 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 30,
-      "must_fails": 6,
-      "defconsts": 14,
+      "assert_events": 47,
+      "must_fails": 11,
+      "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -23611,6 +23612,13 @@
         "line": 34,
         "include": "records-seam",
         "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-advance-carried.lisp",
+        "line": 44,
+        "include": "owner-commit-ocl",
+        "included": "books/owner-commit-ocl.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -32731,7 +32739,7 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1487,
+        "line": 1490,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
