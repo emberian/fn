@@ -1124,8 +1124,10 @@ Every other caller submits exact authored octets and names them."
       (multiple-value-bind (actual-id actual-subject ignored)
           (fnn-metadata msgid stored)
         (declare (ignore ignored))
-        (unless (and (string= actual-id planned-id)
-                     (string= actual-subject planned-subject))
+        ;; Metadata is ACL2-rendered identity text in octet vectors; the
+        ;; pinned plan carries the same octets as lists, not Lisp strings.
+        (unless (and (equalp actual-id (fnn-octets planned-id))
+                     (equalp actual-subject (fnn-octets planned-subject)))
           (fnn-fault "owner BP transit changed projected identity"))
         (let ((kind (fnn-owner-action 'fn-owner-transit-decide
                                       (fnn-octet-list actual-id)
