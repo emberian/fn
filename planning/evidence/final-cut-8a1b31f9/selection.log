@@ -1,0 +1,649 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:17:41.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/tank/fn/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/tank/fn/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>
+Note: Writing .port file, /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-
+node-progress-selection-invariants.port.
+
+CERTIFICATION ATTEMPT FOR 
+"/tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-progress-selection-invariants.lisp"
+
+ACL2 Version 8.7
+
+* Step 1: Read 
+"/tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-progress-selection-invariants.lisp"
+and compute its book-hash.
+
+* Step 2:  There were eight forms in the file.  We now attempt to establish
+that each form, whether local or non-local, is indeed an admissible
+embedded event form in the context of the previously admitted ones.
+
+
+ACL2 !>>>(INCLUDE-BOOK "bp-node-progress")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "bp-node-machine" ...):
+Unable to load compiled file for book
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-machine.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+Here is the sequence of books with loads of compiled or expansion files
+that have led down to the printing of this message, where the load
+for each is halted during the load for the next:
+
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-progress.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-report-author.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-report-outbox.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-report-step.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+step.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-fnbs-family-replay.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+replacement.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-fnbs-family-codec.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+expiry.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+plan.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+family.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-foundation.lisp
+
+
+Summary
+Form:  ( INCLUDE-BOOK "bp-node-progress" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  5.01 seconds (prove: 0.00, print: 0.01, other: 5.00)
+"/tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-progress.lisp"
+
+
+ACL2 !>>>(DEFTHM FN-BPNP-OLDEST-ELIGIBLE-SKIPS-BLOCKED-OLDER
+          (IMPLIES
+           (AND (CONSP NEWER)
+                (FN-BPNP-LIVE-PENDINGP NEWER NODE OBSERVATION)
+                (NOT (FN-BPNP-BLOCKEDP NEWER NODE ROUTES GENERATION WAITS))
+                (FN-BPNP-BLOCKEDP OLDER NODE ROUTES GENERATION WAITS))
+           (EQUAL
+            (FN-BPNP-OLDEST-ELIGIBLE (LIST NEWER OLDER)
+                                     NODE
+                                     OBSERVATION ROUTES GENERATION WAITS NIL)
+            NEWER))
+          :HINTS (("Goal" :IN-THEORY (DISABLE FN-BPNP-LIVE-PENDINGP
+                                              FN-BPNP-BLOCKEDP))))
+
+ACL2 Warning [Double-rewrite] in ( DEFTHM 
+FN-BPNP-OLDEST-ELIGIBLE-SKIPS-BLOCKED-OLDER ...):  In a :REWRITE rule
+generated from FN-BPNP-OLDEST-ELIGIBLE-SKIPS-BLOCKED-OLDER, equivalence
+relation LIST-EQUIV is maintained at one problematic occurrence of
+variable NEWER in the first hypothesis, but not at any binding occurrence
+of NEWER.  Consider replacing that occurrence of NEWER in the first
+hypothesis with (DOUBLE-REWRITE NEWER).  See :doc double-rewrite for
+more information on this issue.
+
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BPNP-OLDEST-ELIGIBLE-SKIPS-BLOCKED-OLDER ...)
+Rules: ((:DEFINITION FN-BPNP-OLDEST-ELIGIBLE)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION FN-BPNP-BLOCKEDP)
+        (:TYPE-PRESCRIPTION FN-BPNP-LIVE-PENDINGP))
+Warnings:  Double-rewrite
+Time:  0.02 seconds (prove: 0.01, print: 0.00, other: 0.01)
+Prover steps counted:  266
+FN-BPNP-OLDEST-ELIGIBLE-SKIPS-BLOCKED-OLDER
+
+
+ACL2 !>>>(LOCAL
+             (DEFTHM FN-BPNP-NTH-IS-NTH
+               (IMPLIES (NATP N)
+                        (EQUAL (FN-BPN-NTH N XS) (NTH N XS)))
+               :HINTS
+               (("Goal" :INDUCT (FN-BPN-NTH N XS)
+                        :IN-THEORY (ENABLE FN-BPN-NTH NTH FN-CBOR-AG-CAR)))))
+
+ACL2 Warning [Double-rewrite] in ( DEFTHM FN-BPNP-NTH-IS-NTH ...):
+In a :REWRITE rule generated from FN-BPNP-NTH-IS-NTH, equivalence relation
+LIST-EQUIV is maintained at one problematic occurrence of variable
+XS in the right-hand side, but not at any binding occurrence of XS.
+Consider replacing that occurrence of XS in the right-hand side with
+(DOUBLE-REWRITE XS).  See :doc double-rewrite for more information
+on this issue.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-BPNP-NTH-IS-NTH ...):  A newly
+proposed :REWRITE rule generated from FN-BPNP-NTH-IS-NTH probably subsumes
+the previously added :REWRITE rule FN-BPN-NTH-IS-NTH-ON-TRUE-LISTS,
+in the sense that the new rule will now probably be applied whenever
+the old rule would have been.
+
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by (FN-BPN-NTH N XS).
+
+This suggestion was produced using the :induction rule FN-BPN-NTH.
+If we let (:P N XS) denote *1 above then the induction scheme we'll
+use is
+(AND (IMPLIES (AND (NOT (OR (NOT (NATP N)) (ZP N) (ATOM XS)))
+                   (:P (+ -1 N) (CDR XS)))
+              (:P N XS))
+     (IMPLIES (OR (NOT (NATP N)) (ZP N) (ATOM XS))
+              (:P N XS))).
+This induction is justified by the same argument used to admit FN-BPN-NTH.
+Note, however, that the unmeasured variable XS is being instantiated.
+When applied to the goal at hand the above induction scheme produces
+two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+Subgoal *1/1''
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BPNP-NTH-IS-NTH ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION ATOM)
+        (:DEFINITION FN-BPN-NTH)
+        (:DEFINITION FN-CBOR-AG-CAR)
+        (:DEFINITION NATP)
+        (:DEFINITION NOT)
+        (:DEFINITION NTH)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART NATP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BPN-NTH)
+        (:REWRITE DEFAULT-CAR))
+Warnings:  Subsume and Double-rewrite
+Time:  0.26 seconds (prove: 0.25, print: 0.00, other: 0.01)
+Prover steps counted:  111699
+FN-BPNP-NTH-IS-NTH
+
+
+ACL2 !>>>(DEFTHM FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED
+           (AND (EQUAL (FN-BPNF-HELD-LIST (FN-BPNP-WITH-WAITS ST WAITS))
+                       (FN-BPNF-HELD-LIST ST))
+                (EQUAL (FN-BPNF-ISSUED (FN-BPNP-WITH-WAITS ST WAITS))
+                       (FN-BPNF-ISSUED ST)))
+           :HINTS
+           (("Goal"
+                 :IN-THEORY (ENABLE FN-BPNP-WITH-WAITS FN-BPNF-HELD-LIST
+                                    FN-BPNF-ISSUED FN-BPN-NTH UPDATE-NTH))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED ...):  A :REWRITE rule
+generated from FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED will be
+triggered only by terms containing the function symbols FN-BPNF-HELD-LIST
+and FN-BPNP-WITH-WAITS, which have non-recursive definitions.  Unless
+these definitions are disabled, this rule is unlikely ever to be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED ...):  The previously
+added rule FN-BPNF-HELD-LIST subsumes a newly proposed :REWRITE rule
+generated from FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED, in the
+sense that the old rule rewrites a more general target.  Because the
+new rule will be tried first, it may nonetheless find application.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED ...):  A :REWRITE rule
+generated from FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED will be
+triggered only by terms containing the function symbols FN-BPNF-ISSUED
+and FN-BPNP-WITH-WAITS, which have non-recursive definitions.  Unless
+these definitions are disabled, this rule is unlikely ever to be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED ...):  The previously
+added rule FN-BPNF-ISSUED subsumes a newly proposed :REWRITE rule generated
+from FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED, in the sense that
+the old rule rewrites a more general target.  Because the new rule
+will be tried first, it may nonetheless find application.
+
+Subgoal 2
+
+Splitter note (see :DOC splitter) for Subgoal 2 (2 subgoals).
+  if-intro: ((:DEFINITION FN-BPNP-WITH-WAITS))
+
+Subgoal 2.2
+Subgoal 2.1
+Subgoal 1
+
+Splitter note (see :DOC splitter) for Subgoal 1 (2 subgoals).
+  if-intro: ((:DEFINITION FN-BPNP-WITH-WAITS))
+
+Subgoal 1.2
+Subgoal 1.1
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-BPNF-HELD-LIST)
+        (:DEFINITION FN-BPNF-ISSUED)
+        (:DEFINITION FN-BPNP-WITH-WAITS)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART NFIX)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-BPNP-NTH-IS-NTH)
+        (:REWRITE NTH-UPDATE-NTH))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-BPNP-WITH-WAITS))
+Warnings:  Subsume and Non-rec
+Time:  0.80 seconds (prove: 0.79, print: 0.00, other: 0.01)
+Prover steps counted:  397106
+FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED
+
+
+ACL2 !>>>(DEFTHM FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED
+          (AND
+           (EQUAL
+              (FN-BPNF-HELD-LIST
+                   (FN-BPNF-ANSWER-STATE (FN-BPAH-DELIVER-STEP ST KEY NODE)))
+              (FN-BPNF-HELD-LIST ST))
+           (EQUAL
+              (FN-BPNF-ISSUED
+                   (FN-BPNF-ANSWER-STATE (FN-BPAH-DELIVER-STEP ST KEY NODE)))
+              (FN-BPNF-ISSUED ST)))
+          :HINTS
+          (("Goal"
+                :IN-THEORY
+                (E/D (FN-BPAH-DELIVER-STEP)
+                     (FN-BPNF-HELDP FN-BPB-BUNDLEP FN-BPP-BLOCKP FN-BPP-EIDP
+                                    FN-BPAH-HELD-DELIVERY-PENDINGP
+                                    FN-BPNF-FIND-HELD
+                                    FN-BPNF-INGRESS-PRINCIPAL)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED ...):  A :REWRITE rule
+generated from FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED will
+be triggered only by terms containing the function symbols FN-BPNF-HELD-LIST,
+FN-BPNF-ANSWER-STATE and FN-BPAH-DELIVER-STEP, which have non-recursive
+definitions.  Unless these definitions are disabled, this rule is unlikely
+ever to be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED ...):  The previously
+added rule FN-BPNF-HELD-LIST subsumes a newly proposed :REWRITE rule
+generated from FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED, in the
+sense that the old rule rewrites a more general target.  Because the
+new rule will be tried first, it may nonetheless find application.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED ...):  A :REWRITE rule
+generated from FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED will
+be triggered only by terms containing the function symbols FN-BPNF-ISSUED,
+FN-BPNF-ANSWER-STATE and FN-BPAH-DELIVER-STEP, which have non-recursive
+definitions.  Unless these definitions are disabled, this rule is unlikely
+ever to be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED ...):  The previously
+added rule FN-BPNF-ISSUED subsumes a newly proposed :REWRITE rule generated
+from FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED, in the sense that
+the old rule rewrites a more general target.  Because the new rule
+will be tried first, it may nonetheless find application.
+
+Subgoal 2
+
+Splitter note (see :DOC splitter) for Subgoal 2 (10 subgoals).
+  if-intro: ((:DEFINITION FN-BPAH-DELIVER-STEP))
+
+Subgoal 2.10
+Subgoal 2.9
+Subgoal 2.8
+Subgoal 2.7
+Subgoal 2.6
+Subgoal 2.5
+Subgoal 2.4
+Subgoal 2.3
+Subgoal 2.2
+Subgoal 2.1
+Subgoal 1
+
+Splitter note (see :DOC splitter) for Subgoal 1 (10 subgoals).
+  if-intro: ((:DEFINITION FN-BPAH-DELIVER-STEP))
+
+Subgoal 1.10
+Subgoal 1.9
+Subgoal 1.8
+Subgoal 1.7
+Subgoal 1.6
+Subgoal 1.5
+Subgoal 1.4
+Subgoal 1.3
+Subgoal 1.2
+Subgoal 1.1
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-BPAH-DELIVER-STEP)
+        (:DEFINITION FN-BPNF-ANSWER)
+        (:DEFINITION FN-BPNF-ANSWER-STATE)
+        (:DEFINITION FN-BPNF-BASE)
+        (:DEFINITION FN-BPNF-CORRELATION)
+        (:DEFINITION FN-BPNF-EPOCH)
+        (:DEFINITION FN-BPNF-HANDOFFS)
+        (:DEFINITION FN-BPNF-HELD-BUNDLE)
+        (:DEFINITION FN-BPNF-HELD-LIST)
+        (:DEFINITION FN-BPNF-ISSUED)
+        (:DEFINITION FN-BPNF-NEXT-ARRIVAL)
+        (:DEFINITION FN-BPNF-NEXT-OP)
+        (:DEFINITION FN-BPNF-OUTCOMES)
+        (:DEFINITION FN-BPNF-STATE-WITH-ARRIVAL)
+        (:DEFINITION FN-BPNF-WAITS)
+        (:DEFINITION FN-BPP-DESTINATION)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-BPN-REPORT-PRIMARY-FOR-GUARD)
+        (:REWRITE FN-BPNP-NTH-IS-NTH)
+        (:REWRITE NTH-0-CONS)
+        (:REWRITE NTH-ADD1)
+        (:TYPE-PRESCRIPTION FN-BPB-BUNDLEP))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-BPAH-DELIVER-STEP))
+Warnings:  Subsume and Non-rec
+Time:  0.25 seconds (prove: 0.24, print: 0.00, other: 0.01)
+Prover steps counted:  88350
+FN-BPNP-DELIVER-STEP-PRESERVES-HELD-AND-ISSUED
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-BPNP-ANSWER-STATE-OF-ANSWER
+            (EQUAL (FN-BPNF-ANSWER-STATE (FN-BPNF-ANSWER ST EFFECTS))
+                   ST)
+            :HINTS
+            (("Goal"
+                  :IN-THEORY (ENABLE FN-BPNF-ANSWER-STATE FN-BPNF-ANSWER)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-BPNP-ANSWER-STATE-OF-ANSWER ...):
+A :REWRITE rule generated from FN-BPNP-ANSWER-STATE-OF-ANSWER will
+be triggered only by terms containing the function symbols 
+FN-BPNF-ANSWER-STATE and FN-BPNF-ANSWER, which have non-recursive definitions.
+Unless these definitions are disabled, this rule is unlikely ever to
+be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-BPNP-ANSWER-STATE-OF-ANSWER ...):
+The previously added rule FN-BPNF-ANSWER-STATE subsumes a newly proposed
+:REWRITE rule generated from FN-BPNP-ANSWER-STATE-OF-ANSWER, in the
+sense that the old rule rewrites a more general target.  Because the
+new rule will be tried first, it may nonetheless find application.
+
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BPNP-ANSWER-STATE-OF-ANSWER ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-BPNF-ANSWER)
+        (:DEFINITION FN-BPNF-ANSWER-STATE)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-BPNP-NTH-IS-NTH)
+        (:REWRITE NTH-0-CONS)
+        (:REWRITE NTH-ADD1))
+Warnings:  Subsume and Non-rec
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+Prover steps counted:  45
+FN-BPNP-ANSWER-STATE-OF-ANSWER
+
+
+ACL2 !>>>(DEFTHM FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED
+          (IMPLIES
+           (EQUAL (FN-CBOR-AG-CAR EVENT) :PROGRESS)
+           (AND
+            (EQUAL (FN-BPNF-HELD-LIST
+                        (FN-BPNF-ANSWER-STATE (FN-BPNP-STEP ST EVENT)))
+                   (FN-BPNF-HELD-LIST ST))
+            (EQUAL
+              (FN-BPNF-ISSUED (FN-BPNF-ANSWER-STATE (FN-BPNP-STEP ST EVENT)))
+              (FN-BPNF-ISSUED ST))))
+          :HINTS
+          (("Goal"
+             :IN-THEORY
+             (E/D (FN-BPNP-STEP FN-BPNP-PROGRESS-STEP)
+                  (FN-BPNP-WITH-WAITS FN-BPAH-DELIVER-STEP
+                                      FN-BPNF-ANSWER-STATE
+                                      FN-BPNF-ANSWER FN-BPNF-HELD-LIST
+                                      FN-BPNF-ISSUED FN-BPNP-OLDEST-ELIGIBLE
+                                      FN-BPNP-OLDEST-UNCERTAIN-LOCAL
+                                      FN-BPNP-LIVE-PENDINGP FN-BPNP-BLOCKEDP
+                                      FN-BPNP-PRUNE-WAITS FN-BPNP-LOCAL-CLASS
+                                      FN-BPNP-PRIMARY FN-BPNP-PAYLOAD
+                                      FN-BPNP-REMOVE-WAIT FN-BPNP-ROUTE-PEER
+                                      FN-BPAH-PENDING-DECISION-AT
+                                      FN-BPNP-ROUTESP FN-BPP-EIDP
+                                      FN-BPB-BUNDLEP FN-BPNF-HELDP)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED ...):  A :REWRITE rule
+generated from FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED will
+be triggered only by terms containing the function symbols FN-BPNF-HELD-LIST,
+FN-BPNF-ANSWER-STATE and FN-BPNP-STEP, which have non-recursive definitions.
+Unless these definitions are disabled, this rule is unlikely ever to
+be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED ...):  The previously
+added rule FN-BPNF-HELD-LIST subsumes a newly proposed :REWRITE rule
+generated from FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED, in
+the sense that the old rule rewrites a more general target.  Because
+the new rule will be tried first, it may nonetheless find application.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED ...):  A :REWRITE rule
+generated from FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED will
+be triggered only by terms containing the function symbols FN-BPNF-ISSUED,
+FN-BPNF-ANSWER-STATE and FN-BPNP-STEP, which have non-recursive definitions.
+Unless these definitions are disabled, this rule is unlikely ever to
+be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED ...):  The previously
+added rule FN-BPNF-ISSUED subsumes a newly proposed :REWRITE rule generated
+from FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED, in the sense
+that the old rule rewrites a more general target.  Because the new
+rule will be tried first, it may nonetheless find application.
+
+Goal'
+
+Splitter note (see :DOC splitter) for Goal' (42 subgoals).
+  if-intro: ((:DEFINITION FN-BPND-REMAINING)
+             (:DEFINITION FN-BPNP-PROGRESS-STEP)
+             (:DEFINITION FN-BPNP-STEP)
+             (:DEFINITION NATP)
+             (:DEFINITION NFIX))
+
+Subgoal 42
+Subgoal 41
+Subgoal 40
+Subgoal 40'
+
+Splitter note (see :DOC splitter) for Subgoal 40' (2 subgoals).
+  if-intro: ((:DEFINITION FN-BPNP-WITH-CREDIT))
+
+Subgoal 40.2
+Subgoal 40.2'
+Subgoal 40.2.2
+Subgoal 40.2.1
+Subgoal 40.2.1'
+Subgoal 40.2.1''
+
+([ A key checkpoint:
+
+Subgoal 40.2'
+(IMPLIES
+ (AND (EQUAL (CAR EVENT) :PROGRESS)
+      (NOT (EQUAL (NTH 5 (FN-BPNF-ISSUED ST))
+                  :UNCERTAIN))
+      (NOT (FN-CLOCK-OBSERVATIONP (NTH 2 EVENT)))
+      (TRUE-LISTP ST))
+ (EQUAL
+  (FN-BPNF-HELD-LIST
+       (UPDATE-NTH 15 (NTH 15 ST)
+                   (UPDATE-NTH 14 (NTH 14 ST)
+                               (UPDATE-NTH 13 (NTH 13 ST)
+                                           (UPDATE-NTH 12 (NTH 12 ST) ST)))))
+  (FN-BPNF-HELD-LIST ST)))
+
+Normally we would attempt to prove Subgoal 40.2.1'' by induction. 
+However, we prefer in this instance to focus on the original input
+conjecture rather than this simplified special case.  We therefore
+abandon our previous work on this conjecture and reassign the name
+*1 to the original conjecture.  (See :DOC otf-flg.)
+
+])
+
+No induction schemes are suggested by *1.  Consequently, the proof
+attempt has failed.
+
+Summary
+Form:  ( DEFTHM FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-BPND-FREE)
+        (:DEFINITION FN-BPND-REMAINING)
+        (:DEFINITION FN-BPNF-ANSWER-EFFECTS)
+        (:DEFINITION FN-BPNF-BASE)
+        (:DEFINITION FN-BPNF-WAITS)
+        (:DEFINITION FN-BPNP-DEBT)
+        (:DEFINITION FN-BPNP-PENDING-IMAGE)
+        (:DEFINITION FN-BPNP-PROGRESS-STEP)
+        (:DEFINITION FN-BPNP-SESSIONS)
+        (:DEFINITION FN-BPNP-STEP)
+        (:DEFINITION FN-BPNP-USED)
+        (:DEFINITION FN-BPNP-WAITS)
+        (:DEFINITION FN-BPNP-WITH-CREDIT)
+        (:DEFINITION FN-BPNP-WITH-RUNTIME)
+        (:DEFINITION FN-CBOR-AG-CAR)
+        (:DEFINITION NATP)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:ELIM CAR-CDR-ELIM)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART NFIX)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART SYMBOLP)
+        (:EXECUTABLE-COUNTERPART UNARY--)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE COMMUTATIVITY-2-OF-+)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:REWRITE DISTRIBUTIVITY-OF-MINUS-OVER-+)
+        (:REWRITE FN-BPNP-ANSWER-STATE-OF-ANSWER)
+        (:REWRITE FN-BPNP-NTH-IS-NTH)
+        (:REWRITE FN-BPNP-WITH-WAITS-PRESERVES-HELD-AND-ISSUED)
+        (:REWRITE NTH-ADD1)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-UPDATE-NTH)
+        (:TYPE-PRESCRIPTION UPDATE-NTH))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-BPND-REMAINING)
+             (:DEFINITION FN-BPNP-PROGRESS-STEP)
+             (:DEFINITION FN-BPNP-STEP)
+             (:DEFINITION FN-BPNP-WITH-CREDIT)
+             (:DEFINITION NATP)
+             (:DEFINITION NFIX))
+Warnings:  Subsume and Non-rec
+Time:  2.34 seconds (prove: 2.33, print: 0.00, other: 0.01)
+Prover steps counted:  1153757
+
+---
+The key checkpoint goal, below, may help you to debug this failure.
+See :DOC failure and see :DOC set-checkpoint-summary-limit.
+---
+
+*** Key checkpoint before reverting to proof by induction: ***
+
+Subgoal 40.2'
+(IMPLIES
+ (AND (EQUAL (CAR EVENT) :PROGRESS)
+      (NOT (EQUAL (NTH 5 (FN-BPNF-ISSUED ST))
+                  :UNCERTAIN))
+      (NOT (FN-CLOCK-OBSERVATIONP (NTH 2 EVENT)))
+      (TRUE-LISTP ST))
+ (EQUAL
+  (FN-BPNF-HELD-LIST
+       (UPDATE-NTH 15 (NTH 15 ST)
+                   (UPDATE-NTH 14 (NTH 14 ST)
+                               (UPDATE-NTH 13 (NTH 13 ST)
+                                           (UPDATE-NTH 12 (NTH 12 ST) ST)))))
+  (FN-BPNF-HELD-LIST ST)))
+
+ACL2 Error [Failure] in ( DEFTHM 
+FN-BPNP-STEP-PROGRESS-PRESERVES-HELD-AND-ISSUED ...):  See :DOC failure.
+
+******** FAILED ********
+
+ACL2 Warning in CERTIFY-BOOK:  The attempted CERTIFY-BOOK has failed
+while trying to establish the admissibility of one of the (local or
+non-local) forms in the book to be certified.
+
+
+Summary
+Form:  (CERTIFY-BOOK "books/bp-node-progress-selection-invariants"
+...)
+Rules: NIL
+Warnings:  Non-rec, Subsume, Double-rewrite and Compiled file
+Time:  8.70 seconds (prove: 3.62, print: 0.01, other: 5.07)
+Prover steps counted:  1751223
+
+ACL2 Error [Failure] in (CERTIFY-BOOK 
+"books/bp-node-progress-selection-invariants" ...):  See :DOC failure.
+
+******** FAILED ********
+ :ERROR
+ACL2 !>

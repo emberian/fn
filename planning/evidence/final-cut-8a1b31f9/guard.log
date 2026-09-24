@@ -1,0 +1,1085 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:17:41.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/tank/fn/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/tank/fn/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>
+Note: Writing .port file, /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-
+node-progress-guards.port.
+
+CERTIFICATION ATTEMPT FOR 
+"/tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-progress-guards.lisp"
+
+ACL2 Version 8.7
+
+* Step 1: Read 
+"/tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-progress-guards.lisp"
+and compute its book-hash.
+
+* Step 2:  There were 70 forms in the file.  We now attempt to establish
+that each form, whether local or non-local, is indeed an admissible
+embedded event form in the context of the previously admitted ones.
+
+
+ACL2 !>>>(INCLUDE-BOOK "bp-report-guards")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "bp-node-machine" ...):
+Unable to load compiled file for book
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-machine.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+Here is the sequence of books with loads of compiled or expansion files
+that have led down to the printing of this message, where the load
+for each is halted during the load for the next:
+
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-report-guards.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+guards.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+step.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-fnbs-family-replay.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+replacement.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-fnbs-family-codec.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+expiry.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+plan.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-fragment-
+family.lisp
+  /tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-foundation.lisp
+
+
+Summary
+Form:  ( INCLUDE-BOOK "bp-report-guards" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  4.74 seconds (prove: 0.00, print: 0.01, other: 4.73)
+"/tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-report-guards.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "bp-node-progress")
+
+Summary
+Form:  ( INCLUDE-BOOK "bp-node-progress" ...)
+Rules: NIL
+Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
+"/tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-progress.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "bp-node-forward-lower-guards")
+
+Summary
+Form:  ( INCLUDE-BOOK "bp-node-forward-lower-guards" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+"/tank/fn/gates/final-cut-8a1b31f9-20260924/books/bp-node-forward-lower-guards.lisp"
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-ATTEMPT-VALUES)
+
+Computing the guard conjecture for FN-BPNP-ATTEMPT-VALUES....
+
+The guard conjecture for FN-BPNP-ATTEMPT-VALUES is trivial to prove.
+FN-BPNP-ATTEMPT-VALUES is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-ATTEMPT-VALUES)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-ATTEMPT-VALUES
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-RESULT-VALUES)
+
+Computing the guard conjecture for FN-BPNP-RESULT-VALUES....
+
+The guard conjecture for FN-BPNP-RESULT-VALUES is trivial to prove.
+FN-BPNP-RESULT-VALUES is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-RESULT-VALUES)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-RESULT-VALUES
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-FORWARD-FRAME-WITH)
+
+Computing the guard conjecture for FN-BPNP-FORWARD-FRAME-WITH....
+
+The non-trivial part of the guard conjecture for FN-BPNP-FORWARD-FRAME-WITH,
+given the :executable-counterparts of FN-CBOR-OCTETP and FN-FRAME-MAGICP,
+is
+
+Goal
+(IMPLIES (AND (FN-FRAME-SPEC-LISTP FIELDS)
+              (FN-CBOR-OCTETP KIND)
+              (FN-FRAME-VALUES-OKP FIELDS VALUES))
+         (LET ((PAYLOAD (FN-FRAME-FIELDS-OCTETS FIELDS VALUES)))
+           (AND (OR (NOT (FN-CBOR-OCTET-LISTP PAYLOAD))
+                    (RATIONALP (LEN PAYLOAD)))
+                (OR (NOT (AND (FN-CBOR-OCTET-LISTP PAYLOAD)
+                              (<= (LEN PAYLOAD) 134144)))
+                    (<= (LEN PAYLOAD) 4294967295))
+                (OR (NOT (AND (FN-CBOR-OCTET-LISTP PAYLOAD)
+                              (<= (LEN PAYLOAD) 134144)))
+                    (FN-CBOR-OCTETP KIND))
+                (OR (NOT (AND (FN-CBOR-OCTET-LISTP PAYLOAD)
+                              (<= (LEN PAYLOAD) 134144)))
+                    (FN-CBOR-OCTET-LISTP PAYLOAD))
+                (OR (NOT (AND (FN-CBOR-OCTET-LISTP PAYLOAD)
+                              (<= (LEN PAYLOAD) 134144)))
+                    (LET ((PROTECTED (FN-FRAME-PROTECTED '(70 78 66 83)
+                                                         1 KIND PAYLOAD)))
+                      (TRUE-LISTP PROTECTED)))))).
+
+Q.E.D.
+
+That completes the proof of the guard theorem for FN-BPNP-FORWARD-FRAME-WITH.
+FN-BPNP-FORWARD-FRAME-WITH is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-FORWARD-FRAME-WITH)
+Rules: ((:DEFINITION FN-CBOR-OCTETP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART FN-CBOR-OCTETP)
+        (:EXECUTABLE-COUNTERPART FN-FRAME-MAGICP)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM))
+Time:  0.02 seconds (prove: 0.02, print: 0.00, other: 0.00)
+Prover steps counted:  133
+FN-BPNP-FORWARD-FRAME-WITH
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-ATTEMPT-FRAME)
+
+Computing the guard conjecture for FN-BPNP-ATTEMPT-FRAME....
+
+The guard conjecture for FN-BPNP-ATTEMPT-FRAME is trivial to prove,
+given the :executable-counterparts of FN-CBOR-OCTETP and FN-FRAME-SPEC-LISTP.
+FN-BPNP-ATTEMPT-FRAME is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-ATTEMPT-FRAME)
+Rules: ((:EXECUTABLE-COUNTERPART FN-CBOR-OCTETP)
+        (:EXECUTABLE-COUNTERPART FN-FRAME-SPEC-LISTP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-ATTEMPT-FRAME
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-RESULT-FRAME)
+
+Computing the guard conjecture for FN-BPNP-RESULT-FRAME....
+
+The guard conjecture for FN-BPNP-RESULT-FRAME is trivial to prove,
+given the :executable-counterparts of FN-CBOR-OCTETP and FN-FRAME-SPEC-LISTP.
+FN-BPNP-RESULT-FRAME is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-RESULT-FRAME)
+Rules: ((:EXECUTABLE-COUNTERPART FN-CBOR-OCTETP)
+        (:EXECUTABLE-COUNTERPART FN-FRAME-SPEC-LISTP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-RESULT-FRAME
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-ROUTEP)
+
+Computing the guard conjecture for FN-BPNP-ROUTEP....
+
+The guard conjecture for FN-BPNP-ROUTEP is trivial to prove.  FN-BPNP-ROUTEP
+is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-ROUTEP)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-ROUTEP
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-SINGLE-PEER-ROUTES)
+
+Computing the guard conjecture for FN-BPNP-SINGLE-PEER-ROUTES....
+
+The guard conjecture for FN-BPNP-SINGLE-PEER-ROUTES is trivial to prove.
+FN-BPNP-SINGLE-PEER-ROUTES is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-SINGLE-PEER-ROUTES)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-SINGLE-PEER-ROUTES
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-ROUTESP)
+
+Computing the guard conjecture for FN-BPNP-ROUTESP....
+
+The guard conjecture for FN-BPNP-ROUTESP is trivial to prove.  
+FN-BPNP-ROUTESP is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-ROUTESP)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-ROUTESP
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-ROUTE-PEER)
+
+Computing the guard conjecture for FN-BPNP-ROUTE-PEER....
+
+The guard conjecture for FN-BPNP-ROUTE-PEER is trivial to prove.  
+FN-BPNP-ROUTE-PEER is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-ROUTE-PEER)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-ROUTE-PEER
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-WAITS)
+
+Computing the guard conjecture for FN-BPNP-WAITS....
+
+The guard conjecture for FN-BPNP-WAITS is trivial to prove.  FN-BPNP-WAITS
+is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-WAITS)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-WAITS
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-USED)
+
+Computing the guard conjecture for FN-BPNP-USED....
+
+The guard conjecture for FN-BPNP-USED is trivial to prove.  FN-BPNP-USED
+is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-USED)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-USED
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-DEBT)
+
+Computing the guard conjecture for FN-BPNP-DEBT....
+
+The guard conjecture for FN-BPNP-DEBT is trivial to prove.  FN-BPNP-DEBT
+is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-DEBT)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-DEBT
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-WITH-CREDIT)
+
+Computing the guard conjecture for FN-BPNP-WITH-CREDIT....
+
+The guard conjecture for FN-BPNP-WITH-CREDIT is trivial to prove, given
+the :type-prescription rules TRUE-LISTP-UPDATE-NTH and UPDATE-NTH.
+FN-BPNP-WITH-CREDIT is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-WITH-CREDIT)
+Rules: ((:TYPE-PRESCRIPTION TRUE-LISTP-UPDATE-NTH)
+        (:TYPE-PRESCRIPTION UPDATE-NTH))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-WITH-CREDIT
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-WITH-WAITS)
+
+Computing the guard conjecture for FN-BPNP-WITH-WAITS....
+
+The guard conjecture for FN-BPNP-WITH-WAITS is trivial to prove, given
+the :type-prescription rule LEN.  FN-BPNP-WITH-WAITS is compliant with
+Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-WITH-WAITS)
+Rules: ((:TYPE-PRESCRIPTION LEN))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-WITH-WAITS
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-SESSIONS)
+
+Computing the guard conjecture for FN-BPNP-SESSIONS....
+
+The guard conjecture for FN-BPNP-SESSIONS is trivial to prove.  
+FN-BPNP-SESSIONS is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-SESSIONS)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-SESSIONS
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-PENDING-IMAGE)
+
+Computing the guard conjecture for FN-BPNP-PENDING-IMAGE....
+
+The guard conjecture for FN-BPNP-PENDING-IMAGE is trivial to prove.
+FN-BPNP-PENDING-IMAGE is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-PENDING-IMAGE)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-PENDING-IMAGE
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-WITH-RUNTIME)
+
+Computing the guard conjecture for FN-BPNP-WITH-RUNTIME....
+
+The guard conjecture for FN-BPNP-WITH-RUNTIME is trivial to prove,
+given the :type-prescription rules TRUE-LISTP-UPDATE-NTH and UPDATE-NTH.
+FN-BPNP-WITH-RUNTIME is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-WITH-RUNTIME)
+Rules: ((:TYPE-PRESCRIPTION TRUE-LISTP-UPDATE-NTH)
+        (:TYPE-PRESCRIPTION UPDATE-NTH))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-WITH-RUNTIME
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-WITH-ISSUED)
+
+Computing the guard conjecture for FN-BPNP-WITH-ISSUED....
+
+The guard conjecture for FN-BPNP-WITH-ISSUED is trivial to prove. 
+FN-BPNP-WITH-ISSUED is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-WITH-ISSUED)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-WITH-ISSUED
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-SESSION)
+
+Computing the guard conjecture for FN-BPNP-SESSION....
+
+The guard conjecture for FN-BPNP-SESSION is trivial to prove.  
+FN-BPNP-SESSION is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-SESSION)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-SESSION
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-SESSIONP)
+
+Computing the guard conjecture for FN-BPNP-SESSIONP....
+
+The non-trivial part of the guard conjecture for FN-BPNP-SESSIONP,
+given primitive type reasoning, is
+
+Goal
+(IMPLIES (AND (TRUE-LISTP X)
+              (EQUAL (LEN X) 4)
+              (EQUAL (CAR X) :BPNP-SESSION)
+              (FN-BPP-EIDP (FN-BPN-NTH 1 X))
+              (FN-BPNP-SESSION-IDP (FN-BPN-NTH 2 X))
+              (FN-FRAME-NATP (FN-BPN-NTH 3 X)))
+         (RATIONALP (FN-BPN-NTH 3 X))).
+
+Q.E.D.
+
+That completes the proof of the guard theorem for FN-BPNP-SESSIONP.
+FN-BPNP-SESSIONP is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-SESSIONP)
+Rules: ((:DEFINITION FN-BPNP-SESSION-IDP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  102
+FN-BPNP-SESSIONP
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-REMOVE-PEER-SESSION)
+
+Computing the guard conjecture for FN-BPNP-REMOVE-PEER-SESSION....
+
+The guard conjecture for FN-BPNP-REMOVE-PEER-SESSION is trivial to
+prove.  FN-BPNP-REMOVE-PEER-SESSION is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-REMOVE-PEER-SESSION)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-REMOVE-PEER-SESSION
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-OPEN-SESSION)
+
+Computing the guard conjecture for FN-BPNP-OPEN-SESSION....
+
+The guard conjecture for FN-BPNP-OPEN-SESSION is trivial to prove.
+FN-BPNP-OPEN-SESSION is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-OPEN-SESSION)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-OPEN-SESSION
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-SESSION-CURRENTP)
+
+Computing the guard conjecture for FN-BPNP-SESSION-CURRENTP....
+
+The guard conjecture for FN-BPNP-SESSION-CURRENTP is trivial to prove.
+FN-BPNP-SESSION-CURRENTP is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-SESSION-CURRENTP)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-SESSION-CURRENTP
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-FIND-SESSION)
+
+Computing the guard conjecture for FN-BPNP-FIND-SESSION....
+
+The guard conjecture for FN-BPNP-FIND-SESSION is trivial to prove.
+FN-BPNP-FIND-SESSION is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-FIND-SESSION)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-FIND-SESSION
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-HAS-FORWARD-PENDINGP)
+
+Computing the guard conjecture for FN-BPNP-HAS-FORWARD-PENDINGP....
+
+The guard conjecture for FN-BPNP-HAS-FORWARD-PENDINGP is trivial to
+prove.  FN-BPNP-HAS-FORWARD-PENDINGP is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-HAS-FORWARD-PENDINGP)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-HAS-FORWARD-PENDINGP
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-TCPCL-OUTCOME)
+
+Computing the guard conjecture for FN-BPNP-TCPCL-OUTCOME....
+
+The guard conjecture for FN-BPNP-TCPCL-OUTCOME is trivial to prove.
+FN-BPNP-TCPCL-OUTCOME is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-TCPCL-OUTCOME)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-TCPCL-OUTCOME
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-WAIT-FOR)
+
+Computing the guard conjecture for FN-BPNP-WAIT-FOR....
+
+The guard conjecture for FN-BPNP-WAIT-FOR is trivial to prove.  
+FN-BPNP-WAIT-FOR is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-WAIT-FOR)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-WAIT-FOR
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-REMOVE-WAIT)
+
+Computing the guard conjecture for FN-BPNP-REMOVE-WAIT....
+
+The guard conjecture for FN-BPNP-REMOVE-WAIT is trivial to prove. 
+FN-BPNP-REMOVE-WAIT is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-REMOVE-WAIT)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-REMOVE-WAIT
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-PRUNE-WAITS)
+
+Computing the guard conjecture for FN-BPNP-PRUNE-WAITS....
+
+The guard conjecture for FN-BPNP-PRUNE-WAITS is trivial to prove. 
+FN-BPNP-PRUNE-WAITS is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-PRUNE-WAITS)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-PRUNE-WAITS
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-WAIT-KEY)
+
+Computing the guard conjecture for FN-BPNP-WAIT-KEY....
+
+The guard conjecture for FN-BPNP-WAIT-KEY is trivial to prove.  
+FN-BPNP-WAIT-KEY is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-WAIT-KEY)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-WAIT-KEY
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-PRIMARY)
+
+Computing the guard conjecture for FN-BPNP-PRIMARY....
+
+The guard conjecture for FN-BPNP-PRIMARY is trivial to prove.  
+FN-BPNP-PRIMARY is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-PRIMARY)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-PRIMARY
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-PAYLOAD)
+
+Computing the guard conjecture for FN-BPNP-PAYLOAD....
+
+The guard conjecture for FN-BPNP-PAYLOAD is trivial to prove.  
+FN-BPNP-PAYLOAD is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-PAYLOAD)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-PAYLOAD
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-HELD-EXPIRY)
+
+Computing the guard conjecture for FN-BPNP-HELD-EXPIRY....
+
+The non-trivial part of the guard conjecture for FN-BPNP-HELD-EXPIRY,
+given the :executable-counterpart of FN-CLOCK-AGE-ANCHORP, is
+
+Goal
+(IMPLIES
+ (FN-CLOCK-OBSERVATIONP OBSERVATION)
+ (LET* ((PRIMARY (FN-BPNP-PRIMARY H))
+        (ANCHOR (FN-BPN-NTH 9 H)))
+  (OR
+   (NOT (TRUE-LISTP PRIMARY))
+   (LET ((CREATION (FN-BPP-CREATION-TIME PRIMARY))
+         (LIFETIME (FN-BPP-LIFETIME PRIMARY)))
+    (AND
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (NOT (EQUAL ANCHOR '(:WALL)))
+         (FN-CLOCK-TIMEP CREATION))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (NOT (EQUAL ANCHOR '(:WALL)))
+         (FN-CLOCK-TIMEP LIFETIME))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (NOT (EQUAL ANCHOR '(:WALL)))
+         (FN-CLOCK-OBSERVATIONP OBSERVATION))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (EQUAL ANCHOR '(:WALL))
+         (NOT (TRUE-LISTP ANCHOR))
+         (NOT (EQUAL (LEN ANCHOR) 3))
+         (CONSP ANCHOR)
+         (EQUAL ANCHOR NIL))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (EQUAL ANCHOR '(:WALL))
+         (NOT (TRUE-LISTP ANCHOR))
+         (NOT (EQUAL (LEN ANCHOR) 3))
+         (NOT (EQUAL (CAR ANCHOR) :OBSERVED-AGE))
+         (CONSP ANCHOR)
+         (EQUAL ANCHOR NIL))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (EQUAL ANCHOR '(:WALL))
+         (NOT (TRUE-LISTP ANCHOR))
+         (NOT (EQUAL (LEN ANCHOR) 3))
+         (NOT (EQUAL (CAR ANCHOR) :OBSERVED-AGE))
+         (CONSP (CDR ANCHOR))
+         (EQUAL (CDR ANCHOR) NIL))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (EQUAL ANCHOR '(:WALL))
+         (NOT (TRUE-LISTP ANCHOR))
+         (NOT (EQUAL (LEN ANCHOR) 3))
+         (NOT (EQUAL (CAR ANCHOR) :OBSERVED-AGE))
+         (NOT (FN-CLOCK-TIMEP (CADR ANCHOR)))
+         (CONSP ANCHOR)
+         (EQUAL ANCHOR NIL))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (EQUAL ANCHOR '(:WALL))
+         (NOT (TRUE-LISTP ANCHOR))
+         (NOT (EQUAL (LEN ANCHOR) 3))
+         (NOT (EQUAL (CAR ANCHOR) :OBSERVED-AGE))
+         (NOT (FN-CLOCK-TIMEP (CADR ANCHOR)))
+         (CONSP (CDR ANCHOR))
+         (EQUAL (CDR ANCHOR) NIL))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (EQUAL ANCHOR '(:WALL))
+         (NOT (TRUE-LISTP ANCHOR))
+         (NOT (EQUAL (LEN ANCHOR) 3))
+         (NOT (EQUAL (CAR ANCHOR) :OBSERVED-AGE))
+         (NOT (FN-CLOCK-TIMEP (CADR ANCHOR)))
+         (CONSP (CDDR ANCHOR))
+         (EQUAL (CDDR ANCHOR) NIL))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (EQUAL ANCHOR '(:WALL))
+         (NOT (TRUE-LISTP ANCHOR))
+         (NOT (EQUAL (LEN ANCHOR) 3))
+         (NOT (EQUAL (CAR ANCHOR) :OBSERVED-AGE))
+         (NOT (FN-CLOCK-TIMEP (CADR ANCHOR)))
+         (NOT (FN-CLOCK-TIMEP (CADDR ANCHOR)))
+         (CONSP ANCHOR)
+         (EQUAL ANCHOR NIL))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (EQUAL ANCHOR '(:WALL))
+         (NOT (TRUE-LISTP ANCHOR))
+         (NOT (EQUAL (LEN ANCHOR) 3))
+         (NOT (EQUAL (CAR ANCHOR) :OBSERVED-AGE))
+         (NOT (FN-CLOCK-TIMEP (CADR ANCHOR)))
+         (NOT (FN-CLOCK-TIMEP (CADDR ANCHOR)))
+         (CONSP (CDR ANCHOR))
+         (EQUAL (CDR ANCHOR) NIL))
+     (OR (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                   (FN-CLOCK-TIMEP LIFETIME)))
+         (EQUAL ANCHOR '(:WALL))
+         (NOT (TRUE-LISTP ANCHOR))
+         (NOT (EQUAL (LEN ANCHOR) 3))
+         (NOT (EQUAL (CAR ANCHOR) :OBSERVED-AGE))
+         (NOT (FN-CLOCK-TIMEP (CADR ANCHOR)))
+         (NOT (FN-CLOCK-TIMEP (CADDR ANCHOR)))
+         (CONSP (CDDR ANCHOR))
+         (EQUAL (CDDR ANCHOR) NIL))
+     (OR
+       (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                 (FN-CLOCK-TIMEP LIFETIME)))
+       (EQUAL ANCHOR '(:WALL))
+       (NOT (AND (TRUE-LISTP ANCHOR)
+                 (EQUAL (LEN ANCHOR) 3)
+                 (EQUAL (CAR ANCHOR) :OBSERVED-AGE)
+                 (FN-CLOCK-TIMEP (CADR ANCHOR))
+                 (FN-CLOCK-TIMEP (CADDR ANCHOR))
+                 (FN-CLOCK-AGE-ANCHORP (CONS (CADR ANCHOR) (CADDR ANCHOR)))))
+       (CONSP ANCHOR)
+       (EQUAL ANCHOR NIL))
+     (OR
+       (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                 (FN-CLOCK-TIMEP LIFETIME)))
+       (EQUAL ANCHOR '(:WALL))
+       (NOT (AND (TRUE-LISTP ANCHOR)
+                 (EQUAL (LEN ANCHOR) 3)
+                 (EQUAL (CAR ANCHOR) :OBSERVED-AGE)
+                 (FN-CLOCK-TIMEP (CADR ANCHOR))
+                 (FN-CLOCK-TIMEP (CADDR ANCHOR))
+                 (FN-CLOCK-AGE-ANCHORP (CONS (CADR ANCHOR) (CADDR ANCHOR)))))
+       (CONSP (CDR ANCHOR))
+       (EQUAL (CDR ANCHOR) NIL))
+     (OR
+       (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                 (FN-CLOCK-TIMEP LIFETIME)))
+       (EQUAL ANCHOR '(:WALL))
+       (NOT (AND (TRUE-LISTP ANCHOR)
+                 (EQUAL (LEN ANCHOR) 3)
+                 (EQUAL (CAR ANCHOR) :OBSERVED-AGE)
+                 (FN-CLOCK-TIMEP (CADR ANCHOR))
+                 (FN-CLOCK-TIMEP (CADDR ANCHOR))
+                 (FN-CLOCK-AGE-ANCHORP (CONS (CADR ANCHOR) (CADDR ANCHOR)))))
+       (CONSP (CDDR ANCHOR))
+       (EQUAL (CDDR ANCHOR) NIL))
+     (OR
+       (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                 (FN-CLOCK-TIMEP LIFETIME)))
+       (EQUAL ANCHOR '(:WALL))
+       (NOT (AND (TRUE-LISTP ANCHOR)
+                 (EQUAL (LEN ANCHOR) 3)
+                 (EQUAL (CAR ANCHOR) :OBSERVED-AGE)
+                 (FN-CLOCK-TIMEP (CADR ANCHOR))
+                 (FN-CLOCK-TIMEP (CADDR ANCHOR))
+                 (FN-CLOCK-AGE-ANCHORP (CONS (CADR ANCHOR) (CADDR ANCHOR)))))
+       (FN-CLOCK-TIMEP CREATION))
+     (OR
+       (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                 (FN-CLOCK-TIMEP LIFETIME)))
+       (EQUAL ANCHOR '(:WALL))
+       (NOT (AND (TRUE-LISTP ANCHOR)
+                 (EQUAL (LEN ANCHOR) 3)
+                 (EQUAL (CAR ANCHOR) :OBSERVED-AGE)
+                 (FN-CLOCK-TIMEP (CADR ANCHOR))
+                 (FN-CLOCK-TIMEP (CADDR ANCHOR))
+                 (FN-CLOCK-AGE-ANCHORP (CONS (CADR ANCHOR) (CADDR ANCHOR)))))
+       (FN-CLOCK-AGE-ANCHORP (CONS (CADR ANCHOR) (CADDR ANCHOR))))
+     (OR
+       (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                 (FN-CLOCK-TIMEP LIFETIME)))
+       (EQUAL ANCHOR '(:WALL))
+       (NOT (AND (TRUE-LISTP ANCHOR)
+                 (EQUAL (LEN ANCHOR) 3)
+                 (EQUAL (CAR ANCHOR) :OBSERVED-AGE)
+                 (FN-CLOCK-TIMEP (CADR ANCHOR))
+                 (FN-CLOCK-TIMEP (CADDR ANCHOR))
+                 (FN-CLOCK-AGE-ANCHORP (CONS (CADR ANCHOR) (CADDR ANCHOR)))))
+       (FN-CLOCK-TIMEP LIFETIME))
+     (OR
+       (NOT (AND (FN-CLOCK-TIMEP CREATION)
+                 (FN-CLOCK-TIMEP LIFETIME)))
+       (EQUAL ANCHOR '(:WALL))
+       (NOT (AND (TRUE-LISTP ANCHOR)
+                 (EQUAL (LEN ANCHOR) 3)
+                 (EQUAL (CAR ANCHOR) :OBSERVED-AGE)
+                 (FN-CLOCK-TIMEP (CADR ANCHOR))
+                 (FN-CLOCK-TIMEP (CADDR ANCHOR))
+                 (FN-CLOCK-AGE-ANCHORP (CONS (CADR ANCHOR) (CADDR ANCHOR)))))
+       (FN-CLOCK-OBSERVATIONP OBSERVATION))))))).
+Goal'
+
+Q.E.D.
+
+That completes the proof of the guard theorem for FN-BPNP-HELD-EXPIRY.
+FN-BPNP-HELD-EXPIRY is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-HELD-EXPIRY)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-BPNF-HELD-BUNDLE)
+        (:DEFINITION FN-BPNP-PRIMARY)
+        (:DEFINITION FN-BPP-LIFETIME)
+        (:DEFINITION FN-CLOCK-TIMEP)
+        (:DEFINITION NATP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-CLOCK-AGE-ANCHORP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-CLOCK-AGE-ANCHORP)
+        (:TYPE-PRESCRIPTION FN-CLOCK-OBSERVATIONP))
+Time:  13.46 seconds (prove: 13.46, print: 0.00, other: 0.00)
+Prover steps counted:  6436144
+FN-BPNP-HELD-EXPIRY
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-LOCAL-CLASS)
+
+Computing the guard conjecture for FN-BPNP-LOCAL-CLASS....
+
+The guard conjecture for FN-BPNP-LOCAL-CLASS is trivial to prove. 
+FN-BPNP-LOCAL-CLASS is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-LOCAL-CLASS)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-LOCAL-CLASS
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-LIVE-PENDINGP)
+
+Computing the guard conjecture for FN-BPNP-LIVE-PENDINGP....
+
+The guard conjecture for FN-BPNP-LIVE-PENDINGP is trivial to prove.
+FN-BPNP-LIVE-PENDINGP is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-LIVE-PENDINGP)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-LIVE-PENDINGP
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-BLOCKEDP)
+
+Computing the guard conjecture for FN-BPNP-BLOCKEDP....
+
+The guard conjecture for FN-BPNP-BLOCKEDP is trivial to prove.  
+FN-BPNP-BLOCKEDP is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-BLOCKEDP)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-BLOCKEDP
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-CREDIT-BLOCKEDP)
+
+Computing the guard conjecture for FN-BPNP-CREDIT-BLOCKEDP....
+
+The guard conjecture for FN-BPNP-CREDIT-BLOCKEDP is trivial to prove.
+FN-BPNP-CREDIT-BLOCKEDP is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-CREDIT-BLOCKEDP)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-CREDIT-BLOCKEDP
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-OLDEST-ELIGIBLE-WITH-CREDIT)
+
+Computing the guard conjecture for FN-BPNP-OLDEST-ELIGIBLE-WITH-CREDIT....
+
+The guard conjecture for FN-BPNP-OLDEST-ELIGIBLE-WITH-CREDIT is trivial
+to prove, given primitive type reasoning and the :type-prescription
+rule NFIX.  FN-BPNP-OLDEST-ELIGIBLE-WITH-CREDIT is compliant with Common
+Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-OLDEST-ELIGIBLE-WITH-CREDIT)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-OLDEST-ELIGIBLE-WITH-CREDIT
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-OLDEST-ELIGIBLE)
+
+Computing the guard conjecture for FN-BPNP-OLDEST-ELIGIBLE....
+
+The guard conjecture for FN-BPNP-OLDEST-ELIGIBLE is trivial to prove,
+given primitive type reasoning and the :type-prescription rule NFIX.
+FN-BPNP-OLDEST-ELIGIBLE is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-OLDEST-ELIGIBLE)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-OLDEST-ELIGIBLE
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-OLDEST-UNCERTAIN-LOCAL)
+
+Computing the guard conjecture for FN-BPNP-OLDEST-UNCERTAIN-LOCAL....
+
+The guard conjecture for FN-BPNP-OLDEST-UNCERTAIN-LOCAL is trivial
+to prove, given primitive type reasoning and the :type-prescription
+rule NFIX.  FN-BPNP-OLDEST-UNCERTAIN-LOCAL is compliant with Common
+Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-OLDEST-UNCERTAIN-LOCAL)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-OLDEST-UNCERTAIN-LOCAL
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-DELIVERY-VIEW)
+
+Computing the guard conjecture for FN-BPNP-DELIVERY-VIEW....
+
+The non-trivial part of the guard conjecture for FN-BPNP-DELIVERY-VIEW
+is
+
+Goal
+(LET ((PRIMARY (FN-BPNP-PRIMARY HELD)))
+  (OR (NOT (FN-BPP-BLOCKP PRIMARY))
+      (TRUE-LISTP PRIMARY))).
+
+Q.E.D.
+
+That completes the proof of the guard theorem for FN-BPNP-DELIVERY-VIEW.
+FN-BPNP-DELIVERY-VIEW is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-DELIVERY-VIEW)
+Rules: ((:DEFINITION FLOOR)
+        (:DEFINITION FN-BPNF-HELD-BUNDLE)
+        (:DEFINITION FN-BPNP-PRIMARY)
+        (:DEFINITION FN-BPP-BLOCKP)
+        (:DEFINITION FN-BPP-DESTINATION)
+        (:DEFINITION FN-BPP-FLAG-ONP)
+        (:DEFINITION FN-BPP-FLAG-SETP)
+        (:DEFINITION FN-BPP-FRAGMENT-OFFSET)
+        (:DEFINITION FN-BPP-FRAGMENTP)
+        (:DEFINITION FN-BPP-LIFETIME)
+        (:DEFINITION FN-BPP-REPORT-TO)
+        (:DEFINITION FN-BPP-TIMEP)
+        (:DEFINITION FN-BPP-TOTAL-ADU-LENGTH)
+        (:DEFINITION NATP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART UNARY-/))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  375
+FN-BPNP-DELIVERY-VIEW
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-DISPATCHED-HELD)
+
+Computing the guard conjecture for FN-BPNP-DISPATCHED-HELD....
+
+The guard conjecture for FN-BPNP-DISPATCHED-HELD is trivial to prove,
+given the :type-prescription rules TRUE-LISTP-UPDATE-NTH and UPDATE-NTH.
+FN-BPNP-DISPATCHED-HELD is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-DISPATCHED-HELD)
+Rules: ((:TYPE-PRESCRIPTION TRUE-LISTP-UPDATE-NTH)
+        (:TYPE-PRESCRIPTION UPDATE-NTH))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-DISPATCHED-HELD
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-DISPATCH-MATCHES-HELDP)
+
+Computing the guard conjecture for FN-BPNP-DISPATCH-MATCHES-HELDP....
+
+The guard conjecture for FN-BPNP-DISPATCH-MATCHES-HELDP is trivial
+to prove.  FN-BPNP-DISPATCH-MATCHES-HELDP is compliant with Common
+Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-DISPATCH-MATCHES-HELDP)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-DISPATCH-MATCHES-HELDP
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-REPLACE-DISPATCHED)
+
+Computing the guard conjecture for FN-BPNP-REPLACE-DISPATCHED....
+
+The guard conjecture for FN-BPNP-REPLACE-DISPATCHED is trivial to prove.
+FN-BPNP-REPLACE-DISPATCHED is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-REPLACE-DISPATCHED)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-REPLACE-DISPATCHED
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-DISPATCH-APPLY)
+
+Computing the guard conjecture for FN-BPNP-DISPATCH-APPLY....
+
+The guard conjecture for FN-BPNP-DISPATCH-APPLY is trivial to prove.
+FN-BPNP-DISPATCH-APPLY is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-DISPATCH-APPLY)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BPNP-DISPATCH-APPLY
+
+
+ACL2 !>>>(VERIFY-GUARDS FN-BPNP-ISSUED-DEBT-DELTA)
+
+Computing the guard conjecture for FN-BPNP-ISSUED-DEBT-DELTA....
+
+The non-trivial part of the guard conjecture for FN-BPNP-ISSUED-DEBT-DELTA,
+given the :executable-counterpart of TRUE-LISTP, is
+
+Goal
+(LET* ((ISSUED (FN-BPNF-ISSUED ST))
+       (KIND (FN-BPN-NTH 3 ISSUED))
+       (RECORD (FN-BPN-NTH 4 ISSUED)))
+ (AND
+  (OR (NOT (EQUAL KIND :FAMILY))
+      (FN-BPN-MACHINE-STATEP (FN-BPNF-BASE ST)))
+  (OR
+   (NOT (EQUAL KIND :FAMILY))
+   (LET ((APPLIED (FN-BPNF-FAMILY-APPLY-AT ST RECORD (FN-BPN-NTH 4 RECORD))))
+     (OR (CONSP APPLIED)
+         (EQUAL APPLIED NIL))))
+  (OR
+     (NOT (EQUAL KIND :DISPATCH))
+     (LET* ((BEFORE (FN-BPNF-FIND-ARRIVAL (FN-BPN-NTH 3 RECORD)
+                                          (FN-BPNF-HELD-LIST ST)))
+            (APPLIED (FN-BPNP-DISPATCH-APPLY RECORD (FN-BPNF-HELD-LIST ST))))
+       (OR (NOT BEFORE)
+           (CONSP APPLIED)
+           (EQUAL APPLIED NIL)))))).
+Goal'
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BPNP-ISSUED-DEBT-DELTA)
+Rules: ((:DEFINITION FN-BPNF-BASE)
+        (:DEFINITION FN-BPNF-HELD-LIST)
+        (:DEFINITION FN-BPNF-ISSUED))
+Time:  101.27 seconds (prove: 0.00, print: 0.00, other: 101.27)
+Prover steps counted:  170
+
+*** Note: No checkpoints to print. ***
+
+ACL2 Error [Failure] in ( VERIFY-GUARDS FN-BPNP-ISSUED-DEBT-DELTA):
+See :DOC failure.
+
+******** FAILED ********
+
+Summary
+Form:  (CERTIFY-BOOK "books/bp-node-progress-guards" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  119.55 seconds (prove: 13.50, print: 0.01, other: 106.04)
+Prover steps counted:  6436924
+
+ACL2 Error [Failure] in (CERTIFY-BOOK "books/bp-node-progress-guards"
+...):  See :DOC failure.
+
+******** FAILED ********
+ :ERROR
+ACL2 !>
