@@ -1,0 +1,259 @@
+{
+  "context_semantics": "model_context_window is the 258400-token capacity, not current request size; turn_token_usage is not an independent per-request history",
+  "rows": [
+    {
+      "agent": "luna_web_paging",
+      "cutoff": "2026-09-24T02:52:22.615Z",
+      "first_message_at": "2026-09-24T02:27:53.844753026Z",
+      "first_thread_usage_snapshot": {
+        "at": "2026-09-24T02:28:00.570Z",
+        "counters": {
+          "cache_write_input_tokens": 0,
+          "cached_input_tokens": 7936,
+          "input_tokens": 21774,
+          "output_tokens": 235,
+          "reasoning_output_tokens": 97,
+          "total_tokens": 22009
+        }
+      },
+      "last_observed_at": "2026-09-24T02:52:22.615Z",
+      "last_thread_usage_snapshot": {
+        "at": "2026-09-24T02:52:21.937179088Z",
+        "counters": {
+          "cache_write_input_tokens": 0,
+          "cached_input_tokens": 5562880,
+          "input_tokens": 5695951,
+          "output_tokens": 22665,
+          "reasoning_output_tokens": 10022,
+          "total_tokens": 5718616
+        }
+      },
+      "measurement_followup_at": null,
+      "metadata_availability": {
+        "field_paths": [
+          "payload.thread_token_usage",
+          "payload.turn_token_usage",
+          "payload.info.last_token_usage",
+          "payload.info.total_token_usage",
+          "payload.model_context_window",
+          "payload.latest_token_usage_record.usage",
+          "payload.thread_settings.service_tier"
+        ],
+        "model_context_window_values": [
+          258400
+        ],
+        "per_request_usage_records_with_usage_object": 0,
+        "service_tier_values_seen": {},
+        "turn_token_usage_records": 73
+      },
+      "model": "gpt-6-luna",
+      "model_provider": "openai",
+      "reasoning_effort": "high",
+      "session_created_at": "2026-09-24T02:27:51.670Z",
+      "session_id": "01a0d13d-9e05-7712-9947-8fbb656803a5",
+      "source_tip_commit": "90fbe6898c05d4949a6b556d4d8ffc729ed74eb4",
+      "source_tip_commit_time": "2026-09-24T02:52:09Z",
+      "tool_calls": {
+        "by_name": {
+          "exec": 49,
+          "list_agents": 2,
+          "send_message": 18,
+          "sleep": 1
+        },
+        "total": 70
+      }
+    },
+    {
+      "agent": "luna_native_cursor",
+      "cutoff": "2026-09-24T02:34:31.415165901Z",
+      "first_message_at": "2026-09-24T02:28:09.485429048Z",
+      "first_thread_usage_snapshot": {
+        "at": "2026-09-24T02:28:14.519Z",
+        "counters": {
+          "cache_write_input_tokens": 0,
+          "cached_input_tokens": 21248,
+          "input_tokens": 21852,
+          "output_tokens": 221,
+          "reasoning_output_tokens": 131,
+          "total_tokens": 22073
+        }
+      },
+      "last_observed_at": "2026-09-24T02:34:31.415165901Z",
+      "last_thread_usage_snapshot": {
+        "at": "2026-09-24T02:34:31.415165901Z",
+        "counters": {
+          "cache_write_input_tokens": 0,
+          "cached_input_tokens": 3412992,
+          "input_tokens": 3504613,
+          "output_tokens": 15744,
+          "reasoning_output_tokens": 7674,
+          "total_tokens": 3520357
+        }
+      },
+      "measurement_followup_at": "2026-09-24T02:54:28.343Z",
+      "metadata_availability": {
+        "field_paths": [
+          "payload.thread_token_usage",
+          "payload.turn_token_usage",
+          "payload.info.last_token_usage",
+          "payload.info.total_token_usage",
+          "payload.model_context_window",
+          "payload.latest_token_usage_record.usage",
+          "payload.thread_settings.service_tier"
+        ],
+        "model_context_window_values": [
+          258400
+        ],
+        "per_request_usage_records_with_usage_object": 0,
+        "service_tier_values_seen": {},
+        "turn_token_usage_records": 47
+      },
+      "model": "gpt-6-luna",
+      "model_provider": "openai",
+      "reasoning_effort": "high",
+      "session_created_at": "2026-09-24T02:28:08.403Z",
+      "session_id": "01a0d13d-df98-7d50-a779-01a88a35a236",
+      "source_tip_commit": "28f49e0f213ebadfabd77f605fc7231f93dadb95",
+      "source_tip_commit_time": "2026-09-24T02:34:13Z",
+      "tool_calls": {
+        "by_name": {
+          "exec": 35,
+          "list_agents": 1,
+          "send_message": 11,
+          "sleep": 1
+        },
+        "total": 48
+      }
+    },
+    {
+      "agent": "luna_consumer_status",
+      "cutoff": "2026-09-24T03:00:00Z",
+      "first_message_at": "2026-09-24T02:28:29.489624023Z",
+      "first_thread_usage_snapshot": {
+        "at": "2026-09-24T02:28:30.070874929Z",
+        "counters": {
+          "cache_write_input_tokens": 0,
+          "cached_input_tokens": 21248,
+          "input_tokens": 21923,
+          "output_tokens": 202,
+          "reasoning_output_tokens": 84,
+          "total_tokens": 22125
+        }
+      },
+      "last_observed_at": "2026-09-24T02:59:56.891Z",
+      "last_thread_usage_snapshot": {
+        "at": "2026-09-24T02:59:55.983793020Z",
+        "counters": {
+          "cache_write_input_tokens": 0,
+          "cached_input_tokens": 24432640,
+          "input_tokens": 24887456,
+          "output_tokens": 66499,
+          "reasoning_output_tokens": 23312,
+          "total_tokens": 24953955
+        }
+      },
+      "measurement_followup_at": null,
+      "metadata_availability": {
+        "field_paths": [
+          "payload.thread_token_usage",
+          "payload.turn_token_usage",
+          "payload.info.last_token_usage",
+          "payload.info.total_token_usage",
+          "payload.model_context_window",
+          "payload.latest_token_usage_record.usage",
+          "payload.thread_settings.service_tier"
+        ],
+        "model_context_window_values": [
+          258400
+        ],
+        "per_request_usage_records_with_usage_object": 1,
+        "service_tier_values_seen": {
+          "default": 1
+        },
+        "turn_token_usage_records": 235
+      },
+      "model": "gpt-6-luna",
+      "model_provider": "openai",
+      "reasoning_effort": "high",
+      "session_created_at": "2026-09-24T02:28:28.240Z",
+      "session_id": "01a0d13e-2d12-7db0-8ca1-342781768ea8",
+      "source_tip_commit": "e00668719f88ace41a329e4dd5cdcaab58b893da",
+      "source_tip_commit_time": "2026-09-24T02:59:07Z",
+      "tool_calls": {
+        "by_name": {
+          "exec": 201,
+          "list_agents": 1,
+          "send_message": 33
+        },
+        "total": 235
+      }
+    },
+    {
+      "agent": "sol_luna_feature_review",
+      "cutoff": "2026-09-24T03:00:00Z",
+      "first_message_at": "2026-09-24T02:28:46.488898038Z",
+      "first_thread_usage_snapshot": {
+        "at": "2026-09-24T02:28:47.100267887Z",
+        "counters": {
+          "cache_write_input_tokens": 0,
+          "cached_input_tokens": 8576,
+          "input_tokens": 22016,
+          "output_tokens": 202,
+          "reasoning_output_tokens": 32,
+          "total_tokens": 22218
+        }
+      },
+      "last_observed_at": "2026-09-24T02:59:56.960129976Z",
+      "last_thread_usage_snapshot": {
+        "at": "2026-09-24T02:59:54.162Z",
+        "counters": {
+          "cache_write_input_tokens": 0,
+          "cached_input_tokens": 35978112,
+          "input_tokens": 36199088,
+          "output_tokens": 42981,
+          "reasoning_output_tokens": 15166,
+          "total_tokens": 36242069
+        }
+      },
+      "measurement_followup_at": null,
+      "metadata_availability": {
+        "field_paths": [
+          "payload.thread_token_usage",
+          "payload.turn_token_usage",
+          "payload.info.last_token_usage",
+          "payload.info.total_token_usage",
+          "payload.model_context_window",
+          "payload.latest_token_usage_record.usage",
+          "payload.thread_settings.service_tier"
+        ],
+        "model_context_window_values": [
+          258400
+        ],
+        "per_request_usage_records_with_usage_object": 0,
+        "service_tier_values_seen": {},
+        "turn_token_usage_records": 262
+      },
+      "model": "gpt-6-sol",
+      "model_provider": "openai",
+      "reasoning_effort": "high",
+      "session_created_at": "2026-09-24T02:28:45Z",
+      "session_id": "01a0d13e-6e77-77e0-8819-5515f693ea4c",
+      "source_tip_commit": "57fb873e6b36c57d5fb6f44383ed049a59b5d61c",
+      "source_tip_commit_time": "2026-09-24T02:58:28Z",
+      "tool_calls": {
+        "by_name": {
+          "exec": 151,
+          "followup_task": 2,
+          "list_agents": 4,
+          "send_message": 77,
+          "wait_agent": 29
+        },
+        "total": 263
+      }
+    }
+  ],
+  "scope": "four named trial threads only; no parent or other parallel sessions",
+  "snapshot_at": "2026-09-24T03:00:00Z",
+  "source": "cv show/tools plus the four exact local Codex JSONL sessions",
+  "usage_semantics": "thread_token_usage snapshots are cumulative; cached input is within input, reasoning output within output, total=input+output; only the final snapshot per row is used"
+}
