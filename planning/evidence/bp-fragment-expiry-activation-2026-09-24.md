@@ -58,7 +58,12 @@ certified 53 of 56 scheduled books. Its real BP test failure exposed a fixture
 coupling: the previously nil-anchor row became `(:wall)` in the new live
 fragment fixture, so the independent legacy-unknown tooth no longer had a
 legacy row. Commit `5cb84637` constructs an explicit nil-anchor legacy pair;
-that test root requires a fresh verdict. `books/owner-invariants` timed at
+that test root then passed on persvati jobs 2 in
+`run-20260924T034643Z-df49`, manifest
+`planning/evidence/manifests/certify-20260924T034655Z-3902697.json`.
+`green_check --changed-since 8c61c098` reports one remaining unqualified
+affected root: `tests/acl2/bp-transit-join-tests`.
+`books/owner-invariants` timed at
 120 seconds at the current Store-v6 base, and
 `tests/acl2/bp-transit-join-tests` failed only because its owner certificate
 was unavailable. The owner proof cost also appeared in the frozen 8c61 hbox
