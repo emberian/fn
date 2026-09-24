@@ -6,6 +6,8 @@
 ; these entries. Do not add whole-store recognition per served operation.
 (in-package "ACL2")
 (include-book "../books/store-observed")
+; D25: the duplicate-versus-conflict decision keys on the poster's bytes.
+(include-book "../books/poster-bytes")
 (include-book "../books/native-config-observation")
 (include-book "../books/store-sweep")
 (include-book "../books/store-node-resolution")
@@ -467,7 +469,7 @@ reopen predicate, writer-lock observation and observed final namespace."
       (if (not (fn-cnode-selection-servedp (f-get-global 'fn-store-cfg state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-sn-existing-action msgid payload groups s)))
+             (existing (fn-pb-existing-action msgid payload groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -594,7 +596,7 @@ reopen predicate, writer-lock observation and observed final namespace."
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-sn-existing-action
+      (let ((action (fn-pb-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
                      (f-get-global 'fn-store-sn state))))
         (value (if action action :absent))))))
