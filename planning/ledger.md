@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 580 |
 | Certification roots in the Makefile | 574 |
 | Books inside the root closure | 579 |
-| `defthm` and `defthmd` events | 8312 |
+| `defthm` and `defthmd` events | 8313 |
 | `defun` events | 6239 |
 | Functions with verified guards | 2022 |
 | Functions declared `:verify-guards nil` and never verified | 369 |
@@ -179,7 +179,7 @@ that `make certify` requests.
 | `books/bp-release.lisp` | root | 0 | 37 | 0/16/21/0 | 0 | 0 | 0 |
 | `books/bp-report-author.lisp` | root | 1 | 4 | 0/2/2/0 | 0 | 0 | 1 |
 | `books/bp-report-deletion.lisp` | root | 5 | 11 | 9/0/2/0 | 0 | 0 | 0 |
-| `books/bp-report-guards.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-report-guards.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-report-observe.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-report-outbox.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 1 |
 | `books/bp-sequence-fidelity.lisp` | root | 24 | 31 | 2/0/29/0 | 0 | 0 | 3 |
