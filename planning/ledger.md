@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 669 |
-| Certification roots in the Makefile | 658 |
-| Books inside the root closure | 667 |
-| `defthm` and `defthmd` events | 8950 |
-| `defun` events | 6576 |
+| Books read | 671 |
+| Certification roots in the Makefile | 660 |
+| Books inside the root closure | 669 |
+| `defthm` and `defthmd` events | 8982 |
+| `defun` events | 6583 |
 | Functions with verified guards | 2036 |
 | Functions declared `:verify-guards nil` and never verified | 407 |
 | Functions left at the default with an explicit guard | 3294 |
-| Functions left at the default with no guard | 839 |
-| `assert-event` checks | 9684 |
-| `must-fail` checks | 574 |
+| Functions left at the default with no guard | 846 |
+| `assert-event` checks | 9725 |
+| `must-fail` checks | 583 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
 | Export-hygiene warnings | 107 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 47 |
-| Include-hygiene warnings | 643 |
+| Include-hygiene warnings | 645 |
 | Host-names warnings | 816 |
 | Hand-written-record warnings | 18 |
 
@@ -413,6 +413,7 @@ that `make certify` requests.
 | `books/store-node-existing-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-node-invariants.lisp` | root | 159 | 2 | 0/1/0/1 | 0 | 0 | 2 |
 | `books/store-node-resolution.lisp` | root | 37 | 8 | 6/0/0/2 | 0 | 0 | 2 |
+| `books/store-node-retention.lisp` | root | 32 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-node-traces.lisp` | root | 91 | 8 | 5/0/1/2 | 0 | 0 | 1 |
 | `books/store-node.lisp` | root | 119 | 65 | 36/2/27/0 | 0 | 0 | 1 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -692,7 +693,7 @@ that `make certify` requests.
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 62 | 4 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
-| `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 55 | 0 | 0 |
+| `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 55 | 1 | 0 |
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 116 | 0 | 0 |
@@ -714,6 +715,7 @@ that `make certify` requests.
 | `tests/acl2/store-node-index-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 80 | 0 | 0 |
 | `tests/acl2/store-node-resolution-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 21 | 0 | 0 |
 | `tests/acl2/store-node-resolution-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
+| `tests/acl2/store-node-retention-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 41 | 8 | 0 |
 | `tests/acl2/store-node-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 53 | 0 | 0 |
 | `tests/acl2/store-node-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 37 | 0 | 0 |
 | `tests/acl2/store-node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |

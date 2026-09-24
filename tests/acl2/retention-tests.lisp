@@ -6,6 +6,7 @@
 ; outside a transition's guard is made under `with-guard-checking :none'.
 (in-package "ACL2")
 (include-book "../../books/retention-invariants")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; Executable scenarios for the finite-capacity retention ledger.
@@ -288,3 +289,15 @@
  (not (equal (fn-retain-admit *ret-cap-teeth-near* "forward-1" "object-a" :forward
                              "receipt-from-successor" 4)
              *ret-cap-teeth-near*)))
+; The same case as a must-fail: the keystone's conclusion, instantiated at the
+; reachable ledger with the capacity hypothesis false, is refused.  The
+; keystone is reached from the host-called `fn-node-prepare' through
+; `fn-node-prepare-refuses-whatever-retain-admit-refuses'
+; (books/store-node-retention.lisp), whose teeth are in
+; tests/acl2/store-node-retention-tests.lisp.
+(must-fail
+ (defthm ret-cap-refusal-without-capacity-hypothesis
+   (equal (fn-retain-admit *ret-cap-teeth-near* "forward-1" "object-a" :forward
+                           "receipt-from-successor" 4)
+          *ret-cap-teeth-near*)
+   :rule-classes nil))

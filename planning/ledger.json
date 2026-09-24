@@ -155,6 +155,8 @@
     "tests/acl2/store-node-traces-tests",
     "books/store-prepare-correspondence",
     "tests/acl2/store-prepare-correspondence-tests",
+    "books/store-node-retention",
+    "tests/acl2/store-node-retention-tests",
     "books/store-node-resolution",
     "books/store-identity-sequence-invariants",
     "tests/acl2/store-identity-sequence-invariants-tests",
@@ -662,25 +664,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 669,
-    "books_in_root_closure": 667,
-    "roots": 658,
-    "theorems": 8950,
-    "functions": 6576,
-    "assert_events": 9684,
-    "must_fails": 574,
+    "books": 671,
+    "books_in_root_closure": 669,
+    "roots": 660,
+    "theorems": 8982,
+    "functions": 6583,
+    "assert_events": 9725,
+    "must_fails": 583,
     "encapsulates": 30,
     "guards": {
       "verified": 2036,
       "declared-off": 407,
       "default-guarded": 3294,
-      "default-unguarded": 839
+      "default-unguarded": 846
     },
     "suspect_theorems": 83,
     "export_hygiene_warnings": 107,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 47,
-    "include_hygiene_warnings": 643,
+    "include_hygiene_warnings": 645,
     "host_names_warnings": 816,
     "hand_written_record_warnings": 18
   },
@@ -9405,6 +9407,35 @@
       "read_error": null
     },
     {
+      "book": "books/store-node-retention.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 32,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "node-invariants",
+        "node-retention-transitions",
+        "retention-invariants",
+        "store-node-invariants",
+        "store-prepare-correspondence"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -16946,14 +16977,16 @@
       },
       "verify_guards_events": 0,
       "assert_events": 55,
-      "must_fails": 0,
+      "must_fails": 1,
       "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/retention-invariants"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -17513,6 +17546,34 @@
         "../../books/store-node-resolution"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-node-retention-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 41,
+      "must_fails": 8,
+      "defconsts": 21,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/store-node-retention"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -24702,6 +24763,20 @@
       {
         "book": "tests/acl2/store-node-resolution-traces-tests.lisp",
         "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-retention-tests.lisp",
+        "line": 8,
+        "include": "../../books/store-node-retention",
+        "included": "books/store-node-retention.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-retention-tests.lisp",
+        "line": 9,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
