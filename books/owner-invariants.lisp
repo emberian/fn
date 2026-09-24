@@ -70,6 +70,17 @@
                            fn-served-concat fn-nntp-session-consistentp
                            fn-nntp-projectionp)))
 
+; The index correspondences inside fn-own-conn-okp and fn-own-view-okp build
+; a message-id trie and a group-bucket index from the archive when opened;
+; only the proofs that establish one for a fresh or rebuilt index open them.
+; fn-nntp-article-idp-is-consp and the true-list shape rules of the NNTP and
+; content-identity clusters are tried on every consp and true-listp test and
+; backchain by opening their recognizers; nothing here needs them.
+(local (in-theory (disable fn-midx-correspondencep fn-gidx-build
+                           fn-nntp-article-idp-is-consp
+                           fn-nntp-response-text-true-listp fn-cp-idp-true-listp
+                           fn-cp-id-length-bound)))
+
 ; -----------------------------------------------------------------------------
 ; Prefixes of the durable history
 
@@ -575,8 +586,9 @@
            :use ((:instance fn-own-related-records-true-list (s (fn-own-store o)))
                  (:instance fn-own-related-frontier-natural (s (fn-own-store o)))
                  (:instance fn-own-idle-node-is-replay (s (fn-own-store o))))
-           :in-theory (e/d (fn-own-relation)
-                           (fn-own-view-make-group-indexed
+           :in-theory (e/d (fn-own-relation fn-midx-correspondencep
+                            fn-gidx-build)
+                           (fn-own-conns-okp fn-own-view-make-group-indexed
                             fn-own-store-idlep fn-own-idle-node-is-replay
                             fn-own-related-records-true-list
                             fn-own-related-frontier-natural))
@@ -892,7 +904,7 @@
                             (conns (fn-own-conns o))
                             (n (fn-own-next-id o))))
            :in-theory (e/d (fn-own-relation)
-                           (fn-own-conn-make-group-indexed
+                           (fn-own-conns-okp fn-own-view-okp fn-own-conn-make-group-indexed
                             fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
 (defthm fn-own-read-step-preserves-relation
@@ -910,7 +922,7 @@
                             (conns (fn-own-conns o))
                             (n (fn-own-next-id o))))
            :in-theory (e/d (fn-own-relation)
-                           (fn-own-conn-make-group-indexed
+                           (fn-own-conns-okp fn-own-view-okp fn-own-conn-make-group-indexed
                             fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
 (defthm fn-own-advance-preserves-relation
@@ -950,12 +962,12 @@
 (defthm fn-own-close-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (fn-own-close o id)))
-  :hints (("Goal" :in-theory (enable fn-own-relation))))
+  :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conns-okp fn-own-view-okp fn-own-conn-okp)))))
 
 (defthm fn-own-begin-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (fn-own-begin o id)))
-  :hints (("Goal" :in-theory (enable fn-own-relation))))
+  :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conns-okp fn-own-view-okp fn-own-conn-okp)))))
 
 (defthm fn-own-store-step-preserves-relation
   (implies (fn-own-relation o)
@@ -977,7 +989,7 @@
                                             (fn-own-feeds o))))
                  (:instance fn-own-snrt-step-records-prefix (s (fn-own-store o))))
            :in-theory (e/d (fn-own-relation)
-                           (fn-own-refresh-preserves-relation fn-own-refresh
+                           (fn-own-conns-okp fn-own-view-okp fn-own-conn-okp fn-own-refresh-preserves-relation fn-own-refresh
                             fn-own-snrt-step-records-prefix)))))
 
 (defthm fn-own-complete-preserves-relation
@@ -1002,7 +1014,7 @@
                  (:instance fn-own-completion-pair-has-record (s (fn-own-store o)))
                  (:instance fn-snt-relation-implies-structural-state (s (fn-own-store o))))
            :in-theory (e/d (fn-own-relation)
-                           (fn-own-refresh-preserves-relation fn-own-refresh
+                           (fn-own-conns-okp fn-own-view-okp fn-own-conn-okp fn-own-refresh-preserves-relation fn-own-refresh
                             fn-snt-finish-preserves-relation fn-snt-finish-image
                             fn-snt-finish-keeps-records
                             fn-own-completion-pair-has-record
@@ -1035,7 +1047,7 @@
                             (files (fn-sn-files (fn-own-store o))))
                  (:instance fn-own-related-records-true-list (s (fn-own-store o))))
            :in-theory (e/d (fn-own-relation)
-                           (fn-own-refresh-preserves-relation fn-own-refresh
+                           (fn-own-view-okp fn-own-refresh-preserves-relation fn-own-refresh
                             fn-sn-open-observed-success-has-live-history-relation
                             fn-sn-open-observed-success-exact-history
                             fn-sn-open-observed-success-configuration
@@ -1116,19 +1128,22 @@
 (defthm fn-own-configure-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (fn-own-configure o config)))
-  :hints (("Goal" :in-theory (enable fn-own-relation))))
+  :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conns-okp fn-own-view-okp fn-own-conn-okp)))))
 
 (defthm fn-own-take-submission-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (fn-own-take-submission o)))
-  :hints (("Goal" :in-theory (enable fn-own-relation))))
+  :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conns-okp fn-own-view-okp fn-own-conn-okp)))))
 
 (defthm fn-own-control-submit-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (fn-own-control-submit o msgid groups octets)))
-  :hints (("Goal" :in-theory (enable fn-own-control-submit-result
-                                     fn-own-control-submit
-                                     fn-own-enqueue fn-own-relation))))
+  :hints (("Goal" :in-theory (e/d (fn-own-control-submit-result
+                                   fn-own-control-submit
+                                   fn-own-enqueue fn-own-relation)
+                                  (fn-own-control-decision fn-own-conns-okp
+                                   fn-own-view-okp fn-midx-correspondencep
+                                   fn-gidx-build)))))
 
 (defthm fn-own-operator-submit-preserves-relation
   (implies (fn-own-relation o)
@@ -1136,15 +1151,15 @@
   :hints (("Goal" :in-theory (e/d (fn-own-operator-submit-result
                                    fn-own-operator-submit
                                    fn-own-enqueue fn-own-relation)
-                                  (fn-own-operator-decision-of)))))
+                                  (fn-own-conns-okp fn-own-view-okp fn-own-operator-decision-of)))))
 
 (defthm fn-own-bp-transit-submit-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation
             (fn-own-bp-transit-submit o cfg peer msgid octets id subject)))
-  :hints (("Goal" :in-theory (enable fn-own-bp-transit-submit
+  :hints (("Goal" :in-theory (e/d (fn-own-bp-transit-submit
                                      fn-own-bp-transit-submit-result
-                                     fn-own-enqueue fn-own-relation))))
+                                     fn-own-enqueue fn-own-relation) (fn-own-conns-okp fn-own-view-okp fn-own-conn-okp)))))
 
 ; -----------------------------------------------------------------------------
 ; The operator's submission injects (books/owner.lisp fn-own-operator-submit,
@@ -1443,7 +1458,8 @@
                                                 (fn-state-articles archive))))
                                             nil 0 max-conns nil nil nil nil
                                             nil nil nil nil))))
-           :in-theory (e/d (fn-own-relation)
+           :in-theory (e/d (fn-own-relation fn-midx-correspondencep
+                            fn-gidx-build)
                            (fn-own-view-make-group-indexed
                             fn-own-refresh-preserves-relation fn-own-refresh
                             fn-own-prefix-archive)))))
@@ -1717,7 +1733,16 @@
                             fn-own-conns-okp-of-prefix fn-own-view-okp-of-prefix
                             fn-own-ledger-durablep-of-prefix
                             fn-own-conn-okp fn-own-view-okp
-                            fn-midx-correspondencep fn-gidx-build)))))
+                            ;; the operator's and the feeds' admission tests
+                            ;; parse the article; the store is the same on
+                            ;; both of their branches
+                            fn-own-operator-decision fn-own-operator-decision-of
+                            fn-own-feed-inflight-msgid fn-feed-state-inflightp
+                            fn-article-parse fn-cp-idp
+                            fn-own-ledger-durablep fn-own-facts-okp
+                            fn-cbor-octet-listp
+                            fn-wire-next-loop-event-needs-input
+                            fn-wire-next-event-needs-input)))))
 
 (defthm fn-own-run-records-prefix
   (implies (fn-own-relation o)
@@ -2400,11 +2425,9 @@
                  ; (books/served.lisp) hands `fn-nntp-post-outcome' exactly
                  ; `(fn-peer-session-base (fn-auth-session-base ...))', so
                  ; every `ps' below is that term.  It stood one wrapper short
-                 ; from `1019c97' until this lane.
-                 (:instance fn-peer-sessionp-forward-fields
-                            (x (fn-auth-session-base
-                                (fn-own-conn-session
-                                 (fn-own-find-conn id (fn-own-conns o))))))
+                 ; from `1019c97' until this lane.  The seven field facts of
+                 ; fn-peer-sessionp-forward-fields are not used: an instance
+                 ; of them multiplied the case split to 386 goals (5.7 s).
                  (:instance fn-post-outcome-240-only-for-a-durable-observation
                             (ps (fn-peer-session-base
                                  (fn-auth-session-base
@@ -2424,6 +2447,9 @@
                             (completion :durable)))
            :in-theory (e/d (fn-own-relation fn-served-post-outcome)
                            (fn-own-conn-boundedp fn-own-find-conn-okp
+                            fn-own-conns-okp fn-own-conn-group-index
+                            fn-own-find-conn last fn-own-facts-okp
+                            fn-own-advance fn-own-feed-durable
                             fn-own-conn-boundedp-is-post-session
                             fn-own-ledger-durablep-member fn-own-last-member
                             fn-nntp-post-outcome fn-post-sessionp

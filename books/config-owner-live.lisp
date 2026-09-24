@@ -13,6 +13,11 @@
 ; Configuration updates retain the file state through the exported selector
 ; theorem.  Expanding the updater first hides that match inside UPDATE-NTH.
 (local (in-theory (disable fn-sn-with-configuration)))
+; Shape rules of the NNTP and content-identity clusters that are tried on
+; every true-listp and consp test here and backchain by opening their
+; recognizers; nothing below needs them.
+(local (in-theory (disable fn-nntp-response-text-true-listp fn-cp-idp-true-listp
+                           fn-nntp-article-idp-is-consp fn-cp-id-length-bound)))
 
 (defun fn-ocl-owner-with-store (o st)
   (declare (xargs :guard t))
