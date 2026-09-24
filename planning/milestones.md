@@ -268,6 +268,17 @@ compaction does not weaken acceptance or replay guarantees. Retained history may
 grow until admission refuses. Finite history pruning requires D13 and its own
 duplicate/resurrection argument; indefinite acceptance is not promised.
 
+Incremental evidence (2026-09-24, [m5-capacity](evidence/m5-capacity-2026-09-24.md)):
+the transaction budget is ACL2's. The served article prepare
+(`fn-sbud-prepare`, installed by `fn-owner-prepare`) refuses at the budget the
+owner carries from the store's persisted profile, with the owner unchanged and
+the word `:unaffordable` (`441 ... no capacity`); `operator status` prints
+ACL2's headroom; `operator init --profile scale` reaches the 4096 budget.
+Measured on a developer image: 128 POSTs accepted, the 129th and 130th
+refused by name. Open: headroom of a running owner (the control channel has
+no such query), an offline profile upgrade, and the reopen cost that makes
+the 4096 budget admissible rather than usable.
+
 ## M6: additional interfaces and mission profiles
 
 - Extend the already exercised BP path with additional convergence-layer and

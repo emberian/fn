@@ -1811,10 +1811,10 @@ in-process retry."
                       (t (fnn-fault "invalid FN_NATIVE_RECOVERY_FAULT action: ~a" action)))
                 "developer-only native recovery fault"))))))
 
-(defun fnn-command-init (root groups)
+(defun fnn-command-init (root groups &optional (profile :development))
   (let ((store (make-fnn-store root :writable t :fault (fnn-init-test-fault))))
     (unwind-protect
-         (progn (fnn-initialize store (or groups +fnn-default-groups+))
+         (progn (fnn-initialize store (or groups +fnn-default-groups+) profile)
                 (fnn-acquire store)
                 (fnn-out "initialized ~a" (fnn-store-root store)))
       (fnn-store-close store))
@@ -1920,7 +1920,9 @@ error for the same reason."
                  (return-from fnn-command-post +fnn-exit-ok+))
                (when (eq existing :conflict)
                  (fnn-refuse "conflicting immutable Message-ID")))
-             (when (>= (length records) (fnn-config-max-transactions store))
+             (unless (eq (fnn-core-state 'fn-store-sn-publication-verdict
+                                         (fnn-store-config store) :article)
+                         :admissible)
                (fnn-refuse "transaction count has reached configured bound"))
              (fnn-advance-frontier store (fnn-bridge-next-txid))
              (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
@@ -1977,11 +1979,23 @@ this reads only whether there is one."
              code))
       (fnn-store-close store))))
 
+(defun fnn-out-headroom (store)
+  "Print ACL2's headroom for the open Store: transactions used of the
+profile's budget, and the retention ledger's reserved charge of its capacity."
+  (let ((headroom (fnn-core-state 'fn-store-sn-headroom (fnn-store-config store))))
+    (unless (and (listp headroom) (= (length headroom) 4)
+                 (every (lambda (n) (and (integerp n) (>= n 0))) headroom))
+      (fnn-fault "ACL2 returned malformed headroom"))
+    (destructuring-bind (used budget reserved capacity) headroom
+      (fnn-out "headroom transactions-used=~d transactions-budget=~d charge-reserved=~d charge-capacity=~d"
+               used budget reserved capacity))))
+
 (defun fnn-command-status (root)
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (unwind-protect
          (progn (fnn-out "transactions=~d articles=~d ~a unsigned-legacy-experiment"
                          (length records) (fnn-bridge-article-count) (fnn-orphan-report store))
+                (fnn-out-headroom store)
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 
