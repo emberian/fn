@@ -45,31 +45,20 @@
   peer path fd phase (replayed 0))
 
 (defvar *fnn-owner-startup-hooks* nil)
-;;; The service log.  `fn operator CONFIG run' opens `[log] path' append-only
-;;; before the store (host/native/operator.lisp) and leaves its descriptor
-;;; here; NIL means stderr.  The line is ACL2's (books/owner-log.lisp), left
-;;; in the global `fn-owner-log-line' by the wrapper that just ran under the
-;;; owner mutex; this writes its octets and one LF and decides nothing.  A
-;;; failed write is reported on stderr and does not stop the owner: the log
-;;; is an operator's record, never evidence of durable acceptance.
-(defvar *fnn-owner-log-fd* nil)
+;;; The service log.  The line is ACL2's (books/owner-log.lisp), left in the
+;;; global `fn-owner-log-line' by the wrapper that just ran under the owner
+;;; mutex; host/native/io.lisp fnn-log-line writes its octets and one LF to
+;;; `*fnn-owner-log-fd*' (the `[log] path' run opened) or stderr and decides
+;;; nothing.  The store's swallowed staging cleanup line (fnn-publish) goes
+;;; through the same writer.
 
 (defun fnn-owner-log (&optional (global 'fn-owner-log-line) optional)
   "Write the ACL2-rendered line in GLOBAL.  OPTIONAL: an empty line is none."
   (let ((line (fnn-global global)))
     (unless (fnn-octet-list-p line)
       (fnn-fault "owner returned a malformed log line"))
-    (when (and optional (null line))
-      (return-from fnn-owner-log nil))
-    (let ((octets (concatenate 'fnn-octets (fnn-octets line)
-                               (fnn-octets (list 10)))))
-      (if *fnn-owner-log-fd*
-          (handler-case (fnn-write-all *fnn-owner-log-fd* octets)
-            (error (condition)
-              (fnn-err "service log write failed: ~a" condition)))
-        (when *fnn-stderr*
-          (write-sequence octets *fnn-stderr*)
-          (finish-output *fnn-stderr*))))))
+    (unless (and optional (null line))
+      (fnn-log-line line))))
 
 
 (defun fnn-owner-run-startup-hooks (service)

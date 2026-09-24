@@ -265,6 +265,36 @@ for one), or nil."
              (fn-olog-field "code" (fn-olog-decimal code))
              (fn-olog-field "time" (fn-olog-time (fn-own-clock o))))))))
 
+;; -----------------------------------------------------------------------------
+;; The store's swallowed staging cleanup.  P-RECORD (specs/crash-model-v2.md)
+;; ends with a best-effort unlink of the stage and a barrier on staging after
+;; the record's directory barrier: the record is durable, the reply is 240,
+;; and an error there changes no outcome.  Before this line the host
+;; (host/native/io.lisp fnn-publish) discarded that error and wrote nothing,
+;; so a persistent EIO in staging cleanup was silent on every post
+;; (planning/evidence/probe-tables-2026-09-24.md, S1).  The host renders this
+;; line once per swallowed error and writes it through the owner's log path.
+;; Its first word is `failed', never an outcome word: the submission's own
+;; line still says what the reply said.
+
+; STEP is the cleanup step that was running (:unlink, or :directory-barrier
+; once the unlink returned); NAME the staging path, SEQUENCE the sequence the
+; durable record was published under, ERRNO the OS errno or nil when the
+; condition carried none, and TEXT the condition's report as the host gave it.
+(defun fn-olog-staging-cleanup-line (step name sequence errno text)
+  (declare (xargs :guard t))
+  (fn-olog-join
+   (list (fn-olog-text "failed")
+         (fn-olog-text "staging")
+         (fn-olog-text "cleanup")
+         (fn-olog-field "step" (fn-olog-symbol-text step))
+         (fn-olog-field "sequence" (fn-olog-decimal sequence))
+         (fn-olog-field "name" (fn-olog-name-octets name))
+         (fn-olog-field "errno" (if (natp errno)
+                                    (fn-olog-decimal errno)
+                                  (fn-olog-text "none")))
+         (fn-olog-field "error" (fn-olog-name-octets text)))))
+
 ; -----------------------------------------------------------------------------
 ; A line is one line
 
@@ -345,6 +375,12 @@ for one), or nil."
 (defthm fn-olog-feed-reply-line-is-one-line
   (fn-olog-no-breakp (fn-olog-feed-reply-line o peer response))
   :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-code-class-word))))
+
+; Whatever octets the staging path or the OS error text held.
+(defthm fn-olog-staging-cleanup-line-is-one-line
+  (fn-olog-no-breakp (fn-olog-staging-cleanup-line step name sequence errno text))
+  :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-symbol-text
+                                      fn-olog-name-octets))))
 
 ; -----------------------------------------------------------------------------
 ; The log says what the reply says
