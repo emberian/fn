@@ -1599,6 +1599,78 @@
           "name": "fn-bs-k0-record-fence-pair-relation",
           "note": "K0 at the P-RECORD transactions-fence pair (the record-durable cut's state): composes the related attempted cut with the K8 fence preservation.",
           "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-created-and-written-cut-relation",
+          "note": "K0 at the frontier-created and frontier-written cuts of P-FRONTIER (staging-only create and write), from an arbitrary related state under the typed frontier input and an absent stage.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-replaced-cut-relation",
+          "note": "K0 at the frontier-replaced cut of P-FRONTIER (issued rename, kernel :frontier-data-durable), same premises; the pair-6 authority-quiet premise is restated and proved in byte-store-k0.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-attempted-cut-relation",
+          "note": "K0 at the frontier-attempted cut of P-FRONTIER (issued rename, kernel :frontier-attempted), same premises.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-created-and-written-cut-relation",
+          "note": "K0 at the record-created and record-written cuts of P-RECORD (staging-only create and write), same premises as the other P-RECORD cuts.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-cleanup-cut-relation",
+          "note": "K0 at the record-stage-unlinked and record-staging-cleaned cuts of P-RECORD: the staging unlink succeeds and it and the staging fence keep the relation, same premises.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-staging-create-preserves-relation",
+          "note": "Creating a fresh staging name keeps the relation from any related state outside the recovery window.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-pending-staging-extension-preserves-relation",
+          "note": "Appending pending operations that name no :root/:transactions entry and write no authority inode keeps the relation outside the recovery window (the write and unlink steps).",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-staging-fence-preserves-relation",
+          "note": "fsync of the staging directory keeps the relation from any related state outside the recovery window.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-issued-rename-error-arm-relation",
+          "note": "Error arm of P-FRONTIER: an issued rename followed by the host's (:frontier-replace :error) observation keeps the relation, same premises.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-error-arms-relation",
+          "note": "Error arms of P-FRONTIER: (:frontier-replace :error) after a rename that returned an error at pair 6, and (:frontier-dir :error) at the frontier barrier, keep the relation, same premises.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-record-link-error-preserves-relation",
+          "note": "The host's (:record-link :error) observation keeps the relation from any related state (the failed-link arm of P-RECORD).",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-record-dir-error-preserves-relation",
+          "note": "The host's (:record-dir :error) observation keeps the relation from any related state (the record-barrier EIO arm of P-RECORD).",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
         }
       ]
     },

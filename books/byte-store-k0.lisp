@@ -14,17 +14,15 @@
 ;;       (provenance), record-durable, record-completing.
 ;;   P-FINISH    every pair (finish-consumed, finish-durable).
 ;;
-;; OPEN, named and not claimed: P-FRONTIER frontier-created, frontier-written,
-;; frontier-replaced, frontier-attempted (the rename transport at the end of
-;; this book is proved; its authority-quiet premise at pair 6 is not
-;; exported by byte-store-record-provenance); P-RECORD record-created,
-;; record-written, record-stage-unlinked, record-staging-cleaned; every
-;; P-RECOVER cut (recover-replayed, recover-barrier-1..5) and
-;; recovery-stage-unlinked, which also need the call-entry establishment
-;; theorem from fn-sn-open-observed's scanned image; all error-outcome arms
-;; (only the all-:ok run is covered); the checkpoint phase machines.  The
-;; tests (tests/acl2/byte-store-k0-tests.lisp) evaluate the open cuts on the
-;; retained-history witness; that is a test, not a theorem.
+;;   Lane p10-k0-b's cuts and error arms are in books/byte-store-k0-staging.
+;;
+;; OPEN, named and not claimed: every P-RECOVER cut (recover-replayed,
+;; recover-barrier x5) and the entry theorem they need (the relation from
+;; fn-sn-open-observed's scanned image); recovery-stage-unlinked is covered
+;; only given a related state at sweep entry (byte-store-keystones,
+;; fn-bs-recover-sweep-keeps-relation-at-every-cut); the issued-link error
+;; arm; the checkpoint phase machines.  No host line calls these byte-model
+;; programs; tools/native_program_check.py is their tie to the host.
 (in-package "ACL2")
 (include-book "byte-store-record-provenance")
 (include-book "byte-store-record-fence")
@@ -542,4 +540,3 @@
                            (fn-bs-read-records fn-bs-record-of fn-sf-statep fn-bs-replay-visiblep
                             fn-bs-contiguous-namesp fn-bs-inode-list-knownp
                             fn-bs-all-fencedp fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
-
