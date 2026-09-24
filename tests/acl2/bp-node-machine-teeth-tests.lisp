@@ -46,8 +46,21 @@
                        (fn-bpn-nth 2 effect) :durable)))
       st)))
 
-(defconst *bpnmt-n03-s0*
+(defconst *bpnmt-n03-raw-s0*
   (fn-bpnf-initial-state *bpnmt-local-config* 8 1048576))
+(defconst *bpnmt-n03-boot-event*
+  (fn-bpnf-family-recover-auto-event *bpnmt-n03-raw-s0*
+                                      nil :ready nil))
+(defconst *bpnmt-n03-boot*
+  (fn-bpnp-step *bpnmt-n03-raw-s0* *bpnmt-n03-boot-event*))
+(defconst *bpnmt-n03-s0*
+  (fn-bpnf-answer-state *bpnmt-n03-boot*))
+(assert-event
+ (and (fn-bpnp-host-eventp *bpnmt-n03-boot-event*)
+      (equal (car (car (fn-bpnf-answer-effects *bpnmt-n03-boot*)))
+             :restart-ready)
+      (equal (fn-bpnp-used *bpnmt-n03-s0*) 0)
+      (equal (fn-bpnp-debt *bpnmt-n03-s0*) 0)))
 (defconst *bpnmt-n03-s1*
   (bpnmt-durable-receive *bpnmt-n03-s0* *bpnmt-n03-old*
                          *bpnmt-ingress* *bpnmt-observation*))
@@ -233,11 +246,11 @@
 (defconst *bpnmt-n03-fault-recovery*
   (fn-bpnp-step
    *bpnmt-n03-waited*
-   (list :recover-fnbs 0 nil :ready
+   (list :recover-fnbs 1 nil :ready
          (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil) 2)))
 (assert-event
  (and (fn-bpnp-host-eventp
-       (list :recover-fnbs 0 nil :ready
+       (list :recover-fnbs 1 nil :ready
              (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil) 2))
       (equal (fn-bpnf-answer-effects *bpnmt-n03-fault-recovery*)
              '((:restart-fault :fnbs-or-base)))
@@ -255,11 +268,11 @@
 (defconst *bpnmt-n03-recovered*
   (fn-bpnp-step
    *bpnmt-n03-waited*
-   (list :recover-fnbs 1 nil :ready
+   (list :recover-fnbs 2 nil :ready
          (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil) 2)))
 (assert-event
  (and (fn-bpnp-host-eventp
-       (list :recover-fnbs 1 nil :ready
+       (list :recover-fnbs 2 nil :ready
              (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil) 2))
       (equal (car (car (fn-bpnf-answer-effects *bpnmt-n03-recovered*)))
              :restart-ready)

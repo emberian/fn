@@ -69,7 +69,17 @@
                 (fn-bpn-nth 2 effect) :durable)))
       st)))
 
-(defconst *bpfx-s0* (fn-bpnf-initial-state *bpfx-config* 8 1048576))
+(defconst *bpfx-raw-s0* (fn-bpnf-initial-state *bpfx-config* 8 1048576))
+(defconst *bpfx-boot-event*
+  (fn-bpnf-family-recover-auto-event *bpfx-raw-s0* nil :ready nil))
+(defconst *bpfx-boot* (fn-bpnp-step *bpfx-raw-s0* *bpfx-boot-event*))
+(defconst *bpfx-s0* (fn-bpnf-answer-state *bpfx-boot*))
+(assert-event
+ (and (fn-bpnp-host-eventp *bpfx-boot-event*)
+      (equal (car (car (fn-bpnf-answer-effects *bpfx-boot*)))
+             :restart-ready)
+      (equal (fn-bpnp-used *bpfx-s0*) 0)
+      (equal (fn-bpnp-debt *bpfx-s0*) 0)))
 (defconst *bpfx-s1* (bpfx-durable-receive *bpfx-s0* *bpfx-old-wire*))
 (defconst *bpfx-s2* (bpfx-durable-receive *bpfx-s1* *bpfx-new-wire*))
 (defconst *bpfx-old-held* (second (fn-bpnf-held-list *bpfx-s2*)))
