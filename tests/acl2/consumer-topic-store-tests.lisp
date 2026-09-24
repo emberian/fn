@@ -39,8 +39,10 @@
   (fn-th-local-admin-install 4 4 4 501 *thla-id* nil))
 (assert-event (fn-stmt-okp *cts-install-result*))
 (defconst *cts-install* (fn-stmt-value *cts-install-result*))
+(assert-event (fn-th-topic-eventp *cts-install*))
 (defconst *cts-admin-reserved* (thsn-reserve *cts-root-accepted*))
 (assert-event (and (fn-csi-livep *cts-admin-reserved*)
+                   (fn-csi-full-relationp *cts-admin-reserved*)
                    (equal (fn-sf-phase (fn-sn-files *cts-admin-reserved*))
                           :reserved)))
 (defconst *cts-admin-staged*
@@ -48,6 +50,7 @@
 (assert-event (equal (fn-sf-phase (fn-sn-files *cts-admin-staged*))
                      :record-staged))
 (assert-event (fn-csi-livep *cts-admin-staged*))
+(assert-event (fn-csi-full-relationp *cts-admin-staged*))
 (assert-event (equal (fn-sn-consumer *cts-admin-staged*)
                      (fn-sn-consumer *cts-registered*)))
 (make-event `(defconst *cts-installed*
