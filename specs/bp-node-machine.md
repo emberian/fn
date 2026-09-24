@@ -989,8 +989,9 @@ the decision.
 **Current A3 native subset.** The shared `bp-node` service does not yet run
 this full progress scheduler for received held rows. Its application caller
 uses `fn-bpah-pending-decision-at` before Store: a current observation must
-decide the exact persisted held carrier `:live`; `:expired` is skipped and
-`:uncertain` fences. New kind-5 rows persist the receive-time Bundle Age
+decide the selected persisted held carrier `:live`; `:expired` is skipped and
+`:uncertain` is reported when no live carrier is selectable. New kind-5 rows
+persist the receive-time Bundle Age
 anchor (or an explicit wall-clock tag); older canonical kind-5 rows have no
 anchor and remain uncertain rather than acquiring an invented arrival time.
 This narrows A3 delivery eligibility beyond the target's `not :expired`
