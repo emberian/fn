@@ -535,25 +535,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 542,
-    "books_in_root_closure": 538,
+    "books": 548,
+    "books_in_root_closure": 539,
     "roots": 531,
-    "theorems": 8031,
-    "functions": 6062,
-    "assert_events": 8799,
-    "must_fails": 410,
+    "theorems": 8102,
+    "functions": 6079,
+    "assert_events": 8836,
+    "must_fails": 412,
     "encapsulates": 26,
     "guards": {
-      "verified": 1969,
-      "declared-off": 324,
+      "verified": 1982,
+      "declared-off": 325,
       "default-guarded": 3011,
-      "default-unguarded": 758
+      "default-unguarded": 761
     },
     "suspect_theorems": 74,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
-    "teeth_form_warnings": 29,
-    "include_hygiene_warnings": 410,
+    "teeth_form_warnings": 30,
+    "include_hygiene_warnings": 418,
     "host_names_warnings": 756,
     "hand_written_record_warnings": 18
   },
@@ -3968,7 +3968,7 @@
       "book": "books/consumer-event-index-store-invariants.lisp",
       "in_root_closure": false,
       "is_root": false,
-      "theorems": 3,
+      "theorems": 15,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -4010,6 +4010,59 @@
       "encapsulates": 0,
       "includes": [
         "consumer-position"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/consumer-owner-local.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 7,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 7,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-poll-index",
+        "consumer-store-projection",
+        "owner"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/consumer-poll-index.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 7,
+      "functions": 6,
+      "guards": {
+        "verified": 5,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 5,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-event-index",
+        "replay"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7607,7 +7660,7 @@
       "book": "books/store-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 141,
+      "theorems": 159,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -7623,7 +7676,8 @@
       "encapsulates": 0,
       "includes": [
         "records-seam",
-        "store-node"
+        "store-node",
+        "topic-history-identity-disjoint"
       ],
       "system_includes": [
         "arithmetic/top"
@@ -7667,7 +7721,7 @@
       "book": "books/store-node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 76,
+      "theorems": 90,
       "functions": 8,
       "guards": {
         "verified": 5,
@@ -7684,7 +7738,8 @@
       "includes": [
         "records-seam",
         "store-files-traces",
-        "store-node-invariants"
+        "store-node-invariants",
+        "topic-history-identity-disjoint"
       ],
       "system_includes": [
         "arithmetic/top"
@@ -7698,7 +7753,7 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 80,
+      "theorems": 96,
       "functions": 65,
       "guards": {
         "verified": 35,
@@ -7758,14 +7813,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 39,
-      "functions": 15,
+      "functions": 16,
       "guards": {
-        "verified": 14,
+        "verified": 15,
         "declared-off": 0,
         "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 14,
+      "verify_guards_events": 15,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -8410,6 +8465,31 @@
       "suspects": [
         "fn-th-accepted-selection-refuses-unbound-context"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/topic-history-identity-disjoint.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-events"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -11601,6 +11681,58 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/consumer-owner-local-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 26,
+      "must_fails": 0,
+      "defconsts": 21,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/consumer-owner-local"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/consumer-poll-index-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 1,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/consumer-poll-index"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/consumer-position-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -14302,9 +14434,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 21,
       "must_fails": 0,
-      "defconsts": 8,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -14683,6 +14815,34 @@
         "../../books/codec-attach",
         "../../books/crypto-attach",
         "../../books/topic-history-authorship"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/topic-history-identity-disjoint-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 1,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/topic-history-identity-disjoint",
+        "topic-history-store-events-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -15482,7 +15642,7 @@
     {
       "theorem": "fn-sn-article-record-without-a-usable-clock-is-refused",
       "book": "books/store-node.lisp",
-      "line": 737,
+      "line": 828,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value"
       ]
@@ -15490,7 +15650,7 @@
     {
       "theorem": "fn-sn-composite-delta-of-typed-article",
       "book": "books/store-node-invariants.lisp",
-      "line": 1244,
+      "line": 1414,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-composite-delta and the conclusion is that branch's value"
       ]
@@ -15498,7 +15658,7 @@
     {
       "theorem": "fn-sn-finish-disabled-is-no-op",
       "book": "books/store-node-invariants.lisp",
-      "line": 441,
+      "line": 553,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value"
       ]
@@ -15506,7 +15666,7 @@
     {
       "theorem": "fn-sn-known-abort-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 154,
+      "line": 157,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value"
       ]
@@ -15514,7 +15674,7 @@
     {
       "theorem": "fn-sn-open-observed-invalid-history-refuses",
       "book": "books/store-observed.lisp",
-      "line": 481,
+      "line": 494,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value"
       ]
@@ -15522,7 +15682,7 @@
     {
       "theorem": "fn-sn-refuse-reservation-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 148,
+      "line": 151,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value"
       ]
@@ -15530,7 +15690,7 @@
     {
       "theorem": "fn-snt-apply-record-of-a-retention-event",
       "book": "books/store-node-traces.lisp",
-      "line": 667,
+      "line": 733,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value"
       ]
@@ -16759,6 +16919,12 @@
         "book": "tests/acl2/tcpcl-delivery-tests.lisp",
         "line": 125,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "thid-all-events-are-identity-neutral",
+        "book": "tests/acl2/topic-history-identity-disjoint-tests.lisp",
+        "line": 15,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       }
     ],
     "include_hygiene": [
@@ -17358,6 +17524,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/consumer-owner-local.lisp",
+        "line": 7,
+        "include": "consumer-poll-index",
+        "included": "books/consumer-poll-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/consumer-poll-index.lisp",
+        "line": 4,
+        "include": "consumer-event-index",
+        "included": "books/consumer-event-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/exchange.lisp",
         "line": 14,
         "include": "acceptance-alloc",
@@ -17673,6 +17853,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/store-node-invariants.lisp",
+        "line": 5,
+        "include": "topic-history-identity-disjoint",
+        "included": "books/topic-history-identity-disjoint.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/store-node-resolution.lisp",
         "line": 4,
         "include": "records-seam",
@@ -17681,7 +17868,14 @@
       },
       {
         "book": "books/store-node-traces.lisp",
-        "line": 5,
+        "line": 4,
+        "include": "topic-history-identity-disjoint",
+        "included": "books/topic-history-identity-disjoint.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-node-traces.lisp",
+        "line": 6,
         "include": "records-seam",
         "included": "books/records-seam.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -18814,6 +19008,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/consumer-owner-local-tests.lisp",
+        "line": 3,
+        "include": "../../books/consumer-owner-local",
+        "included": "books/consumer-owner-local.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-poll-index-tests.lisp",
+        "line": 3,
+        "include": "../../books/consumer-poll-index",
+        "included": "books/consumer-poll-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/consumer-store-invariants-tests.lisp",
         "line": 4,
         "include": "../../books/consumer-store-invariants",
@@ -19525,6 +19733,20 @@
         "line": 3,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-identity-disjoint-tests.lisp",
+        "line": 2,
+        "include": "../../books/topic-history-identity-disjoint",
+        "included": "books/topic-history-identity-disjoint.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-identity-disjoint-tests.lisp",
+        "line": 3,
+        "include": "topic-history-store-events-tests",
+        "included": "tests/acl2/topic-history-store-events-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -1,18 +1,11 @@
-# Indexed owner poll source checkpoint
+# Derived Store event index and indexed consumer poll: scoped evidence
 
-`books/consumer-owner-local.lisp` now includes `consumer-poll-index` and changes the actual `fn-col-poll` call to materialize at most sixteen committed events by the Store's derived sequence index, then passes that window to the unchanged `fn-col-poll-scan`. The output cursor, report, refusal, and no-ack semantics are unchanged by construction. The lower indexed-window correspondence and budget theorem are ACL2 certified; this actual owner caller has **not** been certified on the topic/slot13 union. Its include closure currently stops at the independently red topic `store-node-resolution`/`store-observed` relation work. No native indexed-poll claim follows from this checkpoint.
+The Store carries a rebuildable sequence-to-event radix index in slot 13. The committed event list remains authoritative; the index is reconstructed from exact completed records on open and never represents consumer acknowledgement. `fn-ceis-relatedp` relates the live index to the Store event prefix. `books/consumer-event-index-store-invariants.lisp` proves preservation through initial, all prepare arms (article, retention, identity, consumer, topic), I/O, finish, crash, and recover. The index book and test passed ACL2 on hbox, run `run-20260924T023345Z-2e8d`, manifest `certify-20260924T023349Z-750495.json` (the multi-root run's observed dependent was still red at that source checkpoint).
 
-The accompanying owner test source is copied unchanged from the currently served owner poll test. It exercises published bootstrap, registration, and article through the actual owner call; it remains to be certified against the combined topic/index source. The required next proof is a reachable Store relation carrying `fn-ceis-relatedp` through the mixed Store dispatcher and observed open, followed by the owner caller equivalence and a source-matched native fixture. The derived index is not durable authority; recovery builds it from exact Store events.
+`fn-col-poll` in `books/consumer-owner-local.lisp` calls `fn-col-poll-index-window` to fetch at most 16 sequential committed events from the acknowledged position. The lower `fn-col-poll-index-window-is-committed-prefix` theorem proves equality to the list-prefix selector under index correspondence and sequence/frontier bounds. The scanner after the window is unchanged, preserving exact report/cursor selection and poll's read-only progress semantics. The actual owner book and test passed ACL2 on hbox, run `run-20260924T024200Z-7828`, manifest `certify-20260924T024208Z-759061.json`. This is source qualification, not a source-matched native image or end-to-end indexed-poll test. A theorem directly equating the outer `fn-col-poll` result with the former list-selector result under the maintained Store relation is still required for a complete served-cost/behavior claim.
 
-Store slot13 proof checkpoint: `books/store-node-invariants.lisp` now has local
-v6 constructor and projection-preservation facts, plus scoped hints that keep
-the new Store copies closed. Hbox run `run-20260924T015835Z-d5f8`
-(`certify-20260924T015838Z-719858.json`) admitted preparation, I/O, finish,
-verdict, crash, recovery, the exact durable completion pair, all indexed
-prepare/I/O facts, and all finish-arm field lemmas. It reached
-`FN-SN-FINISH-TOPIC-COMPLETION` and hit the configured 120-second limit;
-the current bounded retry closes the raw v6 constructor in that theorem.
-This packet is **unqualified**: neither the invariant book nor its reverse
-closure passed. The combined source now includes the topic lane's corrected
-deferred relation and observed/config recovery patch, but no full owner or
-native index claim follows.
+Slot 13 is carried by the current v6 Store constructor and configuration updater. The combined topic slot12/index slot13 Store roots passed in scoped hbox runs: Store invariant in `certify-20260924T021344Z-731485.json`; trace book and test in `certify-20260924T023007Z-746632.json`; resolution book and test in `certify-20260924T023310Z-749653.json`; observed book and test in `certify-20260924T023835Z-755043.json`; config observed book and test in `certify-20260924T024129Z-757902.json`. Some earlier multi-root manifests are red only because their next dependent had not yet been repaired. These scoped results do not replace the root's frozen combined closure.
+
+The final Store teeth, observed-trace, and config-trace tests passed together on hbox in `certify-20260924T024533Z-763031.json` after those repairs. `make check` passed on this source with the generated ledger refreshed.
+
+Radix lookup examines four octet positions and at most 256 child edges per position; the poll fetch loop examines at most 16 events. The current live index retains O(committed events) additional derived nodes. Persistent prior ACL2 roots may retain old index paths until garbage collection, so this is a bound on one live root, not total process retention. The Store event list, authenticated scope check and cursor validation remain separate. The source avoids the old O(acknowledged prefix) `fn-col-poll-drop` on the called poll path; the native served-path cost and source-matched process-death behavior remain to be measured on a combined image.

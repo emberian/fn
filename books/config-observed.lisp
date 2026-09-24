@@ -4,6 +4,9 @@
 (in-package "ACL2")
 (include-book "config-physical-replay")
 (include-book "store-observed")
+; The Store's derived event index is rebuilt at open.  Keep its wide
+; constructor closed while proving configuration/history selectors.
+(local (in-theory (disable fn-sn-make-v6)))
 
 (defun fn-cpo-install (st cn configs)
   (declare (xargs :guard (true-listp st)))

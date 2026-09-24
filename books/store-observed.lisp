@@ -19,6 +19,10 @@
 (in-package "ACL2")
 (include-book "store-node-resolution")
 (include-book "records-seam")
+; The observed-open proofs use Store selector equations.  Expanding the
+; rebuildable index's fourteen-field constructor in every recovery goal
+; obscures the unchanged file and node projections.
+(local (in-theory (disable fn-sn-make-v6)))
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
