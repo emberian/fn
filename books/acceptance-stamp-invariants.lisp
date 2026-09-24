@@ -275,6 +275,28 @@
                   fn-th-topic-eventp
                   fn-store-retention-event-p))))))
 
+; The composite arm passes the historical bound article through replay. Keep
+; this node projection explicit so the stamp proof does not expand the entire
+; 14-slot Store constructor and its other completion arms.
+(local
+ (defthm fn-stamp-composite-finish-node-is-replay
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-stxa-p (fn-sn-completion-record s)))
+            (equal (fn-sn-node (fn-sn-finish s))
+                   (fn-replay-apply-record
+                    (fn-sn-node s) (fn-sn-completion-record s))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-finish fn-sn-finish-identity fn-sn-node
+                  fn-sn-make-v6)
+                 (fn-sn-completion-enabledp fn-sn-statep
+                  fn-sn-completion-record fn-store-retention-event-p
+                  fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                  fn-th-topic-eventp fn-replay-apply-record
+                  fn-replay-identity-step fn-sn-identity-context
+                  fn-sf-core-completion fn-sf-emit-success
+                  fn-record-shape-vocabulary
+                  fn-record-record-vocabulary))))))
+
 (defthm fn-sn-finish-installs-the-stamp-the-composite-carries
   (implies (and (fn-sn-completion-enabledp s)
                 (fn-stxa-p (fn-sn-completion-record s)))
@@ -294,13 +316,16 @@
                     (fn-replay-composite-record (fn-sn-completion-record s))))))
   :hints (("Goal"
            :use (fn-stamp-composite-enabled-implies-replay-premises
+                 fn-stamp-composite-finish-node-is-replay
                  (:instance fn-replay-apply-record-installs-the-stamp
                             (node (fn-sn-node s))
                             (record (fn-sn-completion-record s))))
-           :in-theory (e/d (fn-sn-finish fn-replay-article-record)
+           :in-theory (e/d (fn-replay-article-record)
                            (fn-store-event-p fn-record-shape-vocabulary
                             fn-stxa-p fn-stxe-p fn-stxk-p
                             fn-sn-completion-enabledp
+                            fn-sn-finish fn-sn-finish-identity
+                            fn-replay-apply-record
                             fn-store-retention-event-p))))
   :rule-classes nil)
 
