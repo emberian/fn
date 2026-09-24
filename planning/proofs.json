@@ -160,9 +160,17 @@
         "fn-retain-known-obligation-id-is-not-reused",
         "fn-retain-release-preserves-statep",
         "fn-retain-release-preserves-independent-pin",
-        "fn-retain-release-preserves-known-identity"
+        "fn-retain-release-preserves-known-identity",
+        "fn-retain-admit-refuses-unaffordable-obligation",
+        "fn-node-prepare-refuses-unaffordable-obligation",
+        "fn-node-prepare-refuses-whatever-retain-admit-refuses",
+        "fn-spc-prepare-refuses-unaffordable-obligation",
+        "fn-sn-finish-keeps-accepted-articles",
+        "fn-sn-finish-releases-an-obligation-only-by-its-matching-release"
       ],
       "evidence": [
+        "planning/evidence/manifests/certify-20260924T144414Z-1366014.json",
+        "planning/evidence/manifests/certify-20260924T144502Z-1374723.json",
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "books/node.lisp",
@@ -170,9 +178,11 @@
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json",
         "books/retention-invariants.lisp",
-        "tests/acl2/retention-tests.lisp"
+        "tests/acl2/retention-tests.lisp",
+        "books/store-node-retention.lisp",
+        "tests/acl2/store-node-retention-tests.lisp"
       ],
-      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities; RET-002's capacity refusal is now a keystone, fn-retain-admit-refuses-unaffordable-obligation, over the same fn-retain-admissiblep test fn-node-prepare's refusal branch uses, with teeth at the capacity-10/charge-5-vs-4 boundary. Authorized/committed evidence validation, durable node release, and physical-byte charging remain open."
+      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities. P9 over the host-called functions (books/store-node-retention.lisp, 2026-09-24): fn-spc-prepare (host/store-node-host.lisp:472, answered :refused at :475 when it returns its input) returns the live store state unchanged whenever the record's charge exceeds the room the node's retention capacity leaves, with that comparison its only hypothesis; fn-node-prepare does the same; fn-node-prepare-refuses-whatever-retain-admit-refuses is the named equation that makes RET-002's fn-retain-admit-refuses-unaffordable-obligation a statement about the called function (fn-retain-admit's no-op is exactly the inadmissible case, and in that case prepare refuses). fn-sn-finish (store-node-host.lisp:546): every article accepted before a completion is accepted after it on every arm (no hypothesis beyond membership), and an obligation leaves the ledger only when the completed record is a retention release, not an undertaking, matching its id, subject, kind and evidence; Store releases name kind :forward, so no arm releases an article's :archive pin (corollary fn-sn-finish-keeps-every-archive-obligation). Teeth: tests/acl2/store-node-retention-tests.lisp, reachable witnesses from fn-sn-initial through the host's io/prepare/finish (capacity 10, 2 reserved, charge 9 refused and 8 staged; article, undertaking and release arms) and one must-fail per hypothesis; the identity, consumer and topic arms have no concrete witness. Scope: charges are abstract units, not physical bytes; there is no archive-release event in v0, so 'until explicit release' is 'kept' for articles; crash/recover and sweep are not covered here. Authorized/committed evidence validation remains open."
     },
     {
       "id": "PRF-005",

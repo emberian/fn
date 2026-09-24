@@ -187,6 +187,30 @@
         {
           "kind": "theorem",
           "name": "fn-retain-release-preserves-known-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-retain-admit-refuses-unaffordable-obligation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-prepare-refuses-unaffordable-obligation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-prepare-refuses-whatever-retain-admit-refuses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spc-prepare-refuses-unaffordable-obligation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-keeps-accepted-articles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-releases-an-obligation-only-by-its-matching-release"
         }
       ]
     },
