@@ -77,33 +77,58 @@
                (otherwise (values :uncertain '(0))))))
       (when journal (fnn-app-journal-close journal)))))
 
+(defun fnn-bpnode-release-line (view)
+  "Print ACL2's D23 release verdict for a receipt VIEW; the host decides nothing."
+  (let ((line (fnn-owner-core 'fn-owner-bp-release-line view)))
+    (when (stringp line)
+      (fnn-out "BP node release ~a" line))))
+
+(defun fnn-bpnode-receipt-detail (view)
+  "ACL2's release verdict for VIEW as the kind-7 delivery detail octets."
+  (let ((detail (fnn-owner-core 'fn-owner-bp-receipt-release-detail view)))
+    (unless (and (fnn-octet-list-p detail) (consp detail)
+                 (<= (length detail) 256))
+      (fnn-fault "BP node release detail is not a bounded octet list"))
+    detail))
+
 (defun fnn-bpnode-receipt-result
     (owner workflow-root view configured-peer)
+  ;; D23: a receipt releases an obligation only through ACL2's
+  ;; `fn-bpah-receipt-release-record' (books/bp-release-authority.lisp):
+  ;; the delivering neighbour must be authorized for the issuer's release
+  ;; and the receipt must name the exact held obligation.  The kind-7
+  ;; detail is ACL2's verdict, so the FNBS journal keeps it.
   (declare (ignore configured-peer))
   (fnn-bpnode-source-decision view)
+  (fnn-bpnode-release-line view)
   (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-trustedp view) t)
     (return-from fnn-bpnode-receipt-result
-      (values :receipt-refused '(0))))
+      (values :receipt-refused (fnn-bpnode-receipt-detail view))))
   (fnn-owner-serialized
    owner nil
    (lambda ()
      (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-trustedp view) t)
        (return-from fnn-bpnode-receipt-result
-         (values :receipt-refused '(0))))
+         (values :receipt-refused (fnn-bpnode-receipt-detail view))))
      (let ((journal nil))
        (unwind-protect
             (progn
               (setq journal
                     (fnn-app-open (fnn-owner-service-store owner)
                                   workflow-root :workflow :owner-mode t))
-              (let ((receipt-id
-                      (fnn-workflow-accept-receipt-octets
-                       journal (fourth view)
-                       "trusted-local-observation-v0"
-                       (lambda (release)
-                         (fnn-bpo-canonical-release owner release)))))
-                (values :receipt-accepted
-                        (fnn-octet-list (fnn-string-octets receipt-id)))))
+              (let ((record (fnn-owner-core
+                             'fn-owner-bp-receipt-release-record view))
+                    (detail (fnn-bpnode-receipt-detail view)))
+                (unless record
+                  (fnn-out "BP node release refused detail=~a"
+                           (fnn-octets-string (fnn-octets detail)))
+                  (return-from fnn-bpnode-receipt-result
+                    (values :receipt-refused detail)))
+                (fnn-workflow-commit-receipt-intent
+                 journal record
+                 (lambda (release)
+                   (fnn-bpo-canonical-release owner release)))
+                (values :receipt-accepted detail)))
          (when journal (fnn-app-journal-close journal)))))))
 
 (defun fnn-bpnode-app-result

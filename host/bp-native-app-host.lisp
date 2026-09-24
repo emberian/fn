@@ -29,6 +29,31 @@
   (value (fn-bpah-source-decision-line view (fn-owner-config state))))
 (include-book "../books/bp-native-app-fast")
 (include-book "../books/bp-transit-join")
+(include-book "../books/bp-release-authority")
+
+; D23 release authority (books/bp-release-authority.lisp).  The recovered
+; workflow image is the one `fnn-app-open' installed for this serialized
+; receipt; before any open there is none, and the release record is nil.
+(defun fn-owner-bp-workflow-image (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-workflow-state state)
+      (f-get-global 'fn-workflow-state state)
+    nil))
+
+(defun fn-owner-bp-release-line (view state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpah-release-line view (fn-owner-config state))))
+
+(defun fn-owner-bp-receipt-release-record (view state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpah-receipt-release-record view (fn-owner-config state)
+                                         (fn-owner-bp-workflow-image state))))
+
+(defun fn-owner-bp-receipt-release-detail (view state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpah-release-detail
+          (fn-bpah-receipt-release-verdict
+           view (fn-owner-config state) (fn-owner-bp-workflow-image state)))))
 
 (defun fn-owner-app-bind-receipt-store (state)
   (declare (xargs :stobjs state :mode :program))

@@ -288,6 +288,16 @@
                             (slot "bp-boundary-carries")
                             (value source) (n 0))))))
 
+;; Exported row facts the release theorems read (bp-release-authority).
+(defthm fn-bpaj-current-peer-needs-own-transport-row
+  (implies (fn-bpaj-current-peer-eidp cfg principal generation eid)
+           (fn-bpaj-boundary-rowp (fn-cfg-peers (fn-cfg-value cfg))
+                                  (fn-record-octets-string principal)
+                                  "transport-bp" eid 0))
+  :hints (("Goal" :in-theory (disable fn-bpaj-current-peer-eidp-rows
+                                      fn-bpaj-boundary-rowp
+                                      fn-record-octets-string))))
+
 ; KEYSTONE (D23, "exactly as a direct one").  A carried decision names an
 ; author whose own direct delivery of the same source, at the same
 ; configuration generation, is decided `:direct' under that author.  The
@@ -374,6 +384,303 @@
   :hints (("Goal" :in-theory (enable fn-bpaj-session-principal)))
   :rule-classes nil)
 
+;; ---------------------------------------------------------------------------
+;; D23, second half (planning/review-2026-09-24-gpt6-direction.md, "carriage
+;; is not authorship, and authorship is not release authority").  Four
+;; separate questions, each with its own configuration input; none implies
+;; another:
+;;   neighbour admitted    `fn-bpaj-neighbor-admittedp'        listener, trust,
+;;                                                             transport rows
+;;   origin carriage       `fn-bpaj-origin-carriage-permittedp' the carried list
+;;   author publication    `fn-bpah-author-publication-authorizedp'
+;;                                         (bp-app-handoff) the author's own
+;;                                         enrollment
+;;   receipt release       `fn-bpah-receipt-authorizes-releasep'
+;;                                         (bp-release-authority) the release
+;;                                         list and the held obligation
+;;
+;; Typed identities.  The carried list holds BP source EIDs, the release list
+;; holds release-issuer EIDs, and a boundary is a principal (its configured
+;; name's octets).  Each is a tagged value; the predicates take their own
+;; domain, and the list accessors return their own domain, so an issuer can
+;; never be passed where a carried source is asked for.
+
+(defun fn-bpaj-source-eid (text)
+  (declare (xargs :guard t))
+  (list :bp-source-eid text))
+
+(defun fn-bpaj-issuer-eid (text)
+  (declare (xargs :guard t))
+  (list :release-issuer-eid text))
+
+(defun fn-bpaj-principal-id (octets)
+  (declare (xargs :guard t))
+  (list :principal octets))
+
+(defun fn-bpaj-tagged-value (x)
+  (declare (xargs :guard t))
+  (if (and (consp x) (consp (cdr x))) (cadr x) nil))
+
+(defun fn-bpaj-source-eidp (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 2)
+       (equal (car x) :bp-source-eid)
+       (stringp (fn-bpaj-tagged-value x))))
+
+(defun fn-bpaj-issuer-eidp (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 2)
+       (equal (car x) :release-issuer-eid)
+       (stringp (fn-bpaj-tagged-value x))))
+
+(defun fn-bpaj-principal-idp (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 2)
+       (equal (car x) :principal)
+       (consp (fn-bpaj-tagged-value x))))
+
+; The value of every (NAME SLOT value 0) row, in row order.
+(defun fn-bpaj-boundary-list-values (rows name slot)
+  (declare (xargs :guard t :measure (acl2-count rows)))
+  (if (consp rows)
+      (let ((rest (fn-bpaj-boundary-list-values (cdr rows) name slot)))
+        (if (equal (car rows)
+                   (fn-cfg-row-make name slot (fn-cfg-row-c (car rows)) 0))
+            (cons (fn-cfg-row-c (car rows)) rest)
+          rest))
+    nil))
+
+(defun fn-bpaj-tag-all (tag values)
+  (declare (xargs :guard t :measure (acl2-count values)))
+  (if (consp values)
+      (cons (list tag (car values)) (fn-bpaj-tag-all tag (cdr values)))
+    nil))
+
+; PEER's carried list: BP source EIDs.
+(defun fn-bpaj-boundary-carried-sources (cfg peer)
+  (declare (xargs :guard t))
+  (fn-bpaj-tag-all :bp-source-eid
+                   (fn-bpaj-boundary-list-values
+                    (fn-cfg-peers (fn-cfg-value cfg))
+                    (fn-record-octets-string peer) "bp-boundary-carries")))
+
+; PEER's release list: release-issuer EIDs (`bp-boundary add ...
+; releases-for EID ...'; default empty).
+(defun fn-bpaj-boundary-release-issuers (cfg peer)
+  (declare (xargs :guard t))
+  (fn-bpaj-tag-all :release-issuer-eid
+                   (fn-bpaj-boundary-list-values
+                    (fn-cfg-peers (fn-cfg-value cfg))
+                    (fn-record-octets-string peer)
+                    "bp-boundary-releases-for")))
+
+; PRINCIPAL is a current BP boundary whose enrollment lists ISSUER on its
+; release list.  The carried list is not read.
+(defun fn-bpaj-release-rows (rows all principal issuer)
+  (declare (xargs :guard t :measure (acl2-count rows)))
+  (if (consp rows)
+      (let ((name (fn-cfg-row-a (car rows))))
+        (or (and (equal (fn-cfg-row-b (car rows)) "bp-trust")
+                 (fn-cfg-labelp name)
+                 (let ((peer (fn-cfg-peer-find name all)))
+                   (and peer (consp (fn-cfg-peer-transport peer))
+                        (equal (car (fn-cfg-peer-transport peer)) :bp)))
+                 (equal principal (fn-record-string-octets name))
+                 (fn-bpaj-unique-boundary-rowp all name "bp-trust" "network" 0)
+                 (fn-bpaj-boundary-rowp all name "bp-boundary-releases-for"
+                                        issuer 0))
+            (fn-bpaj-release-rows (cdr rows) all principal issuer)))
+    nil))
+
+; 1. Neighbour admission: the observed channel and announced EID name one
+; current BP boundary.  This is the session admission the host calls
+; (`fn-bpaj-session-principal'); its principal and generation are what the
+; ingress stamp carries into every later question.
+(defun fn-bpaj-neighbor-admittedp (cfg channel announced)
+  (declare (xargs :guard t))
+  (equal (car (fn-bpaj-session-principal cfg channel announced)) :admitted))
+
+; 2. Origin carriage: the admitted neighbour PEER (principal octets, at
+; GENERATION) may supply items claiming SOURCE, a BP source EID.  The only
+; configuration input is PEER's carried list.  It is a delegation, not an
+; authentication of the origin.
+(defun fn-bpaj-origin-carriage-permittedp (cfg peer generation source)
+  (declare (xargs :guard t))
+  (and (fn-bpaj-source-eidp source)
+       (fn-cfgp cfg)
+       (equal generation (fn-cfg-generation cfg))
+       (let ((rows (fn-cfg-peers (fn-cfg-value cfg))))
+         (fn-bpaj-carrier-rows rows rows peer (fn-bpaj-tagged-value source)))))
+
+; The release list's own question: PEER lists ISSUER, a release-issuer EID.
+(defun fn-bpaj-release-issuer-listedp (cfg peer generation issuer)
+  (declare (xargs :guard t))
+  (and (fn-bpaj-issuer-eidp issuer)
+       (fn-cfgp cfg)
+       (equal generation (fn-cfg-generation cfg))
+       (let ((rows (fn-cfg-peers (fn-cfg-value cfg))))
+         (fn-bpaj-release-rows rows rows peer (fn-bpaj-tagged-value issuer)))))
+
+(local (defthm fn-bpaj-release-rows-need-a-release-row
+  (implies (fn-bpaj-release-rows rows all principal issuer)
+           (fn-bpaj-boundary-rowp all (fn-record-octets-string principal)
+                                  "bp-boundary-releases-for" issuer 0))
+  :hints (("Goal" :in-theory (disable fn-bpaj-unique-boundary-rowp
+                                      fn-cfg-peer-find)))))
+
+(defthm fn-bpaj-release-listed-needs-a-release-row
+  (implies (fn-bpaj-release-issuer-listedp cfg principal generation
+                                           (fn-bpaj-issuer-eid issuer))
+           (fn-bpaj-boundary-rowp (fn-cfg-peers (fn-cfg-value cfg))
+                                  (fn-record-octets-string principal)
+                                  "bp-boundary-releases-for" issuer 0))
+  :hints (("Goal" :in-theory (disable fn-bpaj-release-rows
+                                      fn-bpaj-boundary-rowp
+                                      fn-record-octets-string))))
+
+; A carried decision is an origin-carriage permission for the neighbour, and
+; the decision reads nothing else of the neighbour's lists.
+(defthm fn-bpaj-carried-decision-requires-origin-carriage
+  (implies (equal (car (fn-bpaj-carried-source-decision
+                        cfg principal generation source))
+                  :carried)
+           (fn-bpaj-origin-carriage-permittedp
+            cfg principal generation (fn-bpaj-source-eid source)))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-labelp fn-record-ascii-stringp)
+                                  (fn-bpaj-carrier-rows
+                                   fn-bpaj-current-peer-eidp-rows
+                                   fn-bpaj-enrolled-source-names))
+           :use fn-bpaj-carried-source-is-a-label)))
+
+; A release row is not a carried row: a neighbour whose boundary lists
+; ISSUER only for release is not a carrier of it.
+(defthm fn-bpaj-release-row-is-not-carriage
+  (implies (not (fn-bpaj-boundary-rowp
+                 (fn-cfg-peers (fn-cfg-value cfg))
+                 (fn-record-octets-string principal)
+                 "bp-boundary-carries" source 0))
+           (not (fn-bpaj-origin-carriage-permittedp
+                 cfg principal generation (fn-bpaj-source-eid source))))
+  :hints (("Goal" :in-theory (disable fn-bpaj-carrier-rows
+                                      fn-bpaj-boundary-rowp
+                                      fn-bpaj-carrier-rows-need-a-carries-row
+                                      fn-record-octets-string)
+           :use ((:instance fn-bpaj-carrier-rows-need-a-carries-row
+                            (rows (fn-cfg-peers (fn-cfg-value cfg)))
+                            (all (fn-cfg-peers (fn-cfg-value cfg))))))))
+
+;; The source decision reads no release row.  `fn-bpaj-without-release-rows'
+;; drops every (NAME "bp-boundary-releases-for" EID N) row; two configurations
+;; at one generation that agree after dropping them decide every source the
+;; same way, so adding or removing a release row changes no request.
+
+(defun fn-bpaj-without-release-rows (rows)
+  (declare (xargs :guard t :measure (acl2-count rows)))
+  (if (consp rows)
+      (if (equal (fn-cfg-row-b (car rows)) "bp-boundary-releases-for")
+          (fn-bpaj-without-release-rows (cdr rows))
+        (cons (car rows) (fn-bpaj-without-release-rows (cdr rows))))
+    nil))
+
+(local (defthm fn-bpaj-wr-boundary-rowp
+  (implies (not (equal slot "bp-boundary-releases-for"))
+           (equal (fn-bpaj-boundary-rowp (fn-bpaj-without-release-rows all)
+                                         name slot value n)
+                  (fn-bpaj-boundary-rowp all name slot value n)))))
+
+(local (defthm fn-bpaj-wr-slot-count
+  (implies (not (equal slot "bp-boundary-releases-for"))
+           (equal (fn-bpaj-boundary-slot-count
+                   (fn-bpaj-without-release-rows all) name slot)
+                  (fn-bpaj-boundary-slot-count all name slot)))))
+
+(local (defthm fn-bpaj-wr-rows-with-key
+  (equal (fn-cfg-rows-with-key (fn-bpaj-without-release-rows rows) a)
+         (fn-bpaj-without-release-rows (fn-cfg-rows-with-key rows a)))
+  :hints (("Goal" :induct (fn-cfg-rows-with-key rows a)
+           :in-theory (enable fn-cfg-rows-with-key)))))
+
+(local (defthm fn-bpaj-wr-peer-slot
+  (implies (not (equal slot "bp-boundary-releases-for"))
+           (equal (fn-cfg-peer-slot (fn-bpaj-without-release-rows rows) slot)
+                  (fn-cfg-peer-slot rows slot)))
+  :hints (("Goal" :induct (fn-cfg-peer-slot rows slot)
+           :in-theory (enable fn-cfg-peer-slot)))))
+
+(local (defthm fn-bpaj-wr-peer-find
+  (equal (fn-cfg-peer-find name (fn-bpaj-without-release-rows all))
+         (fn-cfg-peer-find name all))
+  :hints (("Goal" :in-theory (enable fn-cfg-peer-find fn-cfg-peer-of-rows)))))
+
+(local (defthm fn-bpaj-wr-current-peer-eidp-rows
+  (equal (fn-bpaj-current-peer-eidp-rows
+          (fn-bpaj-without-release-rows rows)
+          (fn-bpaj-without-release-rows all) principal eid)
+         (fn-bpaj-current-peer-eidp-rows rows all principal eid))
+  :hints (("Goal" :in-theory (disable fn-cfg-peer-find)))))
+
+(local (defthm fn-bpaj-wr-carrier-rows
+  (equal (fn-bpaj-carrier-rows
+          (fn-bpaj-without-release-rows rows)
+          (fn-bpaj-without-release-rows all) principal source)
+         (fn-bpaj-carrier-rows rows all principal source))
+  :hints (("Goal" :in-theory (disable fn-cfg-peer-find)))))
+
+(local (defthm fn-bpaj-wr-enrolled-source-names
+  (equal (fn-bpaj-enrolled-source-names
+          (fn-bpaj-without-release-rows rows)
+          (fn-bpaj-without-release-rows all) eid)
+         (fn-bpaj-enrolled-source-names rows all eid))
+  :hints (("Goal" :in-theory (disable fn-cfg-peer-find)))))
+
+(local (defthm fn-bpaj-decision-reads-rows-without-release
+  (let ((rows (fn-cfg-peers (fn-cfg-value cfg))))
+    (equal (fn-bpaj-carried-source-decision cfg principal generation source)
+           (let ((w (fn-bpaj-without-release-rows rows)))
+             (cond ((and (fn-cfgp cfg)
+                         (equal generation (fn-cfg-generation cfg))
+                         (fn-cfg-labelp source)
+                         (consp principal)
+                         (fn-bpaj-current-peer-eidp-rows w w principal source))
+                    (list :direct principal))
+                   ((not (and (fn-cfgp cfg)
+                              (equal generation (fn-cfg-generation cfg))))
+                    (list :refused :generation))
+                   ((not (fn-bpaj-carrier-rows w w principal source))
+                    (list :refused :source-not-carried))
+                   (t (let ((names (fn-bpaj-enrolled-source-names w w source)))
+                        (if (and (consp names) (null (cdr names))
+                                 (consp (fn-record-string-octets (car names))))
+                            (list :carried principal
+                                  (fn-record-string-octets (car names)))
+                          (list :refused :carried-source-unenrolled))))))))
+  :hints (("Goal" :in-theory (disable fn-bpaj-current-peer-eidp-rows
+                                      fn-bpaj-carrier-rows
+                                      fn-bpaj-enrolled-source-names
+                                      fn-bpaj-without-release-rows
+                                      fn-cfgp fn-cfg-labelp)))))
+
+; KEYSTONE (release rows are not carriage).  Two current configurations at
+; one generation that agree once release rows are dropped make the same
+; source decision for every neighbour and source.
+(defthm fn-bpaj-source-decision-ignores-release-rows
+  (implies (and (equal (fn-cfgp cfg1) (fn-cfgp cfg2))
+                (equal (fn-cfg-generation cfg1) (fn-cfg-generation cfg2))
+                (equal (fn-bpaj-without-release-rows
+                        (fn-cfg-peers (fn-cfg-value cfg1)))
+                       (fn-bpaj-without-release-rows
+                        (fn-cfg-peers (fn-cfg-value cfg2)))))
+           (equal (fn-bpaj-carried-source-decision
+                   cfg1 principal generation source)
+                  (fn-bpaj-carried-source-decision
+                   cfg2 principal generation source)))
+  :hints (("Goal" :in-theory (disable fn-bpaj-carried-source-decision
+                                      fn-bpaj-current-peer-eidp-rows
+                                      fn-bpaj-carrier-rows
+                                      fn-bpaj-enrolled-source-names
+                                      fn-bpaj-without-release-rows
+                                      fn-cfgp fn-cfg-labelp))))
+
 (verify-guards fn-bpaj-boundary-rowp)
 (verify-guards fn-bpaj-boundary-slot-count)
 (verify-guards fn-bpaj-unique-boundary-rowp)
@@ -390,3 +697,19 @@
 (verify-guards fn-bpaj-loopback-candidates)
 (verify-guards fn-bpaj-eid-text)
 (verify-guards fn-bpaj-session-principal)
+(verify-guards fn-bpaj-source-eid)
+(verify-guards fn-bpaj-issuer-eid)
+(verify-guards fn-bpaj-principal-id)
+(verify-guards fn-bpaj-tagged-value)
+(verify-guards fn-bpaj-source-eidp)
+(verify-guards fn-bpaj-issuer-eidp)
+(verify-guards fn-bpaj-principal-idp)
+(verify-guards fn-bpaj-boundary-list-values)
+(verify-guards fn-bpaj-tag-all)
+(verify-guards fn-bpaj-boundary-carried-sources)
+(verify-guards fn-bpaj-boundary-release-issuers)
+(verify-guards fn-bpaj-release-rows)
+(verify-guards fn-bpaj-neighbor-admittedp)
+(verify-guards fn-bpaj-origin-carriage-permittedp)
+(verify-guards fn-bpaj-release-issuer-listedp)
+(verify-guards fn-bpaj-without-release-rows)
