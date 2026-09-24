@@ -720,7 +720,7 @@ class StatusTests(unittest.TestCase):
             row, = self.snapshot(root)
             self.assertEqual((row["state"], row["data"], row["exited"],
                               row["active"]),
-                             ("running", "observed", 2, 1))
+                             ("unfinalized", "observed", 2, 1))
             # ACL2 may exit 0 on a theorem failure; only the final manifest
             # has a book verdict, even when every child has exited.
             self.assertNotIn("passed", row)

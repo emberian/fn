@@ -31,10 +31,11 @@ substrate for four new books.  ``wait`` blocks on that id, printing progress
 every poll and never spinning; it returns the runner's own exit code.  hbox's
 runner is wrapped in ``swarm-build``, which enforces a memory cap there: the
 containment is structural, not courtesy to another tenant (there is none).
-``status`` takes one read-only remote snapshot. During a run it counts only
-exited and active ACL2 children from activity records; ACL2 can exit zero
-after a failed theorem. Only the terminal manifest supplies passed and failed
-book counts. Missing activity is shown as unknown, never as zero progress.
+``status`` takes one read-only remote snapshot. Before a terminal status exists,
+it reports exited and active *records*; these records are not a process-liveness
+check and may outlive a child. ACL2 can exit zero after a failed theorem. Only
+the terminal manifest supplies passed and failed book counts. Missing activity
+is shown as unknown, never as zero progress.
 
 **The box cache is seeded by the runner, one book at a time.**  The runner
 publishes each pair as that book certifies, so what the box holds tracks what
@@ -772,9 +773,9 @@ for log in logs:
                 and started <= when < cutoff]
     directory = matching[0] if len(matching) == 1 else None
     status_file = log.with_suffix(".status")
-    state = status_file.read_text().strip() if status_file.exists() else "running"
+    state = status_file.read_text().strip() if status_file.exists() else "unfinalized"
     row = {"run_id": log.stem, "state": state, "data": "missing"}
-    if directory is not None and state != "running":
+    if directory is not None and state != "unfinalized":
         manifest = read_json(directory / "manifest.json")
         if manifest is not None:
             row.update(data="manifest", manifest=manifest.get("status", "unknown"),
@@ -821,7 +822,7 @@ def status(host: str, remote: Path, local_root: Path | None = None) -> int:
         raise FarmError(f"{host}: invalid status snapshot under {remote}: {error}") from error
     print(f"{host}:{remote}")
     print("run-id state data manifest-passed manifest-failed observed-exited "
-          "active oldest-active cache-installed+kept/origins")
+          "observed-active oldest-observed-active cache-installed+kept/origins")
     for row in rows:
         identifier = row["run_id"]
         cache = cache_summary(run_record(local_root or remote, identifier)) or "-"
