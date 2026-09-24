@@ -925,6 +925,11 @@
           s))
     s))
 
+(verify-guards fn-sn-prepare-retention
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-statep)
+                (fn-sf-statep fn-node-statep fn-node-pending-matchesp)))))
+
 (defun fn-sn-identity-context (s)
   (declare (xargs :guard t))
   (let ((snapshots (fn-sn-keyring-snapshots s)))

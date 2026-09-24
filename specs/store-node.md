@@ -193,8 +193,11 @@ These are logical refinement results. Semantic refusal and known prepublication
 absence are host classifications at this layer; the proofs do not establish
 that a physical adapter classified an error correctly or that OS, fsync, and
 link behavior meets the model. Additional wrapper APIs require preservation
-steps before joining the trace theorem. The observed-image loader and all 40 wrapper/loader guards are now certified
-in targeted runs. The adopted adapter is being checked as a combined batch;
+steps before joining the trace theorem. The observed-image loader and selected
+wrapper guards are certified in targeted runs. The host-reached
+`fn-sn-prepare-retention` has a [verified execution guard](../planning/evidence/retention-prepare-guard-2026-09-24.md)
+under `fn-sn-statep`; the production owner's preservation of that premise is
+a separate composition obligation. The adopted adapter is being checked as a combined batch;
 byte-to-image correspondence, POSIX refinement, physical storage accounting
 and platform durability remain separate work. No signature or
 content-hash correctness is asserted.
