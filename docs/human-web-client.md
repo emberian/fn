@@ -1,7 +1,8 @@
 # Local human reader
 
-`tools/fn_web.py` is an experimental, separate client for a running fn NNTP
-node. It serves a small group, recent-thread, article and compose view at
+`tools/fn_web.py` is a separate client for a running fn NNTP node. What a
+person sees and how to run it against the hbox node is in
+[the web reader](web.md); this page is the submission-record mechanics. It serves a small group, recent-thread, article and compose view at
 `127.0.0.1` using standard-library Python. It does not open the Store or run
 inside the fn server. Its only write path is NNTP `POST`, through the same
 `fn_client.py` connection and outcome rules used by the command-line client.
@@ -15,21 +16,21 @@ python3 tools/fn_web.py --node 127.0.0.1:1119 --plain --port 8919
 Add `--outbox ~/fn-web-outbox` to retain local submission evidence
 across restarts. The `/outbox` page lists recorded results and observations.
 
-Open `http://127.0.0.1:8919/` in a local browser. For a protected node, use a
-local NNTP loopback forward and the node's certificate or CA file:
+Open `http://127.0.0.1:8919/` in a local browser. For a protected node, name
+the node, its certificate (`--tls-cert`, also spelled `--cafile`) and the
+principal; the password is prompted for, or read from `FN_CLIENT_PASSWORD`:
 
 ```sh
-FN_CLIENT_USER=human FN_CLIENT_PASSWORD="$(cat ~/.fn-human-password)" \
-  python3 tools/fn_web.py --node 127.0.0.1:1119 \
-  --cafile ~/.fn/node-cert.pem --port 8919
+python3 tools/fn_web.py --node 192.168.50.39:1119 \
+  --tls-cert ~/.fn/node-cert.pem --user human --port 8919
 ```
 
-The node certificate must verify for the forwarded address. Credentials can
+The node certificate must verify for the address given. Credentials can
 instead come from `--credentials PATH`, a mode-0600 file. Neither password nor
 POST text belongs in a URL, and the web client emits no access log. The HTTP
-listener and its NNTP target must both be loopback. This is a local interface,
-not a public HTTP service; remote use needs a local NNTP forward and its normal
-TLS and authentication policy.
+listener is always loopback. The NNTP target may be remote only over verified
+STARTTLS with a login; `--plain` is refused for a non-loopback target. This is
+a local interface, not a public HTTP service.
 
 The group page asks `LIST ACTIVE`; the initial recent view asks `GROUP` then
 `OVER` for at most the latest 40 local article-number slots. Older and newer
@@ -108,8 +109,9 @@ The client caps each NNTP line at 8 KiB and multiline block at 256 KiB or
 2,048 lines, the recent view at 40 articles, HTTP form at 24 KiB, and post
 body at 16 KiB. Article text and header values are escaped, rendered as text
 without remote images or scripts, and served with a restrictive content
-security policy. This first slice has no search index, unread
-state, or independent verified authorship display. A `FN-Statement` and an
+security policy. It has no search index or independent verified authorship
+display; unread state is the client's own local read marks
+([the web reader](web.md)), never a node record. A `FN-Statement` and an
 `FN-Authorship` carrier are shown as separate recorded presences, never as a
 verified identity. The node's raw status stays in the result page's details.
 
