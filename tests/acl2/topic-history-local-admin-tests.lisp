@@ -28,6 +28,20 @@
 (assert-event (fn-stmt-okp *thla-anchor*))
 (assert-event (equal (fn-th-at 7 (fn-stmt-value *thla-anchor*))
                      *thla-id*))
+(assert-event (equal (len (fn-stmt-value *thla-anchor*)) 9))
+(assert-event (equal (fn-th-at 8 (fn-stmt-value *thla-anchor*)) 10))
+(assert-event
+ (equal (fn-th-commit-anchor-installed-v2
+         (fn-stmt-value *thla-anchor*) *tha-event* *tha-snapshot*
+         *thla-install* nil)
+        (fn-th-commit-anchor
+         (fn-th-anchor-v1-fields (fn-stmt-value *thla-anchor*))
+         *tha-event* *tha-snapshot* *thla-id* nil)))
+(assert-event
+ (equal (fn-th-commit-anchor-installed-v2
+         (fn-stmt-value *thla-anchor*) *tha-event* *tha-snapshot*
+         (list :topic-admin-install 7 8 11 501 *thla-id*) nil)
+        (fn-stmt-error :administrator-generation)))
 (assert-event
  (equal (fn-th-prepare-anchor-local
          8 9 10 *tha-event* *tha-snapshot* 502 2

@@ -105,6 +105,46 @@
                 (fn-th-prepare-anchor-local fn-th-prepare-anchor
                  fn-th-prefix-find-accepted-sequence)))))
 
+; The owner-called dispatcher emits the version-2 shape for a fresh anchor.
+; The installed event is carried by the completed Store prefix, not supplied
+; by the control command or reconstructed from the current process UID.
+(defthm fn-th-local-propose-anchor-binds-install-generation
+  (implies (and (equal operation :anchor)
+                (fn-stmt-okp
+                 (fn-th-local-propose operation projection txid
+                                      source-sequence observed-uid
+                                      entropy-id quota)))
+           (let ((event (fn-stmt-value
+                         (fn-th-local-propose operation projection txid
+                                              source-sequence observed-uid
+                                              entropy-id quota)))
+                 (installed (fn-th-at 5 projection)))
+             (and (fn-th-local-admin-eventp installed)
+                  (equal (len event) 9)
+                  (equal (fn-th-at 7 event) (fn-th-at 5 installed))
+                  (equal (fn-th-at 8 event) (fn-th-at 3 installed)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-th-local-propose fn-th-local-propose-anchor)
+                (fn-th-prepare-anchor-local
+                 fn-th-prefix-find-accepted-sequence fn-stxk-find))
+           :use ((:instance fn-th-prepare-anchor-local-binds-installation
+                            (sequence (fn-th-at 1 projection))
+                            (generation txid)
+                            (accepted
+                             (fn-th-prefix-find-accepted-sequence
+                              source-sequence (fn-th-at 3 projection)))
+                            (snapshot
+                             (and (fn-th-prefix-find-accepted-sequence
+                                   source-sequence (fn-th-at 3 projection))
+                                  (fn-stxk-find
+                                   (fn-stxa-keyring-generation
+                                    (fn-th-prefix-find-accepted-sequence
+                                     source-sequence (fn-th-at 3 projection))))
+                                   (fn-th-at 2 projection))))
+                            (installed (fn-th-at 5 projection))
+                            (anchors (fn-th-at 4 projection)))))))
+
 (defthm fn-th-local-report-proposal-requires-earlier-accepted-source
   (implies (fn-stmt-okp
             (fn-th-local-propose-report projection txid source-sequence))
