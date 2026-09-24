@@ -13,6 +13,7 @@ from collections import OrderedDict
 import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hmac
+import re
 import secrets
 import threading
 from types import SimpleNamespace
@@ -117,7 +118,26 @@ class Backend:
         return self.using(query)
 
     def article(self, group: str, number: int):
-        return self.using(lambda client: client.show(str(number), group))
+        def query(client):
+            result = client.show(str(number), group)
+            if result.word != fn_client.DONE:
+                return result
+            report = None
+            try:
+                # The ARTICLE header's Message-ID is article data and may not
+                # identify the server's selected slot. Query that slot on this
+                # same connection and accept only its exact numeric HDR row.
+                status, lines = client.cmd("HDR :fn-verified " + str(number),
+                                           multiline=True)
+                if status.startswith("225") and len(lines) == 1:
+                    report = parse_verdict_hdr(lines[0], number)
+            except fn_client.Stop:
+                # ARTICLE already succeeded; a failed optional metadata query
+                # only makes the server report unavailable.
+                pass
+            result.data["fn_verified_report"] = report
+            return result
+        return self.using(query)
 
     def prepare(self, group: str, subject: str, sender: str, references: str,
                 body: str):
@@ -199,6 +219,32 @@ class SubmissionBook:
 
 def e(value) -> str:
     return html.escape(str(value if value is not None else ""), quote=True)
+
+
+def parse_verdict_hdr(line: str, expected_number: int):
+    """Accept only the bounded three-outcome HDR grammar; never infer a verdict."""
+    fields = line.split()
+    if len(fields) < 3 or fields[0] != str(expected_number):
+        return None
+    outcome = fields[1]
+    if outcome == "verified":
+        if len(fields) == 5 and re.fullmatch(r"[0-9a-fA-F]{64}", fields[2]) and \
+                fields[3] == "keyring" and fields[4].isascii() and fields[4].isdecimal():
+            return "verified by principal " + fields[2].lower() + \
+                   " under keyring generation " + fields[4]
+        if len(fields) == 5 and fields[2] == "legacy" and fields[3] == "keyring" and \
+                fields[4].isascii() and fields[4].isdecimal():
+            return "verified (legacy recorded detail) under keyring generation " + fields[4]
+        return None
+    if outcome == "unverified":
+        if len(fields) == 5 and fields[2] in {
+                "malformed", "ref-mismatch", "signature", "unknown"} and \
+                fields[3] == "keyring" and fields[4].isascii() and fields[4].isdecimal():
+            return "unverified: " + fields[2] + ", keyring generation " + fields[4]
+        return None
+    if outcome == "absent" and len(fields) == 3 and fields[2] in {"no-field", "no-record"}:
+        return "absent: " + fields[2]
+    return None
 
 
 def href(path: str, **parameters) -> str:
@@ -418,13 +464,21 @@ class Handler(BaseHTTPRequestHandler):
                 first = lambda name: fn_client.first(fields, name) or ""
                 statement = bool(first("fn-statement"))
                 carrier = bool(first("fn-authorship"))
+                verdict = result.data.get("fn_verified_report")
+                verdict_html = ("<p class='meta'>Server report of historical verification "
+                                "verdict: " + e(verdict) + ". This reports what this node "
+                                "recorded; it is not an independent cryptographic check or "
+                                "current authorization.</p>" if verdict else
+                                "<p class='meta'>Server report of historical verification "
+                                "verdict: unavailable.</p>")
                 provenance = ("<p class='hint'><strong>Who wrote this?</strong> The displayed "
                               "From name is a claim in the article. This reader has not "
                               "verified the writer's identity.</p><p class='meta'>"
                               + ("FN-Statement present; not verified here" if statement else
                                  "No FN-Statement recorded in this article") + "<br>" +
                               ("FN-Authorship carrier present; not verified here" if carrier else
-                               "No FN-Authorship carrier recorded in this article") + "</p>"
+                               "No FN-Authorship carrier recorded in this article") + "</p>" +
+                              verdict_html +
                               "<details><summary>Recorded handling details</summary>"
                               "<p class='meta'>From (claimed): " + e(first("from")) +
                               "<br>Path: " + e(first("path") or "not supplied") +

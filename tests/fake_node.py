@@ -70,6 +70,8 @@ class FakeNode(threading.Thread):
         self.fail_article = fail_article
         self.echo_password = echo_password
         self.articles = {}
+        # Optional literal HDR :fn-verified values used by reader-client tests.
+        self.verdicts = {}
         self.numbers = {name: {} for name in groups}
         self.host = host
         family = socket.AF_INET6 if ":" in host else socket.AF_INET
@@ -290,6 +292,18 @@ class FakeNode(threading.Thread):
                         continue
                     send("224 overview information follows")
                     block([self.over_line(selected, number) for number in wanted])
+                elif verb == "HDR" and len(words) == 3 and words[1].lower() == ":fn-verified":
+                    if not words[2].isascii() or not words[2].isdecimal() or selected is None:
+                        send("501 syntax")
+                        continue
+                    number = int(words[2])
+                    msgid = self.numbers.get(selected, {}).get(number)
+                    if msgid not in self.articles:
+                        send("423 no article with that number")
+                        continue
+                    send("225 headers follow")
+                    block([str(number) + " " +
+                           self.verdicts.get(msgid, "absent no-field")])
                 elif verb == "POST":
                     if not self.accept_post:
                         send("440 posting not permitted for this principal")

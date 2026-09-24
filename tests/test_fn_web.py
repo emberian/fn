@@ -102,6 +102,78 @@ class WebClientTests(unittest.TestCase):
         self.assertIn("Path: peer!other", page)
         self.assertIn("Viewing does not acknowledge application processing", page)
 
+    def test_historical_server_report_is_bound_to_article_and_never_inferred(self):
+        verified = "<reported@example.invalid>"
+        legacy = "<legacy@example.invalid>"
+        unsupported = "<unsupported@example.invalid>"
+        malformed = "<malformed@example.invalid>"
+        unverified = "<unverified@example.invalid>"
+        absent = "<absent@example.invalid>"
+        for msgid, subject in ((verified, "verified"), (legacy, "legacy"),
+                               (unsupported, "unsupported"), (malformed, "malformed"),
+                               (unverified, "unverified"), (absent, "absent")):
+            self.node.inject("fn.agents", ["Newsgroups: fn.agents", "Subject: " + subject,
+                                            "Message-ID: " + msgid,
+                                            "FN-Statement: present", ""])
+        self.node.verdicts.update({
+            verified: "verified " + "ab" * 32 + " keyring 7",
+            legacy: "verified legacy keyring 6",
+            unsupported: "future-verdict opaque",
+            malformed: "verified " + "ab" * 31 + "zz keyring 7",
+            unverified: "unverified signature keyring 9",
+        })
+        status, _, page = self.request("GET", "/a?group=fn.agents&number=1")
+        self.assertEqual(status, 200)
+        self.assertIn("Server report of historical verification verdict: verified by principal " +
+                      "ab" * 32 + " under keyring generation 7", page)
+        self.assertIn("not an independent cryptographic check or current authorization", page)
+        self.assertIn("HDR :fn-verified 1", self.node.seen)
+
+        status, _, legacy_page = self.request("GET", "/a?group=fn.agents&number=2")
+        self.assertEqual(status, 200)
+        self.assertIn("verified (legacy recorded detail) under keyring generation 6", legacy_page)
+        for number in (3, 4):
+            status, _, unavailable = self.request(
+                "GET", "/a?group=fn.agents&number=%d" % number)
+            self.assertEqual(status, 200)
+            self.assertIn("Server report of historical verification verdict: unavailable.",
+                          unavailable)
+
+        status, _, rejected = self.request("GET", "/a?group=fn.agents&number=5")
+        self.assertEqual(status, 200)
+        self.assertIn("Server report of historical verification verdict: "
+                      "unverified: signature, keyring generation 9", rejected)
+
+        # Header presence alone never upgrades an absent server record.
+        status, _, absent = self.request("GET", "/a?group=fn.agents&number=6")
+        self.assertEqual(status, 200)
+        self.assertIn("Server report of historical verification verdict: absent: no-field", absent)
+
+    def test_verdict_parser_rejects_malformed_and_unbounded_values(self):
+        self.assertIsNone(fn_web.parse_verdict_hdr("4 verified " + "a" * 100000, 4))
+        self.assertIsNone(fn_web.parse_verdict_hdr("4 unverified signature", 4))
+        self.assertIsNone(fn_web.parse_verdict_hdr("1 verified " + "ab" * 32 +
+                                                   " keyring 1", 4))
+
+    def test_article_header_message_id_cannot_redirect_verdict_lookup(self):
+        actual = "<server-slot@example.invalid>"
+        header_claim = "<different-header-id@example.invalid>"
+        number = self.node.inject("fn.agents", ["Newsgroups: fn.agents",
+                                                  "Subject: slot identity",
+                                                  "Message-ID: " + actual,
+                                                  "FN-Statement: present", ""])
+        self.node.articles[actual] = ["Newsgroups: fn.agents", "Subject: slot identity",
+                                      "Message-ID: " + header_claim,
+                                      "FN-Statement: present", ""]
+        self.node.verdicts[actual] = "unverified signature keyring 3"
+        self.node.verdicts[header_claim] = "verified " + "cd" * 32 + " keyring 99"
+
+        status, _, page = self.request("GET", "/a?group=fn.agents&number=%d" % number)
+        self.assertEqual(status, 200)
+        self.assertIn("unverified: signature, keyring generation 3", page)
+        self.assertNotIn("keyring generation 99", page)
+        self.assertIn("HDR :fn-verified %d" % number, self.node.seen)
+
     def test_composer_posts_via_nntp_and_keeps_three_outcomes(self):
         accepted = self.post()
         self.assertEqual(accepted[0], 200)
