@@ -134,6 +134,7 @@
       :bad)))
 
 (defun fn-ncl-status-open (octets)
+  (declare (xargs :guard t))
   (if (not (fn-cbor-octet-listp octets)) (fn-frame-error :malformed)
     (let ((opened
            (fn-frame-decode
@@ -148,6 +149,7 @@
         (fn-frame-error :kind)))))
 
 (defun fn-ncl-status-reply-decode (octets)
+  (declare (xargs :guard t))
   (let ((opened (fn-ncl-status-open octets)))
     (if (not (fn-frame-result-okp opened)) (list :refused :frame)
       (let* ((payload (fn-frame-result-payload opened))
