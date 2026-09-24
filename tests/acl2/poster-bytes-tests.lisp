@@ -6,7 +6,9 @@
 ; host/store-node-host.lisp) and fn-own-outcome (fn-owner-outcome).  The
 ; witness is one proto-article injected by the real fn-inj-decide at two
 ; clock seconds, committed through the real Store at the first; its two
-; injected articles differ only in their Injection-Date line.
+; injected articles differ only in their Injection-Date line.  A second
+; witness sends no Date, so the two injections also differ in the Date the
+; node generated.
 (in-package "ACL2")
 (include-book "../../books/poster-bytes-invariants")
 (include-book "../../books/codec-attach")
@@ -145,6 +147,27 @@
 (assert-event (equal (pbt-reply *pbt-owner* 0 *pbt-other* *pbt-groups*)
                      *pbt-conflict-line*))
 
+; The v0 matrix's case: no Date from the poster, the held article injected
+; at A, the resend at B.  The byte decision said conflict; this one says
+; already stored.
+(defconst *pbt-dateless-store*
+  (fn-sn-finish
+   (fn-sn-io (fn-sn-io (fn-sn-io
+     (fn-sn-prepare *pbt-reserved*
+                    (fn-record-make 0 0 0 *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-a*)
+                                    *pbt-groups* "pbt-pin" "pbt-subject"
+                                    "pbt-release" 2 841000000))
+     :record-file :ok) :record-link :ok) :record-directory :ok)))
+(assert-event (equal (fn-sn-existing-action *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-b*)
+                                            *pbt-groups* *pbt-dateless-store*)
+                     :conflict))
+(assert-event (equal (car (fn-own-outcome
+                           *pbt-owner* 0
+                           (fn-pb-existing-action *pbt-msgid*
+                                                  (pbt-octets *pbt-dateless* *pbt-b*)
+                                                  *pbt-groups* *pbt-dateless-store*)))
+                     *pbt-duplicate-line*))
+
 ; Teeth for fn-pb-same-poster-bytes-is-answered-already-stored and
 ; fn-pb-a-resend-at-a-later-second-is-answered-already-stored: each
 ; hypothesis deleted, with the evaluated value that refutes the conclusion.
@@ -193,11 +216,30 @@
                                 *pbt-conflict-line*)))
 
 ; Teeth for fn-pb-a-resent-injection-has-the-same-poster-bytes.
-; A Date the poster did not supply is written from the clock: the key moves.
+; No Date from the poster: the node generates one from the clock, and the
+; projection drops it with the Injection-Date (the v0 matrix posts this way).
 (assert-event (fn-inj-injectedp (fn-inj-decide *pbt-dateless* *pbt-config* *pbt-a*)))
 (assert-event (fn-inj-injectedp (fn-inj-decide *pbt-dateless* *pbt-config* *pbt-b*)))
-(must-fail (assert-event (equal (fn-pb-poster-bytes (pbt-octets *pbt-dateless* *pbt-a*))
-                                (fn-pb-poster-bytes (pbt-octets *pbt-dateless* *pbt-b*)))))
+(assert-event (not (equal (pbt-octets *pbt-dateless* *pbt-a*)
+                          (pbt-octets *pbt-dateless* *pbt-b*))))
+(assert-event (equal (fn-pb-poster-bytes (pbt-octets *pbt-dateless* *pbt-a*))
+                     (fn-pb-poster-bytes (pbt-octets *pbt-dateless* *pbt-b*))))
+(assert-event (equal (fn-pb-poster-bytes (pbt-octets *pbt-dateless* *pbt-b*))
+                     *pbt-dateless*))
+; A source that opens with a Date equal, octet for octet, to the injection's
+; rendering of clock A: at A it reads as the generated Date and is dropped,
+; at B it is the poster's and kept, so the key moves.  This is the case
+; fn-pb-opens-with-a-date excludes.
+(defconst *pbt-opens-with-date*
+  (append (pbt-text "Date:") '(32)
+          (fn-inj-date-octets (fn-inj-instant-of 843004800000)) '(13 10)
+          *pbt-dateless*))
+(assert-event (fn-pb-opens-with-a-date *pbt-opens-with-date*))
+(assert-event (not (fn-pb-opens-with-a-date *pbt-source*)))
+(assert-event (fn-inj-injectedp (fn-inj-decide *pbt-opens-with-date* *pbt-config* *pbt-a*)))
+(assert-event (fn-inj-injectedp (fn-inj-decide *pbt-opens-with-date* *pbt-config* *pbt-b*)))
+(must-fail (assert-event (equal (fn-pb-poster-bytes (pbt-octets *pbt-opens-with-date* *pbt-a*))
+                                (fn-pb-poster-bytes (pbt-octets *pbt-opens-with-date* *pbt-b*)))))
 ; A generated Message-ID differs by clock; so do the two keys.
 (assert-event (not (equal (fn-inj-decision-msgid (fn-inj-decide *pbt-idless* *pbt-config* *pbt-a*))
                           (fn-inj-decision-msgid (fn-inj-decide *pbt-idless* *pbt-config* *pbt-b*)))))
@@ -212,7 +254,7 @@
 
 ; Teeth for fn-pb-poster-bytes-of-an-injection-are-the-sources: a source
 ; that opens on a continuation line is folded into Injection-Info and
-; dropped with it.
+; dropped with it; one that opens with the injection's own Date loses it.
 (must-fail
  (assert-event
   (equal (fn-pb-poster-bytes
@@ -220,6 +262,13 @@
                                  nil *pbt-agent* nil nil)
                   (cons 32 *pbt-source*)))
          (fn-pb-poster-bytes (cons 32 *pbt-source*)))))
+(must-fail
+ (assert-event
+  (equal (fn-pb-poster-bytes
+          (append (fn-inj-prefix (fn-inj-date-octets (fn-inj-instant-of 843004800000))
+                                 nil *pbt-agent* nil nil)
+                  *pbt-opens-with-date*))
+         (fn-pb-poster-bytes *pbt-opens-with-date*))))
 ; A date carrying a line feed splits the Injection-Date line.
 (must-fail
  (assert-event
