@@ -1,0 +1,32 @@
+# relocated copy /tank/fn/scratch/native-subsets-47bdb9a4/reloc/fn-image; image.sha256 OK
+test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup) ... ERROR
+test_relocated_image_uses_bundled_tls_and_ml_dsa (tests.test_native_frozen_relocation.FrozenRelocationTest.test_relocated_image_uses_bundled_tls_and_ml_dsa) ... ok
+
+======================================================================
+ERROR: test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-47bdb9a4/tree/tests/test_native_frozen_relocation.py", line 116, in test_missing_bundled_openssl_refuses_startup
+    result = invoke(missing / IMAGE.name, "store", str(self.root / "bad-store"),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/native-subsets-47bdb9a4/tree/tests/test_native_frozen_relocation.py", line 21, in invoke
+    return subprocess.run([str(image), "--fn", *args], stdout=subprocess.PIPE,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/tmp/fn-frozen-relocation-r1z9v96t/missing-pair/fn-host', '--fn', 'store', '/tmp/fn-frozen-relocation-r1z9v96t/bad-store', 'init', 'fn.test']' timed out after 120 seconds
+
+----------------------------------------------------------------------
+Ran 2 tests in 121.581s
+
+FAILED (errors=1)
+# rc=1 end 2026-09-24T17:14:37Z
+# after: image.sha256 OK

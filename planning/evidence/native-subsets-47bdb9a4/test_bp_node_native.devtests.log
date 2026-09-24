@@ -1,0 +1,68 @@
+# target tests.test_bp_node_native  start 2026-09-24T17:09:27Z  cwd /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev
+# cmd: python3 -m unittest -v tests.test_bp_node_native
+# sbcl on PATH: /tank/fn/scratch/native-subsets-47bdb9a4/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=73ad25bc207a3b3535c19ebf8ecdd4cc5ec51cda6782f122849d8a8f7025cc1e
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=b81bdaf69dca347aa255cbc3f3c6a9679f52fc4192e6eec0e0116196f74d48ca
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=47bdb9a40742f0da40e84c21e18175b80af3fb4b
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-47bdb9a4/tree-dev
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-47bdb9a4/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/runtime/sbcl-home/
+test_absent_bp_trust_keeps_custody_but_refuses_request_application (tests.test_bp_node_native.NativeBpNodeTests.test_absent_bp_trust_keeps_custody_but_refuses_request_application) ... ok
+test_absent_bp_trust_refuses_receipt_release (tests.test_bp_node_native.NativeBpNodeTests.test_absent_bp_trust_refuses_receipt_release) ... ok
+test_admitted_channel_without_inbound_scope_refuses_store_request (tests.test_bp_node_native.NativeBpNodeTests.test_admitted_channel_without_inbound_scope_refuses_store_request) ... ok
+test_ambiguous_fnrj_decision_fences_until_cold_replay (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_fnrj_decision_fences_until_cold_replay) ... ok
+test_ambiguous_outbox_publication_is_uncertain_not_refused (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_outbox_publication_is_uncertain_not_refused) ... ok
+test_conflicting_return_job_fences_after_request_commit (tests.test_bp_node_native.NativeBpNodeTests.test_conflicting_return_job_fences_after_request_commit) ... ok
+test_death_after_durable_outbox_does_not_allocate_second_sequence (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_durable_outbox_does_not_allocate_second_sequence) ... ok
+test_death_after_fnrj_receipt_decision_replays_one_article (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article) ... ok
+test_death_after_kind_eight_retries_once_and_peer_holds_one_copy (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_eight_retries_once_and_peer_holds_one_copy)
+N08 on the image: death after a durable kind 8 whose transfer ran. ... FAIL
+test_death_after_kind_seven_replays_owed_outbox (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_seven_replays_owed_outbox) ... ok
+test_deletion_report_intent_recovers_and_observation_does_not_release (tests.test_bp_node_native.NativeBpNodeTests.test_deletion_report_intent_recovers_and_observation_does_not_release) ... ok
+test_exact_receipt_with_wrong_carrier_peer_fences (tests.test_bp_node_native.NativeBpNodeTests.test_exact_receipt_with_wrong_carrier_peer_fences) ... ok
+test_expired_recovered_kind_five_never_enters_store (tests.test_bp_node_native.NativeBpNodeTests.test_expired_recovered_kind_five_never_enters_store) ... ok
+test_kind_five_ambiguous_publication_never_delivers_to_store (tests.test_bp_node_native.NativeBpNodeTests.test_kind_five_ambiguous_publication_never_delivers_to_store) ... ok
+test_older_mru_wait_allows_younger_forward_and_replays (tests.test_bp_node_native.NativeBpNodeTests.test_older_mru_wait_allows_younger_forward_and_replays) ... ok
+test_older_unrouted_transit_does_not_block_younger_local_request (tests.test_bp_node_native.NativeBpNodeTests.test_older_unrouted_transit_does_not_block_younger_local_request) ... ok
+test_request_retry_queues_distinct_receipt_carriers_and_releases_pin (tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin) ... ok
+
+======================================================================
+FAIL: test_death_after_kind_eight_retries_once_and_peer_holds_one_copy (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_eight_retries_once_and_peer_holds_one_copy)
+N08 on the image: death after a durable kind 8 whose transfer ran.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/test_bp_node_native.py", line 469, in test_death_after_kind_eight_retries_once_and_peer_holds_one_copy
+    self.wait_for_output(cut, b"BP NODE KIND8 SENT", timeout=240)
+  File "/tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/test_bp_node_native.py", line 652, in wait_for_output
+    raise AssertionError(
+AssertionError: native marker b'BP NODE KIND8 SENT' absent: b'BP FNBS recovered held=1\nBP queue recovered jobs=0\nBP received carrier dispatch durable\nTCPCL bp-node-forward aux (:SEND :CONTACT 6)\nTCPCL bp-node-forward event (:SEND :SESS-INIT 40)\nTCPCL bp-node-forward event (:SESSION-UP 10 1024 1048576 NIL)\nBP forwarding attempt durable key=((115 101 110 100 101 114 45 98 111 117 110\n                                    100 97 114 121)\n                                   (:FN-BP-BUNDLE-ID\n                                    (:DTN 47 47 115 101 110 100 101 114 47) 0\n                                    78 NIL NIL))\nTCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1059)\nTCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)\nTCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)\nTCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)\nTCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)\nTCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)\nTCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)\nTCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)\nTCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 116)\nTCPCL bp-node-forward aux (:SEND-REFUSED "bp-node-forward" :BUSY)\nTCPCL bp-node-forward aux (:SEND-REFUSED "bp-node-forward" :BUSY)\nTCPCL bp-node-forward aux (:SEND-REFUSED "bp-node-forward" :BUSY)\nTCPCL bp-node-forward event (:OUTBOUND-SENT 0 "bp-node-forward")\nTCPCL bp-node-forward accepted outbound xfer=0\nTCPCL bp-node-forward aux (:SEND :SESS-TERM 3)\nTCPCL bp-node-forward event (:PEER-TERMINATING 0)\nTCPCL bp-node-forward event (:CLOSE)\nBP forwarding result durable arrival=0 status=sent\n'; 
+
+----------------------------------------------------------------------
+Ran 17 tests in 333.055s
+
+FAILED (failures=1)
+# rc=1 wall=333.2 end 2026-09-24T17:15:00Z

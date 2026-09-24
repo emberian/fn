@@ -1,0 +1,49 @@
+# target tests.test_native_admin  start 2026-09-24T16:54:17Z  cwd /tank/fn/scratch/native-subsets-47bdb9a4/tree
+# cmd: python3 -m unittest -v tests.test_native_admin
+# sbcl on PATH: /tank/fn/scratch/native-subsets-47bdb9a4/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=73ad25bc207a3b3535c19ebf8ecdd4cc5ec51cda6782f122849d8a8f7025cc1e
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=b81bdaf69dca347aa255cbc3f3c6a9679f52fc4192e6eec0e0116196f74d48ca
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=47bdb9a40742f0da40e84c21e18175b80af3fb4b
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-47bdb9a4/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-47bdb9a4/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/runtime/sbcl-home/
+test_create_capacity_retire_reopen_preserves_history (tests.test_native_admin.NativeAdminTests.test_create_capacity_retire_reopen_preserves_history) ... ok
+test_live_uncertain_publication_fences_and_recovers (tests.test_native_admin.NativeAdminTests.test_live_uncertain_publication_fences_and_recovers) ... ok
+test_peer_add_and_remove_use_public_native_admin (tests.test_native_admin.NativeAdminTests.test_peer_add_and_remove_use_public_native_admin) ... ok
+test_policy_set_path_identity_is_a_durable_configuration_record (tests.test_native_admin.NativeAdminTests.test_policy_set_path_identity_is_a_durable_configuration_record) ... ok
+test_running_owner_applies_durable_administration (tests.test_native_admin.NativeAdminTests.test_running_owner_applies_durable_administration) ... ok
+test_running_owner_applies_policy_set_path_identity (tests.test_native_admin.NativeAdminTests.test_running_owner_applies_policy_set_path_identity) ... ok
+test_running_owner_applies_symmetric_peer_add_and_remove (tests.test_native_admin.NativeAdminTests.test_running_owner_applies_symmetric_peer_add_and_remove) ... ok
+test_two_administrators_have_no_post_publish_generation_race (tests.test_native_admin.NativeAdminTests.test_two_administrators_have_no_post_publish_generation_race) ... ok
+test_uncertain_publication_recovers_and_sweeps_admitted_stage_residue (tests.test_native_admin.NativeAdminTests.test_uncertain_publication_recovers_and_sweeps_admitted_stage_residue) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 3.114s
+
+OK
+native-admin launcher-sha256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505 core-sha256=73ad25bc207a3b3535c19ebf8ecdd4cc5ec51cda6782f122849d8a8f7025cc1e declared-source=47bdb9a40742f0da40e84c21e18175b80af3fb4b
+# rc=0 wall=3.4 end 2026-09-24T16:54:21Z

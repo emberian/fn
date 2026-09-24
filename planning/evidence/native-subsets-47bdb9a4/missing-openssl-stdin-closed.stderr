@@ -1,0 +1,36 @@
+Unhandled FNN-TLS-UNAVAILABLE in thread #<SB-THREAD:THREAD tid=1708072 "main thread" RUNNING
+                                           {1200068003}>:
+  native TLS: no complete OpenSSL libcrypto/libssl pair exists
+
+Backtrace for: #<SB-THREAD:THREAD tid=1708072 "main thread" RUNNING {1200068003}>
+0: (SB-DEBUG::DEBUGGER-DISABLED-HOOK #<FNN-TLS-UNAVAILABLE {120F1190B3}> #<unused argument> :QUIT T)
+1: (SB-DEBUG::RUN-HOOK SB-EXT:*INVOKE-DEBUGGER-HOOK* #<FNN-TLS-UNAVAILABLE {120F1190B3}>)
+2: (INVOKE-DEBUGGER #<FNN-TLS-UNAVAILABLE {120F1190B3}>)
+3: (ERROR #<FNN-TLS-UNAVAILABLE {120F1190B3}>)
+4: ((FLET SB-THREAD::WITH-MUTEX-THUNK :IN FNN-TLS-INITIALIZE))
+5: ((FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX))
+6: (SB-THREAD::FAST-CALL-WITH-MUTEX #<FUNCTION (FLET SB-THREAD::WITH-MUTEX-THUNK :IN FNN-TLS-INITIALIZE) {B801BE985B}> #<SB-THREAD:MUTEX "fn native TLS initialization" taken owner=main thread>)
+7: ((FLET SB-THREAD::WITH-MUTEX-THUNK :IN FNN-HSIG-INITIALIZE))
+8: ((FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX))
+9: (SB-THREAD::FAST-CALL-WITH-MUTEX #<FUNCTION (FLET SB-THREAD::WITH-MUTEX-THUNK :IN FNN-HSIG-INITIALIZE) {B801BEEABB}> #<SB-THREAD:MUTEX "fn ML-DSA provider initialization" taken owner=main thread>)
+10: (FN-NATIVE-ENTRY #<unused argument>)
+11: (RAW-EV-FNCALL #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument>)
+12: (EV #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument> #<unavailable argument>)
+13: (EV-FOR-TRANS-EVAL (FN-NATIVE-ENTRY STATE) (NIL NIL STATE) TOP-LEVEL #<unavailable argument> #<unavailable argument> NIL)
+14: (LD-READ-EVAL-PRINT #<unavailable argument>)
+15: (LD-LOOP #<unavailable argument>)
+16: (LD-FN-BODY ((FN-NATIVE-ENTRY STATE) (VALUE :Q)) #<unavailable argument> #<unavailable argument>)
+17: (LD-FN0 #<unavailable argument> #<unavailable argument> NIL)
+18: (LD-FN #<unavailable argument> ACL2_INVISIBLE::|The Live State Itself| #<unavailable argument>)
+19: (LP)
+20: (SB-INT:SIMPLE-EVAL-IN-LEXENV (LP) #<NULL-LEXENV>)
+21: (EVAL (LP))
+22: (SB-INT:SIMPLE-EVAL-IN-LEXENV (SBCL-RESTART) #<NULL-LEXENV>)
+23: (EVAL (SBCL-RESTART))
+24: (SB-IMPL::PROCESS-EVAL/LOAD-OPTIONS ((:EVAL . "(acl2::sbcl-restart)")))
+25: (SB-IMPL::TOPLEVEL-INIT)
+26: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))
+27: ((FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP))
+28: (SB-IMPL::%START-LISP)
+
+unhandled condition in --disable-debugger mode, quitting

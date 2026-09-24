@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+exec sbcl --noinform --script tests/native_owner_bound_commit_raw.lisp
+== owner_bound_commit
+Unhandled UNDEFINED-FUNCTION in thread #<SB-THREAD:THREAD tid=1703333 "main thread" RUNNING
+                                          {1200038003}>:
+  The function ACL2::FNN-ERR is undefined.
+
+Backtrace for: #<SB-THREAD:THREAD tid=1703333 "main thread" RUNNING {1200038003}>
+
+unhandled condition in --disable-debugger mode, quitting
+== owner_consumer
+Unhandled SIMPLE-ERROR in thread #<SB-THREAD:THREAD tid=1703343 "main thread" RUNNING
+                                    {1200038003}>:
+  capacity refusal advanced the frontier
+
+Backtrace for: #<SB-THREAD:THREAD tid=1703343 "main thread" RUNNING {1200038003}>
+
+unhandled condition in --disable-debugger mode, quitting
