@@ -15,6 +15,44 @@
 (assert-event (fn-sn-identity-sequencep *sis-before-enrollment*))
 (assert-event (fn-sn-identity-sequencep *sis-reserved*))
 (assert-event (fn-sn-identity-sequencep *sis-completing*))
+
+; The reached staged enrollment has a typed candidate at the carried next
+; sequence.  Each premise matters: a moved cursor, an invalid candidate, or
+; a merely reserved Store state cannot support that conclusion.
+(assert-event (fn-sn-statep *sis-staged*))
+(assert-event (fn-sn-identity-sequencep *sis-staged*))
+(assert-event (fn-sf-record-phasep (fn-sf-phase (fn-sn-files *sis-staged*))))
+(assert-event
+ (and (fn-store-event-p (fn-sf-record-candidate (fn-sn-files *sis-staged*)))
+      (equal (fn-store-event-sequence
+              (fn-sf-record-candidate (fn-sn-files *sis-staged*)))
+             (fn-sn-identity-next *sis-staged*))))
+(defconst *sis-candidate-bad-next*
+  (update-nth 9 (1+ (fn-sn-identity-next *sis-staged*)) *sis-staged*))
+(assert-event (fn-sn-statep *sis-candidate-bad-next*))
+(assert-event (not (fn-sn-identity-sequencep *sis-candidate-bad-next*)))
+(must-fail
+ (assert-event
+  (equal (fn-store-event-sequence
+          (fn-sf-record-candidate (fn-sn-files *sis-candidate-bad-next*)))
+         (fn-sn-identity-next *sis-candidate-bad-next*))))
+(defconst *sis-candidate-malformed*
+  (update-nth 2
+              (update-nth 5 nil (fn-sn-files *sis-staged*))
+              *sis-staged*))
+(assert-event (not (fn-sn-statep *sis-candidate-malformed*)))
+(assert-event
+ (equal (len (fn-sf-records (fn-sn-files *sis-candidate-malformed*)))
+        (fn-sn-identity-next *sis-candidate-malformed*)))
+(must-fail
+ (assert-event
+  (fn-store-event-p
+   (fn-sf-record-candidate (fn-sn-files *sis-candidate-malformed*)))))
+(assert-event (fn-sn-statep *sis-reserved*))
+(assert-event (fn-sn-identity-sequencep *sis-reserved*))
+(must-fail
+ (assert-event
+  (fn-store-event-p (fn-sf-record-candidate (fn-sn-files *sis-reserved*)))))
 (assert-event
  (equal (len (fn-sf-records (fn-sn-files *sis-completing*)))
         (1+ (fn-sn-identity-next *sis-completing*))))
