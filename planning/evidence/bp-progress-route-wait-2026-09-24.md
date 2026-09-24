@@ -11,8 +11,8 @@ transit row gets a per-key volatile `:route` wait, so a later event can select
 a younger local request and use the existing durable kind-7 application path.
 Successful cold recovery clears these waits; a recovery fault retains them
 and leaves the underlying uncertainty fence in place. A changed route
-generation reconsiders a
-route wait. The host prints a stable wait line only from the ACL2 effect.
+generation reconsiders a route wait. The host prints a stable wait line only
+from the ACL2 effect.
 
 The served selection scans fixed held slots and the persisted expiry anchor.
 It neither re-encodes retained wire nor decodes every retained ADU. ADU class
@@ -70,7 +70,7 @@ test book at the same progress-source digest. Both used ACL2 8.7,
 toolchain identity
 `1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286`,
 one job, and source-digest-matched cached dependencies. The native same-handle
-interrupted-contact fixture is source-present and awaits a shared matching
+two-transfer fixture is source-present and awaits a shared matching
 image. This packet proves neither N03's four-class fairness nor N04 MRU
 forwarding or N05 journal debt. A routeable transit row currently waits for
 the later session/forwarding slice; session availability does not independently
