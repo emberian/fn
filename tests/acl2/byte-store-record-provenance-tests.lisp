@@ -1231,7 +1231,11 @@
                 :reserved))))
 
 (defun bsk0-owner-frontier-entry ()
-  (fn-ocfg-make (fn-own-start (bsk0-native-frontier-entry) 2) nil nil nil))
+  (fn-ocfg-make
+   (fn-own-start (bsk0-native-frontier-entry) 2)
+   (fn-config-replay 0 (fn-cnode-line-ceiling)
+                     (list *fn-cfg-default-record*))
+   nil nil))
 
 (assert-event
  (let* ((bs (bsk5-initial))
@@ -1239,6 +1243,7 @@
         (s (fn-own-store (fn-ocfg-owner oc)))
         (stage ".allocation-owner-k0"))
    (and (fn-sn-statep s)
+        (fn-ocfg-statep oc)
         (fn-bs-store-relation bs (fn-sn-files s))
         (fn-bs-frontier-inputp (fn-sn-files s) stage
                                 (fn-bs-frontier-encode 1))
