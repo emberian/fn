@@ -522,6 +522,8 @@
     "tests/acl2/config-owner-live-tests",
     "books/config-owner-publish",
     "tests/acl2/config-owner-publish-tests",
+    "books/config-crash-replay",
+    "tests/acl2/config-crash-replay-tests",
     "books/owner-config",
     "books/ideal",
     "books/nntp-index",
@@ -676,25 +678,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 683,
-    "books_in_root_closure": 681,
-    "roots": 672,
-    "theorems": 9208,
-    "functions": 6651,
-    "assert_events": 10048,
-    "must_fails": 690,
+    "books": 685,
+    "books_in_root_closure": 683,
+    "roots": 674,
+    "theorems": 9226,
+    "functions": 6653,
+    "assert_events": 10083,
+    "must_fails": 693,
     "encapsulates": 30,
     "guards": {
       "verified": 2038,
-      "declared-off": 417,
+      "declared-off": 418,
       "default-guarded": 3309,
-      "default-unguarded": 887
+      "default-unguarded": 888
     },
     "suspect_theorems": 83,
     "export_hygiene_warnings": 109,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 48,
-    "include_hygiene_warnings": 659,
+    "include_hygiene_warnings": 661,
     "host_names_warnings": 813,
     "hand_written_record_warnings": 18
   },
@@ -5000,6 +5002,31 @@
       "includes": [
         "records-attach",
         "statement-attach"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-crash-replay.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 18,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-publish"
       ],
       "system_includes": [],
       "suspects": [],
@@ -14526,6 +14553,34 @@
         "../../books/statement-codec"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/config-crash-replay-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 35,
+      "must_fails": 3,
+      "defconsts": 11,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-crash-replay",
+        "config-owner-publish-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -24424,6 +24479,20 @@
         "line": 26,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-crash-replay-tests.lisp",
+        "line": 10,
+        "include": "../../books/config-crash-replay",
+        "included": "books/config-crash-replay.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-crash-replay-tests.lisp",
+        "line": 12,
+        "include": "config-owner-publish-tests",
+        "included": "tests/acl2/config-owner-publish-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
