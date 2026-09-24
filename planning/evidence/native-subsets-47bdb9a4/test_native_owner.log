@@ -1,0 +1,57 @@
+# target tests.test_native_owner  start 2026-09-24T16:54:34Z  cwd /tank/fn/scratch/native-subsets-47bdb9a4/tree
+# cmd: python3 -m unittest -v tests.test_native_owner
+# sbcl on PATH: /tank/fn/scratch/native-subsets-47bdb9a4/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=73ad25bc207a3b3535c19ebf8ecdd4cc5ec51cda6782f122849d8a8f7025cc1e
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=b81bdaf69dca347aa255cbc3f3c6a9679f52fc4192e6eec0e0116196f74d48ca
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=47bdb9a40742f0da40e84c21e18175b80af3fb4b
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-47bdb9a4/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-47bdb9a4/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/runtime/sbcl-home/
+test_condition_handlers_and_cleanup_enclose_the_served_body (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_condition_handlers_and_cleanup_enclose_the_served_body) ... ok
+test_developer_selectors_gate_arm_the_owner_and_stop_synchronously (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_developer_selectors_gate_arm_the_owner_and_stop_synchronously) ... ok
+test_no_os_error_after_publication_is_classified_as_a_refusal (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_no_os_error_after_publication_is_classified_as_a_refusal) ... ok
+test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step) ... ok
+test_the_served_listener_passes_a_documented_accept_queue (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_served_listener_passes_a_documented_accept_queue) ... ok
+test_transit_take_uses_transfer_decision_and_store_outcome (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_transit_take_uses_transfer_decision_and_store_outcome) ... ok
+test_article_over_the_body_limit_is_refused_and_the_owner_survives (tests.test_native_owner.NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives) ... ok
+test_client_disconnect_is_not_a_global_owner_fault (tests.test_native_owner.NativeOwnerTests.test_client_disconnect_is_not_a_global_owner_fault) ... ok
+test_configured_source_address_opens_native_transit_session (tests.test_native_owner.NativeOwnerTests.test_configured_source_address_opens_native_transit_session) ... ok
+test_each_submission_and_each_connection_take_a_fresh_reading (tests.test_native_owner.NativeOwnerTests.test_each_submission_and_each_connection_take_a_fresh_reading) ... ok
+test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence (tests.test_native_owner.NativeOwnerTests.test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence) ... ok
+test_invalid_complete_feed_evidence_is_process_fault (tests.test_native_owner.NativeOwnerTests.test_invalid_complete_feed_evidence_is_process_fault) ... ok
+test_local_handler_fault_uses_core_fault_and_preserves_other_clients (tests.test_native_owner.NativeOwnerTests.test_local_handler_fault_uses_core_fault_and_preserves_other_clients) ... ok
+test_once_sigterm_closes_client_with_incomplete_post (tests.test_native_owner.NativeOwnerTests.test_once_sigterm_closes_client_with_incomplete_post) ... ok
+test_post_is_committed_and_readable_after_owner_exit (tests.test_native_owner.NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit) ... ok
+test_reset_peer_does_not_stop_concurrent_writer_or_reader (tests.test_native_owner.NativeOwnerTests.test_reset_peer_does_not_stop_concurrent_writer_or_reader) ... ok
+test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation) ... ok
+test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart (tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 21.780s
+
+OK
+# rc=0 wall=21.8 end 2026-09-24T16:54:56Z

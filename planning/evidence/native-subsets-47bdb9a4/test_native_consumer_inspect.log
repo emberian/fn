@@ -1,0 +1,43 @@
+# target tests.test_native_consumer_inspect  start 2026-09-24T16:56:59Z  cwd /tank/fn/scratch/native-subsets-47bdb9a4/tree
+# cmd: python3 -m unittest -v tests.test_native_consumer_inspect
+# sbcl on PATH: /tank/fn/scratch/native-subsets-47bdb9a4/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=73ad25bc207a3b3535c19ebf8ecdd4cc5ec51cda6782f122849d8a8f7025cc1e
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=b81bdaf69dca347aa255cbc3f3c6a9679f52fc4192e6eec0e0116196f74d48ca
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=47bdb9a40742f0da40e84c21e18175b80af3fb4b
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-47bdb9a4/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-47bdb9a4/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/runtime/sbcl-home/
+test_exact_max_cursor_and_high_octet_ids (tests.test_native_consumer_inspect.NativeConsumerInspectTests.test_exact_max_cursor_and_high_octet_ids) ... ok
+test_oversize_is_refused_at_the_acl2_encoding_ceiling (tests.test_native_consumer_inspect.NativeConsumerInspectTests.test_oversize_is_refused_at_the_acl2_encoding_ceiling) ... ok
+test_truncated_trailing_and_unknown_version_refuse (tests.test_native_consumer_inspect.NativeConsumerInspectTests.test_truncated_trailing_and_unknown_version_refuse) ... ok
+test_zero_position_is_reported_exactly (tests.test_native_consumer_inspect.NativeConsumerInspectTests.test_zero_position_is_reported_exactly) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.415s
+
+OK
+# rc=0 wall=0.5 end 2026-09-24T16:57:00Z

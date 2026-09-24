@@ -1,0 +1,10 @@
+# relocated copy /tank/fn/scratch/native-subsets-47bdb9a4/reloc/fn-image; image.sha256 OK
+test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup) ... ok
+test_relocated_image_uses_bundled_tls_and_ml_dsa (tests.test_native_frozen_relocation.FrozenRelocationTest.test_relocated_image_uses_bundled_tls_and_ml_dsa) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.181s
+
+OK
+# rc=0 end 2026-09-24T17:16:29Z
+# after: image.sha256 OK

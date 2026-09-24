@@ -1,0 +1,104 @@
+# target tests.test_native_raw_scripts  start 2026-09-24T16:57:14Z  cwd /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev
+# cmd: python3 -m unittest -v tests.test_native_raw_scripts
+# sbcl on PATH: /tank/fn/scratch/native-subsets-47bdb9a4/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=73ad25bc207a3b3535c19ebf8ecdd4cc5ec51cda6782f122849d8a8f7025cc1e
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=b81bdaf69dca347aa255cbc3f3c6a9679f52fc4192e6eec0e0116196f74d48ca
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=47bdb9a40742f0da40e84c21e18175b80af3fb4b
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-47bdb9a4/tree-dev
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-47bdb9a4/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/runtime/sbcl-home/
+test_every_raw_script_has_a_case_here (tests.test_native_raw_scripts.RawScriptTests.test_every_raw_script_has_a_case_here) ... ok
+test_native_consumer_peer_raw (tests.test_native_raw_scripts.RawScriptTests.test_native_consumer_peer_raw) ... ok
+test_native_consumer_poll_cli_raw (tests.test_native_raw_scripts.RawScriptTests.test_native_consumer_poll_cli_raw) ... ok
+test_native_feed_service_raw (tests.test_native_raw_scripts.RawScriptTests.test_native_feed_service_raw) ... ok
+test_native_live_config_cache_raw (tests.test_native_raw_scripts.RawScriptTests.test_native_live_config_cache_raw) ... ok
+test_native_owner_bound_commit_raw (tests.test_native_raw_scripts.RawScriptTests.test_native_owner_bound_commit_raw) ... FAIL
+test_native_owner_consumer_local_raw (tests.test_native_raw_scripts.RawScriptTests.test_native_owner_consumer_local_raw) ... ok
+test_native_owner_consumer_raw (tests.test_native_raw_scripts.RawScriptTests.test_native_owner_consumer_raw) ... FAIL
+test_native_owner_group_codes_raw (tests.test_native_raw_scripts.RawScriptTests.test_native_owner_group_codes_raw) ... ok
+
+======================================================================
+FAIL: test_native_owner_bound_commit_raw (tests.test_native_raw_scripts.RawScriptTests.test_native_owner_bound_commit_raw)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/test_native_raw_scripts.py", line 41, in case
+    self.run_script(script)
+  File "/tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/test_native_raw_scripts.py", line 29, in run_script
+    self.assertEqual(result.returncode, 0,
+AssertionError: 1 != 0 : test_native_owner_bound_commit_raw.sh exited 1:
+
+B-INT:LOAD-AS-SOURCE) (UNLESS (EQ (FNN-OWNER-BOUND-COMMIT-WORD (LAMBDA NIL (ERROR #))) :UNCERTAIN) (ERROR "ambiguous Store callback lost its uncertainty")) :CURRENT-INDEX 30)
+8: (SB-C::%DO-FORMS-FROM-INFO #<FUNCTION (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) {7319A53A73DB}> #<SB-C::SOURCE-INFO {1200CFDC83}> SB-C::INPUT-ERROR-IN-LOAD)
+9: (SB-INT:LOAD-AS-SOURCE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_bound_commit_raw.lisp" {120003A7F3}> :VERBOSE NIL :PRINT NIL :CONTEXT "loading")
+10: ((LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_bound_commit_raw.lisp" {120003A7F3}> NIL)
+11: (SB-FASL::CALL-WITH-LOAD-BINDINGS #<FUNCTION (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) {7319A53A779B}> #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_bound_commit_raw.lisp" {120003A7F3}> NIL #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_bound_commit_raw.lisp" {120003A7F3}>)
+12: (LOAD #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_bound_commit_raw.lisp" {120003A7F3}> :VERBOSE NIL :PRINT NIL :IF-DOES-NOT-EXIST :ERROR :EXTERNAL-FORMAT :DEFAULT)
+13: ((FLET SB-IMPL::LOAD-SCRIPT :IN SB-IMPL::PROCESS-SCRIPT) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_bound_commit_raw.lisp" {120003A7F3}>)
+14: ((FLET SB-UNIX::BODY :IN SB-IMPL::PROCESS-SCRIPT))
+15: ((FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-IMPL::PROCESS-SCRIPT))
+16: (SB-IMPL::PROCESS-SCRIPT "tests/native_owner_bound_commit_raw.lisp")
+17: (SB-IMPL::TOPLEVEL-INIT)
+18: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))
+19: ((FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP))
+20: (SB-IMPL::%START-LISP)
+
+unhandled condition in --disable-debugger mode, quitting
+
+
+======================================================================
+FAIL: test_native_owner_consumer_raw (tests.test_native_raw_scripts.RawScriptTests.test_native_owner_consumer_raw)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/test_native_raw_scripts.py", line 41, in case
+    self.run_script(script)
+  File "/tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/test_native_raw_scripts.py", line 29, in run_script
+    self.assertEqual(result.returncode, 0,
+AssertionError: 1 != 0 : test_native_owner_consumer_raw.sh exited 1:
+
+CASE (PROGN (FNN-OWNER-CONSUMER-COMMIT SERVICE EVENT) (ERROR "capacity refusal missed")) (CONSUMER-REFUSAL NIL NIL)) (CHECK (NULL *CALLS*) "capacity refusal advanced the frontier")) :CURRENT-INDEX 25)
+13: (SB-C::%DO-FORMS-FROM-INFO #<FUNCTION (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) {7352EDBA73DB}> #<SB-C::SOURCE-INFO {1200CFDD13}> SB-C::INPUT-ERROR-IN-LOAD)
+14: (SB-INT:LOAD-AS-SOURCE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_consumer_raw.lisp" {120003A6D3}> :VERBOSE NIL :PRINT NIL :CONTEXT "loading")
+15: ((LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_consumer_raw.lisp" {120003A6D3}> NIL)
+16: (SB-FASL::CALL-WITH-LOAD-BINDINGS #<FUNCTION (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) {7352EDBA779B}> #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_consumer_raw.lisp" {120003A6D3}> NIL #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_consumer_raw.lisp" {120003A6D3}>)
+17: (LOAD #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_consumer_raw.lisp" {120003A6D3}> :VERBOSE NIL :PRINT NIL :IF-DOES-NOT-EXIST :ERROR :EXTERNAL-FORMAT :DEFAULT)
+18: ((FLET SB-IMPL::LOAD-SCRIPT :IN SB-IMPL::PROCESS-SCRIPT) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-47bdb9a4/tree-dev/tests/native_owner_consumer_raw.lisp" {120003A6D3}>)
+19: ((FLET SB-UNIX::BODY :IN SB-IMPL::PROCESS-SCRIPT))
+20: ((FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-IMPL::PROCESS-SCRIPT))
+21: (SB-IMPL::PROCESS-SCRIPT "tests/native_owner_consumer_raw.lisp")
+22: (SB-IMPL::TOPLEVEL-INIT)
+23: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))
+24: ((FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP))
+25: (SB-IMPL::%START-LISP)
+
+unhandled condition in --disable-debugger mode, quitting
+
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.319s
+
+FAILED (failures=2)
+# rc=1 wall=0.4 end 2026-09-24T16:57:15Z
