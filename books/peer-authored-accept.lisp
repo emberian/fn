@@ -108,4 +108,26 @@
                 (fn-pa-current-plan fn-hc-received-plan
                  fn-hsig-authorized-carried-submission-event-base)))))
 
+;; The served POST's outcome word after the carried attempt (served NNTP
+;; POST and the bound local submissions call the same attempt transit does,
+;; host/native/owner.lisp fnn-owner-attempt-served).  A present carrier
+;; refused by fn-pa-carrier-form or fn-pa-current-plan relays that plan's
+;; reason; :signature is the primitive observation's refusal and :conflict the
+;; Store's existing-action answer.  Each is its own 441 line
+;; (books/nntp-post.lisp fn-post-store-refusal-line).  Every other word,
+;; including every word of the carrier-absent arm (whose detail is nil), is
+;; the attempt's own word unchanged.
+(defconst *fn-pa-served-reasons*
+  '(:article :carrier :carrier-shape :local-enrollment :signature :conflict))
+
+(defun fn-pa-served-word (word detail)
+  (declare (xargs :guard t))
+  (if (and (equal word :refused)
+           (member-equal detail *fn-pa-served-reasons*))
+      detail
+    word))
+
+(defthm fn-pa-served-word-without-detail-by-definition
+  (equal (fn-pa-served-word word nil) word))
+
 (in-theory (disable (:d fn-pa-current-plan) (:d fn-pa-authorized-event)))

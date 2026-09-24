@@ -34,7 +34,7 @@
                      (fnn-owner-connection-fault-cause condition)))))
 
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
-  store records lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
+  store lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
   (workers nil) (clients nil) tls-context
   (start-hooks nil) (stop-hooks nil) (close-hooks nil)
   ;; Private executable-test injection.  Production instances leave this NIL;
@@ -501,7 +501,7 @@ completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
                 (fnn-fault "owner returned a malformed feed table"))
               (setq service
                     (%make-fnn-owner-service
-                     :store store :records (length records)
+                     :store store
                      :lock (sb-thread:make-mutex :name "fn owner/store")
                      :start-hooks *fnn-owner-start-hooks*
                      :stop-hooks *fnn-owner-stop-hooks*
@@ -666,12 +666,15 @@ the current connection."
 (defun fnn-owner-publish-prepared (service label)
   "Publish and finish the one ACL2-prepared owner transaction."
   (let* ((store (fnn-owner-service-store service))
-         (record (fnn-owner-core 'fn-owner-pending-octets)))
+         (record (fnn-owner-core 'fn-owner-pending-octets))
+         ;; The file is named from the staged record's own sequence, ACL2's
+         ;; (fn-sbud-pending-sequence); the host keeps no count of its own.
+         (sequence (fnn-pending-sequence
+                    (fnn-owner-core 'fn-owner-pending-sequence))))
     (unless (fnn-octet-list-p record)
       (fnn-fault "owner returned malformed ~a transaction" label))
     (handler-case
-        (fnn-publish store (fnn-owner-service-records service)
-                     (fnn-octets record))
+        (fnn-publish store sequence (fnn-octets record))
       (fnn-store-indeterminate (e) (error e))
       (fnn-store-fault (e)
         ; A structural/core fault is never a capacity refusal.  Preserve the
@@ -689,7 +692,6 @@ the current connection."
         (error e)))
     (setf (fnn-store-fenced store) t)
     (fnn-finish store)
-    (incf (fnn-owner-service-records service))
     :durable))
 
 (defun fnn-owner-preflight-publication (service kind)
@@ -752,7 +754,9 @@ follows is justified only by this line."
           (when (or (keywordp codes) (not (listp codes))
                     (/= (length codes) (length groups)))
             (fnn-refuse "unknown or duplicate configured group"))
-          (fnn-validate-post-boundary store msgid payload codes charge)
+          (fnn-validate-post-boundary
+           (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
+                           (length payload) (length codes) charge))
           (case (fnn-owner-action 'fn-owner-existing-action
                                   (fnn-octet-list msgid)
                                   (fnn-octet-list payload) codes)
@@ -820,7 +824,9 @@ event. A carrier-absent article keeps the established legacy Store path."
                        (/= (length codes) (length groups)))
                (return-from fnn-owner-attempt-transit
                  (fnn-owner-transit-refused :groups)))
-             (fnn-validate-post-boundary store msgid payload codes charge)
+             (fnn-validate-post-boundary
+              (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
+                              (length payload) (length codes) charge))
              (case (fnn-owner-action 'fn-owner-existing-action
                                      (fnn-octet-list msgid)
                                      (fnn-octet-list payload) codes)
@@ -872,6 +878,20 @@ event. A carrier-absent article keeps the established legacy Store path."
                      (return-from fnn-owner-attempt-transit
                        (fnn-owner-transit-refused :event)))
                    (fnn-owner-identity-commit service event)))))))))))
+
+;;; The served POST's attempt, and the bound local submission's.  The one
+;;; ingress decision transit uses (fnn-owner-attempt-transit: ACL2's
+;;; fn-pa-carrier-form and fn-pa-current-plan over these octets and this
+;;; Store's enrollment, the primitive observation, fn-pa-authorized-event,
+;;; the kind-4 identity commit) with the poster's outcome word chosen by
+;;; ACL2 (fn-pa-served-word): a present carrier the plan refused carries the
+;;; plan's reason to its own 441 line, and a carrier-absent article is the
+;;; unsigned arm, fnn-owner-attempt, with its word unchanged.
+(defun fnn-owner-attempt-served (service msgid payload groups evidence)
+  (setq *fnn-owner-transit-detail* nil)
+  (let ((word (fnn-owner-attempt-transit service msgid payload groups evidence)))
+    (fnn-owner-core 'fn-owner-served-carried-word word
+                    *fnn-owner-transit-detail*)))
 
 (defun fnn-owner-retention-commit (service event)
   "Publish one ACL2-authored retention event through the normal Store path."
@@ -1156,7 +1176,7 @@ refused or deferred peer transfer is never silent."
                   (let ((word (if transitp
                                   (fnn-owner-attempt-transit
                                    service msgid payload groups evidence)
-                                (fnn-owner-attempt
+                                (fnn-owner-attempt-served
                                  service msgid payload groups evidence))))
                     (fnn-owner-action 'fn-owner-submission-resolution
                                       word (fnn-octet-list evidence)
@@ -1230,7 +1250,8 @@ Every other caller submits exact authored octets and names them."
         (fnn-owner-feed-flush service)
         (let ((word (if commit-callback
                         (fnn-owner-bound-commit-word commit-callback)
-                      (fnn-owner-attempt service msgid payload groups evidence))))
+                      (fnn-owner-attempt-served
+                       service msgid payload groups evidence))))
           (fnn-owner-action 'fn-owner-submission-resolution
                             word (fnn-octet-list evidence) generation txid)
           (fnn-owner-feed-flush service)
@@ -1552,8 +1573,8 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                  ;; it is already in hand.  The served machine
                                  ;; stops at the octet that closed the wire:
                                  ;; an article over fn-own-body-limit
-                                 ;; (books/owner.lisp, *fn-store-max-payload*
-                                 ;; = 32768) makes fn-wire-after-line answer
+                                 ;; (books/owner.lisp, the record codec's
+                                 ;; *fn-record-max-payload* = 32768) makes fn-wire-after-line answer
                                  ;; (fn-wire-close ... :body-overlimit)
                                  ;; (books/wire.lisp), and
                                  ;; fn-served-feed-counted

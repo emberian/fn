@@ -63,48 +63,41 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
         "the differential reader model over books/served, left out by design",
         {"fn-reader-model-octets": "io.lisp's `model` verb faults on the missing "
                                    "counterpart, as the build-dtn.lisp header says"}),
-    "host/native-config-host.lisp": (
-        "native configuration files; used by config.lisp, operator.lisp and owner.lisp, none loaded", {}),
     "host/native-auth-host.lisp": (
         "NNTP credential transport; used only by auth.lisp, not loaded", {}),
     "host/native-auth-admin-host.lisp": (
         "credential administration; used only by auth-admin.lisp, not loaded", {}),
-    "host/feed-filename-host.lisp": (
-        "outbound feed file names; used only by feed-filename.lisp, not loaded", {}),
-    "host/native-operator-host.lisp": (
-        "the public operator surface; used only by operator.lisp, not loaded", {}),
     "host/native-control-host.lisp": (
-        "control socket; used by control/hybrid-control/operator/topic-local/consumer-local, none loaded", {}),
+        "control socket; used by control/hybrid-control/operator/topic-local/consumer-local; "
+        "the DTN image loads only operator.lisp of these",
+        {name: "operator.lisp's `post` executor and live-owner admin arm; the DTN "
+               "image names :nntp-service and :control in *fnn-image-omitted-surfaces*, "
+               "so the operator refuses `post` (exit 5) and never takes the live arm"
+         for name in ("fn-native-control-host-status-class",
+                      "fn-native-control-host-status-exit-code")}),
     "host/native-hybrid-control-host.lisp": (
         "hybrid authoring control; used by control.lisp and hybrid-control.lisp, not loaded", {}),
-    "host/hybrid-signature-host.lisp": (
-        "ML-DSA/Ed25519 signatures; the DTN image loads no crypto (signatures.lisp, owner.lisp)", {}),
     "host/topic-history-metadata-host.lisp": (
         "includes books/topic-history-authorship for topic-local.lisp, not loaded; defines nothing", {}),
-    "host/bp-release-owner-host.lisp": (
-        "the owner-mode workflow journal; owner.lisp is not loaded",
-        {name: "workflow.lisp selects it only for an owner-mode journal, which only "
-               "bp-node.lisp and bp-obligation.lisp open; neither is loaded"
-         for name in ("fn-owner-workflow-apply-record", "fn-owner-workflow-install-replay",
-                      "fn-owner-workflow-preflight-record", "fn-owner-workflow-reset")}),
-    "host/bp-native-app-host.lisp": (
-        "the BP application handoff into the NNTP owner; owner.lisp is not loaded",
-        {"fn-owner-bp-tcpcl-ingress": "bp-service.lisp calls it only with a non-NIL owner "
-                                      "and channel; bp.lisp's service loop passes NIL NIL, "
-                                      "and bp-node.lisp, the caller that passes an owner, "
-                                      "is not loaded"}),
 }
 
 # (raw module that calls, raw function defined only outside the DTN image) -> why
 DTN_RAW_REACH: dict[tuple[str, str], str] = {
-    **{("host/native/admin.lisp", name):
-       "in fnn-owner-live-admin-serialized and fnn-owner-refresh-config-cache, the live "
-       "owner arm, which only control.lisp calls; control.lisp is not loaded"
-       for name in ("fnn-owner-action", "fnn-owner-core",
-                    "fnn-owner-feed-refresh-configuration", "fnn-owner-serialized")},
-    ("host/native/bp-service.lisp", "fnn-owner-core"):
-        "fnn-bps-tcpcl-ingress calls it only with a non-NIL owner and channel; bp.lisp "
-        "passes NIL NIL and bp-node.lisp, the caller with an owner, is not loaded",
+    ("host/native/owner.lisp", "fnn-anchor-csprng-nonce"):
+        "only in fnn-owner-topic-local-serialized, which only control.lisp calls; "
+        "control.lisp is not loaded",
+    **{("host/native/operator.lisp", name):
+       "operator.lisp's `run` executor (the NNTP service), `post` executor and "
+       "live-owner admin arm; build-dtn.lisp names :nntp-service and :control in "
+       "*fnn-image-omitted-surfaces*, so the operator refuses `run` and `post` "
+       "(exit 5) and never takes the live arm"
+       for name in ("fnn-control-admin", "fnn-control-owner-run-normalized",
+                    "fnn-control-socket-path-p", "fnn-control-submit",
+                    "fnn-feed-service-close", "fnn-feed-service-start",
+                    "fnn-feed-service-wake", "fnn-native-auth-startup-hook")},
+    ("host/native/operator.lisp", "fnn-native-auth-admin-execute"):
+        "operator.lisp's `principal` executor; build-dtn.lisp names :credentials in "
+        "*fnn-image-omitted-surfaces*, so the operator refuses it (exit 5)",
 }
 
 LD = re.compile(r'^\s*\(ld\s+"([^"]+)"', re.M)

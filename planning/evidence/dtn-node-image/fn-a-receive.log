@@ -1,0 +1,15 @@
+BP FNBS recovered held=0
+BP queue recovered jobs=0
+BP LISTENING 42315
+TCPCL passive event (:SEND :CONTACT 6)
+TCPCL passive event (:SEND :SESS-INIT 36)
+TCPCL passive event (:SESSION-UP 10 64000 64000 NIL)
+TCPCL passive event (:SEND :XFER-ACK 18)
+TCPCL passive event (:BUNDLE-RECEIVED 1 136)
+BP accepted xfer=1 adu=36 path=/tank/fn/scratch/dtn-node-image/lab-ic1/fn-a-receive/lifecycle/00000000000000000001-00000000000000000000.fnb
+TCPCL passive accepted xfer=1 path=/tank/fn/scratch/dtn-node-image/lab-ic1/fn-a-receive/lifecycle/00000000000000000001-00000000000000000000.fnb
+TCPCL passive event (:SEND :SESS-TERM 3)
+TCPCL passive event (:PEER-TERMINATING 1)
+TCPCL passive event (:CLOSE)
+TCPCL passive summary accepted=1 refused=0 uncertain=0 phase=closed
+BP summary accepted=1 refused=0 uncertain=0

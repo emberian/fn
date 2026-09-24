@@ -354,6 +354,108 @@ class NativeHybridAuthorTest(unittest.TestCase):
             "generation=1 state=active principal=" + self.principal.read_bytes().hex(),
         ])
 
+    def test_signed_post_over_nntp_gets_the_transit_classification(self):
+        """A served POST of an FN-Authorship carrier, without the control socket.
+
+        The served POST arm calls the attempt transit uses
+        (host/native/owner.lisp fnn-owner-attempt-served): ACL2's
+        fn-pa-current-plan over the POST's octets and this Store's
+        enrollment.  Present and valid under the enrollment is a kind-4
+        acceptance whose verdict HDR :fn-verified reports; present and
+        refused is 441 with the plan's reason (fn-pa-served-word, one line
+        per reason); absent is the unsigned arm, 240 with no verdict.
+        """
+        other_principal = self.root / "unenrolled-principal.bin"
+        other_principal.write_bytes(bytes([86]) * 32)
+
+        def carrier(stem, principal=None, tamper=False):
+            source = self.root / (stem + "-source.eml")
+            source.write_bytes(
+                b"From: agent@example.invalid\r\n"
+                b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+                b"Newsgroups: fn.test\r\nSubject: signed over NNTP\r\n"
+                b"Message-ID: <" + stem.encode() + b"@example.invalid>\r\n"
+                b"\r\n.dot-prefixed signed body\r\nexact post source\r\n")
+            carried = self.root / (stem + ("-tampered" if tamper else "")
+                                   + "-carried.eml")
+            signed = self.invoke(
+                "hybrid-sign-carrier", str(principal or self.principal),
+                str(self.ed_public), str(self.ed_secret), str(self.ml_public),
+                str(self.ml_private), str(source), str(carried))
+            self.assertEqual(signed.returncode, 0, signed.stderr.decode())
+            octets = carried.read_bytes()
+            if tamper:
+                octets = octets.replace(b"exact post source",
+                                        b"Exact post source", 1)
+            return octets
+
+        def post(octets):
+            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
+                with sock.makefile("rwb", buffering=0) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+                    stream.write(b"POST\r\n")
+                    self.assertTrue(stream.readline().startswith(b"340 "))
+                    body = b"".join(
+                        (b"." + line if line.startswith(b".") else line)
+                        for line in octets.splitlines(keepends=True))
+                    stream.write(body + b".\r\n")
+                    return stream.readline()
+
+        def verdict(msgid):
+            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
+                with sock.makefile("rwb", buffering=0) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+                    stream.write(b"HDR :fn-verified " + msgid + b"\r\n")
+                    status = stream.readline()
+                    if not status.startswith(b"225 "):
+                        return status
+                    field = stream.readline()
+                    self.assertEqual(stream.readline(), b".\r\n")
+                    return field
+
+        unsigned = (b"From: agent@example.invalid\r\nNewsgroups: fn.test\r\n"
+                    b"Subject: unsigned over NNTP\r\n"
+                    b"Message-ID: <nntp-unsigned@example.invalid>\r\n\r\nplain\r\n")
+        owner = self.start_owner()
+        try:
+            enrolled = self.invoke("hybrid-enroll", str(self.control), "1",
+                                   str(self.principal), str(self.ed_public),
+                                   str(self.ml_public))
+            self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+            # Present, tampered: the primitive observation refuses; the
+            # Message-ID is then still free for the valid post below.
+            self.assertEqual(
+                post(carrier("nntp-signed", tamper=True)),
+                b"441 posting failed; the author signature does not verify\r\n")
+            # Present, signed by a principal this Store never enrolled.
+            self.assertEqual(
+                post(carrier("nntp-unenrolled", principal=other_principal)),
+                b"441 posting failed; the signer has no current enrollment here"
+                b" (local-enrollment)\r\n")
+            # Present, malformed: never the unsigned arm.
+            malformed = (b"FN-Authorship: !!!\r\n" + unsigned.replace(
+                b"nntp-unsigned", b"nntp-malformed"))
+            self.assertEqual(
+                post(malformed),
+                b"441 posting failed; the FN-Authorship carrier is malformed\r\n")
+            # Present and valid under the enrollment: kind-4, verified.
+            self.assertTrue(post(carrier("nntp-signed")).startswith(b"240 "))
+            self.assertEqual(verdict(b"<nntp-signed@example.invalid>"),
+                             b"0 verified " + b"55" * 32 + b" keyring 1\r\n")
+            # Absent: the unsigned arm, unchanged.
+            self.assertTrue(post(unsigned).startswith(b"240 "))
+            for refused in (b"<nntp-unenrolled@example.invalid>",
+                            b"<nntp-malformed@example.invalid>"):
+                self.assertTrue(verdict(refused).startswith(b"430 "), refused)
+        finally:
+            self.stop_owner(owner)
+        owner = self.start_owner()
+        try:
+            self.assertEqual(verdict(b"<nntp-signed@example.invalid>"),
+                             b"0 verified " + b"55" * 32 + b" keyring 1\r\n")
+        finally:
+            self.stop_owner(owner)
+
     def test_authored_carrier_survives_native_peering_and_receiver_restart(self):
         """Real owner/feed/receiver path; portable verification is independent.
 

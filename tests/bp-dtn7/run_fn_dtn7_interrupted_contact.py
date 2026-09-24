@@ -11,16 +11,19 @@ later step:
 
   1. interrupted: the relay forwards one byte of fn's contact and severs
      both sides.  fn must report the send uncertain, not sent.
-  2. retry: the same ADU from the same fn journal, straight to the carrier.
-     The report records both authored creation/sequence lines, so it says
-     whether the retry carried the original bundle identity.
+  2. retry: step 1's durable authored wire, named by `bp send`'s RETRY
+     argument, straight to the carrier.  The report compares step 1's
+     authored creation/sequence with the retry's, so it says whether the
+     retry carried the original bundle identity.
   3. carrier death: the carrier holds the bundle with no route to dtn7d and
      is SIGKILLed by PID; it restarts on the same sled store with dtn7d and
      fn-a as static peers.  dtn7d's endpoint is drained; the count of
      deliveries of the ADU is the exactly-once observation at the far BPA.
   4. return: dtn7d sends a receipt ADU for `dtn://fn-a/incoming` back through
-     the carrier to fn-a's `bp receive`.  fn's verdict line is recorded as
-     is: this is where an fn application receipt would have to arrive.
+     the carrier to fn-a's `bp receive`, which runs over fn-a's Store with
+     the carrier enrolled as a BP boundary (`operator bp-boundary add`), so
+     ACL2 admits the carrier's session from the observed channel.  fn's
+     verdict line is recorded as is.
 
 dtn7-rs is a lab dependency (tests/bp-dtn7/pin.json), not part of the image.
 The byte relay is `tests.test_bp_contact_relay_native.ByteRelay`; it never
@@ -43,7 +46,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_fn_bp_interop import (  # noqa: E402
     DTN_EPOCH_UNIX, LISTENING, bp_lines, free_port, tail, vector)
 
-AUTHORED = re.compile(r"BP authored creation=(\d+) sequence=(\d+)")
+AUTHORED = re.compile(r"BP (?:authored|retry) creation=(\d+) sequence=(\d+)")
+WIRE = re.compile(r"BP wire authored path=(\S+)")
 
 
 def wait_for(predicate, timeout, step=0.2):
@@ -131,15 +135,18 @@ def main(argv=None):
     fn_recv = None
     carrier = dest = None
 
-    def fn_send(port, tag):
+    def fn_send(port, tag, retry=None):
         out = subprocess.run(
             [str(image), "--fn", "bp", "send", "127.0.0.1", str(port), str(adu),
              str(journal), "dtn://fn-a/", "dtn://dtn7d/incoming", "3600000",
-             "2", "32", "1048576", "0", wall, "60000"],
+             "2", "32", "1048576", "0", wall, "60000"]
+            + ([retry] if retry else []),
             capture_output=True, text=True, timeout=120, env=env, cwd=str(ROOT))
         (work / "fn-send-{}.log".format(tag)).write_text(out.stdout + out.stderr)
         m = AUTHORED.search(out.stdout)
+        w = WIRE.search(out.stdout)
         return dict(rc=out.returncode, lines=bp_lines(work / "fn-send-{}.log".format(tag)),
+                    wire=(Path(w.group(1)).name if w else None),
                     tcpcl=[l for l in out.stdout.splitlines() if "outbound" in l
                            or "summary" in l],
                     authored=(m.groups() if m else None))
@@ -163,7 +170,7 @@ def main(argv=None):
         s1["outcome"] = {0: "accepted", 3: "uncertain"}.get(s1["rc"], "refused-or-other")
         report["step1_interrupted"] = s1
         # 2. retry straight to the carrier
-        s2 = fn_send(carrier.cla_port, "2-retry")
+        s2 = fn_send(carrier.cla_port, "2-retry", retry=s1["wire"])
         s2["outcome"] = {0: "accepted", 3: "uncertain"}.get(s2["rc"], "refused-or-other")
         s2["same_identity_as_step1"] = (s1["authored"] is not None
                                         and s1["authored"] == s2["authored"])
@@ -175,10 +182,27 @@ def main(argv=None):
         # a dtn7 static peer is resolved at startup.
         fn_port = free_port()
         fn_log = work / "fn-a-receive.log"
+        # fn-a's Store, its path identity, and the carrier as an enrolled BP
+        # boundary on this listener: the node's admission, not a host rule.
+        store = work / "fn-a-store"
+        config = work / "fn-a.toml"
+        config.write_text('[store]\npath = "{}"\n'.format(store), encoding="ascii")
+        enrolment = []
+        for step in (["store", str(store), "init", "fn.test"],
+                     ["operator", str(config), "policy", "set", "path-identity",
+                      "fn-a.bp.gate.invalid"],
+                     ["operator", str(config), "bp-boundary", "add",
+                      "carrier-boundary", "dtn7c.bp.gate.invalid", "dtn://dtn7c/",
+                      str(fn_port)]):
+            done = subprocess.run([str(image), "--fn"] + step, capture_output=True,
+                                  text=True, timeout=60, env=env, cwd=str(ROOT))
+            enrolment.append(dict(step=step[:4], rc=done.returncode,
+                                  out=(done.stdout + done.stderr)[-400:]))
+        report["fn_a_enrolment"] = enrolment
         fn_recv = subprocess.Popen(
             [str(image), "--fn", "bp", "receive", str(fn_port), "1",
              str(work / "fn-a-receive"), "dtn://fn-a/", "-", "3600000", "2",
-             "32", "1048576", "-", "-", wall, "60000"],
+             "32", "1048576", "-", "-", wall, "60000", str(store)],
             stdout=fn_log.open("wb"), stderr=subprocess.STDOUT, env=env, cwd=str(ROOT))
         wait_for(lambda: LISTENING.search(fn_log.read_bytes() or b""), 30)
         report["fn_a_receive_pid"] = fn_recv.pid

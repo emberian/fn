@@ -19,14 +19,13 @@
 (include-book "../books/frame-trailer")
 (include-book "../books/byte-store-frame")
 (include-book "../books/byte-store-txn-name")
+(include-book "../books/store-budget-naming")
 (include-book "../books/store-profile-upgrade")
 (include-book "../books/article-fields")
 
 (defconst *fn-store-capacity* 1048576)
 
 (defconst *fn-store-max-text* 512)
-
-(defconst *fn-store-max-payload* 32768)
 
 (defun fn-store-text-octetsp-tail (xs)
   (if (consp xs)
@@ -52,9 +51,13 @@
 
 ; The final transaction namespace is an ACL2 value.  The native host consumes
 ; the string wrapper; the Python bridge consumes octets so no Lisp string
-; reader or duplicate decimal formatter sits on its persistence path.
+; reader or duplicate decimal formatter sits on its persistence path.  The name
+; is `fn-sbud-txn-name', the scan's `fn-bs-txn-name', and the sequence the host
+; names is the staged record's own (`fn-sbud-pending-sequence'): the name
+; written is the name the scan expects next
+; (`fn-sbud-pending-name-is-the-scans-next-name').
 (defun fn-store-txn-name (sequence)
-  (if (natp sequence) (fn-bs-txn-name sequence) ""))
+  (fn-sbud-txn-name sequence))
 
 (defun fn-store-txn-name-octets (sequence)
   (fn-record-string-octets (fn-store-txn-name sequence)))
@@ -430,20 +433,11 @@
         :bad
       (fn-store-codes-from-groups names domain))))
 
-; The whole POST admission boundary in one call.  Every bound it applies has
-; one owner: the Message-ID grammar is `books/article-fields`, the payload cap
-; is this file's configured maximum, the group count is the record codec's
-; `*fn-record-max-groups*` and the charge range is the record codec's uint32
-; field.  Python no longer restates any of them.
-(defun fn-store-post-boundary (msgid payload-length group-count charge)
-  (if (not (fn-store-msgid-octetsp msgid))
-      :bad-message-id
-    (if (or (not (natp payload-length))
-            (< *fn-store-max-payload* payload-length))
-        :payload-bound
-      (if (or (not (posp group-count))
-              (< *fn-record-max-groups* group-count))
-          :group-bound
-        (if (or (not (posp charge)) (< *fn-cbor-max-uint* charge))
-            :charge-bound
-          :ok)))))
+; The whole POST admission boundary in one call, over the persisted PROFILE
+; the caller was handed at open (`fn-bs-config-decode's values): the payload
+; bound is that profile's payload field, the Message-ID grammar is
+; `books/article-fields`, the group count and charge range the record codec's
+; (books/store-budget-naming.lisp `fn-sbud-post-boundary').  No host constant
+; enters it.
+(defun fn-store-post-boundary (profile msgid payload-length group-count charge)
+  (fn-sbud-post-boundary profile msgid payload-length group-count charge))

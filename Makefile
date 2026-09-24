@@ -126,6 +126,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-lifecycle-tests \
 	books/hybrid-lifecycle-store-invariants \
 	books/owner-verdict-read \
+	books/owner-signed-post \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
 	tests/acl2/native-control-tests \
@@ -192,7 +193,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-record-provenance-tests \
 	books/byte-store-k0 \
 	books/byte-store-k0-staging \
+	books/byte-store-k0-recovery \
 	tests/acl2/byte-store-k0-tests \
+	tests/acl2/byte-store-k0-recovery-tests \
 	books/byte-store-retention-publication \
 	tests/acl2/byte-store-retention-publication-tests \
 	books/byte-store-keystones \
@@ -518,6 +521,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-carried \
 	books/owner-served-carried \
 	books/owner-commit-carried \
+	books/owner-prepare-carried \
+	books/owner-advance-carried \
+	books/owner-commit-ocl \
 	tests/acl2/owner-tls-pin-tests \
 	tests/acl2/served-tls-prefix-tests \
 	books/nntp-auth-invariants \
@@ -544,6 +550,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-config-observe-tests \
 	tests/acl2/owner-served-carried-tests \
 	tests/acl2/owner-commit-carried-tests \
+	tests/acl2/owner-prepare-carried-tests \
+	tests/acl2/owner-advance-carried-tests \
 	books/config-owner-publish \
 	tests/acl2/config-owner-publish-tests \
 	books/config-crash-replay \
@@ -612,6 +620,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-fault-tests \
 	tests/acl2/owner-verdict-tests \
 	tests/acl2/owner-verdict-read-tests \
+	tests/acl2/owner-signed-post-tests \
 	tests/acl2/owner-operator-tests \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
@@ -619,6 +628,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-correspondence-tests \
 	books/owner-store-budget \
 	tests/acl2/owner-store-budget-tests \
+	books/store-budget-naming \
+	tests/acl2/store-budget-naming-tests \
 	tests/acl2/owner-retention-preparation-tests \
 	books/relay \
 	books/relay-invariants \

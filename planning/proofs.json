@@ -47,7 +47,9 @@
         "fn-bprv-apply-record-preserves-evolving-invariant",
         "fn-bprv-system-run-preserves-invariant",
         "fn-scar-ocfg-read-keeps-store",
-        "fn-ccar-own-finish-preserves-sn-statep"
+        "fn-ccar-own-finish-preserves-sn-statep",
+        "fn-ocmt-post-commit-preserves-ocl-relation",
+        "fn-ocmt-sn-finish-preserves-cst-relation"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -79,7 +81,12 @@
         "books/owner-commit-carried.lisp",
         "tests/acl2/owner-commit-carried-tests.lisp",
         "planning/evidence/manifests/certify-20260924T180005Z-3125113.json",
-        "planning/evidence/commit-path-cost-2026-09-24.md"
+        "planning/evidence/commit-path-cost-2026-09-24.md",
+        "books/owner-commit-ocl.lisp",
+        "tests/acl2/owner-advance-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
+        "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
+        "planning/evidence/commit-path-2-2026-09-24.md"
       ],
       "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. The host-called store prepare projection now preserves that relation after observed open across the actual post-open mutators without replaying the appended history per prepare. Provenance, complete runtime guards and physical refinement remain open. BP joint durable/pending sender binding and fixed-Store receiver state/context/decision invariants now hold through actual transitions and arbitrary finite replay; changing-Store composition remains open. CHANGED 2026-09-22 (w31/freeze-3): `fn-snt-relation` (books/store-node-traces) now covers the two publications whose node effect is deferred to `fn-sn-finish` -- `fn-sn-prepare-retention` (`6ab2c783`) and `fn-sn-prepare-identity` (`4bb7bb3d`) -- and the fault arm `fn-sn-recover` grew in `40bb3f74`. Before this it was false of every state those three transitions produce, so `fn-snrt-step-preserves-relation`, `fn-own-step-preserves-relation` and `fn-opc-configured-step-preserves-owner-relation` above it were false with it and no run had said so. What the deferred arm says is weaker than the article arm by design: it carries the replayed node at the reservation's transaction id and the equation between the applied event and the replay of the extended history, and no proposal standing on the live node, because there is none until the directory barrier."
     },
@@ -159,7 +166,8 @@
       "requirements": [
         "RET-001",
         "RET-002",
-        "RET-004"
+        "RET-004",
+        "STO-005"
       ],
       "depends_on": [
         "PRF-001"
@@ -185,7 +193,11 @@
         "fn-sbud-prepare-below-budget-is-the-owner-prepare",
         "fn-sbud-refusal-kind-at-budget-is-unaffordable",
         "fn-sbud-budget-is-the-profile-admissibility",
-        "fn-sbud-used-names-the-transaction-namespace"
+        "fn-sbud-used-names-the-transaction-namespace",
+        "fn-pcar-sbud-prepare-is-sbud-prepare",
+        "fn-sbud-pending-sequence-is-used",
+        "fn-sbud-pending-name-is-the-scans-next-name",
+        "fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound"
       ],
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144414Z-1366014.json",
@@ -200,9 +212,17 @@
         "tests/acl2/retention-tests.lisp",
         "books/store-node-retention.lisp",
         "tests/acl2/store-node-retention-tests.lisp",
-        "planning/evidence/manifests/certify-20260924T161235Z-2188032.json"
+        "planning/evidence/manifests/certify-20260924T161235Z-2188032.json",
+        "books/owner-prepare-carried.lisp",
+        "tests/acl2/owner-prepare-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
+        "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
+        "planning/evidence/commit-path-2-2026-09-24.md",
+        "books/store-budget-naming.lisp",
+        "tests/acl2/store-budget-naming-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T182844Z-3383029.json"
       ],
-      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities. P9 over the host-called functions (books/store-node-retention.lisp, 2026-09-24): fn-spc-prepare (host/store-node-host.lisp:472, answered :refused at :475 when it returns its input) returns the live store state unchanged whenever the record's charge exceeds the room the node's retention capacity leaves, with that comparison its only hypothesis; fn-node-prepare does the same; fn-node-prepare-refuses-whatever-retain-admit-refuses is the named equation that makes RET-002's fn-retain-admit-refuses-unaffordable-obligation a statement about the called function (fn-retain-admit's no-op is exactly the inadmissible case, and in that case prepare refuses). fn-sn-finish (store-node-host.lisp:546): every article accepted before a completion is accepted after it on every arm (no hypothesis beyond membership), and an obligation leaves the ledger only when the completed record is a retention release, not an undertaking, matching its id, subject, kind and evidence; Store releases name kind :forward, so no arm releases an article's :archive pin (corollary fn-sn-finish-keeps-every-archive-obligation). Teeth: tests/acl2/store-node-retention-tests.lisp, reachable witnesses from fn-sn-initial through the host's io/prepare/finish (capacity 10, 2 reserved, charge 9 refused and 8 staged; article, undertaking and release arms) and one must-fail per hypothesis; the identity, consumer and topic arms have no concrete witness. Scope: charges are abstract units, not physical bytes; there is no archive-release event in v0, so 'until explicit release' is 'kept' for articles; crash/recover and sweep are not covered here. Authorized/committed evidence validation remains open. M5 transaction budget over the called prepare (books/owner-store-budget.lisp, 2026-09-24): fn-sbud-prepare, which host/owner-host.lisp fn-owner-prepare installs, is the identity when the budget is at most the owner Store's committed record count and is fn-opc-prepare below it; its refusal word is :unaffordable; the budget is the persisted profile's admissibility (fn-sbud-budget-is-the-profile-admissibility) and is fixed at init. Teeth in tests/acl2/owner-store-budget-tests.lisp and tests/acl2/store-budget-tests.lisp; farm manifest certify-20260924T161235Z-2188032."
+      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities. P9 over the host-called functions (books/store-node-retention.lisp, 2026-09-24): fn-spc-prepare (host/store-node-host.lisp:472, answered :refused at :475 when it returns its input) returns the live store state unchanged whenever the record's charge exceeds the room the node's retention capacity leaves, with that comparison its only hypothesis; fn-node-prepare does the same; fn-node-prepare-refuses-whatever-retain-admit-refuses is the named equation that makes RET-002's fn-retain-admit-refuses-unaffordable-obligation a statement about the called function (fn-retain-admit's no-op is exactly the inadmissible case, and in that case prepare refuses). fn-sn-finish (store-node-host.lisp:546): every article accepted before a completion is accepted after it on every arm (no hypothesis beyond membership), and an obligation leaves the ledger only when the completed record is a retention release, not an undertaking, matching its id, subject, kind and evidence; Store releases name kind :forward, so no arm releases an article's :archive pin (corollary fn-sn-finish-keeps-every-archive-obligation). Teeth: tests/acl2/store-node-retention-tests.lisp, reachable witnesses from fn-sn-initial through the host's io/prepare/finish (capacity 10, 2 reserved, charge 9 refused and 8 staged; article, undertaking and release arms) and one must-fail per hypothesis; the identity, consumer and topic arms have no concrete witness. Scope: charges are abstract units, not physical bytes; there is no archive-release event in v0, so 'until explicit release' is 'kept' for articles; crash/recover and sweep are not covered here. Authorized/committed evidence validation remains open. M5 transaction budget over the called prepare (books/owner-store-budget.lisp, 2026-09-24): fn-sbud-prepare, which host/owner-host.lisp fn-owner-prepare installs, is the identity when the budget is at most the owner Store's committed record count and is fn-opc-prepare below it; its refusal word is :unaffordable; the budget is the persisted profile's admissibility (fn-sbud-budget-is-the-profile-admissibility) and is fixed at init. Teeth in tests/acl2/owner-store-budget-tests.lisp and tests/acl2/store-budget-tests.lisp; farm manifest certify-20260924T161235Z-2188032. Second count and payload constant removed (books/store-budget-naming.lisp, 2026-09-24): the host names each transaction file from the staged candidate's sequence, fn-sbud-pending-sequence (host/owner-host.lisp fn-owner-pending-sequence, host/store-node-host.lisp fn-store-sn-pending-sequence), through fn-sbud-txn-name, the scan's fn-bs-txn-name; in a record phase of a well-formed kernel that sequence is the committed count (fn-sbud-pending-sequence-is-used) and the name extends the committed namespace to one fn-bs-txn-observation-pairs accepts at sequence used (fn-sbud-pending-name-is-the-scans-next-name). The POST boundary both entries call is fn-sbud-post-boundary over the persisted profile, admitting exactly the payloads at or under the profile's payload field (fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound); the served owner relays :payload-bound as the Store word :refused, whose 441 line is W3's. Teeth in tests/acl2/store-budget-naming-tests.lisp over an owner reached by its own transitions; farm manifest certify-20260924T182844Z-3383029."
     },
     {
       "id": "PRF-005",
@@ -675,7 +695,11 @@
         "fn-ocfg-step-observe-is-fn-ocfg-observe",
         "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
         "fn-ccar-own-finish-is-own-finish",
-        "fn-ccar-seek-is-find-record"
+        "fn-ccar-seek-is-find-record",
+        "fn-pcar-sbud-prepare-is-sbud-prepare",
+        "fn-pcar-next-lower-is-next-lower",
+        "fn-acar-own-outcome-is-reference-under-ocl-relation",
+        "fn-acar-scar-auth-sessionp-of-rebuilt-session"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -720,7 +744,14 @@
         "books/owner-commit-carried.lisp",
         "tests/acl2/owner-commit-carried-tests.lisp",
         "planning/evidence/manifests/certify-20260924T180005Z-3125113.json",
-        "planning/evidence/commit-path-cost-2026-09-24.md"
+        "planning/evidence/commit-path-cost-2026-09-24.md",
+        "books/owner-prepare-carried.lisp",
+        "tests/acl2/owner-prepare-carried-tests.lisp",
+        "books/owner-advance-carried.lisp",
+        "tests/acl2/owner-advance-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
+        "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
+        "planning/evidence/commit-path-2-2026-09-24.md"
       ],
       "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open."
     },
@@ -764,7 +795,8 @@
         "fn-served-step-effects-are-typed",
         "fn-served-run-effects-are-typed",
         "fn-own-240-follows-consumed-completion",
-        "fn-ccar-own-finish-is-own-finish"
+        "fn-ccar-own-finish-is-own-finish",
+        "fn-acar-own-outcome-is-reference-under-ocl-relation"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -783,7 +815,12 @@
         "books/owner-commit-carried.lisp",
         "tests/acl2/owner-commit-carried-tests.lisp",
         "planning/evidence/manifests/certify-20260924T180005Z-3125113.json",
-        "planning/evidence/commit-path-cost-2026-09-24.md"
+        "planning/evidence/commit-path-cost-2026-09-24.md",
+        "books/owner-advance-carried.lisp",
+        "tests/acl2/owner-advance-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
+        "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
+        "planning/evidence/commit-path-2-2026-09-24.md"
       ],
       "progress_note": "Actual implemented command/step and arbitrary finite raw event traces preserve session/cursor consistency under a valid archive projection. All dispatcher branches produce typed reply octets/close effects; closed sessions emit none. Exact bridge partitions and reconnect cases pass targeted tests. Full RFC responses/READER bundle, injection/POST and effects-to-I/O refinement remain open. fn-served-step and fn-served-run preserve the connection and type their effects, over the same fn-nntp-step the session keystones are about; the w5/legacy-commands branches (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) are covered by the unchanged statements of fn-nntp-step-effects-well-formed and fn-nntp-step-preserves-consistent-session. Open: NNT-001's capability/dispatch mismatch, and the owner."
     },
@@ -1068,7 +1105,7 @@
     {
       "id": "PRF-026",
       "title": "The reader's verdict is the recorded verdict, three-valued (S6-1)",
-      "statement": "A durable kind-4 (hybrid acceptance) completion through fn-sn-finish records that event's verdict under its Message-ID; a reader opened after the owner's (:complete) pins that verdict list; and one fn-own-read of HDR :fn-verified <msgid> on an ungated reader connection, framed at its last octet, answers exactly the pinned verdict for the retrieved article, with no keyring consulted. fn-stx-reader-verdict-is-the-recorded-verdict (books/stx-reader) is the definition restated and is not a proof event; it is no longer cited.",
+      "statement": "A durable kind-4 (hybrid acceptance) completion through fn-sn-finish records that event's verdict under its Message-ID; a reader opened after the owner's (:complete) pins that verdict list; and one fn-own-read of HDR :fn-verified <msgid> on an ungated reader connection, framed at its last octet, answers exactly the pinned verdict for the retrieved article, with no keyring consulted. A served NNTP POST (and a local control post or BP application submission) carrying an FN-Authorship carrier takes the transit classification: when ACL2 builds its kind-4 event under the node's current enrollment and that event is the completion record, the owner's (:complete) records its verdict at the POST's Message-ID and a later reader reports it; a present carrier the plan refuses renders its reason as its own 441 line and is never the unsigned arm. fn-stx-reader-verdict-is-the-recorded-verdict (books/stx-reader) is the definition restated and is not a proof event; it is no longer cited.",
       "milestone": "M4",
       "requirements": [
         "SUB-006"
@@ -1084,7 +1121,12 @@
         "fn-sn-finish-of-a-kind-4-acceptance-records-its-verdict",
         "fn-sn-finish-of-a-kind-4-acceptance-keeps-other-verdicts",
         "fn-own-reader-opened-after-completion-pins-the-finished-verdicts",
-        "fn-own-read-hdr-fn-verified-is-the-pinned-verdict"
+        "fn-own-read-hdr-fn-verified-is-the-pinned-verdict",
+        "fn-osp-authorized-event-binds-the-post",
+        "fn-osp-signed-post-finish-records-its-verdict",
+        "fn-osp-reader-after-signed-post-reports-its-verdict",
+        "fn-osp-served-refusal-renders-its-reason",
+        "fn-osp-plan-refusal-is-a-served-reason"
       ]
     },
     {
@@ -1639,7 +1681,13 @@
         "fn-bs-k0-frontier-issued-rename-error-arm-relation",
         "fn-bs-k0-frontier-error-arms-relation",
         "fn-bs-record-link-error-preserves-relation",
-        "fn-bs-record-dir-error-preserves-relation"
+        "fn-bs-record-dir-error-preserves-relation",
+        "fn-bs-crash-image-relates-to-recovery-entry-kernel",
+        "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
+        "fn-bs-recover-program-run-from-a-quiet-image",
+        "fn-bs-recover-program-keeps-relation-at-every-cut",
+        "fn-bs-host-reopened-kernel-is-the-recovered-kernel",
+        "fn-bs-k0-record-link-error-arm-relation"
       ],
       "progress_note": "2026-09-22 lane t5/sweep: byte-store-keystones had been red since 4857c648 added fn-sn-observed-identity-okp to the kernel reopen theorems; K4 and fn-bs-crash-image-reopens carry the identity condition over the scanned records; E2 additionally requires the maintained fn-csi-full-relationp, whose strict consumer replay consequence over K2's scanned image is proved by fn-bs-crash-image-consumer-replay-ok. The byte-level identity tooth is not written; the kernel's is store-observed's. K-sweep added for finding F2 of planning/evidence/campaign-dabebb84-2026-09-22.md; certification and scope in planning/evidence/sweep-allocation-orphans-2026-09-22.md. 2026-09-23 K0 bounded continuation: fn-bs-k0-record-attempted-cut-establishes-relation proves the full byte/kernel relation at the actual successful P-RECORD pair-10 cut from a related staged input, typed ACL2 frame/name, and fresh staging. Authority list, old inode entries and fences, staged durable record equality, pending link/candidate and the kernel image are derived separately. This does not establish the input relation at every served call or cover other cuts, errors, recovery or physical barriers. Article call arguments now have a finite ACL2 bridge: fn-bs-k0-article-host-arguments-are-typed-record-input proves the exact native protected-prefix/trailer frame and ACL2 transaction name decode to the staged candidate; the composed pair-10 theorem remains conditional on a related physical byte state and fresh stage. Retention/identity event codec bridges and call-entry relation establishment remain open. ACL2 fn-sf-prepare-record and the host-reached fn-sn-prepare now preserve the byte relation from any related state, including successful article staging. fn-bs-k0-served-article-prepare-to-attempted-relation composes a reserved article prepare, ACL2 frame/name and the actual P-RECORD pair10, but still assumes a related physical state at reserved entry, a valid fresh stage, and a successful prepare. Whole served trace, other event kinds/cuts/outcomes and hardware barriers remain open. 2026-09-24 K4 topic repair: the Store v6 observed reopen correctly requires topic-prefix replay. The byte keystone and acknowledged/sweep dependents carry that exact observed premise; the physical FNST counterexample in byte-store-scan-tests satisfies the old consumer/byte/crash/identity premises yet fails topic replay and actual fn-sn-open-observed. A maintained actual Store topic/crash bridge remains open; this conditional certificate is not universal recovery. 2026-09-24 K0 retention continuation: the ACL2-authored retention event now round-trips through the shared canonical Store decoder and supplies the exact native protected-frame, trailer and transaction-name arguments to the actual P-RECORD pair-10 relation theorem. The stopped pair-11 transaction-directory EIO run has both physical outcomes: :apply has the appended durable candidate and retains the attempted byte/kernel relation before the error callback; :drop retains the old durable prefix; both drain the transaction-directory choice and the callback fences. Exact applied-conclusion teeth separately drop the related-input, typed-frame and fresh-stage premises. The dropped-prefix theorem is a conditional composition result, not an independently toothed keystone: its relation and typed-frame premises may be redundant for that conclusion. The owner preparation bridge is separate; call-entry byte relation, native syscall correspondence, all P-RECORD cuts and whole recovery remain open."
     },

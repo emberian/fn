@@ -1,0 +1,2 @@
+attempt c03aeec328dfa3bf composed: loaded
+profile=dtn image=build/fn-host-dtn artifact-set=c03aeec328dfa3bfec4cd105e3e82b29c17d65b25a3cb1ea3352743d9c73d24f origin=composed books=274 source=7d1141ffca7350e6852a8199cd67ec82e43069ef878ba5a95d57fbd67c57f84e toolchain=d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0 rejected=0

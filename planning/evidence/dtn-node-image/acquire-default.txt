@@ -1,0 +1,2 @@
+attempt 5e7e4678f6107dc3 composed: loaded
+profile=default image=build/fn-host artifact-set=5e7e4678f6107dc3ca552fe67c942a62a49d5015570571fb2f404b545fad240c origin=composed books=283 source=9d00affb9411da18b06a9609c69cc72b681567c6f126153bf2ab0e37e19ea981 toolchain=d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0 rejected=0

@@ -162,6 +162,18 @@ the authority for key succession is still an unchosen D09 decision. A
 generated field can travel with an article while the exact signed
 source and mutable relay fields remain separate projections.
 
+An agent without the control socket POSTs the `hybrid-sign-carrier` output
+over NNTP. The served POST (like a local control `post` and a BP application
+submission) takes the classification protected transit takes
+(`fnn-owner-attempt-served`, host/native/owner.lisp): ACL2's
+`fn-pa-current-plan` over the injected octets and this Store's keyring
+snapshots. Absent carrier is the unsigned arm; present and valid under the
+node's current enrollment of the principal, with both native observations
+verified, is a kind-4 acceptance whose verdict `HDR :fn-verified` reports;
+present and invalid is refused with its reason as its own 441 line
+(`fn-pa-served-word`), never the unsigned arm. An unenrolled principal is
+`local-enrollment` (decision register, 2026-09-24 entry on D02's scope).
+
 The companion `hybrid-verify-source ARTICLE ML-PUBLIC-PEM` uses the same
 ACL2 carrier projection and native two-suite decision. On success it emits
 one `fn-portable-v1` line with lowercase hex fields in this exact order:

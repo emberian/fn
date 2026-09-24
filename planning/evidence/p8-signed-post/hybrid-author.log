@@ -1,0 +1,14 @@
+test_authored_carrier_survives_native_peering_and_receiver_restart (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_authored_carrier_survives_native_peering_and_receiver_restart)
+Real owner/feed/receiver path; portable verification is independent. ... ok
+test_enroll_author_refuse_tamper_and_restart_query (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_enroll_author_refuse_tamper_and_restart_query) ... ok
+test_local_revocation_targets_one_principal (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_local_revocation_targets_one_principal) ... ok
+test_portable_carrier_verifies_exact_source_and_keyset (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_portable_carrier_verifies_exact_source_and_keyset) ... ok
+test_signed_post_over_nntp_gets_the_transit_classification (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_signed_post_over_nntp_gets_the_transit_classification)
+A served POST of an FN-Authorship carrier, without the control socket. ... ok
+test_unenrolled_receiver_refuses_authored_carrier_once_and_both_sides_log_it (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_unenrolled_receiver_refuses_authored_carrier_once_and_both_sides_log_it)
+A receiver without its own enrollment of the principal refuses. ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 13.481s
+
+OK
