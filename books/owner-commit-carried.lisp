@@ -274,6 +274,15 @@
           :fault)
         (fn-ccar-own-complete o)))
 
+; The completion gate is closed off the premise (its core conjoins
+; fn-sn-statep in the logic).  Stated so the keystone below needs neither
+; gate opened: with them open that proof took 208 s.
+(defthm fn-ccar-completion-enabled-implies-statep
+  (implies (fn-sn-completion-enabledp s) (fn-sn-statep s))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory '(fn-sn-completion-enabledp
+                               fn-sn-completion-core-enabledp))))
+
 ; KEYSTONE for the host line: the carried commit is the reference commit,
 ; word and owner, for every owner and every configuration.  No hypothesis:
 ; both completion gates conjoin (mbe :logic (fn-sn-statep s) :exec t), so
@@ -284,15 +293,11 @@
 ; function with this logical one on every owner whose store satisfies it.
 (defthm fn-ccar-own-finish-is-own-finish
   (equal (fn-ccar-own-finish o cfg) (fn-own-finish o cfg))
-  :hints (("Goal" :cases ((fn-sn-statep (fn-own-store o)))
-           :in-theory (e/d (fn-ccar-own-finish fn-own-finish)
-                           (fn-sn-statep fn-own-complete
-                            fn-ccar-own-complete
-                            fn-own-completion-names-submission-p
-                            fn-ccar-completion-names-submission-p))
-           :use ((:instance fn-sn-completion-enabledp (s (fn-own-store o)))
-                 (:instance fn-sn-completion-core-enabledp
-                            (s (fn-own-store o)))))))
+  :hints (("Goal" :in-theory '(fn-ccar-own-finish fn-own-finish
+                               fn-ccar-completion-enabledp-is-reference
+                               fn-ccar-own-complete-is-own-complete
+                               fn-ccar-completion-names-submission-p-is-reference
+                               fn-ccar-completion-enabled-implies-statep))))
 
 (in-theory (disable fn-ccar-own-complete fn-ccar-completion-names-submission-p
                     fn-ccar-own-finish))
