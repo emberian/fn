@@ -173,18 +173,6 @@
   (implies (fn-record-p record)
            (equal (fn-store-event-encode record) (fn-record-encode record))))
 
-; Decoder helper returns (:ok values rest), retaining the unconsumed suffix so
-; the public decoder can reject trailing data.
-(defun fn-store-event-decode-items (octets count values)
-  (declare (xargs :guard t :verify-guards nil :measure (nfix count)))
-  (if (zp count) (list :ok (reverse values) octets)
-    (if (not (fn-cbor-octet-listp octets)) (list :error :octets)
-      (let ((one (fn-cbor-decode octets)))
-        (if (not (fn-cbor-result-okp one)) (list :error :field)
-          (fn-store-event-decode-items
-           (fn-cbor-result-rest one) (1- count)
-           (cons (fn-cbor-result-value one) values)))))))
-
 (defun fn-store-event-item-value (n values)
   (declare (xargs :guard t :verify-guards nil))
   (let ((item (fn-store-event-nth n values)))
@@ -232,12 +220,11 @@
   (if (or (not (fn-cbor-octet-listp octets))
           (not (fn-cbor-at-mostp octets *fn-store-event-max-octets*)))
       (list :error :octets)
-    (let ((parsed (fn-store-event-decode-items octets 10 nil)))
-      (if (or (not (equal (car parsed) :ok))
-              (consp (fn-store-event-nth 2 parsed)))
+    (let ((parsed (fn-stmt-decode-items 10 octets)))
+      (if (not (fn-stmt-okp parsed))
           (list :error :grammar)
         (let ((event (fn-store-retention-event-from-values
-                      (fn-store-event-nth 1 parsed))))
+                      (fn-stmt-value parsed))))
           (if event (list :ok event) (list :error :record)))))))
 
 (defun fn-store-event-decode-exact (octets)
