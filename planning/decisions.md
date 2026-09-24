@@ -8,12 +8,12 @@ gate for routine work. Record answers here with their rationale and consequences
 No unanswered recommendation is silently promoted to an agreed decision.
 
 **This is the full decision backlog, not the next questionnaire.** The
-[current acceptance cycle](now.md) can proceed without answering the remaining
-rows. Astra owns routine reversible implementation choices and will bring
+[current work](now.md) can proceed without answering the remaining rows. The
+coordinating agent owns routine reversible implementation choices and brings
 user-facing tradeoffs forward with concrete examples as they become relevant.
 
-The [three-cycle plan](archive/swarm-cycles.md) schedules concrete decision packets
-alongside implementation. Independent local service, storage and DTN work can
+The archived [three-cycle plan](archive/swarm-cycles.md) scheduled concrete
+decision packets alongside implementation. Independent local service, storage and DTN work can
 proceed under explicit experimental profiles. Its proposed sequencing and UI
 placement do not independently select a source grammar, cryptographic suite or
 release scope. The later D01/D17 answers below now fix the source boundary and
@@ -942,3 +942,50 @@ shape, its checklist and the fiber records are retired; the lane worktrees
 are removed with every checkpointed branch dispositioned in the plan's
 §5.2; the Codex role names are retired; five lanes converge every two to
 three batches; peering is measured on one box first.
+
+(Note added 2026-09-24: the role-name retirement was not carried out. The
+Codex swarm used Sol, Luna and Astra as GPT-6 role names through 2026-09-24;
+see the 2026-09-24 entries below. The five-lane width was superseded by the
+2026-09-23 width entry above.)
+
+### 2026-09-24: broad concurrent capability wave (05:37 UTC)
+
+The user asked to replace serial prerequisite-sized advances with a large
+concurrent implementation wave, accepting temporary development breakage and
+converging afterwards. This changed sequencing, not the required end state or
+the standard for an assurance claim: intermediate failures are recorded,
+never silently removed or replaced with a claim about an easier API. The wave's
+targets are in the archived [capability wave](archive/capability-wave-2026-09-24.md);
+its convergence obligations now live in [how we work](how-we-work.md#convergence-obligations).
+
+### 2026-09-24: bounded implementers hand proof work to the proof owner
+
+In the Codex swarm's trial the user kept proof development with GPT-6-Sol:
+GPT-6-Luna lanes implemented bounded features, client/UI work and fixtures
+against an explicit contract and ran prescribed checks, and handed a failed
+certification's exact source, failed event and log to Sol rather than
+searching for proofs themselves. The trial record is
+[luna-feature-trial-2026-09-24](experiments/luna-feature-trial-2026-09-24.md).
+The rule is kept model-neutrally in [how we work](how-we-work.md#who-implements-and-who-proves).
+
+### 2026-09-24: wind-down and consolidation (06:23 UTC)
+
+The user requested all current work consolidated into dev and the swarm
+quiesced over about an hour, with no new feature wave and no live-service
+deployment. The result is the [wind-down handoff](handoff-2026-09-24-winddown.md):
+all source packets integrated, `863c2141` the last completed image, the
+final `8a1b31f9` cut red on three BP roots, the live node unchanged.
+
+### 2026-09-24: Claude takes over (07:25 UTC)
+
+When GPT-6 wrote `ALLDONE.marker`, Claude took over as coordinator (Claude
+Fable coordinating, lanes on Claude Opus 5.5 in `build/lanes/<name>`
+worktrees). ember set four items by which the night is judged: a frozen image
+past `863c2141` with the three red roots fixed and BP N03 plus the
+interrupted-fragment native cases passing; one end-to-end signed peering into
+Mini consumption across two Stores as a stretch; proof cost down (books over
+10 s from 30 to at most 20, and `tools/proof_cost.py` and
+`tools/certified_claims.py` failing `make check` instead of warning); and
+planning consolidated. [Now](now.md) carries the goal and the lanes. Role
+names are neutral from here: a lane is named by its worktree and its model
+is written in its brief.
