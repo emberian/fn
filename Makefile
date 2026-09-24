@@ -521,6 +521,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-tls-prefix \
 	books/owner-config-observe \
 	books/peer-offer-indexed \
+	books/peer-guard-carried \
 	books/served-carried \
 	books/owner-served-carried \
 	books/owner-offer-indexed \
@@ -554,6 +555,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-config-observe-tests \
 	tests/acl2/owner-served-carried-tests \
 	tests/acl2/peer-offer-indexed-tests \
+	tests/acl2/peer-guard-carried-tests \
 	tests/acl2/owner-commit-carried-tests \
 	tests/acl2/owner-prepare-carried-tests \
 	tests/acl2/owner-advance-carried-tests \
