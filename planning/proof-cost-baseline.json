@@ -153,12 +153,6 @@
       "host": "nextop.local",
       "verdict": "passed"
     },
-    "books/replay": {
-      "seconds": 70.638,
-      "run": "certify-20260924T090657Z-1117779",
-      "host": "hbox",
-      "verdict": "passed"
-    },
     "books/store-identity-sequence-invariants": {
       "seconds": 66.188,
       "run": "certify-20260924T070931Z-1040432",
