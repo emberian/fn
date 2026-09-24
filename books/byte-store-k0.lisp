@@ -15,7 +15,9 @@
 ;;   P-FINISH    every pair (finish-consumed, finish-durable).
 ;;
 ;; OPEN, named and not claimed: P-FRONTIER frontier-created, frontier-written,
-;; frontier-replaced, frontier-attempted; P-RECORD record-created,
+;; frontier-replaced, frontier-attempted (the rename transport at the end of
+;; this book is proved; its authority-quiet premise at pair 6 is not
+;; exported by byte-store-record-provenance); P-RECORD record-created,
 ;; record-written, record-stage-unlinked, record-staging-cleaned; every
 ;; P-RECOVER cut (recover-replayed, recover-barrier-1..5) and
 ;; recovery-stage-unlinked, which also need the call-entry establishment
@@ -469,3 +471,75 @@
            :in-theory (e/d (fn-bs-record-inputp fn-sf-record-file-result fn-bs-replay-visiblep)
                            (fn-bs-run fn-bs-store-relation fn-sf-statep fn-bs-record-program
                             fn-bs-statep fn-bs-lookup fn-bs-make)))))
+
+;; Building block for the open frontier-replaced / frontier-attempted cuts:
+;; issuing the frontier rename on a related, authority-quiet state whose
+;; fenced staging inode decodes to the kernel's candidate keeps the relation
+;; for any :frontier-data-durable / :frontier-attempted-shaped kernel.  What
+;; remains is its premise at the actual pair 6: root/transactions quiet there
+;; is proved only as a LOCAL lemma of byte-store-record-provenance
+;; (fn-bs-k0-frontier-file-cut-authority-quiet).
+(local (defthm fn-bs-k0t-writes-knownp-of-append
+  (equal (fn-bs-writes-knownp (append a b) i)
+         (and (fn-bs-writes-knownp a i) (fn-bs-writes-knownp b i)))
+  :hints (("Goal" :induct (append a b) :in-theory (enable fn-bs-writes-knownp)))))
+(local (defthm fn-bs-k0t-writes-nonemptyp-of-append
+  (equal (fn-bs-writes-nonemptyp (append a b))
+         (and (fn-bs-writes-nonemptyp a) (fn-bs-writes-nonemptyp b)))
+  :hints (("Goal" :induct (append a b) :in-theory (enable fn-bs-writes-nonemptyp)))))
+(local (defthm fn-bs-k0t-fenced-in-ignores-rename-ops
+   (equal (fn-bs-k0t-fenced-in (append p (list (list :set-entry dir name ino)
+                                                (list :del-entry sdir sname))) xs)
+          (fn-bs-k0t-fenced-in p xs))
+   :hints (("Goal" :induct (len xs)
+            :in-theory (enable fn-bs-ops-for-ino-of-append fn-bs-ops-for-ino)))))
+(local (defthm fn-bs-k0t-fencedp-ignores-rename-ops
+   (equal (fn-bs-fencedp (fn-bs-make u i d (append p (list (list :set-entry dir name ino)
+                                                          (list :del-entry sdir sname))) n) x)
+          (fn-bs-fencedp (fn-bs-make u i d p n) x))
+   :hints (("Goal" :in-theory (enable fn-bs-fencedp fn-bs-ops-for-ino-of-append fn-bs-ops-for-ino)))))
+(local (defthm fn-bs-k0t-fencedp-of-own-fields
+   (implies (fn-bs-statep b)
+            (equal (fn-bs-fencedp (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
+                                              (fn-bs-pending b) (fn-bs-next-ino b)) x)
+                   (fn-bs-fencedp b x)))
+   :hints (("Goal" :in-theory (enable fn-bs-fencedp)))))
+(defthm fn-bs-k0-add-pending-frontier-rename-transports-relation
+  (implies (and (fn-bs-store-relation b6 k6)
+                (fn-sf-statep k)
+                (not (fn-bs-replay-visiblep k))
+                (not (fn-bs-replay-visiblep k6))
+                (not (fn-bs-ops-for-dir (fn-bs-pending b6) :root))
+                (not (fn-bs-ops-for-dir (fn-bs-pending b6) :transactions))
+                (fn-bs-inop ino)
+                (fn-bs-fencedp b6 ino)
+                (consp (assoc-equal ino (fn-bs-inodes b6)))
+                (fn-bs-dir-idp sdir) (not (equal sdir :root)) (not (equal sdir :transactions))
+                (fn-bs-namep sname)
+                (fn-sf-frontier-new-visiblep k)
+                (not (fn-sf-record-present-visiblep k))
+                (equal (fn-bs-frontier-decode (fn-bs-durable-content b6 ino))
+                       (fn-sf-frontier-candidate k))
+                (equal (fn-bs-durable-frontier b6) (fn-sf-frontier k))
+                (equal (fn-bs-durable-records b6) (fn-sf-records k)))
+           (fn-bs-store-relation
+            (fn-bs-make (fn-bs-unit b6) (fn-bs-inodes b6) (fn-bs-dirs b6)
+                        (append (fn-bs-pending b6)
+                                (list (list :set-entry :root *fn-bs-frontier-name* ino)
+                                      (list :del-entry sdir sname)))
+                        (fn-bs-next-ino b6))
+            k))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-unfolds (bs b6) (ks k6)) (:instance fn-bs-op-listp-implies-true-listp (x (fn-bs-pending b6))))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase fn-bs-pending-shape-okp
+                            fn-bs-authority-fencedp fn-bs-authority-knownp fn-bs-authority-inode-list
+                            fn-bs-pending-entry-targets fn-bs-ops-for-dir-of-append
+                            fn-bs-durable fn-bs-durable-entry fn-bs-durable-names fn-bs-statep fn-bs-shapep
+                            fn-bs-durable-records fn-bs-durable-frontier fn-bs-durable-content
+                            fn-sf-crash-imagep fn-bs-op-listp-of-append fn-bs-ops-for-dir
+                            fn-bs-writes-knownp fn-bs-writes-nonemptyp fn-bs-opp fn-bs-op-listp fn-bs-entry-valuep fn-bs-namep fn-bs-fencedp)
+                           (fn-bs-read-records fn-bs-record-of fn-sf-statep fn-bs-replay-visiblep
+                            fn-bs-contiguous-namesp fn-bs-inode-list-knownp
+                            fn-bs-all-fencedp fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
+
