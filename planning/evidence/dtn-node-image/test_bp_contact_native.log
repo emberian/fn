@@ -1,0 +1,22 @@
+# target tests.test_bp_contact_native  start 2026-09-24T18:21:04Z  cwd /tank/fn/scratch/dtn-node-image/tree
+# cmd: timeout 3600 python3 -m unittest -v tests.test_bp_contact_native
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn-developer
+# env FN_NATIVE_BP_NODE_HOST=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn-developer
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/dtn-node-image/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/dtn-node-image/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_bad_window_and_decimal_bound (tests.test_bp_contact_native.NativeBpContactTests.test_bad_window_and_decimal_bound) ... ok
+test_closed_window_interruption_and_anchored_wall_jump (tests.test_bp_contact_native.NativeBpContactTests.test_closed_window_interruption_and_anchored_wall_jump) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.413s
+
+OK
+# rc=0 wall=0.5 end 2026-09-24T18:21:05Z

@@ -14,12 +14,12 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 692 |
 | Books inside the root closure | 701 |
 | `defthm` and `defthmd` events | 9432 |
-| `defun` events | 6762 |
+| `defun` events | 6763 |
 | Functions with verified guards | 2039 |
 | Functions declared `:verify-guards nil` and never verified | 429 |
-| Functions left at the default with an explicit guard | 3372 |
+| Functions left at the default with an explicit guard | 3373 |
 | Functions left at the default with no guard | 922 |
-| `assert-event` checks | 10323 |
+| `assert-event` checks | 10330 |
 | `must-fail` checks | 755 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
@@ -552,7 +552,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-fragment-plan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-replacement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 19 | 2 | 0 |
-| `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
+| `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 12 | 0 | 0 |
 | `tests/acl2/bp-node-machine-authorization-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 21 | 4 | 0 |
 | `tests/acl2/bp-node-machine-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 10 | 5 | 0 |
 | `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 47 | 4 | 0 |
