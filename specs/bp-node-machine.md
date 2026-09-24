@@ -803,7 +803,7 @@ selectors and a `-of-constructor` theorem.
 | 11 | `(fn-bpn-rec-discarded token id)` | remove the live entry; outcome `:discarded`, kept |
 | 12 | `(fn-bpn-rec-history-retired token key)` | remove the outcome for submission `key`, and for a `:receipt` key its handoff; §2.4's retirement rule is part of applicability |
 | 13 | `(fn-bpn-rec-rerouted token id next-hop)` | replace next hop; `nil` returns the entry to `:dispatch-pending` with `dispatch` nil |
-| 14 | `(fn-bpn-rec-conflict token id ingress content-id)` | append a conflict entry to history (§4.1) |
+| 14 | `(fn-bpn-rec-conflict token id ingress content-id)` | append a conflict entry to history (§4.1). Implemented (2026-09-24) as `(fn-bpnf-conflict-record epoch op arrival identity peer session transfer content-id)`, FNBS version 1 kind 14: the held row is named by arrival and primary identity, the ingress by peer EID, session pair and transfer ID, the content id is `fn-digest` of the conflicting carrier's exact wire (not of its immutable projection, which has no canonical encoding yet). Replay checks the named held row and changes nothing; the history is the journal row itself (no in-memory projection), bounded by journal credit: one received final, zero debt |
 | 15 | `(fn-bpn-rec-family-planned token family plan)` | slice C, §7.3 |
 | 16 | `(fn-bpn-rec-family-child token family index held)` | slice C, §7.3 |
 | 17 | `(fn-bpn-rec-family-retired token family disposition)` | slice C, §7.3; `disposition` `:materialized` or `(:terminated reason)` |
@@ -3240,11 +3240,11 @@ The second review's traces (their labels; not requirement IDs):
 | N04 | old infeasible-MRU entry plus newer fitting entry: the fitting one is attempted; the old is not discarded | A1 |
 | N05 | repeated failed forwarding results near the reserve: every admitted cleanup keeps its credit | A1 (theorem, teeth), E (measured) |
 | N06 | publish a canonical file, deliver the uncertainty callback, then kill and recover: the visible record is admitted by the cut model with no fabricated confirmation | A2 |
-| N07 | durable attempt, restart with a different boot-domain monotonic origin: the domain gate fences before comparing retained Bundle Age anchors; autonomous cross-boot reanchoring remains open | A2 |
+| N07 | durable attempt, restart with a different boot-domain monotonic origin: the domain gate fences before comparing retained Bundle Age anchors; autonomous cross-boot reanchoring remains open. **Present** through `fn-bpnp-step` for the seven-field recovery event that carries `fn-bpnf-clock-domain-plan`'s decision (`fn-bpnp-step-different-boot-fences`, `fn-bpnp-step-domain-disagreement-fences`, `fn-bpnp-step-ready-recovery-is-same-boot`, `books/bp-node-machine-gaps.lisp`); the host's six-field event stays ungated until `bp-service.lisp` passes the decision | A2 |
 | N08 | death after a durable kind 8 (attempt in flight), restart: the attempt is kept as uncertain; the next session to its next hop re-offers the same held bundle (retry 1); at the retry bound the row is stranded and reported, never dropped (§4.3.1) | A1 |
 | N09 | fragment an already-fragmented parent: offsets compose; the whole-parent theorem does not apply | C1, C2 |
 | N10 | nonzero-offset fragment arrives before the offset-zero one: primary and blocks come from the offset-zero fragment | C2 |
-| N11 | decodable local administrative bundle that conflicts with a held identity: refusal and kind 14, within T5's widened class | A1 |
+| N11 | decodable local administrative bundle that conflicts with a held identity: refusal and kind 14, within T5's widened class. **Present** through `fn-bpnp-step`: `:persist-conflict` of a kind-14 record (`books/bp-fnbs-conflict-codec.lisp`, round trip `fn-bpnf-conflict-record-round-trip`), then the refusal on every publication outcome (`fn-bpnp-step-identity-conflict-is-refused-or-recorded`, `fn-bpnp-step-conflict-publication-answers-refusal`); the native publisher for the effect is not yet written | A1 |
 | N12 | multi-segment transfer with partial ACKs, then a late END capacity refusal: no successful final END ACK; partial ACKs not read as completion | A1 |
 | N13 | identical application request retried in a fresh carrier: same receipt fact, new reply submission, no new article or pin | A3 |
 | N14 | two works, receipt for the first only: exactly the first forwarding pin changes; archive pins and the second work remain | A3, slice-A gate |

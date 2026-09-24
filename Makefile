@@ -332,6 +332,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-progress-premises \
 	tests/acl2/bp-node-progress-premises-tests \
 	books/bp-node-progress-bridge \
+	books/bp-fnbs-conflict-codec \
+	books/bp-fnbs-conflict-invariants \
+	books/bp-node-machine-gaps \
 	tests/acl2/bp-node-counterexamples-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
