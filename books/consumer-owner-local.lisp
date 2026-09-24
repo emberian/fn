@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "owner")
 (include-book "consumer-store-projection")
-(include-book "replay")
+(include-book "consumer-poll-index")
 
 (defconst *fn-col-principal* '(108 111 99 97 108)) ; local
 (defconst *fn-col-query-version* 1)
@@ -71,58 +71,6 @@
     (if (not s) (list :refused :unbootstrapped)
       (fn-col-result-event
        o (fn-cp-unregister s *fn-col-principal* consumer)))))
-
-; A poll inspects at most sixteen consecutive committed Store events and
-; stops at its first group-matching accepted article.  Its cursor names the
-; last inspected prefix, never an omitted matching article.  The selected
-; event is handed unchanged to the ACL2 owner wrapper for exact encoding:
-; schema-1 stxa includes the received article, bound exact
-; authored source and historical verdict; legacy events remain explicitly
-; distinguishable by their own versioned bytes.  Poll has no Store write.
-(defconst *fn-col-poll-max-scan* 16)
-(defun fn-col-poll-article (event)
-  (if (fn-stxa-p event) (fn-replay-composite-record event)
-    (if (fn-record-p event) event nil)))
-(verify-guards fn-col-poll-article)
-(defun fn-col-poll-window (events budget)
-  (declare (xargs :guard (natp budget) :measure (nfix budget)))
-  (if (and (posp budget) (consp events))
-      (cons (car events) (fn-col-poll-window (cdr events) (1- budget)))
-    nil))
-(verify-guards fn-col-poll-window)
-(defthm fn-col-poll-window-is-true-list
-  (true-listp (fn-col-poll-window events budget))
-  :hints (("Goal" :induct (fn-col-poll-window events budget)
-           :in-theory (enable fn-col-poll-window))))
-(defun fn-col-poll-drop (events count)
-  (declare (xargs :guard (natp count) :measure (nfix count)))
-  (if (zp count) events
-    (fn-col-poll-drop (if (consp events) (cdr events) nil)
-                      (1- count))))
-(verify-guards fn-col-poll-drop)
-(defun fn-col-poll-scan (events group position frontier budget)
-  (declare (xargs :guard (and (true-listp events) (fn-cp-idp group)
-                              (natp position) (natp frontier) (natp budget))
-                  :measure (nfix budget)))
-  (if (or (zp budget) (<= (nfix frontier) (nfix position)))
-      (list :scan position nil)
-    (if (not (consp events)) (list :refused :history)
-      (let* ((event (car events))
-             (article (fn-col-poll-article event)))
-        (cond
-         ((or (not (fn-store-event-p event))
-              (not (equal (fn-store-event-sequence event) position)))
-          (list :refused :history))
-         ((and (fn-stxa-p event) (not article))
-          (list :refused :article-binding))
-         ((and (fn-record-p article)
-               (true-listp (fn-record-groups article))
-               (member-equal (fn-record-octets-string group)
-                             (fn-record-groups article)))
-          (list :scan (1+ position) event))
-         (t (fn-col-poll-scan (cdr events) group (1+ position)
-                              frontier (1- budget))))))))
-(verify-guards fn-col-poll-scan)
 
 (defun fn-col-poll (o consumer)
   (let* ((store (fn-own-store o))
