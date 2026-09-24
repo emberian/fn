@@ -1,0 +1,22 @@
+# test tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article  start 2026-09-24T15:35:17Z  cwd /tank/fn/scratch/bp-app-txid/fix/tree
+# cmd: python3 -m unittest -v tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CRASH_HOST=/tank/fn/scratch/bp-app-txid/fix/tree/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=985c0216b824ea1b7011d768ea565b2bdda41b0a8c16f67c103c6fa93666ef25
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/scratch/bp-app-txid/fix/tree/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=86c9fbf06157db58d6b4c90a6f5a6c5f6c8d88e5866b99ee9221d09a835c87fb
+# env FN_NATIVE_HOST=/tank/fn/scratch/bp-app-txid/fix/tree/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=3ab7ab03-on-1a9dd747
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/bp-app-txid/fix/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/bp-app-txid/diag/fix
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_death_after_fnrj_receipt_decision_replays_one_article (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 25.235s
+
+OK
+# rc=0 wall=25s end 2026-09-24T15:35:42Z
