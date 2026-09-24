@@ -319,6 +319,8 @@
     "books/bp-node-progress-guards",
     "books/bp-node-progress-premises",
     "tests/acl2/bp-node-progress-premises-tests",
+    "books/bp-node-progress-bridge",
+    "tests/acl2/bp-node-counterexamples-tests",
     "books/bp-node-progress-selection-invariants",
     "tests/acl2/bp-node-machine-teeth-tests",
     "books/bp-fnbs-dispatch-codec",
@@ -672,25 +674,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 679,
-    "books_in_root_closure": 677,
-    "roots": 668,
-    "theorems": 9122,
-    "functions": 6618,
-    "assert_events": 9900,
-    "must_fails": 615,
+    "books": 681,
+    "books_in_root_closure": 679,
+    "roots": 670,
+    "theorems": 9163,
+    "functions": 6631,
+    "assert_events": 10012,
+    "must_fails": 673,
     "encapsulates": 30,
     "guards": {
       "verified": 2036,
-      "declared-off": 408,
+      "declared-off": 414,
       "default-guarded": 3306,
-      "default-unguarded": 868
+      "default-unguarded": 875
     },
     "suspect_theorems": 83,
     "export_hygiene_warnings": 109,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 48,
-    "include_hygiene_warnings": 650,
+    "include_hygiene_warnings": 656,
     "host_names_warnings": 816,
     "hand_written_record_warnings": 18
   },
@@ -2854,6 +2856,32 @@
       "suspects": [
         "fn-bpn-step-emits-no-release"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-node-progress-bridge.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node-machine-authorization",
+        "bp-node-progress-premises"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -7146,7 +7174,7 @@
       "book": "books/nntp-auth-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
+      "theorems": 31,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -12507,6 +12535,36 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-node-counterexamples-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 14,
+      "must_fails": 14,
+      "defconsts": 64,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-node-progress-bridge",
+        "../../books/bp-node-progress-selection-invariants",
+        "../../books/bp-node-receive-boundary",
+        "../../books/codec-attach"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-node-debt-cache-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -16217,18 +16275,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 20,
+      "functions": 27,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 20
+        "default-unguarded": 27
       },
       "verify_guards_events": 0,
-      "assert_events": 238,
-      "must_fails": 39,
-      "defconsts": 89,
-      "defmacros": 13,
+      "assert_events": 336,
+      "must_fails": 83,
+      "defconsts": 120,
+      "defmacros": 27,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
@@ -20471,6 +20529,7 @@
           "books/bp-node-machine-authorization.lisp",
           "books/bp-node-machine-invariants.lisp",
           "books/bp-node-machine.lisp",
+          "books/bp-node-progress-bridge.lisp",
           "books/bp-node-progress-guards.lisp",
           "books/bp-node-progress-premises.lisp",
           "books/bp-node-progress-selection-invariants.lisp",
@@ -20478,7 +20537,7 @@
           "books/bp-report-author.lisp",
           "books/hybrid-signature.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 12 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 13 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-cbor-ag-cdr",
@@ -21486,6 +21545,20 @@
         "line": 6,
         "include": "bp-node-foundation",
         "included": "books/bp-node-foundation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-progress-bridge.lisp",
+        "line": 12,
+        "include": "bp-node-progress-premises",
+        "included": "books/bp-node-progress-premises.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-progress-bridge.lisp",
+        "line": 13,
+        "include": "bp-node-machine-authorization",
+        "included": "books/bp-node-machine-authorization.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -23299,6 +23372,34 @@
         "line": 4,
         "include": "bp-receipt-records-tests",
         "included": "tests/acl2/bp-receipt-records-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-counterexamples-tests.lisp",
+        "line": 12,
+        "include": "../../books/bp-node-progress-bridge",
+        "included": "books/bp-node-progress-bridge.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-counterexamples-tests.lisp",
+        "line": 13,
+        "include": "../../books/bp-node-progress-selection-invariants",
+        "included": "books/bp-node-progress-selection-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-counterexamples-tests.lisp",
+        "line": 14,
+        "include": "../../books/bp-node-receive-boundary",
+        "included": "books/bp-node-receive-boundary.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-counterexamples-tests.lisp",
+        "line": 15,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
