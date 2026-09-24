@@ -5,8 +5,7 @@
 ; and the configuration completion keeps it
 ; (fn-ocl-complete-preserves-full-historical-relation), but nothing said the
 ; ordinary commit the host runs for every POST keeps it: host/owner-host.lisp
-; fn-owner-finish-submission installs (cdr (fn-ccar-own-finish o cfg)) with no
-; configuration record staged.  Nor did anything say its store conjunct,
+; fn-owner-finish-submission installs (cdr (fn-ccar-own-finish o cfg)).  Nor did anything say its store conjunct,
 ; fn-cst-relation (books/config-store-traces.lisp), survives fn-sn-finish:
 ; that book proves only that open establishes it.
 ;
@@ -176,14 +175,15 @@
 ; -----------------------------------------------------------------------------
 ; The owner step.
 
-; The owner's completion, with no configuration record staged, keeps the
-; configured owner's relation.
+; The owner's completion keeps the configured owner's relation.  A staged
+; configuration record is carried through unchanged: the relation's staged
+; conjunct reads only the live configuration, which this step keeps.
 (defthm fn-ocmt-own-complete-preserves-ocl-relation
-  (implies (and (fn-ocl-relation oc)
-                (not (fn-ocfg-staged oc)))
+  (implies (fn-ocl-relation oc)
            (fn-ocl-relation
             (fn-ocfg-make (fn-own-complete (fn-ocfg-owner oc))
-                          (fn-ocfg-config oc) (fn-ocfg-pins oc) nil)))
+                          (fn-ocfg-config oc) (fn-ocfg-pins oc)
+                          (fn-ocfg-staged oc))))
   :hints (("Goal"
            :cases ((fn-sn-completion-enabledp (fn-own-store (fn-ocfg-owner oc))))
            :use ((:instance fn-ocmt-sn-finish-preserves-cst-relation
@@ -198,11 +198,13 @@
                   (f (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
                  (:instance fn-ocmt-conns-historyp-of-same-history
                   (oc2 (fn-ocfg-make (fn-own-complete (fn-ocfg-owner oc))
-                                     (fn-ocfg-config oc) (fn-ocfg-pins oc) nil))
+                                     (fn-ocfg-config oc) (fn-ocfg-pins oc)
+                                     (fn-ocfg-staged oc)))
                   (conns (fn-own-conns (fn-ocfg-owner oc))))
                  (:instance fn-ocmt-config-historyp-of-same-history
                   (oc2 (fn-ocfg-make (fn-own-complete (fn-ocfg-owner oc))
-                                     (fn-ocfg-config oc) (fn-ocfg-pins oc) nil)))
+                                     (fn-ocfg-config oc) (fn-ocfg-pins oc)
+                                     (fn-ocfg-staged oc))))
                  (:instance fn-ocmt-refreshed-ready-view-history
                   (st (fn-sn-finish (fn-own-store (fn-ocfg-owner oc))))
                   (view (fn-own-view (fn-ocfg-owner oc)))
@@ -233,7 +235,8 @@
                   (queue (fn-own-queue (fn-ocfg-owner oc)))
                   (inflight (fn-own-inflight (fn-ocfg-owner oc)))
                   (feeds (fn-own-feeds (fn-ocfg-owner oc)))
-                  (cfg (fn-ocfg-config oc)) (pins (fn-ocfg-pins oc)) (staged nil)))
+                  (cfg (fn-ocfg-config oc)) (pins (fn-ocfg-pins oc))
+                  (staged (fn-ocfg-staged oc))))
            :in-theory (e/d (fn-ocl-relation fn-own-complete
                             fn-own-refresh-keeps-fields
                             fn-own-ledger-durablep-append)
@@ -249,12 +252,12 @@
                             fn-snt-finish-image
                             fn-ocmt-sn-finish-keeps-config-history)))))
 
-; KEYSTONE for host/owner-host.lisp fn-owner-finish-submission: with no
-; configuration record staged (the host's own test before the call), the
-; configured owner the commit installs satisfies fn-ocl-relation again.
+; KEYSTONE for host/owner-host.lisp fn-owner-finish-submission: the
+; configured owner the commit installs satisfies fn-ocl-relation again, for
+; every configuration passed.  No other hypothesis (the host additionally
+; refuses the commit while a configuration record is staged).
 (defthm fn-ocmt-post-commit-preserves-ocl-relation
-  (implies (and (fn-ocl-relation oc)
-                (not (fn-ocfg-staged oc)))
+  (implies (fn-ocl-relation oc)
            (fn-ocl-relation
             (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg)))))
   :hints (("Goal" :use fn-ocmt-own-complete-preserves-ocl-relation
