@@ -18,6 +18,11 @@
 ; -----------------------------------------------------------------------------
 ; P2: fn-own-240-follows-consumed-completion.
 
+; The live configuration fn-own-finish is given: owner-tests' peer
+; configuration, with peer "p" and path-identity own.example.  A local
+; submission's staged octets do not depend on it.
+(defconst *osi-cfg* *own-peer-cfg*)
+
 ; The 240 line fn-own-outcome would render for connection `id' of `o'.
 (defun osi-240-reply (o id)
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
@@ -29,12 +34,13 @@
       :durable))))
 
 (defun osi-p2-240p (o id)
-  (equal (car (fn-own-outcome (cdr (fn-own-finish o)) id (car (fn-own-finish o))))
-         (osi-240-reply (cdr (fn-own-finish o)) id)))
+  (equal (car (fn-own-outcome (cdr (fn-own-finish o *osi-cfg*)) id
+                              (car (fn-own-finish o *osi-cfg*))))
+         (osi-240-reply (cdr (fn-own-finish o *osi-cfg*)) id)))
 
 (defun osi-p2-conclusion (o id)
-  (let* ((o2 (cdr (fn-own-finish o)))
-         (word (car (fn-own-finish o)))
+  (let* ((o2 (cdr (fn-own-finish o *osi-cfg*)))
+         (word (car (fn-own-finish o *osi-cfg*)))
          (pair (fn-sf-completion (fn-sn-files (fn-own-store o))))
          (record (fn-sn-completion-record (fn-own-store o)))
          (sub (fn-own-inflight o)))
@@ -51,20 +57,22 @@
          (fn-record-p record)
          (equal (fn-record-msgid record)
                 (fn-record-octets-string (fn-own-sub-msgid sub)))
-         (equal (fn-record-payload record) (fn-own-sub-octets sub))
+         (equal (fn-record-payload record) (fn-own-sub-stored-octets *osi-cfg* sub))
          (fn-sf-record-has-pairp pair (fn-sf-records (fn-sn-files (fn-own-store o2))))
          t)))
 
 ; The record the host should stage for the submission in flight: its
 ; Message-ID and octets, with the metadata own-record derives.
-(defun osi-sub-record (sequence txid sub)
+(defun osi-record-of (sequence txid sub payload)
   (let ((msgid (fn-record-octets-string (fn-own-sub-msgid sub))))
-    (fn-record-make sequence txid txid msgid (fn-own-sub-octets sub)
+    (fn-record-make sequence txid txid msgid payload
                     '("fn.letters")
                     (concatenate 'string "own-pin:" msgid)
                     (concatenate 'string "own-content:" msgid)
                     (concatenate 'string "own-release:" msgid)
                     2 841000000)))
+(defun osi-sub-record (sequence txid sub)
+  (osi-record-of sequence txid sub (fn-own-sub-octets sub)))
 
 (defun osi-drop-last (xs)
   (if (and (consp xs) (consp (cdr xs)))
@@ -78,15 +86,15 @@
               (osi-drop-last (own-post-events (osi-sub-record 2 2 *osi-sub*)))))
 (assert-event (fn-own-relation *osi-completing*))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *osi-completing*)))
-(assert-event (equal (car (fn-own-finish *osi-completing*)) :durable))
+(assert-event (equal (car (fn-own-finish *osi-completing* *osi-cfg*)) :durable))
 (assert-event (osi-p2-240p *osi-completing* 4))
 (assert-event (equal (fn-served-reply-octets
-                      (car (fn-own-outcome (cdr (fn-own-finish *osi-completing*)) 4
-                                           (car (fn-own-finish *osi-completing*)))))
+                      (car (fn-own-outcome (cdr (fn-own-finish *osi-completing* *osi-cfg*)) 4
+                                           (car (fn-own-finish *osi-completing* *osi-cfg*)))))
                      (append (fn-nntp-string-octets "240 article received OK") '(13 10))))
 (assert-event (osi-p2-conclusion *osi-completing* 4))
 ; The finish is the (:complete) event on the owner.
-(assert-event (equal (cdr (fn-own-finish *osi-completing*))
+(assert-event (equal (cdr (fn-own-finish *osi-completing* *osi-cfg*))
                      (fn-own-step *osi-completing* '(:complete))))
 
 ; FINDING (P2).  With the host's word, 240 is rendered over a completion of
@@ -108,11 +116,11 @@
 (assert-event (not (equal (fn-record-payload (fn-sn-completion-record
                                               (fn-own-store *osi-mismatch-completing*)))
                           (fn-own-sub-octets *osi-sub*))))
-(assert-event (equal (car (fn-own-finish *osi-mismatch-completing*)) :fault))
+(assert-event (equal (car (fn-own-finish *osi-mismatch-completing* *osi-cfg*)) :fault))
 (assert-event (equal (fn-own-take 4 (fn-served-reply-octets
                                      (car (fn-own-outcome
-                                           (cdr (fn-own-finish *osi-mismatch-completing*)) 4
-                                           (car (fn-own-finish *osi-mismatch-completing*))))))
+                                           (cdr (fn-own-finish *osi-mismatch-completing* *osi-cfg*)) 4
+                                           (car (fn-own-finish *osi-mismatch-completing* *osi-cfg*))))))
                      (fn-nntp-string-octets "441 ")))
 
 ; Hypothesis 2 (the reply is 240).  *own-taken*: related, nothing staged,
@@ -143,6 +151,100 @@
 (assert-event (osi-p2-240p *osi-unrelated* 4))
 (assert-event (not (osi-p2-conclusion *osi-unrelated* 4)))
 (must-fail (assert-event (osi-p2-conclusion *osi-unrelated* 4)))
+
+; Transit (transit-436, the 6c0626c5 regression).  A transit submission from
+; peer "p" in flight on connection 4 of the reachable *own-taken*, installed
+; with owner-tests' own-with-inflight (the idiom of its feed-subject teeth;
+; it is not reached by an IHAVE through fn-own-read).  *osi-cfg* sets
+; path-identity own.example, so the octets fn-owner-take stages for the
+; Store are the received octets with own.example prepended to Path.
+(defconst *osi-transit-sub*
+  (let ((sub (fn-own-inflight *own-taken*)))
+    (fn-own-sub-make 4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
+                     (fn-peer-make-submission
+                      "p" :ihave *own-transit-msgid*
+                      (own-transit-octets "peer.example!x")))))
+(defconst *osi-transit-stored*
+  (fn-own-sub-stored-octets *osi-cfg* *osi-transit-sub*))
+(defconst *osi-transit-received* (fn-own-sub-octets *osi-transit-sub*))
+(assert-event (fn-own-transit-subp *osi-transit-sub*))
+; Non-degenerate: the staged octets are not the received ones; they begin
+; with this node's identity.
+(assert-event (not (equal *osi-transit-stored* *osi-transit-received*)))
+(assert-event (equal (take 18 *osi-transit-stored*)
+                     (fn-nntp-string-octets "Path: own.example!")))
+
+(defun osi-transit-completing (payload)
+  (fn-own-run (own-with-inflight *own-taken* *osi-transit-sub*)
+              (osi-drop-last
+               (own-post-events
+                (osi-record-of 2 2 *osi-transit-sub* payload)))))
+
+; Witness: the Store completes the record carrying the staged octets.  The
+; finish is :durable, the reply is the 240 expression, and the keystone's
+; conclusion holds.
+(defconst *osi-transit-completing* (osi-transit-completing *osi-transit-stored*))
+(assert-event (fn-own-relation *osi-transit-completing*))
+(assert-event (fn-sn-completion-enabledp (fn-own-store *osi-transit-completing*)))
+(assert-event (equal (car (fn-own-finish *osi-transit-completing* *osi-cfg*))
+                     :durable))
+(assert-event (osi-p2-240p *osi-transit-completing* 4))
+(assert-event (osi-p2-conclusion *osi-transit-completing* 4))
+; The regression: 6c0626c5's fn-own-finish compared the completed record
+; with the received octets (fn-own-sub-octets).  On this durable completion
+; that comparison is false, so it answered :fault, which the host reported
+; as `436 ... uncertain' and a recovery stop.
+(assert-event (not (equal (fn-record-payload
+                           (fn-sn-completion-record
+                            (fn-own-store *osi-transit-completing*)))
+                          *osi-transit-received*)))
+(must-fail
+ (assert-event (equal (fn-record-payload
+                       (fn-sn-completion-record
+                        (fn-own-store *osi-transit-completing*)))
+                      *osi-transit-received*)))
+
+; Negative: the Store completes a record carrying the received octets, which
+; is not what the owner staged.  The finish is :fault (uncertain), no 240 is
+; rendered, and the conclusion fails.
+(defconst *osi-transit-unstaged* (osi-transit-completing *osi-transit-received*))
+(assert-event (fn-own-relation *osi-transit-unstaged*))
+(assert-event (fn-sn-completion-enabledp (fn-own-store *osi-transit-unstaged*)))
+(assert-event (equal (car (fn-own-finish *osi-transit-unstaged* *osi-cfg*))
+                     :fault))
+(assert-event (not (osi-p2-240p *osi-transit-unstaged* 4)))
+(must-fail (assert-event (osi-p2-conclusion *osi-transit-unstaged* 4)))
+
+; Negative: a completion for a different article.  The record carries the
+; staged octets but another Message-ID; the finish still faults.
+(defconst *osi-transit-other*
+  (fn-own-run (own-with-inflight *own-taken* *osi-transit-sub*)
+              (osi-drop-last
+               (own-post-events
+                (fn-record-make 2 2 2 "<other@example.invalid>"
+                                *osi-transit-stored* '("fn.letters")
+                                "own-pin:<other@example.invalid>"
+                                "own-content:<other@example.invalid>"
+                                "own-release:<other@example.invalid>"
+                                2 841000000)))))
+(assert-event (fn-own-relation *osi-transit-other*))
+(assert-event (fn-sn-completion-enabledp (fn-own-store *osi-transit-other*)))
+(assert-event (equal (car (fn-own-finish *osi-transit-other* *osi-cfg*)) :fault))
+(assert-event (not (osi-p2-240p *osi-transit-other* 4)))
+(must-fail (assert-event (osi-p2-conclusion *osi-transit-other* 4)))
+
+; The transit arm's Path shape on the witness (P7's
+; fn-peer-relayed-octets-keep-the-received-path-tail, concretely): the staged
+; octets are the received ones with "own.example!<diagnostic>!" inserted
+; before the received Path contents, and nothing else changed.
+(defconst *osi-received-path-line*
+  (fn-nntp-string-octets "Path: peer.example!x"))
+(assert-event (equal (take (len *osi-received-path-line*) *osi-transit-received*)
+                     *osi-received-path-line*))
+(assert-event (equal (nthcdr 6 *osi-transit-received*)
+                     (let ((tail (nthcdr 6 *osi-transit-stored*)))
+                       (nthcdr (- (len tail) (len (nthcdr 6 *osi-transit-received*)))
+                               tail))))
 
 ; -----------------------------------------------------------------------------
 ; P3: fn-own-pinned-view-survives-other-post.

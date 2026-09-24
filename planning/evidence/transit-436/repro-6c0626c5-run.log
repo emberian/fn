@@ -1,0 +1,5 @@
+CONTROL /tank/fn/scratch/transit-436/repro-6c0626c5/control.sock
+LISTENING 50107
+accepted peer connection=0 peer=a time=2026-09-24T16:01:32Z
+accepted peer connection=1 peer=a time=2026-09-24T16:01:32Z
+uncertain operator run

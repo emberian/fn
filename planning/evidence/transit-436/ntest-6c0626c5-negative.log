@@ -1,0 +1,15 @@
+test_transit_into_a_node_with_a_path_identity_is_accepted_and_owner_stays (tests.test_native_peering.NativePeeringTests.test_transit_into_a_node_with_a_path_identity_is_accepted_and_owner_stays) ... FAIL
+
+======================================================================
+FAIL: test_transit_into_a_node_with_a_path_identity_is_accepted_and_owner_stays (tests.test_native_peering.NativePeeringTests.test_transit_into_a_node_with_a_path_identity_is_accepted_and_owner_stays)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/transit-436/tree-a3e10e74/tests/test_native_peering.py", line 415, in test_transit_into_a_node_with_a_path_identity_is_accepted_and_owner_stays
+    self.assertTrue(replies["ihave"].startswith(b"235 "), replies)
+AssertionError: False is not true : {'ihave': b'436 transfer failed; the outcome is uncertain\r\n', 'takethis': b''}
+
+----------------------------------------------------------------------
+Ran 1 test in 0.618s
+
+FAILED (failures=1)
+native-peering launcher-sha256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18 core-sha256=f9ba0c633b5e3fe69f8983b3ed1a44e00ad3bff16021e9e14f1bd42d20335fad declared-source=6c0626c5ad5691966fdbbae475dcd886ec425f28

@@ -1,0 +1,7 @@
+test_older_unrouted_transit_does_not_block_younger_local_request (tests.test_bp_node_native.NativeBpNodeTests.test_older_unrouted_transit_does_not_block_younger_local_request) ... ok
+test_death_after_fnrj_receipt_decision_replays_one_article (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 48.680s
+
+OK
