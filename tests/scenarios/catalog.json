@@ -1241,6 +1241,30 @@
         "tests/native_peer_raw_key_component.lisp"
       ],
       "execution_scope": "ACL2 source projection, local-enrollment selection and event construction plus raw host caller and OpenSSL 3.5.8 raw-key component tests pass. A source-matched saved-image two-Store consumer poll/project, physical crash/reopen, and full owner closure remain open."
+    },
+    {
+      "id": "SCN-039",
+      "title": "Group names: RFC 5536 grammar and reserved names at creation",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-009"
+      ],
+      "steps": [
+        "Run `operator CONFIG init` with example.test, then with fn.test and Poster, against an absent store.",
+        "Initialize with fn.test, then run `group create poster`, `group create Example.a` and `group create fn.poster`.",
+        "Run `group create fn..test` and `init` with a name containing a space."
+      ],
+      "expected": [
+        "Each init is refused :reserved-group-name with exit 1 and no store directory is created.",
+        "poster and Example.a are refused :reserved-group-name with exit 1 and the configuration directory is unchanged; fn.poster is created.",
+        "Grammar violations remain usage errors (exit 5) from fn-record-group-namep, distinct from the reserved-name refusal."
+      ],
+      "evidence": [
+        "tests/acl2/native-admin-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/test_native_operator_verbs.py"
+      ]
     }
   ]
 }

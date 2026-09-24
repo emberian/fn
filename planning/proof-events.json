@@ -2441,6 +2441,51 @@
           "note": "Over fn-nntp-post-outcome: a Store refusal kind is never the uncertain line; nntp-post-tests has one must-fail per hypothesis."
         }
       ]
+    },
+    {
+      "id": "PRF-071",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-record-group-namep-is-the-rfc-5536-grammar",
+          "note": "Over fn-record-group-namep, which fn-native-admin-plan, fn-nop-parse-init-groups (through fn-record-groupsp) and the record and configuration codecs call. Equates the one-pass recognizer with the component-at-a-time grammar."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-group-namep-rejects-a-forbidden-octet",
+          "note": "Over fn-record-group-namep; records-shape-tests has a must-fail per hypothesis."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-group-namep-rejects-a-leading-dot",
+          "note": "Over fn-record-group-namep; records-shape-tests has a must-fail for its hypothesis."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-group-namep-rejects-an-empty-component",
+          "note": "Over fn-record-group-namep; records-shape-tests has a must-fail for its hypothesis."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-group-namep-rejects-a-trailing-dot",
+          "note": "Over fn-record-group-namep; records-shape-tests has a must-fail for its hypothesis."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-plan-refuses-a-reserved-group-create",
+          "note": "Over fn-native-admin-plan (host/native-admin-host.lisp:7): refused :reserved-group-name with no delta; native-admin-tests has one must-fail per hypothesis."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-refuses-a-reserved-init-group",
+          "note": "Over fn-native-operator-run (host/native-operator-host.lisp:19): never an accepted init plan; native-operator-tests has one must-fail per hypothesis."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-group-name-creatablep-is-the-rfc-5536-rule",
+          "note": "Over fn-native-admin-group-name-creatablep, which fn-native-admin-plan applies through its reserved clause: the case-folded first-component reading equals the example / example. / poster reading; native-admin-tests has one must-fail per disjunct and for the case fold."
+        }
+      ]
     }
   ]
 }
