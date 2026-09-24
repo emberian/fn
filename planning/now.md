@@ -1,5 +1,16 @@
 # Current work — 2026-09-24
 
+## Broad capability wave — 05:37 UTC
+
+The user requested a larger concurrent implementation step with later
+convergence, accepting explicitly recorded intermediate failures. The
+[capability wave](capability-wave-2026-09-24.md) gives complete workflow targets,
+cooperating lanes and preserved contracts. The repaired `b074f94e` source has
+passed its exact combined closure using matching cached certificates; one
+native image pair is building while development moves. This does not discharge
+the conditional topic-replay premise or the remaining physical durability
+argument. The active live node is unchanged.
+
 ## Conditional recovery repair and BP prerequisites — 05:28 UTC
 
 Source through `a2357594` includes scoped repairs for acceptance-stamp and

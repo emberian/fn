@@ -1,5 +1,13 @@
 # How we work now
 
+The user's [broad capability wave](capability-wave-2026-09-24.md) authorizes
+larger concurrent implementation steps and explicit intermediate integration
+failures. It supersedes sequencing that held dependent implementation until
+every prerequisite proof had landed. The loop below remains the standard for
+claiming a packet qualified; unqualified checkpoints are allowed and must name
+the missing proof/build/runtime work. A qualification freeze pins its own
+isolated checkout or immutable export; it does not freeze development.
+
 One page. A lane is briefed from this and from its step in
 [the trajectory plan](plan-2026-09-22-trajectory.md) (§3 the steps, §3.3 the
 phase schedule). The rules below are the five findings of
