@@ -27,21 +27,9 @@
       "host": "persvati",
       "verdict": "passed"
     },
-    "books/records": {
-      "seconds": 11.658,
-      "run": "certify-20260923T155856Z-97680",
-      "host": "nextop.local",
-      "verdict": "passed"
-    },
     "books/store-node-traces": {
       "seconds": 10.542,
       "run": "certify-20260924T103543Z-1230417",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/tcpcl-octets": {
-      "seconds": 12.864,
-      "run": "certify-20260923T175847Z-4039310",
       "host": "hbox",
       "verdict": "passed"
     }
