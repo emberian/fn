@@ -1555,7 +1555,7 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
         (if (null response)
             (let ((state (fn-owner-feed-install-feed nil nil state)))
               (value :quiet))
-          (let ((result (fn-own-feed-port-observe-peer
+          (let* ((result (fn-own-feed-port-observe-peer
                          peer (fn-own-feeds owner) response
                          (fn-own-feed-article owner msgid) obs))
                 ; The sender's one line for this reply (nil for a 335/238),

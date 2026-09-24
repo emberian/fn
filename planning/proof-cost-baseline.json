@@ -3,6 +3,12 @@
   "threshold_seconds": 10.0,
   "tolerance": 0.25,
   "books": {
+    "books/bp-handoff-status": {
+      "seconds": 10.883,
+      "run": "certify-20260924T154012Z-1507829",
+      "host": "hbox",
+      "verdict": "passed"
+    },
     "books/bp-node-forward-lower-guards": {
       "seconds": 10.54,
       "run": "certify-20260924T151024Z-1459891",
@@ -39,6 +45,12 @@
       "host": "persvati",
       "verdict": "passed"
     },
+    "books/config-owner-live": {
+      "seconds": 11.385,
+      "run": "certify-20260924T154012Z-1507829",
+      "host": "hbox",
+      "verdict": "passed"
+    },
     "books/consumer-local-control": {
       "seconds": 11.534,
       "run": "certify-20260924T102224Z-3270826",
@@ -46,14 +58,20 @@
       "verdict": "passed"
     },
     "books/owner-invariants": {
-      "seconds": 11.833,
-      "run": "certify-20260924T105650Z-3582222",
-      "host": "persvati",
+      "seconds": 13.842,
+      "run": "certify-20260924T154012Z-1507829",
+      "host": "hbox",
       "verdict": "passed"
     },
     "books/peer-inbound": {
-      "seconds": 10.138,
-      "run": "certify-20260924T151024Z-1459891",
+      "seconds": 15.047,
+      "run": "certify-20260924T153733Z-1502951",
+      "host": "hbox",
+      "verdict": "passed"
+    },
+    "books/store-node-traces": {
+      "seconds": 16.595,
+      "run": "certify-20260924T153733Z-1502951",
       "host": "hbox",
       "verdict": "passed"
     }
