@@ -133,7 +133,10 @@
       (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
     (let ((effects
             (fnn-bps-foundation-step
-             bp (list :progress node observation nil 0))))
+             bp (list :progress node observation
+                      (fnn-core 'fn-bpnp-single-peer-routes
+                                (fnn-bp-eid configured-peer))
+                      0))))
       (unless effects (return-from fnn-bpnode-dispatch-one nil))
       (when (and (= (length effects) 1)
                  (eq (first (first effects)) :progress-wait))
@@ -148,6 +151,10 @@
                  (eq (first (first effects)) :progress-uncertain))
         (fnn-indeterminate
          "BP node held carrier expiry is uncertain; recovery or clock evidence required"))
+      (when (and (= (length effects) 1)
+                 (eq (first (first effects)) :persist-dispatch))
+        (fnn-bps-drive-effects bp effects)
+        (return-from fnn-bpnode-dispatch-one t))
       (unless (and (= (length effects) 1)
                    (eq (first (first effects)) :deliver)
                    (= (length (first effects)) 5))
