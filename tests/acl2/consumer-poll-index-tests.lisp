@@ -21,6 +21,8 @@
          '(4) 1 3 16)
         '(:scan 3 nil)))
 (assert-event (null (fn-col-poll-index-window *cpit-index* 3 3 16)))
+(assert-event (equal (len (fn-col-poll-index-window
+                           *cpit-index* 0 3 1)) 1))
 
 ; Omitting the correspondence premise permits an indexed substitution.
 (must-fail

@@ -77,6 +77,14 @@
                                     (1- budget)))))
 (verify-guards fn-col-poll-index-window)
 
+(defthm fn-col-poll-index-window-length-bound
+  (implies (natp budget)
+           (<= (len (fn-col-poll-index-window
+                     index position frontier budget))
+               budget))
+  :hints (("Goal" :induct (fn-col-poll-index-window
+                            index position frontier budget))))
+
 (defthm fn-col-poll-drop-one
   (implies (natp position)
            (equal (fn-col-poll-drop events (1+ position))
