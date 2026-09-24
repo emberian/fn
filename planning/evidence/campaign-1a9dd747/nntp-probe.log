@@ -1,0 +1,28 @@
+cut frontier-staged-durable kill
+cut frontier-staged-durable eio
+cut frontier-replaced kill
+cut frontier-replaced eio
+cut frontier-attempted kill
+cut frontier-attempted eio
+cut frontier-durable kill
+cut frontier-durable eio
+cut frontier-reserved kill
+cut frontier-reserved eio
+cut record-staged-durable kill
+cut record-staged-durable eio
+cut record-linked kill
+cut record-linked eio
+cut record-attempted kill
+cut record-attempted eio
+cut record-durable kill
+cut record-durable eio
+cut record-completing kill
+cut record-completing eio
+cut record-staging-cleaned kill
+cut record-staging-cleaned eio
+cut finish-consumed kill
+cut finish-consumed eio
+cut finish-durable kill
+cut finish-durable eio
+controls
+rc=0
