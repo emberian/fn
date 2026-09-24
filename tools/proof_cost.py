@@ -10,13 +10,16 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime
-import hashlib
 import json
 from pathlib import Path
 import re
+import sys
 
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import certs  # noqa: E402
+
 SUMMARY = re.compile(r"(?m)^Summary\s*$")
 FORM = re.compile(r"(?m)^Form:\s*(.*)$")
 TIME = re.compile(r"(?m)^Time:\s*([0-9]+(?:\.[0-9]+)?) seconds")
@@ -48,19 +51,32 @@ def slowest_event(log: Path) -> tuple[str, float] | None:
     return best
 
 
-def source_scope(manifest: dict) -> str:
+def source_scope(manifest: dict, checkout: Path = ROOT) -> str:
     named_tree = manifest.get("tree")
     tree = Path(named_tree) if named_tree else None
     sources = manifest.get("source_digests_sha256") or {}
-    if tree is None or not tree.is_dir() or not isinstance(sources, dict) or not sources:
+    if not isinstance(sources, dict) or not sources:
         return "source-closure=current-bytes unavailable"
+    # Archived farm manifests keep their original absolute `tree` path, which
+    # is often unavailable on the machine reading the archive. Their relative
+    # source digests still let us say whether this checkout has those bytes.
+    # Keep the scope explicit: that is a checkout comparison, not a statement
+    # that this was the tree used by the run.
+    if tree is not None and tree.is_dir():
+        comparison_root, comparison = tree, "manifest-tree comparison"
+    else:
+        comparison_root, comparison = checkout, "checkout comparison"
     stale = 0
     for relative, expected in sources.items():
-        path = tree / relative
-        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+        path = comparison_root / relative
+        try:
+            matches = path.is_file() and certs.content_hash(path) == expected
+        except OSError:
+            matches = False
+        if not matches:
             stale += 1
     return (f"source-closure={'stale' if stale else 'matches'} "
-            f"({stale} of {len(sources)} source digests differ; manifest scope only)")
+            f"({stale} of {len(sources)} source digests differ; {comparison})")
 
 
 def elapsed_seconds(manifest: dict) -> str:
