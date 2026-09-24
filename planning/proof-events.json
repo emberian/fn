@@ -821,7 +821,7 @@
         {
           "kind": "theorem",
           "name": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
-          "note": "The per-read owner transition the host calls (host/owner-host.lisp fn-owner-chunk calls fn-scar-ocfg-read-tls-prefix) equals fn-ocfg-read-tls-prefix under fn-ocl-relation; it takes the store node's fn-node-statep from that relation instead of evaluating it (O(N^2) in the archive) four times per read. Teeth: tests/acl2/owner-served-carried-tests.lisp."
+          "note": "The per-read owner transition the host calls (host/owner-host.lisp fn-owner-chunk calls fn-scar-ocfg-read-tls-prefix) equals fn-ocfg-read-tls-prefix under fn-ocl-relation and the owner view trie premise fn-scar-view-indexedp (carried by books/owner-offer-indexed.lisp); it takes the store node's fn-node-statep from that relation instead of evaluating it (O(N^2) in the archive) four times per read. Teeth: tests/acl2/owner-served-carried-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -2516,6 +2516,21 @@
           "kind": "theorem",
           "name": "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan",
           "note": "Subject equation at the served reader dispatcher: for ARTICLE, HEAD, BODY and STAT and every argument list, fn-nntp-archive-command-pinned equals the scanning fn-nntp-archive-command given only the trie correspondence the owner carries per connection. Teeth: tests/acl2/nntp-pinned-msgid-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pix-history-hasp-is-peer-history-hasp",
+          "note": "Keystone for the IHAVE/CHECK duplicate test: under fn-node-statep of the node and the trie's correspondence to the list it is keyed to, the indexed history test (one fn-midx-lookup when the node holds that list, the scan otherwise) equals fn-peer-history-hasp for every Message-ID. The node premise removes the binding scan (every binding names an article). Host line: host/owner-host.lisp fn-owner-chunk calls fn-scar-ocfg-read-tls-prefix, which passes the owner view's trie to fn-pix-peer-step-pinned. Teeth: tests/acl2/peer-offer-indexed-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pix-peer-step-pinned-is-peer-step-pinned",
+          "note": "The peer step the carried served fold runs (fn-scar-peer-step-pinned for a named peer) equals fn-peer-step-pinned under the trie correspondence alone, so every peer-inbound theorem over the reference step (K3 435/438 on a held Message-ID) holds of the host's call. Teeth: a held offer 435/438 and an absent offer 335/238 on a reachable node; the wrong trie answers 335 where the reference answers 435 (must-fail)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oix-ocfg-step-keeps-view-indexed",
+          "note": "Preservation of the trie premise fn-scar-view-indexedp over every fn-ocfg-step event the host drives (open, advance, close, reads, open-peer, fault, reconfigure, complete, begin, take and every fn-own-step writer event); with fn-oix-own-start-is-view-indexed, fn-oix-ocfg-observe-keeps-view-indexed and fn-oix-scar-read-keeps-view-indexed it holds on every configured owner the host reaches. The work is fn-oix-refresh-keeps-correspondence over fn-midx-refresh-preserves-correspondence."
         }
       ]
     },

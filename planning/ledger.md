@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 719 |
-| Certification roots in the Makefile | 708 |
-| Books inside the root closure | 717 |
-| `defthm` and `defthmd` events | 9583 |
-| `defun` events | 6838 |
-| Functions with verified guards | 2046 |
+| Books read | 722 |
+| Certification roots in the Makefile | 711 |
+| Books inside the root closure | 720 |
+| `defthm` and `defthmd` events | 9637 |
+| `defun` events | 6845 |
+| Functions with verified guards | 2049 |
 | Functions declared `:verify-guards nil` and never verified | 439 |
-| Functions left at the default with an explicit guard | 3400 |
-| Functions left at the default with no guard | 953 |
-| `assert-event` checks | 10534 |
-| `must-fail` checks | 809 |
+| Functions left at the default with an explicit guard | 3402 |
+| Functions left at the default with no guard | 955 |
+| `assert-event` checks | 10567 |
+| `must-fail` checks | 813 |
 | `encapsulate` events | 30 |
-| Theorems flagged SUSPECT by shape | 83 |
+| Theorems flagged SUSPECT by shape | 84 |
 | Export-hygiene warnings | 116 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 59 |
-| Include-hygiene warnings | 691 |
+| Include-hygiene warnings | 696 |
 | Host-names warnings | 826 |
 | Hand-written-record warnings | 18 |
 
@@ -375,10 +375,11 @@ that `make certify` requests.
 | `books/owner-invariants.lisp` | root | 154 | 8 | 0/0/6/2 | 0 | 0 | 1 |
 | `books/owner-log.lisp` | root | 20 | 29 | 0/0/29/0 | 0 | 0 | 0 |
 | `books/owner-numbering.lisp` | root | 41 | 3 | 0/0/2/1 | 0 | 0 | 0 |
+| `books/owner-offer-indexed.lisp` | root | 40 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-prepare-carried.lisp` | root | 12 | 7 | 4/0/3/0 | 0 | 0 | 0 |
 | `books/owner-prepare-correspondence.lisp` | root | 19 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/owner-retention-preparation.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/owner-served-carried.lisp` | root | 11 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/owner-served-carried.lisp` | root | 12 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-served-invariants.lisp` | root | 16 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-signed-post.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-store-budget.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -394,6 +395,7 @@ that `make certify` requests.
 | `books/peer-feed.lisp` | root | 35 | 100 | 3/0/97/0 | 0 | 0 | 0 |
 | `books/peer-inbound-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/peer-inbound.lisp` | root | 71 | 61 | 9/4/48/0 | 0 | 0 | 4 |
+| `books/peer-offer-indexed.lisp` | root | 13 | 4 | 3/0/1/0 | 0 | 0 | 1 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 14 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -730,6 +732,7 @@ that `make certify` requests.
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 1 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 214 | 5 | 0 |
+| `tests/acl2/peer-offer-indexed-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 33 | 4 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
@@ -871,6 +874,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-peer-nntp-command-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 1575 | instance-corollary: the statement is fn-nntp-command-pinned-preserves-consistent-session instantiated, discharging nothing |
 | `fn-peer-nntp-step-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 1590 | instance-corollary: the statement is fn-nntp-step-pinned-preserves-consistent-session instantiated, discharging nothing |
 | `fn-peer-post-step-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 1603 | instance-corollary: the statement is fn-post-step-pinned-preserves-consistent-session instantiated, discharging nothing |
+| `fn-pix-msgid-argp-forward` | `books/peer-offer-indexed.lisp` | 229 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-msgid-argp |
 | `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 239 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-prov-transit-kindp-forward` | `books/provenance.lisp` | 56 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp |
 | `fn-prov-wire-of-a-string-is-itself-by-definition` | `books/provenance-codec.lisp` | 563 | branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value |

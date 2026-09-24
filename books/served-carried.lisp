@@ -19,9 +19,17 @@
 ; definition here is proved EQUAL to its reference under (fn-node-statep
 ; live), with no other hypothesis, so every theorem about the reference is a
 ; theorem about this one on those states.  No branch is dropped.
+;
+; The step functions also take `trie' and `arts', the owner view's
+; Message-ID trie and the article list it indexes, and hand them to the peer
+; step (fn-pix-peer-step-pinned, books/peer-offer-indexed.lisp), whose
+; IHAVE/CHECK history test answers from the trie.  Their equations add the
+; premise (fn-midx-correspondencep trie arts), which the owner carries
+; (fn-scar-view-indexedp, books/owner-served-carried.lisp).
 
 (in-package "ACL2")
 (include-book "served-tls-prefix")
+(include-book "peer-offer-indexed")
 
 (defun fn-scar-node-statep (node live)
   (declare (xargs :guard t))
@@ -78,51 +86,55 @@
                                    fn-node-statep)))))
 
 ; A reader session (no peer) is served by the POST-composed step without a
-; further recognizer.  A peer session goes to the reference itself: its
-; transit arms call fn-peer-command, whose guard is fn-peer-sessionp, and
-; fn-peer-decide-offer, whose guard is fn-node-statep, so a guard-verified
-; copy could not skip that evaluation (the finding in the evidence file).
+; further recognizer.  A peer session goes to fn-pix-peer-step-pinned, the
+; reference with its history test indexed; it still tests fn-peer-sessionp
+; per event: its transit arms call fn-peer-command, whose guard is
+; fn-peer-sessionp, and the offer decision, whose guard is fn-node-statep, so
+; a guard-verified copy could not skip that evaluation (the finding in
+; planning/evidence/served-path-cost-2026-09-24.md).
 (defun fn-scar-peer-step-pinned
-    (ps live archive index verdicts config observation injection wire-event)
+    (ps live trie arts archive index verdicts config observation injection wire-event)
   (declare (xargs :guard t))
   (cond
    ((not (fn-scar-peer-sessionp ps live)) (fn-post-make-result ps nil nil))
    ((null (fn-peer-session-peer ps))
     (fn-peer-delegate-pinned ps archive index verdicts config observation
                              injection wire-event))
-   (t (fn-peer-step-pinned ps archive index verdicts config observation
-                           injection wire-event))))
+   (t (fn-pix-peer-step-pinned ps trie arts archive index verdicts config
+                               observation injection wire-event))))
 
 (defthm fn-scar-peer-step-pinned-is-peer-step-pinned
-  (implies (fn-node-statep live)
-           (equal (fn-scar-peer-step-pinned ps live archive index verdicts config
+  (implies (and (fn-node-statep live)
+                (fn-midx-correspondencep trie arts))
+           (equal (fn-scar-peer-step-pinned ps live trie arts archive index verdicts config
                                             observation injection wire-event)
                   (fn-peer-step-pinned ps archive index verdicts config
                                        observation injection wire-event)))
   :hints (("Goal" :in-theory (e/d (fn-scar-peer-step-pinned fn-peer-step-pinned)
-                                  (fn-scar-peer-sessionp fn-peer-sessionp
+                                  (fn-midx-correspondencep fn-scar-peer-sessionp fn-peer-sessionp
                                    fn-node-statep fn-peer-delegate-pinned
                                    fn-peer-step fn-peer-command)))))
 
 (defun fn-scar-auth-delegate-pinned
-    (as live archive index verdicts config observation injection wire-event)
+    (as live trie arts archive index verdicts config observation injection wire-event)
   (declare (xargs :guard t))
   (let ((r (fn-scar-peer-step-pinned
-            (fn-auth-session-base as) live archive index verdicts config
+            (fn-auth-session-base as) live trie arts archive index verdicts config
             observation injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
                          (fn-post-result-submission r))))
 
 (defthm fn-scar-auth-delegate-pinned-is-auth-delegate-pinned
-  (implies (fn-node-statep live)
-           (equal (fn-scar-auth-delegate-pinned as live archive index verdicts config observation injection wire-event)
+  (implies (and (fn-node-statep live)
+                (fn-midx-correspondencep trie arts))
+           (equal (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config observation injection wire-event)
                   (fn-auth-delegate-pinned as archive index verdicts config observation injection wire-event)))
   :hints (("Goal" :in-theory (e/d (fn-scar-auth-delegate-pinned fn-auth-delegate-pinned)
-                                  (fn-scar-peer-step-pinned fn-peer-step-pinned fn-node-statep)))))
+                                  (fn-midx-correspondencep fn-scar-peer-step-pinned fn-peer-step-pinned fn-node-statep)))))
 
 (defun fn-scar-auth-step-pinned
-    (as live archive index verdicts config observation injection wire-event)
+    (as live trie arts archive index verdicts config observation injection wire-event)
   (declare (xargs :guard t))
   (cond
    ((not (fn-scar-auth-sessionp as live)) (fn-post-make-result as nil nil))
@@ -139,23 +151,24 @@
                (fn-nntp-command-arguments-at-mostp tokens))
           (let ((r (fn-auth-command as config (car tokens) (cdr tokens))))
             (if r r
-              (fn-scar-auth-delegate-pinned as live archive index verdicts config
+              (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config
                                         observation injection wire-event)))
-        (fn-scar-auth-delegate-pinned as live archive index verdicts config observation
+        (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config observation
                                   injection wire-event))))
-   (t (fn-scar-auth-delegate-pinned as live archive index verdicts config observation
+   (t (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config observation
                                 injection wire-event))))
 
 (defthm fn-scar-auth-step-pinned-is-auth-step-pinned
-  (implies (fn-node-statep live)
-           (equal (fn-scar-auth-step-pinned as live archive index verdicts config observation injection wire-event)
+  (implies (and (fn-node-statep live)
+                (fn-midx-correspondencep trie arts))
+           (equal (fn-scar-auth-step-pinned as live trie arts archive index verdicts config observation injection wire-event)
                   (fn-auth-step-pinned as archive index verdicts config observation injection wire-event)))
   :hints (("Goal" :in-theory (e/d (fn-scar-auth-step-pinned fn-auth-step-pinned)
-                                  (fn-scar-auth-sessionp fn-auth-sessionp fn-scar-auth-delegate-pinned fn-auth-delegate-pinned fn-auth-command fn-auth-tls-established fn-node-statep)))))
+                                  (fn-midx-correspondencep fn-scar-auth-sessionp fn-auth-sessionp fn-scar-auth-delegate-pinned fn-auth-delegate-pinned fn-auth-command fn-auth-tls-established fn-node-statep)))))
 
-(defun fn-scar-dispatch (conn event live)
+(defun fn-scar-dispatch (conn event live trie arts)
   (declare (xargs :guard t))
-  (let* ((r (fn-scar-auth-step-pinned (fn-served-conn-session conn) live
+  (let* ((r (fn-scar-auth-step-pinned (fn-served-conn-session conn) live trie arts
                                (fn-served-conn-archive conn)
                                (fn-served-conn-pinned-index conn)
                                (fn-served-conn-verdicts conn)
@@ -190,18 +203,19 @@
                                 nil))))))
 
 (defthm fn-scar-dispatch-is-served-dispatch
-  (implies (fn-node-statep live)
-           (equal (fn-scar-dispatch conn event live)
+  (implies (and (fn-node-statep live)
+                (fn-midx-correspondencep trie arts))
+           (equal (fn-scar-dispatch conn event live trie arts)
                   (fn-served-dispatch conn event)))
   :hints (("Goal" :in-theory (e/d (fn-scar-dispatch fn-served-dispatch)
-                                  (fn-scar-auth-step-pinned fn-auth-step-pinned fn-node-statep)))))
+                                  (fn-midx-correspondencep fn-scar-auth-step-pinned fn-auth-step-pinned fn-node-statep)))))
 
-(defun fn-scar-dispatch-events (conn events live)
+(defun fn-scar-dispatch-events (conn events live trie arts)
   (declare (xargs :guard t))
   (if (consp events)
-      (let* ((here (fn-scar-dispatch conn (car events) live))
+      (let* ((here (fn-scar-dispatch conn (car events) live trie arts))
              (tail (fn-scar-dispatch-events (fn-served-result-conn here)
-                                              (cdr events) live)))
+                                              (cdr events) live trie arts)))
         (fn-served-make-result
          (fn-served-result-conn tail)
          (mbe :logic (append (fn-served-result-effects here)
@@ -211,12 +225,13 @@
     (fn-served-make-result conn nil)))
 
 (defthm fn-scar-dispatch-events-is-served-dispatch-events
-  (implies (fn-node-statep live)
-           (equal (fn-scar-dispatch-events conn events live)
+  (implies (and (fn-node-statep live)
+                (fn-midx-correspondencep trie arts))
+           (equal (fn-scar-dispatch-events conn events live trie arts)
                   (fn-served-dispatch-events conn events)))
   :hints (("Goal" :induct (fn-served-dispatch-events conn events)
            :in-theory (e/d (fn-scar-dispatch-events fn-served-dispatch-events)
-                           (fn-scar-dispatch fn-served-dispatch fn-node-statep)))))
+                           (fn-midx-correspondencep fn-scar-dispatch fn-served-dispatch fn-node-statep)))))
 
 ; The wire half of one carried dispatch is the reference's, whatever `live'
 ; is: the guard of the carried fold needs it without the node premise.
@@ -224,7 +239,7 @@
   (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
            (fn-wire-fast-statep
             (fn-served-conn-wire
-             (fn-served-result-conn (fn-scar-dispatch conn event live)))))
+             (fn-served-result-conn (fn-scar-dispatch conn event live trie arts)))))
   :hints (("Goal"
            :in-theory (disable fn-wire-fast-statep
                                fn-wire-begin-article-with-line-limit
@@ -241,11 +256,11 @@
   (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
            (fn-wire-fast-statep
             (fn-served-conn-wire
-             (fn-served-result-conn (fn-scar-dispatch-events conn events live)))))
-  :hints (("Goal" :induct (fn-scar-dispatch-events conn events live)
+             (fn-served-result-conn (fn-scar-dispatch-events conn events live trie arts)))))
+  :hints (("Goal" :induct (fn-scar-dispatch-events conn events live trie arts)
            :in-theory (disable fn-scar-dispatch fn-wire-fast-statep))))
 
-(defun fn-scar-feed-byte (conn byte live)
+(defun fn-scar-feed-byte (conn byte live trie arts)
   (declare (xargs :guard (fn-wire-fast-statep (fn-served-conn-wire conn))))
   (let ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))
     (fn-scar-dispatch-events
@@ -258,21 +273,22 @@
                           (fn-served-conn-verdicts conn)
                           (fn-served-conn-index conn)
                           (fn-served-conn-group-index conn))
-     (fn-wire-result-events fed) live)))
+     (fn-wire-result-events fed) live trie arts)))
 
 (defthm fn-scar-feed-byte-is-served-feed-byte
-  (implies (fn-node-statep live)
-           (equal (fn-scar-feed-byte conn byte live)
+  (implies (and (fn-node-statep live)
+                (fn-midx-correspondencep trie arts))
+           (equal (fn-scar-feed-byte conn byte live trie arts)
                   (fn-served-feed-byte conn byte)))
   :hints (("Goal" :in-theory (e/d (fn-scar-feed-byte fn-served-feed-byte)
-                                  (fn-scar-dispatch-events fn-served-dispatch-events fn-wire-feed-byte fn-node-statep)))))
+                                  (fn-midx-correspondencep fn-scar-dispatch-events fn-served-dispatch-events fn-wire-feed-byte fn-node-statep)))))
 
 
 (defthm fn-scar-feed-byte-preserves-fast-statep
   (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
            (fn-wire-fast-statep
             (fn-served-conn-wire
-             (fn-served-result-conn (fn-scar-feed-byte conn byte live)))))
+             (fn-served-result-conn (fn-scar-feed-byte conn byte live trie arts)))))
   :hints (("Goal"
            :in-theory (e/d (fn-scar-feed-byte)
                            (fn-served-feed-byte-preserves-fast-statep
@@ -299,7 +315,7 @@
                               (fn-wire-feed-byte
                                (fn-served-conn-wire conn) byte))))))))
 
-(defun fn-scar-feed-counted (conn octets live)
+(defun fn-scar-feed-counted (conn octets live trie arts)
   (declare (xargs :guard (fn-wire-fast-statep (fn-served-conn-wire conn))
                   :verify-guards nil
                   :measure (len octets)))
@@ -307,9 +323,9 @@
           (fn-served-closed-wirep (fn-served-conn-wire conn))
           (fn-served-tls-handshakingp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (let* ((here (fn-scar-feed-byte conn (car octets) live))
+    (let* ((here (fn-scar-feed-byte conn (car octets) live trie arts))
            (tail (fn-scar-feed-counted
-                  (fn-served-result-conn here) (cdr octets) live))
+                  (fn-served-result-conn here) (cdr octets) live trie arts))
            (tail-result (fn-served-counted-result tail)))
       (fn-served-counted-make
        (+ 1 (fn-served-counted-consumed tail))
@@ -322,9 +338,9 @@
 
 (defthm fn-scar-feed-counted-consumed-is-natural
   (natp (fn-served-counted-consumed
-         (fn-scar-feed-counted conn octets live)))
+         (fn-scar-feed-counted conn octets live trie arts)))
   :rule-classes :type-prescription
-  :hints (("Goal" :induct (fn-scar-feed-counted conn octets live)
+  :hints (("Goal" :induct (fn-scar-feed-counted conn octets live trie arts)
            :in-theory (e/d (fn-scar-feed-counted
                             fn-served-counted-make
                             fn-served-counted-consumed)
@@ -339,19 +355,20 @@
                             (byte (car octets)))))))
 
 (defthm fn-scar-feed-counted-is-served-feed-counted
-  (implies (fn-node-statep live)
-           (equal (fn-scar-feed-counted conn octets live)
+  (implies (and (fn-node-statep live)
+                (fn-midx-correspondencep trie arts))
+           (equal (fn-scar-feed-counted conn octets live trie arts)
                   (fn-served-feed-counted conn octets)))
   :hints (("Goal" :induct (fn-served-feed-counted conn octets)
            :in-theory (e/d (fn-scar-feed-counted fn-served-feed-counted)
-                           (fn-scar-feed-byte fn-served-feed-byte
+                           (fn-midx-correspondencep fn-scar-feed-byte fn-served-feed-byte
                             fn-node-statep)))))
 
-(defun fn-scar-step-counted-core (conn octets live)
+(defun fn-scar-step-counted-core (conn octets live trie arts)
   (declare (xargs :guard
                   (fn-wire-fast-statep (fn-served-conn-wire conn))))
   (let* ((wire (fn-served-conn-wire conn))
-         (fed (fn-scar-feed-counted conn octets live))
+         (fed (fn-scar-feed-counted conn octets live trie arts))
          (result (fn-served-counted-result fed))
          (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
     (fn-served-counted-make
@@ -373,25 +390,27 @@
               nil)))))))
 
 (defthm fn-scar-step-counted-core-is-served-step-counted-core
-  (implies (fn-node-statep live)
-           (equal (fn-scar-step-counted-core conn octets live)
+  (implies (and (fn-node-statep live)
+                (fn-midx-correspondencep trie arts))
+           (equal (fn-scar-step-counted-core conn octets live trie arts)
                   (fn-served-step-counted-core conn octets)))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-counted-core fn-served-step-counted-core)
-                                  (fn-scar-feed-counted fn-served-feed-counted fn-node-statep)))))
+                                  (fn-midx-correspondencep fn-scar-feed-counted fn-served-feed-counted fn-node-statep)))))
 
-(defun fn-scar-step-counted-fast (conn octets live)
+(defun fn-scar-step-counted-fast (conn octets live trie arts)
   (declare (xargs :guard t))
   (if (not (fn-wire-fast-statep (fn-served-conn-wire conn)))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (fn-scar-step-counted-core conn octets live)))
+    (fn-scar-step-counted-core conn octets live trie arts)))
 
 
 (defthm fn-scar-step-counted-fast-is-served-step-counted-fast
-  (implies (fn-node-statep live)
-           (equal (fn-scar-step-counted-fast conn octets live)
+  (implies (and (fn-node-statep live)
+                (fn-midx-correspondencep trie arts))
+           (equal (fn-scar-step-counted-fast conn octets live trie arts)
                   (fn-served-step-counted-fast conn octets)))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-counted-fast fn-served-step-counted-fast)
-                                  (fn-scar-step-counted-core fn-served-step-counted-core fn-node-statep)))))
+                                  (fn-midx-correspondencep fn-scar-step-counted-core fn-served-step-counted-core fn-node-statep)))))
 
 ; Withdraw the carried definitions: a book above reaches them through the
 ; equations, not by opening them.
