@@ -110,6 +110,50 @@
            :in-theory (disable fn-cei-correspondencep fn-cei-build
                                fn-cei-build-aux fn-cei-get))))
 
+(defthm fn-col-poll-index-get-non-uint-is-nil-by-definition
+  (implies (not (fn-cp-uintp position))
+           (equal (fn-cei-get position index) nil))
+  :hints (("Goal" :in-theory (enable fn-cei-get))))
+
+(defthm fn-col-poll-index-get-past-end-is-nil
+  (implies (and (fn-cei-correspondencep index events)
+                (true-listp events)
+                (<= (len events) (1+ *fn-cbor-max-uint*))
+                (natp position)
+                (<= (len events) position))
+           (equal (fn-cei-get position index) nil))
+  :hints (("Goal"
+           :cases ((fn-cp-uintp position))
+           :use ((:instance fn-cei-get-of-build-is-committed-event
+                            (sequence position)))
+           :in-theory (e/d (fn-cei-correspondencep)
+                           (fn-cei-build fn-cei-build-aux fn-cei-get
+                            fn-cei-get-of-build-is-committed-event)))))
+
+(defthm fn-col-poll-nth-past-end-is-nil
+  (implies (and (natp position) (<= (len events) position))
+           (equal (nth position events) nil))
+  :hints (("Goal" :induct (fn-col-poll-drop events position)
+           :in-theory (enable nth len fn-col-poll-drop))))
+
+(defthm fn-col-poll-index-lookup-is-drop-head-total
+  (implies (and (fn-cei-correspondencep index events)
+                (true-listp events)
+                (<= (len events) (1+ *fn-cbor-max-uint*))
+                (natp position))
+           (equal (fn-cei-get position index)
+                  (car (fn-col-poll-drop events position))))
+  :hints (("Goal"
+           :cases ((< position (len events)))
+           :use ((:instance fn-col-poll-index-lookup-is-drop-head)
+                 (:instance fn-col-poll-index-get-past-end-is-nil))
+           :do-not-induct t
+           :in-theory (e/d (fn-col-poll-drop-head-is-nth)
+                           (fn-cei-correspondencep fn-cei-build fn-cei-get
+                            fn-cei-build-aux
+                            fn-col-poll-index-lookup-is-drop-head
+                            fn-col-poll-index-get-past-end-is-nil)))))
+
 ; This proof notation uses the old list suffix.  It is never called by poll.
 (defun fn-col-poll-list-window (events position frontier budget)
   (declare (xargs :guard (and (natp position) (natp frontier) (natp budget))
@@ -127,8 +171,7 @@
   (implies (and (fn-cei-correspondencep index events)
                 (true-listp events)
                 (<= (len events) (1+ *fn-cbor-max-uint*))
-                (natp position) (natp frontier) (natp budget)
-                (<= frontier (len events)))
+                (natp position) (natp frontier) (natp budget))
            (equal (fn-col-poll-index-window index position frontier budget)
                   (fn-col-poll-list-window events position frontier budget)))
   :hints (("Goal" :induct (fn-col-poll-index-window
