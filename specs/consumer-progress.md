@@ -327,6 +327,18 @@ poll returned them. It does not perform Mini's source verification or durable
 inbox/outbox transaction. The `1d26e01f` native command projected the exact
 event and cursor exported by the signed poll campaign.
 
+The offline `fn consumer-inspect CURSOR.fncu` command reads a regular file
+through the ACL2-owned 346-octet maximum encoding bound, then calls
+`fn-cp-cursor-decode` and prints the exact five IDs as lowercase hex and the
+query version, view version, registration epoch and position as decimal
+fields in a `fn-consumer-inspect-v1` line. Malformed, truncated or trailing
+input is refused by the decoder; overbound input is refused before decoding.
+This is syntactic cursor inspection only. The token contents do not
+authenticate an fn Store, prove that the cursor was accepted, establish that
+the displayed epoch is current, or prove that any consumer processed an
+article. IDs are printed as hex so arbitrary octets cannot inject terminal
+control characters.
+
 That **local-owner profile** pins one OS owner principal inside ACL2; its
 query is exact historical membership in one group that is configured at
 registration, with fixed query version 1 and view version 0. The same local

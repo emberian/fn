@@ -205,3 +205,36 @@ A valid carrier does not establish topic anchoring or report admission."
 (fnn-register-verb "consumer-project"
                    (lambda (first rest)
                      (fnn-command-consumer-project (cons first rest))))
+
+(defun fnn-command-consumer-inspect (args)
+  "Decode a bounded fncu cursor for diagnostics; it conveys no Store authority."
+  (unless (= (length args) 1)
+    (error 'fnn-usage-error
+           :message "usage: fn consumer-inspect CURSOR.fncu"))
+  (let* ((octets (handler-case
+                     (fnn-octet-list
+                      (fnn-read-regular-bounded
+                       (first args) (fnn-core 'fn-cpj-max-cursor-octets)))
+                   (fnn-input-overbound ()
+                     (fnn-out "fn-consumer-inspect-refused-v1 limit")
+                     (return-from fnn-command-consumer-inspect 1))))
+         (decoded (fnn-core 'fn-cp-cursor-decode octets)))
+    (unless (eq (first decoded) :ok)
+      (fnn-out "fn-consumer-inspect-refused-v1 ~(~a~)" (second decoded))
+      (return-from fnn-command-consumer-inspect 1))
+    (let ((cursor (second decoded)))
+      (fnn-out "fn-consumer-inspect-v1 history=~a incarnation=~a consumer=~a principal=~a query=~a query-version=~d view-version=~d registration-epoch=~d position=~d currentness=unverified acceptance=unverified processing=unverified"
+               (fnn-hex (fnn-core 'fn-cp-nth 1 cursor))
+               (fnn-hex (fnn-core 'fn-cp-nth 2 cursor))
+               (fnn-hex (fnn-core 'fn-cp-nth 3 cursor))
+               (fnn-hex (fnn-core 'fn-cp-nth 4 cursor))
+               (fnn-hex (fnn-core 'fn-cp-nth 5 cursor))
+               (fnn-core 'fn-cp-nth 6 cursor)
+               (fnn-core 'fn-cp-nth 7 cursor)
+               (fnn-core 'fn-cp-nth 8 cursor)
+               (fnn-core 'fn-cp-nth 9 cursor))
+      0)))
+
+(fnn-register-verb "consumer-inspect"
+                   (lambda (first rest)
+                     (fnn-command-consumer-inspect (cons first rest))))
