@@ -55,7 +55,8 @@ coordinate is on the [swarm board](swarm-board.md).
 | proof-cost-regressions | `store-node-invariants`, `consumer-store-invariants`, `store-identity-sequence-invariants`, `store-node-traces`, `replay` under 10 s, statements unchanged | before/after per-book times from certify logs, same host and toolchain |
 | check-ratchet | done: both lints exit 1 on regression; baseline `planning/proof-cost-baseline.json` (37 books, slowest measurement per book) only shrinks | merged; `make check` exit 0 |
 | worktree-retire | done: 60 of 83 landed worktrees retired, 6 archive refs, [record](evidence/worktree-retirement-2026-09-24-claude.md) | merged `ec498722` |
-| bp-codec-cost | `checkpoint-compaction`, `records-canonicality`, `bp-node-fragment-plan`, `bp-fnbs-codec-invariants`, `tcpcl-session`, `bp-fnbs-byte-invariants` under 10 s, statements unchanged | before/after per-book times, same host and toolchain |
+| bp-codec-cost | done: five of six under 10 s (`checkpoint-compaction` 67.8 to 1.8, `records-canonicality` 37.6 to 5.1, `bp-node-fragment-plan` 28.8 to 1.3, `bp-fnbs-codec-invariants` 26.5 to 4.4, `bp-fnbs-byte-invariants` 22.8 to 3.4); `tcpcl-session` 24.2 to 12.8, still over | merged; hbox runs 090646Z-5502, 091446Z-52b2 |
+| two-store-join | done: harness `tools/runbooks/two_store_join.py`; dry run on 863c2141 stops at B's receiver verdict (REFUSED), which the ingress fix after 863 addresses; `a-accepted` cut held | merged; [record](evidence/two-store-join-harness-2026-09-24.md) |
 
 ## Where to read next
 
