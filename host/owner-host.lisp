@@ -35,6 +35,8 @@
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
+; The transaction budget: `fn-owner-prepare' installs `fn-sbud-prepare'.
+(include-book "../books/owner-store-budget")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
@@ -193,6 +195,11 @@
                        ; incremental fold, never a whole-journal rescan on a
                        ; served event.
                        (state (f-put-global 'fn-owner-feed-intents nil state))
+                       ; The persisted profile is handed back by
+                       ; fn-owner-install-profile after every recovery; until
+                       ; then the budget is 0 and every publication is
+                       ; :unaffordable (books/store-budget.lisp).
+                       (state (f-put-global 'fn-owner-store-profile nil state))
                        ; Socket-only reply framers are recreated after
                        ; authoritative recovery; their durable counterpart is
                        ; the FNFD replay above, not this retained input.
@@ -204,6 +211,39 @@
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-own-store (fn-owner-core state)))
+
+; The Store's persisted profile, carried from open.  VALUES is what
+; `fn-bs-config-decode' returned for the store's metadata file (the host
+; decoded nothing: host/native/io.lisp `fnn-metadata-config-decode' asked
+; ACL2); anything that is not one of the named profiles is refused and the
+; budget stays 0.  The profile is never changed while the owner runs:
+; books/store-budget.lisp says why it is fixed at init.
+(defun fn-owner-install-profile (values state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (fn-bs-meta-config-valuesp values)
+      (let ((state (f-put-global 'fn-owner-store-profile values state)))
+        (value :installed))
+    (value :refused)))
+
+(defun fn-owner-store-profile (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-store-profile state)
+      (f-get-global 'fn-owner-store-profile state)
+    nil))
+
+; The owner's verdict on one more record of KIND: its budget from the carried
+; profile against the count of the Store it carries.
+(defun fn-owner-publication-verdict (kind state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sbud-verdict (fn-owner-store-profile state) kind
+                          (fn-owner-store state))))
+
+; (used budget reserved-charge charge-capacity), all read from the carried
+; state; the host prints it and computes none of it.
+(defun fn-owner-headroom (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sbud-headroom (fn-owner-store-profile state)
+                           (fn-owner-store state))))
 
 (defun fn-owner-node (state)
   (declare (xargs :stobjs state :mode :program))
@@ -323,15 +363,21 @@
                  ; fn-opc-prepare is equal to the former fn-ocfg-step event
                  ; under fn-own-relation, established by observed recovery
                  ; and preserved by every live owner transition.
+                 ; The budget gate is part of the prepare: at or over the
+                 ; carried profile's budget fn-sbud-prepare is the identity
+                 ; (fn-sbud-prepare-refuses-at-budget) and the word is
+                 ; :unaffordable; below it, it is fn-opc-prepare.
+                 (budget (fn-sbud-budget (fn-owner-store-profile state) :article))
+                 (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
                           (fn-owner-install-ocfg
-                           (fn-opc-prepare (fn-owner-ocfg state) record)
+                           (fn-sbud-prepare before record budget)
                            state))))
             (if (equal record :clock-unusable)
                 (value :clock-unusable)
               (if (equal (fn-owner-store state) s)
-                (value :refused)
+                (value (fn-sbud-refusal-kind before budget))
               (value :prepared))))))))))
 
 (defun fn-owner-refuse-reservation (state)

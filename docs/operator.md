@@ -34,6 +34,7 @@ store and a supported minimal configuration, its component commands are:
 ```sh
 packaging/fn-native operator /path/to/fn.toml help
 packaging/fn-native operator /path/to/fn.toml init fn.letters fn.test
+packaging/fn-native operator /path/to/fn.toml init --profile scale fn.letters fn.test
 packaging/fn-native operator /path/to/fn.toml status
 packaging/fn-native operator /path/to/fn.toml recover
 packaging/fn-native operator /path/to/fn.toml group create fn.announce
@@ -89,6 +90,45 @@ entries -- `config.json`, `writer.lock`, `allocation-frontier.json`,
 `transactions/`, `config/` -- so a store a live owner holds is never opened or
 locked to find that out. An existing store is adopted by `run` and repaired by
 `recover`; `init` does not reinitialise one.
+
+**Store profile and transaction budget (M5).** `init` writes one of two named
+store profiles (`books/byte-store-frame.lisp`, `fn-bs-config-for-profile`),
+and the profile's transaction budget is fixed for the life of the store:
+
+| profile | selected by | transactions | aggregate record bound | per-record bound |
+| --- | --- | --- | --- | --- |
+| `development` | `init GROUP...` (the default) | 128 | 25,165,824 octets (24 MiB) | 196,608 octets |
+| `scale` | `init --profile scale GROUP...` | 4096 | 805,306,368 octets (768 MiB) | 196,608 octets |
+
+Every committed transaction (an article, a retention, keyring, consumer or
+topic event) takes one. The owner refuses the next POST once the store holds
+its budget, and says so: `441 posting failed; the store has no capacity for
+this article`, a refusal (never uncertain, never a silent drop); an article
+already stored is still answered as a duplicate. The decision is ACL2's
+(`fn-sbud-prepare`, `books/owner-store-budget.lisp`), from the profile the
+owner read at open and the count of the store it carries. The budget cannot
+be raised by a configuration record: the profile bounds the work of opening
+the store (the transaction directory is enumerated up to the budget, the
+replay input up to the aggregate bound) before any configuration record is
+read. Raising it means a new store (`init --profile scale` and a migration of
+the articles), or an offline profile upgrade that does not exist yet. The
+retention charge capacity is a different number and IS reconfigurable
+(`capacity DECIMAL-UINT32`). Any profile word other than `development` or
+`scale` is a usage error (5).
+
+`status` prints the headroom beside the counts, from ACL2
+(`fn-sbud-headroom`), not from a host count:
+
+```
+transactions=0 articles=0 staging-orphans=0 unsigned-legacy-experiment
+headroom transactions-used=0 transactions-budget=128 charge-reserved=0 charge-capacity=1048576
+```
+
+`charge-reserved`/`charge-capacity` is the retention ledger in its abstract
+units (one per record plus one per 4096-octet page of payload,
+`fn-charge-for-payload`). `status` opens the store, so it answers only while
+no owner holds it (see below); a running owner's headroom over the control
+channel is not implemented.
 
 `peer list` prints the peer records the durable configuration holds, one line
 per peer, in the order `peer add` takes its arguments:

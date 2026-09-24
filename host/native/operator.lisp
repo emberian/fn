@@ -218,7 +218,12 @@ observation into the outcome and this function only carries it out."
                              result))))
               (unless (consp groups)
                 (fnn-fault "ACL2 accepted an init plan that names no group"))
-              (let ((code (fnn-command-init root groups)))
+              (let* ((profile (fnn-core
+                               'fn-native-operator-host-result-init-profile result))
+                     (code (progn
+                             (unless (member profile '(:development :scale))
+                               (fnn-fault "ACL2 accepted an init plan with no store profile"))
+                             (fnn-command-init root groups profile))))
                 (fnn-operator-emit-status
                  (fnn-operator-status-of-exit-code code) "init")
                 code))))

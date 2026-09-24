@@ -10,6 +10,7 @@
 (include-book "../books/store-sweep")
 (include-book "../books/store-node-resolution")
 (include-book "../books/store-prepare-correspondence")
+(include-book "../books/store-budget")
 (include-book "../books/node-config")
 (include-book "../books/native-admin")
 ;
@@ -42,6 +43,19 @@
 (defun fn-store-sn-state (state)
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-store-sn state)))
+
+; The operator's headroom for the replayed Store: (used budget
+; reserved-charge charge-capacity), from PROFILE (the values ACL2 decoded
+; from the store's metadata file at open) and the Store state this session
+; carries.  `fn-sbud-used' is the committed record count
+; (fn-sbud-used-names-the-transaction-namespace); the host counts nothing.
+(defun fn-store-sn-publication-verdict (profile kind state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sbud-verdict profile kind (f-get-global 'fn-store-sn state))))
+
+(defun fn-store-sn-headroom (profile state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sbud-headroom profile (f-get-global 'fn-store-sn state))))
 
 ; The bounded observed-image entry validates the decoded record list and
 ; frontier, constructs its own replaying kernel image, and invokes actual
