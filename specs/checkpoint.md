@@ -324,6 +324,9 @@ the barrier; the selected generation is never in the plan.  A reopened Store
 can therefore retry retirement after either cut without selecting a different
 authority or changing exact event history.  The separate pack allocator
 accepts gaps left by retirement but always advances beyond the highest
-remaining generation.  Retirement recovers space occupied by superseded
+remaining generation.  `fn-cprt-publication-initial` applies that same
+gap-aware namespace to actual immutable pack publication; ordinary node
+checkpoints retain their gap-free publication policy.  Retirement recovers
+space occupied by superseded
 packs, not by retained source events or protected article objects.  The
 bounded generation number still has a finite lifetime and does not wrap.

@@ -1,0 +1,22 @@
+test_retiring_old_pack_generations_keeps_exact_retained_sources (tests.test_native_checkpoint.NativeCheckpointTests.test_retiring_old_pack_generations_keeps_exact_retained_sources) ... FAIL
+test_pack_generation_retirement_death_reopens_and_retries (tests.test_native_checkpoint.NativeCheckpointTests.test_pack_generation_retirement_death_reopens_and_retries) ... ok
+test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin (tests.test_native_checkpoint.NativeCheckpointTests.test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin) ... ok
+
+======================================================================
+FAIL: test_retiring_old_pack_generations_keeps_exact_retained_sources (tests.test_native_checkpoint.NativeCheckpointTests.test_retiring_old_pack_generations_keeps_exact_retained_sources)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/capability-863c2141-20260924/tests/test_native_checkpoint.py", line 649, in test_retiring_old_pack_generations_keeps_exact_retained_sources
+    self.native("checkpoint", "pack", store).stdout)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/capability-863c2141-20260924/tests/test_native_checkpoint.py", line 42, in native
+    self.assertEqual(result.returncode, expected,
+AssertionError: 4 != 0 : native ('checkpoint', 'pack', PosixPath('/tmp/fn-native-checkpoint-acumneif/pack-retire')) returned 4
+stdout=
+stderr=store: ACL2 refused pack publication authority: (:ERROR :NAMESPACE)
+
+
+----------------------------------------------------------------------
+Ran 3 tests in 3.735s
+
+FAILED (failures=1)
