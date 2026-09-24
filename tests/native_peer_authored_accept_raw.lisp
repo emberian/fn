@@ -64,7 +64,13 @@
     (loop for form = (read stream nil :eof) until (eq form :eof)
           when (and (consp form) (eq (car form) 'defun)
                     (eq (cadr form) 'fnn-owner-attempt-transit))
-            do (eval form) (setq found t) (return))
+            do (eval form) (setq found t) (return)
+          when (and (consp form)
+                    (or (and (eq (car form) 'defvar)
+                             (eq (cadr form) '*fnn-owner-transit-detail*))
+                        (and (eq (car form) 'defun)
+                             (eq (cadr form) 'fnn-owner-transit-refused))))
+            do (eval form))
     (assert found)))
 
 (defun attempt ()
@@ -72,6 +78,7 @@
                              (list #(103)) #(69)))
 (defun reset-case ()
   (setq *calls* nil *existing* nil *signature* :verified
+        *fnn-owner-transit-detail* nil
         *plan* '(:refused :local-enrollment)))
 
 ; A carrier-absent article keeps the old path. A present malformed carrier
@@ -83,6 +90,8 @@
 (setq *form* '(:refused :carrier))
 (assert (eq (attempt) :refused))
 (assert (null *calls*))
+; The log detail is ACL2's own refusal keyword, relayed unchanged.
+(assert (eq *fnn-owner-transit-detail* :carrier))
 
 ; Exact bytes recover the old Store duplicate outcome even after a local
 ; tombstone.  In particular, if these bytes were already stored as a legacy
@@ -98,6 +107,8 @@
 (reset-case)
 (assert (eq (attempt) :refused))
 (assert (not (member :legacy *calls*)))
+; The failure-8 refusal: no receiver-local enrollment of the principal.
+(assert (eq *fnn-owner-transit-detail* :local-enrollment))
 
 ; New current-enrollment-bound bytes require both primitive observations,
 ; then publish the ACL2-built kind-4 event through the identity Store gate.
@@ -115,4 +126,5 @@
       *signature* :refused)
 (assert (eq (attempt) :refused))
 (assert (not (member :kind4-commit *calls*)))
+(assert (eq *fnn-owner-transit-detail* :signature))
 (format t "native peer-authored transit boundary passed~%")

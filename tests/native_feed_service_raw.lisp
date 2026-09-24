@@ -47,6 +47,12 @@
     (error "unexpected owner action: ~s" name))
   (push (second args) *test-reply-inputs*)
   (or (pop *test-words*) (error "too many reply actions")))
+;; The reply line fnn-feed-reply-step writes after a reply outcome.
+(defvar *test-logs* 0)
+(defun fnn-owner-log (&optional global optional)
+  (assert (eq global 'fn-owner-feed-log-line))
+  (assert optional)
+  (incf *test-logs*))
 (defun fnn-owner-feed-flush (service)
   (declare (ignore service))
   (incf *test-flushes*))
@@ -100,6 +106,10 @@
   (unless (= *test-flushes* 1)
     (error "expected one durable flush for the one post-ready line, got ~s"
            *test-flushes*))
+  ;; The one post-ready reply offers its ACL2 line exactly once; the
+  ;; connection-phase words (MODE, READY, NEED-INPUT) offer none.
+  (unless (= *test-logs* 1)
+    (error "expected one reply log offer, got ~s" *test-logs*))
   (unless (fnn-feed-link-ready link)
     (error "ACL2 :READY did not make the raw link ready"))
   (unless (equal (nreverse *test-sends*) '((7 (9 10)) (7 (9 10))))

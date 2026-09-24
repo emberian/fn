@@ -1,0 +1,23 @@
+# module tests.test_native_hybrid_author image /tank/fn/gates/hybrid-feed-storm-7837416e/build/fn-host-developer start 2026-09-24T15:55:34Z
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/hybrid-feed-storm-7837416e/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/hybrid-feed-storm-7837416e/build/fn-host-developer
+# env FN_NATIVE_HOST=/tank/fn/gates/hybrid-feed-storm-7837416e/build/fn-host-developer
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/hybrid-feed-storm/tree
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_HYBRID_E2E=1
+# env FN_TEST_OPENSSL=/tank/fn/toolchains/openssl-3.5.8/bin/openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_authored_carrier_survives_native_peering_and_receiver_restart (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_authored_carrier_survives_native_peering_and_receiver_restart)
+Real owner/feed/receiver path; portable verification is independent. ... ok
+test_enroll_author_refuse_tamper_and_restart_query (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_enroll_author_refuse_tamper_and_restart_query) ... ok
+test_local_revocation_targets_one_principal (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_local_revocation_targets_one_principal) ... ok
+test_portable_carrier_verifies_exact_source_and_keyset (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_portable_carrier_verifies_exact_source_and_keyset) ... ok
+test_unenrolled_receiver_refuses_authored_carrier_once_and_both_sides_log_it (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_unenrolled_receiver_refuses_authored_carrier_once_and_both_sides_log_it)
+A receiver without its own enrollment of the principal refuses. ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 12.617s
+
+OK
+# rc=0 wall=12.7

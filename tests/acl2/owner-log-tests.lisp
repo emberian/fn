@@ -165,3 +165,120 @@
 ; Unsanitized, the same field would have broken the line.
 (assert-event
  (not (fn-olog-no-breakp (append (olt-text "peer=") *olt-hostile*))))
+
+; -----------------------------------------------------------------------------
+; Peer transfer lines (hybrid-feed-storm, 2026-09-24).  Subjects:
+; fn-olog-transit-line, installed by host/owner-host.lisp
+; fn-owner-transit-log-line and written by host/native/owner.lisp
+; fnn-owner-drain-one; fn-olog-feed-reply-line, installed by
+; fn-owner-feed-octets and written by host/native/feed-service.lisp
+; fnn-feed-reply-step.
+
+(defconst *olt-transit-msgid* (olt-text "<relay@example.invalid>"))
+(defconst *olt-transit-decision*
+  (fn-peer-make-submission "other" :takethis *olt-transit-msgid* *olt-source*))
+(assert-event (fn-peer-submissionp *olt-transit-decision*))
+(defconst *olt-transit* (olt-owner 0 '(committed) *olt-transit-decision*))
+(defconst *olt-transit-unconsumed* (olt-owner 0 nil *olt-transit-decision*))
+
+; The failure-8 line: the receiver's ingress refused a signed carrier for want
+; of its own enrollment, and the peer was sent 439.
+(defconst *olt-refused-transit-line*
+  (fn-olog-transit-line *olt-transit* 7 :want nil :refused :local-enrollment))
+(assert-event
+ (equal *olt-refused-transit-line*
+        (olt-text "refused transit connection=7 message-id=<relay@example.invalid> code=439 decision=want reason=none detail=local-enrollment time=2026-09-18T00:00:00Z")))
+(assert-event
+ (equal (fn-olog-line-word
+         (fn-olog-transit-line *olt-transit* 7 :want nil :durable nil))
+        (olt-text "accepted")))
+; Uncertain stays uncertain (436 and a close), not a deferral, not refused.
+(assert-event
+ (equal (fn-olog-line-word
+         (fn-olog-transit-line *olt-transit* 7 :want nil :uncertain nil))
+        (olt-text "uncertain")))
+; A durable host word with nothing consumed after the take is uncertain too.
+(assert-event
+ (equal (fn-olog-line-word
+         (fn-olog-transit-line *olt-transit-unconsumed* 7 :want nil :durable nil))
+        (olt-text "uncertain")))
+; Decisions that never reached the Store: a deferral and a history refusal.
+(assert-event
+ (equal (fn-olog-line-word
+         (fn-olog-transit-line *olt-transit* 7 :defer :busy :refused nil))
+        (olt-text "deferred")))
+(assert-event
+ (equal (fn-olog-transit-line *olt-transit* 7 :reject :loop :refused nil)
+        (olt-text "refused transit connection=7 message-id=<relay@example.invalid> code=439 decision=reject reason=loop detail=none time=2026-09-18T00:00:00Z")))
+(assert-event (fn-olog-no-breakp *olt-refused-transit-line*))
+
+; Teeth for the receiver keystone.  Its clause "not uncertain" is not
+; redundant with the code: an uncertain completion is sent 436, never a
+; rejection -- so the weaker claim "refused iff the host word is :refused"
+; is what fails, witnessed by a :defer decision whose host word is
+; :refused but whose line says deferred.
+(assert-event
+ (not (equal (fn-olog-line-word
+              (fn-olog-transit-line *olt-transit* 7 :defer :busy :refused nil))
+             (olt-text "refused"))))
+(must-fail
+ (defthm olt-transit-line-echoes-the-host-word
+   (equal (equal (fn-olog-line-word
+                  (fn-olog-transit-line o id kind reason word detail))
+                 (fn-olog-text "refused"))
+          (equal word :refused))
+   :hints (("Goal" :in-theory (e/d (fn-olog-transit-class-word
+                                    fn-olog-code-class-word fn-olog-text)
+                                   (fn-olog-transit-code fn-olog-transit-completion
+                                    fn-olog-field fn-olog-decimal fn-olog-time
+                                    fn-olog-symbol-text))))))
+; And without the completion clause: code 436 from an uncertain completion
+; is not a rejection, so dropping the code test would call it refused.
+(must-fail
+ (defthm olt-transit-line-refused-unless-accepted
+   (equal (equal (fn-olog-line-word
+                  (fn-olog-transit-line o id kind reason word detail))
+                 (fn-olog-text "refused"))
+          (not (equal (fn-olog-transit-completion o kind word) :durable)))
+   :hints (("Goal" :in-theory (e/d (fn-olog-transit-class-word
+                                    fn-olog-code-class-word fn-olog-text)
+                                   (fn-olog-transit-code fn-olog-transit-completion
+                                    fn-olog-field fn-olog-decimal fn-olog-time
+                                    fn-olog-symbol-text))))))
+
+; The sender's lines.  A send-it prompt has no line; every outcome has one.
+; The feed's Message-ID is the octets fn-feed-namep admits (the first
+; developer image of this line printed `message-id=` empty when it was
+; read as a string).
+(assert-event (fn-feed-namep *olt-transit-msgid*))
+(defconst *olt-feed-439*
+  (fn-olog-feed-reply-line *olt-served* "other"
+                           (fn-feed-response 439 *olt-transit-msgid*)))
+(assert-event
+ (equal *olt-feed-439*
+        (olt-text "refused feed peer=other message-id=<relay@example.invalid> code=439 time=2026-09-18T00:00:00Z")))
+(assert-event
+ (null (fn-olog-feed-reply-line *olt-served* "other"
+                                (fn-feed-response 238 *olt-transit-msgid*))))
+(assert-event
+ (equal (fn-olog-line-word
+         (fn-olog-feed-reply-line *olt-served* "other"
+                                  (fn-feed-response 431 *olt-transit-msgid*)))
+        (olt-text "deferred")))
+(assert-event
+ (equal (fn-olog-line-word
+         (fn-olog-feed-reply-line *olt-served* "other"
+                                  (fn-feed-response 438 *olt-transit-msgid*)))
+        (olt-text "duplicate")))
+(assert-event
+ (equal (fn-olog-line-word
+         (fn-olog-feed-reply-line *olt-served* "other"
+                                  (fn-feed-response 239 *olt-transit-msgid*)))
+        (olt-text "accepted")))
+; Teeth: the send-it clause is load-bearing (a 238 has no class line).
+(must-fail
+ (defthm olt-feed-line-always-classed
+   (equal (fn-olog-line-word (fn-olog-feed-reply-line o peer response))
+          (fn-olog-code-class-word (fn-feed-response-code response)))
+   :hints (("Goal" :in-theory (e/d (fn-olog-code-class-word fn-olog-text)
+                                   (fn-olog-field fn-olog-decimal fn-olog-time))))))

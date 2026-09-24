@@ -163,6 +163,108 @@ the owner resolved the source address to, or nil for a reader."
            (fn-olog-field "connection" (fn-olog-decimal id))
            (fn-olog-field "time" (fn-olog-time (fn-own-clock o)))))))
 
+;; -----------------------------------------------------------------------------
+;; Peer transfer lines: the receiver's transit outcome and the sender's feed
+;; reply.  Before these, a peer transfer that was refused left no line on
+;; either side (native subsets 1a9dd747, failure 8: a signed carrier refused
+;; for want of receiver-local enrollment answered 439 and both owners were
+;; silent).  The code on each line is the code on the wire: the receiver's
+;; is fn-peer-transit-code over the same decision and completion
+;; fn-own-transit-outcome renders; the sender's is the one ACL2 parsed.
+
+; A keyword's name in lower case (`:local-enrollment' reads
+; `local-enrollment'); anything else reads `none'.
+(defun fn-olog-downcase-octets (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (cons (if (and (natp (car xs)) (<= 65 (car xs)) (<= (car xs) 90))
+                (+ 32 (car xs))
+              (car xs))
+            (fn-olog-downcase-octets (cdr xs)))
+    nil))
+
+(defun fn-olog-symbol-text (x)
+  (declare (xargs :guard t))
+  (if (and (symbolp x) x)
+      (fn-olog-downcase-octets (fn-olog-text (symbol-name x)))
+    (fn-olog-text "none")))
+
+; The class a peer-transfer code carries: the three outcomes stay distinct,
+; and a deferral (the peer is asked to retry) is named as one.
+(defun fn-olog-code-class-word (code)
+  (declare (xargs :guard t))
+  (cond ((member-equal code '(235 239)) (fn-olog-text "accepted"))
+        ((member-equal code '(435 438)) (fn-olog-text "duplicate"))
+        ((member-equal code '(437 439)) (fn-olog-text "refused"))
+        ((member-equal code '(431 436)) (fn-olog-text "deferred"))
+        (t (fn-olog-text "uncertain"))))
+
+; The completion fn-own-transit-outcome renders with: the owner's completion
+; for the host word when the transfer decision was :want, else none.
+(defun fn-olog-transit-completion (o kind word)
+  (declare (xargs :guard t))
+  (if (equal kind :want) (fn-own-outcome-completion o word) nil))
+
+(defun fn-olog-transit-code (o kind reason word)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (fn-peer-transit-code
+     (fn-peer-submission-kind (fn-own-sub-decision sub))
+     (fn-peer-decision kind reason)
+     (fn-olog-transit-completion o kind word))))
+
+; An uncertain completion is uncertain whatever its code (436 also names a
+; deferral); every other line is classed by the code the peer was sent.
+(defun fn-olog-transit-class-word (o kind reason word)
+  (declare (xargs :guard t))
+  (if (equal (fn-olog-transit-completion o kind word) :uncertain)
+      (fn-olog-text "uncertain")
+    (fn-olog-code-class-word (fn-olog-transit-code o kind reason word))))
+
+(defun fn-olog-transit-line (o id kind reason word detail)
+  "The line for transit submission ID completing with KIND, REASON and WORD.
+
+Read from the owner before fn-own-transit-outcome consumes the in-flight
+submission, with the same arguments.  DETAIL is the ACL2 refusal the host
+relays from the ingress attempt (fn-pa-current-plan's `:local-enrollment',
+for one), or nil."
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (fn-olog-join
+     (list (fn-olog-transit-class-word o kind reason word)
+           (fn-olog-text "transit")
+           (fn-olog-field "connection" (fn-olog-decimal id))
+           (fn-olog-field "message-id" (fn-own-sub-msgid sub))
+           (fn-olog-field "code"
+                          (fn-olog-decimal (fn-olog-transit-code o kind reason word)))
+           (fn-olog-field "decision" (fn-olog-symbol-text kind))
+           (fn-olog-field "reason" (fn-olog-symbol-text reason))
+           (fn-olog-field "detail" (fn-olog-symbol-text detail))
+           (fn-olog-field "time" (fn-olog-time (fn-own-clock o)))))))
+
+; A feed name as octets: the feed's peer is a string, its Message-ID the
+; octets fn-feed-namep admits.
+(defun fn-olog-name-octets (x)
+  (declare (xargs :guard t))
+  (if (stringp x) (fn-olog-text x) x))
+
+; The sender's line for one parsed feed reply, or nil for a 335/238 (the
+; peer asked for the article; the TAKETHIS/IHAVE body is not an outcome).
+(defun fn-olog-feed-reply-line (o peer response)
+  (declare (xargs :guard t))
+  (let ((code (fn-feed-response-code response)))
+    (if (member-equal code '(335 238))
+        nil
+      (fn-olog-join
+       (list (fn-olog-code-class-word code)
+             (fn-olog-text "feed")
+             (fn-olog-field "peer" (fn-olog-name-octets peer))
+             (fn-olog-field "message-id"
+                            (fn-olog-name-octets
+                             (fn-feed-response-msgid response)))
+             (fn-olog-field "code" (fn-olog-decimal code))
+             (fn-olog-field "time" (fn-olog-time (fn-own-clock o))))))))
+
 ; -----------------------------------------------------------------------------
 ; A line is one line
 
@@ -228,6 +330,22 @@ the owner resolved the source address to, or nil for a reader."
   (fn-olog-no-breakp (fn-olog-connection-line o id peer))
   :hints (("Goal" :in-theory (disable fn-olog-join))))
 
+(local
+ (defthm fn-olog-code-class-word-has-no-break
+   (fn-olog-no-breakp (fn-olog-code-class-word code))
+   :hints (("Goal" :in-theory (enable fn-olog-code-class-word fn-olog-text
+                                      fn-olog-no-breakp)))))
+
+(defthm fn-olog-transit-line-is-one-line
+  (fn-olog-no-breakp (fn-olog-transit-line o id kind reason word detail))
+  :hints (("Goal" :in-theory (e/d (fn-olog-transit-class-word)
+                                  (fn-olog-join fn-olog-code-class-word
+                                   fn-olog-transit-code fn-olog-symbol-text)))))
+
+(defthm fn-olog-feed-reply-line-is-one-line
+  (fn-olog-no-breakp (fn-olog-feed-reply-line o peer response))
+  :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-code-class-word))))
+
 ; -----------------------------------------------------------------------------
 ; The log says what the reply says
 
@@ -258,3 +376,31 @@ the owner resolved the source address to, or nil for a reader."
   :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text)
                                   (fn-own-control-outcome-result fn-olog-field
                                    fn-olog-decimal fn-olog-time)))))
+
+; KEYSTONE (receiver).  A transit line says `refused' exactly when the code
+; the peer was sent is a rejection (437/439) and the completion was not
+; uncertain -- the same fn-peer-transit-code fn-own-transit-outcome renders,
+; so the log names the refusal the wire carried, never a host word.
+(defthm fn-olog-transit-line-says-refused-iff-rejected
+  (equal (equal (fn-olog-line-word
+                 (fn-olog-transit-line o id kind reason word detail))
+                (fn-olog-text "refused"))
+         (and (not (equal (fn-olog-transit-completion o kind word) :uncertain))
+              (if (member-equal (fn-olog-transit-code o kind reason word)
+                                '(437 439))
+                  t nil)))
+  :hints (("Goal" :in-theory (e/d (fn-olog-transit-class-word
+                                   fn-olog-code-class-word fn-olog-text)
+                                  (fn-olog-transit-code fn-olog-transit-completion
+                                   fn-olog-field fn-olog-decimal fn-olog-time
+                                   fn-olog-symbol-text)))))
+
+; KEYSTONE (sender).  A feed line exists exactly for a reply that is not a
+; send-it prompt, and its first word is the class of the code ACL2 parsed.
+(defthm fn-olog-feed-reply-line-says-the-code-class
+  (equal (fn-olog-line-word (fn-olog-feed-reply-line o peer response))
+         (if (member-equal (fn-feed-response-code response) '(335 238))
+             nil
+           (fn-olog-code-class-word (fn-feed-response-code response))))
+  :hints (("Goal" :in-theory (e/d (fn-olog-code-class-word fn-olog-text)
+                                  (fn-olog-field fn-olog-decimal fn-olog-time)))))
