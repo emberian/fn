@@ -508,6 +508,7 @@
     "books/owner-config-observe",
     "books/served-carried",
     "books/owner-served-carried",
+    "books/owner-commit-carried",
     "tests/acl2/owner-tls-pin-tests",
     "tests/acl2/served-tls-prefix-tests",
     "books/nntp-auth-invariants",
@@ -533,6 +534,7 @@
     "tests/acl2/config-owner-live-tests",
     "tests/acl2/owner-config-observe-tests",
     "tests/acl2/owner-served-carried-tests",
+    "tests/acl2/owner-commit-carried-tests",
     "books/config-owner-publish",
     "tests/acl2/config-owner-publish-tests",
     "books/config-crash-replay",
@@ -696,25 +698,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 703,
-    "books_in_root_closure": 701,
-    "roots": 692,
-    "theorems": 9432,
-    "functions": 6762,
-    "assert_events": 10323,
-    "must_fails": 755,
+    "books": 705,
+    "books_in_root_closure": 703,
+    "roots": 694,
+    "theorems": 9446,
+    "functions": 6770,
+    "assert_events": 10348,
+    "must_fails": 760,
     "encapsulates": 30,
     "guards": {
-      "verified": 2039,
+      "verified": 2042,
       "declared-off": 429,
-      "default-guarded": 3372,
+      "default-guarded": 3377,
       "default-unguarded": 922
     },
     "suspect_theorems": 83,
-    "export_hygiene_warnings": 109,
+    "export_hygiene_warnings": 114,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 55,
-    "include_hygiene_warnings": 675,
+    "include_hygiene_warnings": 676,
     "host_names_warnings": 818,
     "hand_written_record_warnings": 18
   },
@@ -8017,6 +8019,33 @@
         "injection-invariants",
         "node-config",
         "owner-tls-prefix"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-commit-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 14,
+      "functions": 8,
+      "guards": {
+        "verified": 3,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-live",
+        "owner-invariants",
+        "owner-served-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -17062,6 +17091,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-commit-carried-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 5,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-commit-carried",
+        "owner-served-invariants-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-config-observe-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -20594,6 +20651,36 @@
         "theorem": "fn-oag-tls-served-conn-config",
         "book": "books/owner-agent.lisp",
         "line": 404,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-ccar-completion-record-is-completion-record",
+        "book": "books/owner-commit-carried.lisp",
+        "line": 73,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-ccar-completion-core-enabledp-is-reference",
+        "book": "books/owner-commit-carried.lisp",
+        "line": 105,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-ccar-completion-enabledp-is-reference",
+        "book": "books/owner-commit-carried.lisp",
+        "line": 134,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-ccar-sn-finish-is-sn-finish",
+        "book": "books/owner-commit-carried.lisp",
+        "line": 198,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-ccar-own-complete-is-own-complete",
+        "book": "books/owner-commit-carried.lisp",
+        "line": 242,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -25567,6 +25654,13 @@
         "line": 24,
         "include": "../../books/owner-agent",
         "included": "books/owner-agent.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-commit-carried-tests.lisp",
+        "line": 5,
+        "include": "owner-served-invariants-tests",
+        "included": "tests/acl2/owner-served-invariants-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -32020,28 +32114,28 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 488,
+        "line": 489,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 488,
+        "line": 489,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 945,
+        "line": 952,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1441,
+        "line": 1448,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
