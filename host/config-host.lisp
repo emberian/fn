@@ -12,6 +12,8 @@
 
 (in-package "ACL2")
 (include-book "../books/node-config")
+; `fn-native-admin-some-group-name-reservedp': RFC 5536 s3.1.4 reserved names.
+(include-book "../books/native-admin")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-host.lisp defines, so a session that loads this file alone
@@ -43,7 +45,10 @@
   ; or :bad.
   (declare (xargs :mode :program))
   (let ((names (fn-store-octet-lists->strings name-octets-list)))
-    (if (or (equal names :bad) (null names))
+    (if (or (equal names :bad) (null names)
+            ; RFC 5536 s3.1.4: "example.*" and "poster" are never created,
+            ; whichever command line reaches this initial record.
+            (fn-native-admin-some-group-name-reservedp names))
         :bad
       (let ((record (fn-cfg-record-make
                      0 0 1

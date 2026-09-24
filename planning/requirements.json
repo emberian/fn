@@ -1306,6 +1306,39 @@
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
+      "id": "NNT-009",
+      "title": "Group names follow the RFC 5536 grammar and reserved names are never created",
+      "specification": "specs/article-fields.md#group-names-the-node-creates",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-071"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc5536.txt",
+        "books/records-shape.lisp",
+        "tests/acl2/records-shape-tests.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "host/config-host.lisp",
+        "tests/test_native_operator_verbs.py",
+        "planning/evidence/manifests/certify-20260924T160912Z-2158325.json"
+      ],
+      "implementation_note": "RFC requirement (RFC 5536 section 3.1.4): a <newsgroup-name> is dot-separated nonempty components of ALPHA, DIGIT, \"+\", \"-\" and \"_\", and names whose first (or only) component is \"example\", and the name \"poster\", MUST NOT be used as the name of a newsgroup. Local fn policy: a name is at most 128 octets (*fn-record-max-group-name*); the RFC sets no bound. Stronger fn guarantee: the reserved comparison folds ASCII case, so \"Example.a\" and \"POSTER\" are refused too. fn-record-group-namep is the one recognizer every host site applies to a name; fn-native-admin-group-name-reservedp is the creation rule, applied by group create (fn-native-admin-plan), operator init (fn-native-operator-run, a refusal with exit 1) and the initial configuration record of any store init (fn-cfg-host-initial-octets). Retire, replay and service of an existing name are not refused.",
+      "keystones": [
+        "fn-record-group-namep-is-the-rfc-5536-grammar",
+        "fn-native-admin-plan-refuses-a-reserved-group-create",
+        "fn-native-operator-run-refuses-a-reserved-init-group"
+      ],
+      "note": "Covers syntax and the two MUST NOT reservations of section 3.1.4. The names section 3.1.4 sets aside for specific purposes (to.*, control.*, all, ctl, junk) MAY be used by local agreement and are not refused; the SHOULD NOTs on uppercase, all-digit and leading _ + - components restrict generation, and a server MUST accept such names, so they are admitted. fn-cfg-host-initial-octets is a program-mode host wrapper: its refusal is witnessed by tests, not a theorem. No image carries the reserved-name refusal yet; the native witnesses skip without build/fn-host."
+    },
+    {
       "id": "HST-001",
       "title": "Host executes the proved core or a justified refinement",
       "specification": "specs/host.md#core-interface",

@@ -67,6 +67,32 @@ header syntax. This semantic layer requires the RFC-defined initial SP for both
 supported field forms; that is a stricter fn acceptance policy for these two
 semantic fields, documented here rather than silently normalized.
 
+### Group names the node creates
+
+NNT-009: a group name is an RFC 5536 §3.1.4 `<newsgroup-name>` of at most 128
+octets, and the node never creates a group whose first (or only) component is
+`example`, or the group `poster`.
+
+A group name the node stores or serves is `fn-record-group-namep`
+(`books/records-shape.lisp`): exactly the §3.1.4 `<newsgroup-name>` grammar
+(`fn-record-group-namep-is-the-rfc-5536-grammar`), plus fn's local bound of
+128 octets, which the RFC does not set. Creating a group is a further rule.
+§3.1.4 says names whose first (or only) component is `example`, and the name
+`poster`, MUST NOT be used as the name of a newsgroup; fn refuses both at
+every creation site with the reason `:reserved-group-name`: `group create`
+(`fn-native-admin-plan`), `operator init` (`fn-native-operator-run`, exit 1,
+a refusal rather than a usage error) and the initial configuration record of
+any store init (`fn-cfg-host-initial-octets`). The comparison folds ASCII
+case, a stronger fn guarantee: §3.1.4 notes that some systems match names
+case-insensitively and §3.2.6 lets agents read `Poster` as the keyword, so
+`Example.a` and `POSTER` are refused as well. A store that already carries
+such a name is still replayed, served and may retire it. The names §3.1.4
+sets aside for specific purposes (`to.*`, `control.*`, `all`, `ctl`,
+`junk`) MAY be used for that purpose or by local agreement and are not
+refused. The creatable rule is `fn-native-admin-group-name-creatablep`
+(`books/native-admin.lisp`), stated as the RFC's reading by
+`fn-native-admin-group-name-creatablep-is-the-rfc-5536-rule`.
+
 ## Proto-article routing subset
 
 `fn-af-proto-article-check` implements only the relevant RFC 5537 §3.4.1
