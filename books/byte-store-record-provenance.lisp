@@ -2802,9 +2802,10 @@
                   record))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-sn-prepare fn-sn-update
+           :in-theory (e/d (fn-sn-prepare
                             fn-sf-prepare-record)
-                           (fn-sn-statep fn-node-statep
+                           (fn-sn-update fn-sn-make-v6
+                            fn-sn-statep fn-node-statep
                             fn-sn-prepare-node fn-sn-record-bindsp
                             fn-sf-history-recoverablep fn-sf-candidatep))))))
 
@@ -2815,9 +2816,10 @@
            (fn-record-p record))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-sn-prepare fn-sn-update
+           :in-theory (e/d (fn-sn-prepare
                             fn-sf-prepare-record)
-                           (fn-sn-statep fn-node-statep
+                           (fn-sn-update fn-sn-make-v6
+                            fn-sn-statep fn-node-statep
                             fn-sn-prepare-node fn-sn-record-bindsp
                             fn-sf-history-recoverablep fn-sf-candidatep))))))
 
