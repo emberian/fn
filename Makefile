@@ -489,6 +489,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/injection-tests \
 	books/nntp-post \
 	books/nntp-pinned-effects \
+	books/nntp-pinned-msgid \
+	tests/acl2/nntp-pinned-msgid-tests \
 	tests/acl2/nntp-post-tests \
 	books/path \
 	books/path-update \
@@ -502,6 +504,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served \
 	books/served-tls-prefix \
 	books/owner-tls-prefix \
+	books/owner-config-observe \
 	tests/acl2/owner-tls-pin-tests \
 	tests/acl2/served-tls-prefix-tests \
 	books/nntp-auth-invariants \
@@ -525,6 +528,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-owner-read-invariants \
 	tests/acl2/config-owner-read-invariants-tests \
 	tests/acl2/config-owner-live-tests \
+	tests/acl2/owner-config-observe-tests \
 	books/config-owner-publish \
 	tests/acl2/config-owner-publish-tests \
 	books/config-crash-replay \

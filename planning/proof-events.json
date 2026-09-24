@@ -755,6 +755,11 @@
         {
           "kind": "theorem",
           "name": "fn-opc-prepare-equals-owner-event-under-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-step-observe-is-fn-ocfg-observe",
+          "note": "The per-read clock observation the host makes (host/owner-host.lisp fn-owner-observe) is fn-ocfg-step's (:observe obs) arm as a guard-verified transition, so executing it evaluates no whole-store guard. Teeth: tests/acl2/owner-config-observe-tests.lisp."
         }
       ]
     },
@@ -2334,6 +2339,16 @@
           "kind": "theorem",
           "name": "fn-own-read-is-served-step-on-pinned-prefix",
           "note": "Relates the actual host-called owner read to the served step over its retained archive and group bucket."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-midx-lookup-of-build-is-find-article-for-nonempty",
+          "note": "The trie keystone: for a nonempty string Message-ID the lookup in the build of any article list is the first article the fn-find-article scan returns; no whole-archive recognizer is assumed."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan",
+          "note": "Subject equation at the served reader dispatcher: for ARTICLE, HEAD, BODY and STAT and every argument list, fn-nntp-archive-command-pinned equals the scanning fn-nntp-archive-command given only the trie correspondence the owner carries per connection. Teeth: tests/acl2/nntp-pinned-msgid-tests.lisp."
         }
       ]
     },
