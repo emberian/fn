@@ -51,3 +51,16 @@ changed BP book/test roots certified on persvati jobs 2 in
 completed. This result covers the edited roots, not yet their downstream BP
 dependents or a native saved image. The subsequent affected run is recorded
 separately when it finishes.
+
+The first current-source dependent sweep `run-20260924T033925Z-d9be`, manifest
+`planning/evidence/manifests/certify-20260924T033936Z-3836310.json`,
+certified 53 of 56 scheduled books. Its real BP test failure exposed a fixture
+coupling: the previously nil-anchor row became `(:wall)` in the new live
+fragment fixture, so the independent legacy-unknown tooth no longer had a
+legacy row. Commit `5cb84637` constructs an explicit nil-anchor legacy pair;
+that test root requires a fresh verdict. `books/owner-invariants` timed at
+120 seconds at the current Store-v6 base, and
+`tests/acl2/bp-transit-join-tests` failed only because its owner certificate
+was unavailable. The owner proof cost also appeared in the frozen 8c61 hbox
+run; it is not a BP transition counterexample. Neither of those two roots is
+claimed qualified by the passing BP books.
