@@ -25,34 +25,40 @@ revision and theorem hypotheses when sharing a proof so its scope is clear.
 
 ## Current coordination — 2026-09-24
 
-Root restored the integrated checkout after an accidental external reset;
-see [recovery](worktree-recovery-2026-09-24.md). ADVANCE, OVER, allocator
-frontier packets and the pure consumer-index foundation are integrated.
-Combined a785ae03 qualification passed; native_qualification builds one shared
-production/developer image and exercises it. No lane should duplicate its
-build. The current farm gate is `/tank/fn/gates/cleanup-repaired-dfc4c384-20260924`,
-run `run-20260924T010752Z-f65a`; the original manifest is filed.
+Root recovered the two accidental main-checkout operations; see
+[recovery](worktree-recovery-2026-09-24.md). ADVANCE, OVER, allocator frontier
+entry, consumer-index foundations, web paging and offline cursor inspection
+are integrated. Combined `a785ae03` source and its selected native gates are
+recorded in [the native evidence](evidence/native-a785-selected-gate-2026-09-24.md).
+The later D1b selector repair awaits the next shared image. The live
+`da5fd8cb` node is protected.
 
-- `consumer_contract` factors duplicate poll definitions without changing the
-  called selector, then joins the index to Store/owner. Coordinates slot13
-  with `topic_metadata`, whose slot12 reverse relation remains the dependency.
-- `topic_metadata` closes `fn-snt-prepare-topic-preserves-relation` and the
-  actual dispatcher relation before native topic admission lands.
-- `bp_foundation` joins native fragment admission with persisted expiry-safe
-  family replacement; its checkpoint remains unqualified until guards and
-  affected invariants pass together.
-- `storage_trace_join` advances the full pair12 byte/kernel relation after
-  landing its state and pending-authority clauses.
-- `mini_live_join` completed live poll/transaction/reopen/ACK and proceeds to
-  stable signed reply publication from durable Q in the isolated Mini tree.
-- `native_qualification` preserves the live Mini evidence and coordinates the
-  next shared image for D1b, reader and bound-input qualification.
-- `luna_reader_verdict` landed the corrected historical server-verdict display;
-  `luna_proof_cost` landed a certified local hint/helper, reducing target prover
-  steps without changing its statement. The evidence records failed attempts
-  and the final successful combined certification.
-- `retire_old_worktrees` completed verified archival of 101 inactive or landed worktrees;
-  active trees and all branch tips remain available.
+- Three GPT-6-Luna feature lanes implement bounded web history windows,
+  native cursor inspection, and local consumer status. Web and cursor source
+  are on dev; status is under scoped ACL2 qualification. The Sol reviewer
+  assembles their candidate and owns one combined incremental qualification.
+  Review repairs and elapsed source-packet times are recorded in its
+  experiment note, with native results separate.
+- `native_qualification` builds one source-matched shared image after that
+  candidate certifies, then runs cursor/status and the corrected D1b cut.
+  No lane duplicates this build.
+- `consumer_contract` has scoped certificates for the topic/index Store
+  relation, observed reopen and actual indexed owner poll; it assembles a
+  finite source/evidence packet. `topic_metadata` joins its native topic tail
+  to that packet in an explicit isolated worktree. They coordinate the poll
+  scope helper with the Luna status lane. This next packet does not block
+  the smaller trial image.
+- BP fragment activation and persisted expiry-safe replacement are qualified
+  on `fix/bp-union-proof` at `3d1a461e`; native interrupted-contact execution
+  and the remaining recovery decoder guards are open. Root has the packet.
+- Allocator pair-12 and pair-14 relation proofs are qualified on
+  `implement/byte-store-k568` at `af679760`; they await integration. They do
+  not establish the entire physical recovery argument.
+- Mini's isolated `fn-evidence` branch has live poll/transaction/reopen/ACK
+  evidence and B3 durable reply preparation/signing source. B3 signed native
+  post/readback remains unrun and needs coordinated fixture startup.
+- `retire_old_worktrees` completed verified archival of 101 inactive or landed
+  trees. Active trees and branch tips remain available.
 
 The entries below are historical checkpoints.
 
