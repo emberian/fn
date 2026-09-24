@@ -53,3 +53,9 @@ live owner dispatch, authenticated returned ION receipt, and complete
 physical crash-cut refinement remain open. The previously qualified C helper
 source-lifetime experiment is separate evidence; it cannot qualify this new
 native caller by itself.
+
+Root convergence review also corrected PRF-034 to `in-progress`: the new
+host-called `fn-bpiw-replay-journal` needs a whole-replay correspondence to the
+predecessor work-status theorem. The two structural projections above are
+single-record results, not that induction. SCN-017 now names the mixed-history
+reopen witness; no existing theorem was removed or weakened.

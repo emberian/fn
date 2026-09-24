@@ -72,11 +72,19 @@ that was in flight as `:restart-observed` and leaves `:absent`, `:outstanding`,
 `:receipted`, a retryable status and `:delivered` alone, under the single
 hypothesis `fn-bp-statep`; and
 `fn-bp-replay-work-status-is-the-pre-crash-status-restarted` lifts that to the
-function the host calls on open, so a work id in a replayed history reads what
+original workflow replay function, so a work id in that replayed history reads what
 the machine that never died would have answered for it, marked by the restart.
 `fn-bp-durable-events` names that machine: the journal's denotation without the
 trailing restart. So `:absent` after a successful replay means the pre-crash
 machine held no such work, and nothing weaker.
+
+Current caller boundary (2026-09-24): `fn-workflow-install-replay` now calls
+`fn-bpiw-replay-journal`, which interleaves ION route/observation records with
+the release-aware application history. Its single-record structural theorems
+keep application state and effects unchanged for ION records. A full replay
+correspondence carrying the predecessor work-status theorem through this
+actual caller is still open under PRF-034 and SCN-017. The older theorem does
+not alone establish the new composed claim.
 
 Provenance is a second question with a second answer, because the status word
 cannot carry it: a work recovered from a cut and a work enqueued after the
