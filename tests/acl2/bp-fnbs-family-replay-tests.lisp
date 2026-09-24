@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-family-replay")
+(include-book "../../books/bp-node-fragment-step")
 (include-book "bp-node-fragment-plan-tests")
 (include-book "bp-report-deletion-tests")
 (include-book "std/testing/must-fail" :dir :system)
@@ -38,6 +39,43 @@
         (fn-bpn-nth 2
          (fn-bpnf-family-apply-at
           *bpnfr-replay-initial* *bpnfr-replay-family-record* 2))))
+
+; The actual live :family callback and ordered byte replay install the same
+; whole row and arrival frontier from two previously durable kind-5 rows.
+(defconst *bpnfr-live-state*
+  (fn-bpnf-state (fn-bpnf-base *bpnff-state*)
+                 (fn-bpnf-held-list *bpnfr-replay-initial*)
+                 nil nil nil nil nil 4 0))
+(defconst *bpnfr-live-observation* (fn-clock-observation 1 2343 0 t))
+(defun bpnfr-live-proposal ()
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bpnf-fragment-step
+   *bpnfr-live-state* (list :family 0 *bpnfr-live-observation*)))
+(defun bpnfr-live-durable ()
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bpnf-fragment-step (fn-bpnf-answer-state (bpnfr-live-proposal))
+                         '(:persist-result 4 0 :durable)))
+(defun bpnfr-live-replay ()
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bpnf-family-replay-rows
+   (append (list (nth 0 (bpnfr-replay-rows))
+                 (nth 1 (bpnfr-replay-rows)))
+           (list (list
+                  (fn-bpnf-stored-record-name 4 0)
+                  (fn-bpnf-family-v1-frame
+                   (fn-bpn-nth 4 (fn-bpnf-issued
+                                  (fn-bpnf-answer-state
+                                   (bpnfr-live-proposal))))))))
+   (fn-bpnf-base *bpnff-state*)))
+(assert-event
+ (and (equal (car (car (fn-bpnf-answer-effects (bpnfr-live-proposal))))
+             :persist-family)
+      (equal (car (bpnfr-live-replay)) :ready)
+      (equal (fn-bpnf-held-list (fn-bpnf-answer-state (bpnfr-live-durable)))
+             (fn-bpn-nth 1 (bpnfr-live-replay)))
+      (equal (fn-bpnf-next-arrival
+              (fn-bpnf-answer-state (bpnfr-live-durable)))
+             (fn-bpn-nth 4 (bpnfr-live-replay)))))
 (defconst *bpnfr-legacy-family-record*
   (fn-bpnf-family-record 3 2 0 2 (nth 2 *bpnfr-replay-plan*)))
 (defun bpnfr-legacy-replay-answer ()
