@@ -100,6 +100,14 @@
        (fn-frame-natp (fn-bpn-nth 3 x))
        (< 0 (fn-bpn-nth 3 x))))
 
+; The carried session table: every row a well-formed session.  It is a
+; guard premise of the served step, never a runtime check on it.
+(defun fn-bpnp-session-listp (x)
+  (declare (xargs :guard t))
+  (if (atom x) (null x)
+    (and (fn-bpnp-sessionp (car x))
+         (fn-bpnp-session-listp (cdr x)))))
+
 (defun fn-bpnp-remove-peer-session (peer sessions)
   (declare (xargs :guard t :measure (acl2-count sessions)))
   (if (atom sessions) nil
@@ -325,7 +333,8 @@
 ; Each result is computed from the single issued row, not from a served
 ; fold over the held list.  NIL means that no justified local delta exists.
 (defun fn-bpnp-issued-debt-delta (st node)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
   (let* ((issued (fn-bpnf-issued st))
          (kind (fn-bpn-nth 3 issued))
          (record (fn-bpn-nth 4 issued)))
@@ -613,7 +622,7 @@
        (equal (fn-bpnp-held-expiry h observation) :live)))
 
 (defun fn-bpnp-forward-scan (ordered peer mru node observation waits free)
-  (declare (xargs :guard t :measure (acl2-count ordered)))
+  (declare (xargs :guard (natp mru) :measure (acl2-count ordered)))
   (if (atom ordered) (list :none waits)
     (let* ((h (car ordered))
            (key (fn-bpnp-wait-key h)))
@@ -636,7 +645,9 @@
                     waits))))))))
 
 (defun fn-bpnp-start-one (st peer session mru observation)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (natp mru)
+                              (true-listp (fn-bpnf-held-list st)))
+                  :verify-guards nil))
   (if (not (and (fn-bpnp-session-currentp
                 (fn-bpnp-sessions st) peer session mru)
                 (null (fn-bpnf-issued st))
@@ -999,6 +1010,8 @@
 
 (defun fn-bpnp-step (st event)
   (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (fn-bpnp-session-listp (fn-bpnp-sessions st))
+                              (true-listp (fn-bpnf-held-list st))
                               (fn-bpnp-host-eventp event))
                   :verify-guards nil))
   (if (and (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :uncertain)
