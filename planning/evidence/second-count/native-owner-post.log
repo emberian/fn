@@ -1,0 +1,10 @@
+test_article_over_the_body_limit_is_refused_and_the_owner_survives (tests.test_native_owner.NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives) ... ok
+test_once_sigterm_closes_client_with_incomplete_post (tests.test_native_owner.NativeOwnerTests.test_once_sigterm_closes_client_with_incomplete_post) ... ok
+test_post_is_committed_and_readable_after_owner_exit (tests.test_native_owner.NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit) ... ok
+test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation) ... ok
+test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart (tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 12.505s
+
+OK

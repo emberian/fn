@@ -72,10 +72,14 @@
 ; and `fn-store-prov-post' also read), and the store's payload bound.  ACL2
 ; derives all of it (books/owner-agent.lisp fn-oag-post-config, whose agent
 ; is the path-identity by fn-oag-post-config-agent-is-the-path-identity);
-; this wrapper only supplies the payload bound.
+; this wrapper only supplies the payload bound: the record codec's payload
+; field (`*fn-record-max-payload*', books/records-shape), which bounds every
+; profile's (`fn-sbud-payload-bound-within-record-codec').  The wire limit is
+; fixed before the profile is handed over; the POST boundary applies the
+; profile's own bound (`fn-owner-post-boundary').
 (defun fn-owner-post-config (cfg)
   (declare (xargs :mode :program))
-  (fn-oag-post-config cfg *fn-store-max-payload*))
+  (fn-oag-post-config cfg *fn-record-max-payload*))
 
 (defun fn-owner-ocfg (state)
   ; Internal, single-valued accessor for host wrappers.
@@ -315,7 +319,7 @@
   ; installed now, so the host installs it unconditionally and decides nothing.
   (declare (xargs :stobjs state :mode :program))
   (mv-let (verdict next)
-    (fn-ocl-publish (fn-owner-ocfg state) generation *fn-store-max-payload*)
+    (fn-ocl-publish (fn-owner-ocfg state) generation *fn-record-max-payload*)
     (let ((state (fn-owner-install-ocfg next state)))
       (value verdict))))
 
@@ -344,7 +348,7 @@
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (not (fn-octet-listp payload)) (> (len payload) *fn-store-max-payload*)
+            (not (fn-octet-listp payload)) (> (len payload) *fn-record-max-payload*)
             (equal groups :bad) (null groups)
             (not (fn-store-text-octetsp id-octets))
             (not (fn-store-text-octetsp subject-octets))
@@ -535,6 +539,22 @@
   (let ((record (fn-sf-record-candidate
                  (fn-sn-files (fn-owner-store state)))))
     (value (if record (fn-store-event-encode record) nil))))
+
+; The staged record's sequence, the one the host names its transaction file
+; from (host/native/owner.lisp fnn-owner-publish-prepared); the host holds no
+; count of its own.  It is the committed count
+; (books/store-budget-naming.lisp `fn-sbud-pending-sequence-is-used').
+(defun fn-owner-pending-sequence (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sbud-pending-sequence (fn-owner-store state))))
+
+; The POST admission boundary over the profile the owner was handed at open
+; (`fn-owner-install-profile'); without one the payload bound is 0.
+(defun fn-owner-post-boundary (msgid-octets payload-length group-count charge
+                                            state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sbud-post-boundary (fn-owner-store-profile state) msgid-octets
+                                payload-length group-count charge)))
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).
@@ -936,7 +956,7 @@
 (defun fn-owner-feed-render-command (command)
   (declare (xargs :mode :program))
   (fn-wire-render-feed-command command *fn-nntp-max-initial-line-octets*
-                               *fn-store-max-payload*))
+                               *fn-record-max-payload*))
 
 (defun fn-owner-feed-install-feed (records effects state)
   (declare (xargs :stobjs state :mode :program))
