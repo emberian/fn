@@ -34,8 +34,18 @@ The first selected persvati ACL2 8.7 / SBCL 2.6.8 run,
 admitted in 0.05 seconds, but the old by-definition ready theorem stalled
 after the decision shape changed. The test root then failed to include the
 uncertified book. The later source revision makes the ready branch select
-only live rows and cites the selector theorem directly. Certification and
-source-matched native qualification of that revision are pending.
+only live rows and cites the selector theorem directly.
+
+The corrected source at `b19e64b8` passed selected persvati run
+`run-20260924T034246Z-3a40`, [manifest](manifests/certify-20260924T034256Z-3866445.json):
+`books/bp-app-handoff-time` and
+`tests/acl2/bp-app-handoff-time-tests` both certified. The exact toolchain
+was ACL2 8.7 / SBCL 2.6.8, identity
+`1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286`;
+the run used two jobs and a 90-second per-book cap, with 8.891 seconds
+certification wall time. The manifest records source digests, included
+dependency digests, observed markers and both passed root results. Affected
+closure and source-matched native qualification remain open.
 
 This is one actual A3 local application selection step. It does not satisfy
 N03's route wait and four-progress-event trace, N04's forwarding MRU trace,

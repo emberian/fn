@@ -326,18 +326,21 @@
       "steps": [
         "Queue letters and receipts during a long outage.",
         "Offer a brief one-way contact using cached inventory, then a return contact.",
-        "Jump wall time and vary permitted capacity/fairness."
+        "Jump wall time and vary permitted capacity/fairness.",
+        "After two durable local BP receives, make the older carrier clock-uncertain while the newer carrier is live; select and deliver the newer without changing the older. Also leave only the uncertain carrier, and separately make the FNBS publication outcome uncertain."
       ],
       "expected": [
         "Useful bounded batches need no preliminary dialogue.",
         "Clock jumps do not discharge promises or prove non-delivery.",
-        "Progress assumptions and BP/fn lifetime distinctions are explicit."
+        "Progress assumptions and BP/fn lifetime distinctions are explicit.",
+        "Per-carrier clock uncertainty does not block a different live local delivery, while an uncertain publication still fences mutation."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-bp-workflow.md",
-        "tests/evidence/2026-09-18-bp-exchange.md"
+        "tests/evidence/2026-09-18-bp-exchange.md",
+        "planning/evidence/bp-a3-live-selection-2026-09-24.md"
       ],
-      "execution_scope": "Partial: real queued BP delivery after contact outage and process restart, sender retry semantics and finite transport-safety proofs. Asymmetric scheduled windows, wall-clock jumps, LTP and fairness/liveness remain open."
+      "execution_scope": "Partial: real queued BP delivery after contact outage and process restart, sender retry semantics and finite transport-safety proofs. The local A3 clocked selector has a certified two-receive ACL2 trace, with no source-matched native image for that change. Asymmetric scheduled windows, wall-clock jumps, LTP and fairness/liveness remain open."
     },
     {
       "id": "SCN-011",

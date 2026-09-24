@@ -14,13 +14,13 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 608 |
 | Books inside the root closure | 614 |
 | `defthm` and `defthmd` events | 8557 |
-| `defun` events | 6339 |
-| Functions with verified guards | 2034 |
+| `defun` events | 6340 |
+| Functions with verified guards | 2035 |
 | Functions declared `:verify-guards nil` and never verified | 374 |
 | Functions left at the default with an explicit guard | 3124 |
 | Functions left at the default with no guard | 807 |
-| `assert-event` checks | 9298 |
-| `must-fail` checks | 504 |
+| `assert-event` checks | 9326 |
+| `must-fail` checks | 506 |
 | `encapsulate` events | 27 |
 | Theorems flagged SUSPECT by shape | 77 |
 | Export-hygiene warnings | 103 |
@@ -109,7 +109,7 @@ that `make certify` requests.
 | `books/assumptions.lisp` | root | 15 | 11 | 0/1/0/10 | 0 | 0 | 0 |
 | `books/auth-secret.lisp` | root | 18 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/bp-adu.lisp` | root | 19 | 41 | 7/0/34/0 | 0 | 0 | 0 |
-| `books/bp-app-handoff-time.lisp` | root | 2 | 3 | 3/0/0/0 | 0 | 0 | 0 |
+| `books/bp-app-handoff-time.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/bp-app-handoff.lisp` | root | 6 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/bp-authored-wire.lisp` | root | 2 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/bp-bundle-invariants.lisp` | root | 30 | 1 | 0/0/0/1 | 0 | 0 | 2 |
@@ -458,7 +458,7 @@ that `make certify` requests.
 | `tests/acl2/auth-secret-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
 | `tests/acl2/bp-app-handoff-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 5 | 0 |
-| `tests/acl2/bp-app-handoff-time-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 2 | 0 |
+| `tests/acl2/bp-app-handoff-time-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 4 | 0 |
 | `tests/acl2/bp-authored-wire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 3 | 0 |
 | `tests/acl2/bp-bundle-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 68 | 0 | 0 |
 | `tests/acl2/bp-channel-ingress-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 4 | 0 |
