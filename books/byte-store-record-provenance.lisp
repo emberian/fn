@@ -4985,3 +4985,237 @@
            :in-theory (union-theories
                        '(fn-bs-k0-owner-io-store-is-node-io)
                        (theory 'minimal-theory)))))
+
+; P-FRONTIER's root-directory fsync can report EIO after the queued
+; replacement has landed.  The host observes :frontier-directory :error and
+; returns an indeterminate, fenced result; it does not acknowledge the new
+; durable frontier.  This schedule chooses :apply explicitly.  :drop is also
+; physically legal and is witnessed in the test book; neither syscall error
+; nor this theorem implies a particular recovered frontier.
+(defun fn-bs-k0-root-error-outcomes (choice)
+  (declare (xargs :guard t :verify-guards nil))
+  (list :ok :ok :ok :ok :ok :ok :ok :ok :ok :ok :ok :ok
+        (list :eio choice)))
+
+(local
+ (defthm fn-bs-k0-root-eio-apply-is-fence
+   (implies (and (equal (fn-bs-ops-for-dir (fn-bs-pending b) :root)
+                        (list op))
+                 (not (equal (car op) :write)))
+            (equal (mv-nth 1 (fn-bs-fsync-dir b :root '(:eio :apply)))
+                   (fn-bs-fence-dir b :root)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (enable fn-bs-fsync-dir fn-bs-fence-dir
+                               fn-bs-crash-select)))))
+
+(local
+ (defthm fn-bs-k0-frontier-root-eio-apply-is-successful-byte-fence
+   (implies (and (fn-bs-dir-quietp file :root)
+                 (fn-bs-inop (fn-bs-lookup file :staging stage)))
+            (equal
+             (mv-nth 1 (fn-bs-fsync-dir
+                        (mv-nth 1 (fn-bs-rename file :staging stage :root
+                                                *fn-bs-frontier-name* :ok))
+                        :root '(:eio :apply)))
+             (fn-bs-fence-dir
+              (mv-nth 1 (fn-bs-rename file :staging stage :root
+                                      *fn-bs-frontier-name* :ok)) :root)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k0-root-eio-apply-is-fence
+                              (b (mv-nth 1 (fn-bs-rename file :staging stage
+                                                          :root *fn-bs-frontier-name* :ok)))
+                              (op (list :set-entry :root *fn-bs-frontier-name*
+                                        (fn-bs-lookup file :staging stage)))))
+            :in-theory (e/d (fn-bs-rename fn-bs-ops-for-dir-of-append
+                             fn-bs-dir-quietp)
+                            (fn-bs-fsync-dir fn-bs-fence-dir fn-bs-lookup))))))
+
+(local
+ (defthm fn-bs-k0-frontier-root-eio-apply-reaches-durable-cut
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-frontier-inputp ks stage octets)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (let* ((run (fn-bs-run bs ks (fn-bs-frontier-program stage octets)
+                                   nil groups capacity))
+                   (file (car (nth 6 run))))
+              (equal (mv-nth 1
+                      (fn-bs-fsync-dir
+                       (mv-nth 1 (fn-bs-rename file :staging stage :root
+                                               *fn-bs-frontier-name* :ok))
+                       :root '(:eio :apply)))
+                     (car (nth 12 run)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use (fn-bs-store-relation-unfolds
+                  fn-bs-k0-frontier-file-cut-authority-quiet
+                  fn-bs-k0-frontier-file-observation-keeps-byte-state
+                  fn-bs-k0-frontier-file-observation-source-is-new-inode
+                  fn-bs-k0-frontier-dir-cut-is-fence
+                  (:instance fn-bs-k6-state-next-ino-is-inop)
+                  (:instance fn-bs-k0-frontier-root-eio-apply-is-successful-byte-fence
+                   (file (car (nth 6 (fn-bs-run bs ks
+                                (fn-bs-frontier-program stage octets)
+                                nil groups capacity))))))
+            :in-theory (e/d (fn-bs-dir-quietp fn-bs-frontier-inputp)
+                            (fn-bs-run fn-bs-frontier-program fn-bs-statep
+                             fn-bs-store-relation fn-bs-lookup fn-bs-fsync-dir
+                             fn-bs-rename fn-bs-fence-dir fn-bs-inop))))))
+
+(defthm fn-bs-k0-frontier-node-root-eio-applied-fences-related-state
+  (implies
+   (and (fn-sn-statep s)
+        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
+        (not (fn-bs-lookup bs :staging stage)))
+   (let* ((ks (fn-sn-files s))
+          (run (fn-bs-run bs ks (fn-bs-frontier-program stage octets)
+                          nil groups capacity))
+          (file (car (nth 6 run)))
+          (failed (mv-nth 1 (fn-bs-fsync-dir
+                             (mv-nth 1 (fn-bs-rename file :staging stage
+                                                     :root *fn-bs-frontier-name* :ok))
+                             :root '(:eio :apply))))
+          (s3 (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier :ok)
+                                      :frontier-file :ok)
+                        :frontier-replace :ok))
+          (s4 (fn-sn-io s3 :frontier-directory :error)))
+     (and (equal failed (car (nth 12 run)))
+          (fn-bs-store-relation failed (fn-sn-files s4))
+          (equal (fn-sf-phase (fn-sn-files s4)) :fenced-frontier)
+          (equal (fn-bs-durable-frontier failed)
+                 (fn-sf-frontier-candidate (fn-sn-files s3))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-frontier-native-call-sequence-matches-run)
+                 (:instance fn-bs-k0-frontier-dir-cut-establishes-relation
+                  (ks (fn-sn-files s)))
+                 (:instance fn-bs-k0-frontier-dir-cut-kernel-candidate-and-phase
+                  (ks (fn-sn-files s)))
+                 (:instance fn-bs-k0-frontier-root-eio-apply-reaches-durable-cut
+                  (ks (fn-sn-files s)))
+                 (:instance fn-bs-k0-frontier-dir-cut-committedp
+                  (ks (fn-sn-files s)))
+                 (:instance fn-bs-frontier-dir-error-preserves-relation
+                  (bs (car (nth 12 (fn-bs-run bs (fn-sn-files s)
+                                    (fn-bs-frontier-program stage octets)
+                                    nil groups capacity))))
+                  (ks (cdr (nth 12 (fn-bs-run bs (fn-sn-files s)
+                                    (fn-bs-frontier-program stage octets)
+                                    nil groups capacity)))))
+                 (:instance fn-bs-native-io-is-byte-observation
+                  (s (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier :ok)
+                                       :frontier-file :ok)
+                                 :frontier-replace :ok))
+                  (operation :frontier-directory) (result :error))
+                 (:instance fn-sn-io-preserves-state
+                  (operation :start-frontier) (result :ok))
+                 (:instance fn-sn-io-preserves-state
+                  (s (fn-sn-io s :start-frontier :ok))
+                  (operation :frontier-file) (result :ok))
+                 (:instance fn-sn-io-preserves-state
+                  (s (fn-sn-io (fn-sn-io s :start-frontier :ok)
+                               :frontier-file :ok))
+                  (operation :frontier-replace) (result :ok)))
+           :in-theory (e/d (fn-bs-native-io-event fn-sf-dispatch
+                            fn-sf-frontier-dir-result fn-sf-fencedp)
+                           (fn-bs-run fn-bs-frontier-program fn-sn-io
+                            fn-bs-store-relation fn-bs-durable-frontier)))))
+
+(defthm fn-bs-k0-frontier-eio-applied-run-has-actual-failed-cut
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal
+            (car (nth 12
+                  (fn-bs-run bs ks (fn-bs-frontier-program stage octets)
+                             (fn-bs-k0-root-error-outcomes :apply)
+                             groups capacity)))
+            (car (nth 12
+                  (fn-bs-run bs ks (fn-bs-frontier-program stage octets)
+                             nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-k0-frontier-root-eio-apply-reaches-durable-cut
+                 fn-bs-k0-frontier-file-cut-is-write-fence
+                 fn-bs-k0-frontier-replace-cut-is-rename
+                 fn-bs-k0-frontier-rename-returns-ok
+                 fn-bs-k0-frontier-file-observation-source-is-new-inode)
+           :in-theory (e/d (fn-bs-k0-root-error-outcomes
+                            fn-bs-frontier-program fn-bs-run fn-bs-step)
+                           (fn-bs-create fn-bs-write fn-bs-fsync-file
+                            fn-bs-rename fn-bs-fsync-dir fn-bs-fence-file
+                            fn-bs-fence-dir fn-bs-lookup
+                            fn-bs-statep fn-bs-store-relation)))))
+
+(local
+ (defthm fn-bs-k0-owner-frontier-root-eio-applied-fences-related-state
+   (implies
+    (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+         (fn-bs-store-relation bs
+                               (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+         (fn-bs-frontier-inputp
+          (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) stage octets)
+         (not (fn-bs-lookup bs :staging stage)))
+    (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+           (run (fn-bs-run bs (fn-sn-files s)
+                           (fn-bs-frontier-program stage octets)
+                           nil groups capacity))
+           (file (car (nth 6 run)))
+           (renamed (mv-nth 1 (fn-bs-rename file :staging stage :root
+                                             *fn-bs-frontier-name* :ok)))
+           (result (mv-nth 0 (fn-bs-fsync-dir renamed :root '(:eio :apply))))
+           (failed (mv-nth 1 (fn-bs-fsync-dir renamed :root '(:eio :apply))))
+           (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok))))
+           (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok))))
+           (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok))))
+           (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
+           (k3 (fn-sn-files (fn-own-store (fn-ocfg-owner oc3))))
+           (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
+      (and (equal result :eio)
+           (equal failed (car (nth 12 run)))
+           (fn-bs-store-relation failed k4)
+           (equal (fn-sf-phase k4) :fenced-frontier)
+           (equal (fn-bs-durable-frontier failed)
+                  (fn-sf-frontier-candidate k3)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k0-frontier-node-root-eio-applied-fences-related-state
+                   (s (fn-own-store (fn-ocfg-owner oc)))))
+            :in-theory (union-theories
+                        '(fn-bs-k0-owner-io-store-is-node-io fn-bs-fsync-dir)
+                        (theory 'minimal-theory))))))
+
+; The public K0 error bridge names the actual owner callback and the actual
+; failing byte-program cut.  It promises a recovery fence, not reservation.
+(defthm fn-bs-k0-owner-frontier-root-eio-applied-run-fences-related-state
+  (implies
+   (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+        (fn-bs-store-relation bs
+                              (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+        (fn-bs-frontier-inputp
+         (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) stage octets)
+        (not (fn-bs-lookup bs :staging stage)))
+   (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+          (run (fn-bs-run bs (fn-sn-files s)
+                          (fn-bs-frontier-program stage octets)
+                          (fn-bs-k0-root-error-outcomes :apply)
+                          groups capacity))
+          (failed (car (nth 12 run)))
+          (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok))))
+          (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok))))
+          (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok))))
+          (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
+          (k3 (fn-sn-files (fn-own-store (fn-ocfg-owner oc3))))
+          (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
+     (and (fn-bs-store-relation failed k4)
+          (equal (fn-sf-phase k4) :fenced-frontier)
+          (equal (fn-bs-durable-frontier failed)
+                 (fn-sf-frontier-candidate k3)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-owner-frontier-root-eio-applied-fences-related-state)
+                 (:instance fn-bs-k0-frontier-eio-applied-run-has-actual-failed-cut
+                  (ks (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+           :in-theory (theory 'minimal-theory))))
