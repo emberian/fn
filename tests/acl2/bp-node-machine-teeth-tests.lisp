@@ -155,8 +155,8 @@
              *bpnmt-n03-old-held*)
       (not (fn-bpnf-issued *bpnmt-n03-delivering*))))
 
-; Tooth for the only hypothesis of the called-path invariant: remove the
-; :progress event-kind premise.  A real matched kind-5 durable callback then
+; Tooth for the only hypothesis of fn-bpnp-step-progress-preserves-held:
+; remove the :progress event-kind premise.  A real matched kind-5 durable callback then
 ; changes the held list, so the theorem's conjunction is false.
 (defconst *bpnmt-n03-receive-event*
   (fn-bpnf-receive-wire-event-value
@@ -280,6 +280,60 @@
       (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpnmt-n03-recovered*))
              (fn-bpnf-held-list *bpnmt-n03-s2*))
       (equal (fn-bpnp-used (fn-bpnf-answer-state *bpnmt-n03-recovered*)) 2)))
+
+;; Teeth for fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch.
+;; Witness for its second disjunct: the same reachable two-kind-5 state with
+;; a route to the older transit row's destination.  One :progress event
+;; proposes a forwarding dispatch, installing a :pending :dispatch at the
+;; current epoch and next operation id while leaving the held list alone.
+;; The issued operation does change, so "progress preserves issued" is false
+;; on this arm; that is why the issued claim is the disjunction.
+(defconst *bpnmt-fwd-event*
+  (list :progress *bpnmt-local* *bpnmt-observation*
+        (list (list *bpnmt-unrouted* *bpnmt-unrouted*)) 0))
+;; The dispatch frame digest is an attachment, so evaluate it in make-event.
+(make-event
+ `(defconst *bpnmt-fwd*
+    ',(fn-bpnp-step *bpnmt-n03-s2* *bpnmt-fwd-event*)))
+(defconst *bpnmt-fwd-issued*
+  (fn-bpnf-issued (fn-bpnf-answer-state *bpnmt-fwd*)))
+(assert-event
+ (and (fn-bpnp-host-eventp *bpnmt-fwd-event*)
+      (null (fn-bpnf-issued *bpnmt-n03-s2*))
+      (equal (car (car (fn-bpnf-answer-effects *bpnmt-fwd*)))
+             :persist-dispatch)
+      (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpnmt-fwd*))
+             (fn-bpnf-held-list *bpnmt-n03-s2*))
+      (equal (len (fn-bpnf-held-list *bpnmt-n03-s2*)) 2)
+      (equal *bpnmt-fwd-issued*
+             (fn-bpnf-operation
+              (fn-bpnf-epoch *bpnmt-n03-s2*) (fn-bpnf-next-op *bpnmt-n03-s2*)
+              :dispatch (fn-bpn-nth 4 *bpnmt-fwd-issued*) :pending))))
+(must-fail
+ (assert-event
+  (equal *bpnmt-fwd-issued* (fn-bpnf-issued *bpnmt-n03-s2*))))
+
+;; Tooth for its only hypothesis: without the :progress premise, the real
+;; kind-5 receive proposal from the booted state installs an issued
+;; operation that is neither the old (nil) one nor a pending dispatch.
+(defconst *bpnmt-receive-issued*
+  (fn-bpnf-issued (fn-bpnf-answer-state *bpnmt-n03-receive-proposal*)))
+(assert-event
+ (and (fn-bpnp-host-eventp *bpnmt-n03-receive-event*)
+      (not (equal (fn-cbor-ag-car *bpnmt-n03-receive-event*) :progress))
+      (null (fn-bpnf-issued *bpnmt-n03-s0*))
+      *bpnmt-receive-issued*
+      (not (equal (fn-bpn-nth 3 *bpnmt-receive-issued*) :dispatch))))
+(must-fail
+ (assert-event
+  (or (equal *bpnmt-receive-issued* (fn-bpnf-issued *bpnmt-n03-s0*))
+      (and (null (fn-bpnf-issued *bpnmt-n03-s0*))
+           (equal *bpnmt-receive-issued*
+                  (fn-bpnf-operation
+                   (fn-bpnf-epoch *bpnmt-n03-s0*)
+                   (fn-bpnf-next-op *bpnmt-n03-s0*)
+                   :dispatch (fn-bpn-nth 4 *bpnmt-receive-issued*)
+                   :pending))))))
 
 ; PENDING N03 general two-tick theorem and its remaining hypothesis teeth.
 ; PENDING N04: two *received* valid no-fragment bundles with 48 KiB and 8 KiB
