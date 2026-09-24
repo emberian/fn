@@ -483,6 +483,10 @@
             bp peer-id node-id contact-host contact-port transfer-mru
             wall wall-error)
            (when listen-port
+             ;; A refused reception publishes its exact wire and verdict as
+             ;; receive evidence (fnn-bp-deliver-node); recover that ACL2
+             ;; namespace before the first transfer, as bp receive does.
+             (fnn-bp-evidence-open (fnn-bps-tally bp))
              (multiple-value-bind (bound bound-port)
                  (fnn-tcl-listen listen-port)
                (setq listener bound)

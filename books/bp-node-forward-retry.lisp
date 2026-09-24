@@ -175,6 +175,7 @@
                                  (fn-bpnp-pending-image st)))))
            :in-theory (union-theories
                        '(fn-bpnp-step fn-bpnp-with-runtime-keeps-selection-inputs
+                         fn-bpnp-domain-recover-eventp fn-bpnp-conflict-held
                          fn-cbor-ag-car fn-bpn-nth fn-bpnf-answer-effects
                          fn-bpnf-answer fn-bpnf-answer-state natp
                          (:executable-counterpart natp)
@@ -347,7 +348,8 @@
              (fn-bpnf-answer-state
               (fn-bpnp-step st (list :persist-result epoch op result))))))
   :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpnp-step fn-bpnp-attempt-persist-step
+                              '(fn-bpnp-domain-recover-eventp fn-bpnp-conflict-held
+                         fn-bpnp-step fn-bpnp-attempt-persist-step
                                 fn-bpnp-held-list-of-writers
                                 fn-bpnp-attempt-apply-bounds-retries
                                 fn-bpnf-answer fn-bpnf-answer-state

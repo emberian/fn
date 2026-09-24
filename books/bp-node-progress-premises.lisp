@@ -532,6 +532,19 @@
   (fn-bpnp-dispatch-persist-step st epoch op result)
   (fn-bpnp-dispatch-persist-step))
 
+(fn-bpnpp-defkeep fn-bpnpp-clock-domain-fence
+  (fn-bpnp-clock-domain-fence st plan)
+  (fn-bpnp-clock-domain-fence))
+
+(fn-bpnpp-defkeep fn-bpnpp-conflict-propose-step
+  (fn-bpnp-conflict-propose-step st event h)
+  (fn-bpnp-conflict-propose-step fn-bpnp-with-next-issued
+   fn-bpnp-conflict-refusal))
+
+(fn-bpnpp-defkeep fn-bpnpp-conflict-persist-step
+  (fn-bpnp-conflict-persist-step st epoch op result)
+  (fn-bpnp-conflict-persist-step fn-bpnp-conflict-refusal))
+
 (fn-bpnpp-defkeep fn-bpnpp-start-one
   (fn-bpnp-start-one st peer session mru observation)
   (fn-bpnp-start-one))
@@ -569,6 +582,9 @@
                          fn-bpnpp-progress-step fn-bpnpp-dispatch-persist-step
                          fn-bpnpp-attempt-persist-step
                          fn-bpnpp-forward-result-persist-step
+                         fn-bpnpp-clock-domain-fence
+                         fn-bpnpp-conflict-propose-step
+                         fn-bpnpp-conflict-persist-step
                          fn-bpnpp-delegate-with-credit
                          fn-bpnpp-preserve-runtime-answer)
                        (theory 'fn-bpnpp-theory)))))
@@ -703,6 +719,8 @@
                          fn-bpnpp-nth-of-update-nth-same
                          fn-bpnpp-answer-effects-of-answer
                          fn-bpnpp-constructor-fields
+                         fn-bpnp-conflict-held fn-bpnp-clock-domain-fence
+                         fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
                          natp (:e natp) (:e equal))
                        (theory 'minimal-theory)))))
 

@@ -73,7 +73,10 @@
       (values names plan))))
 
 (defun fnn-bps-clock-domain-gate (service namespace-plan)
-  "Establish or check the durable boot domain before replaying age anchors."
+  "Return ACL2's boot-domain decision for this recovery.  An :initialize
+decision publishes the domain record first.  The host never classifies the
+decision: the recovery event carries it as its seventh field and
+fn-bpnp-step admits it or fences (spec bp-node-machine 11.1 N07)."
   (let* ((root (fnn-bps-root service))
          (final (fnn-join root (fnn-core 'fn-bpcd-final-name)))
          (present (fnn-check-regular final))
@@ -92,7 +95,6 @@
                          saved (and present t) observed legacy-evidence
                          (and (fnn-bps-lock-fd service) t) (not present))))
     (case (fnn-core 'fn-bpnf-clock-domain-plan-status plan)
-      (:same service)
       (:initialize
        (let* ((stage (fnn-join root
                                (format nil ".clock-domain-~d-~a"
@@ -105,12 +107,8 @@
                  :cleanup-directory root :operation-label :clock-domain)))
          (unless (eq outcome :durable)
            (fnn-indeterminate
-            "bp-service: clock domain publication is ~a" outcome))
-         service))
-      (otherwise
-       (fnn-indeterminate
-        "bp-service: clock domain fenced: ~a"
-        (fnn-core 'fn-bpnf-clock-domain-plan-reason plan))))))
+            "bp-service: clock domain publication is ~a" outcome)))))
+    plan))
 
 (defun fnn-bps-read-records (service names)
   (let ((limit (fnn-core 'fn-bpn-host-lifecycle-frame-limit))
@@ -386,6 +384,49 @@
       (fnn-immutable-publish-effect
        publisher stage final dir frame :cleanup-directory dir))))
 
+(defun fnn-bps-persist-kind-fourteen (service epoch operation-id record)
+  ;; The kind-14 conflict record (spec bp-node-machine 3.3, 4.1 step 4).
+  ;; ACL2 authorizes the exact name, frame and publisher.
+  (let* ((dir (fnn-bps-lifecycle service))
+         (name (fnn-core 'fn-bpnf-stored-record-name epoch operation-id))
+         (final (fnn-join dir name))
+         (final-absent (if (fnn-lstat final) nil t))
+         (operation
+           (fnn-core 'fn-bpnf-conflict-publication-authorize
+                     (fnn-bps-state service) epoch operation-id record
+                     (if (fnn-bps-lock-fd service) t nil) final-absent)))
+    (when (equal operation '(:fault :conflict-codec))
+      (return-from fnn-bps-persist-kind-fourteen :refused))
+    (unless (eq (fnn-core 'fn-bpnf-conflict-publication-operationp operation) t)
+      (fnn-indeterminate
+       "bp-service: kind-14 publication authority refused pending echo"))
+    (let* ((authorized-name
+             (fnn-core 'fn-bpnf-conflict-publication-name operation))
+           (stage (fnn-join dir (format nil ".record-~d-~a"
+                                         (sb-posix:getpid) (fnn-random-hex 12))))
+           (frame (fnn-octets
+                   (fnn-core 'fn-bpnf-conflict-publication-frame operation)))
+           (publisher
+             (fnn-core 'fn-bpnf-conflict-publication-publisher operation)))
+      (unless (equal authorized-name name)
+        (fnn-fault "bp-service: ACL2 kind-14 name changed after authorization"))
+      (fnn-immutable-publish-effect
+       publisher stage final dir frame :cleanup-directory dir))))
+
+(defun fnn-bps-settle-conflict (service effect)
+  "Publish one :persist-conflict proposal and return the machine's answer to
+its outcome, which is the refusal to the offering ingress."
+  (unless (= (length effect) 4)
+    (fnn-indeterminate "bp-service: malformed kind-14 publication effect"))
+  (let* ((epoch (second effect))
+         (operation-id (third effect))
+         (outcome (fnn-bps-persist-kind-fourteen
+                   service epoch operation-id (fourth effect))))
+    (when (eq outcome :uncertain)
+      (setf (fnn-bps-outcome service) :uncertain))
+    (fnn-bps-foundation-step
+     service (list :persist-result epoch operation-id outcome))))
+
 (defun fnn-bps-route-host (route) (fnn-octets-string (fnn-octets (second route))))
 (defun fnn-bps-route-port (route) (third route))
 (defun fnn-bps-route-node (route) (fnn-octets-string (fnn-octets (fourth route))))
@@ -458,6 +499,8 @@
          (otherwise
           (setf (fnn-bps-outcome service) :uncertain)
           (fnn-indeterminate "bp-service: dispatch publication uncertain"))))
+      (:persist-conflict
+       (fnn-bps-drive-effects service (fnn-bps-settle-conflict service effect)))
       (:persist-delete
        (unless (= (length effect) 4)
          (fnn-indeterminate "bp-service: malformed kind-10 publication effect"))
@@ -602,7 +645,11 @@
                 (fifth effect)))
       (:restart-fault
        (setf (fnn-bps-outcome service) :uncertain)
-       (fnn-indeterminate "bp-service: restart fenced: ~(~a~)" (second effect)))
+       (if (eq (second effect) :clock-domain)
+           (fnn-indeterminate "bp-service: restart fenced: clock domain ~(~a~)"
+                              (third effect))
+         (fnn-indeterminate "bp-service: restart fenced: ~(~a~)"
+                            (second effect))))
       (:restart-ready
        (fnn-out "BP FNBS recovered held=~d" (second effect)))
       (t nil)))
@@ -653,6 +700,13 @@
                   effects (fnn-bps-foundation-step
                            service (list :persist-result epoch operation-id
                                          outcome))))))
+      ;; A conflicting reception (N11): the kind-14 record settles before
+      ;; the callback takes the machine's final answer, as kind 5 does.
+      (when (and (consp effects) (consp (car effects))
+                 (eq (caar effects) :persist-conflict))
+        (unless (null (cdr effects))
+          (fnn-indeterminate "bp-service: malformed kind-14 publication effect"))
+        (setq effects (fnn-bps-settle-conflict service (car effects))))
       (let ((result (fnn-core 'fn-bpnf-callback-result effects ingress path)))
         (when (eq (first result) :accepted)
           (fnn-bps-fragment-progress service))
@@ -728,11 +782,12 @@ which runs no FNBS machine."
               (fnn-os-error (e)
                 (fnn-indeterminate
                  "bp-service: clock domain namespace barrier failed: ~a" e)))
-            (handler-case (fnn-bps-clock-domain-gate service plan)
-              (fnn-os-error (e)
-                (fnn-indeterminate
-                 "bp-service: clock domain observation failed: ~a" e)))
-            (let* ((record-names
+            (let* ((domain
+                     (handler-case (fnn-bps-clock-domain-gate service plan)
+                       (fnn-os-error (e)
+                         (fnn-indeterminate
+                          "bp-service: clock domain observation failed: ~a" e))))
+                   (record-names
                      (fnn-core 'fn-bpnf-mixed-legacy-names plan))
                    (received-names
                      (fnn-core 'fn-bpnf-mixed-received-names plan))
@@ -749,8 +804,13 @@ which runs no FNBS machine."
                        (fnn-core 'fn-bpn-host-lifecycle-recovery-records recovery))
                      (rows (fnn-bps-read-received-rows service received-names))
                      (sequence (fnn-bps-sequence-ready service (and records t)))
-                     (event (fnn-core 'fn-bpnf-family-recover-auto-event
-                                      (fnn-bps-state service) records sequence rows)))
+                     ;; Seventh field: ACL2's boot-domain decision.  The
+                     ;; machine fences unless it admits it (N07).
+                     (event (append
+                             (fnn-core 'fn-bpnf-family-recover-auto-event
+                                       (fnn-bps-state service) records
+                                       sequence rows)
+                             (list domain))))
                 (setf (fnn-bps-stages service)
                       (fnn-core 'fn-bpn-host-lifecycle-recovery-stages recovery))
                 (fnn-bps-drive-effects

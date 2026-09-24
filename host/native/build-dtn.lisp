@@ -74,6 +74,7 @@
 (include-book "books/bp-fnbs-dispatch-publication")
 (include-book "books/bp-fnbs-forward-publication")
 (include-book "books/bp-fnbs-deletion-publication")
+(include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
 (include-book "books/bp-node-progress-guards")
