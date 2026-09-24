@@ -487,6 +487,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/injection-tests \
 	books/nntp-post \
 	books/nntp-pinned-effects \
+	books/nntp-pinned-msgid \
+	tests/acl2/nntp-pinned-msgid-tests \
 	tests/acl2/nntp-post-tests \
 	books/path \
 	books/path-update \
