@@ -66,7 +66,10 @@ non-number token for the Message-ID keystone.
 - persvati `run-20260924T220100Z-1101`: reader-profile passed; nntp-tests
   failed on a second pinned CAPABILITIES byte list (manifest
   `certify-20260924T220124Z-1056618`).
-- The final run is cited in the lane handoff and the merge message.
+- persvati `run-20260924T220307Z-7be0`: passed, `tests/acl2/nntp-tests`
+  certified and the other 197 roots installed at their current digests from
+  the two runs above (manifest `certify-20260924T220328Z-1075905`). All 198
+  roots affected by `books/nntp-responses` are green at these bytes.
 - New books: nntp-list-counts 0.3 s, owner-list-counts-read 0.1 s per event
   at most in the REPL; the manifests carry the book times.
 
