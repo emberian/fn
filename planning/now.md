@@ -1,5 +1,34 @@
 # Current work — 2026-09-24
 
+## Wide Sol cycle — 03:31 UTC
+
+Source `8c61c098` integrates the recovered topic admission/native-control
+packet and maintained consumer event index into dev. The actual owner poll
+now selects a bounded indexed window; its outer correspondence still owes
+separate negative witnesses for several non-index premises. The merged static
+check passed. One combined qualification is running on hbox as
+`run-20260924T033100Z-4833`, at
+`/tank/fn/gates/topic-index-8c61c098-20260924`, with four jobs and the shared
+w28 cache. Source-matched topic admission/reopen and consumer compatibility
+tests follow a successful closure. These are pending gates, not results.
+
+The three Luna features passed their shared `e160442f` native image tests;
+the [trial record](experiments/luna-feature-trial-2026-09-24.md) separates
+implementation, Sol repairs and root assistance. The general status reply
+roundtrip theorem remains open. The BP report-cut driver also passed on that
+unchanged image after correcting a test-only Store-lock ordering error.
+
+The resumed swarm is primarily GPT-6-Sol. In parallel it is integrating native
+fragment activation and allocator relation proofs, completing Mini's durable
+signed reply/post/reopen exchange, supplying missing consumer and BP assurance,
+proving the status codec, and making stale certified claims observable in
+tooling. [The board](swarm-board.md) records collaborators and shared runs.
+Source development continues alongside frozen-image qualification. The live
+`da5fd8cb` service remains protected.
+
+The earlier checkpoints below describe their named sources. Their pending
+work is superseded by this section where the same feature has since landed.
+
 The [workstream review and proposed next cycle](workstream-review-2026-09-24.md)
 reconstruct the last 300 first-parent landings, distinguish integrated work
 from the substantive branch backlog, and propose the next complete agent and

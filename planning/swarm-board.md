@@ -25,6 +25,33 @@ revision and theorem hypotheses when sharing a proof so its scope is clear.
 
 ## Current coordination — 2026-09-24
 
+### Resumed wide Sol cycle — 03:31 UTC
+
+The user requested wide forward implementation, mostly GPT-6-Sol. Root
+integrated topic/index at `f9f809b2`; frozen `8c61c098` adds the final Luna
+trial record. The following intentions supersede older lane checkpoints.
+They do not grant exclusive ownership.
+
+| Agent | Intended result and direct collaborators |
+| --- | --- |
+| `native_qualification` | One combined closure and production/developer image pair at `8c61c098`; topic admission/reopen and indexed consumer/status compatibility. Shares the fixture with `mini_reply_join`. |
+| `topic_metadata` | Repair concrete topic/index integration findings with the qualifier and consumer lane; no duplicate qualification run. |
+| `bp_foundation` | Transplant the qualified fragment/expiry activation packet onto current Store state, then interrupted-fragment/restart runtime qualification. Coordinates foundation changes with BP counterexample lane. |
+| `storage_kernel_completion` | Integrate allocator pair-12/pair-14 relation proofs and advance the actual served entry/crash correspondence. Shares physical publisher facts with BP lanes. |
+| `consumer_contract` | Complete the actual indexed-poll correspondence's missing premise witnesses and measure served polling with the qualifier. |
+| `mini_reply_join` | Complete native B3 durable hybrid reply preparation, retry, post and reopened readback in the isolated Mini evidence worktree. |
+| `bp_counterexample_completion` | Ground N03/N04/N05 suite gaps in the implemented host path; implement a coherent missing progress slice with its witnesses where required. |
+| `status_codec_proof` | Prove the general kind-9 status codec roundtrip with concrete full-antecedent and premise witnesses. |
+| `assurance_review_followup` | Reuse existing event/digest/closure checks to warn about unsupported certified registry claims; no proof farm required. |
+
+Shared qualification: hbox `run-20260924T033100Z-4833`, gate
+`/tank/fn/gates/topic-index-8c61c098-20260924`, w28 ACL2, shared
+`/tank/fn/certcache`, four jobs, plain default/DTN/test roots. Submission reused
+329 of 618 closure books and selected 289 for certification. This is an
+in-flight run, not a PASS. Lanes coordinate scoped two-job runs through the
+existing shared pools; they do not acquire extra process capacity by adding
+agents. Native tests use disposable stores, never `/tank/fn/node`.
+
 Root recovered the two accidental main-checkout operations; see
 [recovery](worktree-recovery-2026-09-24.md). ADVANCE, OVER, allocator frontier
 entry, consumer-index foundations, web paging and offline cursor inspection
