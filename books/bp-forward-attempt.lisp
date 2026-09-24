@@ -31,7 +31,7 @@
            (fn-frame-natp (fn-bpn-nth 7 record)))))
 
 (defun fn-bpnp-attempted-held (h record)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (true-listp h)))
   (update-nth 13
               (list :forwarding (fn-bpn-nth 1 record) (fn-bpn-nth 2 record)
                     (fn-bpn-nth 5 record) (fn-bpn-nth 6 record))
@@ -40,6 +40,7 @@
 (defun fn-bpnp-attempt-matches-heldp (record h)
   (declare (xargs :guard t))
   (and (fn-bpnp-forward-attempt-recordp record)
+       (true-listp h)
        (equal (fn-bpn-nth 0 h) :bpnf-held)
        (equal (fn-bpn-nth 3 h) (fn-bpn-nth 3 record))
        (equal (fn-bpah-held-primary-identity h) (fn-bpn-nth 4 record))
@@ -52,7 +53,9 @@
   (declare (xargs :guard t :measure (acl2-count held)))
   (if (atom held) nil
     (if (equal arrival (fn-bpn-nth 3 (car held)))
-        (cons (fn-bpnp-attempted-held (car held) record) (cdr held))
+        (if (true-listp (car held))
+            (cons (fn-bpnp-attempted-held (car held) record) (cdr held))
+          nil)
       (cons (car held)
             (fn-bpnp-attempt-replace arrival record (cdr held))))))
 
@@ -100,7 +103,7 @@
        (fn-bpnp-forward-outcomep (fn-bpn-nth 8 record))))
 
 (defun fn-bpnp-forward-result-held (h outcome)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (true-listp h)))
   (update-nth 13 nil
               (if (fn-bpnp-forward-terminalp outcome)
                   (update-nth 12 '(:dispatch-done) h)
@@ -109,6 +112,7 @@
 (defun fn-bpnp-forward-result-matches-heldp (record h)
   (declare (xargs :guard t))
   (and (fn-bpnp-forward-result-recordp record)
+       (true-listp h)
        (equal (fn-bpn-nth 0 h) :bpnf-held)
        (equal (fn-bpn-nth 3 h) (fn-bpn-nth 3 record))
        (equal (fn-bpah-held-primary-identity h) (fn-bpn-nth 4 record))
@@ -123,7 +127,9 @@
   (declare (xargs :guard t :measure (acl2-count held)))
   (if (atom held) nil
     (if (equal arrival (fn-bpn-nth 3 (car held)))
-        (cons (fn-bpnp-forward-result-held (car held) outcome) (cdr held))
+        (if (true-listp (car held))
+            (cons (fn-bpnp-forward-result-held (car held) outcome) (cdr held))
+          nil)
       (cons (car held)
             (fn-bpnp-forward-result-replace arrival outcome (cdr held))))))
 

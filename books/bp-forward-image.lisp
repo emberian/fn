@@ -16,7 +16,9 @@
       nil)))
 
 (defun fn-bpnp-forward-one-block (block node anchor observation)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (fn-bpb-blockp block)
+                              (fn-bpp-previous-nodep node)
+                              (fn-clock-observationp observation))))
   (let ((type (fn-bpb-block-type block)))
     (cond
      ((equal type *fn-bpp-block-type-previous-node*)
@@ -49,7 +51,10 @@
      (t (list :ready block)))))
 
 (defun fn-bpnp-forward-blocks (blocks node anchor observation)
-  (declare (xargs :guard t :measure (acl2-count blocks)))
+  (declare (xargs :guard (and (fn-bpb-block-listp blocks)
+                              (fn-bpp-previous-nodep node)
+                              (fn-clock-observationp observation))
+                  :measure (acl2-count blocks)))
   (if (atom blocks)
       (if (null blocks) (list :ready nil)
         (list :fault :blocks))
