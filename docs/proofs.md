@@ -126,9 +126,14 @@ manifest that certified it, which is the citation to add. A row with no such
 manifest is not `certified`.
 
 `python3 tools/proof_cost.py` in `make check` holds the ten-second rule as a
-ratchet. `planning/proof-cost-baseline.json` lists each book whose worst
-current measurement, over every host and toolchain, was above ten seconds when
-the baseline was written, with that figure, its run and host. The check fails
+ratchet, measured at two jobs (decision D26). Only a run whose manifest
+records `jobs_effective` of 2 or fewer counts. A measurement at more jobs is
+printed as `RECORDED ... at N jobs` and never fails. A manifest without
+`jobs_effective` is unknown: its measurements are skipped with a warning that
+names the run. `planning/proof-cost-baseline.json` lists each book whose worst
+current measurement at two jobs or fewer, over every host and toolchain, was
+above ten seconds when the baseline was written, with that figure, its run,
+host and job count. The check fails
 on a book above ten seconds that the baseline does not list, or that runs more
 than 25 % over its listed figure; a listed book now under ten seconds is
 reported "improved; remove from baseline". Unmeasured books remain a warning
