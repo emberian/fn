@@ -624,15 +624,15 @@
     "books": 627,
     "books_in_root_closure": 625,
     "roots": 617,
-    "theorems": 8698,
-    "functions": 6414,
-    "assert_events": 9435,
+    "theorems": 8703,
+    "functions": 6418,
+    "assert_events": 9453,
     "must_fails": 539,
     "encapsulates": 27,
     "guards": {
       "verified": 2036,
       "declared-off": 382,
-      "default-guarded": 3177,
+      "default-guarded": 3181,
       "default-unguarded": 819
     },
     "suspect_theorems": 82,
@@ -8956,7 +8956,7 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 118,
+      "theorems": 119,
       "functions": 65,
       "guards": {
         "verified": 36,
@@ -9699,12 +9699,12 @@
       "book": "books/topic-history-local-admin.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 1,
-      "functions": 5,
+      "theorems": 3,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 5,
+        "default-guarded": 8,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -9749,7 +9749,7 @@
       "book": "books/topic-history-local-proposals.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
+      "theorems": 6,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -9830,7 +9830,7 @@
       "book": "books/topic-history-prefix.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 2,
+      "theorems": 3,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -9856,17 +9856,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 3,
-      "functions": 8,
+      "functions": 9,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 8,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 4,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -17009,7 +17009,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
+      "assert_events": 12,
       "must_fails": 1,
       "defconsts": 3,
       "defmacros": 0,
@@ -17120,9 +17120,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 4,
+      "assert_events": 6,
       "must_fails": 0,
-      "defconsts": 4,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -17146,7 +17146,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 7,
+      "assert_events": 9,
       "must_fails": 1,
       "defconsts": 2,
       "defmacros": 0,
@@ -17175,7 +17175,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 23,
       "must_fails": 1,
       "defconsts": 0,
       "defmacros": 0,
@@ -17204,7 +17204,7 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 25,
+      "assert_events": 27,
       "must_fails": 1,
       "defconsts": 5,
       "defmacros": 0,
@@ -18085,7 +18085,7 @@
     {
       "theorem": "fn-th-topic-decode-refuses-oversize",
       "book": "books/topic-history-store-events.lisp",
-      "line": 171,
+      "line": 198,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-th-topic-event-decode-exact and the conclusion is that branch's value"
       ]
@@ -18590,7 +18590,7 @@
       {
         "theorem": "fn-th-topic-decode-refuses-oversize",
         "book": "books/topic-history-store-events.lisp",
-        "line": 171,
+        "line": 198,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
