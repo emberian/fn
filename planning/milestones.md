@@ -238,9 +238,12 @@ complete READER, overview, provenance, and signatures remain open.
 Current M3 author-key task (2026-09-24): the selected both-required hybrid
 signature path and historical kind-4 verdict binding have advanced beyond the
 older checkpoint above. Operator-local per-principal rotation and revocation
-now have ACL2 source and control/CLI fixtures; a matching native image run,
-portable succession/recovery policy and broader composed assurance remain
-open. See [identity](../specs/identity.md) and `PRF-069`.
+now have ACL2 source and control/CLI fixtures. The completed kind-3 Store-node
+path has a selector/replay projection theorem and a historical-verdict
+preservation theorem, with a reachable A/B rotation/revocation/reopen trace.
+A matching native image run, portable succession/recovery policy and a full
+crash-phase lifecycle relation remain open. See [identity](../specs/identity.md)
+and `PRF-069`.
 
 The server waves (2026-09-20) move three of M3's five bullets without closing
 any. `books/served` takes the framing and reply projection out of `:program`-mode
