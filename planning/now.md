@@ -13,9 +13,10 @@ log that lived here is [archive/now-2026-09-24.md](archive/now-2026-09-24.md).
   (2026-09-24 06:10 EDT): closure green, image pair built, BP N03 and the
   interrupted-fragment case pass on it; every other native module ran later
   ([native subsets](evidence/native-subsets-1a9dd747-2026-09-24.md)). Before it, [`863c2141`](evidence/863-native-cut-2026-09-24.md).
-- **Live node:** hbox `/tank/fn/node` on `47bdb9a4` since 17:30 UTC
-  ([node record](evidence/node-hbox-47bdb9a4-2026-09-24.md)), upgraded in
-  place with the store kept; `fn-da5fd8cb` stays beside it for rollback.
+- **Live node:** hbox `/tank/fn/node` on `18c91321` since ~21:50 UTC
+  ([node record](evidence/node-hbox-18c91321-2026-09-24.md)), upgraded in
+  place with the store kept and its profile upgraded to scale (4096);
+  `fn-47bdb9a4` and `fn-da5fd8cb` stay beside it for rollback.
 - **Final cut:** source `8a1b31f9` failed combined certification on three
   roots, so no image was built ([final record](evidence/final-cut-8a1b31f9-2026-09-24.md);
   handoff, "Final cut"):
