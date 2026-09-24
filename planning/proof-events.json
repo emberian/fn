@@ -1319,6 +1319,10 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bs-crash-image-consumer-replay-ok"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-bs-crash-image-reopens"
         },
         {
@@ -1964,6 +1968,31 @@
           "kind": "theorem",
           "name": "fn-th-accepted-root-author-is-historical-enrollment",
           "note": "The historical selector first requires the T10 schema-1 event/snapshot binder, then any matched root declaration equals the author reference of that enrolled snapshot. Candidate selection remains separate from admission."
+        }
+      ]
+    },
+    {
+      "id": "PRF-067",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-bucket-of-build",
+          "note": "Exact selected bucket equals the group filter of the existing membership index, without assuming a new allocation policy."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-listgroup-command-of-build",
+          "note": "Under a projection-consistent archive, the complete group-index LISTGROUP reply and next session equal the archive command."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-run-preserves-relation",
+          "note": "Owner traces preserve the connection and view correspondence, now including group bucket pins."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-is-served-step-on-pinned-prefix",
+          "note": "Relates the actual host-called owner read to the served step over its retained archive and group bucket."
         }
       ]
     },

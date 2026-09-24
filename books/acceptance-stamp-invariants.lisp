@@ -10,7 +10,8 @@
                 (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
-                (not (fn-stxa-p (fn-sn-completion-record s))))
+                (not (fn-stxa-p (fn-sn-completion-record s)))
+                (not (fn-cpe-eventp (fn-sn-completion-record s))))
            (and
             (consp (fn-find-article
                     (fn-record-msgid (fn-sn-completion-record s))
@@ -28,7 +29,7 @@
                             fn-sn-finish
                             fn-sn-completion-enabledp
                             fn-sn-completion-record
-                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
                             fn-store-retention-event-p)))))
 
 ; These two projections are deliberately independent of the replay step.
@@ -51,7 +52,8 @@
   (declare (xargs :guard t))
   (and (not (fn-store-retention-event-p record))
        (not (fn-stxe-p record))
-       (not (fn-stxk-p record))))
+       (not (fn-stxk-p record))
+       (not (fn-cpe-eventp record))))
 
 (defun fn-replay-journal-article-stamps (records)
   (declare (xargs :guard t))
@@ -235,13 +237,15 @@
    (implies (fn-stxa-p record)
             (and (not (fn-store-retention-event-p record))
                  (not (fn-stxe-p record))
-                 (not (fn-stxk-p record))))
+                 (not (fn-stxk-p record))
+                 (not (fn-cpe-eventp record))))
    :hints (("Goal"
             :do-not-induct t
             :in-theory
             (e/d (fn-stxa-p fn-stxa-shapep fn-stxa-keyring-generation
                   fn-stxe-p fn-stxe-shapep fn-stxe-msgid
                   fn-stxk-p fn-stxk-shapep
+                  fn-cpe-eventp
                   fn-store-retention-event-p fn-record-msgidp)
                  (fn-stxe-bounded-octetsp
                   fn-record-metadata-bytes-p))))))
@@ -259,7 +263,7 @@
             (e/d (fn-sn-completion-enabledp fn-sn-statep fn-store-event-p
                  fn-replay-article-eventp)
                  (fn-record-shape-vocabulary fn-replay-apply-record
-                  fn-stxe-p fn-stxk-p fn-stxa-p
+                  fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
                   fn-store-retention-event-p))))))
 
 (defthm fn-sn-finish-installs-the-stamp-the-composite-carries

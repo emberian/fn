@@ -83,9 +83,9 @@
 ; it and the specification stays put.  Therefore the equality conclusion is
 ; false when fn-snt-relation is removed.
 (defconst *spc-stale*
-  (fn-sn-make *spc-groups* 10 (fn-sn-files *spc-second-reserved*)
-              (fn-node-initial-state *spc-groups* 10)
-              nil (fn-stx-index-empty)))
+  (fn-sn-update-indexed
+   *spc-second-reserved* (fn-sn-files *spc-second-reserved*)
+   (fn-node-initial-state *spc-groups* 10) (fn-stx-index-empty)))
 (assert-event (fn-sn-statep *spc-stale*))
 (assert-event (not (fn-snt-relation *spc-stale*)))
 (assert-event
@@ -114,3 +114,25 @@
 (assert-event
  (fn-snt-relation
   (fn-spc-run (fn-sn-open-state *spc-opened*) *spc-open-events*)))
+
+; The actual optimized caller must retain the consumer-prefix gate.  A stale
+; carried frontier is structurally admissible but cannot stage a new article.
+; This separates the gate from the article/file candidate checks above.
+(defconst *spc-stale-consumer*
+  (fn-sn-with-consumer *spc-second-reserved* (fn-cp-initial '(1) '(2) 0)))
+(assert-event (fn-sn-statep *spc-stale-consumer*))
+(assert-event (fn-sf-candidatep *spc-second*
+                 (fn-sf-records (fn-sn-files *spc-stale-consumer*))
+                 (fn-sf-frontier (fn-sn-files *spc-stale-consumer*))))
+(assert-event (fn-sn-record-bindsp
+               (fn-sn-prepare-node (fn-sn-node *spc-stale-consumer*) *spc-second*)
+               *spc-second*))
+(assert-event (equal (fn-spc-prepare *spc-stale-consumer* *spc-second*)
+                     *spc-stale-consumer*))
+(assert-event (equal (fn-sn-prepare *spc-stale-consumer* *spc-second*)
+                     *spc-stale-consumer*))
+(must-fail
+ (assert-event (equal (fn-sf-phase
+                      (fn-sn-files (fn-spc-prepare *spc-stale-consumer*
+                                                   *spc-second*)))
+                     :record-staged)))

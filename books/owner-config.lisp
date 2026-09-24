@@ -163,6 +163,16 @@
   (implies (not (equal id other))
            (equal (fn-ocfg-pin-find id (fn-ocfg-pin-remove other pins))
                   (fn-ocfg-pin-find id pins))))
+(defthm fn-ocfg-pin-find-of-pin-remove-same
+  (not (fn-ocfg-pin-find id (fn-ocfg-pin-remove id pins)))
+  :hints (("Goal" :induct (fn-ocfg-pin-remove id pins)
+           :in-theory (enable fn-ocfg-pin-remove fn-ocfg-pin-find))))
+(defthm fn-ocfg-pin-remove-absent-is-unchanged
+  (implies (and (true-listp pins)
+                (not (fn-ocfg-pin-find id pins)))
+           (equal (fn-ocfg-pin-remove id pins) pins))
+  :hints (("Goal" :induct (fn-ocfg-pin-remove id pins)
+           :in-theory (enable fn-ocfg-pin-remove fn-ocfg-pin-find))))
 
 ; The connection's pinned configuration, and the served table at that pin.
 (defun fn-ocfg-conn-config (oc id)
@@ -451,9 +461,10 @@
 
 (defun fn-ocfg-advance (oc id)
   (declare (xargs :guard t))
-  (let ((o (fn-own-advance (fn-ocfg-owner oc) id)))
+  (let* ((advanced (fn-own-advance-result (fn-ocfg-owner oc) id))
+         (o (cdr advanced)))
     (fn-ocfg-make o (fn-ocfg-config oc)
-                  (if (fn-own-find-conn id (fn-own-conns o))
+                  (if (equal (car advanced) :advanced)
                       (fn-ocfg-pin-set id (fn-ocfg-config oc) (fn-ocfg-pins oc))
                     (fn-ocfg-pins oc))
                   (fn-ocfg-staged oc))))
@@ -482,15 +493,45 @@
   (fn-ocfg-make owner (fn-ocfg-config oc) (fn-ocfg-pins oc)
                 (fn-ocfg-staged oc)))
 
+(defun fn-ocfg-with-read-owner (oc id owner)
+  ; fn-own-finish-read may close an invalid connection.  Keep the pin table's
+  ; domain equal to the returned owner's connections on that branch.
+  (declare (xargs :guard t))
+  (fn-ocfg-make owner (fn-ocfg-config oc)
+                (if (fn-own-find-conn id (fn-own-conns owner))
+                    (fn-ocfg-pins oc)
+                  (fn-ocfg-pin-remove id (fn-ocfg-pins oc)))
+                (fn-ocfg-staged oc)))
+
+(defthm fn-ocfg-with-read-owner-keeps-other-pins
+  (implies (not (equal other id))
+           (equal (fn-ocfg-pin-find
+                   other (fn-ocfg-pins
+                          (fn-ocfg-with-read-owner oc id owner)))
+                  (fn-ocfg-pin-find other (fn-ocfg-pins oc))))
+  :hints (("Goal" :in-theory (enable fn-ocfg-with-read-owner))))
+
+(defthm fn-ocfg-with-read-owner-pin-iff-survives
+  (equal (fn-ocfg-pin-find
+          id (fn-ocfg-pins (fn-ocfg-with-read-owner oc id owner)))
+         (if (fn-own-find-conn id (fn-own-conns owner))
+             (fn-ocfg-pin-find id (fn-ocfg-pins oc))
+           nil))
+  :hints (("Goal" :in-theory (enable fn-ocfg-with-read-owner
+                                      fn-ocfg-pin-remove
+                                      fn-ocfg-pin-find))))
+
 (defun fn-ocfg-read (oc id octets)
   (declare (xargs :guard t))
   (let ((result (fn-own-read (fn-ocfg-owner oc) id octets)))
-    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+    (cons (car result)
+          (fn-ocfg-with-read-owner oc id (cdr result)))))
 
 (defun fn-ocfg-read-step (oc id event)
   (declare (xargs :guard t))
   (let ((result (fn-own-read-step (fn-ocfg-owner oc) id event)))
-    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+    (cons (car result)
+          (fn-ocfg-with-read-owner oc id (cdr result)))))
 
 (defun fn-ocfg-open-peer (oc peer acfg)
   (declare (xargs :guard t))
@@ -674,10 +715,11 @@
   :rule-classes nil
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (enable (:d fn-ocfg-open) (:d fn-own-open)
+           :in-theory (e/d ((:d fn-ocfg-open) (:d fn-own-open)
                               (:d fn-own-reader-context) (:d fn-served-open) (:d fn-own-set-conns) (:d fn-auth-with-base)
                               (:d fn-auth-open-session)
-                              (:d fn-peer-open-session)))))
+                              (:d fn-peer-open-session))
+                             (fn-own-conn-make-group-indexed)))))
 
 ; KEYSTONE.  A RECONFIGURATION NEVER CHANGES WHAT AN OPEN CONNECTION SERVES.
 ; Staging and publishing a configuration record moves the owner's live
@@ -690,9 +732,9 @@
   :hints (("Goal" :in-theory (enable (:d fn-ocfg-reconfigure) (:d fn-ocfg-complete)
                                      (:d fn-ocfg-served) (:d fn-ocfg-conn-config)))))
 
-; The pin moves only at `(:advance id)' -- and at `(:close id)', which
-; removes it.  Across any other event list the connection keeps the
-; configuration it opened at.
+; A pin moves at `(:advance id)' and disappears at close, fault, or a read
+; that closes an invalid connection.  The last two read forms may preserve
+; the pin, but must count as possible pin changes in the trace theorem.
 ; `(car (car events))' and `(car (cdr (car events)))' under `:guard t' owe
 ; `(implies (not (consp x)) (equal x nil))' of the EVENT, which is false at
 ; `(list 3)'; the same defect the four accessors had.  The `mbe' leaves the
@@ -703,7 +745,7 @@
   (if (consp events)
       (or (and (member-equal (mbe :logic (car (car events))
                                   :exec (fn-ag-car (fn-ag-car events)))
-                             '(:advance :close :fault))
+                             '(:advance :close :fault :octets :read))
                (equal (mbe :logic (car (cdr (car events)))
                            :exec (fn-ag-car (fn-ag-cdr (fn-ag-car events))))
                       id))
@@ -712,7 +754,8 @@
 
 (local (defthm fn-ocfg-step-keeps-other-pins
   (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
-                (not (and (member-equal (car event) '(:advance :close :fault))
+                (not (and (member-equal (car event)
+                                        '(:advance :close :fault :octets :read))
                           (equal (car (cdr event)) id))))
            (equal (fn-ocfg-pin-find id (fn-ocfg-pins (fn-ocfg-step oc event)))
                   (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
@@ -734,7 +777,7 @@
                            (fn-ocfg-step)))))
 
 ; KEYSTONE.  Advancing observes the live configuration: under
-; `fn-ocfg-statep', a connection that survives its advance is re-pinned to
+; `fn-ocfg-statep', a connection whose advance is accepted is re-pinned to
 ; the owner's live configuration.  This is application liveness under the
 ; owner's own scheduling, not a timing claim.  Two hypotheses and no others:
 ; the state relation, and that the advance kept the connection.
@@ -749,9 +792,9 @@
 ; connection present after the advance was present before it
 ; (`fn-own-advance-finds-only-what-it-had', books/owner-invariants.lisp),
 ; and an open connection has a pin.  The hypothesis cannot be moved to the
-; pre-state: `fn-own-advance' DROPS a connection whose re-pinned session
-; leaves `fn-own-conn-boundedp', and then `fn-ocfg-advance' leaves the table
-; alone and the old pin stands.  Teeth: tests/acl2/owner-config-tests.lisp.
+; pre-state: `fn-own-advance-result' reports :refused when its rebuilt session
+; leaves `fn-own-conn-boundedp'; then `fn-ocfg-advance' leaves the pin alone.
+; Teeth: tests/acl2/owner-config-tests.lisp.
 (local
  (defthm fn-ocfg-an-open-connection-has-a-pin
    (implies (and (fn-ocfg-conns-pinnedp conns pins)
@@ -763,8 +806,8 @@
 
 (defthm fn-ocfg-advance-observes-the-live-configuration
   (implies (and (fn-ocfg-statep oc)
-                (fn-own-find-conn id (fn-own-conns
-                                      (fn-own-advance (fn-ocfg-owner oc) id))))
+                (equal (car (fn-own-advance-result
+                             (fn-ocfg-owner oc) id)) :advanced))
            (equal (fn-ocfg-conn-config (fn-ocfg-advance oc id) id)
                   (fn-ocfg-config oc)))
   :hints (("Goal" :in-theory (e/d ((:d fn-ocfg-advance) (:d fn-ocfg-conn-config)
@@ -1055,6 +1098,16 @@
 ; uncertain publication fences the owner and forces the reopen whose result
 ; is one of the two histories above.
 
+; Project the accepted-record conjunct locally so the recovery proof can keep
+; the broad reconfiguration predicate closed while opening this one shape.
+(encapsulate ()
+(local (defthm fn-ocfg-reconfig-okp-implies-live-record-acceptablep
+  (implies (fn-ocfg-reconfig-okp oc id deltas)
+           (fn-cnode-record-acceptablep (fn-ocfg-live-cnode oc)
+                                        (fn-ocfg-reconfig-record oc deltas)
+                                        (fn-cnode-line-ceiling)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable (:d fn-ocfg-reconfig-okp))))))
 (defthm fn-ocfg-crash-at-any-instant-recovers-the-live-generation
   (implies (and (not (fn-ocfg-staged oc))
                 (equal (fn-replay-result-kind (fn-cnode-config-replay history)) :ok)
@@ -1079,15 +1132,19 @@
                            (fn-cfg-generation (fn-ocfg-config oc))))
                   (not (fn-ocfg-staged published)))))
   :hints (("Goal" :in-theory (e/d ((:d fn-ocfg-step) (:d fn-ocfg-reconfigure)
-                                   (:d fn-ocfg-complete) (:d fn-ocfg-reconfig-okp) (:d fn-ocfg-close)
+                                   (:d fn-ocfg-complete) (:d fn-ocfg-close)
                                    (:d fn-ocfg-reconfig-record)
                                    (:d fn-ocfg-published-config)
                                    (:d fn-ocfg-live-cnode)
                                    fn-cnode-record-acceptablep)
                                   (fn-cfg-record-acceptablep fn-cfg-apply-record
                                    fn-cnode-config-replay fn-own-complete fn-own-close
+                                   fn-ocfg-reconfig-okp
+                                   fn-ocfg-config-replay-of-one-more-record
                                    fn-ocfg-acceptable-record-is-acceptable-at-zero-reservation))
-           :use ((:instance fn-ocfg-acceptable-record-is-acceptable-at-zero-reservation
+           :use ((:instance fn-ocfg-reconfig-okp-implies-live-record-acceptablep
+                            (oc oc) (id id) (deltas deltas))
+                 (:instance fn-ocfg-acceptable-record-is-acceptable-at-zero-reservation
                             (cfg (fn-ocfg-config oc))
                             (r (fn-ocfg-reconfig-record oc deltas))
                             (reserved (fn-retain-reserved
@@ -1099,7 +1156,7 @@
                             (r (fn-ocfg-reconfig-record oc deltas))
                             (reserved (fn-retain-reserved
                                        (fn-node-retention
-                                        (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))))))))))
+                                        (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))))))))))
 
 ; -----------------------------------------------------------------------------
 ; OPEN, recorded rather than claimed (specs/reconfiguration.md section 8).

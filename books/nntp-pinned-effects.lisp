@@ -2,6 +2,11 @@
 (in-package "ACL2")
 (include-book "nntp-post")
 (include-book "nntp-verdict-effects")
+(include-book "group-bucket-invariants")
+
+(local (defthm fn-pinned-effects-projection-is-state
+         (implies (fn-nntp-projectionp archive) (fn-statep archive))
+         :hints (("Goal" :in-theory (enable fn-nntp-projectionp)))))
 
 (defthm fn-nntp-effects-msgid-retrieval-indexed
   (implies (fn-midx-correspondencep index (fn-state-articles archive))
@@ -13,19 +18,54 @@
                                fn-nntp-msgid-retrieval
                                fn-nntp-effects-msgid-retrieval))))
 
+(defthm fn-nov-indexed-lines-are-clean
+  (fn-nov-clean-line-listp
+   (fn-nov-lines-for-numbers-indexed group numbers entries trie))
+  :hints (("Goal" :induct (fn-nov-lines-for-numbers-indexed
+                            group numbers entries trie)
+           :in-theory (e/d (fn-nov-lines-for-numbers-indexed)
+                           (fn-nov-overview fn-nov-line)))))
+
+(defthm fn-nntp-indexed-over-block-is-block-text
+  (fn-nntp-block-textp
+   (fn-nov-lines-for-numbers-indexed group numbers entries trie))
+  :hints (("Goal" :use ((:instance fn-nov-indexed-lines-are-clean
+                            (entries entries)))
+           :in-theory (disable fn-nov-indexed-lines-are-clean
+                               fn-nov-lines-for-numbers-indexed))))
+
+(defthm fn-nntp-effects-over-range-indexed
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-over-range-indexed session buckets trie token legacyp)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-indexed)
+                                  (fn-nov-lines-for-numbers-indexed
+                                   fn-nntp-index-group-range-numbers
+                                   fn-nntp-parse-range fn-nntp-single)))))
+
 (defthm fn-nntp-archive-command-pinned-effects-well-formed
   (implies (and (fn-nntp-projectionp archive)
-                (fn-midx-correspondencep index (fn-state-articles archive)))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index)
+                                         (fn-state-articles archive))
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
              (fn-nntp-archive-command-pinned
               session archive index verdicts env keyword args))))
   :hints (("Goal"
            :use ((:instance fn-nntp-archive-command-effects-well-formed)
+                 (:instance fn-gidx-listgroup-command-of-build)
+                 (:instance fn-nntp-effects-over-range-indexed
+                            (buckets (fn-gidx-pin-buckets index))
+                            (trie (fn-gidx-pin-trie index))
+                            (token (car args))
+                            (legacyp (fn-nntp-keywordp keyword "XOVER")))
                  (:instance fn-nntp-verdict-hdr-response-effects))
            :in-theory
            (e/d (fn-nntp-archive-command-pinned)
                 (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
+                 fn-gidx-listgroup-command fn-gidx-build
+                 fn-nntp-over-range-indexed
                  fn-nntp-verdict-hdr-response fn-nntp-effectsp
                  fn-nntp-result-effects fn-nntp-projectionp fn-nntp-keywordp
                  fn-midx-correspondencep
@@ -35,7 +75,9 @@
 
 (defthm fn-nntp-command-pinned-effects-well-formed
   (implies (and (fn-nntp-session-consistentp session archive)
-                (fn-midx-correspondencep index (fn-state-articles archive)))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index)
+                                         (fn-state-articles archive))
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
              (fn-nntp-command-pinned session archive index verdicts env tokens))))
@@ -50,7 +92,9 @@
 
 (defthm fn-nntp-step-pinned-effects-well-formed
   (implies (and (fn-nntp-session-consistentp session archive)
-                (fn-midx-correspondencep index (fn-state-articles archive)))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index)
+                                         (fn-state-articles archive))
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
              (fn-nntp-step-pinned session archive index verdicts env wire-event))))
@@ -64,7 +108,9 @@
 
 (defthm fn-post-step-pinned-effects-well-formed
   (implies (and (fn-post-session-consistentp ps archive)
-                (fn-midx-correspondencep index (fn-state-articles archive)))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index)
+                                         (fn-state-articles archive))
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-post-result-effects
              (fn-nntp-post-step-pinned ps archive index verdicts config

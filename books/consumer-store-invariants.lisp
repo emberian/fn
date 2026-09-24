@@ -3,6 +3,7 @@
 ; candidate; fn-sn-identity-next selects only durable finishes.
 (in-package "ACL2")
 (include-book "store-identity-sequence-invariants")
+(include-book "store-observed")
 
 (defun fn-csi-completed-prefixp (s)
   (declare (xargs :guard t :verify-guards nil))
@@ -1210,3 +1211,50 @@
                    (s (fn-sn-initial groups capacity))))
            :in-theory (disable fn-snrt-run fn-sn-initial
                                fn-csi-full-relationp))))
+
+; Recovery may lose the last, unacknowledged record that the new process
+; scanned from a dead writer's page cache.  Strict consumer replay is prefix
+; closed, so this physical rollback never turns a valid prefix into an
+; invalid consumer history.  Keep the step interpreter closed in this proof.
+(defthm fn-csi-strict-replay-but-last
+  (implies (and (true-listp records)
+                (eq (car (fn-cpe-projection-replay projection records first))
+                    :ok))
+           (eq (car (fn-cpe-projection-replay
+                     projection (fn-sf-but-last records) first)) :ok))
+  :hints (("Goal" :induct (fn-cpe-projection-replay projection records first)
+           :in-theory (e/d (fn-sf-but-last fn-cpe-projection-replay)
+                           (fn-cpe-projection-step)))))
+
+(defthm fn-csi-full-relation-current-history-strict-replay
+  (implies (fn-csi-full-relationp s)
+           (fn-sn-observed-consumer-okp
+            (fn-sf-records (fn-sn-files s))))
+  :hints (("Goal"
+           :cases ((member-equal (fn-sf-phase (fn-sn-files s))
+                                 '(:replaying :fault)))
+           :use (fn-csi-related-current-history-strict-replay)
+           :in-theory (e/d (fn-csi-full-relationp
+                            fn-sn-observed-consumer-okp)
+                           (fn-snt-relation fn-snt-consumerp
+                            fn-cpe-projection-replay)))))
+
+(defthm fn-csi-recovery-crash-image-strict-replay
+  (implies (and (fn-csi-full-relationp s)
+                (fn-sf-recovery-crash-imagep
+                 (fn-sn-files s) frontier records))
+           (fn-sn-observed-consumer-okp records))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-csi-full-relation-current-history-strict-replay
+                 fn-csi-related-candidate-append-strict-replay
+                 (:instance fn-csi-strict-replay-but-last
+                   (projection nil)
+                   (records (fn-sf-records (fn-sn-files s)))
+                   (first 0)))
+           :in-theory (e/d (fn-sf-recovery-crash-imagep
+                            fn-sn-observed-consumer-okp
+                            fn-csi-full-relationp
+                            fn-sf-record-present-visiblep)
+                           (fn-snt-relation fn-snt-consumerp
+                            fn-cpe-projection-replay)))))

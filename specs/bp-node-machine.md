@@ -410,23 +410,27 @@ observed channel -> configured peer -> allowed-EID check -> admitted principal
 
 never `announced EID -> peer lookup`. The decision is ACL2's,
 `fn-bpaj-session-principal cfg channel announced-eid` (in
-`books/bp-session-admission.lisp`), which the finite host calls at each
-completed inbound transfer after TCPCL negotiation; `channel` is what the host
+`books/bp-session-admission.lisp`), composed with raw announced-EID parsing
+and typed FNBS ingress construction by `fn-bpaj-tcpcl-ingress-result` (in
+`books/bp-channel-ingress.lisp`). The native host calls that one result at
+each completed inbound transfer after TCPCL negotiation; `channel` is what it
 observed (listener, network namespace, peer address), never what the peer
-said. The intended answers are `(:admitted peer-name generation)`,
+said. The inner selector answers `(:admitted peer-name generation)`,
 `(:refused :no-configured-peer)` (no peer row's boundary matches the channel),
 `(:refused :no-trust-profile)` (the matched peer has no BP trust row), and
 `(:refused :eid-mismatch)` (the announced node ID is not one of that
 peer's `(:bp eid)` rows). The finite loopback selector currently also reports
 `:channel` and `:ambiguous-peer`, and combines missing boundary and trust as
-`:no-trust-profile`. A refused session carries principal nil; it may
+`:no-trust-profile`. The outer result retains the ACL2 refusal reason and
+returns a typed anonymous ingress for a valid announced EID; malformed or
+overlong raw EID bytes return no ingress. A refused session carries principal nil; it may
 still hand the node transit bundles if the operator's policy allows
 unauthenticated transit, but nothing it delivers is admitted by K6.
 
 The finite native slice observes IPv4 local listener and remote address from
 the accepted socket. A durable `bp-boundary add` peer row declares loopback,
 no translation, and `all-co-resident`; the selector first requires one peer
-for that channel and only then checks its configured BP EID. The host stamps
+for that channel and only then checks its configured BP EID. ACL2 stamps
 the selected peer name and configuration generation on ingress. Application
 request and receipt handoff require that name, generation, and configured EID
 still agree with the live owner configuration; a nil principal refuses the
@@ -981,6 +985,18 @@ is the pure START-time capacity query (§9.2); it is advisory and step 6 is
 the decision.
 
 ### 4.2 The progress boundary: `fn-bpn-progress-step st obs` (`:clock`)
+
+**Current A3 native subset.** The shared `bp-node` service does not yet run
+this full progress scheduler for received held rows. Its application caller
+uses `fn-bpah-pending-decision-at` before Store: a current observation must
+decide the exact persisted held carrier `:live`; `:expired` is skipped and
+`:uncertain` fences. New kind-5 rows persist the receive-time Bundle Age
+anchor (or an explicit wall-clock tag); older canonical kind-5 rows have no
+anchor and remain uncertain rather than acquiring an invented arrival time.
+This narrows A3 delivery eligibility beyond the target's `not :expired`
+condition until the full progress transition and reclamation records land.
+Already committed application and return-carrier obligations are independent
+of that held-carrier eligibility.
 
 One action per event. This is the only place delivery and dispatch are
 started, so expiry is decided before either (F-L). Selection is among
@@ -1921,6 +1937,30 @@ Contract, by case:
 - `:refuse`: `(:refused reason)`. `:defer`, or the join's `:blocked`:
   `(:busy)`, which reaches the machine as `:busy` (§4.2).
 
+The finite A3 `:request-intent`/`:request-context-v2` join binds the Store
+record to the request's raw article octets. That is correct for the historical
+control-submission path but is not the general transit rule above:
+`fn-peer-injection-arguments` stores `fn-peer-relayed-octets`, which may update
+Path and remove Xref. The transit form therefore needs a new, versioned
+intent **before** the Store attempt. `:request-transit-intent` (FNRJ code 7)
+pins the immutable raw request ADU, admitted peer name, owner configuration
+generation, local and expected peer Path identities, and ACL2-computed stored
+projection. Replay checks that the projection is exactly
+`fn-pu-relay-article` of the raw article under those pinned identities;
+an arbitrary journal blob cannot choose Store bytes. `:request-transit-context`
+(code 8) binds an exact accepted Store record to that pinned projection and
+carries the original request unchanged for receipt content. The request's
+original subject is a digest of the raw article; the Store record's content
+subject is a digest of its Path/Xref projection, and they need not be equal.
+The live `fn-peer-decide-transfer` decision and peer generation must be checked
+before creating the intent or retrying an uncommitted Store attempt. Recovery
+uses the persisted projection and Path identities, never later peer policy to
+reinterpret old bytes. Existing intents and v2 contexts retain their raw-byte
+binding and historical receipt replay; they are not reinterpreted as transit
+records. The BP-only loopback trust command grants no inbound groups; an
+explicit inbound profile and local path-identity policy are prerequisites to
+`:want` under `fn-peer-decide-transfer`.
+
 The theorems, in `books/bp-native-app-invariants.lisp` (new), soundness
 first:
 
@@ -2066,6 +2106,35 @@ fragment whose payload bytes themselves decode as a valid request ADU. Its
 host-facing theorem `fn-bpah-host-pending-view-excludes-fragment` and a
 reachable partial-ADU witness cover this safety gate. A complete C2 query
 still requires durable family replacement before Store may see a whole ADU.
+`fn-bpnf-family-plan` in `bp-node-fragment-plan.lisp` projects a bounded
+candidate from the C2 active set: it takes the offset-zero primary and
+extension blocks, replaces the payload with the fast reassembly result,
+names the consumed principal/identity/arrival rows, and checks the exact
+post-replacement slot and octet budgets. The served
+`fn-bpnf-fragment-step` asks for that plan; proposal retains every source
+fragment, and only a matching durable kind-18 publication invokes the same
+`fn-bpnf-family-apply` rule used by ordered byte replay. Refusal leaves the
+source rows intact; uncertainty fences ordinary events until recovery.
+The first kind-18 byte component, `bp-fnbs-family-codec.lisp`, encodes
+`(epoch, operation-id, anchor-arrival, whole-arrival, exact-whole-wire)`
+under the protected FNBS frame. The anchor is a previously durable kind-5
+arrival, and the whole arrival must be allocated by the node's durable
+arrival frontier. Replay must recompute the active family from earlier
+kind-5 rows and compare the wire byte for byte before applying replacement;
+the record alone is not authority to retire fragments. The codec currently
+has round-trip/corruption witnesses. The state-owned `next-arrival` frontier
+allocates the whole's arrival independently of live held-list length and is
+reconstructed from ordered kind-5/7/18 replay.
+`fn-bpnf-family-apply` is the pure replacement rule shared by live
+completion and replay: it rejects repeated anchor arrivals and wrong
+whole arrival or bytes, recomputes the principal/coherence active set, and
+copies the offset-zero source's ingress and retained age anchor. The native
+service calls the fragment wrapper and ACL2 publisher authorization for kind
+18, then advances the family selector after durable kind-5 reception and
+cold recovery. The native interrupted-contact fixture and fragment-step
+guard closure remain to be qualified. This finite slice does not yet provide
+kind-10 conflict deletion, retransmission correlation after replacement,
+or proactive forwarding fragmentation.
 
 - `(:ok bytes)`: propose kind 18 `(fn-bpn-rec-reassembled token family held
   ids)`. Applied atomically: the fragment entries leave the live list (their
@@ -2246,12 +2315,12 @@ budgets of §2.1 applying to report bundles like any other. When enabled and
 requested, generation at each of the four points is a SHOULD of RFC 9171
 and fn generates: reception (§4.1), forwarding (§4.3), delivery (§4.2),
 deletion (§4.2, §4.3). `:report-due` makes the loop reserve a sequence and
-issue `:author-report`, which `fn-bpn-report-step` turns into a transmit
-with submission `(:report subject assertion)`, so a report is a held entry
-dispatched like any other and is idempotent by submission. A crash between
-`:report-due` and `:author-report` loses the report: reports are never
-evidence and never necessary for retry (§9.6). A report never requests
-reports.
+issue `:author-report`, which the node turns into a durable outbound carrier
+with submission `(:report subject assertion)`. The kind-10 deletion record
+retains the exact selected report intent across a crash before outbound
+authoring, and the outbound job key binds that intent to one carrier.
+Reports are diagnostic evidence only and never necessary for application
+retry or release (§9.6). A report never requests reports.
 
 Consumption. §4.1 step 5 for received ones and §4.2's `:administrative`
 dispatch for locally authored ones; both use
@@ -2265,6 +2334,24 @@ report naming an older attempt's subject does not touch a newer attempt
 logging and correlating a report is bounded work per report and is served
 in the loop's diagnostic share (§9.1), so report traffic cannot consume the
 service accepted work needs.
+
+The D1b kind-10 source now has an ACL2 held-row expiry selector, an outer
+proposal step, an exact immutable publication authorization and one ordered
+FNBS 5/7/18/10 replay. A definitely expired, unprocessed received carrier
+gets a kind-10 record bound to its arrival and primary identity. The record
+also carries the exact bounded status-report payload selected at proposal, or
+the one-octet suppression sentinel; replay retains the full record in the
+held tombstone. No report effect is issued before the deletion publication
+callback is durable, and an uncertain callback fences the issued operation.
+The recovery outbox selector can find that same intent after a process death.
+The `fn-bpn-report-author-step` extension of the same service owner now
+proposes an administrative outbound bundle/job from a recovered intent, using
+a stable epoch/op work key. The native `bp-node` caller asks ACL2 to age held
+carriers before Store dispatch, then queues owed reports through the base
+lifecycle journal; received administrative reports are parsed and correlated
+read-only by `fn-bpn-report-observe-next`. This source join still needs a
+source-matched native image, the death-after-kind-10 test, and broader policy
+qualification before a served D1b claim.
 
 Minimal generation and consumption before slice B's gate (§11): the
 deletion assertion at §4.2's `:expire` and §4.3's deletions, and §4.1

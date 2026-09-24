@@ -1,0 +1,71 @@
+; ACL2 authority for the exact pending kind-18 family replacement image.
+(in-package "ACL2")
+(include-book "bp-node-fragment-step")
+(include-book "bp-fnbs-byte-publisher")
+(set-verify-guards-eagerness 0)
+
+(defun fn-bpnf-family-publication-authorize
+  (st epoch op record lock-owned final-absent)
+  (declare (xargs :guard t))
+  (let ((issued (fn-bpnf-issued st)))
+    (if (and (fn-bpnf-operationp issued)
+             (fn-bpnf-operation-matchp issued epoch op)
+             (equal (fn-bpn-nth 3 issued) :family)
+             (equal (fn-bpn-nth 4 issued) record)
+             (equal (fn-bpn-nth 5 issued) :pending)
+             (equal (fn-bpnf-epoch st) epoch)
+             (equal (fn-bpnf-next-op st) (1+ op))
+             (equal (fn-bpnf-next-arrival st)
+                    (1+ (fn-bpn-nth 4 record)))
+             (fn-bpnf-family-recordp record)
+             (equal (fn-bpn-nth 1 record) epoch)
+             (equal (fn-bpn-nth 2 record) op)
+             lock-owned final-absent)
+        (let ((frame (fn-bpnf-family-frame record)))
+          (if (equal frame :bad)
+              (list :fault :family-codec)
+            (list :ok epoch op record
+                  (fn-bpnf-stored-record-name epoch op)
+                  frame (fn-jpub-initial t))))
+      (list :fault :family-authority))))
+
+(defun fn-bpnf-family-publication-operationp (operation)
+  (declare (xargs :guard t))
+  (and (true-listp operation) (equal (len operation) 7)
+       (equal (car operation) :ok)
+       (fn-frame-natp (nth 1 operation))
+       (fn-frame-natp (nth 2 operation))
+       (fn-bpnf-family-recordp (nth 3 operation))
+       (equal (nth 4 operation)
+              (fn-bpnf-stored-record-name (nth 1 operation)
+                                          (nth 2 operation)))
+       (equal (nth 5 operation)
+              (fn-bpnf-family-frame (nth 3 operation)))
+       (not (equal (nth 5 operation) :bad))
+       (equal (nth 6 operation) (fn-jpub-initial t))))
+
+(defun fn-bpnf-family-publication-name (operation)
+  (declare (xargs :guard t)) (nth 4 operation))
+(defun fn-bpnf-family-publication-frame (operation)
+  (declare (xargs :guard t)) (nth 5 operation))
+(defun fn-bpnf-family-publication-publisher (operation)
+  (declare (xargs :guard t)) (nth 6 operation))
+
+(defthm fn-bpnf-family-publication-success-binds-exact-echo
+  (implies (equal (car (fn-bpnf-family-publication-authorize
+                       st epoch op record lock-owned final-absent)) :ok)
+           (and (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :family)
+                (equal (fn-bpn-nth 4 (fn-bpnf-issued st)) record)
+                (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :pending)
+                (equal (fn-bpnf-epoch st) epoch)
+                (equal (fn-bpnf-next-op st) (1+ op))
+                (equal (fn-bpnf-next-arrival st)
+                       (1+ (fn-bpn-nth 4 record)))
+                lock-owned final-absent))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bpnf-family-publication-authorize)
+                           (fn-bpnf-operationp
+                            fn-bpnf-operation-matchp
+                            fn-bpnf-family-recordp
+                            fn-bpnf-family-frame))))
+  :rule-classes nil)

@@ -157,9 +157,12 @@
         "host/native/checkpoint.lisp",
         "tests/test_native_checkpoint.py",
         "planning/evidence/native-checkpoint-w15-2026-09-21.md",
-        "planning/evidence/native-checkpoint-namespace-w15-2026-09-21.md"
+        "planning/evidence/native-checkpoint-namespace-w15-2026-09-21.md",
+        "books/checkpoint-auxiliary.lisp",
+        "tests/acl2/checkpoint-auxiliary-tests.lisp",
+        "planning/evidence/checkpoint-auxiliary-e2-t10-2026-09-23.md"
       ],
-      "execution_scope": "Partial: logical checkpoint/suffix equivalence and index reconstruction are certified. Source-pinned native tests cover capture/select/reopen, selected corruption without rollback, unselected isolation, byte-identical cross-open, namespace bounds and selected crash cuts. The namespace successor adds unconditional mismatch corruption and mutation fencing. Recovery still fully replays the journal and compares a private restore; suffix-only recovery, full owner/index integration and every-cut physical correspondence remain open."
+      "execution_scope": "Partial: logical checkpoint/suffix equivalence and index reconstruction are certified. Source-pinned native tests cover capture/select/reopen, selected corruption without rollback, unselected isolation, byte-identical cross-open, namespace bounds and selected crash cuts. The namespace successor adds unconditional mismatch corruption and mutation fencing. Recovery still fully replays the journal and compares a private restore; suffix-only recovery, full owner/index integration and every-cut physical correspondence remain open. A source-pinned ACL2 selected-pack witness additionally reconstructs E2 history/incarnation/sequence and bound hybrid keyring/historical verdict from exact event bytes, with mismatched auxiliary projections rejected by the recovery-only checker. Combined native checkpoint/consumer/T10 reopen remains open."
     },
     {
       "id": "SCN-005",
@@ -354,7 +357,14 @@
         "Restore discipline prevents unrecognized identity reuse under A-IDENTITY.",
         "Fork evidence remains; timestamps do not settle authority."
       ],
-      "evidence": []
+      "evidence": [
+        "books/checkpoint-auxiliary.lisp",
+        "tests/acl2/checkpoint-auxiliary-tests.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_checkpoint.py",
+        "planning/evidence/checkpoint-clone-source-2026-09-23.md"
+      ],
+      "execution_scope": "Partial: ACL2 clone proposal/phase tests certify, and native source implements a pre-open fence, no-replace cold copy and durable rollover/reopen. The saved-image fixture and process-death cuts are written but await a combined E2 image; competing origin forks and served cursor rejection remain open."
     },
     {
       "id": "SCN-012",
@@ -723,18 +733,22 @@
         "Derive a principal from a seed and record an AUTHINFO credential for it on each node.",
         "Connect unauthenticated and read the advertised capabilities; attempt a gated command.",
         "Authenticate with AUTHINFO USER and PASS, read the capabilities again, and post.",
-        "Authenticate with a wrong password on a fresh connection."
+        "Authenticate with a wrong password on a fresh connection.",
+        "Run one complete served read with a nonempty no-posting credential list: AUTHINFO USER/PASS then local POST, and separately AUTHINFO USER/PASS then configured-peer TAKETHIS with an article body."
       ],
       "expected": [
         "AUTHINFO USER is advertised exactly while the connection is unauthenticated, and is withdrawn once it is not.",
         "A gated command before the login is refused and not performed.",
         "The posting allowance is the authenticated principal's, not the connection's.",
-        "A wrong password is refused and grants nothing; the refusal is distinct from a fault."
+        "A wrong password is refused and grants nothing; the refusal is distinct from a fault.",
+        "The no-posters served-read invariant excludes every local injected submission, but the independently authorized principal-bound transit path may emit a typed peer submission; removing the no-posters premise allows a complete accepted local POST.",
+        "A policy-switched pending POST state can submit despite a no-posters credential policy, but cannot arise from an initial no-posters connection under the proved fold invariant."
       ],
       "evidence": [
-        "planning/evidence/native-auth-runtime-2026-09-21/README.md"
+        "planning/evidence/native-auth-runtime-2026-09-21/README.md",
+        "tests/acl2/nntp-auth-fold-tests.lisp"
       ],
-      "execution_scope": "Partial native evidence: startup loads bounded credential verifiers, required unauthenticated command returns 480, wrong password returns 481, correct password returns 281 and subsequent GROUP succeeds; authenticated reader IHAVE remains 502. Protected-only startup and legacy cleartext credential files refuse. Login transport is unprotected loopback, so no confidentiality claim follows. Native credential enrollment, TLS, reload and full cross-node scenario remain separate."
+      "execution_scope": "Partial native evidence: startup loads bounded credential verifiers, required unauthenticated command returns 480, wrong password returns 481, correct password returns 281 and subsequent GROUP succeeds; authenticated reader IHAVE remains 502. Protected-only startup and legacy cleartext credential files refuse. Login transport is unprotected loopback, so no confidentiality claim follows. Native credential enrollment, TLS, reload and full cross-node scenario remain separate. The served-fold distinction between local POST and authorized transit is ACL2-certified with reachable complete-read witnesses; no new native transcript is claimed by that component evidence."
     },
     {
       "id": "SCN-023",
@@ -1023,7 +1037,7 @@
         "A linked Store candidate is either absent or replayed once at recovery; no stale live projection is accepted as progress.",
         "Old incarnation, registration epoch and view cursors are refused without mutation; independent stores and consumers keep separate positions."
       ],
-      "note": "The ACL2 Store model portion is witnessed in tests/acl2/consumer-store-invariants-tests.lisp and certified in planning/evidence/manifests/certify-20260923T210725Z-145187.json. The end-to-end E2-01.. trace specifications in planning/experiments/e1-e2-v1-traces.json remain unexecuted until native authenticated poll/ack and consumer database integration."
+      "note": "The ACL2 Store model is witnessed by tests/acl2/consumer-store-invariants-tests.lisp and its scoped manifest. Native image 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with killed reply/reopen and fenced clone cursor recovery, as recorded in planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md. The Mini consumer-owned transaction/ACK/reply join and complete two-store E2-01.. trace set remain unqualified; component passes do not establish the whole scenario."
     },
     {
       "id": "SCN-032",
@@ -1050,6 +1064,44 @@
         "planning/evidence/manifests/certify-20260923T211422Z-167141.json"
       ],
       "execution_scope": "ACL2 constructor, selector, historical event and negative teeth tests certify on hbox at the lane source. The updated native CLI awaits a source-matched combined saved image; no durable topic admission, fork choice, roster adoption or general signature primitive proof is claimed."
+    },
+    {
+      "id": "SCN-035",
+      "title": "Pinned LISTGROUP and OVER ranges use matching historical group buckets",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "STO-001",
+        "NNT-006"
+      ],
+      "steps": [
+        "Commit a sparse local-number membership, retain an earlier reader, and open a new reader after the commit.",
+        "Send the same LISTGROUP group/range octets through fn-own-read on both connections.",
+        "Construct a malformed tagged pin with a correct Message-ID trie but missing group bucket; compare its command result with the archive command.",
+        "Construct 24 unrelated groups and measure selected bucket work against the flat membership list.",
+        "Send sparse OVER and empty XOVER ranges through the pinned ACL2 dispatcher; compare the complete result with the archive dispatcher and repeat with stale bucket and missing trie pins.",
+        "On a source-matched saved image, retain readers across live group creation and three posts, then restart; issue bounded LISTGROUP ranges through the socket and measure 96 range reads over a declared 24-group, 24-article workload.",
+        "On that image, post a crosspost and two group-specific articles while keeping old and new readers pinned; issue OVER and XOVER ranges concurrently, then restart and repeat."
+      ],
+      "expected": [
+        "The older reader sees its old empty group and the new reader sees exactly the committed sparse local number in a correctly framed multiline reply.",
+        "The malformed pin changes the answer and fails the maintained pin correspondence predicate.",
+        "The selected head bucket visits two units (one header and one entry) against 24 flat memberships; no timing or sort bound is inferred.",
+        "The indexed OVER/XOVER replies equal the archive replies, including 423 versus legacy 420 on empty ranges; either malformed pin changes the answer.",
+        "Old readers retain their configured and committed view, the fresh reader and restarted owner return only their visible local numbers, and the declared socket timing is reported without an asymptotic claim. An internal deletion/allocation hole remains unexercised because the public operator surface cannot create one.",
+        "OVER and XOVER return the same exact crosspost overview line in each visible group, old pins hide later posts, bounded and high-empty ranges retain their response codes, concurrent readers agree, and restart recovers the latest view."
+      ],
+      "evidence": [
+        "tests/acl2/owner-tests.lisp",
+        "tests/acl2/group-bucket-index-tests.lisp",
+        "tests/acl2/nntp-range-indexed-tests.lisp",
+        "planning/evidence/t17-over-range-indexed-2026-09-23.md",
+        "planning/evidence/t17-group-bucket-served-2026-09-23.md",
+        "planning/evidence/t17-group-bucket-e2-integration-2026-09-23.md",
+        "tests/test_native_reader_index.py",
+        "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
+      ],
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",

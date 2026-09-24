@@ -285,10 +285,13 @@ still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
                             fn-wire-article-line-limit))
            :use ((:instance fn-served-connp-is-consistent-session (c conn))
                  (:instance fn-served-connp-is-index-correspondence (c conn))
+                 (:instance fn-served-connp-is-group-correspondence (c conn))
+                 (:instance fn-served-connp-is-pinned-trie-correspondence
+                            (c conn))
                  (:instance fn-auth-step-pinned-effects-well-formed
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
-                            (index (fn-served-conn-index conn))
+                            (index (fn-served-conn-pinned-index conn))
                             (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -297,7 +300,7 @@ still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
                  (:instance fn-oag-auth-step-pinned-submission-names-the-configured-agent
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
-                            (index (fn-served-conn-index conn))
+                            (index (fn-served-conn-pinned-index conn))
                             (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -345,7 +348,7 @@ still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
  (defthm fn-oag-fed-conn-is-a-connection
    (implies (fn-served-connp conn)
             (fn-served-connp
-             (fn-served-make-conn-indexed
+             (fn-served-make-conn-group-indexed
               (fn-wire-result-state
                (fn-wire-feed-byte (fn-served-conn-wire conn) byte))
               (fn-served-conn-session conn)
@@ -354,7 +357,8 @@ still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
               (fn-served-conn-observation conn)
               (fn-served-conn-injection conn)
               (fn-served-conn-verdicts conn)
-              (fn-served-conn-index conn))))
+              (fn-served-conn-index conn)
+              (fn-served-conn-group-index conn))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                    (fn-wire-feed-byte fn-wire-statep
                                     fn-auth-session-consistentp))))))
@@ -493,7 +497,8 @@ still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
           (fn-own-find-conn j (fn-own-conns (fn-own-reader-context o id cfg))))
          (fn-own-conn-config (fn-own-find-conn j (fn-own-conns o))))
   :hints (("Goal" :in-theory (e/d (fn-own-reader-context)
-                                  (fn-auth-with-base fn-peer-open-session))
+                                  (fn-auth-with-base fn-peer-open-session
+                                   fn-own-conn-make-group-indexed))
            :cases ((equal j id)))))
 
 (defthm fn-oag-own-open-pins-the-owner-config
@@ -506,7 +511,8 @@ still supplies (`*fn-store-max-payload*', host/store-host.lisp)."
                       (fn-own-config o)
                     (fn-own-conn-config nil))))
   :hints (("Goal" :in-theory (e/d (fn-own-open)
-                                  (fn-served-open fn-own-body-limit)))))
+                                  (fn-served-open fn-own-body-limit
+                                   fn-own-conn-make-group-indexed)))))
 
 (defthm fn-oag-open-pins-the-owner-config
   (let* ((o (fn-ocfg-owner oc))

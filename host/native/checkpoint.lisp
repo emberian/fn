@@ -487,7 +487,13 @@
                   (unless differential
                     (fnn-checkpoint-corrupt
                      "checkpoint plus suffix differs from full replay"))
-                  (list :ok generation sequence differential)))))))
+                  (let ((auxiliary
+                         (fnn-core-state
+                          'fn-store-checkpoint-auxiliary-differential)))
+                    (unless (equal auxiliary '(:ok 1))
+                      (fnn-checkpoint-corrupt
+                       "full replay auxiliary state differs: ~s" auxiliary))
+                    (list :ok generation sequence differential :equal-v1))))))))
     (fnn-checkpoint-corruption (e)
       (list :corrupt (fnn-checkpoint-corruption-reason e)))))
 
@@ -541,6 +547,268 @@
            +fnn-exit-ok+)
       (fnn-store-close store))))
 
+;;; Cold copy activation.  The copied directory is fenced before publication;
+;;; every ordinary Store open checks that marker in fnn-acquire.  The marker is
+;;; the canonical v1 E2 rollover event itself, not a second projection format.
+(defvar *fnn-clone-copy-count* 0)
+(defvar *fnn-clone-copy-bytes* 0)
+
+(defun fnn-clone-path-bound ()
+  (let ((bound (fnn-core 'fn-store-checkpoint-clone-path-bound)))
+    (unless (and (integerp bound) (> bound 0))
+      (fnn-fault "ACL2 returned an invalid clone path bound"))
+    bound))
+
+(defun fnn-clone-checked-path (path bound &optional inputp)
+  "Bound an argument or derived canonical path before filesystem traversal."
+  (unless (and (stringp path) (<= (length path) bound))
+    (fnn-refuse "clone path exceeds ACL2-owned path bound"))
+  (let ((octets (fnn-string-octets path)))
+    (unless (and (<= (length octets) bound)
+                 (or (not inputp)
+                     (eq (fnn-core 'fn-store-checkpoint-clone-input-pathp
+                                   (fnn-octet-list octets)) t)))
+      (fnn-refuse "clone path is not an admitted absolute path")))
+  path)
+
+#+linux
+(sb-alien:define-alien-routine ("renameat2" fnn-%clone-renameat2)
+    sb-alien:int
+  (old-directory sb-alien:int) (old-name sb-alien:c-string)
+  (new-directory sb-alien:int) (new-name sb-alien:c-string)
+  (flags sb-alien:unsigned-int))
+
+(defun fnn-clone-publish-no-replace (stage destination)
+  "Publish a completed fenced tree without ever replacing a destination."
+  #+linux
+  (let ((result (fnn-%clone-renameat2 -100 stage -100 destination 1)))
+    (when (< result 0)
+      (let ((errno (sb-alien:get-errno)))
+        (if (= errno sb-posix:eexist)
+            (fnn-refuse "clone destination appeared during publication")
+          (fnn-os-fail errno destination)))))
+  #-linux
+  (declare (ignore stage destination))
+  #-linux
+  (fnn-refuse "clone publication requires no-replace renameat2"))
+
+(defun fnn-clone-copy-regular (source destination max-bytes)
+  (let ((input nil) (output nil))
+    (unwind-protect
+         (progn
+           (setq input (fnn-open source (logior sb-posix:o-rdonly
+                                                +fnn-o-nofollow+)))
+           (let ((info (fnn-fstat input)))
+             (unless (fnn-regular-p info)
+               (fnn-fault "clone source is not a regular file: ~a" source))
+             (unless (and (<= 0 (sb-posix:stat-size info))
+                          (<= (sb-posix:stat-size info)
+                              (- max-bytes *fnn-clone-copy-bytes*)))
+               (fnn-refuse "clone exceeds ACL2-owned byte bound")))
+           (setq output (fnn-open destination
+                                  (logior sb-posix:o-wronly sb-posix:o-creat
+                                          sb-posix:o-excl +fnn-o-nofollow+)
+                                  #o600))
+           (let ((buffer (fnn-make-octets 65536)))
+             (loop for count = (fnn-read-fd input buffer)
+                   until (zerop count)
+                   do (progn
+                        (incf *fnn-clone-copy-bytes* count)
+                        (when (> *fnn-clone-copy-bytes* max-bytes)
+                          (fnn-refuse "clone exceeds ACL2-owned byte bound"))
+                        (fnn-write-all output (subseq buffer 0 count)))))
+           (fnn-fsync-file output))
+      (when output (fnn-close output))
+      (when input (fnn-close input)))))
+
+(defun fnn-clone-copy-tree (source destination depth max-depth max-entries
+                            max-bytes path-bound)
+  (when (> depth max-depth)
+    (fnn-refuse "clone exceeds ACL2-owned directory depth bound"))
+  (fnn-clone-checked-path source path-bound)
+  (fnn-clone-checked-path destination path-bound)
+  (fnn-safe-directory source)
+  (fnn-safe-directory destination)
+  (let ((dir (fnn-posix (source) (sb-posix:opendir source))))
+    (unwind-protect
+         (loop
+           (let ((entry (fnn-posix (source) (sb-posix:readdir dir))))
+             (when (sb-alien:null-alien entry) (return))
+             (let ((name (sb-posix:dirent-name entry)))
+               (unless (or (string= name ".") (string= name ".."))
+                 (incf *fnn-clone-copy-count*)
+                 (when (> *fnn-clone-copy-count* max-entries)
+                   (fnn-refuse "clone exceeds ACL2-owned entry bound"))
+                 (let* ((from (fnn-join source name))
+                        (to (fnn-join destination name))
+                        (info (progn
+                                (fnn-clone-checked-path from path-bound)
+                                (fnn-clone-checked-path to path-bound)
+                                (fnn-lstat from))))
+                   (cond ((and info (fnn-directory-p info)
+                               (not (fnn-symlink-p info)))
+                          (fnn-mkdir to #o700)
+                          (fnn-clone-copy-tree from to (1+ depth)
+                                               max-depth max-entries max-bytes
+                                               path-bound))
+                         ((and info (fnn-regular-p info)
+                               (not (fnn-symlink-p info)))
+                          (fnn-clone-copy-regular from to max-bytes))
+                         (t (fnn-refuse
+                             "clone refuses missing, linked, or special source: ~a"
+                             from))))))))
+      (fnn-posix (source) (sb-posix:closedir dir))))
+  (fnn-fsync-dir destination))
+
+(defun fnn-clone-canonical-paths (source destination)
+  (let ((path-bound (fnn-clone-path-bound)))
+   (fnn-clone-checked-path source path-bound t)
+   (fnn-clone-checked-path destination path-bound t)
+   (fnn-safe-directory source)
+   (let* ((source-real (string-right-trim "/" (namestring (truename source))))
+         (source-parent
+           (string-right-trim "/" (namestring (truename (fnn-parent source-real)))))
+         (destination-parent
+           (string-right-trim "/" (namestring (truename (fnn-parent destination)))))
+         (trimmed (string-right-trim "/" destination))
+         (slash (position #\/ trimmed :from-end t))
+         (name (and slash (subseq trimmed (1+ slash)))))
+    (unless (and (string= source-parent destination-parent)
+                 name (> (length name) 0)
+                 (not (member name '("." "..") :test #'string=)))
+      (fnn-refuse "clone destination must be a distinct sibling of source"))
+    (let ((target (fnn-join destination-parent name)))
+      (fnn-clone-checked-path source-real path-bound t)
+      (fnn-clone-checked-path target path-bound t)
+      (when (or (string= source-real target) (fnn-lstat target))
+        (fnn-refuse "clone destination already exists"))
+      (values source-real target destination-parent path-bound)))))
+
+(defun fnn-clone-read-marker (destination)
+  (let* ((path-bound (fnn-clone-path-bound))
+         (_ (fnn-clone-checked-path destination path-bound t))
+         (store (make-fnn-store destination :writable nil))
+         (path (fnn-clone-fence-path store))
+         (bound (fnn-nat (fnn-core 'fn-store-checkpoint-clone-fence-read-bound))))
+    (declare (ignore _))
+    (fnn-clone-checked-path path path-bound)
+    (unless (fnn-check-regular path)
+      (fnn-refuse "clone activation requires its durable fence"))
+    (fnn-read-regular-bounded path bound)))
+
+(defun fnn-clone-canonical-target (destination)
+  "A short parent alias cannot bypass the ACL2 clone path width."
+  (let ((path-bound (fnn-clone-path-bound)))
+    (fnn-clone-checked-path destination path-bound t)
+    (fnn-safe-directory destination)
+    (fnn-clone-checked-path
+     (string-right-trim "/" (namestring (truename destination)))
+     path-bound t)))
+
+(defun fnn-clone-activate (destination)
+  (let* ((destination (fnn-clone-canonical-target destination))
+         (marker (fnn-clone-read-marker destination))
+         (octets (fnn-octet-list marker))
+         (decoded (fnn-core 'fn-cpe-decode-exact octets))
+         (service nil))
+    (unless (and (listp decoded) (eq (first decoded) :ok))
+      (fnn-refuse "clone fence is not a canonical rollover event"))
+    (let ((*fnn-clone-activation* t))
+      (unwind-protect
+           (progn
+             (setq service (fnn-owner-install destination 1))
+             (case (fnn-owner-core 'fn-owner-checkpoint-clone-phase octets)
+               (:pending
+                (unless (eq (fnn-owner-consumer-commit service (second decoded))
+                            :durable)
+                  (fnn-indeterminate "clone rollover was not durable"))
+                (fnn-checkpoint-test-stop "clone-rollover-durable"))
+               (:completed nil)
+               (otherwise (fnn-refuse
+                           "clone fence does not bind recovered Store"))))
+        (when service
+          (ignore-errors (fnn-owner-feed-close-all service))
+          (fnn-store-close (fnn-owner-service-store service))))
+      ; Reopen independently after the publisher closed.  A completed journal
+      ; event, rather than the in-memory owner transition, releases the fence.
+      (multiple-value-bind (store records)
+          (fnn-open-live-store destination t)
+        (declare (ignore records))
+        (unwind-protect
+             (unless (eq (fnn-core-state 'fn-store-checkpoint-clone-phase
+                                         octets) :completed)
+               (fnn-indeterminate "clone rollover did not survive reopen"))
+          (fnn-store-close store)))
+      (let* ((store (make-fnn-store destination :writable nil))
+             (path (fnn-clone-fence-path store)))
+        (handler-case
+            (progn (fnn-unlink path)
+                   (fnn-checkpoint-test-stop "clone-fence-unlinked")
+                   (fnn-fsync-dir destination))
+          (fnn-os-error ()
+            (fnn-indeterminate
+             "clone activation fence removal is uncertain")))))
+    (fnn-out "clone activated with durable incarnation rollover")
+    +fnn-exit-ok+))
+
+(defun fnn-checkpoint-command-clone (source destination)
+  (multiple-value-bind (source-real target parent path-bound)
+      (fnn-clone-canonical-paths source destination)
+    (multiple-value-bind (store records) (fnn-open-live-store source-real t)
+      (declare (ignore records))
+      (unwind-protect
+           (let* ((fresh-id
+                    (multiple-value-bind (history incarnation)
+                        (fnn-owner-consumer-entropy-observation)
+                      (declare (ignore history))
+                      incarnation))
+                  (proposed
+                    (fnn-core-state 'fn-store-checkpoint-rollover-proposal
+                                    fresh-id)))
+             (unless (and (listp proposed) (eq (first proposed) :ok))
+               (fnn-refuse "ACL2 refused clone incarnation: ~s" proposed))
+             (let* ((event (second proposed))
+                    (frame (fnn-core 'fn-cpe-encode event))
+                    (stage (fnn-join parent
+                                     (format nil ".fn-clone-~d-~a"
+                                             (sb-posix:getpid)
+                                             (fnn-random-hex 12))))
+                    (max-depth
+                      (fnn-nat (fnn-core 'fn-store-checkpoint-clone-max-depth)))
+                    (max-entries
+                      (fnn-nat (fnn-core 'fn-store-checkpoint-clone-max-entries)))
+                    (max-bytes
+                      (fnn-nat (fnn-core 'fn-store-checkpoint-clone-max-bytes))))
+               (unless (fnn-octet-list-p frame)
+                 (fnn-fault "ACL2 returned a malformed clone fence"))
+               (fnn-clone-checked-path stage path-bound)
+               (fnn-clone-checked-path
+                (fnn-clone-fence-path (make-fnn-store stage :writable nil))
+                path-bound)
+               (fnn-mkdir stage #o700)
+               (fnn-write-staged
+                (fnn-clone-fence-path (make-fnn-store stage :writable nil))
+                (fnn-octets frame))
+               (fnn-fsync-dir stage)
+               (fnn-fsync-dir parent)
+               (fnn-checkpoint-test-stop "clone-fence-durable")
+               (let ((*fnn-clone-copy-count* 0)
+                     (*fnn-clone-copy-bytes* 0))
+                 (fnn-clone-copy-tree source-real stage 0
+                                      max-depth max-entries max-bytes path-bound))
+               (fnn-fsync-dir stage)
+               (when (fnn-lstat target)
+                 (fnn-refuse "clone destination appeared during copy"))
+               (handler-case
+                   (progn (fnn-clone-publish-no-replace stage target)
+                          (fnn-fsync-dir parent)
+                          (fnn-checkpoint-test-stop "clone-published"))
+                 (fnn-os-error ()
+                   (fnn-indeterminate
+                    "clone directory publication is uncertain")))
+               (fnn-clone-activate target)))
+        (fnn-store-close store)))))
+
 (defun fnn-checkpoint-command (command args)
   (cond ((string= command "publish")
          (unless (or (= (length args) 1)
@@ -564,6 +832,15 @@
          (unless (= (length args) 1)
            (error 'fnn-usage-error :message "checkpoint pack-reclaim ROOT"))
          (fnn-checkpoint-command-pack-reclaim (first args)))
+        ((string= command "clone")
+         (unless (= (length args) 2)
+           (error 'fnn-usage-error :message
+                  "checkpoint clone SOURCE DESTINATION"))
+         (fnn-checkpoint-command-clone (first args) (second args)))
+        ((string= command "clone-resume")
+         (unless (= (length args) 1)
+           (error 'fnn-usage-error :message "checkpoint clone-resume DESTINATION"))
+         (fnn-clone-activate (first args)))
         (t (error 'fnn-usage-error :message
                   (format nil "unknown checkpoint command ~a" command)))))
 

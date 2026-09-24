@@ -7,11 +7,19 @@
 (include-book "bp-fragment-invariants")
 (set-verify-guards-eagerness 0)
 
+(defun fn-bpnf-family-member (x xs)
+  (declare (xargs :guard t))
+  (mbe :logic (member-equal x xs)
+       :exec (if (consp xs)
+                 (if (equal x (car xs)) xs
+                   (fn-bpnf-family-member x (cdr xs)))
+               nil)))
+
 ; An ADU key alone is not sufficient: fragments with incompatible primary
 ; headers must not share a reassembly canvas.  The fragment flag itself is
 ; removed; all candidates here are fragments, so the remaining flags agree.
 (defun fn-bpnf-fragment-coherence-key (primary)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpp-blockp primary) :verify-guards nil))
   (list (fn-bpp-total-adu-length primary)
         (fn-bpp-destination primary)
         (fn-bpp-report-to primary)
@@ -58,20 +66,34 @@
 (defun fn-bpnf-active-set (st anchor)
   (declare (xargs :guard t))
   (if (and (fn-bpnf-active-fragmentp anchor)
-           (member-equal anchor (fn-bpnf-held-list st)))
+           (fn-bpnf-family-member anchor (fn-bpnf-held-list st)))
       (fn-bpnf-active-set-rows (fn-bpnf-held-list st) anchor)
     nil))
 
 (defun fn-bpnf-fragment-cells (held)
-  (declare (xargs :guard t))
-  (if (consp held)
-      (let* ((primary (fn-bpb-bundle-primary
-                       (fn-bpnf-held-bundle (car held))))
-             (payload (fn-bpb-payload (fn-bpnf-held-bundle (car held)))))
-        (cons (fn-bpf-make (fn-bpp-fragment-offset primary)
-                           payload (fn-bpp-total-adu-length primary))
-              (fn-bpnf-fragment-cells (cdr held))))
-    nil))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe
+   :logic
+   (if (consp held)
+       (let* ((primary (fn-bpb-bundle-primary
+                        (fn-bpnf-held-bundle (car held))))
+              (payload (fn-bpb-payload (fn-bpnf-held-bundle (car held)))))
+         (cons (fn-bpf-make (fn-bpp-fragment-offset primary)
+                            payload (fn-bpp-total-adu-length primary))
+               (fn-bpnf-fragment-cells (cdr held))))
+     nil)
+   :exec
+   (if (consp held)
+       ; The total field selectors are logically identical to the record
+       ; projections above and avoid a duplicate record scan on this path.
+       (let* ((bundle (fn-bpnf-held-bundle (car held)))
+              (primary (fn-bpb-bundle-primary bundle))
+              (payload (fn-bpb-block-data
+                        (fn-bpb-bundle-payload bundle))))
+         (cons (fn-bpf-make (fn-bpn-nth 9 primary)
+                            payload (fn-bpn-nth 10 primary))
+               (fn-bpnf-fragment-cells (cdr held))))
+     nil)))
 
 ; This is the actual foundation-state query: the fast scanner consumes the
 ; held bundles selected from the machine's own list, not a parallel family
@@ -79,7 +101,7 @@
 (defun fn-bpnf-fragment-query (st anchor)
   (declare (xargs :guard t))
   (if (not (and (fn-bpnf-active-fragmentp anchor)
-                (member-equal anchor (fn-bpnf-held-list st))))
+                (fn-bpnf-family-member anchor (fn-bpnf-held-list st))))
       (list :invalid :bounds)
     (fn-bpf-reassemble-fast
      (fn-bpnf-fragment-cells (fn-bpnf-active-set st anchor))
@@ -89,15 +111,26 @@
 ; The source for reconstructing the whole primary and extension blocks is
 ; the offset-zero row, regardless of which selected row arrived first.
 (defun fn-bpnf-offset-zero-source (held)
-  (declare (xargs :guard t))
-  (if (consp held)
-      (if (equal (fn-bpp-fragment-offset
-                  (fn-bpb-bundle-primary
-                   (fn-bpnf-held-bundle (car held))))
-                 0)
-          (car held)
-        (fn-bpnf-offset-zero-source (cdr held)))
-    nil))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe
+   :logic
+   (if (consp held)
+       (if (equal (fn-bpp-fragment-offset
+                   (fn-bpb-bundle-primary
+                    (fn-bpnf-held-bundle (car held))))
+                  0)
+           (car held)
+         (fn-bpnf-offset-zero-source (cdr held)))
+     nil)
+   :exec
+   (if (consp held)
+       (if (equal (fn-bpn-nth
+                   9 (fn-bpb-bundle-primary
+                      (fn-bpnf-held-bundle (car held))))
+                  0)
+           (car held)
+         (fn-bpnf-offset-zero-source (cdr held)))
+     nil)))
 
 (defthm fn-bpnf-active-set-rows-members-share-family
   (implies (member-equal h (fn-bpnf-active-set-rows held anchor))

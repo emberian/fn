@@ -150,8 +150,8 @@ are gone. `fn-nntp-newnews-scan-is-the-acceptance-filter` equates the one-pass
 scan with an independent quadratic specification, establishing soundness and
 completeness. `fn-nntp-newnews-lines-are-clean` and
 `fn-nntp-newnews-scan-lines-at-most-candidates` establish block hygiene and
-the output bound. The per-group index of `books/nntp-index.lisp` is not on the
-served path; replacing the whole-list walk remains open.
+the output bound. The LISTGROUP group buckets do not index NEWNEWS; replacing
+this whole-list walk remains open.
 
 Message-ID forms of `ARTICLE`, `HEAD`, `BODY`, and `STAT` use the connection's
 pinned trie rather than scanning its accepted article list. The owner refreshes
@@ -165,8 +165,21 @@ and carried by `fn-own-run-preserves-relation`. Under that premise,
 the original list lookup. The host-called `fn-own-read` is tied to the pinned
 served step by `fn-own-read-is-served-step-on-pinned-prefix`. These are in-memory
 indexes, reconstructed from committed acceptance on recovery; they do not
-change acceptance authority or add disk index files. Per-group number/range
-reads and `NEWNEWS` still walk the pinned archive.
+change acceptance authority or add disk index files. LISTGROUP range reads
+select from immutable per-group buckets pinned with that archive, and the
+owner/served invariant maintains exact bucket-to-archive correspondence.
+OVER and XOVER numeric ranges select numbers from that bucket and resolve each
+entry through the same pinned Message-ID trie. The carried bucket/trie relation
+proves their complete replies equal the archive fold; XOVER retains its 420
+empty-range code and OVER its 423. For G bucket headers, M selected-group
+memberships, S output numbers and maximum Message-ID length L, the structural
+work is O(G + M + S·M + S·L + S²), plus article rendering. This replaces the
+former O(A + S·A + S²) archive search for A retained articles; neither bound
+claims elapsed-time performance. HDR/XHDR, GROUP, NEXT, LAST and NEWNEWS still
+use their current archive folds. The
+LISTGROUP selection cost is at most G + S inspected headers and selected
+entries, for G retained groups and S entries in the chosen group; this excludes
+number sorting, reply rendering, and index construction.
 
 230 is a complete answer. 501 is the syntax refusal for malformed arguments,
 date/time or wildmat. 503 remains only for a two-digit year when the pinned
@@ -597,11 +610,25 @@ STREAMING appear exactly when the pinned peer record has an inbound half;
 AUTHINFO USER continues to describe only the reader mechanism the connection
 may use now.
 
-**Open, named**: the fold-level form of that statement — no read of a
-connection under a configuration that grants posting to no one emits a
-submission — is `OB-AUTH-FOLD`, recorded in `planning/proofs.json` and in
-the header of `books/nntp-auth-invariants.lisp` with the three lemmas it
-waits on.
+**Proved for the local posting path**: `OB-AUTH-FOLD` is
+`fn-auth-fold-step-has-no-local-submission` in `books/nntp-auth-fold.lisp`.
+For a valid served connection with a pinned no-posters credential policy and
+no pending local POST body, the complete `fn-served-step` effect list has no
+injected submission; `fn-auth-fold-step-preserves-safe-connp` carries those
+conditions across reads. This does not prohibit a separately authorized
+transit peer: a no-posting credential can bind a configured peer role, and
+TAKETHIS may then produce a distinct transit submission. The complete-read
+witness and local POST counterexample for the removed policy premise are in
+`tests/acl2/nntp-auth-fold-tests.lisp`.
+The test also constructs a well-formed, no-posters connection with a pending
+POST body by changing the pinned policy after a genuine 340 offer. Its body
+does submit locally, demonstrating why the no-pending premise is needed for
+an arbitrary state. That state is **unreachable in composition** from a
+no-posters open: the open has no pending POST, and
+`fn-auth-fold-step-preserves-safe-connp` preserves that fact across reads.
+`fn-served-connp` is the structural connection invariant seeded by open and
+carried by the served path; it is theorem vocabulary, not a runtime
+whole-store check or an independent posting authority condition.
 
 ## Scope
 

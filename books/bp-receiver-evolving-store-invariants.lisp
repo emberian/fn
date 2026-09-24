@@ -9,6 +9,7 @@
 (in-package "ACL2")
 (include-book "bp-receiver-evolving-node-invariants")
 (include-book "store-observed")
+(include-book "consumer-store-invariants")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
@@ -406,7 +407,7 @@
 ; reopen without it and went red at that commit; they carry the same
 ; condition over the same records, no weaker and no stronger.
 (defthm fn-bprv-observed-reopen-facts
-  (implies (and (fn-snt-relation s)
+  (implies (and (fn-csi-full-relationp s)
                 (fn-sf-crash-imagep (fn-sn-files s) frontier records)
                 (fn-sn-observed-identity-okp records))
            (let ((opened (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
@@ -418,6 +419,9 @@
   :hints (("Goal"
            :use (fn-snt-relation-implies-observed-configuration
                  fn-snt-admissible-crash-image-is-recoverable
+                 (:instance fn-sf-crash-imagep-implies-recovery-crash-imagep
+                            (s (fn-sn-files s)))
+                 fn-csi-recovery-crash-image-strict-replay
                  fn-bprv-crash-image-extends-history
                  (:instance fn-sf-admissible-image-facts (s (fn-sn-files s)))
                  (:instance fn-sn-open-observed-succeeds-on-recoverable-image
@@ -438,6 +442,7 @@
 
 (defthm fn-bprv-evolving-invariant-survives-observed-reopen
   (implies (and (fn-bprv-system-invariantp store st journal)
+                (fn-csi-full-relationp store)
                 (fn-sf-crash-imagep (fn-sn-files store) frontier records)
                 (fn-sn-observed-identity-okp records))
            (let ((opened (fn-sn-open-observed (fn-sn-groups store) (fn-sn-capacity store)
@@ -495,6 +500,15 @@
   (implies (fn-snt-relation (car live))
            (fn-snt-relation (car (fn-bpr-live-step live event))))
   :hints (("Goal" :in-theory (disable fn-bprr-apply-record))))
+(defthm fn-bpr-live-step-preserves-consumer-full-relation
+  (implies (fn-csi-full-relationp (car live))
+           (fn-csi-full-relationp (car (fn-bpr-live-step live event))))
+  :hints (("Goal"
+           :use ((:instance fn-csi-store-step-preserves-full-relation
+                            (s (car live)) (event (cadr event))))
+           :in-theory (e/d (fn-bpr-live-step)
+                           (fn-csi-full-relationp fn-snrt-step
+                            fn-csi-store-step-preserves-full-relation)))))
 (defthm fn-bpr-live-step-extends-history
   (implies (fn-snt-relation (car live))
            (fn-bprv-extendsp (car live) (car (fn-bpr-live-step live event))))
@@ -507,6 +521,11 @@
            (fn-snt-relation (car (fn-bpr-live-run live events))))
   :hints (("Goal" :induct (fn-bpr-live-run live events)
            :in-theory (disable fn-bpr-live-step))))
+(defthm fn-bpr-live-run-preserves-consumer-full-relation
+  (implies (fn-csi-full-relationp (car live))
+           (fn-csi-full-relationp (car (fn-bpr-live-run live events))))
+  :hints (("Goal" :induct (fn-bpr-live-run live events)
+           :in-theory (disable fn-bpr-live-step fn-csi-full-relationp))))
 (defthm fn-bpr-live-run-extends-from
   (implies (and (fn-snt-relation (car live))
                 (fn-bprv-extendsp base (car live)))
@@ -636,13 +655,18 @@
 ; through the host's entry; run any further Store trace that reaches :ready
 ; (the recovery barriers); then fn-bprj-install replays the journal and the
 ; ADU fn-bprj-receipt-adu regenerates is the one the live receiver held.
+(local
+ (defthm fn-bprv-full-relation-has-store-relation
+   (implies (fn-csi-full-relationp s) (fn-snt-relation s))
+   :hints (("Goal" :in-theory (enable fn-csi-full-relationp)))))
+
 (defthm fn-bpr-live-receipt-regenerated-after-restart
   (let* ((final (fn-bpr-live-run live events))
          (opened (fn-sn-open-observed (fn-sn-groups (car final)) (fn-sn-capacity (car final))
                                       frontier records))
          (probe (fn-snrt-run (fn-sn-open-state opened) recovery-events))
          (installed (fn-bpr-live-install probe (caddr final))))
-    (implies (and (fn-snt-relation (car live))
+    (implies (and (fn-csi-full-relationp (car live))
                   (equal (fn-bprr-replay (car live) (caddr live)) (list t (cadr live)))
                   (fn-sf-crash-imagep (fn-sn-files (car final)) frontier records)
                   (fn-sn-observed-identity-okp records)
@@ -676,6 +700,7 @@
                                    frontier records))
                                  recovery-events))))
                  (:instance fn-bpr-live-run-preserves-store-relation)
+                 (:instance fn-bpr-live-run-preserves-consumer-full-relation)
                  (:instance fn-bpr-live-run-extends-history)
                  (:instance fn-bpr-live-state-is-replay-of-journal
                             (probe (fn-snrt-run
@@ -734,8 +759,11 @@
                                   frontier records))
                                 recovery-events))))
            :in-theory (e/d (fn-bprv-extendsp)
-                           (fn-bprv-observed-reopen-facts
+                           (fn-csi-full-relationp fn-sn-observed-identity-okp
+                            fn-snt-consumerp fn-replay-identity
+                            fn-bprv-observed-reopen-facts
                             fn-bpr-live-run-preserves-store-relation
+                            fn-bpr-live-run-preserves-consumer-full-relation
                             fn-bpr-live-run-extends-history
                             fn-bpr-live-state-is-replay-of-journal
                             fn-bprv-replay-agrees-at-ready-extension

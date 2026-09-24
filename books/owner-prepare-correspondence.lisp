@@ -156,7 +156,7 @@
  (defthm fn-opc-reader-context-conn-okp
    (implies (fn-own-conn-okp conn groups capacity records)
             (fn-own-conn-okp
-             (fn-own-conn-make-indexed
+             (fn-own-conn-make-group-indexed
                                (fn-own-conn-id conn) (fn-own-conn-version conn)
                                (fn-own-conn-frontier conn) (fn-own-conn-wire conn)
                                (fn-auth-with-base
@@ -166,14 +166,16 @@
                                (fn-own-conn-archive conn) (fn-own-conn-config conn)
                                (fn-own-conn-observation conn)
                                (fn-own-conn-verdicts conn)
-                               (fn-own-conn-index conn))
+                               (fn-own-conn-index conn)
+                               (fn-own-conn-group-index conn))
              groups capacity records))
    :hints (("Goal" :in-theory (e/d (fn-own-conn-okp (:d fn-own-conn-boundedp))
                                    (fn-auth-with-base fn-peer-open-session
                                     fn-auth-sessionp fn-peer-sessionp
                                     fn-own-prefix-archive
                                     fn-nntp-session-group fn-nntp-session-current
-                                    fn-opc-reader-context-session-boundedp))
+                                    fn-opc-reader-context-session-boundedp
+                                    fn-own-conn-make-group-indexed))
             :use ((:instance fn-opc-reader-context-session-boundedp
                              (as (fn-own-conn-session conn))
                              (cid (fn-own-conn-id conn))
@@ -221,7 +223,19 @@
                            (fn-own-conn-okp fn-own-conn-boundedp fn-own-find-conn-okp
                             fn-opc-reader-context-conn-okp
                             fn-auth-with-base fn-peer-open-session
-                            fn-auth-sessionp fn-peer-sessionp fn-cfgp)))))
+                            fn-auth-sessionp fn-peer-sessionp fn-cfgp
+                            fn-own-conn-make-group-indexed)))))
+
+; The configured ADVANCE calls fn-own-advance-result so it can decide whether
+; to replace the connection's configuration pin.  Its owner component is the
+; same transition already covered by fn-own-advance-preserves-relation.
+(local
+ (defthm fn-opc-advance-result-preserves-owner-relation
+   (implies (fn-own-relation o)
+            (fn-own-relation (cdr (fn-own-advance-result o id))))
+   :hints (("Goal"
+            :use ((:instance fn-own-advance-preserves-relation))
+            :in-theory (enable fn-own-advance)))))
 
 (defthm fn-opc-configured-step-preserves-owner-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))
@@ -239,7 +253,7 @@
           (:instance fn-own-read-step-preserves-relation
                      (o (fn-ocfg-owner oc)) (id (cadr event))
                      (event (caddr event)))
-          (:instance fn-own-advance-preserves-relation
+          (:instance fn-opc-advance-result-preserves-owner-relation
                      (o (fn-ocfg-owner oc)) (id (cadr event)))
           (:instance fn-own-close-preserves-relation
                      (o (fn-ocfg-owner oc)) (id (cadr event)))
@@ -262,7 +276,8 @@
           fn-own-read-step fn-own-advance fn-own-close fn-own-complete
           fn-own-step fn-own-open-preserves-relation
           fn-own-open-peer-preserves-relation fn-own-read-preserves-relation
-          fn-own-read-step-preserves-relation fn-own-advance-preserves-relation
+          fn-own-read-step-preserves-relation
+          fn-opc-advance-result-preserves-owner-relation
           fn-own-close-preserves-relation fn-own-complete-preserves-relation
           fn-own-step-preserves-relation fn-own-reader-context
           fn-opc-reader-context-preserves-relation)))))

@@ -2,6 +2,7 @@
 ; live configuration; a prior physical capacity decrease remains recoverable.
 (in-package "ACL2")
 (include-book "../../books/config-owner-live")
+(include-book "std/testing/must-fail" :dir :system)
 (include-book "config-observed-tests")
 
 (defconst *ocl-t-cfg*
@@ -76,6 +77,68 @@
 (assert-event (not (member-equal "fn.live" (fn-ocfg-served *ocl-t-new-open* 0))))
 (assert-event (member-equal "fn.live" (fn-ocfg-served *ocl-t-new-open* 1)))
 (assert-event
+ (equal
+  (fn-state-groups
+   (fn-own-conn-archive
+    (fn-own-find-conn 0
+     (fn-own-conns (fn-ocfg-owner *ocl-t-new-open*)))))
+  (fn-cnode-domain-of (fn-ocfg-conn-config *ocl-t-new-open* 0))))
+(assert-event
+ (equal
+  (fn-state-groups
+   (fn-own-conn-archive
+    (fn-own-find-conn 1
+     (fn-own-conns (fn-ocfg-owner *ocl-t-new-open*)))))
+  (fn-cnode-domain-of (fn-ocfg-conn-config *ocl-t-new-open* 1))))
+(defconst *ocl-t-live-group-command*
+  (append (fn-nntp-string-octets "GROUP fn.live") '(13 10)))
+(defconst *ocl-t-old-read*
+  (cdr (fn-ocfg-read *ocl-t-new-open* 0 *ocl-t-live-group-command*)))
+(defconst *ocl-t-new-read*
+  (cdr (fn-ocfg-read *ocl-t-new-open* 1 *ocl-t-live-group-command*)))
+(assert-event (fn-ocl-relation *ocl-t-old-read*))
+(assert-event (fn-ocl-relation *ocl-t-new-read*))
+(assert-event
+ (null (fn-nntp-session-group
+        (fn-auth-reader-session
+         (fn-own-conn-session
+          (fn-own-find-conn 0
+           (fn-own-conns (fn-ocfg-owner *ocl-t-old-read*))))))))
+(assert-event
+ (equal (fn-nntp-session-group
+         (fn-auth-reader-session
+          (fn-own-conn-session
+           (fn-own-find-conn 1
+            (fn-own-conns (fn-ocfg-owner *ocl-t-new-read*))))))
+        "fn.live"))
+(defconst *ocl-t-forged-old-pin*
+  (fn-ocfg-make
+   (fn-ocfg-owner *ocl-t-new-open*)
+   (fn-ocfg-config *ocl-t-new-open*)
+   (fn-ocfg-pin-set 0 (fn-ocfg-config *ocl-t-new-open*)
+                    (fn-ocfg-pins *ocl-t-new-open*))
+   nil))
+(assert-event
+ (not (equal
+       (fn-state-groups
+        (fn-own-conn-archive
+         (fn-own-find-conn 0
+          (fn-own-conns (fn-ocfg-owner *ocl-t-forged-old-pin*)))))
+       (fn-cnode-domain-of
+        (fn-ocfg-conn-config *ocl-t-forged-old-pin* 0)))))
+; The read theorem needs the incoming historical relation: a forged newer
+; pin remains wrong after the old connection reads its pinned archive.
+(assert-event (not (fn-ocl-relation *ocl-t-forged-old-pin*)))
+(assert-event
+ (not (fn-ocl-relation
+       (cdr (fn-ocfg-read *ocl-t-forged-old-pin*
+                          0 *ocl-t-live-group-command*)))))
+(local
+ (must-fail
+  (defthm fn-ocl-read-without-historical-input-is-not-preserved
+    (fn-ocl-relation (cdr (fn-ocfg-read oc id octets)))
+    :rule-classes nil)))
+(assert-event
  (equal (fn-ocfg-conn-config *ocl-t-new-open* 1)
         (fn-ocfg-config *ocl-t-created*)))
 ; Without the historical owner's exact pin-table domain, a forged pin at
@@ -86,6 +149,9 @@
                 (cons (cons 1 *ocl-t-cfg*) (fn-ocfg-pins *ocl-t-created*))
                 nil))
 (assert-event (not (fn-ocl-relation *ocl-t-stale-next-pin*)))
+(assert-event
+ (not (fn-ocl-relation
+       (cdr (fn-ocfg-open *ocl-t-stale-next-pin* nil)))))
 (assert-event
  (not (equal (fn-ocfg-conn-config
               (cdr (fn-ocfg-open *ocl-t-stale-next-pin* nil)) 1)

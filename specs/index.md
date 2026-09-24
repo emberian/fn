@@ -22,9 +22,7 @@ materialized query to an independent source-membership enumeration.
 The public query is total: malformed index, group, or range inputs return `nil`.
 Valid calls are guard verified and traverse only the derived index.
 
-This is an executable logical algorithm and proof scope only. It has no persisted
-index format or ABI, no host adoption claim, and no physical storage/rebuild or
-performance qualification. Source state remains authoritative.
+This index has no persisted format or ABI. Source state remains authoritative.
 
 ## Host adoption: a generation-bound cache (C1-09)
 
@@ -59,12 +57,37 @@ and installs its result. The host holds no enumeration logic:
 `fn-index-host-fold` exists only as the measurement baseline and test oracle,
 and is not a served path.
 
-The served path is not yet switched. `fn-nntp-group-result` and
-`fn-nntp-listgroup-result` reach the archive through their arguments, so a
-cache cannot be handed to them without widening `fn-nntp-make-session` and
-`fn-nntp-step`, which this wave's nntp.lisp owner holds. The equality theorems
-above are exactly what makes that a call-site substitution when the session
-carries the index.
+The older generation-bound host cache is an independent read-only adapter;
+the served owner path below pins its own derived view. Its GROUP, NEXT and
+LAST commands still use the archive folds in this slice.
+
+## Pinned LISTGROUP group buckets (T17)
+
+`books/group-bucket-index.lisp` groups the existing membership entries by
+newsgroup. An owner refresh builds the buckets once from its committed article
+projection, and each new connection pins the bucket set with the matching
+archive and Message-ID trie. An older connection keeps its former pin after a
+POST. `fn-own-read` calls the served dispatcher, which passes that pin to
+`fn-nntp-archive-command-pinned`; LISTGROUP selects one bucket before applying
+the existing range-number policy. The host neither classifies memberships nor
+rebuilds the index on each read.
+
+The proof-side owner and served connection invariants state that a nonempty
+bucket pin equals `fn-gidx-build` of that connection's archive. The build/open,
+refresh, read and feed transitions preserve it. `fn-gidx-bucket-of-build`
+equates a selected bucket with filtering `fn-index-build`, and
+`fn-gidx-listgroup-command-of-build` equates the complete reply and resulting
+session with the archive command under `fn-nntp-projectionp`. This licenses the
+actual pinned dispatch; an arbitrary tagged index has no such guarantee. The
+Message-ID trie remains a separate field and exact-ID lookup still uses it.
+
+For a lookup, `fn-gidx-range-work` counts bucket headers visited plus entries
+in the selected bucket: at most G + S for G distinct group headers and S
+selected memberships. The 24-group ACL2 fixture measures 2 inspected units
+for a group at the head and 24 materialized entries in the flat baseline.
+This does not bound sorting/rendering or the one-time bucket build, and an
+unfavorable group lookup can still traverse all G headers. No elapsed-time or
+disk-performance claim follows from this count.
 
 ## Persistent Message-ID lookup (W30)
 
@@ -85,11 +108,7 @@ witnesses have source-evaluation evidence; fresh focused certification and
 complete hypothesis teeth remain open. Their presence does not establish a
 performance bound for arbitrary malformed tries.
 
-The live-owner integration is in progress. Recovery will build from the
-recovered article projection, durable acceptance will extend the committed root,
-and readers will pin the matching archive and root together. Served commands
-must call the indexed function under a maintained correspondence; they must not
-rebuild the trie or recheck correspondence across the whole archive per command.
-The currently integrated primitive alone changes no served lookup path. Group
-and local-number indexing above has a different key and query contract and is
-not replaced by the Message-ID trie.
+The live owner pins the trie with each archive and calls it for exact-ID
+ARTICLE, HEAD, BODY and STAT retrieval. Its maintained correspondence is not
+rechecked across the whole archive per command. Group buckets have a different
+key and LISTGROUP query contract; they do not replace the Message-ID trie.

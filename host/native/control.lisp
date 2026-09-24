@@ -113,10 +113,18 @@
           (push part chunks))))))
 
 (defun fnn-control-reply-octets (status)
-  (let ((reply (if (and (consp status) (eq (first status) :topic-reply))
-                   (fnn-core 'fn-native-control-host-topic-reply-encode
-                             (second status))
-                 (fnn-core 'fn-native-control-host-reply-encode status))))
+  (let ((reply
+          (cond
+            ((and (consp status) (eq (first status) :topic-reply))
+             (fnn-core 'fn-native-control-host-topic-reply-encode
+                       (second status)))
+            ((and (consp status) (eq (first status) :consumer-poll-reply))
+             (fnn-core 'fn-native-control-host-consumer-poll-reply-encode
+                       (second status) (third status) (fourth status)))
+            ((and (consp status) (eq (first status) :consumer-reply))
+             (fnn-core 'fn-native-control-host-consumer-reply-encode
+                       (second status) (third status)))
+            (t (fnn-core 'fn-native-control-host-reply-encode status)))))
     (unless (fnn-octet-list-p reply)
       (fnn-fault "ACL2 refused a local-control reply status"))
     (fnn-octets reply)))
@@ -268,6 +276,10 @@ joins it before the process exits."
                       (topic
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-topic-request-decode
+                                       (fnn-octet-list frame))))
+                      (consumer
+                        (and (typep frame 'fnn-octets)
+                             (fnn-core 'fn-native-control-host-consumer-request-decode
                                        (fnn-octet-list frame)))))
                  (cond
                    ((and *fnn-hybrid-control-handler*
@@ -281,6 +293,14 @@ joins it before the process exits."
                                  service (second topic) (third topic)
                                  (fourth topic) uid))
                         (list :topic-reply :refused))))
+                   ((and (consp consumer) (eq (car consumer) :consumer))
+                      (if (fnn-control-peer-is-owner-p socket)
+                        (fnn-owner-consumer-local-serialized
+                         service (second consumer) (third consumer)
+                         (fourth consumer))
+                      (if (eq (second consumer) :poll)
+                          (list :consumer-poll-reply :refused nil nil)
+                        (list :consumer-reply :refused nil))))
                    ((and (consp request) (eq (car request) :request))
                     (let ((msgid (second request))
                          (groups (third request))
@@ -315,7 +335,9 @@ joins it before the process exits."
     ;; status already records its durable observation.  The client, which did
     ;; not receive it, conservatively reports :uncertain.
     (fnn-control-test-after-submit
-     (if (and (consp status) (eq (first status) :topic-reply))
+     (if (and (consp status)
+              (member (first status)
+                      '(:topic-reply :consumer-reply :consumer-poll-reply)))
          (second status) status))
     (fnn-control-send-reply socket status)))
 
@@ -570,6 +592,63 @@ joins it before the process exits."
                      (if (eq ordinary :busy) :refused ordinary))
                     (t (fnn-control-transport-outcome stage))))))
            (error () (fnn-control-transport-outcome stage)))
+      (when socket (fnn-socket-shut socket)))))
+
+(defun fnn-control-consumer-local (path-octets operation first second)
+  "Exchange one ACL2-framed consumer command with the 0600 owner socket."
+  (let ((request-list
+          (fnn-core 'fn-native-control-host-consumer-request-encode
+                    operation first second))
+        (socket nil) (stage :before-submission))
+    (unless (fnn-octet-list-p request-list)
+      (fnn-fault "ACL2 refused local consumer request"))
+    (unwind-protect
+         (handler-case
+             (progn
+               (setq socket (fnn-control-connect
+                             (fnn-octets-string path-octets)))
+               (let ((fd (fnn-socket-fd socket)))
+                 (setq stage :after-submission)
+                 (fnn-send-all fd (fnn-octets request-list)
+                               +fnn-control-io-seconds+)
+                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
+                 (let* ((frame (fnn-control-read-frame
+                                socket (fnn-core
+                                        (if (eq operation :poll)
+                                            'fn-native-control-host-consumer-poll-max-frame
+                                          'fn-native-control-host-max-frame))))
+                        (reply (and (typep frame 'fnn-octets)
+                                    (fnn-core
+                                     (if (eq operation :poll)
+                                         'fn-native-control-host-consumer-poll-reply-decode
+                                       'fn-native-control-host-consumer-reply-decode)
+                                     (fnn-octet-list frame))))
+                        (ordinary-status
+                          (and (typep frame 'fnn-octets)
+                               (fnn-core 'fn-native-control-host-reply-decode
+                                         (fnn-octet-list frame)))))
+                   (if (and (consp reply)
+                            (eq (first reply)
+                                (if (eq operation :poll)
+                                    :consumer-poll-reply :consumer-reply))
+                            (member (second reply)
+                                    '(:accepted :refused :uncertain :fault))
+                            (fnn-octet-list-p (third reply))
+                            (or (not (eq operation :poll))
+                                (fnn-octet-list-p (fourth reply))))
+                       reply
+                     (list (if (eq operation :poll)
+                               :consumer-poll-reply :consumer-reply)
+                           (if (member ordinary-status
+                                       '(:refused :uncertain :fault :busy))
+                               (if (eq ordinary-status :busy)
+                                   :refused ordinary-status)
+                             (fnn-control-transport-outcome stage))
+                           nil nil)))))
+           (error ()
+             (list (if (eq operation :poll)
+                       :consumer-poll-reply :consumer-reply)
+                   (fnn-control-transport-outcome stage) nil nil)))
       (when socket (fnn-socket-shut socket)))))
 
 (defun fnn-control-submit (path-octets msgid-octets group-octets payload-path-octets)

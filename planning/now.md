@@ -1,4 +1,223 @@
-# Current work — 2026-09-23
+# Current work — 2026-09-24
+
+The [workstream review and proposed next cycle](workstream-review-2026-09-24.md)
+reconstruct the last 300 first-parent landings, distinguish integrated work
+from the substantive branch backlog, and propose the next complete agent and
+BP exchanges. The proposal changes no release requirements or deployment.
+
+Combined source `a785ae03` passes incremental ACL2 qualification after
+integrating ADVANCE, indexed OVER, allocator correspondence, the consumer-index
+foundation and shared poll definitions. The first run exposed a configured
+ADVANCE proof regression; its repaired follow-up reused 581 certificates and
+certified 16 books in 35.604 seconds at four jobs. `make check` passed. The
+[integration record](evidence/cleanup-integration-2026-09-24.md) preserves both
+runs and the bounded Luna trials. The a785 production and developer images were built; selected native
+consumer and reader checks passed, while the BP report cut exposed an
+unregistered developer fault selector. The [native record](evidence/native-a785-selected-gate-2026-09-24.md)
+retains both results and limitations. Its selector and test-fixture repairs
+are integrated; their source-matched runtime check remains pending.
+The index foundation still needs its actual owner/Store join and does not yet
+establish bounded served polling. The read-only expiry selector is integrated;
+native fragment admission and persisted replacement remain a separate join.
+
+The [live Mini join](evidence/native-mini-live-join-2026-09-24.md) passed using
+the earlier `1d26e01f` image: native poll, Mini's durable signed transaction and
+Q, reopen, advancing fn ACK, and empty repeat poll. Its later killed reply was
+a duplicate ACK; the earlier 1d26 campaign supplies positive advancing-ACK
+lost-reply evidence. Posting a stable signed fn reply from Q remains open.
+The protected live node remains `da5fd8cb`.
+
+Active joins are native BP fragment custody with expiry-safe reassembly,
+topic Store admission, the maintained consumer index on the actual served
+path, and the full allocator byte/kernel relation. Two earlier bounded Luna trials
+covered a client verdict display and proof-cost diagnosis. The client change
+landed after an article/verdict association correction; Luna's local proof hint has now certified with unchanged theorem statements
+and fewer prover steps. [Cleanup and recovery](worktree-recovery-2026-09-24.md)
+records 101 verified worktree archives and recovery from an external accidental
+checkout reset. Old branch counts are not a feature backlog.
+
+A new three-lane GPT-6-Luna feature trial is underway with Sol review.
+Bounded web history windows and native offline cursor inspection are on dev;
+web socket/HTTP tests pass, while the inspector awaits one shared saved
+image. Local consumer status remains in its implementation lane, with ACL2
+owning scope checks and journal-distance arithmetic. Review has already
+corrected the cursor file ceiling, advanced empty-group navigation, and a
+frame-kind collision with the pending topic branch. This trial records
+review assistance as well as implementation results; it does not establish
+unreviewed model reliability. The old topic, consumer-index, BP activation
+and allocator packets remain separate integration work.
+
+The dated checkpoints below are historical observations, not competing
+descriptions of current source.
+
+## Native consumer/reader/clone qualification — 23:35 UTC
+
+The source-qualified `1d26e01f` images passed signed source polling,
+read-only repeat, durable advancing ACK with killed reply and recovered
+position, live-created group posting/restart, indexed reader workloads, and
+selected-pack/fenced-clone cursor recovery. The [native record](evidence/native-poll-reader-clone-1d26-2026-09-23.md)
+names exact image, driver and fixture hashes and retains the original test
+assertion failures. Its exported registration cursor predates polling, so
+Mini can independently pin the consumer scope. The separate
+[bound-callback test](evidence/native-owner-bound-1d26e01f-2026-09-23.md)
+observes a post-take signed conflict refusal followed by a successful request.
+Mini's durable application transaction/ACK/reply join remains in progress;
+file projection alone is not Store admission. Neither this campaign nor the
+BP source below changes the protected live node.
+
+## BP composition checkpoint — 23:33 UTC
+
+The integrated fragment/expiry/transit/deletion-report source `48425e4e`
+failed its first full incremental ACL2 run, [original manifest](evidence/manifests/certify-20260923T232613Z-475686.json).
+It reused 322 books and attempted 263 in 294.161 seconds at four jobs. The
+fragment guard exceeded its 180-second bound; the report guard consequently
+could not include its certificate. The FNBS replay invariant and test also
+failed. These are current-source integration defects to repair, not native
+BP evidence. Focused lanes are repairing the fragment guard cost and replay
+invariant before another source-matched image. The qualifying `1d26e01f`
+consumer/reader/clone campaign continues independently.
+
+## Current repair qualification — 23:25 UTC
+
+Source `1d26e01f` passes the full incremental ACL2 run with 534 compatible
+cached books and 17 newly certified books; the [original manifest](evidence/manifests/certify-20260923T232249Z-467250.json)
+records its timing and exact scope. `make check` and four direct host-function
+regressions pass. The repairs resolve posted groups from the current ACL2
+owner, refresh the native configuration projection after durable publication,
+settle known preflight refusals without stranding a pending request, and verify
+the consumer poll projection guard against the current cursor codec. Faults
+and ambiguous writes still require recovery. The shared source-matched image
+at `/tank/fn/gates/poll-live-group-native-1d26-20260923` is now building for
+signed poll/advancing ACK, live-created group posting, clone and Mini fixture
+qualification. This is not yet native success evidence. The live node is
+unchanged.
+
+## Current combined qualification — 23:03 UTC
+
+The repaired reader/consumer/clone source `bc9be7ec` passes its full
+incremental ACL2 run and static check: 512 cached plus 37 newly certified
+books, 86.662 seconds at four jobs. The
+[integration record](evidence/reader-consumer-clone-integration-2026-09-23.md)
+preserves the first failed run and each repair. The shared developer and
+production image build now proceeds at
+`/tank/fn/gates/reader-clone-poll-native-bc9-20260923`; the developer and production builds passed. The
+[real INN and selected peering tests](evidence/nntp-peering-bc9be7ec-2026-09-23.md)
+passed on the production image. The
+[signed poll test failed before submission](evidence/native-e2-poll-bc9-original.md):
+the CLI incorrectly passed its output path as a request argument. The host
+fix `59cfdc25` and shipped-function regression are integrated, but require a
+new source-matched image. Reader testing also found a live-created group
+visible to GROUP but refused on POST, followed by BUSY on another post;
+current-owner domain projection and completion-error handling are under repair.
+Independent clone path and historical-authorship tests passed in the image
+lane; their original evidence is still being assembled. This supersedes the
+staged but unbuilt a8e4 image.
+
+## Earlier integration checkpoint — 22:48 UTC
+
+Source `a8e4b17e` combines the pinned LISTGROUP bucket, local consumer poll,
+checkpoint auxiliary-state comparison and fenced cold clone with OS-generated
+incarnation rollover. The full incremental hbox run is
+`run-20260923T224556Z-1ba9` at
+`/tank/fn/gates/reader-clone-poll-a8e4-20260923`, four jobs: 425 compatible
+cached books and 122 to certify. The run finished with 112 new passes and ten failures (four substantive
+proof roots plus dependents), in 168.027 seconds;
+[repairs and exact evidence](evidence/reader-consumer-clone-integration-2026-09-23.md)
+are recorded separately. Authentication and owner-agent repairs now pass
+their selected roots; the historical reader/configuration repair is in progress.
+Static checking found
+a missing archived clone manifest; `7fe09ab0` retains the unchanged original.
+The corresponding native image is staged, not yet built or qualified.
+
+The preceding source-matched developer image `c1bb050b` passed all eleven
+[BP admission/recovery scenarios](evidence/native-bp-admission-c1bb-2026-09-23.md).
+The earlier `4f66e6b0` image exposed a real raw-versus-parsed EID caller defect;
+[the failed run](evidence/native-e2-bp-4f66-2026-09-23.md) remains recorded.
+The correction passes the parsed endpoint to ACL2. This result does not cover
+the subsequent fragment, expiry, durable deletion/report or K6 v3 transit work.
+On `4f66e6b0`, local consumer controls and process-death recovery passed two
+normal cases plus the separately invoked different-UID case; positive poll and
+advancing ACK await the new image.
+
+The new consumer poll returns the exact historical event and a cursor while
+leaving ACK unchanged. It decodes at most sixteen events, but currently walks
+the preceding history to reach them; a carried sequence index is being built
+to remove that prefix cost. Native tests now cover signed source binding,
+advancing-ACK reply loss, exact fixture export for Mini and clone rejection of
+old cursors, but those tests have not yet run on this image.
+
+`fn-bs-k0-record-attempted-cut-establishes-relation` now proves the full
+byte/kernel relation at the actual successful P-RECORD pair-10 cut from a
+related staged input, typed frame/name and fresh stage. Served call-entry
+establishment, other programs/outcomes and physical barriers remain open.
+The BP recovery theorem cost repair reduced its whole book from 130.938 to
+3.971 seconds on the same hbox toolchain without changing its statement;
+the Store ready-phase proof repair reduces that book from 42.047 to 15.226
+seconds. Integrated timings remain a separate measurement.
+
+Mini's isolated [portable inbox experiment](evidence/dregg-e1-portable-inbox-p1.md)
+now retains exact carrier, operation binding and immutable reply in one native
+transaction, including relay and conflicting-source evidence. Same-fixture
+historical-repeat wall time fell from 218.30 to 83.15 seconds; 75.10 seconds
+remain in Mini replay, a practical gap. Its fn Store-report/cursor and durable
+ACK join is active work, not established by portable authorship alone.
+
+Parallel lanes continue the actual historical READ/ADVANCE relation, BP
+fragment/expiry/transit/report composition, durable topic Store admission and
+the consumer-to-Mini transaction. The live `da5fd8cb` service is unchanged.
+
+## Earlier integration checkpoint — 22:14 UTC
+
+The frozen `86323c89` developer and production images passed the targeted
+[topic, indexed-reader and live-configuration checks](evidence/native-topic-handoff-86323c89-2026-09-23.md);
+the developer image also passed all nine BP application tests, including
+ambiguous receipt-outbox publication. This is the trusted-local BP profile;
+channel admission, held-bundle expiry and fragment assembly are subsequent
+work, not covered by that result. The live service remains unchanged.
+The full Makefile-root ACL2 run at `f38c90a6` passed with 521 cached roots and
+two newly certified books in 11.646 seconds; `86323c89` changes only its ledger.
+The preceding broad topic-envelope run exposed one stale article-work test;
+its repaired boundary/cost witnesses passed in the incremental retry. Both
+original manifests are retained.
+
+The real [Mini portable-consumer experiment](evidence/dregg-e1-portable-consumer-p2.md)
+now joins native hybrid verification to the existing Mini durable reply path.
+Exact reopen and a separately signed conflicting source are tested. fn polling,
+acknowledgement and reply publication remain separate open joins.
+
+Consumer Store integration `98996532` and native publisher `944916e6` add the
+maintained consumer projection and strict replay. The five source failures
+found by the first combined run are repaired. The full retry at `22418c27`
+passed all implementation and invariant books; one obsolete owner counterexample
+fixture failed, was corrected without changing the theorem, and passed the
+scoped retry archived at `8e4b9e77`. The nonempty byte-reopen witness and
+premise counterexamples are integrated at `2669760e`; general K0 establishment
+of the physical byte/kernel relation remains open.
+
+Source `0143f87e` now combines OS-authenticated local consumer commands and
+production entropy-observed bootstrap with topic authorship binding and durable
+BP observed-channel admission. Its full incremental hbox run is
+`run-20260923T221336Z-48f3`, gate
+`/tank/fn/gates/consumer-topic-bp-20260923`, four jobs using the shared cache.
+The run passed: 281 compatible cached books and 257 newly certified books,
+340.165 seconds at four jobs with no measured slot wait. The original
+[manifest](evidence/manifests/certify-20260923T221404Z-303098.json) is retained.
+The BP evolving-Store proof took 130.938 seconds and is a concrete performance
+repair, not an excuse to increase the timeout. Native qualification is next.
+The BP profile is explicit IPv4 loopback trust in all co-resident originators,
+not cryptographic peer authentication. The configuration-check/owner-lock race is repaired at `4f66e6b0`, with a
+shipped-function regression that revokes trust before lock acquisition and
+confirms zero publication. Its ACL2 sources match `0143f87e`; the image
+qualification uses exact source `4f66e6b0`. Topic inspection still
+reports a candidate, not durable admission.
+
+The local consumer source route supplies bootstrap, register, zero/nonzero
+cursor validation for ack, position and unregister through the normal Store
+publisher. Darwin/Linux peer credentials bind it to the process owner. The
+native tests are prepared; bounded article poll/fetch and the end-to-end
+consumer transaction/ack/reply workflow remain active implementation work.
+CNS-001, PRF-064 and SCN-033 track this scope. Consumer metadata does not
+release article retention obligations.
 
 The active goal is concurrent v0/v1 development of fn as high-assurance
 communication infrastructure for humans, agents and the systems in

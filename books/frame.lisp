@@ -236,6 +236,14 @@
                                "owner-config-generation" "store-txid"
                                "store-generation" "policy-authorized"
                                "application-result"))
+   (cons :request-transit-intent
+         '("inbound-bid" "request-adu" "owner-config-generation"
+           "owner-next-txid" "application-result" "admitted-peer"
+           "local-path-identity" "peer-path-identity" "stored-projection"))
+   (cons :request-transit-context
+         '("inbound-bid" "request-adu" "store-record"
+           "owner-config-generation" "store-txid" "store-generation"
+           "application-result"))
    (cons :receipt-intent '("work-id" "receipt-id" "receipt-adu"
                            "policy-authorized"))
    (cons :receipt-decision '("work-id" "receipt-id" "outcome"))))

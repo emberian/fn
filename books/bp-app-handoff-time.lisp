@@ -1,0 +1,108 @@
+; A3 delivery eligibility at one current same-boot observation.  A held
+; carrier's kind-5 arrival anchor is durable; an old row without it is
+; explicitly unknown and cannot authorize a new Store handoff.
+(in-package "ACL2")
+(include-book "bp-app-handoff")
+
+(defun fn-bpah-held-expiry (held observation)
+  (declare (xargs :guard t))
+  (if (not (and (fn-bpnf-heldp held)
+                (fn-clock-observationp observation)))
+      :uncertain
+    (let* ((primary (fn-bpb-bundle-primary
+                     (fn-bpnf-held-bundle held)))
+           (anchor (fn-bpn-nth 9 held))
+           (creation (fn-bpp-creation-time primary))
+           (lifetime (fn-bpp-lifetime primary)))
+      (if (not (and (fn-clock-timep creation)
+                    (fn-clock-timep lifetime)))
+          :uncertain
+        (cond
+         ((equal anchor '(:wall))
+          (fn-clock-expiry-decision
+           creation lifetime nil observation))
+         ((and (true-listp anchor) (equal (len anchor) 3)
+               (equal (car anchor) :observed-age)
+               (fn-clock-timep (cadr anchor))
+               (fn-clock-timep (caddr anchor))
+               (fn-clock-age-anchorp
+                (cons (cadr anchor) (caddr anchor))))
+          (fn-clock-expiry-decision
+           creation lifetime (cons (cadr anchor) (caddr anchor))
+           observation))
+         (t :uncertain))))))
+
+(defun fn-bpah-select-oldest-at (held-list node observation selected)
+  (declare (xargs :guard t :measure (acl2-count held-list)))
+  (if (atom held-list)
+      selected
+    (let* ((candidate (car held-list))
+           (selected
+            (if (and (fn-bpah-local-pendingp candidate node)
+                     (not (equal (fn-bpah-held-expiry
+                                  candidate observation) :expired))
+                     (or (null selected)
+                         (< (nfix (fn-bpn-nth 3 candidate))
+                            (nfix (fn-bpn-nth 3 selected)))))
+                candidate selected)))
+      (fn-bpah-select-oldest-at
+       (cdr held-list) node observation selected))))
+
+(defun fn-bpah-pending-decision-at (st node observation)
+  (declare (xargs :guard t))
+  (let ((held (fn-bpah-select-oldest-at
+               (fn-bpnf-held-list st) node observation nil)))
+    (if (not (fn-bpnf-heldp held))
+        nil
+      (let* ((bundle (fn-bpnf-held-bundle held))
+             (primary (fn-bpb-bundle-primary bundle))
+             (key (fn-bpnf-held-key (fn-bpnf-held-principal held)
+                                      (fn-bpnf-held-id held)))
+             (expiry (fn-bpah-held-expiry held observation)))
+        (if (not (and (fn-bpb-bundlep bundle)
+                      (fn-bpp-blockp primary)))
+            (list :uncertain key)
+          (if (equal expiry :live)
+              (list :ready
+                    (list :delivery key (fn-bpah-held-class held)
+                          (fn-bpb-payload bundle) (fn-bpn-nth 4 held)
+                          (fn-bpp-primary-identity primary)
+                          (fn-bpaj-eid-text (fn-bpp-source primary))
+                          (fn-bpaj-eid-text (fn-bpp-destination primary))))
+            (list :uncertain key)))))))
+
+(defthm fn-bpah-select-oldest-at-not-expired
+  (implies (not (equal (fn-bpah-held-expiry
+                        selected observation) :expired))
+           (not (equal
+                 (fn-bpah-held-expiry
+                  (fn-bpah-select-oldest-at
+                   held-list node observation selected)
+                  observation)
+                 :expired)))
+  :hints (("Goal" :induct (fn-bpah-select-oldest-at
+                            held-list node observation selected)
+           :in-theory (e/d (fn-bpah-select-oldest-at)
+                           (fn-bpah-held-expiry
+                            fn-bpah-local-pendingp)))))
+
+(defthm fn-bpah-pending-decision-at-ready-is-live-by-definition
+  (implies (equal (car (fn-bpah-pending-decision-at
+                        st node observation)) :ready)
+           (equal (fn-bpah-held-expiry
+                   (fn-bpah-select-oldest-at
+                    (fn-bpnf-held-list st) node observation nil)
+                   observation)
+                  :live))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bpah-pending-decision-at)
+                           (fn-bpah-held-expiry
+                            fn-bpah-select-oldest-at
+                            fn-bpnf-heldp
+                            fn-bpb-bundlep
+                            fn-bpp-blockp))))
+  :rule-classes nil)
+
+(verify-guards fn-bpah-held-expiry)
+(verify-guards fn-bpah-select-oldest-at)
+(verify-guards fn-bpah-pending-decision-at)

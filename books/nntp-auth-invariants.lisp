@@ -21,50 +21,18 @@
 ;     refused leaves the framing alone: no body can follow, and a submission
 ;     leaves only from a framed body.
 ;
-; The configuration vocabulary K2 below would need -- fn-auth-postingp is
-; false under it for EVERY session, before and after any AUTHINFO exchange,
-; because the property is about the pinned configuration and not about who
-; has logged in -- is here and proved
-; (fn-auth-no-posters-means-no-posting).
-;
-; OPEN, and not weakened into something smaller.  K2, the fold-level
-; statement
-;
-;   (implies (and (fn-served-connp conn)
-;                 (fn-auth-config-no-postersp
-;                  (fn-auth-session-config (fn-served-conn-session conn)))
-;                 (equal (fn-wire-state-mode (fn-served-conn-wire conn))
-;                        :command)
-;                 (null (fn-peer-session-peer
-;                        (fn-auth-session-base (fn-served-conn-session conn)))))
-;            (null (fn-served-submission
-;                   (fn-served-result-effects (fn-served-step conn octets)))))
-;
-; is NOT proved.  It is an induction over fn-served-feed carrying three
-; facts; the first is proved and the other two do not exist in this tree:
-;
-;   (1) `fn-auth-step-preserves-the-config' -- every branch keeps the
-;       session's pinned configuration.  PROVED 2026-09-22 in
-;       books/nntp-auth.lisp, and with no hypothesis at all rather than the
-;       five-branch inspection this note described, because the non-session
-;       branch returns its argument.  Teeth in
-;       tests/acl2/nntp-auth-teeth-tests.lisp.
-;   (2) a WIRE lemma: in command mode fn-wire-feed-byte emits only
-;       (:command ...) events and leaves the mode :command or :closed.
-;       books/wire-invariants has fn-wire-feed-byte-emits-at-most-one-event
-;       and the article-mode direction (fn-wire-article-event-resumes-
-;       command-mode, books/served) but not this one.  It belongs in
-;       books/wire-invariants.
-;   (3) a READER lemma: fn-nntp-post-step emits a submission only from an
-;       (:article ...) event.  books/nntp-post has
-;       fn-post-submission-is-an-injected-article, which types the
-;       submission, and fn-post-refused-body-submits-nothing, which is
-;       about the body -- neither says where a submission can come from.
-;       It belongs in books/nntp-post.
-;
-; With (2) and (3), K2 is the append law plus K1.  Recorded in
-; planning/proofs.json (PRF-031) as OB-AUTH-FOLD rather than approximated by a
-; theorem about a branch nobody reaches.
+; K2 is proved in books/nntp-auth-fold.lisp over the host-called
+; fn-served-step.  Its premise carries a valid connection, a pinned
+; no-posters authentication configuration, and no pending local POST body.
+; fn-auth-fold-step-has-no-local-submission checks the ENTIRE effect list,
+; while fn-auth-fold-step-preserves-safe-connp carries the premise over
+; reads.  A no-posting credential may still bind an authorized transit peer
+; role through AUTHINFO; TAKETHIS then emits fn-peer-submissionp, distinct
+; from fn-inj-injectedp.  A reachable complete-read witness in
+; tests/acl2/nntp-auth-fold-tests.lisp refutes the former claim that no
+; submission of any kind can leave.  The proof factors POST-command origin
+; through the pinned reader/peer path and folds dispatch events and bytes;
+; it requires no blanket restriction on transit peer policy.
 ;
 ; ALSO NOT PROVED HERE, and not hidden.  The converse -- that a principal
 ; enrolled WITH the posting flag can post -- is not a theorem: it is
@@ -206,6 +174,11 @@
            :do-not-induct t
            :in-theory (e/d (fn-served-dispatch fn-served-post-command-eventp)
                            (fn-auth-step-pinned fn-auth-sessionp fn-auth-postingp
+                            fn-served-conn-pinned-index fn-gidx-pin-correspondencep
+                            fn-gidx-pin-trie fn-gidx-pinp
+                            fn-midx-correspondencep
+                            fn-served-connp-is-group-correspondence
+                            fn-served-connp-is-pinned-trie-correspondence
                             fn-wire-begin-article fn-post-offeredp
                             fn-served-submission fn-served-connp
                             fn-nntp-tokenize fn-nntp-command-inputp
@@ -218,18 +191,19 @@
            :use ((:instance fn-auth-step-pinned-post-without-permission-is-not-offered
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
-                            (index (fn-served-conn-index conn))
+                            (index (fn-served-conn-pinned-index conn))
                             (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
                             (injection (fn-served-conn-injection conn))
                             (line (car (cdr event))))
                  (:instance fn-served-connp-is-consistent-session (c conn))
-                 (:instance fn-served-connp-is-index-correspondence (c conn))
+                 (:instance fn-served-connp-is-group-correspondence (c conn))
+                 (:instance fn-served-connp-is-pinned-trie-correspondence (c conn))
                  (:instance fn-auth-step-pinned-effects-well-formed
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
-                            (index (fn-served-conn-index conn))
+                            (index (fn-served-conn-pinned-index conn))
                             (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -240,7 +214,7 @@
                                       (fn-auth-step-pinned
                                        (fn-served-conn-session conn)
                                        (fn-served-conn-archive conn)
-                                       (fn-served-conn-index conn)
+                                       (fn-served-conn-pinned-index conn)
                                        (fn-served-conn-verdicts conn)
                                        (fn-served-conn-config conn)
                                        (fn-served-conn-observation conn)

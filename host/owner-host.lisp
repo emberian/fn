@@ -32,6 +32,7 @@
 (include-book "../books/owner-tls-prefix")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
+(include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
 (include-book "../books/feed-connection-invariants")
@@ -45,6 +46,7 @@
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
 ; be a book both sessions include.  See books/frame-trailer.lisp.
 (include-book "../books/feed-journal")
+(include-book "../books/consumer-owner-local")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -422,6 +424,47 @@
      (fn-th-local-propose operation projection txid source-sequence
                           observed-uid entropy-id quota))))
 
+; The local-control socket binds its one OS owner to fn-col's fixed principal.
+; These ACL2 calls alone choose the operation, current cursor scope and Store
+; coordinates.  No request may provide qver, view, principal or event bytes.
+(defun fn-owner-consumer-local-bootstrap (history incarnation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-bootstrap (fn-owner-core state) history incarnation)))
+
+(defun fn-owner-consumer-local-register (consumer group state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-register (fn-owner-core state) consumer group)))
+
+(defun fn-owner-consumer-local-ack (cursor-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-ack (fn-owner-core state) cursor-octets)))
+
+(defun fn-owner-consumer-local-position (consumer state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-position (fn-owner-core state) consumer)))
+
+(defun fn-owner-consumer-local-poll (consumer state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((decision (fn-col-poll (fn-owner-core state) consumer)))
+    (value
+     (if (eq (car decision) :poll)
+         (list :poll (cadr decision)
+               (if (caddr decision)
+                   (if (fn-stxa-p (caddr decision))
+                       (fn-stxa-encode (caddr decision))
+                     (fn-record-encode-impl (caddr decision)))
+                 nil))
+       decision))))
+
+(defun fn-owner-consumer-local-unregister (consumer state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-unregister (fn-owner-core state) consumer)))
+
+(defun fn-owner-checkpoint-clone-phase (marker-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cpa-clone-phase-of-octets
+          (fn-owner-store state) marker-octets)))
+
 (defun fn-owner-known-abort (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-store state))
@@ -530,6 +573,24 @@
                                      group-octets payload)
                                state)))
     (value result)))
+
+(defun fn-owner-bp-transit-submit
+    (peer msgid-octets payload id subject state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (cfg (fn-owner-config state))
+         (result (fn-own-bp-transit-submit-result
+                  owner cfg peer msgid-octets payload id subject))
+         (state (fn-owner-step
+                 (list :bp-transit-submit cfg peer msgid-octets payload
+                       id subject) state)))
+    (value result)))
+
+(defun fn-owner-bp-transit-raw (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((sub (fn-own-inflight (fn-owner-core state))))
+    (value (and (fn-own-bp-transit-submissionp sub)
+                (fn-peer-submission-octets (fn-own-sub-decision sub))))))
 
 ; `fn operator CONFIG post': the operator is a posting agent and this node
 ; its injecting agent (RFC 5537 section 3.5).  books/owner.lisp
@@ -985,6 +1046,13 @@
          (state (fn-owner-step (list :control-outcome word) state)))
     (value result)))
 
+(defun fn-owner-bp-transit-outcome (word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (result (fn-own-bp-transit-outcome-result owner word))
+         (state (fn-owner-step (list :bp-transit-outcome word) state)))
+    (value result)))
+
 ; The allocation domain the owner's live node carries (every name ever
 ; created): the store bridge's fn-store-cfg-domain reads the global
 ; fn-store-sn, which the owner never sets (its store lives in fn-owner), so
@@ -993,6 +1061,17 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-store-cfg-join-names
           (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
+
+(defun fn-owner-group-codes (name-octets state)
+  ; Resolve submitted names against the owner's current allocation domain.
+  ; The separate Store bridge's replayed global does not follow live owner
+  ; reconfiguration.  This is the same ACL2 resolver as fn-store-group-codes.
+  (declare (xargs :stobjs state :mode :program))
+  (let ((names (fn-store-octet-lists->strings name-octets)))
+    (value (if (equal names :bad) :bad
+             (fn-store-codes-from-groups
+              names (fn-state-groups
+                     (fn-node-acceptance (fn-owner-node state))))))))
 
 (defun fn-owner-next-txid (state)
   (declare (xargs :stobjs state :mode :program))

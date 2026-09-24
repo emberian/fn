@@ -25,9 +25,16 @@ names the later image that preserved those articles through an upgrade.
 Newer isolated images have exchanged articles between hbox and persvati over
 [protected NNTP connections](planning/evidence/native-two-host-path-1836ed01-2026-09-23.md),
 and preserved [exact-source author signatures and their recorded verdicts](planning/evidence/native-t8-t10a-295bbe35-2026-09-23.md)
-through reopening a store. These exercises qualify particular images and
-boundaries. The joined BP delivery/receipt path, durable agent consumption,
-and the remaining crash-correspondence proofs are still being built.
+through reopening a store. The [native BP delivery and receipt experiment](planning/evidence/native-topic-handoff-86323c89-2026-09-23.md)
+now exercises retries, restart and ambiguous publication within an explicitly
+trusted local setup. A [Mini consumer experiment](planning/evidence/dregg-e1-portable-consumer-p2.md)
+independently verifies a signed fn source, then records a durable Mini operation
+and reply. It recovers that reply after reopening and retains conflicting
+source evidence without executing the operation twice. It has not yet fetched
+or acknowledged the source through fn's consumer interface.
+These exercises qualify particular images and boundaries. Authenticated BP
+transit, durable fn polling and acknowledgement, and the remaining physical
+crash-correspondence proofs are still being joined.
 [Current work](planning/now.md) distinguishes source, image, and deployed-node
 progress; there is no finished release yet.
 
@@ -42,8 +49,8 @@ authorized release, without automatic expiry; the selected native authorship
 contract requires both Ed25519 and ML-DSA-65 signatures over exact authored
 source bytes. Immutable source, NNTP relay projections, conflicting evidence,
 and legacy gateway provenance remain distinct. Disconnected exchange through
-BPv7 is part of v0 and is still being joined to the service. Private encrypted
-groups remain a [separate design problem](specs/privacy.md).
+[BPv7](specs/bp-path.md) is part of v0 and is still being joined to the service.
+Private encrypted groups remain a [separate design problem](specs/privacy.md).
 
 Start with the [project guide](docs/README.md) and [architecture](docs/architecture.md).
 The [agent guide](docs/agents.md) shows the client workflow; the

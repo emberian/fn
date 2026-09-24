@@ -696,12 +696,15 @@ the current connection."
 
 (defun fnn-owner-attempt (service msgid payload groups evidence)
   "One Store attempt under the owner callbacks; return its observed word."
-  (let* ((store (fnn-owner-service-store service))
-         (names (mapcar #'fnn-octets-string groups))
-         (codes (fnn-group-codes-for store names))
-         (charge (fnn-charge (length payload))))
+  (let ((store (fnn-owner-service-store service)))
     (handler-case
-        (progn
+        (let ((codes (fnn-owner-core
+                      'fn-owner-group-codes
+                      (mapcar #'fnn-octet-list groups)))
+              (charge (fnn-charge (length payload))))
+          (when (or (keywordp codes) (not (listp codes))
+                    (/= (length codes) (length groups)))
+            (fnn-refuse "unknown or duplicate configured group"))
           (fnn-validate-post-boundary store msgid payload codes charge)
           (case (fnn-owner-action 'fn-owner-existing-action
                                   (fnn-octet-list msgid)
@@ -847,6 +850,90 @@ the current connection."
              (fnn-fault "topic publication lacked durable completion"))
            :accepted))))))
 
+(defun fnn-owner-consumer-entropy-observation ()
+  "Observe 64 OS entropy octets; ACL2 validates and owns the identities."
+  (let ((bytes (make-array 64 :element-type '(unsigned-byte 8))))
+    (handler-case
+        (with-open-file (input "/dev/urandom" :direction :input
+                               :element-type '(unsigned-byte 8))
+          (unless (= (read-sequence bytes input) 64)
+            (fnn-fault "short consumer identity entropy observation")))
+      (error (condition)
+        (fnn-fault "consumer identity entropy unavailable: ~a" condition)))
+    (values (loop for i below 32 collect (aref bytes i))
+            (loop for i from 32 below 64 collect (aref bytes i)))))
+
+(defun fnn-owner-consumer-local-serialized (service operation first second)
+  "Run one 0600 local-control consumer declaration under the owner mutex.
+
+The ACL2 owner wrapper pins the local principal, query/view profile, epoch,
+cursor scope and Store coordinates.  Raw Lisp transports only decoded octets
+and publishes the exact ACL2 event.  A lost reply remains uncertain to the
+client, which can issue POSITION after reconnecting."
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let* ((proposal
+              (case operation
+                (:bootstrap
+                 (multiple-value-bind (history incarnation)
+                     (fnn-owner-consumer-entropy-observation)
+                   (fnn-owner-core 'fn-owner-consumer-local-bootstrap
+                                   history incarnation)))
+                (:register
+                 (fnn-owner-core 'fn-owner-consumer-local-register first second))
+                (:ack
+                 (fnn-owner-core 'fn-owner-consumer-local-ack first))
+                (:position
+                 (fnn-owner-core 'fn-owner-consumer-local-position first))
+                (:poll
+                 (fnn-owner-core 'fn-owner-consumer-local-poll first))
+                (:unregister
+                 (fnn-owner-core 'fn-owner-consumer-local-unregister first))
+                (otherwise '(:refused :operation))))
+            (kind (and (consp proposal) (first proposal))))
+       (case kind
+         (:refused (list :consumer-reply :refused nil))
+         (:position
+          (let ((token (second proposal)))
+            (unless (fnn-octet-list-p token)
+              (fnn-fault "ACL2 returned malformed consumer position"))
+            (list :consumer-reply :accepted token)))
+         (:poll
+          (let ((token (second proposal)) (report (third proposal)))
+            (unless (and (fnn-octet-list-p token)
+                         (fnn-octet-list-p report))
+              (fnn-fault "ACL2 returned malformed consumer poll"))
+            (list :consumer-poll-reply :accepted token report)))
+         (:no-op
+          (let ((token (fnn-core 'fn-cp-cursor-encode (second proposal))))
+            (unless (fnn-octet-list-p token)
+              (fnn-fault "ACL2 returned malformed idempotent cursor"))
+            (list :consumer-reply :accepted token)))
+         (:write
+          (unless (eq (fnn-owner-consumer-commit service (second proposal))
+                      :durable)
+            (fnn-fault "consumer publication lacked durable completion"))
+          (let ((token
+                  (case operation
+                    (:register
+                     (let ((position
+                             (fnn-owner-core 'fn-owner-consumer-local-position
+                                             first)))
+                       (unless (and (consp position)
+                                    (eq (first position) :position))
+                         (fnn-fault "durable registration has no position"))
+                       (second position)))
+                    (:ack first)
+                    (:bootstrap nil)
+                    (:unregister nil)
+                    (otherwise
+                     (fnn-fault "unexpected consumer write operation")))))
+            (unless (fnn-octet-list-p token)
+              (fnn-fault "ACL2 returned malformed durable cursor"))
+            (list :consumer-reply :accepted token)))
+         (otherwise (fnn-fault "ACL2 returned malformed consumer decision")))))))
+
 (defun fnn-owner-drain-one (service)
   "Take and complete at most one queued served submission; return cid/reply."
   (let ((taken (fnn-owner-action 'fn-owner-take)))
@@ -929,6 +1016,21 @@ the current connection."
                     (values cid (fnn-owner-octets-global 'fn-owner-output)
                             (eq word :uncertain))))))))))))
 
+(defun fnn-owner-bound-commit-word (commit-callback)
+  "Classify a custom Store callback into the ordinary post's outcome words.
+
+A known Store refusal has no ambiguous publication and can resolve the
+in-flight submission.  An uncertain result must retain its unresolved intent;
+core/Store faults and unclassified OS errors propagate to the serialized
+owner's recovery fence."
+  (let ((word (handler-case (funcall commit-callback)
+                (fnn-store-indeterminate () :uncertain)
+                (fnn-store-fault (condition) (error condition))
+                (fnn-store-error () :refused))))
+    (unless (member word '(:durable :duplicate :refused :clock-unusable :uncertain))
+      (fnn-fault "owner bound commit returned ~a" word))
+    word))
+
 (defun fnn-owner-complete-bound-submission
     (service submit-callback msgid payload groups evidence generation txid
      &optional commit-callback)
@@ -970,7 +1072,7 @@ Every other caller submits exact authored octets and names them."
             (return-from fnn-owner-complete-bound-submission result)))
         (fnn-owner-feed-flush service)
         (let ((word (if commit-callback
-                        (funcall commit-callback)
+                        (fnn-owner-bound-commit-word commit-callback)
                       (fnn-owner-attempt service msgid payload groups evidence))))
           (fnn-owner-action 'fn-owner-submission-resolution
                             word (fnn-octet-list evidence) generation txid)
@@ -983,6 +1085,67 @@ Every other caller submits exact authored octets and names them."
             (when (eq result :uncertain)
               (fnn-indeterminate "owner bound Store outcome is uncertain"))
             result))))))
+
+(defun fnn-owner-complete-bp-transit-submission
+    (service submit-callback msgid raw stored groups evidence
+             generation txid planned-id planned-subject)
+  "Complete a BP-origin peer transit through the one owner writer and Store."
+  (let ((submitted (funcall submit-callback)))
+    (unless (member submitted '(:submitted :busy :refused))
+      (fnn-fault "owner BP transit submit returned ~a" submitted))
+    (unless (eq submitted :submitted)
+      (return-from fnn-owner-complete-bp-transit-submission submitted))
+    (let ((taken (fnn-owner-action 'fn-owner-take)))
+      (unless (eq taken :taken-transit)
+        (fnn-fault "owner BP transit take returned ~a" taken))
+      (unless (and (equalp msgid
+                           (fnn-owner-octets-global 'fn-owner-submit-msgid))
+                   (equalp stored
+                           (fnn-owner-octets-global 'fn-owner-submit-octets)))
+        (fnn-fault "owner BP transit changed its pinned Store projection"))
+      (multiple-value-bind (actual-id actual-subject ignored)
+          (fnn-metadata msgid stored)
+        (declare (ignore ignored))
+        (unless (and (string= actual-id planned-id)
+                     (string= actual-subject planned-subject))
+          (fnn-fault "owner BP transit changed projected identity"))
+        (let ((kind (fnn-owner-action 'fn-owner-transit-decide
+                                      (fnn-octet-list actual-id)
+                                      (fnn-octet-list actual-subject))))
+          (unless (eq kind :want)
+            (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)
+            (return-from fnn-owner-complete-bp-transit-submission :refused))
+          (unless (and (equalp stored
+                               (fnn-owner-octets-global
+                                'fn-owner-transit-payload))
+                       (equalp groups (fnn-owner-submit-groups))
+                       (equalp evidence
+                               (fnn-octets
+                                (fnn-owner-core 'fn-owner-transit-evidence))))
+            (fnn-fault "owner BP transit decision disagrees with pinned plan"))
+          (unless (equalp raw
+                          (fnn-octets
+                           (fnn-owner-core 'fn-owner-bp-transit-raw)))
+            (fnn-fault "owner BP transit raw request changed"))
+          (let ((intent
+                  (fnn-owner-action 'fn-owner-submission-intent
+                                    (fnn-octet-list evidence) generation txid)))
+            (unless (eq intent :ready)
+              (return-from fnn-owner-complete-bp-transit-submission
+                (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)))
+            (fnn-owner-feed-flush service)
+            (let ((word (fnn-owner-attempt service msgid stored groups evidence)))
+              (fnn-owner-action 'fn-owner-submission-resolution
+                                word (fnn-octet-list evidence) generation txid)
+              (fnn-owner-feed-flush service)
+              (let ((result
+                      (fnn-owner-action 'fn-owner-bp-transit-outcome word)))
+                (unless (member result '(:accepted :duplicate :refused
+                                         :clock-unusable :uncertain))
+                  (fnn-fault "owner BP transit completion returned ~a" result))
+                (when (eq result :uncertain)
+                  (fnn-indeterminate "owner BP transit Store outcome is uncertain"))
+                result))))))))
 
 ;;; The developer-only uncertain outcome.
 ;;;

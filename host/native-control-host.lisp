@@ -1,6 +1,7 @@
 ; ACL2-facing boundary for the native local-control transport.
 (in-package "ACL2")
 (include-book "../books/native-control")
+(include-book "../books/consumer-local-control")
 (include-book "../books/topic-history-local-control")
 
 (defun fn-native-control-host-topic-request-encode (operation sequence quota)
@@ -74,3 +75,36 @@
 (defun fn-native-control-host-transport-outcome (stage)
   (declare (xargs :mode :program))
   (fn-native-control-transport-outcome stage))
+
+(defun fn-native-control-host-consumer-request-encode (kind first second)
+  (declare (xargs :mode :program))
+  (fn-ncl-request-encode kind first second))
+
+(defun fn-native-control-host-consumer-request-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-ncl-request-decode octets))
+
+(defun fn-native-control-host-consumer-reply-encode (status cursor)
+  (declare (xargs :mode :program))
+  (fn-ncl-reply-encode status cursor))
+
+(defun fn-native-control-host-consumer-reply-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-ncl-reply-decode octets))
+
+(defun fn-native-control-host-consumer-poll-reply-encode
+    (status cursor report)
+  (declare (xargs :mode :program))
+  (fn-ncl-poll-reply-encode status cursor report))
+
+(defun fn-native-control-host-consumer-poll-max-frame ()
+  (declare (xargs :mode :program))
+  (+ *fn-frame-overhead-octets* *fn-ncl-poll-max-payload*))
+
+(defun fn-native-control-host-consumer-poll-reply-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-ncl-poll-reply-decode octets))
+
+(defun fn-native-control-host-consumer-cli-plan (command argv)
+  (declare (xargs :mode :program))
+  (fn-ncl-cli-plan command argv))

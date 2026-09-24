@@ -74,7 +74,8 @@
   ; vocabulary.  Native application ingress adds intent/context-v2 without
   ; changing any legacy code or byte string.
   '(:config :request-context :receipt-intent :receipt-decision
-    :request-intent :request-context-v2))
+    :request-intent :request-context-v2
+    :request-transit-intent :request-transit-context))
 
 (defconst *fn-frame-receipt-specs*
   (list
@@ -87,6 +88,13 @@
    (cons :request-context-v2
          (list :text :blob :blob :nat :nat :nat
                (cons :enum *fn-frame-authorized*)
+               (cons :enum *fn-frame-application-results*)))
+   (cons :request-transit-intent
+         (list :text :blob :nat :nat
+               (cons :enum *fn-frame-application-results*)
+               :text :text :text :blob))
+   (cons :request-transit-context
+         (list :text :blob :blob :nat :nat :nat
                (cons :enum *fn-frame-application-results*)))
    (cons :receipt-intent
          (list :text :text :blob (cons :enum *fn-frame-authorized*)))
