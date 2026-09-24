@@ -15,8 +15,10 @@ it is admitted under an accurate wall reading, then its later wall-less
 observation is `:uncertain`. The newer bundle has a
 persisted Bundle Age anchor and is `:live`. Both held rows are valid local
 pending carriers, with distinct bundle IDs and strict arrival order. The
-test selects the newer key, checks a `:deliver` effect, and checks that the
-older held row is unchanged. It separately checks the all-uncertain result.
+test selects the newer key, checks a `:deliver` effect, then supplies a matched
+application result and durable kind-7 callback. The newer row reaches
+`:dispatch-done` while the older pending row remains byte-for-byte unchanged.
+It separately checks the all-uncertain result.
 The theorem `fn-bpah-select-oldest-at-is-live` proves that a nonempty scan
 from a nil or live seed returns a live row; its test book checks the full
 positive antecedent and counterexamples for each dropped premise.
@@ -45,7 +47,9 @@ was ACL2 8.7 / SBCL 2.6.8, identity
 the run used two jobs and a 90-second per-book cap, with 8.891 seconds
 certification wall time. The manifest records source digests, included
 dependency digests, observed markers and both passed root results. Affected
-closure and source-matched native qualification remain open.
+closure and source-matched native qualification remain open. The additional
+kind-7 completion assertions were added after this run and require their own
+test-root certification before they become evidence.
 
 This is one actual A3 local application selection step. It does not satisfy
 N03's route wait and four-progress-event trace, N04's forwarding MRU trace,
