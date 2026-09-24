@@ -1,0 +1,79 @@
+# target tests.test_bp_app_native  image before /tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4  start 2026-09-24T17:11:35Z  cwd /tank/fn/scratch/bp-app-receive/tree
+# cmd: python3 -m unittest -v tests.test_bp_app_native
+# image core sha256: b81bdaf69dca347aa255cbc3f3c6a9679f52fc4192e6eec0e0116196f74d48ca
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/bp-app-receive/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/bp-app-receive/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_application_receipt_releases_forward_pin_only_after_durable_record (tests.test_bp_app_native.NativeBpApplicationTests.test_application_receipt_releases_forward_pin_only_after_durable_record) ... ERROR
+test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance) ... FAIL
+test_unadmitted_channel_is_refused_with_the_planner_reason (tests.test_bp_app_native.NativeBpApplicationTests.test_unadmitted_channel_is_refused_with_the_planner_reason)
+A receiver on a port no boundary names admits no principal. ... ERROR
+test_unsupported_receipt_profile_refuses_before_file_read (tests.test_bp_app_native.NativeBpApplicationTests.test_unsupported_receipt_profile_refuses_before_file_read) ... ok
+test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt) ... ERROR
+
+======================================================================
+ERROR: test_application_receipt_releases_forward_pin_only_after_durable_record (tests.test_bp_app_native.NativeBpApplicationTests.test_application_receipt_releases_forward_pin_only_after_durable_record)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bp-app-receive/tree/tests/test_bp_app_native.py", line 212, in test_application_receipt_releases_forward_pin_only_after_durable_record
+    sender_out, sender_err = sender.communicate(timeout=180)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer', '--fn', 'bp', 'send', '127.0.0.1', '38097', '/tmp/fn-native-bp-app-lck5cd7c/request.adu', '/tmp/fn-native-bp-app-lck5cd7c/sender-spool', 'dtn://sender/', 'dtn://receiver/', '3600000', '2', '32', '1048576', '1', '-', '0']' timed out after 180 seconds
+
+======================================================================
+ERROR: test_unadmitted_channel_is_refused_with_the_planner_reason (tests.test_bp_app_native.NativeBpApplicationTests.test_unadmitted_channel_is_refused_with_the_planner_reason)
+A receiver on a port no boundary names admits no principal.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bp-app-receive/tree/tests/test_bp_app_native.py", line 260, in test_unadmitted_channel_is_refused_with_the_planner_reason
+    sender_out, sender_err = sender.communicate(timeout=180)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer', '--fn', 'bp', 'send', '127.0.0.1', '44485', '/tmp/fn-native-bp-app-4tw4n41h/request.adu', '/tmp/fn-native-bp-app-4tw4n41h/sender-spool', 'dtn://sender/', 'dtn://receiver/', '3600000', '2', '32', '1048576', '1', '-', '0']' timed out after 180 seconds
+
+======================================================================
+ERROR: test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bp-app-receive/tree/tests/test_bp_app_native.py", line 387, in test_visible_decision_namespace_eio_fences_before_receipt
+    sender_out, sender_err = sender.communicate(timeout=180)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host-developer', '--fn', 'bp', 'send', '127.0.0.1', '38861', '/tmp/fn-native-bp-app-8awtxhez/request.adu', '/tmp/fn-native-bp-app-8awtxhez/sender-spool', 'dtn://sender/', 'dtn://receiver/', '3600000', '2', '32', '1048576', '1', '-', '0']' timed out after 180 seconds
+
+======================================================================
+FAIL: test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bp-app-receive/tree/tests/test_bp_app_native.py", line 316, in test_lost_receipt_restart_replays_without_second_acceptance
+    self.fail(receiver.stderr.read().decode("utf-8", "replace"))
+AssertionError
+
+----------------------------------------------------------------------
+Ran 5 tests in 744.546s
+
+FAILED (failures=1, errors=3)
+# rc=1 wall=745s end 2026-09-24T17:24:01Z

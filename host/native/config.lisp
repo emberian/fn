@@ -9,10 +9,10 @@
 (in-package "ACL2")
 
 (defun fnn-command-config-profile (path)
-  (let* ((bound (fnn-core-state 'fn-native-config-host-max-octets))
+  (let* ((bound (fnn-core 'fn-native-config-host-max-octets))
          (octets (fnn-read-regular-bounded path bound))
-         (answer (fnn-core-state 'fn-native-config-host-load
-                                 (fnn-octet-list octets))))
+         (answer (fnn-core 'fn-native-config-host-load
+                           (fnn-octet-list octets))))
     (cond ((equal (car answer) :accepted)
            (fnn-out "accepted config")
            +fnn-exit-ok+)

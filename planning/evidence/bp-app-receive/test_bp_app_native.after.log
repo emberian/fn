@@ -1,0 +1,22 @@
+# target tests.test_bp_app_native  image after /tank/fn/scratch/bp-app-receive/tree/build  start 2026-09-24T17:10:23Z  cwd /tank/fn/scratch/bp-app-receive/tree
+# cmd: python3 -m unittest -v tests.test_bp_app_native
+# image core sha256: 2753bbc5cb4364a45d7eda0f093f23bf07d0c3ae10cf45d0677f8657ea7674f3
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/scratch/bp-app-receive/tree/build/fn-host-developer
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/bp-app-receive/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/bp-app-receive/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_application_receipt_releases_forward_pin_only_after_durable_record (tests.test_bp_app_native.NativeBpApplicationTests.test_application_receipt_releases_forward_pin_only_after_durable_record) ... ok
+test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance) ... ok
+test_unadmitted_channel_is_refused_with_the_planner_reason (tests.test_bp_app_native.NativeBpApplicationTests.test_unadmitted_channel_is_refused_with_the_planner_reason)
+A receiver on a port no boundary names admits no principal. ... ok
+test_unsupported_receipt_profile_refuses_before_file_read (tests.test_bp_app_native.NativeBpApplicationTests.test_unsupported_receipt_profile_refuses_before_file_read) ... ok
+test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 66.885s
+
+OK
+# rc=0 wall=67s end 2026-09-24T17:11:30Z

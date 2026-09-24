@@ -354,9 +354,10 @@ and faults without following or deleting anything."
 (defun fnn-tcl-session (fd role params tag spool &key bundle trace (expect 0) on-ready)
   "Drive one connection to its end and return the connection record.
 
-Only the active entity initiates the SESS_TERM handshake, and only once the
-transfer it was given has an outcome and the EXPECT transfers it was told to
-await have arrived: a session closed by whichever side finished first would
+Only the active entity initiates the SESS_TERM handshake, and only when
+ACL2's fn-tcl-host-active-closep says so: once the transfer it was given has
+an outcome and the EXPECT transfers it was told to await have arrived, or
+that outcome was a refusal or uncertain, which no receipt follows: a session closed by whichever side finished first would
 cut the other side's transfer, and the machine would be right to call that a
 failure rather than a refusal."
   (let* ((now (fnn-tcl-now))
@@ -394,11 +395,13 @@ failure rather than a refusal."
           (funcall on-ready conn))
         (fnn-tcl-offer conn wake)
         (when (and (eq role :active)
-                   (null (fnn-tclc-pending conn))
-                   (or (null bundle) (fnn-tclc-outcome conn))
-                   (>= (fnn-tclc-inbound conn) expect)
                    (not (fnn-tclc-closing conn))
-                   (eq (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn)) :established))
+                   (eq (fnn-core 'fn-tcl-host-active-closep
+                                 (fnn-tclc-session conn) (and bundle t)
+                                 (and (fnn-tclc-pending conn) t)
+                                 (fnn-tclc-outcome conn)
+                                 (fnn-tclc-inbound conn) expect)
+                       t))
           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-terminate (fnn-tclc-session conn) wake)))))
     (when (fnn-tclc-closing conn) (ignore-errors (fnn-graceful-close fd)))
     conn))

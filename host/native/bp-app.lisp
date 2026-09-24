@@ -187,7 +187,12 @@ The caller holds SERVICE's mutex for this whole function."
     (finish-output)
     (loop (sleep 1))))
 
-(defun fnn-bpapp-deliver (service journal tally node-id conn xfer-id wire)
+(defun fnn-bpapp-deliver (service journal tally node-id conn xfer-id wire
+                          ingress-state session-counter channel)
+  "Deliver one completed transfer to the application owner.
+INGRESS-STATE, SESSION-COUNTER and CHANNEL name the CL ingress ACL2 admits
+for it (fnn-bps-tcpcl-ingress), as bp-node's dispatcher does: the planner
+finds the transit principal in that ingress."
   (let* ((obs (fnn-bp-observation (fnn-bp-tally-wall tally)
                                   (fnn-bp-tally-wall-error tally)))
          (received (fnn-core 'fn-bpapp-receive
@@ -203,20 +208,37 @@ The caller holds SERVICE's mutex for this whole function."
               (inbound-id
                 (fnn-octets-string
                  (fnn-octets (fnn-core 'fn-id-hex-octets identity))))
+              (ingress (fnn-bps-tcpcl-ingress
+                        ingress-state conn session-counter xfer-id service
+                        channel))
               (path (fnn-bp-evidence-publish tally :accepted wire adu))
               (app-result nil)
-              (receipt nil))
-         (multiple-value-setq (app-result receipt)
+              (receipt nil)
+              (class nil))
+         (multiple-value-setq (app-result receipt class)
            (fnn-owner-serialized
             service nil
             (lambda ()
-              (fnn-bpapp-accept-locked
-               service journal inbound-id (fnn-octets adu) node-id
-               (fnn-octets identity) source destination))))
-         (unless (member app-result '(:accepted :duplicate))
-           (incf (fnn-bp-tally-refused tally))
-           (fnn-out "BP application ~(~a~) xfer=~d" app-result xfer-id)
-           (return-from fnn-bpapp-deliver (list :refused app-result)))
+              (multiple-value-bind (result adu)
+                  (fnn-bpapp-accept-locked
+                   service journal inbound-id (fnn-octets adu) node-id
+                   (fnn-octets identity) ingress source destination)
+                (if (member result '(:accepted :duplicate))
+                    (values result adu nil)
+                  ;; ACL2 renders the line, with the planner's reason, and
+                  ;; classifies the answer; the host writes and follows it.
+                  (let ((class (fnn-owner-action 'fn-owner-app-refusal-log
+                                                 result xfer-id)))
+                    (fnn-owner-log)
+                    (values result nil class)))))))
+         (case class
+           ((nil))
+           ((:refused :deferred)
+            (incf (fnn-bp-tally-refused tally))
+            (return-from fnn-bpapp-deliver (list :refused app-result)))
+           (otherwise
+            (incf (fnn-bp-tally-uncertain tally))
+            (return-from fnn-bpapp-deliver (list :uncertain app-result))))
          (fnn-bpapp-pause-after-decision)
          (let* ((peer (fnn-bp-eid source))
                 (sequence (fnn-bp-reserve-sequence tally))
@@ -283,11 +305,16 @@ The caller holds SERVICE's mutex for this whole function."
            (let ((tally (fnn-bp-evidence-open
                          (make-fnn-bp-tally
                           :config config :wall wall :wall-error wall-error
-                          :journal journal-root :spool-lock spool-lock))))
-             (let ((*fnn-tcl-deliver*
-                     (lambda (conn xfer-id octets)
-                       (fnn-bpapp-deliver service journal tally node-id
-                                          conn xfer-id octets))))
+                          :journal journal-root :spool-lock spool-lock)))
+                 ;; This receiver runs no FNBS machine, so its ingress names
+                 ;; the epoch of the machine's initial state.
+                 (ingress-state
+                   (fnn-core 'fn-bpnf-initial-state config
+                             (fnn-core 'fn-bpn-host-machine-max-jobs)
+                             (fnn-core 'fn-bpn-host-machine-max-octets)))
+                 (sessions (list 0))
+                 (sessions-lock (sb-thread:make-mutex :name "bp-app sessions")))
+             (progn
                (multiple-value-bind (bound bound-port) (fnn-tcl-listen port)
                  (setf listener bound
                        (fnn-owner-service-listener service) bound)
@@ -295,13 +322,23 @@ The caller holds SERVICE's mutex for this whole function."
                (fnn-accept-loop
                 listener
                 (lambda (socket)
-                  (unwind-protect
-                       (fnn-tcl-session
-                        (fnn-socket-fd socket) :passive
-                        (fnn-tcl-params node-id peer-eid +fnn-tcl-keepalive+
-                                        +fnn-tcl-segment-mru+ transfer-mru)
-                        "bp-app" journal-root)
-                    (fnn-socket-shut socket)))
+                  (let* ((session-counter
+                           (sb-thread:with-mutex (sessions-lock)
+                             (incf (car sessions))))
+                         (channel (fnn-bpnode-observed-channel socket))
+                         (*fnn-tcl-deliver*
+                           (lambda (conn xfer-id octets)
+                             (fnn-bpapp-deliver service journal tally node-id
+                                                conn xfer-id octets
+                                                ingress-state session-counter
+                                                channel))))
+                    (unwind-protect
+                         (fnn-tcl-session
+                          (fnn-socket-fd socket) :passive
+                          (fnn-tcl-params node-id peer-eid +fnn-tcl-keepalive+
+                                          +fnn-tcl-segment-mru+ transfer-mru)
+                          "bp-app" journal-root)
+                      (fnn-socket-shut socket))))
                 once)
                (fnn-bp-summary tally)
                (fnn-bp-exit-code tally nil))))

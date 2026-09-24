@@ -1,0 +1,18 @@
+# target tests.test_bp_fragment_node_native  image after /tank/fn/scratch/bp-app-receive/tree/build  start 2026-09-24T17:13:06Z  cwd /tank/fn/scratch/bp-app-receive/tree
+# cmd: python3 -m unittest -v tests.test_bp_fragment_node_native
+# image core sha256: 2753bbc5cb4364a45d7eda0f093f23bf07d0c3ae10cf45d0677f8657ea7674f3
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/scratch/bp-app-receive/tree/build/fn-host-dtn-developer
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/scratch/bp-app-receive/tree/build/fn-host-developer
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/bp-app-receive/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/bp-app-receive/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_nonzero_fragment_then_restart_offset_zero_dispatches_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_nonzero_fragment_then_restart_offset_zero_dispatches_once) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 26.185s
+
+OK
+# rc=0 wall=26s end 2026-09-24T17:13:32Z
