@@ -253,6 +253,18 @@
         {
           "kind": "theorem",
           "name": "fn-sbud-used-names-the-transaction-namespace"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-pending-sequence-is-used"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-pending-name-is-the-scans-next-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound"
         }
       ]
     },
