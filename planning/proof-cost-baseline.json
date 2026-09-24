@@ -4,17 +4,17 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
-    "books/store-node-invariants": {
-      "seconds": 17.197,
-      "run": "certify-20260924T153508Z-1499013",
+    "books/bp-node-fragment-step": {
+      "seconds": 10.091,
+      "run": "certify-20260924T231054Z-2148356",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/store-node-traces": {
-      "seconds": 13.84,
-      "run": "certify-20260924T153508Z-1499013",
-      "host": "hbox",
+      "seconds": 10.432,
+      "run": "certify-20260924T222039Z-1241937",
+      "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     }
