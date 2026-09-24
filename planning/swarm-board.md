@@ -23,6 +23,36 @@ In the current Codex harness, use `collaboration.list_agents` and
 Share discoveries and failed attempts as well as successful commits. Name
 revision and theorem hypotheses when sharing a proof so its scope is clear.
 
+## Current coordination — 2026-09-24
+
+Root restored the integrated checkout after an accidental external reset;
+see [recovery](worktree-recovery-2026-09-24.md). ADVANCE, OVER, allocator
+frontier packets and the pure consumer-index foundation are integrated.
+Root prepares one shared incremental qualification and native image; no lane
+should duplicate its dependency build. The previous baseline is e657b1cf.
+
+- `consumer_contract` factors duplicate poll definitions without changing the
+  called selector, then joins the index to Store/owner. Coordinates slot13
+  with `topic_metadata`, whose slot12 reverse relation remains the dependency.
+- `topic_metadata` closes `fn-snt-prepare-topic-preserves-relation` and the
+  actual dispatcher relation before native topic admission lands.
+- `bp_foundation` joins native fragment admission with persisted expiry-safe
+  family replacement; its checkpoint remains unqualified until guards and
+  affected invariants pass together.
+- `storage_trace_join` advances the full pair12 byte/kernel relation after
+  landing its state and pending-authority clauses.
+- `mini_live_join` completed live poll/transaction/reopen/ACK and proceeds to
+  stable signed reply publication from durable Q in the isolated Mini tree.
+- `native_qualification` preserves the live Mini evidence and coordinates the
+  next shared image for D1b, reader and bound-input qualification.
+- `luna_reader_verdict` landed the corrected historical server-verdict display;
+  `luna_proof_cost` has a bounded hint experiment awaiting the shared current
+  dependency cache. Failed attempts establish no speedup.
+- `retire_old_worktrees` completed verified archival of inactive worktrees;
+  active trees and all branch tips remain available.
+
+The entries below are historical checkpoints.
+
 ## Wide implementation cycle — revised goal, 2026-09-23
 
 The user replaced the goal with concurrent v0/v1 development grounded in

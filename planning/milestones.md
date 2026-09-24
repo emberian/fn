@@ -1,12 +1,10 @@
-Current selected-v1 join: the local-owner consumer poll and durable advancing
-ACK have passed on the source-qualified `1d26e01f` image, including a killed
-ACK reply, reopened position and no repeated acknowledged article. Selected
-packing and fenced clone recovery preserve progress; the new incarnation
-refuses old cursors. [Exact native scope and original driver failures](evidence/native-poll-reader-clone-1d26-2026-09-23.md)
-remain separate from Mini's unfinished durable inbox/outbox-to-ACK join and
-the full two-store crash trace. Poll still walks the earlier record prefix;
-the maintained event index is active work. CNS-001, PRF-064 and SCN-033 track
-this work; E2 is not a v0 gate.
+Current selected-v1 join: native fn poll now feeds Mini's signed durable
+transaction and immutable Q; after reopen Mini ACKs, and fn returns the durable
+position and no repeat article. The [live synthetic evidence](evidence/native-mini-live-join-2026-09-24.md)
+uses the earlier `1d26e01f` image. A posted stable fn reply from Q and the full
+two-store crash trace remain open. Poll still walks the earlier record prefix;
+the maintained event-index foundation is integrated, with its called Store/owner
+join in progress. CNS-001, PRF-064 and SCN-033 track this work; E2 is not a v0 gate.
 
 Current task (2026-09-23): concurrent v0/v1 development grounded in the actual
 Mini/Bread OS interfaces. [Current work](now.md) names integrated source,

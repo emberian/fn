@@ -590,9 +590,9 @@
     "books": 593,
     "books_in_root_closure": 588,
     "roots": 583,
-    "theorems": 8440,
+    "theorems": 8447,
     "functions": 6267,
-    "assert_events": 9137,
+    "assert_events": 9139,
     "must_fails": 484,
     "encapsulates": 26,
     "guards": {
@@ -3881,7 +3881,7 @@
       "book": "books/byte-store-record-provenance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 182,
+      "theorems": 188,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -4675,7 +4675,7 @@
       "book": "books/consumer-poll-index.lisp",
       "in_root_closure": false,
       "is_root": false,
-      "theorems": 6,
+      "theorems": 7,
       "functions": 7,
       "guards": {
         "verified": 6,
@@ -12298,7 +12298,7 @@
         "default-unguarded": 31
       },
       "verify_guards_events": 0,
-      "assert_events": 36,
+      "assert_events": 37,
       "must_fails": 44,
       "defconsts": 0,
       "defmacros": 0,
@@ -13062,7 +13062,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 4,
+      "assert_events": 5,
       "must_fails": 1,
       "defconsts": 2,
       "defmacros": 0,
