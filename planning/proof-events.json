@@ -2530,7 +2530,7 @@
         {
           "kind": "theorem",
           "name": "fn-oix-ocfg-step-keeps-view-indexed",
-          "note": "Preservation of the trie premise fn-scar-view-indexedp over every fn-ocfg-step event the host drives (open, advance, close, reads, open-peer, fault, reconfigure, complete, begin, take and every fn-own-step writer event); with fn-oix-own-start-is-view-indexed, fn-oix-ocfg-observe-keeps-view-indexed and fn-oix-scar-read-keeps-view-indexed it holds on every configured owner the host reaches. The work is fn-oix-refresh-keeps-correspondence over fn-midx-refresh-preserves-correspondence."
+          "note": "Preservation of the trie premise fn-scar-view-indexedp over every fn-ocfg-step event the host drives (open, advance, close, reads, open-peer, fault, reconfigure, complete, begin, take and every fn-own-step writer event); with fn-oix-own-start-is-view-indexed and the lemmas for every owner host/owner-host.lisp installs without fn-ocfg-step (fn-ocfg-observe, the carried read, fn-ocfg-open/-open-peer/-read-step/-fault/-with-owner, fn-pcar-sbud-prepare, fn-ccar-own-finish, fn-acar-own-outcome, fn-own-with-feeds, fn-own-configure, fn-own-transit-outcome, fn-ocl-publish) it holds on every configured owner the host reaches. The work is fn-oix-refresh-keeps-correspondence over fn-midx-refresh-preserves-correspondence."
         }
       ]
     },
