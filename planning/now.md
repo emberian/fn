@@ -5,13 +5,17 @@ reconstruct the last 300 first-parent landings, distinguish integrated work
 from the substantive branch backlog, and propose the next complete agent and
 BP exchanges. The proposal changes no release requirements or deployment.
 
-The repaired BP baseline `e657b1cf` passed combined incremental ACL2
-qualification: 575 certificates reused and ten newly certified, with 14.452
-seconds of certification at four jobs. The [record](evidence/bp-repaired-e657-2026-09-24.md)
-retains its exact scope. Later ADVANCE, indexed OVER, allocator correspondence
-and consumer-index foundation packets are now integrated, with combined
-qualification pending. The foundation still needs its actual owner/Store join;
-it does not yet establish bounded served polling.
+Combined source `a785ae03` passes incremental ACL2 qualification after
+integrating ADVANCE, indexed OVER, allocator correspondence, the consumer-index
+foundation and shared poll definitions. The first run exposed a configured
+ADVANCE proof regression; its repaired follow-up reused 581 certificates and
+certified 16 books in 35.604 seconds at four jobs. `make check` passed. The
+[integration record](evidence/cleanup-integration-2026-09-24.md) preserves both
+runs and the bounded Luna trials. A new shared native image is being built;
+source certification does not extend the older image's runtime evidence.
+The index foundation still needs its actual owner/Store join and does not yet
+establish bounded served polling. The read-only expiry selector is integrated;
+native fragment admission and persisted replacement remain a separate join.
 
 The [live Mini join](evidence/native-mini-live-join-2026-09-24.md) passed using
 the earlier `1d26e01f` image: native poll, Mini's durable signed transaction and
@@ -24,8 +28,8 @@ Active joins are native BP fragment custody with expiry-safe reassembly,
 topic Store admission, the maintained consumer index on the actual served
 path, and the full allocator byte/kernel relation. Two bounded Luna trials
 cover a client verdict display and proof-cost diagnosis. The client change
-landed after an article/verdict association correction; no proof speedup has
-yet been demonstrated. [Cleanup and recovery](worktree-recovery-2026-09-24.md)
+landed after an article/verdict association correction; Luna's local proof hint has now certified with unchanged theorem statements
+and fewer prover steps. [Cleanup and recovery](worktree-recovery-2026-09-24.md)
 records 101 verified worktree archives and recovery from an external accidental
 checkout reset. Old branch counts are not a feature backlog.
 
