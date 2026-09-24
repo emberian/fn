@@ -301,6 +301,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-fnbs-dispatch-codec \
+	books/bp-fnbs-dispatch-invariants \
 	tests/acl2/bp-fnbs-dispatch-codec-tests \
 	books/bp-report-observe \
 	tests/acl2/bp-report-observe-tests \
