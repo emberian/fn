@@ -2,8 +2,8 @@
 
 This is the restart entry point for the user-requested wind-down begun at
 06:23 UTC. The full project goal remains unfinished. This record distinguishes
-integrated source from the exact images exercised; the later final-cut section
-will record the result of the last bounded convergence run.
+integrated source from the exact images exercised; the final-cut section
+records the result of the last bounded convergence run.
 
 ## What to keep
 
@@ -127,8 +127,11 @@ The remaining red roots are `books/bp-node-progress-guards`,
 `books/bp-node-progress-selection-invariants` and
 `tests/acl2/bp-node-machine-teeth-tests`. The guard attempt was deliberately
 stopped after reproducing the known missing premise; this is not a theorem
-counterexample or a successful certificate. The other two failures also need
-repair before advancing a dependent qualification claim.
+counterexample or a successful certificate. The selection invariant fails at
+`fn-bpnp-step-progress-preserves-held-and-issued`, non-clock `:progress`
+Subgoal 40.2'. The machine teeth book is blocked by that uncertified include,
+not a third independent test counterexample. Both direct failures need repair
+before advancing dependent qualification claims.
 
 Both native build files include `bp-node-progress-guards`, so no new image was
 built. **863c2141 remains the last completed shared image pair**, with the
