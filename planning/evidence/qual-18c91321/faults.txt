@@ -1,0 +1,222 @@
+## dev-post-fault-eio fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   post : rc=3  | store: transaction publication outcome is indeterminate
+   killed : txns=2 staging=['.stage-1912194-8f1ddd167b2d4603df547caa']
+   recover : rc=0 recovered transactions=2 articles=2 staging-orphans=0 anchor=none chec | accepted operator RECOVER
+   recover_counts : {transactions: 2, articles: 2, staging_orphans: 0}
+   recovered : txns=2 staging=[]
+   inspect_prior : rc=0  | 
+   inspect_candidate : rc=0  | 
+   candidate_injected : False
+   reread_owner_ready : True
+   nntp_prior : {status: '220 0 <prior@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   nntp_candidate : {status: '220 0 <candidate@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   reread_owner : rc=0  | accepted operator run
+   resubmit : rc=0 duplicate | 
+   after_resubmit : txns=2 staging=[]
+## dev-owner-post-fault-eio fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   owner_ready : True
+   post : rc=3  | uncertain operator post UNCERTAIN
+   owner_alive_after_post : True
+   owner : rc=3  | uncertain operator run
+   killed : txns=2 staging=['.stage-1912241-8f1ddd167b2d4603df547caa']
+   recover : rc=0 recovered transactions=2 articles=2 staging-orphans=0 anchor=none chec | accepted operator RECOVER
+   recover_counts : {transactions: 2, articles: 2, staging_orphans: 0}
+   recovered : txns=2 staging=[]
+   inspect_prior : rc=0  | 
+   inspect_candidate : rc=0  | 
+   candidate_injected : True
+   reread_owner_ready : True
+   nntp_prior : {status: '220 0 <prior@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   nntp_candidate : {status: '220 0 <candidate@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   resubmit : rc=0  | accepted operator post DUPLICATE
+   after_resubmit : txns=2 staging=[]
+   reread_owner : rc=0  | accepted operator run
+## dev-control-fault fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   owner_ready : True
+   post : rc=3  | uncertain operator post UNCERTAIN
+   owner_alive_after_post : True
+   owner : rc=3  | uncertain operator run
+   killed : txns=2 staging=['.stage-1912387-8f1ddd167b2d4603df547caa']
+   recover : rc=0 recovered transactions=2 articles=2 staging-orphans=0 anchor=none chec | accepted operator RECOVER
+   recover_counts : {transactions: 2, articles: 2, staging_orphans: 0}
+   recovered : txns=2 staging=[]
+   inspect_prior : rc=0  | 
+   inspect_candidate : rc=0  | 
+   candidate_injected : True
+   reread_owner_ready : True
+   nntp_prior : {status: '220 0 <prior@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   nntp_candidate : {status: '220 0 <candidate@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   resubmit : rc=0  | accepted operator post DUPLICATE
+   after_resubmit : txns=2 staging=[]
+   reread_owner : rc=0  | accepted operator run
+## dev-control-test-stop-kill-0 fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   owner_ready : True
+   owner_stopped_itself : True
+   client_exited_before_kill : None
+   at_stop : txns=2 staging=[]
+   owner : rc=-9  | accepted post path=control message-id=<candidate@campaign.invalid> time=2026-09-24T21:19:4
+   post : rc=3  | uncertain operator post UNCERTAIN
+   killed : txns=2 staging=[]
+   recover : rc=0 recovered transactions=2 articles=2 staging-orphans=0 anchor=none chec | accepted operator RECOVER
+   recover_counts : {transactions: 2, articles: 2, staging_orphans: 0}
+   recovered : txns=2 staging=[]
+   inspect_prior : rc=0  | 
+   inspect_candidate : rc=0  | 
+   candidate_injected : True
+   reread_owner_ready : True
+   nntp_prior : {status: '220 0 <prior@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   nntp_candidate : {status: '220 0 <candidate@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   resubmit : rc=0  | accepted operator post DUPLICATE
+   after_resubmit : txns=2 staging=[]
+   reread_owner : rc=0  | accepted operator run
+## dev-control-test-stop-kill-1 fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   owner_ready : True
+   owner_stopped_itself : True
+   client_exited_before_kill : None
+   at_stop : txns=2 staging=[]
+   owner : rc=-9  | accepted post path=control message-id=<candidate@campaign.invalid> time=2026-09-24T21:19:4
+   post : rc=3  | uncertain operator post UNCERTAIN
+   killed : txns=2 staging=[]
+   recover : rc=0 recovered transactions=2 articles=2 staging-orphans=0 anchor=none chec | accepted operator RECOVER
+   recover_counts : {transactions: 2, articles: 2, staging_orphans: 0}
+   recovered : txns=2 staging=[]
+   inspect_prior : rc=0  | 
+   inspect_candidate : rc=0  | 
+   candidate_injected : True
+   reread_owner_ready : True
+   nntp_prior : {status: '220 0 <prior@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   nntp_candidate : {status: '220 0 <candidate@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   resubmit : rc=0  | accepted operator post DUPLICATE
+   after_resubmit : txns=2 staging=[]
+   reread_owner : rc=0  | accepted operator run
+## dev-control-test-stop-kill-2 fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   owner_ready : True
+   owner_stopped_itself : True
+   client_exited_before_kill : None
+   at_stop : txns=2 staging=[]
+   owner : rc=-9  | accepted post path=control message-id=<candidate@campaign.invalid> time=2026-09-24T21:19:5
+   post : rc=3  | uncertain operator post UNCERTAIN
+   killed : txns=2 staging=[]
+   recover : rc=0 recovered transactions=2 articles=2 staging-orphans=0 anchor=none chec | accepted operator RECOVER
+   recover_counts : {transactions: 2, articles: 2, staging_orphans: 0}
+   recovered : txns=2 staging=[]
+   inspect_prior : rc=0  | 
+   inspect_candidate : rc=0  | 
+   candidate_injected : True
+   reread_owner_ready : True
+   nntp_prior : {status: '220 0 <prior@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   nntp_candidate : {status: '220 0 <candidate@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   resubmit : rc=0  | accepted operator post DUPLICATE
+   after_resubmit : txns=2 staging=[]
+   reread_owner : rc=0  | accepted operator run
+## dev-control-test-stop-kill-3 fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   owner_ready : True
+   owner_stopped_itself : True
+   client_exited_before_kill : None
+   at_stop : txns=2 staging=[]
+   owner : rc=-9  | accepted post path=control message-id=<candidate@campaign.invalid> time=2026-09-24T21:19:5
+   post : rc=3  | uncertain operator post UNCERTAIN
+   killed : txns=2 staging=[]
+   recover : rc=0 recovered transactions=2 articles=2 staging-orphans=0 anchor=none chec | accepted operator RECOVER
+   recover_counts : {transactions: 2, articles: 2, staging_orphans: 0}
+   recovered : txns=2 staging=[]
+   inspect_prior : rc=0  | 
+   inspect_candidate : rc=0  | 
+   candidate_injected : True
+   reread_owner_ready : True
+   nntp_prior : {status: '220 0 <prior@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   nntp_candidate : {status: '220 0 <candidate@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   resubmit : rc=0  | accepted operator post DUPLICATE
+   after_resubmit : txns=2 staging=[]
+   reread_owner : rc=0  | accepted operator run
+## dev-control-test-stop-kill-4 fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   owner_ready : True
+   owner_stopped_itself : True
+   client_exited_before_kill : None
+   at_stop : txns=2 staging=[]
+   owner : rc=-9  | accepted post path=control message-id=<candidate@campaign.invalid> time=2026-09-24T21:19:5
+   post : rc=3  | uncertain operator post UNCERTAIN
+   killed : txns=2 staging=[]
+   recover : rc=0 recovered transactions=2 articles=2 staging-orphans=0 anchor=none chec | accepted operator RECOVER
+   recover_counts : {transactions: 2, articles: 2, staging_orphans: 0}
+   recovered : txns=2 staging=[]
+   inspect_prior : rc=0  | 
+   inspect_candidate : rc=0  | 
+   candidate_injected : True
+   reread_owner_ready : True
+   nntp_prior : {status: '220 0 <prior@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   nntp_candidate : {status: '220 0 <candidate@campaign.invalid> article follows', identical: True, same_as_inspect: True}
+   resubmit : rc=0  | accepted operator post DUPLICATE
+   after_resubmit : txns=2 staging=[]
+   reread_owner : rc=0  | accepted operator run
+## cross-entry-retry-store-then-operator fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   first : rc=0 committed sequence=1 charge=2 | 
+   after_first : txns=2 staging=[]
+   second : rc=1  | refused operator post REFUSED
+   second_owner : rc=0  | accepted operator run
+   after_second : txns=2 staging=[]
+## cross-entry-retry-operator-then-store fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   first : rc=0  | accepted operator post ACCEPTED
+   first_owner : rc=0  | accepted operator run
+   after_first : txns=2 staging=[]
+   second : rc=1  | store: conflicting immutable Message-ID
+   after_second : txns=2 staging=[]
+## dev-allocation-orphans-recover fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   deaths : [-9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9] (+35)
+   killed : txns=1 staging=['.allocation-1913406-fd516e1c76379c833bfbe526']
+   status : rc=0 headroom transactions-used=1 transactions-budget=128 charge-reserved=2 | accepted operator STATUS
+   recover : rc=0 recovered transactions=1 articles=1 staging-orphans=0 anchor=none chec | accepted operator RECOVER
+   recover_counts : {transactions: 1, articles: 1, staging_orphans: 0}
+   opened : txns=1 staging=[]
+   owner_ready : True
+   post : rc=0  | accepted operator post ACCEPTED
+   owner : rc=0  | accepted operator run
+   after : txns=2 staging=[]
+## dev-allocation-orphans-store-post fn-host-developer
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   deaths : [-9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9; -9] (+35)
+   killed : txns=1 staging=['.allocation-1913925-fd516e1c76379c833bfbe526']
+   status : rc=0 headroom transactions-used=1 transactions-budget=128 charge-reserved=2 | accepted operator STATUS
+   open_post : rc=0 committed sequence=1 charge=2 | 
+   opened : txns=2 staging=[]
+   owner_ready : True
+   post : rc=1  | refused operator post REFUSED
+   owner : rc=0  | accepted operator run
+   after : txns=2 staging=[]
+## prod-selectors-refused-at-start fn-host
+   seed_owner : rc=0  | accepted operator run
+   seed_inspect_prior : rc=0  | 
+   before : txns=1 staging=[]
+   starts : [{variable: 'FN_NATIVE_INIT_FAULT', operator_run: rc=5  | fn-host: error: FN_NATIVE_INIT_FAULT is a developer-image selector; this production image , operator_recover: rc=5  | fn-host: error: FN_NATIVE_INIT_FAULT is a developer-image selector; this production image , store_post: rc=5  | fn-host: error: FN_NATIVE_INIT_FAULT is a developer-image selector; this production image }; {variable: 'FN_NATIVE_RECOVERY_FAULT', operator_run: rc=5  | fn-host: error: FN_NATIVE_RECOVERY_FAULT is a developer-image selector; this production im, operator_recover: rc=5  | fn-host: error: FN_NATIVE_RECOVERY_FAULT is a developer-image selector; this production im, store_post: rc=5  | fn-host: error: FN_NATIVE_RECOVERY_FAULT is a developer-image selector; this production im}; {variable: 'FN_NATIVE_POST_FAULT', operator_run: rc=5  | fn-host: error: FN_NATIVE_POST_FAULT is a developer-image selector; this production image , operator_recover: rc=5  | fn-host: error: FN_NATIVE_POST_FAULT is a developer-image selector; this production image , store_post: rc=5  | fn-host: error: FN_NATIVE_POST_FAULT is a developer-image selector; this production image }; {variable: 'FN_NATIVE_PROFILE_FAULT', operator_run: rc=5  | fn-host: error: FN_NATIVE_PROFILE_FAULT is a developer-image selector; this production ima, operator_recover: rc=5  | fn-host: error: FN_NATIVE_PROFILE_FAULT is a developer-image selector; this production ima, store_post: rc=5  | fn-host: error: FN_NATIVE_PROFILE_FAULT is a developer-image sele
+   store_post_fault_argument : rc=5  | fn-host: error: the store post FAULT argument is a developer-image selector; this producti
+   after : txns=1 staging=[]
+   unchanged : True
+## prod-raw-store-post-guard fn-host
+   plain_post : rc=5  | fn-host: error: store post is a developer-image selector; this production image does not s
+   store_created : False
+   payload_created : False
+## prod-init-fault fn-host
+   store_created : False
