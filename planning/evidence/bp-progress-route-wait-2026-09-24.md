@@ -32,6 +32,9 @@ dependency digest. The first run failed on a missing include, and the next
 run exposed shallow-selector correspondence and the outer event guard. Those
 were repaired with a direct selector equality, admitted-primary shape lemma,
 and narrow event-boundary lemma. The final exact-source selected run passed.
+The edited native `bp-node.lisp` and `bp-service.lisp` also passed an SBCL
+reader check with `sb-bsd-sockets` and `sb-posix` loaded; this checks source
+syntax, not saved-image behavior.
 
 The separately owned `bp-node-machine-teeth-tests` fixture reaches two
 durable kind-5 receives through the actual outer step, then route wait and
