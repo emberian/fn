@@ -141,6 +141,10 @@
         {
           "kind": "theorem",
           "name": "fn-durable-completion-installs-exact-pending-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-pinned-view-survives-other-post"
         }
       ]
     },
@@ -780,6 +784,11 @@
         {
           "kind": "theorem",
           "name": "fn-served-run-effects-are-typed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-240-follows-consumed-completion",
+          "pending_subject": "Subject is fn-own-finish (books/owner-served-invariants.lisp), the (:complete) event with its word computed in ACL2. The host still runs (:complete) through fn-owner-step and decides :durable by comparing phases and ledger lengths in fn-owner-finish (host/owner-host.lisp:495-507), then passes that word to fn-own-outcome (host/owner-host.lisp:1034). Under that host word a 240 over a completion of another record is reachable (tests/acl2/owner-served-invariants-tests.lisp, *own-240*). Met when fn-owner-finish returns (car (fn-own-finish o))."
         }
       ]
     },
@@ -1700,6 +1709,18 @@
         {
           "kind": "theorem",
           "name": "fn-own-fault-is-not-a-store-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-fault-reply-is-not-a-post-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-fault-keeps-every-other-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-open-at-the-bound-refuses"
         }
       ]
     },
