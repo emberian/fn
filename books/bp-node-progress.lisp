@@ -1082,5 +1082,5 @@
       (fn-bpnp-preserve-runtime-answer
        answer st
        (and (equal (fn-cbor-ag-car event) :recover-fnbs)
-            (equal (fn-bpn-nth 0 (fn-bpnf-answer-effects answer))
+            (equal (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects answer)))
                    :restart-ready))))))))
