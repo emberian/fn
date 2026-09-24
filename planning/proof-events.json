@@ -1410,6 +1410,10 @@
           "name": "fn-bp-journal-events-is-durable-events-then-restart"
         },
         {
+          "kind": "theorem",
+          "name": "fn-bpiw-reopen-after-live-recovery-is-the-live-image-restarted"
+        },
+        {
           "kind": "guarded-function",
           "name": "fn-bp-work-status"
         },
