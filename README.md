@@ -30,8 +30,11 @@ now exercises retries, restart and ambiguous publication within an explicitly
 trusted local setup. A [Mini consumer experiment](planning/evidence/native-mini-live-join-2026-09-24.md)
 now polls an actual fn owner, verifies the signed source, and records a durable
 Mini transaction. Only after reopening that transaction does Mini acknowledge
-the fn cursor; the next poll returns no repeat article. Completing the signed
-reply exchange and its crash cases is the next application boundary.
+the fn cursor; the next poll returns no repeat article. A separate
+[reply exercise](planning/evidence/mini-b3-e160-native-join-2026-09-24.md)
+reuses durably stored hybrid signatures after a Mini process restart, posts
+the reply, and verifies its exact source after fn reopens. The full exchange's
+crash coverage and separately administered Stores remain work in progress.
 These exercises qualify particular images and boundaries. Authenticated BP
 transit, the newer indexed consumer path, and the remaining physical
 crash-correspondence proofs are still being joined.

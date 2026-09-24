@@ -42,11 +42,20 @@ Sol repairs. The general status codec roundtrip now has [scoped ACL2 evidence](e
 PRF-068 remains in progress for the joined native composition.
 
 Mini's actual poll → durable transaction/Q → reopen → ACK experiment has
-passed. The B3 reply-post attempt on `e160442f` refused before signing because
-the synthetic reply source lacked Date. Mini is rebuilding the explicitly
-experimental source profile with a deterministic Date and a new Message-ID
-profile version; no posted-reply success is claimed. The existing failed
-prepared record remains preserved.
+passed. The separate [B3 reply experiment](evidence/mini-b3-e160-native-join-2026-09-24.md)
+also passed on `e160442f`: durable preparation/signatures, a separate-process
+retry without private keys, native posting, cold reopen and exact-source/full
+keyset verification. The initial missing-Date refusal and immutable prepared
+slot remain preserved; the successful reply uses a new experimental profile
+and Message-ID version. Mini's measured staging processes take tens of seconds;
+profiling proceeds separately from the qualified binary. The complete two-store
+crash trace is still open.
+
+Further integrated packets add exact historical topic-report retry without
+another event/charge, a verified retention preparation guard, the shared-owner
+successful allocator callback bridge and Store proof-cost repairs. Topic retry
+has scoped proofs and a strengthened native fixture; its saved-image result is
+pending with the repaired topic/index/fragment qualification.
 
 The mostly-Sol swarm continues native qualification, the actual owner/physical
 storage join, BP progress/debt design and implementation, consumer cost
