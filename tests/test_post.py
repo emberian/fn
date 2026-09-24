@@ -157,16 +157,19 @@ class StorePostTests(unittest.TestCase):
                   b"441 posting failed; a named newsgroup is not carried here\r\n")
 
     def test_a_duplicate_supplied_message_id_is_the_refused_441(self):
-        # The store refuses a Message-ID it already holds; that refusal is
-        # the owner's :refused word, rendered by the book as the refusal
-        # line, never as 240 and never as the uncertain line.
+        # The store refuses a Message-ID it already holds for a different
+        # article: fn-sn-existing-action's :conflict, relayed as the owner's
+        # :conflict word and rendered by the book as the conflict refusal
+        # line (fn-post-store-refusal-line), never as 240 and never as the
+        # uncertain line.
         owner = self.start_owner()
         sock = owner.connect()
         self.addCleanup(sock.close)
         self.post(sock, b"From: p@e.invalid\r\nSubject: s\r\n"
                         b"Message-ID: <seed@example.invalid>\r\n"
                         b"Newsgroups: fn.letters\r\n\r\nBody\r\n",
-                  b"441 posting failed; the article was refused\r\n")
+                  b"441 posting failed; a different article with this "
+                  b"Message-ID is stored here\r\n")
 
     def test_a_reader_pinned_before_a_post_keeps_its_view(self):
         # Concurrency through one owner: a reader open before the post keeps

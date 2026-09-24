@@ -31,6 +31,7 @@
 (include-book "../books/config-owner-live")
 (include-book "../books/config-owner-publish")
 (include-book "../books/owner-tls-prefix")
+(include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
 (include-book "../books/checkpoint-auxiliary")
@@ -492,6 +493,27 @@
                     (1+ (len (fn-own-ledger before)))))
         (value :durable)
       (value :fault))))
+
+; The article completion of the submission in flight (served POST, control
+; post): the word is fn-own-finish's (books/owner-served-invariants.lisp),
+; :durable only when fn-sn-finish consumed an enabled completion whose record
+; carries this submission's Message-ID and octets, and the owner installed is
+; its (fn-own-complete o).  That is the subject of
+; fn-own-240-follows-consumed-completion, so the host no longer decides the
+; word by comparing phases.  With no config record staged, fn-ocfg-step's
+; (:complete) is exactly fn-ocfg-with-owner of fn-own-complete
+; (books/owner-config.lisp fn-ocfg-complete); a staged record means this is
+; not an article completion at all, and the answer is :fault with nothing
+; changed.  Retention, identity and config completions still use
+; fn-owner-finish above: they have no article submission to name.
+(defun fn-owner-finish-submission (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((oc (fn-owner-ocfg state)))
+    (if (fn-ocfg-staged oc)
+        (value :fault)
+      (let* ((result (fn-own-finish (fn-ocfg-owner oc)))
+             (state (fn-owner-replace-core (cdr result) state)))
+        (value (car result))))))
 
 (defun fn-owner-begin (id state)
   (declare (xargs :stobjs state :mode :program))

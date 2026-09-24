@@ -7,7 +7,8 @@ outcome `441 ... do not repost`, and the acknowledged article rereading
 byte-identical after a kill at any cut.  This probe takes the same cuts on
 the same served owner, but submits the candidate with NNTP POST and records
 the reply octets the client received (b"" when the connection closed with no
-reply).  It judges nothing; the evidence record compares.
+reply).  `judge` compares every row with P2's wire bar (the exact bytes
+below); `--judge FILE` re-judges a recorded result without running anything.
 
 Per post cut and per action (`kill`, `eio`), over a fresh store seeded as the
 operator campaign seeds it: the owner is started with
@@ -155,12 +156,139 @@ def plain(image: Path, base: Path, prior: Path, payload: bytes, name, kill_after
     return row
 
 
+# P2 at the wire: the exact reply lines (books/nntp-post.lisp
+# fn-nntp-post-outcome and fn-post-store-refusal-line).  The refusal words are
+# a local policy choice pending ember's decision; the judge holds the bytes.
+OK_240 = "240 article received OK\r\n"
+UNCERTAIN = "441 posting failed; the outcome is uncertain, do not repost\r\n"
+STORAGE_FAILED = ("441 posting failed; the store could not write the article, "
+                  "nothing was stored\r\n")
+DUPLICATE = "441 posting failed; this article is already stored here\r\n"
+CONFLICT = ("441 posting failed; a different article with this Message-ID is "
+            "stored here\r\n")
+NO_FROM = "441 posting failed; From is required\r\n"
+EXIT_UNCERTAIN = 3
+
+# Post cuts before any publication attempt: an EIO there is a known
+# pre-publication failure whose reservation ACL2 consumed, so the article is
+# absent and the owner keeps serving.
+PRE_PUBLICATION = {"frontier-staged-durable", "record-staged-durable"}
+
+
+def _rc(row):
+    return (row.get("owner") or {}).get("rc")
+
+
+def _present(row):
+    return (row.get("inspect_candidate") or {}).get("rc") == 0
+
+
+def expectation(row) -> dict:
+    """What P2 requires of one faulted row: replies allowed, owner exit, fate."""
+    cut, action = row["cut"], row["action"]
+    if action == "kill":
+        # A dead process owes no line, and no 240 may precede the death.
+        return {"replies": {""}, "rc": -9, "present": None}
+    if cut in PRE_PUBLICATION:
+        return {"replies": {STORAGE_FAILED}, "rc": 0, "present": False}
+    if cut.startswith("finish-"):
+        # The record is durable: 240 or uncertain, never a refusal.
+        return {"replies": {OK_240, UNCERTAIN}, "rc": EXIT_UNCERTAIN,
+                "present": True}
+    return {"replies": {UNCERTAIN}, "rc": EXIT_UNCERTAIN, "present": None}
+
+
+def _repost_ok(row, failures):
+    repost = (row.get("repost") or {}).get("reply")
+    if repost is None:
+        return
+    want = {DUPLICATE, CONFLICT} if _present(row) else {OK_240}
+    if repost not in want:
+        failures.append("repost {!r} not in {}".format(repost, sorted(want)))
+
+
+def judge_cut(row) -> list:
+    failures = []
+    want = expectation(row)
+    reply = (row.get("post") or {}).get("reply")
+    if reply not in want["replies"]:
+        failures.append("reply {!r} not in {}".format(reply, sorted(want["replies"])))
+    if _rc(row) != want["rc"]:
+        failures.append("owner exit {!r} != {}".format(_rc(row), want["rc"]))
+    if want["present"] is not None and _present(row) != want["present"]:
+        failures.append("candidate present={} != {}".format(_present(row), want["present"]))
+    for label in ("prior", "candidate"):
+        got = row.get("inspect_" + label) or {}
+        if got.get("rc") == 0 and not got.get("identical"):
+            failures.append(label + " does not reread identical")
+    _repost_ok(row, failures)
+    return failures
+
+
+def judge_control(row) -> list:
+    failures = []
+    reply = (row.get("post") or {}).get("reply")
+    name = row["name"]
+    if name == "dev-refused-no-from":
+        if reply != NO_FROM:
+            failures.append("reply {!r} != {!r}".format(reply, NO_FROM))
+    elif name == "prod-sigkill-mid-article":
+        if _present(row):
+            failures.append("half-sent article is present")
+    else:
+        if reply != OK_240:
+            failures.append("reply {!r} != {!r}".format(reply, OK_240))
+        if not (row.get("inspect_candidate") or {}).get("identical"):
+            failures.append("accepted candidate does not reread identical")
+        _repost_ok(row, failures)
+    return failures
+
+
+def judge(result) -> dict:
+    rows = []
+    for row in result["cuts"]:
+        rows.append({"row": "{} {}".format(row["cut"], row["action"]),
+                     "reply": (row.get("post") or {}).get("reply"),
+                     "rc": _rc(row), "present": _present(row),
+                     "repost": (row.get("repost") or {}).get("reply"),
+                     "failures": judge_cut(row)})
+    for row in result["controls"]:
+        rows.append({"row": row["name"], "reply": (row.get("post") or {}).get("reply"),
+                     "rc": _rc(row), "present": _present(row),
+                     "repost": (row.get("repost") or {}).get("reply"),
+                     "failures": judge_control(row)})
+    return {"rows": rows, "failed": sum(1 for r in rows if r["failures"]),
+            "total": len(rows)}
+
+
+def print_judgement(verdict) -> None:
+    for row in verdict["rows"]:
+        print("{:<36} {:<5} rc={!s:<4} present={!s:<5} reply={!r} repost={!r}{}".format(
+            row["row"], "FAIL" if row["failures"] else "pass", row["rc"],
+            row["present"], row["reply"], row["repost"],
+            "".join("\n    " + f for f in row["failures"])))
+    print("{} of {} rows pass".format(verdict["total"] - verdict["failed"],
+                                      verdict["total"]))
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--images", type=Path, required=True)
-    parser.add_argument("--work", type=Path, required=True)
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--images", type=Path)
+    parser.add_argument("--work", type=Path)
+    parser.add_argument("--out", type=Path)
+    parser.add_argument("--judge", type=Path,
+                        help="re-judge a recorded result (.json or .json.gz) and exit")
     args = parser.parse_args(argv)
+    if args.judge:
+        import gzip
+        raw = args.judge.read_bytes()
+        if args.judge.suffix == ".gz":
+            raw = gzip.decompress(raw)
+        verdict = judge(json.loads(raw))
+        print_judgement(verdict)
+        return 1 if verdict["failed"] else 0
+    if not (args.images and args.work and args.out):
+        parser.error("--images, --work and --out are required to run the probe")
     native_cuts.verify_native_cut_map()
     dev, prod = args.images / "fn-host-developer", args.images / "fn-host"
     if args.work.exists():
@@ -184,8 +312,10 @@ def main(argv=None) -> int:
     result["controls"].append(plain(prod, args.work, prior, payload, "prod-accepted-then-sigkill"))
     result["controls"].append(plain(prod, args.work, prior, payload, "prod-sigkill-mid-article",
                                     half=True))
+    result["judgement"] = judge(result)
     args.out.write_text(json.dumps(result, indent=1, default=str))
-    return 0
+    print_judgement(result["judgement"])
+    return 1 if result["judgement"]["failed"] else 0
 
 
 if __name__ == "__main__":

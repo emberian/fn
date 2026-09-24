@@ -295,6 +295,22 @@ three parts have three different owners of the *reply*, all of them ACL2.
    refusal line, because a client must not repost on it. A duplicate or
    conflicting Message-ID, an uncarried group and a reached bound are
    refusals; an indeterminate commit and a host fault are uncertain.
+   A Store refusal names its kind (`fn-post-store-refusal-line`), each a
+   distinct `441` line (`fn-post-outcome-store-refusal-kinds-are-distinct`):
+   `:duplicate` "this article is already stored here", `:conflict` "a
+   different article with this Message-ID is stored here" (the two answers of
+   `fn-sn-existing-action`), `:malformed` (`fn-owner-prepare`'s `:invalid`),
+   `:unaffordable` (the persisted profile or the transaction capacity),
+   `:storage-failed` (a write that failed before publication, whose
+   reservation `fn-owner-known-abort` consumed, so nothing was stored), and
+   `:refused` "the article was refused" for a refusal no kind names. RFC 3977
+   §6.3.1 permits `441` for all of them; the distinct text is a stronger fn
+   guarantee and its exact words are a local policy choice (P2, pending
+   ember's decision on duplicate vs conflict at the wire). A refusal is
+   rendered only while no completion has been consumed after the take: once
+   one has, every word but `:durable` is the uncertain line
+   (`fn-own-consumed-completion-is-240-or-uncertain`), so a durable article
+   is never reported refused.
 
 Read-back. A 240 is a promise the poster can act on, so the 240 moves the
 poster's own pin: `fn-own-outcome`'s `:durable` branch is one `fn-own-advance`

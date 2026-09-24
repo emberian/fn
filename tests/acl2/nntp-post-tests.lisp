@@ -4,6 +4,7 @@
 ; event, configuration and clock observation.
 (in-package "ACL2")
 (include-book "../../books/nntp-post")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *fn-tp-groups* '("fn.letters"))
 (defconst *fn-tp-seed* '(77 101 115 115 97 103 101 45 73 68 58 32 60 115 101 101 100 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 83 117 98 106 101 99 116 58 32 115 101 101 100 13 10 13 10 83 101 101 100 32 98 111 100 121 13 10))
@@ -159,6 +160,53 @@
  (fn-nntp-effectsp
   (fn-post-result-effects
    (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :durable))))
+;
+; Each Store refusal kind names its reason (P2; campaign W3, 2026-09-24).
+; The exact words are a local policy choice pending ember's decision.
+(defmacro fn-tp-outcome-line (completion)
+  `(fn-post-result-effects
+    (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) ,completion)))
+(defmacro fn-tp-line (text)
+  `(list (fn-nntp-reply-effect (fn-nntp-crlf (fn-nntp-string-octets ,text)))))
+(assert-event (equal (fn-tp-outcome-line :duplicate)
+                     (fn-tp-line "441 posting failed; this article is already stored here")))
+(assert-event (equal (fn-tp-outcome-line :conflict)
+                     (fn-tp-line "441 posting failed; a different article with this Message-ID is stored here")))
+(assert-event (equal (fn-tp-outcome-line :malformed)
+                     (fn-tp-line "441 posting failed; the store refused the article as malformed")))
+(assert-event (equal (fn-tp-outcome-line :unaffordable)
+                     (fn-tp-line "441 posting failed; the store has no capacity for this article")))
+(assert-event (equal (fn-tp-outcome-line :storage-failed)
+                     (fn-tp-line "441 posting failed; the store could not write the article, nothing was stored")))
+; A word that is no refusal kind is uncertain, never a refusal.
+(assert-event (equal (fn-tp-outcome-line :fault) (fn-tp-outcome-line :uncertain)))
+(assert-event (fn-post-sessionp (fn-post-result-session *fn-tp-r2*)))
+
+; Teeth for fn-post-outcome-store-refusal-is-not-uncertain: one violating
+; value per hypothesis at which the conclusion fails.
+; A completion that is no refusal kind renders the uncertain line.
+(must-fail
+ (defthm fn-tp-refusal-not-uncertain-needs-a-refusal-kind
+   (not (equal (fn-tp-outcome-line :fault) (fn-tp-outcome-line :uncertain)))
+   :rule-classes nil))
+
+; Teeth for fn-post-outcome-store-refusal-kinds-are-distinct.
+(must-fail
+ (defthm fn-tp-kinds-distinct-needs-other-a-refusal-kind
+   (not (equal (fn-tp-outcome-line :fault) (fn-tp-outcome-line :bogus)))
+   :rule-classes nil))
+(must-fail
+ (defthm fn-tp-kinds-distinct-needs-two-kinds
+   (not (equal (fn-tp-outcome-line :duplicate) (fn-tp-outcome-line :duplicate)))
+   :rule-classes nil))
+; The witnesses separate every pair of the six kinds, not only the weakest.
+(assert-event
+ (let ((lines (list (fn-tp-outcome-line :refused) (fn-tp-outcome-line :duplicate)
+                    (fn-tp-outcome-line :conflict) (fn-tp-outcome-line :malformed)
+                    (fn-tp-outcome-line :unaffordable)
+                    (fn-tp-outcome-line :storage-failed)
+                    (fn-tp-outcome-line :uncertain))))
+   (no-duplicatesp-equal lines)))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for the injection clock
@@ -374,3 +422,16 @@
                             7 *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
         (list (fn-nntp-reply-effect
                (fn-nntp-crlf (fn-nntp-string-octets "441 posting failed"))))))
+
+; Store refusal teeth that need a malformed session: without one, every
+; completion, refusal kinds and uncertainty alike, is the same 403.
+(must-fail
+ (defthm fn-tp-refusal-not-uncertain-needs-a-session
+   (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :duplicate))
+               (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :uncertain))))
+   :rule-classes nil))
+(must-fail
+ (defthm fn-tp-kinds-distinct-needs-a-session
+   (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :duplicate))
+               (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :conflict))))
+   :rule-classes nil))

@@ -787,12 +787,119 @@
 (assert-event (equal (fn-own-find-conn 0 (fn-own-conns (cdr *own-240*)))
                      (fn-own-find-conn 0 (fn-own-conns *own-p-done*))))
 (assert-event (null (car (fn-own-outcome *own-p-done* 3 :durable))))
-; The three words render three distinct lines; the two 441s differ.
-(assert-event (equal (fn-served-reply-octets (car (fn-own-outcome *own-p-done* 4 :refused)))
+; The three words render three distinct lines; the two 441s differ.  A
+; refusal is rendered only before a completion is consumed (*own-taken*):
+; after one (*own-p-done*) every word but :durable is uncertain (W2).
+(assert-event (equal (fn-served-reply-octets (car (fn-own-outcome *own-taken* 4 :refused)))
                      (append (fn-nntp-string-octets "441 posting failed; the article was refused")
                              '(13 10))))
-(assert-event (not (equal (car (fn-own-outcome *own-p-done* 4 :refused))
-                          (car (fn-own-outcome *own-p-done* 4 :uncertain)))))
+(assert-event (not (equal (car (fn-own-outcome *own-taken* 4 :refused))
+                          (car (fn-own-outcome *own-taken* 4 :uncertain)))))
+; Each Store refusal kind reaches the wire as its own line (W3).
+(assert-event (equal (fn-served-reply-octets (car (fn-own-outcome *own-taken* 4 :duplicate)))
+                     (append (fn-nntp-string-octets
+                              "441 posting failed; this article is already stored here")
+                             '(13 10))))
+(assert-event (equal (fn-served-reply-octets (car (fn-own-outcome *own-taken* 4 :conflict)))
+                     (append (fn-nntp-string-octets
+                              "441 posting failed; a different article with this Message-ID is stored here")
+                             '(13 10))))
+(assert-event (equal (fn-served-reply-octets (car (fn-own-outcome *own-taken* 4 :storage-failed)))
+                     (append (fn-nntp-string-octets
+                              "441 posting failed; the store could not write the article, nothing was stored")
+                             '(13 10))))
+(assert-event (no-duplicatesp-equal
+               (list (car (fn-own-outcome *own-taken* 4 :refused))
+                     (car (fn-own-outcome *own-taken* 4 :duplicate))
+                     (car (fn-own-outcome *own-taken* 4 :conflict))
+                     (car (fn-own-outcome *own-taken* 4 :malformed))
+                     (car (fn-own-outcome *own-taken* 4 :unaffordable))
+                     (car (fn-own-outcome *own-taken* 4 :storage-failed))
+                     (car (fn-own-outcome *own-taken* 4 :uncertain)))))
+; The owner state a refusal kind leaves is the one :refused leaves.
+(assert-event (equal (cdr (fn-own-outcome *own-taken* 4 :conflict))
+                     (cdr (fn-own-outcome *own-taken* 4 :refused))))
+
+; Witness for fn-own-consumed-completion-is-240-or-uncertain
+; (owner-invariants.lisp): after the consumed completion every refusal word
+; is the uncertain line, and :durable is the 240.
+(assert-event (fn-own-completion-consumedp *own-p-done*))
+(assert-event (equal (car (fn-own-outcome *own-p-done* 4 :refused))
+                     (car (fn-own-outcome *own-p-done* 4 :uncertain))))
+(assert-event (equal (car (fn-own-outcome *own-p-done* 4 :duplicate))
+                     (car (fn-own-outcome *own-p-done* 4 :uncertain))))
+(assert-event (equal (fn-served-reply-octets (car (fn-own-outcome *own-p-done* 4 :storage-failed)))
+                     (append (fn-nntp-string-octets
+                              "441 posting failed; the outcome is uncertain, do not repost")
+                             '(13 10))))
+(assert-event (equal (fn-own-control-outcome-result
+                      (fn-own-make (fn-own-store *own-p-done*) (fn-own-view *own-p-done*)
+                                   (fn-own-conns *own-p-done*) (fn-own-next-id *own-p-done*)
+                                   (fn-own-max-conns *own-p-done*) (fn-own-pending *own-p-done*)
+                                   (fn-own-ledger *own-p-done*) (fn-own-clock *own-p-done*)
+                                   (fn-own-facts *own-p-done*) (fn-own-config *own-p-done*)
+                                   (fn-own-queue *own-p-done*)
+                                   (fn-own-sub-make *fn-own-control-id* 0 2
+                                                    (fn-own-sub-decision
+                                                     (fn-own-inflight *own-p-done*)))
+                                   (fn-own-feeds *own-p-done*))
+                      :duplicate)
+                     :uncertain))
+; Teeth: one violating value per hypothesis, the others holding.
+(defmacro own-w2-rhs (o id word)
+  `(let ((conn (fn-own-find-conn ,id (fn-own-conns ,o))))
+     (fn-served-result-effects
+      (fn-served-post-outcome
+       (fn-served-make-conn-group-indexed
+        (fn-own-conn-wire conn) (fn-own-conn-session conn)
+        (fn-own-conn-archive conn) (fn-own-conn-config conn)
+        (fn-own-conn-observation conn) (fn-own-clock ,o)
+        (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
+        (fn-own-conn-group-index conn))
+       (if (equal ,word :durable) :durable :uncertain)))))
+(defmacro own-w2-with (o conns inflight)
+  `(fn-own-make (fn-own-store ,o) (fn-own-view ,o) ,conns (fn-own-next-id ,o)
+                (fn-own-max-conns ,o) (fn-own-pending ,o) (fn-own-ledger ,o)
+                (fn-own-clock ,o) (fn-own-facts ,o) (fn-own-config ,o)
+                (fn-own-queue ,o) ,inflight (fn-own-feeds ,o)))
+(assert-event (equal (car (fn-own-outcome *own-p-done* 4 :refused))
+                     (own-w2-rhs *own-p-done* 4 :refused)))
+; mark below the ledger: *own-taken* has consumed nothing, so :refused refuses.
+(assert-event (equal (fn-own-sub-mark (fn-own-inflight *own-taken*))
+                     (len (fn-own-ledger *own-taken*))))
+(must-fail
+ (defthm own-w2-needs-a-consumed-completion
+   (equal (car (fn-own-outcome *own-taken* 4 :refused))
+          (own-w2-rhs *own-taken* 4 :refused))
+   :rule-classes nil))
+; natp mark: a mark of nil is below the ledger in ACL2's logic (< treats a
+; non-number as 0), yet nothing was consumed.
+(defconst *own-w2-nil-mark*
+  (own-w2-with *own-p-done* (fn-own-conns *own-p-done*)
+               (fn-own-sub-make 4 (fn-own-sub-version (fn-own-inflight *own-p-done*))
+                                nil (fn-own-sub-decision (fn-own-inflight *own-p-done*)))))
+(assert-event (and (null (fn-own-sub-mark (fn-own-inflight *own-w2-nil-mark*)))
+                   (< 0 (len (fn-own-ledger *own-w2-nil-mark*)))))
+(must-fail
+ (defthm own-w2-needs-a-natural-mark
+   (equal (car (fn-own-outcome *own-w2-nil-mark* 4 :refused))
+          (own-w2-rhs *own-w2-nil-mark* 4 :refused))
+   :rule-classes nil))
+; the submission is this connection's: connection 0 exists, 4 is in flight.
+(assert-event (fn-own-find-conn 0 (fn-own-conns *own-p-done*)))
+(must-fail
+ (defthm own-w2-needs-this-connections-submission
+   (equal (car (fn-own-outcome *own-p-done* 0 :refused))
+          (own-w2-rhs *own-p-done* 0 :refused))
+   :rule-classes nil))
+; the connection exists: without it no reply is rendered at all.
+(defconst *own-w2-no-conn*
+  (own-w2-with *own-p-done* nil (fn-own-inflight *own-p-done*)))
+(must-fail
+ (defthm own-w2-needs-the-connection
+   (equal (car (fn-own-outcome *own-w2-no-conn* 4 :refused))
+          (own-w2-rhs *own-w2-no-conn* 4 :refused))
+   :rule-classes nil))
 (assert-event (not (equal (car (fn-own-outcome *own-p-done* 4 :uncertain)) (car *own-240*))))
 (assert-event (equal (car (fn-own-outcome *own-p-done* 4 :fault))
                      (car (fn-own-outcome *own-p-done* 4 :uncertain))))

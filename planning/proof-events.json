@@ -2328,6 +2328,26 @@
           "note": "Keystone, reader side, over fn-own-read: host/native/owner.lisp (fnn-owner-action 'fn-owner-chunk ...) runs host/owner-host.lisp fn-owner-chunk, i.e. fn-ocfg-read-tls-prefix, equal to fn-ocfg-read by fn-ocfg-read-tls-prefix-is-full-read, whose reply is (car (fn-own-read ...)). One read whose octets frame nothing until the last, which frames HDR :fn-verified <msgid>, on an ungated reader (non-peer, not awaiting, projected) answers the 225 block whose field is (fn-stx-reader-item (fn-stx-reader-lookup msgid (fn-own-conn-verdicts conn))). Lemmas: fn-served-step-hdr-fn-verified-is-the-pinned-verdict, fn-served-step-of-one-framed-event, fn-served-dispatch-hdr-fn-verified-msgid, fn-nntp-verdict-hdr-msgid-is-recorded. Framing is a premise, not proved from the wire. Must-fail per hypothesis only for: article absent from the pin (reader A, 430), last octet not framing (read cut before LF), item not :fn-verified (HDR Subject). No teeth yet for the auth gate, peer, awaiting-article or wire-closed premises. Book 5.3 s, persvati run-20260924T144834Z-7de2."
         }
       ]
+    },
+    {
+      "id": "PRF-070",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-consumed-completion-is-240-or-uncertain",
+          "note": "Over fn-own-outcome, the host-called outcome: after a consumed completion the reply is 240 or the uncertain line, never a refusal; owner-tests has the witness and one must-fail per hypothesis."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-outcome-store-refusal-kinds-are-distinct",
+          "note": "Over fn-nntp-post-outcome, which fn-own-outcome renders through fn-served-post-outcome: distinct Store refusal kinds give distinct lines; nntp-post-tests has one must-fail per hypothesis."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-outcome-store-refusal-is-not-uncertain",
+          "note": "Over fn-nntp-post-outcome: a Store refusal kind is never the uncertain line; nntp-post-tests has one must-fail per hypothesis."
+        }
+      ]
     }
   ]
 }
