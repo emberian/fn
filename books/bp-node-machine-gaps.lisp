@@ -247,6 +247,19 @@
                                        (theory 'minimal-theory))))))
 
 (local
+ (defthm bpgap-conflict-decision-names-held
+   (implies (equal (fn-bpnf-receive-decision held ingress bundle)
+                   :identity-conflict)
+            (fn-bpnf-find-held
+             (fn-bpnf-held-key (fn-bpnf-ingress-principal ingress)
+                               (fn-bpb-bundle-id bundle))
+             held))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (union-theories '(fn-bpnf-receive-decision
+                                                (:e equal))
+                                              (theory 'minimal-theory))))))
+
+(local
  (defthm bpgap-conflict-held-under-hypotheses
    (implies (and (fn-bpnp-host-eventp event)
                 (equal (fn-cbor-ag-car event) :receive-bundle)
@@ -269,10 +282,13 @@
                     (fn-bpnf-held-list st)))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
-            :use ((:instance bpgap-receive-event-shape))
+            :use ((:instance bpgap-receive-event-shape)
+                  (:instance bpgap-conflict-decision-names-held
+                             (held (fn-bpnf-held-list st))
+                             (ingress (fn-bpn-nth 3 event))
+                             (bundle (fn-bpn-nth 1 event))))
             :in-theory (union-theories
-                        '(fn-bpnp-conflict-held fn-bpnf-receive-decision
-                          (:e equal) (:e not))
+                        '(fn-bpnp-conflict-held (:e equal) (:e not))
                         (theory 'minimal-theory))))))
 
 (local
