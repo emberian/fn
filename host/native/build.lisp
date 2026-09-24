@@ -35,6 +35,7 @@
 (include-book "books/served")
 (include-book "books/served-tls-prefix")
 (include-book "books/owner-tls-prefix")
+(include-book "books/owner-served-invariants")
 (include-book "books/owner-agent")
 (include-book "books/owner-log")
 (include-book "books/nntp-effects")

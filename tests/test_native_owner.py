@@ -70,6 +70,36 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         for clause in clauses:
             self.assertEqual([str(symbol) for symbol in clause[1]], ["e"])
 
+    def test_no_os_error_after_publication_is_classified_as_a_refusal(self):
+        # Campaign W2, 2026-09-24: an EIO at a finish cut escaped fnn-finish
+        # and the owner's catch-all answered a durable article `441 ...
+        # refused'.  Both finish cuts sit inside a handler that fences and
+        # raises indeterminate, and no Store attempt maps an OS error to a
+        # refusal word.
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head, read_forms
+        io_forms = read_forms((ROOT / "host/native/io.lisp").read_text())
+        finish = next(form for form in io_forms if head(form) == "defun"
+                      and str(form[1]) == "fnn-finish")
+
+        def calls(form, parents=()):
+            if isinstance(form, list):
+                if (head(form) == "fnn-at" and len(form) == 3
+                        and str(form[2]).startswith(":finish-")):
+                    yield str(form[2]), [head(p) for p in parents]
+                for child in form:
+                    yield from calls(child, parents + (form,))
+        cuts = dict(calls(finish))
+        self.assertEqual(set(cuts), {":finish-consumed", ":finish-durable"})
+        for cut, heads in cuts.items():
+            self.assertEqual(heads[-1], "handler-case", cut)
+        owner = (ROOT / "host/native/owner.lisp").read_text()
+        self.assertNotIn("((or fnn-store-error fnn-os-error) () :refused)", owner)
+        start = owner.index("(defmacro fnn-owner-attempt-handlers")
+        end = owner.index("(defun fnn-owner-attempt ", start)
+        self.assertIn("(fnn-os-error (e)", owner[start:end])
+        self.assertIn(":uncertain)))", owner[start:end])
+
     def test_the_served_listener_passes_a_documented_accept_queue(self):
         # `ss -ltn` read `LISTEN 0 1` against the 915 node: the owner took
         # fnn-listen's default backlog, which is written for the one-client
@@ -358,6 +388,11 @@ class NativeOwnerTests(unittest.TestCase):
             self.assertTrue(one.readline().startswith(b"340 "))
             one.write(self.article(b"<uncertain-native-owner@example.invalid>")
                       + b".\r\n")
+            # The poster is told, before the fence closes its connection
+            # (campaign W1, 2026-09-24: it read a bare close).
+            self.assertEqual(
+                one.readline(),
+                b"441 posting failed; the outcome is uncertain, do not repost\r\n")
             try:
                 two.write(b"POST\r\n")
             except (BrokenPipeError, ConnectionResetError, OSError):

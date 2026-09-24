@@ -2582,6 +2582,40 @@
         "planning/evidence/native-author-lifecycle-863c2141/portable.log"
       ],
       "progress_note": "The per-principal selector, next-generation event constructors and versioned tombstone are implemented. Completed kind-3 Store-node theorems equate the post-finish selector to identity replay and preserve historical verdicts; successful recovery theorems equate the carried selector and verdicts to replay of recovered durable records. A reachable Store trace commits A1 and a kind-4 verdict, then B2, A3 rotation and A4 tombstone, checking maintained node/file and identity-sequence relations and observed reopen. Selected crash cuts before and after B2 publication distinguish absent from durable enrollment. The host calls the selector under the serialized owner. The frozen 863c2141 production image passed three targeted native lifecycle/carrier tests on scratch Stores with OpenSSL 3.5.8. A global crash-phase relation for every lifecycle trace, incoming signed-carrier authority caller, and cost/index correspondence for a large snapshot history remain open. Local permission does not define portable succession or retroactive signature invalidation."
+    },
+    {
+      "id": "PRF-070",
+      "title": "The POST outcome at the wire keeps its three outcomes and names its refusal",
+      "statement": "fn-own-consumed-completion-is-240-or-uncertain: over fn-own-outcome (host/owner-host.lisp fn-owner-outcome), once a completion has been consumed into the ledger after the connection's submission was taken, the reply is the 240 for the host word :durable and the uncertain `441 ... do not repost' for every other word, so a durable record is never answered as a refusal. fn-post-outcome-store-refusal-kinds-are-distinct and fn-post-outcome-store-refusal-is-not-uncertain: over fn-nntp-post-outcome, each Store refusal kind (duplicate, conflict, malformed, unaffordable, storage-failed, unnamed) is its own 441 line and none is the uncertain line.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-005"
+      ],
+      "depends_on": [
+        "PRF-007",
+        "PRF-015"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/owner.lisp",
+        "books/owner-invariants.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/acl2/nntp-post-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp",
+        "tests/campaign/native_nntp_post_probe.py",
+        "planning/evidence/p2-wire-2026-09-24.md"
+      ],
+      "note": "Lane p2-wire, from the campaign's W1/W2/W3 (planning/evidence/campaign-1a9dd747-2026-09-24.md). The refusal kind is relayed by the host from the ACL2 step that refused (fn-sn-existing-action, fn-owner-prepare, fn-store-publication-admissibility, fn-owner-known-abort); the capacity comparison against max-transactions and the durable/fault word of fn-owner-finish (host/owner-host.lisp) are still host computations. The refusal words are a local policy choice pending ember's decision.",
+      "events": [
+        "fn-own-consumed-completion-is-240-or-uncertain",
+        "fn-post-outcome-store-refusal-kinds-are-distinct",
+        "fn-post-outcome-store-refusal-is-not-uncertain"
+      ]
     }
   ]
 }

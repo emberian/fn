@@ -184,6 +184,8 @@
               (fn-served-reply-octets
                (fn-post-result-effects (fn-nntp-post-outcome ps completion)))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-post-outcome fn-post-make-result
+                                   fn-post-store-refusalp
+                                   fn-post-store-refusal-line
                                    fn-post-result-effects fn-post-single
                                    fn-nntp-single fn-nntp-make-result
                                    fn-nntp-result-effects fn-nntp-reply-effect

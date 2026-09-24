@@ -142,6 +142,10 @@ function supplied no observation at all, which is a defect here."
 (defun fnn-owner-finish ()
   (fnn-owner-action 'fn-owner-finish))
 
+(defun fnn-owner-finish-submission ()
+  "The article completion's word, fn-own-finish's (host/owner-host.lisp)."
+  (fnn-owner-action 'fn-owner-finish-submission))
+
 (defun fnn-owner-name-list (octets)
   "Split ACL2's LF-joined name projection; LF is excluded by the name grammar."
   (let ((names nil) (current nil))
@@ -523,8 +527,15 @@ completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
 (defmacro fnn-with-owner ((service) &body body)
   `(sb-thread:with-mutex ((fnn-owner-service-lock ,service)) ,@body))
 
-(defun fnn-owner-stop-service-locked (service exit-code)
-  "Fence while the owner mutex is held; the first terminal outcome wins."
+(defun fnn-owner-stop-service-locked (service exit-code &optional answering)
+  "Fence while the owner mutex is held; the first terminal outcome wins.
+
+ANSWERING is the socket of the connection whose own ACL2 reply reported the
+stop, or nil.  It is not shut down here: its worker still owes that reply (the
+uncertain `441 ... do not repost'), sends it after the mutex is released and
+then closes the connection itself.  Setting STOPPING under this mutex is the
+fence; no semantic action of any worker, that one included, can run after it
+(fnn-owner-serialized refuses once STOPPING is set)."
   (unless (fnn-owner-service-stopping service)
     (setf (fnn-owner-service-stopping service) t
           (fnn-owner-service-exit-code service) exit-code))
@@ -540,8 +551,9 @@ completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
   ;; Only the worker that cached the socket fd may close it; shutdown wakes its
   ;; raw read without making that integer available for reuse underneath it.
   (dolist (socket (fnn-owner-service-clients service))
-    (ignore-errors
-      (sb-bsd-sockets:socket-shutdown socket :direction :io)))
+    (unless (eq socket answering)
+      (ignore-errors
+        (sb-bsd-sockets:socket-shutdown socket :direction :io))))
   ;; Hooks only signal external listeners/clients.  They run inside the same
   ;; first-terminal boundary and must be idempotent and nonblocking.
   (dolist (hook (fnn-owner-service-stop-hooks service))
@@ -682,22 +694,56 @@ the current connection."
     (incf (fnn-owner-service-records service))
     :durable))
 
+(defun fnn-owner-publication-verdict (service kind)
+  "ACL2's verdict on whether this persisted profile admits the kind's worst case."
+  (let* ((store (fnn-owner-service-store service))
+         (ceiling (fnn-core 'fn-store-publication-kind-ceiling kind)))
+    (fnn-core 'fn-store-publication-admissibility
+              (fnn-store-config store)
+              (fnn-owner-service-records service) ceiling)))
+
 (defun fnn-owner-preflight-publication (service kind)
   "Ask ACL2 whether this persisted profile admits the kind's worst case."
-  (let* ((store (fnn-owner-service-store service))
-         (ceiling (fnn-core 'fn-store-publication-kind-ceiling kind))
-         (verdict
-          (fnn-core 'fn-store-publication-admissibility
-                    (fnn-store-config store)
-                    (fnn-owner-service-records service) ceiling)))
-    (unless (eq verdict :admissible)
-      (fnn-refuse "Store profile refuses ~(~a~) transaction" kind))
-    :admissible))
+  (unless (eq (fnn-owner-publication-verdict service kind) :admissible)
+    (fnn-refuse "Store profile refuses ~(~a~) transaction" kind))
+  :admissible)
+
+;; The Store refusal kinds relayed to fn-own-outcome, each named by the ACL2
+;; step that refused (books/owner.lisp fn-own-refusal-wordp).  fn-owner-prepare
+;; answers :invalid for inputs outside its domain; its other non-prepared
+;; answers are fn-sn-existing-action's :duplicate / :conflict, :clock-unusable,
+;; or :refused.
+(defun fnn-owner-prepare-refusal-word (prepared)
+  (case prepared
+    ((:duplicate :conflict :clock-unusable :refused) prepared)
+    (:invalid :malformed)
+    (t (fnn-fault "owner prepare returned ~a" prepared))))
+
+(defmacro fnn-owner-attempt-handlers (store &body body)
+  "Classify one Store attempt's conditions into its outcome word.
+
+A pre-publication write failure whose reservation ACL2 consumed is the
+:storage-failed refusal; another typed Store refusal is :refused.  An
+indeterminate commit is :uncertain.  An OS error that no Store step
+classified is never a refusal: it may lie after publication (campaign W2), so
+the store is fenced and the outcome is :uncertain, which stops the service for
+recovery."
+  `(handler-case (progn ,@body)
+     (fnn-store-indeterminate () :uncertain)
+     (fnn-store-fault (e)
+       (setf (fnn-store-fenced ,store) t)
+       (error e))
+     (fnn-store-io-refusal () :storage-failed)
+     (fnn-store-error () :refused)
+     (fnn-os-error (e)
+       (setf (fnn-store-fenced ,store) t)
+       (fnn-err "unclassified OS error in a Store attempt; outcome uncertain: ~a" e)
+       :uncertain)))
 
 (defun fnn-owner-attempt (service msgid payload groups evidence)
   "One Store attempt under the owner callbacks; return its observed word."
   (let ((store (fnn-owner-service-store service)))
-    (handler-case
+    (fnn-owner-attempt-handlers store
         (let ((codes (fnn-owner-core
                       'fn-owner-group-codes
                       (mapcar #'fnn-octet-list groups)))
@@ -710,13 +756,15 @@ the current connection."
                                   (fnn-octet-list msgid)
                                   (fnn-octet-list payload) codes)
             (:duplicate (return-from fnn-owner-attempt :duplicate))
-            (:conflict (return-from fnn-owner-attempt :refused)))
+            (:conflict (return-from fnn-owner-attempt :conflict)))
           (when (>= (fnn-owner-service-records service)
                     (fnn-config-max-transactions store))
-            (return-from fnn-owner-attempt :refused))
-          (fnn-owner-preflight-publication service :article)
+            (return-from fnn-owner-attempt :unaffordable))
+          (unless (eq (fnn-owner-publication-verdict service :article)
+                      :admissible)
+            (return-from fnn-owner-attempt :unaffordable))
           (let ((*fnn-observe-callback* #'fnn-owner-observe)
-                (*fnn-finish-callback* #'fnn-owner-finish))
+                (*fnn-finish-callback* #'fnn-owner-finish-submission))
             (fnn-advance-frontier store
                                   (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
             (multiple-value-bind (obligation subject ignored)
@@ -735,13 +783,8 @@ the current connection."
                     (fnn-indeterminate "owner could not consume refused reservation"))
                   (setf (fnn-store-fenced store) nil)
                   (return-from fnn-owner-attempt
-                    (if (eq prepared :clock-unusable) :clock-unusable :refused)))))
-            (fnn-owner-publish-prepared service "article")))
-      (fnn-store-indeterminate () :uncertain)
-      (fnn-store-fault (e)
-        (setf (fnn-store-fenced store) t)
-        (error e))
-      ((or fnn-store-error fnn-os-error) () :refused))))
+                    (fnn-owner-prepare-refusal-word prepared)))))
+            (fnn-owner-publish-prepared service "article"))))))
 
 (defun fnn-owner-attempt-transit (service msgid payload groups evidence)
   "One ingress decision for both NNTP and BP transit under the caller's
@@ -755,7 +798,7 @@ event. A carrier-absent article keeps the established legacy Store path."
        (fnn-owner-attempt service msgid payload groups evidence))
       ((not (and (consp form) (eq (first form) :ok))) :refused)
       (t
-       (handler-case
+       (fnn-owner-attempt-handlers (fnn-owner-service-store service)
            (let* ((store (fnn-owner-service-store service))
                   (codes (fnn-owner-core
                           'fn-owner-group-codes
@@ -769,7 +812,7 @@ event. A carrier-absent article keeps the established legacy Store path."
                                      (fnn-octet-list msgid)
                                      (fnn-octet-list payload) codes)
                (:duplicate (return-from fnn-owner-attempt-transit :duplicate))
-               (:conflict (return-from fnn-owner-attempt-transit :refused)))
+               (:conflict (return-from fnn-owner-attempt-transit :conflict)))
              (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
                                          (fnn-octet-list payload))))
                (unless (and (consp plan) (eq (first plan) :ok))
@@ -811,12 +854,7 @@ event. A carrier-absent article keeps the established legacy Store path."
                            (first observations) (first ml-observation))))
                    (unless event
                      (return-from fnn-owner-attempt-transit :refused))
-                   (fnn-owner-identity-commit service event))))))
-         (fnn-store-indeterminate () :uncertain)
-         (fnn-store-fault (e)
-           (setf (fnn-store-fenced (fnn-owner-service-store service)) t)
-           (error e))
-         ((or fnn-store-error fnn-os-error) () :refused))))))
+                   (fnn-owner-identity-commit service event)))))))))))
 
 (defun fnn-owner-retention-commit (service event)
   "Publish one ACL2-authored retention event through the normal Store path."
@@ -1124,7 +1162,8 @@ owner's recovery fence."
                 (fnn-store-indeterminate () :uncertain)
                 (fnn-store-fault (condition) (error condition))
                 (fnn-store-error () :refused))))
-    (unless (member word '(:durable :duplicate :refused :clock-unusable :uncertain))
+    (unless (member word '(:durable :duplicate :conflict :malformed :unaffordable
+                           :storage-failed :refused :clock-unusable :uncertain))
       (fnn-fault "owner bound commit returned ~a" word))
     word))
 
@@ -1344,8 +1383,14 @@ refused, not injected under a stale time (D10-a)."
                 :clock-unusable))
          (when armed (fnn-owner-control-disarm-fault store armed)))))))
 
-(defun fnn-owner-handle-chunk (service cid incoming)
-  "Run one owner read and its serial writer drain under the service mutex."
+(defun fnn-owner-handle-chunk (service cid incoming &optional socket)
+  "Run one owner read and its serial writer drain under the service mutex.
+
+SOCKET is this connection's own socket.  When the drained outcome is
+uncertain the service stops here, under the mutex, but SOCKET is spared so
+the caller can deliver the ACL2-rendered uncertain reply before closing it
+(campaign W1, 2026-09-24: the stop shut this socket first, the reply met
+EPIPE and the client saw a bare close)."
   (fnn-owner-serialized
    service cid
    (lambda ()
@@ -1374,7 +1419,7 @@ refused, not injected under a stale time (D10-a)."
            (setq reply (concatenate 'fnn-octets reply completion)
                  uncertain stop)))
        (when uncertain
-         (fnn-owner-stop-service-locked service +fnn-exit-uncertain+))
+         (fnn-owner-stop-service-locked service +fnn-exit-uncertain+ socket))
        (values reply (or closing uncertain) starttls consumed)))))
 
 (defun fnn-owner-receive (service fd channel seconds)
@@ -1468,7 +1513,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                    (cond ((eq incoming :timeout) nil)
                          ((zerop (length incoming)) (return))
                          (t (multiple-value-bind (reply closing starttls consumed)
-                                (fnn-owner-handle-chunk service cid incoming)
+                                (fnn-owner-handle-chunk service cid incoming socket)
                               (cond
                                 (channel
                                  ;; Once protected, no transport suffix may be

@@ -1210,7 +1210,8 @@
         "PRF-003",
         "PRF-015",
         "PRF-033",
-        "PRF-056"
+        "PRF-056",
+        "PRF-070"
       ],
       "verification": [
         "proof",
@@ -1219,7 +1220,7 @@
       "evidence": [
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5. 2026-09-22 (T13-conform): an operator's retry of the same octets after a lost outcome resubmits the stored injection, so the store answers duplicate rather than a conflict (fn-own-operator-retry-resubmits-the-stored-injection, PRF-056); the Store comparison now runs in books/store-node.lisp fn-sn-existing-action, with exact outcome theorems and reachable teeth; the owner-to-Store retry composition is not yet a theorem."
+      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5. 2026-09-22 (T13-conform): an operator's retry of the same octets after a lost outcome resubmits the stored injection, so the store answers duplicate rather than a conflict (fn-own-operator-retry-resubmits-the-stored-injection, PRF-056); the Store comparison now runs in books/store-node.lisp fn-sn-existing-action, with exact outcome theorems and reachable teeth; the owner-to-Store retry composition is not yet a theorem. 2026-09-24 (p2-wire): the wire half of P2 -- an uncertain outcome reaches the poster as `441 ... do not repost' before the recovery stop (W1), a consumed completion is never answered as a refusal (fn-own-consumed-completion-is-240-or-uncertain, W2), and each Store refusal kind has its own 441 line (fn-post-outcome-store-refusal-kinds-are-distinct, W3) -- is PRF-070; the article completion word is fn-own-finish's (host/owner-host.lisp fn-owner-finish-submission)."
     },
     {
       "id": "NNT-006",

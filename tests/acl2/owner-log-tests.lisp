@@ -59,11 +59,23 @@
  (equal (fn-olog-line-word (fn-olog-served-post-line *olt-served-unconsumed* 0 :durable))
         (olt-text "uncertain")))
 (assert-event
- (equal (fn-olog-line-word (fn-olog-served-post-line *olt-served* 0 :refused))
+ (equal (fn-olog-line-word (fn-olog-served-post-line *olt-served-unconsumed* 0 :refused))
         (olt-text "refused")))
 (assert-event
- (equal (fn-olog-line-word (fn-olog-served-post-line *olt-served* 0 :duplicate))
+ (equal (fn-olog-line-word (fn-olog-served-post-line *olt-served-unconsumed* 0 :duplicate))
         (olt-text "refused")))
+(assert-event
+ (equal (fn-olog-line-word (fn-olog-served-post-line *olt-served-unconsumed* 0 :conflict))
+        (olt-text "refused")))
+; After a consumed completion no refusal word is a refusal: the reply is the
+; uncertain line (fn-own-consumed-completion-is-240-or-uncertain), and so is
+; the log (campaign W2, 2026-09-24).
+(assert-event
+ (equal (fn-olog-line-word (fn-olog-served-post-line *olt-served* 0 :refused))
+        (olt-text "uncertain")))
+(assert-event
+ (equal (fn-olog-line-word (fn-olog-served-post-line *olt-served* 0 :duplicate))
+        (olt-text "uncertain")))
 (assert-event
  (equal (fn-olog-line-word (fn-olog-served-post-line *olt-served* 0 :garbage))
         (olt-text "uncertain")))
@@ -92,31 +104,35 @@
   (fn-own-control-decision *olt-config* (olt-text "<ctl@example.invalid>")
                            (list (olt-text "fn.letters")) *olt-source*))
 (defconst *olt-control* (olt-owner :control '(committed) *olt-control-decision*))
+(defconst *olt-control-unconsumed* (olt-owner :control nil *olt-control-decision*))
 (defconst *olt-control-line* (fn-olog-control-post-line *olt-control* :durable))
 (assert-event
  (equal *olt-control-line*
         (olt-text "accepted post path=control message-id=<ctl@example.invalid> time=2026-09-18T00:00:00Z")))
 (assert-event
- (equal (fn-olog-line-word (fn-olog-control-post-line *olt-control* :duplicate))
+ (equal (fn-olog-line-word (fn-olog-control-post-line *olt-control-unconsumed* :duplicate))
         (olt-text "duplicate")))
 (assert-event
- (equal (fn-olog-line-word (fn-olog-control-post-line *olt-control* :refused))
+ (equal (fn-olog-line-word (fn-olog-control-post-line *olt-control-unconsumed* :refused))
         (olt-text "refused")))
 (assert-event
- (equal (fn-own-control-outcome-result *olt-control* :duplicate) :duplicate))
+ (equal (fn-own-control-outcome-result *olt-control-unconsumed* :duplicate) :duplicate))
+; A duplicate reported after a consumed completion is not a duplicate.
+(assert-event
+ (equal (fn-own-control-outcome-result *olt-control* :duplicate) :uncertain))
 ; The control reply's word and the line's are the same word, not the host's:
 ; the host's :duplicate stays distinct for the control client, while the
 ; served line above reports it as the refusal the NNTP client was sent.
 (must-fail
  (defthm olt-control-line-is-the-served-class
-   (equal (fn-olog-line-word (fn-olog-control-post-line *olt-control* :duplicate))
-          (fn-olog-class-word (fn-olog-served-class *olt-control* :duplicate)))
+   (equal (fn-olog-line-word (fn-olog-control-post-line *olt-control-unconsumed* :duplicate))
+          (fn-olog-class-word (fn-olog-served-class *olt-control-unconsumed* :duplicate)))
    :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text)
                                    (fn-own-control-outcome-result fn-olog-field
                                     fn-olog-decimal fn-olog-time))))))
 (assert-event
- (not (equal (fn-olog-line-word (fn-olog-control-post-line *olt-control* :duplicate))
-             (fn-olog-class-word (fn-olog-served-class *olt-control* :duplicate)))))
+ (not (equal (fn-olog-line-word (fn-olog-control-post-line *olt-control-unconsumed* :duplicate))
+             (fn-olog-class-word (fn-olog-served-class *olt-control-unconsumed* :duplicate)))))
 
 ; -----------------------------------------------------------------------------
 ; The connection lines
