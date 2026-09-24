@@ -7,16 +7,11 @@
 (defun fn-col-poll-list-reference (o consumer)
   (let* ((store (fn-own-store o))
          (s (fn-sn-consumer store))
-         (entry (and s (fn-cp-find consumer (fn-cp-nth 5 s)))))
-    (if (or (not entry)
-            (not (equal (fn-cp-nth 2 entry) *fn-col-principal*))
-            (not (equal (fn-cp-nth 4 entry) *fn-col-query-version*))
-            (not (equal (fn-cp-nth 5 entry) *fn-col-view-version*))
-            (not (fn-cp-idp (fn-cp-nth 3 entry)))
-            (not (natp (fn-cp-nth 7 entry)))
-            (not (natp (fn-cp-nth 3 s))))
-        (list :refused :scope)
-      (let* ((position (fn-cp-nth 7 entry))
+         (scoped (fn-col-scope-entry s consumer)))
+    (if (not (eq (car scoped) :scope))
+        scoped
+      (let* ((entry (fn-cp-nth 1 scoped))
+             (position (fn-cp-nth 7 entry))
              (frontier (fn-cp-nth 3 s))
              (scan (fn-col-poll-scan
                     (fn-col-poll-list-window
@@ -49,9 +44,10 @@
                             (events (fn-sf-records
                                      (fn-sn-files (fn-own-store o))))
                             (position (fn-cp-nth 7
-                                       (fn-cp-find consumer
-                                        (fn-cp-nth 5
-                                         (fn-sn-consumer (fn-own-store o))))))
+                                       (fn-cp-nth 1
+                                        (fn-col-scope-entry
+                                         (fn-sn-consumer (fn-own-store o))
+                                         consumer))))
                             (frontier (fn-cp-nth 3
                                        (fn-sn-consumer (fn-own-store o))))
                             (budget *fn-col-poll-max-scan*)))
