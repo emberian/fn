@@ -73,6 +73,7 @@ class FakeNode(threading.Thread):
         # Optional literal HDR :fn-verified values used by reader-client tests.
         self.verdicts = {}
         self.numbers = {name: {} for name in groups}
+        self.summary_overrides = {}
         self.host = host
         family = socket.AF_INET6 if ":" in host else socket.AF_INET
         self.listener = socket.socket(family)
@@ -112,6 +113,8 @@ class FakeNode(threading.Thread):
         table = self.numbers.get(group)
         if table is None:
             return None
+        if group in self.summary_overrides:
+            return self.summary_overrides[group]
         if not table:
             return (0, 1, 0)
         return (len(table), min(table), max(table))

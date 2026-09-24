@@ -480,6 +480,7 @@ class Handler(BaseHTTPRequestHandler):
                 start = result.data["window_start"]
                 end = result.data["window_end"]
                 low, high = result.data["low"], result.data["high"]
+                has_group_numbers = high >= low
                 by_id = {row["message_id"]: row for row in rows if row["message_id"]}
                 cards = "".join("<article class='thread' style='margin-left:" +
                                 str(depth_of(row, by_id) * 18) + "px'><h2><a href='" +
@@ -491,10 +492,11 @@ class Handler(BaseHTTPRequestHandler):
                                 for row in rows)
                 older = ("<a rel='prev' href='" + e(href("/g", name=group,
                           start=max(low, start - MAX_RECENT), end=start - 1)) +
-                         "'>Older</a>" if start > low else "")
+                         "'>Older</a>" if has_group_numbers and start > low else "")
                 newer = ("<a rel='next' href='" + e(href("/g", name=group,
                           start=end + 1, end=min(MAX_ARTICLE_NUMBER, end + MAX_RECENT))) +
-                         "'>Newer</a>" if end < high and end < MAX_ARTICLE_NUMBER else "")
+                         "'>Newer</a>" if has_group_numbers and end < high and
+                         end < MAX_ARTICLE_NUMBER else "")
                 page_window = ("Local article numbers %s–%s" % (start, end)
                                if end >= start else "No local article numbers")
                 frontier = (" · group currently spans %s–%s" % (low, high)

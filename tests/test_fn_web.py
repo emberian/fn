@@ -135,13 +135,28 @@ class WebClientTests(unittest.TestCase):
 
     def test_empty_group_has_no_window_or_overview_request(self):
         self.node.numbers["fn.empty"] = {}
+        # A native group may retain a high local-number watermark after its
+        # articles are gone; GROUP then reports 0, watermark, watermark - 1.
+        self.node.summary_overrides["fn.empty"] = (0, 100, 99)
         status, _, page = self.request("GET", "/g?name=fn.empty")
         self.assertEqual(status, 200)
         self.assertIn("No local article numbers", page)
         self.assertIn("No articles in this number window", page)
+        self.assertIn("group currently has no articles", page)
         self.assertNotIn("rel='prev'", page)
         self.assertNotIn("rel='next'", page)
         self.assertNotIn("OVER", self.node.seen)
+        self.assertIn("GROUP fn.empty", self.node.seen)
+
+        # An explicit requested window remains explicit, while the empty
+        # group has no older/newer frontier to navigate.
+        status, _, explicit = self.request(
+            "GET", "/g?name=fn.empty&start=5&end=10")
+        self.assertEqual(status, 200)
+        self.assertIn("Local article numbers 5–10", explicit)
+        self.assertNotIn("rel='prev'", explicit)
+        self.assertNotIn("rel='next'", explicit)
+        self.assertIn("OVER 5-10", self.node.seen)
 
     def test_sparse_and_empty_windows_keep_the_requested_slots_navigable(self):
         for number in range(1, 101):
