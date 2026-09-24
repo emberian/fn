@@ -957,3 +957,99 @@
     (equal (fn-native-admin-plan argv)
            (fn-native-admin-result :accepted nil :create-group
                                    (caddr argv) 0 nil nil)))))
+
+; -----------------------------------------------------------------------------
+; `peer list' renders the D23 rows (post-d25-tests lane).  Teeth for
+; `fn-native-admin-peer-extra-decode-lists-exactly-the-rows'.
+;
+; An NNTP peer written with `carries HEX HEX': the line is the base line and
+; one `carries-principal=' word per row, in row order.
+(defconst *fn-na-hex-a*
+  "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a")
+(defconst *fn-na-hex-b*
+  "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b")
+(defconst *fn-na-peer-carries*
+  (fn-native-admin-plan
+   (fn-na-test-argv
+    (list "peer" "add" "principal-peer" "principal.example"
+          "192.0.2.45" "1119" "fn.*" "-" "principal"
+          *fn-na-principal-hex* "false" "implicit" "news.example"
+          "/etc/fn/peer-ca.pem" "carries" *fn-na-hex-a* *fn-na-hex-b*))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-peer-carries*)
+                     :accepted))
+(defconst *fn-na-peer-carries-rows* (fn-na-test-plan-rows *fn-na-peer-carries*))
+(assert-event
+ (equal (fn-native-admin-peer-report *fn-na-peer-carries-rows*)
+        (append (fn-record-string-octets
+                 (string-append
+                  (string-append
+                   "principal-peer path-identity=principal.example address=192.0.2.45 port=1119 security=implicit inbound=fn.* outbound=- auth=principal:"
+                   *fn-na-principal-hex*)
+                  (string-append
+                   (string-append " carries-principal=" *fn-na-hex-a*)
+                   (string-append " carries-principal=" *fn-na-hex-b*))))
+                (list 10))))
+; The keystone's hypothesis holds on the reachable record, and the decoder
+; returns both principals and nothing under the BP tags.
+(assert-event (fn-native-admin-peer-extra-cleanp *fn-na-peer-carries-rows*))
+(assert-event
+ (equal (fn-native-admin-peer-extra-decode
+         (append (fn-native-admin-peer-extra-octets *fn-na-peer-carries-rows*)
+                 (list 10)))
+        (list (list (fn-record-string-octets *fn-na-hex-a*)
+                    (fn-record-string-octets *fn-na-hex-b*))
+              nil nil (list 10))))
+
+; A BP boundary with two carried sources and one release issuer: the two
+; lists are separate words, not one list, and each is exactly its rows.
+(defconst *fn-na-bp-list*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("bp-boundary" "add" "relay"
+                       "relay.example.invalid" "dtn://relay/" "4557"
+                       "carries" "dtn://sender/" "ipn:9.1"
+                       "releases-for" "dtn://receiver/"))))
+(defconst *fn-na-bp-list-rows* (fn-na-test-plan-rows *fn-na-bp-list*))
+(assert-event (equal (fn-native-admin-result-status *fn-na-bp-list*) :accepted))
+(assert-event
+ (equal (fn-native-admin-peer-report *fn-na-bp-list-rows*)
+        (append (fn-record-string-octets
+                 "relay path-identity=relay.example.invalid address=dtn://relay/ port=0 security=- inbound=- outbound=- auth=principal:bp-only-no-nntp-principal carries=dtn://sender/ carries=ipn:9.1 releases-for=dtn://receiver/")
+                (list 10))))
+(assert-event (fn-native-admin-peer-extra-cleanp *fn-na-bp-list-rows*))
+(assert-event
+ (equal (fn-native-admin-peer-extra-decode
+         (append (fn-native-admin-peer-extra-octets *fn-na-bp-list-rows*)
+                 (list 10)))
+        (list nil
+              (list (fn-record-string-octets "dtn://sender/")
+                    (fn-record-string-octets "ipn:9.1"))
+              (list (fn-record-string-octets "dtn://receiver/"))
+              (list 10))))
+; Separation: a carried source is not a release issuer.  The boundary with
+; only `releases-for' lists no carried source.
+(assert-event
+ (equal (fn-native-admin-peer-extra-decode
+         (append (fn-native-admin-peer-extra-octets
+                  (fn-na-test-plan-rows *fn-na-bp-releases-only*))
+                 (list 10)))
+        (list nil nil (list (fn-record-string-octets "ipn:9.1")) (list 10))))
+; A record without D23 rows renders no extra word (the earlier exact lines).
+(assert-event (equal (fn-native-admin-peer-extra-octets *fn-na-peer-rows*) nil))
+
+; The one hypothesis, `fn-native-admin-peer-extra-cleanp'.  The label codec
+; admits a space; `bp-boundary add' does not refuse a quoted EID holding one.
+; Such a row renders as two words and the list no longer reads back as the
+; rows: the conclusion fails without the hypothesis.
+(defconst *fn-na-dirty-rows*
+  (list (fn-cfg-row-make "relay" "bp-boundary-carries" "dtn://a b/" 0)))
+(assert-event (not (fn-native-admin-peer-extra-cleanp *fn-na-dirty-rows*)))
+(must-fail
+ (assert-event
+  (equal (fn-native-admin-peer-extra-decode
+          (append (fn-native-admin-peer-extra-octets *fn-na-dirty-rows*)
+                  (list 10)))
+         (list nil
+               (fn-native-admin-peer-label-octets-list
+                (fn-native-admin-peer-slot-values *fn-na-dirty-rows*
+                                                  "bp-boundary-carries"))
+               nil (list 10)))))
