@@ -21,6 +21,7 @@ import base64
 import json
 import os
 from pathlib import Path
+import re
 import socket
 import subprocess
 import sys
@@ -240,6 +241,118 @@ class FakeNodeVerifyTests(unittest.TestCase):
     def test_noncanonical_carrier_is_refused(self):
         with self.assertRaises(ValueError):
             fn_verify.decode_carrier(b"\x18\x01" + bytes(10))
+
+
+# ---------------------------------------------------------------- spec tie
+
+SPEC = ROOT / "specs" / "identity.md"
+SECTION = "## The signed bytes"
+# The book constants whose values the spec section, the verifier and the
+# books must agree on, with the verifier's restatement of each.
+WIDTHS = {
+    "*fn-hsig-ed25519-public-key-octets*": fn_verify.ED_PK,
+    "*fn-hsig-ed25519-signature-octets*": fn_verify.ED_SIG,
+    "*fn-hsig-ml-dsa-65-public-key-octets*": fn_verify.ML_PK,
+    "*fn-hsig-ml-dsa-65-signature-octets*": fn_verify.ML_SIG,
+    "*fn-article-max-octets*": fn_verify.ARTICLE_MAX,
+    "*fn-hc-max-field-octets*": fn_verify.CARRIER_FIELD_MAX,
+    "*fn-hc-max-binary-octets*": fn_verify.CARRIER_BINARY_MAX,
+}
+DROPPED = ("*fn-hc-name*", "*fn-hc-path-name*", "*fn-hc-xref-name*",
+           "*fn-hc-injection-date-name*", "*fn-hc-injection-info-name*")
+
+
+def spec_section(text):
+    start = text.index(SECTION)
+    end = text.find("\n## ", start + len(SECTION))
+    return text[start:] if end < 0 else text[start:end]
+
+
+def book_forms():
+    """Every name a book defines, and each defconst's value text."""
+    names, consts = set(), {}
+    form = re.compile(r"^\((defun|defund|defthm|defconst|defmacro)\s+(\S+)\s*(.*)$")
+    for path in sorted((ROOT / "books").glob("*.lisp")):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines):
+            m = form.match(line)
+            if not m:
+                continue
+            names.add(m.group(2))
+            if m.group(1) == "defconst":
+                consts[m.group(2)] = " ".join([m.group(3)] + lines[i + 1:i + 3])
+    return names, consts
+
+
+def const_value(consts, name):
+    text = consts[name].split(";")[0]
+    if text.lstrip().startswith("'("):
+        body = text[text.index("(") + 1:text.index(")")]
+        return bytes(int(n) for n in body.split())
+    return int(re.match(r"\s*(\d+)", text).group(1))
+
+
+def spec_book_problems(section, names, consts):
+    """What the section says that the books or the verifier do not."""
+    problems = []
+    cited = set(re.findall(r"`(\*?fn-[a-z0-9-]+\*?)`", section))
+    cited.discard(fn_verify.DOMAIN_TAG.decode("ascii"))  # a string, not a name
+    for name in sorted(cited - names):
+        problems.append("the spec cites `{}`, which no book defines".format(name))
+    tag = const_value(consts, "*fn-hsig-domain-tag*")
+    if tag != fn_verify.DOMAIN_TAG:
+        problems.append("the book's domain tag is not the verifier's")
+    if tag.decode("ascii") not in section:
+        problems.append("the spec does not state the domain tag")
+    for name, restated in WIDTHS.items():
+        value = const_value(consts, name)
+        if value != restated:
+            problems.append("{} is {} in the book, {} in the verifier".format(
+                name, value, restated))
+        if not re.search(r"(?<![\d-]){}(?!\d)".format(value), section):
+            problems.append("the spec does not state {} ({})".format(name, value))
+    dropped = {const_value(consts, name) for name in DROPPED}
+    if dropped != fn_verify.RELAY_FIELDS:
+        problems.append("the book drops {}, the verifier {}".format(
+            sorted(dropped), sorted(fn_verify.RELAY_FIELDS)))
+    step = re.search(r"(?ms)^3\. Every physical line.*?(?=^\d\. )", section)
+    stated = {m.lower().encode() for m in
+              re.findall(r"`([A-Z][A-Za-z-]*)`", step.group(0))} if step else set()
+    if stated != dropped:
+        problems.append("the spec drops {}, the book {}".format(
+            sorted(stated), sorted(dropped)))
+    return problems
+
+
+class SpecBookTieTests(unittest.TestCase):
+    """specs/identity.md "The signed bytes" against the books and the verifier.
+
+    Needs no ACL2 and no crypto library; `make check` runs it.  It checks
+    names, tag bytes, widths and the dropped fields, not the layouts."""
+
+    def setUp(self):
+        self.section = spec_section(SPEC.read_text(encoding="utf-8"))
+        self.names, self.consts = book_forms()
+
+    def test_the_spec_the_books_and_the_verifier_agree(self):
+        self.assertEqual(spec_book_problems(self.section, self.names, self.consts), [])
+
+    def test_a_renamed_function_is_caught(self):
+        drifted = self.section.replace("`fn-hc-authored-source`",
+                                       "`fn-hc-authored-source-v0`")
+        self.assertIn("the spec cites `fn-hc-authored-source-v0`, which no book defines",
+                      spec_book_problems(drifted, self.names, self.consts))
+
+    def test_a_changed_width_is_caught(self):
+        consts = dict(self.consts)
+        consts["*fn-hsig-ml-dsa-65-signature-octets*"] = "3293)"
+        problems = spec_book_problems(self.section, self.names, consts)
+        self.assertTrue(any("3293 in the book" in p for p in problems), problems)
+
+    def test_a_field_the_spec_forgets_to_drop_is_caught(self):
+        drifted = self.section.replace("`Xref`,", "")
+        self.assertIn("xref", " ".join(
+            spec_book_problems(drifted, self.names, self.consts)))
 
 
 # ---------------------------------------------------------------- native
