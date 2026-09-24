@@ -35,8 +35,21 @@ def main():
         # ACL2-owned neutral Store events; the helper never constructs a
         # cursor or decides which journal positions they consume.
         for i in range(144):
-            case.register(node, f"temporary-{i:03d}",
-                          node["base"] / f"temp-{i}.fncu")
+            name = f"temporary-{i:03d}"
+            target = node["base"] / f"temp-{i}.fncu"
+            outcome = case.native("consumer", "register", node["control"],
+                                  name, "fn.test", target)
+            if outcome.returncode != 0:
+                raise AssertionError({
+                    "register_index": i,
+                    "returncode": outcome.returncode,
+                    "stdout": outcome.stdout.decode("utf-8", "replace"),
+                    "stderr": outcome.stderr.decode("utf-8", "replace"),
+                    "low_status": case.status(node, "low"),
+                    "high_status": case.status(node, "high"),
+                })
+            if not target.read_bytes().startswith(b"fncu\x01"):
+                raise AssertionError((i, "missing ACL2 cursor"))
 
         for i in range(8):
             cursor = node["base"] / f"advance-{i}.fncu"
