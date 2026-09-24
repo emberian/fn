@@ -11,13 +11,9 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 616 |
-| Certification roots in the Makefile | 608 |
+| Certification roots in the Makefile | 606 |
 | Books inside the root closure | 614 |
-<<<<<<< HEAD
-| `defthm` and `defthmd` events | 8558 |
-=======
-| `defthm` and `defthmd` events | 8559 |
->>>>>>> 4fbedad8 (Repair native byte observation bridge for Store v6)
+| `defthm` and `defthmd` events | 8561 |
 | `defun` events | 6339 |
 | Functions with verified guards | 2034 |
 | Functions declared `:verify-guards nil` and never verified | 374 |
@@ -203,7 +199,7 @@ that `make certify` requests.
 | `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bp-workflow.lisp` | root | 0 | 111 | 0/0/111/0 | 0 | 0 | 0 |
 | `books/byte-store-compaction-correspondence.lisp` | root | 31 | 11 | 4/7/0/0 | 0 | 0 | 1 |
-| `books/byte-store-fault-keystones.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/byte-store-fault-keystones.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-frame.lisp` | root | 11 | 16 | 1/0/13/2 | 0 | 0 | 0 |
 | `books/byte-store-initializer.lisp` | root | 8 | 10 | 0/8/0/2 | 0 | 0 | 0 |
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
