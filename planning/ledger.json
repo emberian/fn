@@ -663,11 +663,11 @@
     "books": 667,
     "books_in_root_closure": 665,
     "roots": 656,
-    "theorems": 8878,
+    "theorems": 8883,
     "functions": 6569,
     "assert_events": 9678,
     "must_fails": 570,
-    "encapsulates": 27,
+    "encapsulates": 28,
     "guards": {
       "verified": 2036,
       "declared-off": 402,
@@ -1586,7 +1586,7 @@
       "book": "books/bp-fnbs-codec-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 19,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -1599,7 +1599,7 @@
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
         "bp-bundle-invariants",
         "bp-fnbs-codec",
@@ -2637,7 +2637,7 @@
       "book": "books/bp-node-fragment-plan.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
+      "theorems": 3,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -10053,7 +10053,7 @@
       "book": "books/tcpcl-session.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 98,
+      "theorems": 99,
       "functions": 57,
       "guards": {
         "verified": 9,
@@ -19022,7 +19022,7 @@
     {
       "theorem": "fn-record-impl-encode-domain",
       "book": "books/records-canonicality.lisp",
-      "line": 828,
+      "line": 831,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value"
       ]
@@ -19030,7 +19030,7 @@
     {
       "theorem": "fn-record-result-okp-is-parse-okp",
       "book": "books/records-canonicality.lisp",
-      "line": 663,
+      "line": 666,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
