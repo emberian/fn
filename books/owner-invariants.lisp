@@ -413,6 +413,14 @@
                (fn-sn-groups s))
         (equal (fn-sn-capacity (fn-sn-with-consumer s consumer))
                (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-with-topic s topic))
+               (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-with-topic s topic))
+               (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-with-event-index s event-index))
+               (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-with-event-index s event-index))
+               (fn-sn-capacity s))
         (equal (fn-sn-groups (fn-sn-advance-identity-next s)) (fn-sn-groups s))
         (equal (fn-sn-capacity (fn-sn-advance-identity-next s)) (fn-sn-capacity s))
         (equal (fn-sn-groups (fn-sn-finish-identity s files record node))
@@ -422,14 +430,16 @@
    :hints (("Goal" :in-theory
             (union-theories '(fn-sn-update fn-sn-update-indexed
                               fn-sn-update-accepted fn-sn-update-replayed
-                              fn-sn-with-consumer
+                              fn-sn-with-consumer fn-sn-with-topic
+                              fn-sn-with-event-index
                               fn-sn-advance-identity-next fn-sn-finish-identity
                               fn-sn-groups-of-fn-sn-make-v2
                               fn-sn-capacity-of-fn-sn-make-v2
                               fn-sn-groups-of-fn-sn-make-v3
                               fn-sn-capacity-of-fn-sn-make-v3
                               fn-sn-groups-of-fn-sn-make-v4
-                              fn-sn-capacity-of-fn-sn-make-v4)
+                              fn-sn-capacity-of-fn-sn-make-v4
+                              fn-sn-fields-of-fn-sn-make-v6)
                             (theory 'minimal-theory))))))
 
 (local
@@ -455,11 +465,16 @@
         (equal (fn-sn-groups (fn-sn-prepare-consumer s event))
                (fn-sn-groups s))
         (equal (fn-sn-capacity (fn-sn-prepare-consumer s event))
+               (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-prepare-topic s event))
+               (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-prepare-topic s event))
                (fn-sn-capacity s)))
    :hints (("Goal" :in-theory
             (union-theories '(fn-sn-prepare fn-sn-io fn-sn-finish fn-sn-crash
                               fn-sn-recover fn-sn-prepare-retention
                               fn-sn-prepare-identity fn-sn-prepare-consumer
+                              fn-sn-prepare-topic
                               fn-own-sn-constructors-keep-configuration)
                             (theory 'minimal-theory))))))
 
