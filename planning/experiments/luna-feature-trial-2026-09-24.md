@@ -193,8 +193,8 @@ are not a bill or quota reading: service tier and actual per-request context
 sizes are not fully available in the session records. The review/coordination
 cost dominates this pilot's proxy despite quick Luna source packets, so this
 trial does not yet demonstrate a lower cost per accepted fn feature. The
-  status proof/guard loop was the largest measured Luna lane; moving proof work
-  to Sol in future fn trials is the user's adopted direction.
+status proof/guard loop was the largest measured Luna lane; moving proof work
+to Sol in future fn trials is the user's adopted direction.
 
 Root landed the status source and Sol repair on `dev` at `e160442f` and ran
 `make check` successfully. The reviewer initially submitted a 12-job
@@ -205,9 +205,25 @@ coordination cost. The corrected four-job hbox run
 `run-20260924T031246Z-1771` on frozen `e160442f` passed with manifest
 `certify-20260924T031327Z-785374.json`: 343 default, DTN and ACL2-test
 roots, 594 of 597 exact-source/toolchain books loaded from cache and three
-newly certified. The native qualifier is building one image pair from that
-gate; image behavior is still pending.
+newly certified. The native qualifier built one image pair from that
+gate. The [selected native record](../evidence/native-luna-e160-selected-2026-09-24.md)
+pins the production/developer launchers and cores, toolchain, fixture and log
+hashes, and exact limits. All six selected cases passed on the frozen image:
+four cursor-inspection cases, two durable consumer E2 cases that include
+status, web paging and escaping through two real articles, project bounds,
+indexed OVER/XOVER, and the D1b deletion-report cut. The D1b case needed
+test-only `7c1215d6` to close the live sender before querying its Store;
+the successful rerun used that test at an explicit path against the unchanged
+image. Its first failure was a Store-lock test-order defect, not a Luna
+feature failure. No live node was changed.
 
-Source commits, repairs, test commands, manifests, image revision and final
-per-feature disposition will be appended as the packets finish. Reviewer
-implementation changes, if any, will be labeled separately.
+| Feature | Final observed disposition |
+| --- | --- |
+| Web number windows | Source, 15 socket/HTTP tests, and source-matched native paging/escaping case pass. The advanced-empty watermark repair and retained escaping witness are included. |
+| Offline cursor inspection | Source and source-matched native boundary/malformed cases pass using the preexisting ACL2 cursor decoder. Currentness and acceptance remain explicitly unverified by the inspection result. |
+| Local consumer status | Called ACL2 behavior, guards, ACL2 tests, raw host tests, and source-matched native E2 cases pass for committed ACK/frontier/gap and refusal. General kind-9 reply roundtrip `PRF-068` is still open, so this is not a fully proved codec feature. |
+
+This finite pilot shows Luna can ship useful bounded client and native
+surface code with review, while the broader status proof loop required Sol
+repair and dominates the measured four-thread cost proxy. It does not support
+a general claim about unreviewed model reliability or an actual bill.
