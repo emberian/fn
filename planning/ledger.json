@@ -121,6 +121,7 @@
     "books/hybrid-lifecycle",
     "tests/acl2/hybrid-lifecycle-tests",
     "books/hybrid-lifecycle-store-invariants",
+    "books/owner-verdict-read",
     "tests/acl2/hybrid-lifecycle-store-invariants-tests",
     "tests/acl2/native-hybrid-control-tests",
     "tests/acl2/native-control-tests",
@@ -577,6 +578,7 @@
     "tests/acl2/owner-tests",
     "tests/acl2/owner-served-invariants-tests",
     "tests/acl2/owner-verdict-tests",
+    "tests/acl2/owner-verdict-read-tests",
     "tests/acl2/owner-operator-tests",
     "tests/acl2/owner-agent-tests",
     "tests/acl2/owner-log-tests",
@@ -670,25 +672,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 677,
-    "books_in_root_closure": 675,
-    "roots": 666,
-    "theorems": 9095,
-    "functions": 6610,
-    "assert_events": 9869,
-    "must_fails": 609,
+    "books": 679,
+    "books_in_root_closure": 677,
+    "roots": 668,
+    "theorems": 9122,
+    "functions": 6618,
+    "assert_events": 9900,
+    "must_fails": 615,
     "encapsulates": 30,
     "guards": {
       "verified": 2036,
       "declared-off": 408,
-      "default-guarded": 3304,
-      "default-unguarded": 862
+      "default-guarded": 3306,
+      "default-unguarded": 868
     },
     "suspect_theorems": 83,
-    "export_hygiene_warnings": 108,
+    "export_hygiene_warnings": 109,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 48,
-    "include_hygiene_warnings": 648,
+    "include_hygiene_warnings": 650,
     "host_names_warnings": 816,
     "hand_written_record_warnings": 18
   },
@@ -6351,12 +6353,12 @@
       "book": "books/hybrid-lifecycle-store-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 14,
-      "functions": 1,
+      "theorems": 21,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 1,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8137,6 +8139,32 @@
       "includes": [
         "owner-config",
         "served-tls-prefix"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-verdict-read.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 20,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-auth-fold",
+        "owner"
       ],
       "system_includes": [],
       "suspects": [],
@@ -16836,6 +16864,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-verdict-read-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 31,
+      "must_fails": 6,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/hybrid-lifecycle-store-invariants",
+        "../../books/owner-verdict-read",
+        "owner-verdict-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-verdict-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19785,6 +19842,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-hls-kind4-identity-step-emits-its-verdict-event",
+        "book": "books/hybrid-lifecycle-store-invariants.lisp",
+        "line": 231,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-hsigi-ed-key-of-subject-body",
         "book": "books/hybrid-signature-invariants.lisp",
         "line": 81,
@@ -20431,9 +20494,10 @@
         "book": "books/stx-keyring-records.lisp",
         "line": 124,
         "stated_in": [
+          "books/hybrid-lifecycle-store-invariants.lisp",
           "books/store-identity-sequence-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-next",
@@ -24719,6 +24783,20 @@
         "line": 5,
         "include": "owner-verdict-tests",
         "included": "tests/acl2/owner-verdict-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-verdict-read-tests.lisp",
+        "line": 6,
+        "include": "owner-verdict-tests",
+        "included": "tests/acl2/owner-verdict-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-verdict-read-tests.lisp",
+        "line": 8,
+        "include": "../../books/hybrid-lifecycle-store-invariants",
+        "included": "books/hybrid-lifecycle-store-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
