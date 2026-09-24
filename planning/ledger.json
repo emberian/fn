@@ -123,6 +123,7 @@
     "tests/acl2/hybrid-lifecycle-tests",
     "books/hybrid-lifecycle-store-invariants",
     "books/owner-verdict-read",
+    "books/owner-list-counts-read",
     "books/owner-signed-post",
     "tests/acl2/hybrid-lifecycle-store-invariants-tests",
     "tests/acl2/native-hybrid-control-tests",
@@ -503,6 +504,8 @@
     "books/nntp-pinned-effects",
     "books/nntp-pinned-msgid",
     "tests/acl2/nntp-pinned-msgid-tests",
+    "books/nntp-list-counts",
+    "tests/acl2/nntp-list-counts-tests",
     "tests/acl2/nntp-post-tests",
     "books/path",
     "books/path-update",
@@ -720,25 +723,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 727,
-    "books_in_root_closure": 725,
-    "roots": 716,
-    "theorems": 9692,
-    "functions": 6862,
-    "assert_events": 10609,
-    "must_fails": 833,
+    "books": 730,
+    "books_in_root_closure": 728,
+    "roots": 719,
+    "theorems": 9737,
+    "functions": 6879,
+    "assert_events": 10636,
+    "must_fails": 840,
     "encapsulates": 30,
     "guards": {
-      "verified": 2049,
-      "declared-off": 446,
-      "default-guarded": 3411,
-      "default-unguarded": 956
+      "verified": 2058,
+      "declared-off": 449,
+      "default-guarded": 3413,
+      "default-unguarded": 959
     },
-    "suspect_theorems": 83,
+    "suspect_theorems": 84,
     "export_hygiene_warnings": 116,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 61,
-    "include_hygiene_warnings": 700,
+    "include_hygiene_warnings": 703,
     "host_names_warnings": 825,
     "hand_written_record_warnings": 18
   },
@@ -7453,7 +7456,7 @@
       "book": "books/nntp-auth-fold.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 50,
+      "theorems": 51,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -7534,7 +7537,7 @@
       "book": "books/nntp-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 143,
+      "theorems": 146,
       "functions": 12,
       "guards": {
         "verified": 0,
@@ -7617,7 +7620,7 @@
       "book": "books/nntp-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 101,
+      "theorems": 102,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -7659,6 +7662,33 @@
       "encapsulates": 0,
       "includes": [
         "nntp-overview"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-list-counts.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 24,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-invariants",
+        "nntp",
+        "nntp-range-indexed-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7720,7 +7750,7 @@
       "book": "books/nntp-pinned-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
+      "theorems": 12,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -7878,14 +7908,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 12,
-      "functions": 146,
+      "functions": 152,
       "guards": {
-        "verified": 146,
+        "verified": 152,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 146,
+      "verify_guards_events": 152,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 12,
@@ -8009,15 +8039,15 @@
       "book": "books/nntp.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 8,
+      "theorems": 1,
+      "functions": 11,
       "guards": {
-        "verified": 8,
+        "verified": 11,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 8,
+      "verify_guards_events": 11,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -8474,6 +8504,34 @@
       ],
       "suspects": [
         "fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-list-counts-read.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-list-counts",
+        "owner-verdict-read"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-olc-pin-trie-of-unpinned"
       ],
       "read_error": null
     },
@@ -17252,6 +17310,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/nntp-list-counts-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 27,
+      "must_fails": 7,
+      "defconsts": 12,
+      "defmacros": 4,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-list-counts-read"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-newnews-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -20556,7 +20641,7 @@
     {
       "theorem": "fn-nntp-block-scan-start-without-a-dot",
       "book": "books/nntp-effects.lisp",
-      "line": 466,
+      "line": 481,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]
@@ -20615,6 +20700,14 @@
       "line": 844,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-olc-pin-trie-of-unpinned",
+      "book": "books/owner-list-counts-read.lisp",
+      "line": 50,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-gidx-pin-trie and the conclusion is that branch's value"
       ]
     },
     {
@@ -23777,6 +23870,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/nntp-list-counts.lisp",
+        "line": 26,
+        "include": "nntp-range-indexed-invariants",
+        "included": "books/nntp-range-indexed-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/nntp-pinned-effects.lisp",
         "line": 4,
         "include": "nntp-verdict-effects",
@@ -23827,7 +23927,7 @@
       },
       {
         "book": "books/nntp-responses.lisp",
-        "line": 2179,
+        "line": 2263,
         "include": "msgid-index",
         "included": "books/msgid-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -23886,6 +23986,13 @@
         "line": 52,
         "include": "article-fields",
         "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-list-counts-read.lisp",
+        "line": 20,
+        "include": "nntp-list-counts",
+        "included": "books/nntp-list-counts.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -26392,6 +26499,13 @@
         "line": 12,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-list-counts-tests.lisp",
+        "line": 3,
+        "include": "../../books/owner-list-counts-read",
+        "included": "books/owner-list-counts-read.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
