@@ -727,9 +727,13 @@ A pre-publication write failure whose reservation ACL2 consumed is the
 indeterminate commit is :uncertain.  An OS error that no Store step
 classified is never a refusal: it may lie after publication (campaign W2), so
 the store is fenced and the outcome is :uncertain, which stops the service for
-recovery."
+recovery.  Every :uncertain names its reason once on the owner's stderr: the
+reply to the peer or poster carries no reason, and the recovery stop that
+follows is justified only by this line."
   `(handler-case (progn ,@body)
-     (fnn-store-indeterminate () :uncertain)
+     (fnn-store-indeterminate (e)
+       (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
+       :uncertain)
      (fnn-store-fault (e)
        (setf (fnn-store-fenced ,store) t)
        (error e))
