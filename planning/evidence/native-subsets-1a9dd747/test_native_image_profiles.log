@@ -1,0 +1,35 @@
+# module tests.test_native_image_profiles  start 2026-09-24T14:49:35Z  cwd /tank/fn/scratch/native-subsets-1a9dd747/tree
+# cmd: python3 -m unittest -v tests.test_native_image_profiles
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CORE_SHA256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=9b38ba45ed4ce31ca1997e3e4165873203e09d8e41fa176eb3fedbfee95741d0
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=5d42db2d8929ba256677ecb3bdfe957edc54176e0f5a1492b24376aa21ae1d9d
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+# env FN_NATIVE_LAUNCHER_SHA256=60e14e2afe8703574a9d74d89dc632a6c030a668fa261a74d92dd7589bb686d9
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-1a9dd747/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-1a9dd747/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_production_rejects_raw_services_but_keeps_operator_and_bp (tests.test_native_image_profiles.NativeImageProfileSavedImageTests.test_production_rejects_raw_services_but_keeps_operator_and_bp) ... ok
+test_restart_environment_cannot_hide_developer_entries_or_enable_production (tests.test_native_image_profiles.NativeImageProfileSavedImageTests.test_restart_environment_cannot_hide_developer_entries_or_enable_production) ... ok
+test_default_build_is_production_and_developer_output_is_distinct (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_default_build_is_production_and_developer_output_is_distinct) ... ok
+test_dtn_build_selects_serialized_profile_and_separate_output (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_dtn_build_selects_serialized_profile_and_separate_output) ... ok
+test_dtn_fault_readers_use_the_same_startup_gate (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_dtn_fault_readers_use_the_same_startup_gate) ... ok
+test_literal_build_inputs_exist (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_literal_build_inputs_exist) ... ok
+test_only_developer_image_registers_raw_owner_and_admits_raw_reader (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_only_developer_image_registers_raw_owner_and_admits_raw_reader) ... ok
+test_packaged_launcher_defaults_to_the_production_image (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_packaged_launcher_defaults_to_the_production_image) ... ok
+test_profile_is_selected_before_owner_and_operator_are_loaded (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_profile_is_selected_before_owner_and_operator_are_loaded) ... ok
+test_developer_images_keep_raw_post (tests.test_native_image_profiles.RawPostEntryWitnesses.test_developer_images_keep_raw_post) ... skipped 'build /tank/fn/scratch/native-subsets-1a9dd747/tree/build/fn-host-dtn-developer for the saved-image witness'
+test_dtn_selector_gate_is_serialized (tests.test_native_image_profiles.RawPostEntryWitnesses.test_dtn_selector_gate_is_serialized) ... skipped 'build /tank/fn/scratch/native-subsets-1a9dd747/tree/build/fn-host-dtn for the saved-image witness'
+test_production_images_refuse_raw_post_before_store_or_payload_io (tests.test_native_image_profiles.RawPostEntryWitnesses.test_production_images_refuse_raw_post_before_store_or_payload_io) ... skipped 'build /tank/fn/scratch/native-subsets-1a9dd747/tree/build/fn-host-dtn for the saved-image witness'
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.771s
+
+OK (skipped=3)
+# rc=0 wall=0.8 end 2026-09-24T14:49:36Z

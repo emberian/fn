@@ -1,0 +1,146 @@
+# module tests.test_native_owner  start 2026-09-24T14:48:33Z  cwd /tank/fn/scratch/native-subsets-1a9dd747/tree
+# cmd: python3 -m unittest -v tests.test_native_owner
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CORE_SHA256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=9b38ba45ed4ce31ca1997e3e4165873203e09d8e41fa176eb3fedbfee95741d0
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=5d42db2d8929ba256677ecb3bdfe957edc54176e0f5a1492b24376aa21ae1d9d
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+# env FN_NATIVE_LAUNCHER_SHA256=60e14e2afe8703574a9d74d89dc632a6c030a668fa261a74d92dd7589bb686d9
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-1a9dd747/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-1a9dd747/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_condition_handlers_and_cleanup_enclose_the_served_body (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_condition_handlers_and_cleanup_enclose_the_served_body) ... ok
+test_developer_selectors_gate_arm_the_owner_and_stop_synchronously (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_developer_selectors_gate_arm_the_owner_and_stop_synchronously) ... FAIL
+test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step) ... FAIL
+test_the_served_listener_passes_a_documented_accept_queue (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_served_listener_passes_a_documented_accept_queue) ... ok
+test_transit_take_uses_transfer_decision_and_store_outcome (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_transit_take_uses_transfer_decision_and_store_outcome) ... ok
+test_article_over_the_body_limit_is_refused_and_the_owner_survives (tests.test_native_owner.NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives) ... ok
+test_client_disconnect_is_not_a_global_owner_fault (tests.test_native_owner.NativeOwnerTests.test_client_disconnect_is_not_a_global_owner_fault) ... ok
+test_configured_source_address_opens_native_transit_session (tests.test_native_owner.NativeOwnerTests.test_configured_source_address_opens_native_transit_session) ... ok
+test_each_submission_and_each_connection_take_a_fresh_reading (tests.test_native_owner.NativeOwnerTests.test_each_submission_and_each_connection_take_a_fresh_reading) ... ok
+test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence (tests.test_native_owner.NativeOwnerTests.test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence) ... ok
+test_invalid_complete_feed_evidence_is_process_fault (tests.test_native_owner.NativeOwnerTests.test_invalid_complete_feed_evidence_is_process_fault) ... ok
+test_local_handler_fault_uses_core_fault_and_preserves_other_clients (tests.test_native_owner.NativeOwnerTests.test_local_handler_fault_uses_core_fault_and_preserves_other_clients) ... ok
+test_once_sigterm_closes_client_with_incomplete_post (tests.test_native_owner.NativeOwnerTests.test_once_sigterm_closes_client_with_incomplete_post) ... ok
+test_post_is_committed_and_readable_after_owner_exit (tests.test_native_owner.NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit) ... ok
+test_reset_peer_does_not_stop_concurrent_writer_or_reader (tests.test_native_owner.NativeOwnerTests.test_reset_peer_does_not_stop_concurrent_writer_or_reader) ... ok
+test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation) ... ok
+test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart (tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart) ... ok
+
+======================================================================
+FAIL: test_developer_selectors_gate_arm_the_owner_and_stop_synchronously (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_developer_selectors_gate_arm_the_owner_and_stop_synchronously)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_native_owner.py", line 116, in test_developer_selectors_gate_arm_the_owner_and_stop_synchronously
+    self.assertEqual(result.returncode, 0, output)
+AssertionError: 1 != 0 : Unhandled SB-INT:SIMPLE-READER-PACKAGE-ERROR in thread #<SB-THREAD:THREAD "main thread" RUNNING
+                                                          {1001348003}>:
+  Symbol "SOCKOPT-ERROR" not found in the SB-BSD-SOCKETS package.
+
+    Line: 2251, Column: 65, File-Position: 114070
+
+    Stream: #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}>
+
+Backtrace for: #<SB-THREAD:THREAD "main thread" RUNNING {1001348003}>
+0: (SB-DEBUG::DEBUGGER-DISABLED-HOOK #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {100224BA83}> #<unused argument> :QUIT T)
+1: (SB-DEBUG::RUN-HOOK SB-EXT:*INVOKE-DEBUGGER-HOOK* #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {100224BA83}>)
+2: (INVOKE-DEBUGGER #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {100224BA83}>)
+3: (ERROR #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {100224BA83}>)
+4: (SB-KERNEL:WITH-SIMPLE-CONDITION-RESTARTS ERROR NIL SB-INT:SIMPLE-READER-PACKAGE-ERROR :PACKAGE #<PACKAGE "SB-BSD-SOCKETS"> :STREAM #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> :FORMAT-ARGUMENTS ("SOCKOPT-ERROR" "SB-BSD-SOCKETS") :FORMAT-CONTROL "Symbol ~S not found in the ~A package.")
+5: (SB-IMPL::READ-TOKEN #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> #\s)
+6: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> #\s)
+7: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> T (NIL) T)
+8: (READ #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> T NIL T)
+9: (SB-IMPL::SHARP-QUOTE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> #\' NIL)
+10: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> #\#)
+11: (SB-IMPL::READ-LIST #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> #<unused argument>)
+12: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> #\()
+13: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> NIL (NIL) T)
+14: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> NIL (NIL) NIL)
+15: (READ #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001B43053}> NIL :EOF NIL)
+16: (LOAD-NAMED "host/native/io.lisp" (+FNN-EXIT-OK+ +FNN-EXIT-REFUSED+ +FNN-EXIT-UNCERTAIN+ +FNN-EXIT-FAULT+ +FNN-EXIT-USAGE+ FNN-STORE-ERROR FNN-STORE-FAULT FNN-STORE-INDETERMINATE FNN-USAGE-ERROR FNN-REFUSE FNN-FAULT FNN-INDETERMINATE ...))
+17: (SB-INT:SIMPLE-EVAL-IN-LEXENV (LOAD-NAMED "host/native/io.lisp" (QUOTE (+FNN-EXIT-OK+ +FNN-EXIT-REFUSED+ +FNN-EXIT-UNCERTAIN+ +FNN-EXIT-FAULT+ +FNN-EXIT-USAGE+ FNN-STORE-ERROR FNN-STORE-FAULT FNN-STORE-INDETERMINATE FNN-USAGE-ERROR FNN-REFUSE FNN-FAULT FNN-INDETERMINATE ...))) #<NULL-LEXENV>)
+18: (SB-EXT:EVAL-TLF (LOAD-NAMED "host/native/io.lisp" (QUOTE (+FNN-EXIT-OK+ +FNN-EXIT-REFUSED+ +FNN-EXIT-UNCERTAIN+ +FNN-EXIT-FAULT+ +FNN-EXIT-USAGE+ FNN-STORE-ERROR FNN-STORE-FAULT FNN-STORE-INDETERMINATE FNN-USAGE-ERROR FNN-REFUSE FNN-FAULT FNN-INDETERMINATE ...))) 22 NIL)
+19: ((LABELS SB-FASL::EVAL-FORM :IN SB-INT:LOAD-AS-SOURCE) (LOAD-NAMED "host/native/io.lisp" (QUOTE (+FNN-EXIT-OK+ +FNN-EXIT-REFUSED+ +FNN-EXIT-UNCERTAIN+ +FNN-EXIT-FAULT+ +FNN-EXIT-USAGE+ FNN-STORE-ERROR FNN-STORE-FAULT FNN-STORE-INDETERMINATE FNN-USAGE-ERROR FNN-REFUSE FNN-FAULT FNN-INDETERMINATE ...))) 22)
+20: ((LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) (LOAD-NAMED "host/native/io.lisp" (QUOTE (+FNN-EXIT-OK+ +FNN-EXIT-REFUSED+ +FNN-EXIT-UNCERTAIN+ +FNN-EXIT-FAULT+ +FNN-EXIT-USAGE+ FNN-STORE-ERROR FNN-STORE-FAULT FNN-STORE-INDETERMINATE FNN-USAGE-ERROR FNN-REFUSE FNN-FAULT FNN-INDETERMINATE ...))) :CURRENT-INDEX 22)
+21: (SB-C::%DO-FORMS-FROM-INFO #<FUNCTION (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) {1001360D3B}> #<SB-C::SOURCE-INFO {1001360D03}> SB-C::INPUT-ERROR-IN-LOAD)
+22: (SB-INT:LOAD-AS-SOURCE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_developer_selectors_raw.lisp" {1001337593}> :VERBOSE NIL :PRINT NIL :CONTEXT "loading")
+23: ((LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_developer_selectors_raw.lisp" {1001337593}> NIL)
+24: (SB-FASL::CALL-WITH-LOAD-BINDINGS #<FUNCTION (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) {762C51B7F82B}> #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_developer_selectors_raw.lisp" {1001337593}> NIL #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_developer_selectors_raw.lisp" {1001337593}>)
+25: (LOAD #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_developer_selectors_raw.lisp" {1001337593}> :VERBOSE NIL :PRINT NIL :IF-DOES-NOT-EXIST :ERROR :EXTERNAL-FORMAT :DEFAULT)
+26: ((FLET SB-IMPL::LOAD-SCRIPT :IN SB-IMPL::PROCESS-SCRIPT) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_developer_selectors_raw.lisp" {1001337593}>)
+27: ((FLET SB-UNIX::BODY :IN SB-IMPL::PROCESS-SCRIPT))
+28: ((FLET "WITHOUT-INTERRUPTS-BODY-11" :IN SB-IMPL::PROCESS-SCRIPT))
+29: (SB-IMPL::PROCESS-SCRIPT "tests/native_developer_selectors_raw.lisp")
+30: (SB-IMPL::TOPLEVEL-INIT)
+31: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))
+32: ((FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP))
+33: (SB-IMPL::%START-LISP)
+
+unhandled condition in --disable-debugger mode, quitting
+
+
+======================================================================
+FAIL: test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_native_owner.py", line 97, in test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step
+    self.assertEqual(result.returncode, 0,
+AssertionError: 1 != 0 : Unhandled SB-INT:SIMPLE-READER-PACKAGE-ERROR in thread #<SB-THREAD:THREAD "main thread" RUNNING
+                                                          {1001348003}>:
+  Symbol "SOCKOPT-ERROR" not found in the SB-BSD-SOCKETS package.
+
+    Line: 2251, Column: 65, File-Position: 114070
+
+    Stream: #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}>
+
+Backtrace for: #<SB-THREAD:THREAD "main thread" RUNNING {1001348003}>
+0: (SB-DEBUG::DEBUGGER-DISABLED-HOOK #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {1002052DE3}> #<unused argument> :QUIT T)
+1: (SB-DEBUG::RUN-HOOK SB-EXT:*INVOKE-DEBUGGER-HOOK* #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {1002052DE3}>)
+2: (INVOKE-DEBUGGER #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {1002052DE3}>)
+3: (ERROR #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {1002052DE3}>)
+4: (SB-KERNEL:WITH-SIMPLE-CONDITION-RESTARTS ERROR NIL SB-INT:SIMPLE-READER-PACKAGE-ERROR :PACKAGE #<PACKAGE "SB-BSD-SOCKETS"> :STREAM #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> :FORMAT-ARGUMENTS ("SOCKOPT-ERROR" "SB-BSD-SOCKETS") :FORMAT-CONTROL "Symbol ~S not found in the ~A package.")
+5: (SB-IMPL::READ-TOKEN #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> #\s)
+6: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> #\s)
+7: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> T (NIL) T)
+8: (READ #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> T NIL T)
+9: (SB-IMPL::SHARP-QUOTE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> #\' NIL)
+10: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> #\#)
+11: (SB-IMPL::READ-LIST #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> #<unused argument>)
+12: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> #\()
+13: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> NIL (NIL) T)
+14: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> NIL (NIL) NIL)
+15: (READ #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/host/native/io.lisp" {1001ED8F83}> NIL :EOF NIL)
+16: ((LAMBDA NIL :IN "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_owner_chunk_loop_raw.lisp"))
+17: (SB-INT:SIMPLE-EVAL-IN-LEXENV (DOLIST (SOURCE-AND-NAMES (QUOTE (("host/native/io.lisp" +FNN-OWNER-WALL-ERROR-MS+ +FNN-OWNER-UNIX-DTN-OFFSET-SECONDS+ FNN-OWNER-WALL-MILLISECONDS) ("host/native/owner.lisp" FNN-OWNER-ADVANCE-CLOCK FNN-OWNER-HANDLE-CHUNK FNN-OWNER-SERVE-CLIENT)))) (DESTRUCTURING-BIND (SOURCE . WANTED) SOURCE-AND-NAMES (LET ((FOUND NIL)) (WITH-OPEN-FILE (STREAM SOURCE) (LOOP FOR FORM = # UNTIL # WHEN # DO # #)) (LET (#) (WHEN MISSING #))))) #<NULL-LEXENV>)
+18: (SB-EXT:EVAL-TLF (DOLIST (SOURCE-AND-NAMES (QUOTE (("host/native/io.lisp" +FNN-OWNER-WALL-ERROR-MS+ +FNN-OWNER-UNIX-DTN-OFFSET-SECONDS+ FNN-OWNER-WALL-MILLISECONDS) ("host/native/owner.lisp" FNN-OWNER-ADVANCE-CLOCK FNN-OWNER-HANDLE-CHUNK FNN-OWNER-SERVE-CLIENT)))) (DESTRUCTURING-BIND (SOURCE . WANTED) SOURCE-AND-NAMES (LET ((FOUND NIL)) (WITH-OPEN-FILE (STREAM SOURCE) (LOOP FOR FORM = # UNTIL # WHEN # DO # #)) (LET (#) (WHEN MISSING #))))) 56 NIL)
+19: ((LABELS SB-FASL::EVAL-FORM :IN SB-INT:LOAD-AS-SOURCE) (DOLIST (SOURCE-AND-NAMES (QUOTE (("host/native/io.lisp" +FNN-OWNER-WALL-ERROR-MS+ +FNN-OWNER-UNIX-DTN-OFFSET-SECONDS+ FNN-OWNER-WALL-MILLISECONDS) ("host/native/owner.lisp" FNN-OWNER-ADVANCE-CLOCK FNN-OWNER-HANDLE-CHUNK FNN-OWNER-SERVE-CLIENT)))) (DESTRUCTURING-BIND (SOURCE . WANTED) SOURCE-AND-NAMES (LET ((FOUND NIL)) (WITH-OPEN-FILE (STREAM SOURCE) (LOOP FOR FORM = # UNTIL # WHEN # DO # #)) (LET (#) (WHEN MISSING #))))) 56)
+20: ((LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) (DOLIST (SOURCE-AND-NAMES (QUOTE (("host/native/io.lisp" +FNN-OWNER-WALL-ERROR-MS+ +FNN-OWNER-UNIX-DTN-OFFSET-SECONDS+ FNN-OWNER-WALL-MILLISECONDS) ("host/native/owner.lisp" FNN-OWNER-ADVANCE-CLOCK FNN-OWNER-HANDLE-CHUNK FNN-OWNER-SERVE-CLIENT)))) (DESTRUCTURING-BIND (SOURCE . WANTED) SOURCE-AND-NAMES (LET ((FOUND NIL)) (WITH-OPEN-FILE (STREAM SOURCE) (LOOP FOR FORM = # UNTIL # WHEN # DO # #)) (LET (#) (WHEN MISSING #))))) :CURRENT-INDEX 56)
+21: (SB-C::%DO-FORMS-FROM-INFO #<FUNCTION (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) {1001360C8B}> #<SB-C::SOURCE-INFO {1001360C53}> SB-C::INPUT-ERROR-IN-LOAD)
+22: (SB-INT:LOAD-AS-SOURCE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337553}> :VERBOSE NIL :PRINT NIL :CONTEXT "loading")
+23: ((LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337553}> NIL)
+24: (SB-FASL::CALL-WITH-LOAD-BINDINGS #<FUNCTION (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) {7B8F2E63F82B}> #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337553}> NIL #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337553}>)
+25: (LOAD #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337553}> :VERBOSE NIL :PRINT NIL :IF-DOES-NOT-EXIST :ERROR :EXTERNAL-FORMAT :DEFAULT)
+26: ((FLET SB-IMPL::LOAD-SCRIPT :IN SB-IMPL::PROCESS-SCRIPT) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/native-subsets-1a9dd747/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337553}>)
+27: ((FLET SB-UNIX::BODY :IN SB-IMPL::PROCESS-SCRIPT))
+28: ((FLET "WITHOUT-INTERRUPTS-BODY-11" :IN SB-IMPL::PROCESS-SCRIPT))
+29: (SB-IMPL::PROCESS-SCRIPT "tests/native_owner_chunk_loop_raw.lisp")
+30: (SB-IMPL::TOPLEVEL-INIT)
+31: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))
+32: ((FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP))
+33: (SB-IMPL::%START-LISP)
+
+unhandled condition in --disable-debugger mode, quitting
+
+
+----------------------------------------------------------------------
+Ran 17 tests in 19.764s
+
+FAILED (failures=2)
+# rc=1 wall=19.8 end 2026-09-24T14:48:53Z

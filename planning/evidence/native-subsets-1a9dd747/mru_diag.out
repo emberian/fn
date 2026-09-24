@@ -1,0 +1,93 @@
+test_older_mru_wait_allows_younger_forward_and_replays (tests.test_bp_node_native.NativeBpNodeTests.test_older_mru_wait_allows_younger_forward_and_replays) ... FAIL
+
+======================================================================
+FAIL: test_older_mru_wait_allows_younger_forward_and_replays (tests.test_bp_node_native.NativeBpNodeTests.test_older_mru_wait_allows_younger_forward_and_replays)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_bp_node_native.py", line 382, in test_older_mru_wait_allows_younger_forward_and_replays
+    self.assertEqual(
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/../mru_diag.py", line 9, in patched
+    orig(self, a, b, msg)
+AssertionError: 6 != 7
+
+----------------------------------------------------------------------
+Ran 1 test in 18.356s
+
+FAILED (failures=1)
+DISPATCH-STDOUT BP FNBS recovered held=2
+BP queue recovered jobs=0
+BP received carrier dispatch durable
+TCPCL bp-node-forward aux (:SEND :CONTACT 6)
+TCPCL bp-node-forward event (:SEND :SESS-INIT 40)
+TCPCL bp-node-forward event (:SESSION-UP 10 1024 1048576 NIL)
+BP forwarding attempt durable key=((115 101 110 100 101 114 45 98 111 117 110
+                                    100 97 114 121)
+                                   (:FN-BP-BUNDLE-ID
+                                    (:DTN 47 47 115 101 110 100 101 114 47) 0
+                                    77 NIL NIL))
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1059)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-node-forward aux (:SEND :XFER-SEGMENT 116)
+TCPCL bp-node-forward aux (:SEND-REFUSED "bp-node-forward" :BUSY)
+TCPCL bp-node-forward aux (:SEND-REFUSED "bp-node-forward" :BUSY)
+TCPCL bp-node-forward aux (:SEND-REFUSED "bp-node-forward" :BUSY)
+TCPCL bp-node-forward aux (:SEND-REFUSED "bp-node-forward" :BUSY)
+TCPCL bp-node-forward event (:OUTBOUND-SENT 0 "bp-node-forward")
+TCPCL bp-node-forward accepted outbound xfer=0
+TCPCL bp-node-forward aux (:SEND :SESS-TERM 3)
+TCPCL bp-node-forward event (:PEER-TERMINATING 0)
+TCPCL bp-node-forward event (:CLOSE)
+BP forwarding result durable arrival=0 status=sent
+
+LIFECYCLE 00000000000000000001-00000000000000000000.fnb 49425 464e425301050000c0e70000000000000001000000000000000000000000000000000000000000000001000000000000
+LIFECYCLE 00000000000000000001-00000000000000000001.fnb 102 464e425302060000003c00000000000000010000000000000001000000000000000000000010838201692f2f73656e64
+LIFECYCLE 00000000000000000001-00000000000000000002.fnb 8465 464e42530105000020e70000000000000001000000000000000200000000000000010000000000000001000000000000
+LIFECYCLE 00000000000000000002-00000000000000000000.fnb 102 464e425302060000003c00000000000000020000000000000000000000000000000100000010838201692f2f73656e64
+LIFECYCLE 00000000000000000002-00000000000000000001.fnb 127 464e425301080000005500000000000000020000000000000001000000000000000000000010838201692f2f73656e64
+LIFECYCLE 00000000000000000002-00000000000000000002.fnb 127 464e425301090000005500000000000000020000000000000002000000000000000000000010838201692f2f73656e64

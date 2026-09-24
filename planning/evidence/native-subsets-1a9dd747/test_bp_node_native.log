@@ -1,0 +1,71 @@
+# module tests.test_bp_node_native  start 2026-09-24T15:10:40Z  cwd /tank/fn/scratch/native-subsets-1a9dd747/tree
+# cmd: python3 -m unittest -v tests.test_bp_node_native
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CORE_SHA256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=9b38ba45ed4ce31ca1997e3e4165873203e09d8e41fa176eb3fedbfee95741d0
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=5d42db2d8929ba256677ecb3bdfe957edc54176e0f5a1492b24376aa21ae1d9d
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+# env FN_NATIVE_LAUNCHER_SHA256=60e14e2afe8703574a9d74d89dc632a6c030a668fa261a74d92dd7589bb686d9
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-1a9dd747/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-1a9dd747/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_absent_bp_trust_keeps_custody_but_refuses_request_application (tests.test_bp_node_native.NativeBpNodeTests.test_absent_bp_trust_keeps_custody_but_refuses_request_application) ... ok
+test_absent_bp_trust_refuses_receipt_release (tests.test_bp_node_native.NativeBpNodeTests.test_absent_bp_trust_refuses_receipt_release) ... ok
+test_admitted_channel_without_inbound_scope_refuses_store_request (tests.test_bp_node_native.NativeBpNodeTests.test_admitted_channel_without_inbound_scope_refuses_store_request) ... ok
+test_ambiguous_fnrj_decision_fences_until_cold_replay (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_fnrj_decision_fences_until_cold_replay) ... FAIL
+test_ambiguous_outbox_publication_is_uncertain_not_refused (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_outbox_publication_is_uncertain_not_refused) ... ok
+test_conflicting_return_job_fences_after_request_commit (tests.test_bp_node_native.NativeBpNodeTests.test_conflicting_return_job_fences_after_request_commit) ... ok
+test_death_after_durable_outbox_does_not_allocate_second_sequence (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_durable_outbox_does_not_allocate_second_sequence) ... ok
+test_death_after_fnrj_receipt_decision_replays_one_article (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article) ... FAIL
+test_death_after_kind_seven_replays_owed_outbox (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_seven_replays_owed_outbox) ... ok
+test_deletion_report_intent_recovers_and_observation_does_not_release (tests.test_bp_node_native.NativeBpNodeTests.test_deletion_report_intent_recovers_and_observation_does_not_release) ... ok
+test_exact_receipt_with_wrong_carrier_peer_fences (tests.test_bp_node_native.NativeBpNodeTests.test_exact_receipt_with_wrong_carrier_peer_fences) ... ok
+test_expired_recovered_kind_five_never_enters_store (tests.test_bp_node_native.NativeBpNodeTests.test_expired_recovered_kind_five_never_enters_store) ... ok
+test_kind_five_ambiguous_publication_never_delivers_to_store (tests.test_bp_node_native.NativeBpNodeTests.test_kind_five_ambiguous_publication_never_delivers_to_store) ... ok
+test_older_mru_wait_allows_younger_forward_and_replays (tests.test_bp_node_native.NativeBpNodeTests.test_older_mru_wait_allows_younger_forward_and_replays) ... FAIL
+test_older_unrouted_transit_does_not_block_younger_local_request (tests.test_bp_node_native.NativeBpNodeTests.test_older_unrouted_transit_does_not_block_younger_local_request) ... ok
+test_request_retry_queues_distinct_receipt_carriers_and_releases_pin (tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin) ... FAIL
+
+======================================================================
+FAIL: test_ambiguous_fnrj_decision_fences_until_cold_replay (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_fnrj_decision_fences_until_cold_replay)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_bp_node_native.py", line 703, in test_ambiguous_fnrj_decision_fences_until_cold_replay
+    self.assertEqual(restarted.returncode, 0, restarted.stderr)
+AssertionError: 4 != 0 : b'store: ACL2 returned a non-natural\n'
+
+======================================================================
+FAIL: test_death_after_fnrj_receipt_decision_replays_one_article (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_bp_node_native.py", line 619, in test_death_after_fnrj_receipt_decision_replays_one_article
+    self.assertEqual(restarted.returncode, 0, restarted.stderr)
+AssertionError: 4 != 0 : b'store: ACL2 returned a non-natural\n'
+
+======================================================================
+FAIL: test_older_mru_wait_allows_younger_forward_and_replays (tests.test_bp_node_native.NativeBpNodeTests.test_older_mru_wait_allows_younger_forward_and_replays)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_bp_node_native.py", line 382, in test_older_mru_wait_allows_younger_forward_and_replays
+    self.assertEqual(
+AssertionError: 6 != 7
+
+======================================================================
+FAIL: test_request_retry_queues_distinct_receipt_carriers_and_releases_pin (tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-1a9dd747/tree/tests/test_bp_node_native.py", line 471, in test_request_retry_queues_distinct_receipt_carriers_and_releases_pin
+    self.assertEqual(second.returncode, 0, err)
+AssertionError: 4 != 0 : b'store: ACL2 returned a non-natural\n'
+
+----------------------------------------------------------------------
+Ran 16 tests in 298.220s
+
+FAILED (failures=4)
+# rc=1 wall=298.4 end 2026-09-24T15:15:38Z

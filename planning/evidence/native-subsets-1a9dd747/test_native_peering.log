@@ -1,0 +1,31 @@
+# module tests.test_native_peering  start 2026-09-24T14:51:04Z  cwd /tank/fn/scratch/native-subsets-1a9dd747/tree
+# cmd: python3 -m unittest -v tests.test_native_peering
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CORE_SHA256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=9b38ba45ed4ce31ca1997e3e4165873203e09d8e41fa176eb3fedbfee95741d0
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=5d42db2d8929ba256677ecb3bdfe957edc54176e0f5a1492b24376aa21ae1d9d
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+# env FN_NATIVE_LAUNCHER_SHA256=60e14e2afe8703574a9d74d89dc632a6c030a668fa261a74d92dd7589bb686d9
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-1a9dd747/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-1a9dd747/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_durable_feed_requeues_after_source_process_death (tests.test_native_peering.NativePeeringTests.test_durable_feed_requeues_after_source_process_death) ... ok
+test_live_peer_configuration_activates_both_directions (tests.test_native_peering.NativePeeringTests.test_live_peer_configuration_activates_both_directions) ... ok
+test_public_native_nodes_exchange_both_ways_and_suppress_duplicate (tests.test_native_peering.NativePeeringTests.test_public_native_nodes_exchange_both_ways_and_suppress_duplicate) ... ok
+test_reset_while_transit_completes_keeps_durable_article_and_owner (tests.test_native_peering.NativePeeringTests.test_reset_while_transit_completes_keeps_durable_article_and_owner) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 7.221s
+
+OK
+native-peering launcher-sha256=60e14e2afe8703574a9d74d89dc632a6c030a668fa261a74d92dd7589bb686d9 core-sha256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd declared-source=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+NATIVE-PEERING-WITNESS {"duplicate": "435", "identity": {"restart-a": {"core": "/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host.core", "core_sha256": "12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd", "runtime": "/tank/fn/sbcl/bin/sbcl", "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5", "status": "observed"}, "restart-b": {"core": "/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host.core", "core_sha256": "12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd", "runtime": "/tank/fn/sbcl/bin/sbcl", "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5", "status": "observed"}}, "journal": true, "kind": "requeue-restart", "source_killed": true, "source_restarted": true, "target_identical": true}
+NATIVE-PEERING-WITNESS {"feed": {"ab": {"duplicate": "435", "identical": true}, "ba": {"duplicate": "435", "identical": true}}, "identity": {"a": {"core": "/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host.core", "core_sha256": "12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd", "runtime": "/tank/fn/sbcl/bin/sbcl", "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5", "status": "observed"}, "b": {"core": "/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host.core", "core_sha256": "12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd", "runtime": "/tank/fn/sbcl/bin/sbcl", "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5", "status": "observed"}}, "kind": "transit-and-feed", "transit": {"ab": {"duplicate": "435", "identical": true, "offer": "335", "transfer": "235"}, "ba": {"duplicate": "435", "identical": true, "offer": "335", "transfer": "235"}}}
+NATIVE-PEERING-WITNESS {"feed": {"ab": {"duplicate": "435", "identical": true}, "ba": {"duplicate": "435", "identical": true}}, "identity": {"a": {"core": "/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host.core", "core_sha256": "12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd", "runtime": "/tank/fn/sbcl/bin/sbcl", "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5", "status": "observed"}, "b": {"core": "/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host.core", "core_sha256": "12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd", "runtime": "/tank/fn/sbcl/bin/sbcl", "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5", "status": "observed"}}, "kind": "transit-and-feed", "transit": {"ab": {"duplicate": "435", "identical": true, "offer": "335", "transfer": "235"}, "ba": {"duplicate": "435", "identical": true, "offer": "335", "transfer": "235"}}}
+# rc=0 wall=7.5 end 2026-09-24T14:51:12Z

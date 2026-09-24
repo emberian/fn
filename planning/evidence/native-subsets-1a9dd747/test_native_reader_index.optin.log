@@ -1,0 +1,38 @@
+# module tests.test_native_reader_index  start 2026-09-24T15:16:40Z  cwd /tank/fn/scratch/native-subsets-1a9dd747/tree
+# cmd: python3 -m unittest -v tests.test_native_reader_index
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_CORE_SHA256=12ece6cc95f3c4bed7a5d0a1abcfa0e5ea25257855e3f5caed22007c9a7b2bdd
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=9b38ba45ed4ce31ca1997e3e4165873203e09d8e41fa176eb3fedbfee95741d0
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=5d42db2d8929ba256677ecb3bdfe957edc54176e0f5a1492b24376aa21ae1d9d
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-1a9dd747-20260924/build/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1a9dd747855c2e23ddfd4d8357270ef8f75cebb8
+# env FN_NATIVE_LAUNCHER_SHA256=60e14e2afe8703574a9d74d89dc632a6c030a668fa261a74d92dd7589bb686d9
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-1a9dd747/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-1a9dd747/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_listgroup_historical_pin_live_group_and_restart (tests.test_native_reader_index.NativeReaderIndexTest.test_listgroup_historical_pin_live_group_and_restart) ... ok
+test_listgroup_many_unrelated_groups_measured_socket_workload (tests.test_native_reader_index.NativeReaderIndexTest.test_listgroup_many_unrelated_groups_measured_socket_workload) ... ok
+test_over_xover_crosspost_sparse_range_historical_pin_and_restart (tests.test_native_reader_index.NativeReaderIndexTest.test_over_xover_crosspost_sparse_range_historical_pin_and_restart) ... ok
+test_pinned_archive_and_index_through_public_reader (tests.test_native_reader_index.NativeReaderIndexTest.test_pinned_archive_and_index_through_public_reader) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 5.181s
+
+OK
+native LISTGROUP workload: groups=24 articles=24 commands=96 range=1-1 elapsed=0.054s
+native reader indexed 96 concurrent STAT reads: 0.023s
+# rc=0 wall=5.2 end 2026-09-24T15:16:46Z
