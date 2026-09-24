@@ -504,6 +504,79 @@ class WebClientTests(unittest.TestCase):
         self.assertIn("badge accepted", self.request("GET", "/result?id=" + first)[2])
         self.assertEqual(self.node.seen.count("POST"), 1)
 
+    def test_durable_draft_survives_restart_and_post_freezes_edited_source(self):
+        self.enable_outbox()
+        token = self.form_id()
+        saved = self.request("POST", "/post", {"submission_id": token,
+            "action": "save", "subject": "", "body": "rough <draft>"})
+        self.assertEqual(saved[0], 303)
+        self.assertEqual(saved[1]["Location"], "/draft?id=" + token)
+        self.assertNotIn("POST", self.node.seen)
+        record = self.outbox_path / (token + ".json")
+        self.assertIsNone(json.loads(record.read_text())["lines"])
+        self.restart_outbox()
+        listing = self.request("GET", "/outbox")[2]
+        self.assertIn("Draft: (untitled)", listing)
+        restored = self.request("GET", "/draft?id=" + token)[2]
+        self.assertIn("rough &lt;draft&gt;", restored)
+        self.assertNotIn("POST", self.node.seen)
+        edited = self.request("POST", "/post", {"submission_id": token,
+            "action": "save", "subject": "Ready", "body": "edited exact source"})
+        self.assertEqual(edited[0], 303)
+        self.restart_outbox()
+        self.assertIn("edited exact source", self.request("GET", edited[1]["Location"])[2])
+        sent = self.request("POST", "/post", {"submission_id": token,
+            "action": "post", "subject": "Ready", "body": "edited exact source"})
+        self.assertEqual(sent[0], 303)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+        source = next(iter(self.node.articles.values()))
+        self.assertIn("edited exact source", source)
+        self.assertNotIn("rough <draft>", source)
+        self.assertEqual(self.request("GET", "/draft?id=" + token)[0], 410)
+        self.restart_outbox()
+        self.assertIn("badge accepted", self.request("GET", sent[1]["Location"])[2])
+        self.assertEqual(self.request("POST", "/post", {"submission_id": token,
+                                                       "body": "another"})[0], 303)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+
+    def test_durable_draft_write_failure_fences_before_network(self):
+        self.enable_outbox()
+        token = self.form_id()
+        with mock.patch.object(fn_web.os, "fsync", side_effect=OSError("draft EIO")):
+            failed = self.request("POST", "/post", {"submission_id": token,
+                "action": "save", "body": "local draft"})
+        self.assertEqual(failed[0], 503)
+        self.assertNotIn("POST", self.node.seen)
+        self.assertIn("latest local save is uncertain",
+                      self.request("GET", "/draft?id=" + token)[2])
+        self.assertEqual(self.request("POST", "/post", {"submission_id": token,
+                                                       "body": "attempt"})[0], 503)
+        self.assertNotIn("POST", self.node.seen)
+
+    def test_saved_draft_counts_toward_bound_without_eviction(self):
+        self.enable_outbox()
+        with mock.patch.object(fn_web, "MAX_SUBMISSIONS", 1):
+            token = self.form_id()
+            self.assertEqual(self.request("POST", "/post", {
+                "submission_id": token, "action": "save", "body": "keep me"})[0], 303)
+            self.restart_outbox()
+            self.assertEqual(self.request("GET", "/compose?group=fn.agents")[0], 507)
+            self.assertIn("keep me", self.request("GET", "/draft?id=" + token)[2])
+            self.assertEqual(len(list(self.outbox_path.glob("*.json"))), 1)
+        self.assertNotIn("POST", self.node.seen)
+
+    def test_outbox_parent_barrier_failure_prevents_startup_and_post(self):
+        with tempfile.TemporaryDirectory() as parent:
+            path = Path(parent) / "new-outbox"
+            with mock.patch.object(fn_web.os, "fsync", side_effect=OSError("parent EIO")):
+                with self.assertRaisesRegex(OSError, "parent EIO"):
+                    fn_web.WebServer(0, self.server.backend, path)
+            self.assertNotIn("POST", self.node.seen)
+            with fn_web.WebServer(0, self.server.backend, path) as recovered:
+                self.assertIsInstance(recovered.submissions,
+                                      fn_web.DurableSubmissionBook)
+            self.assertNotIn("POST", self.node.seen)
+
     def test_durable_concurrent_submit_and_full_spool_preserve_records(self):
         self.enable_outbox()
         token = self.form_id()
@@ -534,6 +607,7 @@ class WebClientTests(unittest.TestCase):
             denied = self.request("POST", "/post", {"submission_id": token})
         self.assertEqual(denied[0], 503)
         self.assertNotIn("POST", self.node.seen)
+        self.assertEqual(self.request("GET", "/result?id=" + token)[0], 503)
         self.assertEqual(self.request("GET", "/compose?group=fn.agents")[0], 503)
 
         self.restart_outbox()

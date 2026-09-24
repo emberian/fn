@@ -12,7 +12,7 @@ For a loopback development owner:
 python3 tools/fn_web.py --node 127.0.0.1:1119 --plain --port 8919
 ```
 
-Add `--outbox ~/.local/share/fn-web-outbox` to retain local submission evidence
+Add `--outbox ~/fn-web-outbox` to retain local submission evidence
 across restarts. The `/outbox` page lists recorded results and observations.
 
 Open `http://127.0.0.1:8919/` in a local browser. For a protected node, use a
@@ -75,15 +75,23 @@ is never an fn acceptance record.
 
 An optional `--outbox DIR` gives the local client a durable submission record.
 The default above remains in-memory. The directory is private (mode 0700),
-single-instance locked, and holds at most 128 submitted records; it never
-silently evicts one. Once full, new submissions are refused until an operator
-archives or removes records while the client is stopped. A compose form is
-still ephemeral until its first valid POST. Before opening NNTP for that POST,
-the client durably records the exact composed article lines, Message-ID, group,
+single-instance locked, and holds at most 128 saved drafts and submitted
+records; it never silently evicts one. Once full, new forms are refused until an operator
+archives or removes records while the client is stopped. The parent of `DIR`
+must already exist and be durable. The client creates the leaf directory if needed and
+syncs its parent at every startup before it can send a POST; a failed parent
+barrier prevents startup. A compose form is ephemeral until saved or posted.
+`Save draft` writes the bounded editable fields locally without contacting
+NNTP or generating a Message-ID. `/outbox` links to saved drafts after restart; editing
+and saving again replaces that local draft. `Post` freezes the then-submitted
+fields as an exact article and replaces the draft with the in-flight intent.
+An unsaved form still expires on restart. A saved draft is not an acceptance
+record and is never posted automatically. Before opening NNTP for a POST, the
+client durably records the exact composed article lines, Message-ID, group,
 and target host, port, transport mode, user and CA-file content digest as an
 in-flight intent, without storing a password. An in-flight intent found after
-restart is **uncertain** even if no bytes were
-actually sent; the client never automatically retries it. A recorded node
+restart is **uncertain** even if no bytes were actually sent; the client never
+automatically retries it. A recorded node
 answer remains accepted, refused, or uncertain exactly as first observed.
 Later `ARTICLE` lookups are read-only observations and never change that answer.
 Changing the configured target for a nonempty outbox is refused at startup.
@@ -100,7 +108,7 @@ The client caps each NNTP line at 8 KiB and multiline block at 256 KiB or
 2,048 lines, the recent view at 40 articles, HTTP form at 24 KiB, and post
 body at 16 KiB. Article text and header values are escaped, rendered as text
 without remote images or scripts, and served with a restrictive content
-security policy. This first slice has no saved drafts, search index, unread
+security policy. This first slice has no search index, unread
 state, or independent verified authorship display. A `FN-Statement` and an
 `FN-Authorship` carrier are shown as separate recorded presences, never as a
 verified identity. The node's raw status stays in the result page's details.
