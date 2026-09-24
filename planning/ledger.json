@@ -482,6 +482,7 @@
     "tests/acl2/nntp-post-tests",
     "books/path",
     "books/path-update",
+    "books/path-update-tail",
     "books/peer-config",
     "books/peer-inbound",
     "books/peer-inbound-invariants",
@@ -557,6 +558,7 @@
     "books/owner",
     "books/owner-invariants",
     "books/owner-fault",
+    "books/owner-feed-subject",
     "books/owner-prepare-correspondence",
     "books/owner-served-invariants",
     "books/owner-retention-preparation",
@@ -668,19 +670,19 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 675,
-    "books_in_root_closure": 673,
-    "roots": 664,
-    "theorems": 9018,
-    "functions": 6599,
-    "assert_events": 9821,
-    "must_fails": 598,
+    "books": 677,
+    "books_in_root_closure": 675,
+    "roots": 666,
+    "theorems": 9095,
+    "functions": 6610,
+    "assert_events": 9869,
+    "must_fails": 609,
     "encapsulates": 30,
     "guards": {
       "verified": 2036,
       "declared-off": 408,
-      "default-guarded": 3300,
-      "default-unguarded": 855
+      "default-guarded": 3304,
+      "default-unguarded": 862
     },
     "suspect_theorems": 83,
     "export_hygiene_warnings": 108,
@@ -7929,6 +7931,31 @@
       "read_error": null
     },
     {
+      "book": "books/owner-feed-subject.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-feed.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8145,6 +8172,31 @@
       "read_error": null
     },
     {
+      "book": "books/path-update-tail.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 67,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "path-update"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/path-update.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8307,7 +8359,7 @@
       "book": "books/peer-inbound-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 23,
+      "theorems": 24,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -8322,6 +8374,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "path-update-tail",
         "peer-inbound"
       ],
       "system_includes": [],
@@ -16562,18 +16615,18 @@
       "book": "tests/acl2/owner-feed-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 2,
+      "theorems": 2,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 2,
-        "default-unguarded": 0
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 121,
-      "must_fails": 2,
-      "defconsts": 29,
+      "assert_events": 133,
+      "must_fails": 6,
+      "defconsts": 32,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -16728,23 +16781,24 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 15,
+      "functions": 20,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 1,
-        "default-unguarded": 14
+        "default-unguarded": 19
       },
       "verify_guards_events": 0,
-      "assert_events": 309,
-      "must_fails": 2,
-      "defconsts": 117,
+      "assert_events": 334,
+      "must_fails": 8,
+      "defconsts": 124,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/crypto-attach",
         "../../books/owner-fault",
+        "../../books/owner-feed-subject",
         "../../books/owner-invariants"
       ],
       "system_includes": [
@@ -16866,16 +16920,16 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 6,
+      "functions": 7,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 6
+        "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 203,
-      "must_fails": 4,
+      "assert_events": 214,
+      "must_fails": 5,
       "defconsts": 64,
       "defmacros": 0,
       "encapsulates": 0,
@@ -24655,7 +24709,7 @@
       },
       {
         "book": "tests/acl2/owner-tests.lisp",
-        "line": 18,
+        "line": 19,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

@@ -9,6 +9,7 @@
 
 (in-package "ACL2")
 (include-book "peer-inbound")
+(include-book "path-update-tail")
 
 (local (in-theory (enable fn-peer-vocabulary fn-path-vocabulary)))
 
@@ -435,6 +436,39 @@
                                   (fn-pu-relay-article fn-pu-path-markedp
                                    fn-peer-expected-identity
                                    fn-peer-local-identity fn-path-identityp)))))
+
+; RFC 5537 section 3.2.1: the stored Path is the received Path with this
+; node's identity, "!", the diagnostic and "!" in front, field line by field
+; line; a line that already begins with this node's identity is kept.  The
+; diagnostic is books/path.lisp's over the peer record's expected identity
+; and the received Path.  With -name-this-node-in-every-path it says the
+; update prepends and keeps what arrived.  Covered scope: the first physical
+; line of each Path field (books/path-update-tail.lisp).
+(defthm fn-peer-relayed-octets-keep-the-received-path-tail
+  (implies (fn-path-identityp (fn-peer-local-identity cfg))
+           (equal (fn-pu-path-contents (fn-peer-relayed-octets cfg peer octets))
+                  (fn-pu-prepend-paths
+                   (fn-pu-path-contents octets)
+                   (fn-peer-local-identity cfg)
+                   (fn-pu-diagnostic-octets
+                    (fn-path-diagnostic
+                     (fn-pu-expected
+                      (fn-peer-expected-identity
+                       (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))))
+                     (fn-pu-received-path octets))))))
+  :hints (("Goal" :use ((:instance fn-pu-relay-article-keeps-the-received-path-tail
+                                   (identity (fn-peer-local-identity cfg))
+                                   (expected (fn-peer-expected-identity
+                                              (fn-cfg-peer-find
+                                               peer (fn-cfg-peers (fn-cfg-value cfg)))))))
+           :in-theory (e/d (fn-peer-relayed-octets)
+                           (fn-pu-relay-article-keeps-the-received-path-tail
+                            fn-pu-relay-article fn-pu-path-contents
+                            fn-pu-prepend-paths fn-pu-received-path
+                            fn-pu-diagnostic-octets fn-path-diagnostic
+                            fn-pu-expected
+                            fn-peer-expected-identity
+                            fn-peer-local-identity fn-path-identityp)))))
 
 ; fn-peer-refused-transfer-leaves-the-node is :rule-classes nil, so it
 ; designates no rule and (in-theory (disable ...)) on it is a hard error,

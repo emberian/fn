@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-invariants")
 (include-book "../../books/owner-fault")
+(include-book "../../books/owner-feed-subject")
 (include-book "../../books/crypto-attach")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
@@ -1616,3 +1617,138 @@
 ; it: there is no socket to answer on, and the submission must go anyway.
 (assert-event (null (car (fn-own-fault *own-taken* 99))))
 (assert-event (fn-own-relation (cdr (fn-own-fault *own-taken* 99))))
+
+; -----------------------------------------------------------------------------
+; Loop freedom over the functions the host calls (books/owner-feed-subject.lisp).
+; The owner is *own-control-fed-done*, reached through the real control
+; submission, with one outbound peer "out" (path-identity out.example, fn.*).
+; A transit article is put in flight on connection 4 exactly as
+; own-fed-transit-on-connection does, from a named peer and with named octets.
+
+(defconst *own-transit-msgid* (fn-nntp-string-octets "<transit@example.invalid>"))
+(defun own-transit-octets (path)
+  (append (if path
+              (append (fn-nntp-string-octets (string-append "Path: " path)) '(13 10))
+            nil)
+          (fn-nntp-string-octets "From: peer@example.invalid") '(13 10)
+          (fn-nntp-string-octets "Subject: relayed") '(13 10)
+          (fn-nntp-string-octets "Newsgroups: fn.letters") '(13 10)
+          (fn-nntp-string-octets "Message-ID: <transit@example.invalid>") '(13 10)
+          '(13 10)
+          (fn-nntp-string-octets "Relayed bytes.") '(13 10)))
+(defun own-transit-from (o peer path)
+  (let ((sub (fn-own-inflight *own-control-fed-done*)))
+    (own-with-inflight
+     o
+     (fn-own-sub-make
+      4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
+      (fn-peer-make-submission peer :ihave *own-transit-msgid*
+                               (own-transit-octets path))))))
+(defun own-feed-targets-of (o)
+  (fn-own-feed-targets (fn-own-feeds o)
+                       (fn-own-sub-origin (fn-own-inflight o))
+                       (fn-own-sub-feed-groups (fn-own-inflight o))
+                       (fn-own-feed-path-of (fn-own-sub-octets (fn-own-inflight o)))))
+(defun own-loop-conclusion (o name)
+  (and (not (equal name (fn-own-sub-origin (fn-own-inflight o))))
+       (not (fn-path-names-p
+             (fn-own-feed-path-of (fn-own-sub-octets (fn-own-inflight o)))
+             (fn-record-string-octets
+              (fn-cfg-peer-path-identity
+               (fn-own-feed-record-of name (fn-own-feeds o))))))))
+(defun own-origin-entry (o feeds)
+  (fn-own-feed-entry-of (fn-own-sub-origin (fn-own-inflight o)) feeds))
+
+; From peer "p", with a Path that does not name out.example: "out" is the one
+; target, on the host's filtered function and on the unfiltered one.
+(defconst *own-tr-p* (own-transit-from *own-control-fed-done* "p" "p.example!x"))
+(assert-event (fn-own-transit-subp (fn-own-inflight *own-tr-p*)))
+(assert-event (fn-own-feed-tablep (fn-own-feeds *own-tr-p*)))
+(assert-event (equal (fn-own-submission-targets *own-tr-p*) '("out")))
+(assert-event (equal (own-feed-targets-of *own-tr-p*) '("out")))
+(assert-event (own-loop-conclusion *own-tr-p* "out"))
+; From "out" itself, and from "p" with out.example already in Path: no target.
+(defconst *own-tr-out* (own-transit-from *own-control-fed-done* "out" "out.example!x"))
+(defconst *own-tr-seen* (own-transit-from *own-control-fed-done* "p" "out.example!x"))
+(assert-event (fn-own-feed-tablep (fn-own-feeds *own-tr-out*)))
+(assert-event (null (fn-own-submission-targets *own-tr-out*)))
+(assert-event (null (fn-own-submission-targets *own-tr-seen*)))
+
+; fn-own-submission-targets-are-feed-targets, one hypothesis.  The filter is
+; a real bound, not an equation: once "out" holds the Message-ID the host's
+; targets are empty while the unfiltered targets still name "out".
+(defconst *own-tr-p-held*
+  (fn-own-with-feeds *own-tr-p* (fn-own-feed-durable *own-tr-p* (fn-own-inflight *own-tr-p*))))
+(assert-event (null (fn-own-submission-targets *own-tr-p-held*)))
+(assert-event (equal (own-feed-targets-of *own-tr-p-held*) '("out")))
+; Tooth (membership): "q" is no target of the host's function, and no feed
+; target either.
+(assert-event (not (member-equal "q" (fn-own-submission-targets *own-tr-p*))))
+(must-fail (assert-event (member-equal "q" (own-feed-targets-of *own-tr-p*))))
+
+; fn-own-submission-never-targets-a-loop, two hypotheses.
+; Tooth (membership): with the table recognizer holding, the origin "out" is
+; not a target, and the conclusion is false of it (it IS the origin).
+(assert-event (not (member-equal "out" (fn-own-submission-targets *own-tr-out*))))
+(must-fail (assert-event (own-loop-conclusion *own-tr-out* "out")))
+; ... and on the Path half: "out" is not a target of the seen article, whose
+; Path names out.example.
+(assert-event (fn-own-feed-tablep (fn-own-feeds *own-tr-seen*)))
+(assert-event (not (member-equal "out" (fn-own-submission-targets *own-tr-seen*))))
+(must-fail (assert-event (own-loop-conclusion *own-tr-seen* "out")))
+; Tooth (table recognizer): an entry keyed "p" carrying out's record.  The
+; record passes the scope decision for an article from "p" (its own name is
+; "out"), so "p" -- the origin -- is a target of the host's function, and the
+; conclusion is false.  Only the recognizer (entry name = record name) forbids it.
+(defconst *own-bad-feeds*
+  (list (fn-own-feed-entry "p" *own-out-peer-record*
+                           (fn-own-feed-find "out" (fn-own-feeds *own-tr-p*)))))
+(defconst *own-tr-p-bad* (fn-own-with-feeds *own-tr-p* *own-bad-feeds*))
+(assert-event (not (fn-own-feed-tablep (fn-own-feeds *own-tr-p-bad*))))
+(assert-event (member-equal "p" (fn-own-submission-targets *own-tr-p-bad*)))
+(must-fail (assert-event (own-loop-conclusion *own-tr-p-bad* "p")))
+
+; fn-own-feed-durable-never-enqueues-on-the-origin, one hypothesis.  Witness:
+; the durable enqueue of the article from "p" moves "out"'s feed, and the
+; article from "out" leaves "out"'s feed as it was.
+(assert-event (not (equal (fn-own-feed-entry-of
+                           "out" (fn-own-feed-durable *own-tr-p* (fn-own-inflight *own-tr-p*)))
+                          (fn-own-feed-entry-of "out" (fn-own-feeds *own-tr-p*)))))
+(assert-event (equal (own-origin-entry
+                      *own-tr-out*
+                      (fn-own-feed-durable *own-tr-out* (fn-own-inflight *own-tr-out*)))
+                     (own-origin-entry *own-tr-out* (fn-own-feeds *own-tr-out*))))
+; Tooth (table recognizer): the bad table enqueues on the origin "p".
+(must-fail
+ (assert-event (equal (own-origin-entry
+                       *own-tr-p-bad*
+                       (fn-own-feed-durable *own-tr-p-bad* (fn-own-inflight *own-tr-p-bad*)))
+                      (own-origin-entry *own-tr-p-bad* (fn-own-feeds *own-tr-p-bad*)))))
+
+; fn-own-transit-outcome-never-enqueues-on-the-origin, one hypothesis, over
+; the transition host/owner-host.lisp fn-owner-transit-outcome installs.
+; Witness: connection 4 exists and the store's word is a consumed durable
+; completion, so the outcome replies and enqueues: "out"'s feed moves for the
+; article from "p" and stays for the article from "out".
+(assert-event (equal (fn-own-outcome-completion *own-tr-p* :durable) :durable))
+(assert-event (consp (car (fn-own-transit-outcome *own-tr-p* 4 :want nil :durable))))
+(assert-event (not (equal (fn-own-feed-entry-of
+                           "out" (fn-own-feeds (cdr (fn-own-transit-outcome
+                                                     *own-tr-p* 4 :want nil :durable))))
+                          (fn-own-feed-entry-of "out" (fn-own-feeds *own-tr-p*)))))
+(assert-event (equal (fn-own-outcome-completion *own-tr-out* :durable) :durable))
+(assert-event (consp (car (fn-own-transit-outcome *own-tr-out* 4 :want nil :durable))))
+(assert-event (equal (own-origin-entry
+                      *own-tr-out*
+                      (fn-own-feeds (cdr (fn-own-transit-outcome
+                                          *own-tr-out* 4 :want nil :durable))))
+                     (own-origin-entry *own-tr-out* (fn-own-feeds *own-tr-out*))))
+; Tooth (table recognizer): on the bad table the durable transit outcome
+; enqueues the article back on "p".
+(assert-event (consp (car (fn-own-transit-outcome *own-tr-p-bad* 4 :want nil :durable))))
+(must-fail
+ (assert-event (equal (own-origin-entry
+                       *own-tr-p-bad*
+                       (fn-own-feeds (cdr (fn-own-transit-outcome
+                                           *own-tr-p-bad* 4 :want nil :durable))))
+                      (own-origin-entry *own-tr-p-bad* (fn-own-feeds *own-tr-p-bad*)))))
