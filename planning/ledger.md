@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 667 |
 | Certification roots in the Makefile | 656 |
 | Books inside the root closure | 665 |
-| `defthm` and `defthmd` events | 8870 |
+| `defthm` and `defthmd` events | 8871 |
 | `defun` events | 6569 |
 | Functions with verified guards | 2036 |
 | Functions declared `:verify-guards nil` and never verified | 402 |
@@ -26,7 +26,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 107 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 47 |
-| Include-hygiene warnings | 640 |
+| Include-hygiene warnings | 638 |
 | Host-names warnings | 816 |
 | Hand-written-record warnings | 18 |
 
@@ -450,7 +450,7 @@ that `make certify` requests.
 | `books/topic-history-prefix-invariants.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/topic-history-prefix.lisp` | closure | 3 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/topic-history-recovery-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/topic-history-store-events.lisp` | root | 3 | 9 | 0/0/9/0 | 0 | 0 | 1 |
+| `books/topic-history-store-events.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 1 |
 | `books/topic-history-store-invariants.lisp` | root | 56 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/transfer-assembly-invariants.lisp` | root | 25 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/transfer-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |

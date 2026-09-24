@@ -663,7 +663,7 @@
     "books": 667,
     "books_in_root_closure": 665,
     "roots": 656,
-    "theorems": 8870,
+    "theorems": 8871,
     "functions": 6569,
     "assert_events": 9676,
     "must_fails": 568,
@@ -678,7 +678,7 @@
     "export_hygiene_warnings": 107,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 47,
-    "include_hygiene_warnings": 640,
+    "include_hygiene_warnings": 638,
     "host_names_warnings": 816,
     "hand_written_record_warnings": 18
   },
@@ -10386,7 +10386,7 @@
       "book": "books/topic-history-store-events.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
+      "theorems": 4,
       "functions": 9,
       "guards": {
         "verified": 0,
@@ -22063,13 +22063,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/store-events.lisp",
-        "line": 12,
-        "include": "topic-history-store-events",
-        "included": "books/topic-history-store-events.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/store-files-invariants.lisp",
         "line": 9,
         "include": "records-seam",
@@ -24895,13 +24888,6 @@
         "line": 4,
         "include": "consumer-topic-store-tests",
         "included": "tests/acl2/consumer-topic-store-tests.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/topic-history-store-events-tests.lisp",
-        "line": 2,
-        "include": "../../books/topic-history-store-events",
-        "included": "books/topic-history-store-events.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
