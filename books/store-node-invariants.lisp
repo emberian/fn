@@ -51,7 +51,12 @@
 
 (defthm fn-sn-prepare-preserves-state
   (implies (fn-sn-statep s)
-           (fn-sn-statep (fn-sn-prepare s record))))
+           (fn-sn-statep (fn-sn-prepare s record)))
+  :hints (("Goal" :in-theory
+           (enable fn-sn-shapep fn-sn-groups fn-sn-capacity fn-sn-files
+                   fn-sn-node fn-sn-keyring fn-sn-keyring-generation
+                   fn-sn-verdicts fn-sn-keyring-snapshots
+                   fn-sn-identity-next))))
 
 (defthm fn-sn-file-step-preserves-state
   (implies (fn-sf-statep files)
@@ -64,7 +69,12 @@
 (defthm fn-sn-io-preserves-state
   (implies (fn-sn-statep s)
            (fn-sn-statep (fn-sn-io s operation result)))
-  :hints (("Goal" :in-theory (disable fn-sn-file-step ))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-shapep fn-sn-groups fn-sn-capacity fn-sn-files
+                 fn-sn-node fn-sn-keyring fn-sn-keyring-generation
+                 fn-sn-verdicts fn-sn-keyring-snapshots
+                 fn-sn-identity-next)
+                (fn-sn-file-step)))))
 
 (local (defthm fn-sn-record-p-implies-string-msgid
          (implies (fn-record-p record)
@@ -92,6 +102,74 @@
             (fn-sn-verdict-listp (append a b)))
    :hints (("Goal" :induct (fn-sn-verdict-listp a)
             :in-theory (enable fn-sn-verdict-listp)))))
+
+; The three opaque projections do not participate in fn-sn-statep.  These
+; facts keep the 14-field constructor closed in the finish proof.
+(local
+ (defthm fn-sn-statep-of-v6-fields
+   (implies (and (fn-string-listp groups)
+                 (fn-no-duplicatesp groups)
+                 (natp capacity)
+                 (fn-sf-statep files)
+                 (fn-node-statep node)
+                 (fn-prin-keyringp keyring)
+                 (natp keyring-generation)
+                 (fn-sn-verdict-listp verdicts)
+                 (fn-sn-keyring-snapshot-listp snapshots)
+                 (natp identity-next))
+            (fn-sn-statep
+             (fn-sn-make-v6 groups capacity files node keyring index
+                            keyring-generation verdicts snapshots identity-next
+                            config-history consumer topic event-index)))
+   :hints (("Goal" :in-theory
+            (enable fn-sn-statep fn-sn-shapep fn-sn-make-v6
+                    fn-sn-groups fn-sn-capacity fn-sn-files fn-sn-node
+                    fn-sn-keyring fn-sn-keyring-generation fn-sn-verdicts
+                    fn-sn-keyring-snapshots fn-sn-identity-next)))))
+(local
+ (defthm fn-sn-with-consumer-preserves-state
+   (implies (fn-sn-statep s)
+            (fn-sn-statep (fn-sn-with-consumer s consumer)))
+   :hints (("Goal" :in-theory
+            (enable fn-sn-statep fn-sn-shapep fn-sn-with-consumer
+                    fn-sn-make-v6 fn-sn-groups fn-sn-capacity fn-sn-files
+                    fn-sn-node fn-sn-keyring fn-sn-keyring-generation
+                    fn-sn-verdicts fn-sn-keyring-snapshots
+                    fn-sn-identity-next)))))
+(local
+ (defthm fn-sn-with-topic-preserves-state
+   (implies (fn-sn-statep s)
+            (fn-sn-statep (fn-sn-with-topic s topic)))
+   :hints (("Goal" :in-theory
+            (enable fn-sn-statep fn-sn-shapep fn-sn-with-topic
+                    fn-sn-make-v6 fn-sn-groups fn-sn-capacity fn-sn-files
+                    fn-sn-node fn-sn-keyring fn-sn-keyring-generation
+                    fn-sn-verdicts fn-sn-keyring-snapshots
+                    fn-sn-identity-next)))))
+(local
+ (defthm fn-sn-with-event-index-preserves-state
+   (implies (fn-sn-statep s)
+            (fn-sn-statep (fn-sn-with-event-index s event-index)))
+   :hints (("Goal" :in-theory
+            (enable fn-sn-statep fn-sn-shapep fn-sn-with-event-index
+                    fn-sn-make-v6 fn-sn-groups fn-sn-capacity fn-sn-files
+                    fn-sn-node fn-sn-keyring fn-sn-keyring-generation
+                    fn-sn-verdicts fn-sn-keyring-snapshots
+                    fn-sn-identity-next)))))
+(local
+ (defthm fn-sn-update-indexed-preserves-state
+   (implies (and (fn-sn-statep s) (fn-sf-statep files)
+                 (fn-node-statep node))
+            (fn-sn-statep (fn-sn-update-indexed s files node index)))
+   :hints (("Goal" :in-theory (e/d (fn-sn-update-indexed)
+                                   (fn-sn-make-v6))))))
+(local
+ (defthm fn-sn-update-preserves-state
+   (implies (and (fn-sn-statep s) (fn-sf-statep files)
+                 (fn-node-statep node))
+            (fn-sn-statep (fn-sn-update s files node)))
+   :hints (("Goal" :in-theory (e/d (fn-sn-update)
+                                   (fn-sn-make-v6))))))
 
 ; The retention branch of `fn-sn-finish' calls `fn-replay-apply-retention-event'
 ; directly, so the exported fact about `fn-replay-apply-record' does not reach
@@ -254,6 +332,8 @@
                             fn-stxe-p fn-stxk-p fn-stxa-p
                             fn-th-topic-eventp fn-th-prefix-step
                             fn-th-local-admin-eventp
+                            fn-sn-with-topic fn-sn-with-consumer
+                            fn-sn-make-v6
                             fn-replay-apply-record
                             fn-replay-apply-retention-event
                             fn-node-complete
@@ -278,6 +358,26 @@
 ; above always named is now the branch the statement names.  What the other
 ; two arms do to this query is stated next; nothing here says a retention or
 ; identity completion records an acceptance verdict, because it does not.
+(local
+ (defthm fn-sn-verdicts-of-fn-sn-with-consumer
+   (equal (fn-sn-verdicts (fn-sn-with-consumer s consumer))
+          (fn-sn-verdicts s))
+   :hints (("Goal" :in-theory
+            (enable fn-sn-with-consumer fn-sn-make-v6 fn-sn-verdicts)))))
+(local
+ (defthm fn-sn-verdicts-of-fn-sn-make-v6
+   (equal (fn-sn-verdicts
+           (fn-sn-make-v6 groups capacity files node keyring index
+                          keyring-generation verdicts snapshots identity-next
+                          config-history consumer topic event-index))
+          verdicts)
+   :hints (("Goal" :in-theory (enable fn-sn-make-v6 fn-sn-verdicts)))))
+(local
+ (defthm fn-sn-verdicts-of-fn-sn-with-topic
+   (equal (fn-sn-verdicts (fn-sn-with-topic s topic))
+          (fn-sn-verdicts s))
+   :hints (("Goal" :in-theory
+            (enable fn-sn-with-topic fn-sn-make-v6 fn-sn-verdicts)))))
 (defthm fn-sn-finish-records-the-acceptance-verdict
   (implies (and (fn-sn-completion-enabledp s)
                 (not (fn-store-retention-event-p (fn-sn-completion-record s)))
@@ -299,6 +399,8 @@
                            (fn-record-shape-vocabulary
                             fn-stxe-p fn-stxk-p fn-stxa-p
                             fn-th-topic-eventp fn-th-prefix-step
+                            fn-sn-with-topic fn-sn-with-consumer
+                            fn-sn-make-v6
                             fn-replay-apply-record
                             fn-replay-apply-retention-event
                             fn-node-complete
@@ -318,6 +420,8 @@
                             fn-sn-advance-identity-next fn-sn-update-indexed)
                            (fn-record-shape-vocabulary
                             fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-sn-with-topic fn-sn-with-consumer
+                            fn-sn-make-v6
                             fn-replay-apply-record
                             fn-replay-apply-retention-event
                             fn-node-complete
@@ -329,13 +433,17 @@
 (defthm fn-sn-set-keyring-preserves-recorded-verdict
   (equal (fn-sn-verdict-lookup (fn-sn-set-keyring s keyring) msgid)
          (fn-sn-verdict-lookup s msgid))
-  :hints (("Goal" :in-theory (enable fn-sn-verdict-lookup
-                                      fn-sn-set-keyring))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-verdict-lookup
+                                   fn-sn-set-keyring)
+                                  (fn-sn-make-v6)))))
 
 (defthm fn-sn-crash-preserves-state
   (implies (fn-sn-statep s)
            (fn-sn-statep (fn-sn-crash s frontier-choice record-choice)))
-  :hints (("Goal" :in-theory (disable fn-sf-crash))))
+  :hints (("Goal" :in-theory
+           (disable fn-sf-crash fn-sn-with-topic fn-sn-with-consumer
+                    fn-sn-with-event-index fn-sn-update-indexed
+                    fn-sn-make-v6))))
 
 (defthm fn-sn-successful-replay-node-is-state
   (implies (fn-sf-history-recoverablep groups capacity records frontier)
@@ -387,7 +495,10 @@
                                    (files (fn-sn-files s))
                                    (groups (fn-sn-groups s))
                                    (capacity (fn-sn-capacity s))))
-           :in-theory (disable fn-sf-replay-node fn-sf-recover))))
+           :in-theory (disable fn-sf-replay-node fn-sf-recover
+                               fn-sn-with-topic fn-sn-with-consumer
+                               fn-sn-with-event-index fn-sn-update
+                               fn-sn-make-v6))))
 
 ; Every portable record value is equal to its counterpart in the actual staged
 ; acceptance/retention transaction, not merely to a sequence/txid reply string.
