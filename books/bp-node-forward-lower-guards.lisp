@@ -1,0 +1,40 @@
+; Guard closure for the codec and one-row forwarding helpers called by the
+; BP progress wrapper.  Keep these before the host-called wrapper guard book.
+(in-package "ACL2")
+(include-book "bp-fnbs-dispatch-codec")
+(include-book "bp-forward-attempt")
+
+(verify-guards fn-bpnp-dispatch-record)
+(verify-guards fn-bpnp-dispatch-recordp)
+(verify-guards fn-bpn-peer-octets)
+(verify-guards fn-bpn-peer-from-octets)
+(verify-guards fn-bpnp-session-idp)
+(verify-guards fn-bpnp-dispatch-values)
+(verify-guards fn-bpnp-dispatch-frame)
+(verify-guards fn-bpnp-dispatch-from-values)
+(verify-guards fn-bpnp-dispatch-unframe)
+
+(verify-guards fn-bpnp-forward-anchor)
+(verify-guards fn-bpnp-forward-one-block
+  :hints (("Goal" :in-theory (enable fn-bpb-blockp))))
+(verify-guards fn-bpnp-forward-blocks
+  :hints (("Goal" :in-theory (enable fn-bpb-block-listp))))
+(verify-guards fn-bpnp-forward-image
+  :hints (("Goal" :in-theory (enable fn-bpb-bundlep))))
+
+(verify-guards fn-bpnf-arrival-count)
+(verify-guards fn-bpnf-find-arrival)
+(verify-guards fn-bpnp-forward-attempt-record)
+(verify-guards fn-bpnp-forward-attempt-recordp)
+(verify-guards fn-bpnp-attempted-held)
+(verify-guards fn-bpnp-attempt-matches-heldp)
+(verify-guards fn-bpnp-attempt-replace)
+(verify-guards fn-bpnp-attempt-apply)
+(verify-guards fn-bpnp-forward-outcomep)
+(verify-guards fn-bpnp-forward-terminalp)
+(verify-guards fn-bpnp-forward-result-record)
+(verify-guards fn-bpnp-forward-result-recordp)
+(verify-guards fn-bpnp-forward-result-held)
+(verify-guards fn-bpnp-forward-result-matches-heldp)
+(verify-guards fn-bpnp-forward-result-replace)
+(verify-guards fn-bpnp-forward-result-apply)
