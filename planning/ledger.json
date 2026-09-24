@@ -615,7 +615,11 @@
     "books": 616,
     "books_in_root_closure": 614,
     "roots": 608,
+<<<<<<< HEAD
     "theorems": 8558,
+=======
+    "theorems": 8559,
+>>>>>>> 4fbedad8 (Repair native byte observation bridge for Store v6)
     "functions": 6339,
     "assert_events": 9298,
     "must_fails": 504,
@@ -3778,7 +3782,7 @@
       "book": "books/byte-store-native-correspondence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
+      "theorems": 4,
       "functions": 3,
       "guards": {
         "verified": 0,
