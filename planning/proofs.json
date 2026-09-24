@@ -2293,9 +2293,9 @@
       "progress_note": "Scoped ACL2 certification and called-owner sparse/historical LISTGROUP witnesses are recorded in the group-bucket evidence. Indexed OVER/XOVER resolve selected-group bucket entries through the pinned trie; the called pinned dispatcher equality has direct reachable and malformed-state premise teeth, with redundant range, tag, bound and session assumptions removed. HDR remains on the archive fold. The native OVER/XOVER socket driver is prepared but has not run on a source-matched image; combined-image qualification and full dependent closure at integrated source remain open."
     },
     {
-      "id": "PRF-066",
+      "id": "PRF-068",
       "title": "Local consumer status reports the scoped committed journal distance",
-      "statement": "For the ACL2 local-owner status decision `fn-col-status`, successful output carries a scoped registered ACK no greater than its committed journal frontier and the event distance frontier minus ACK; its ACK agrees by definition with the position cursor for that consumer. The kind-9 FNCT status codec has a proved accepted roundtrip for uint32 fields whose gap equals frontier minus ACK. The native wrapper `fn-owner-consumer-local-status` delegates to that decision and tests cover its dispatch/read-only refusal. This does not prove native filesystem recovery or article unreadness/application processing; Store recovery authority remains PRF-064.",
+      "statement": "The experimental local-owner command `consumer status CONTROL ID` reports the registered consumer ACK, committed journal frontier and their event-distance from fixed committed Store projections after the same local principal, query-version and view-version scope checks used by position and poll. The diagnostic leaves owner state unchanged. This target remains in progress: the attempted general kind-9 FNCT accepted roundtrip for uint32 fields is not yet proved, and the native saved-image command has not yet been qualified. This does not prove native filesystem recovery or article unreadness/application processing; Store recovery authority remains PRF-064.",
       "milestone": "M4",
       "requirements": [
         "CNS-001"
@@ -2317,7 +2317,7 @@
         "tests/native_owner_consumer_local_raw.lisp",
         "tests/test_native_consumer_e2.py"
       ],
-      "progress_note": "The status handler shares position/poll local-scope lookup, reads the committed consumer projection and frontier, and constructs the subtraction in ACL2. Scoped ACL2 certification and source-matched native image execution remain pending. No v0 gate changes."
+      "progress_note": "The handler shares position/poll scope lookup, reads fixed fields from the committed consumer projection and frontier, and constructs subtraction in ACL2. The first scoped farm run failed the proposed general status codec roundtrip; a bounded remote REPL bridge attempt proved the 13-byte frame input shape but not the complete roundtrip. The incomplete theorem was removed so behavior/test books can be certified separately. Corrected ACK witness distinguishes the durable ACK event (ACK becomes 2 and frontier advances) from the read-only status call. No source-matched saved-image run yet; no v0 gate changes."
     }
   ]
 }

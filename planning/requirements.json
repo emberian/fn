@@ -1634,7 +1634,7 @@
       "status": "specified",
       "proof_targets": [
         "PRF-064",
-        "PRF-066"
+        "PRF-068"
       ],
       "verification": [
         "proof",
