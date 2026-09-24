@@ -6,6 +6,7 @@
 (include-book "std/testing/must-fail" :dir :system)
 
 (assert-event (fn-ceis-relatedp *colt-after-article*))
+(assert-event (fn-snt-relation *colt-after-article*))
 (assert-event
  (let* ((store *colt-after-article*)
         (files (fn-sn-files store)))

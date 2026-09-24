@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "consumer-owner-local")
 (include-book "consumer-event-index-store-invariants")
+(include-book "store-node-traces")
 
 (defun fn-col-poll-list-reference (o consumer)
   (let* ((store (fn-own-store o))
@@ -86,3 +87,32 @@
                             fn-col-poll-index-window fn-col-poll-list-window
                             fn-col-poll-scan fn-cp-cursor-encode
                             fn-cei-correspondencep fn-cei-build)))))
+
+; The host's maintained Store relation supplies the file-state/uint32 bound
+; to the actual caller theorem.  It is a composition discharge, not a second
+; poll algorithm or a new served recognizer.
+(defthm fn-col-poll-file-state-follows-from-store-relation
+  (implies (fn-snt-relation (fn-own-store o))
+           (fn-sf-statep (fn-sn-files (fn-own-store o))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-snt-relation-implies-structural-state
+                            (s (fn-own-store o)))
+                 (:instance fn-snt-typed-store-components
+                            (s (fn-own-store o))))
+           :in-theory (disable fn-snt-relation fn-sn-statep fn-sf-statep))))
+
+(defthm fn-col-poll-agrees-under-maintained-store-relations
+  (let ((store (fn-own-store o)))
+    (implies (and (fn-snt-relation store)
+                  (fn-ceis-relatedp store)
+                  (not (member-eq (fn-sf-phase (fn-sn-files store))
+                                  '(:replaying :fault))))
+             (equal (fn-col-poll o consumer)
+                    (fn-col-poll-list-reference o consumer))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-col-poll-file-state-follows-from-store-relation)
+                 (:instance fn-col-poll-agrees-with-committed-list-under-index-relation))
+           :in-theory (disable fn-snt-relation fn-ceis-relatedp
+                               fn-col-poll fn-col-poll-list-reference))))
