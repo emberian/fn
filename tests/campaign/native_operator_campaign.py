@@ -386,6 +386,131 @@ def run_cut(image: Path, base: Path, cut, prior: Path, candidate: Path) -> dict:
     return row
 
 
+THIRD_ID = "<third@campaign.invalid>"
+GROUP_LINE = re.compile(rb"211 (\d+) (\d+) (\d+) ")
+
+
+def nntp_group(node: Node) -> tuple[int, int, int] | None:
+    with socket.create_connection(("127.0.0.1", node.port), timeout=60) as conn:
+        stream = conn.makefile("rb")
+        stream.readline()
+        conn.sendall("GROUP {}\r\n".format(GROUP).encode("ascii"))
+        line = stream.readline()
+        conn.sendall(b"QUIT\r\n")
+    match = GROUP_LINE.match(line)
+    return tuple(int(x) for x in match.groups()) if match else None
+
+
+def stopped_then_killed(node: Node, argv, extra) -> dict:
+    """Run one entry with a FN_CHECKPOINT_TEST_STOP selector; SIGKILL it at the stop.
+
+    The host SIGSTOPs itself at the selected cut (`fnn-checkpoint-test-stop');
+    a process that never stops ran to its end.
+    """
+    started = time.monotonic()
+    proc = subprocess.Popen([str(node.image), "--fn", *map(str, argv)],
+                            env=node.env(extra), cwd=node.dir,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stopped = False
+    while proc.poll() is None and time.monotonic() - started < 300:
+        try:
+            state = Path("/proc/{}/stat".format(proc.pid)).read_text().rsplit(")", 1)[1].split()[0]
+        except (FileNotFoundError, IndexError):
+            state = ""
+        if state == "T":
+            stopped = True
+            os.kill(proc.pid, signal.SIGKILL)
+            os.kill(proc.pid, signal.SIGCONT)
+            break
+        time.sleep(0.02)
+    out, err = proc.communicate(timeout=60)
+    return {"argv": ["IMAGE", "--fn", *map(str, argv)], "env": extra,
+            "stopped": stopped, "rc": proc.returncode,
+            "stdout": out.decode("utf-8", "replace")[-1000:],
+            "stderr": err.decode("utf-8", "replace")[-1000:],
+            "seconds": round(time.monotonic() - started, 2)}
+
+
+def compaction_steps(node: Node, entry: str):
+    if entry == "operator":
+        return [("operator", str(node.config), "store", "compact")]
+    return [("checkpoint", "pack", str(node.store), "select"),
+            ("checkpoint", "pack-reclaim", str(node.store)),
+            ("checkpoint", "pack-retire", str(node.store))]
+
+
+def reread_all(node: Node, want: dict) -> dict:
+    return {msgid: node.inspect(msgid)["_out"] == octets
+            for msgid, octets in want.items()}
+
+
+def run_checkpoint_cut(dev: Path, base: Path, cut, prior: Path, candidate: Path,
+                       third: Path) -> dict:
+    """One CHECKPOINT_CUTS cut through both compaction entries on a developer image.
+
+    Seed: two articles, the first already compacted (pack generation 0
+    selected, its file reclaimed), so that the compaction under test packs,
+    selects, reclaims one covered file and retires one older generation and
+    reaches every cut at its first occurrence.  Then: the entry killed at
+    the cut, `recover', every article reread byte-identical, the same entry
+    resumed to completion, a further compaction refused as already compact,
+    every article reread again, and a new POST at GROUP high+1.
+    """
+    row = {"cut": cut.name, "program": cut.program, "book": cut.book,
+           "table_candidate": cut.candidate, "entries": {}}
+    for entry in ("developer", "operator"):
+        node = Node(dev, base, "{}-{}".format(cut.name, entry))
+        out = row["entries"][entry] = {}
+        try:
+            seed(node, prior, out)
+            out["seed_compact"] = [public(node.run(argv)) for argv in compaction_steps(node, entry)]
+            owner = node.start_owner()
+            out["candidate_post"] = public(node.post(CANDIDATE_ID, candidate))
+            node.stop_owner(owner)
+            want = {PRIOR_ID: node.inspect(PRIOR_ID)["_out"],
+                    CANDIDATE_ID: node.inspect(CANDIDATE_ID)["_out"]}
+            out["before"] = snapshot(node.store)
+            killed_at = None
+            runs = []
+            for index, argv in enumerate(compaction_steps(node, entry)):
+                result = stopped_then_killed(node, argv, {"FN_CHECKPOINT_TEST_STOP": cut.name})
+                runs.append(result)
+                if result["stopped"]:
+                    killed_at = index
+                    break
+            out["cut_runs"] = runs
+            out["reached"] = killed_at is not None
+            out["killed"] = snapshot(node.store)
+            recovered = node.operator("recover")
+            out["recover_rc"] = recovered["rc"]
+            out["identical_after_cut"] = reread_all(node, want)
+            resume = compaction_steps(node, entry)[(0 if entry == "operator" else killed_at or 0):]
+            out["resume"] = [public(node.run(argv)) for argv in resume]
+            again = node.operator("store", "compact")
+            out["again"] = public(again)
+            out["after"] = snapshot(node.store)
+            out["identical_after_resume"] = reread_all(node, want)
+            owner = node.start_owner()
+            before = nntp_group(node) if owner["ready"] else None
+            out["third_post"] = public(node.post(THIRD_ID, third))
+            after = nntp_group(node) if owner["ready"] else None
+            out["group_before"], out["group_after"] = before, after
+            node.stop_owner(owner)
+            out["pass"] = bool(
+                out["reached"] and out["recover_rc"] == 0
+                and all(out["identical_after_cut"].values())
+                and all(r["rc"] == 0 for r in out["resume"]
+                        if entry == "developer" or "already-compact" not in r["stderr"])
+                and again["rc"] == 1 and "already-compact" in again["stderr"]
+                and all(out["identical_after_resume"].values())
+                and out["third_post"]["rc"] == 0
+                and before and after and after[2] == before[2] + 1)
+        finally:
+            node.reap()
+    row["pass"] = all(e.get("pass") for e in row["entries"].values())
+    return row
+
+
 def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
     rows = []
 
@@ -563,6 +688,8 @@ def main(argv=None) -> int:
     parser.add_argument("--only", action="append", default=[],
                         help="run only these cut names (repeatable)")
     parser.add_argument("--no-faults", action="store_true")
+    parser.add_argument("--checkpoint-only", action="store_true",
+                        help="run only the checkpoint cuts through both compaction entries")
     args = parser.parse_args(argv)
     native_cuts.verify_native_cut_map()
     dev, prod = args.images / "fn-host-developer", args.images / "fn-host"
@@ -572,14 +699,23 @@ def main(argv=None) -> int:
     prior, candidate = args.work / "prior.art", args.work / "candidate.art"
     prior.write_bytes(article(PRIOR_ID, "prior", "prior accepted content"))
     candidate.write_bytes(article(CANDIDATE_ID, "candidate", "candidate content"))
-    result = {"images": str(args.images), "cuts": [], "faults": []}
-    for cut in native_cuts.ALL_CUTS:
+    third = args.work / "third.art"
+    third.write_bytes(article(THIRD_ID, "third", "third content after compaction"))
+    result = {"images": str(args.images), "cuts": [], "checkpoint_cuts": [], "faults": []}
+    for cut in native_cuts.CHECKPOINT_CUTS:
+        if args.only and cut.name not in args.only:
+            continue
+        print("checkpoint cut", cut.name, flush=True)
+        result["checkpoint_cuts"].append(
+            run_checkpoint_cut(dev, args.work, cut, prior, candidate, third))
+        args.out.write_text(json.dumps(result, indent=1, default=str))
+    for cut in (() if args.checkpoint_only else native_cuts.ALL_CUTS):
         if args.only and cut.name not in args.only:
             continue
         print("cut", cut.name, flush=True)
         result["cuts"].append(run_cut(dev, args.work, cut, prior, candidate))
         args.out.write_text(json.dumps(result, indent=1, default=str))
-    if not args.no_faults:
+    if not args.no_faults and not args.checkpoint_only:
         print("faults", flush=True)
         result["faults"] = run_faults(dev, prod, args.work, prior, candidate)
     args.out.write_text(json.dumps(result, indent=1, default=str))

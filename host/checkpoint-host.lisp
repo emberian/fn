@@ -8,6 +8,7 @@
 (include-book "../books/checkpoint-pack-retire")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/checkpoint-compaction-preservation")
+(include-book "../books/store-compact-verb")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -176,6 +177,15 @@
 (defun fn-store-checkpoint-compaction-max-octets ()
   (declare (xargs :mode :program))
   *fn-cc-max-octets*)
+
+;; `operator CONFIG store compact' (host/native/checkpoint.lisp
+;; `fnn-command-compact'): the whole decision, over the verb's one
+;; observation.  The subject of books/store-compact-verb's keystones.
+(defun fn-store-compact-decide (profile octet-records lower names generations
+                                        selected footprint)
+  (declare (xargs :mode :program))
+  (fn-cverb-decide profile octet-records lower names generations selected
+                   footprint))
 
 ;; The subjects of books/checkpoint-compaction-preservation: the reclaim
 ;; preservation theorems are stated over these two functions.

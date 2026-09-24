@@ -295,6 +295,23 @@ the reclaim and each of its cuts, and the next POST gets high+1. Open:
 no operator entry reaches compaction, the pack is bounded at 4096 events
 and 4 MiB, and article-object closure and temporary space are unaddressed.
 
+Incremental evidence (2026-09-24, [m5-compact-verb](evidence/m5-compact-verb-2026-09-24.md)):
+a production node compacts. `operator CONFIG store compact` is refused while
+an owner runs. ACL2 (`fn-cverb-decide`) decides whether to pack, select,
+reclaim and retire, to resume an interrupted run, or to refuse by name, and
+the host carries out only those steps. The pack the host writes, together
+with every file present, fits the persisted profile's aggregate bound
+(`fn-cverb-pack-fits-the-profile-budget`): this is the temporary-space
+accounting. The 4 MiB pack stays the compaction unit, refused by name above
+it. On images of `5181e0ea`, all ten checkpoint cuts pass through the
+developer verbs and the operator verb (20/20). The production image
+compacts, rereads every article identically and posts at high+1. Open: a
+lost newest transaction file cannot be detected at open. The frontier is
+reserved before the record, so the loss looks like an abandoned
+reservation; detecting it needs a post-commit witness (ember). Compaction
+removes files, not transactions, so it does not add admission headroom.
+Chained packs above 4 MiB and article-object closure are also open.
+
 ## M6: additional interfaces and mission profiles
 
 - Extend the already exercised BP path with additional convergence-layer and
