@@ -116,24 +116,37 @@ file bytes and symlink targets before removing a worktree.
 
 ## Final cut
 
-All finite implementation packets are integrated. The final code checkpoint is
-`8a1b31f91206ce86f3e4ab234ae884d2ca8c5161`; its exact `make check` passed.
-Its ordinary combined hbox run is `run-20260924T070856Z-7ddd` at
-`/tank/fn/gates/final-cut-8a1b31f9-20260924` and is finishing at this writing.
-The image is blocked by the expanded BP guard closure: both
-`host/native/build.lisp` and `host/native/build-dtn.lisp` directly include
-`books/bp-node-progress-guards`. It is not an optional assurance book that can
-be omitted while claiming the normal image built. The bounded repair lanes
-closed the lower helper guards, then stopped. The composed persvati guard run
-timed out at `fn-bpnp-issued-debt-delta`, whose guard `t` does not imply the
-base-state premise required by `fn-bpnf-family-apply-at`. Strengthening that
-helper's guard also requires proving that `fn-bpn-report-author-step` preserves
-the premise for the proposal-state call in `fn-bpnp-delegate-with-credit`.
-This is the first unresolved guard, not a claim that every later event in the
-guard book is already discharged. Do not fix it by adding whole-state
-revalidation to the served path.
+The final code checkpoint is `8a1b31f91206ce86f3e4ab234ae884d2ca8c5161`.
+Its exact `make check` passed. The ordinary combined hbox run
+`run-20260924T070856Z-7ddd` finished with 407 newly certified books, three
+failed attempts and 261 matching certificates installed. The
+[final evidence record](evidence/final-cut-8a1b31f9-2026-09-24.md) preserves
+source, toolchain, manifest, logs and the exact failure scopes.
 
-Until this section is updated with the final result, `863c2141` is the latest
-completed shared image described here. Current dev passes structural checks
-but its later BP source is not yet a buildable qualified image. Do not erase
-that distinction by using old certificates or excluding a failed root.
+The remaining red roots are `books/bp-node-progress-guards`,
+`books/bp-node-progress-selection-invariants` and
+`tests/acl2/bp-node-machine-teeth-tests`. The guard attempt was deliberately
+stopped after reproducing the known missing premise; this is not a theorem
+counterexample or a successful certificate. The other two failures also need
+repair before advancing a dependent qualification claim.
+
+Both native build files include `bp-node-progress-guards`, so no new image was
+built. **863c2141 remains the last completed shared image pair**, with the
+runtime scopes recorded above. The later BP identity, pack-namespace and
+signed-receiver fixes are integrated but still need matching-image tests.
+No live service was changed, and no v0/v1 release is declared.
+
+The first unresolved guard is `fn-bpnp-issued-debt-delta`: its guard `t` does
+not imply the base-state premise needed by `fn-bpnf-family-apply-at`.
+Strengthening that helper's guard also requires proving
+`fn-bpn-report-author-step` preserves the premise for the proposal-state call
+in `fn-bpnp-delegate-with-credit`. Later guard events remain to be discharged.
+Do not add whole-state revalidation to the served path or omit the failed
+root to manufacture a build.
+
+All current fn source packets and scoped evidence are integrated on dev. The
+[final worktree retirement](evidence/worktree-retirement-final-handoffs-2026-09-24.md)
+preserves the released branches and verified private archives. Mini remains
+on its separate committed branch. The user-requested local `ALLDONE.marker`
+is the final takeover signal: root writes it only after worker shutdown,
+checks, synchronization and pausing the unfinished project goal.

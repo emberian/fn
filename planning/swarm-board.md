@@ -25,19 +25,19 @@ revision and theorem hypotheses when sharing a proof so its scope is clear.
 
 ## Current coordination — 2026-09-24
 
-### Wind-down convergence — 07:16 UTC
+### Final convergence — 07:22 UTC
 
 All current implementation packets are on dev; the
 [handoff](handoff-2026-09-24-winddown.md) supersedes the active assignments
 below. Both BP guard lanes stopped after the bounded repair: lower helper
 guards passed, while the outer debt helper needs a maintained-base invariant
 through its inner report step. No new feature or proof search is running.
-Only `native_qualification` remains active on exact `8a1b31f9`, hbox gate
+The final qualification of exact `8a1b31f9` used hbox gate
 `/tank/fn/gates/final-cut-8a1b31f9-20260924`, ordinary run
 `run-20260924T070856Z-7ddd`, four jobs with a 300-second per-book bound.
-Its full result or explicit bounded partial stop is the last handoff packet.
-The exact source passed root's structural check; no image may be built around
-the known failed guard root.
+The [terminal record](evidence/final-cut-8a1b31f9-2026-09-24.md) reports
+three failed roots; all proof jobs stopped. The exact source passed root's
+structural check. No image was built around the failed guard root.
 
 The [first](evidence/worktree-retirement-convergence-2026-09-24.md) and
 [final](evidence/worktree-retirement-final-handoffs-2026-09-24.md) retirement
