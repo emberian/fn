@@ -2703,6 +2703,45 @@
         "fn-native-operator-run-refuses-a-reserved-init-group",
         "fn-native-admin-group-name-creatablep-is-the-rfc-5536-rule"
       ]
+    },
+    {
+      "id": "PRF-072",
+      "title": "Offline store-profile upgrade: only upgrades, every gate monotone, old or new at every crash cut",
+      "statement": "An offline profile upgrade keeps every store valid and moves the budget to the new profile. fn-profile-upgradep OLD NEW holds when both are named profiles, NEW is not OLD, the record and frontier formats are equal, and no bound (fields 1 to 4, and the per-record ceiling) is smaller; over the four named profiles that is development to scale for each format. Monotone gates, over the functions the host calls at open and publication: fn-profile-upgrade-keeps-txn-observation (the namespace observation fn-profile-txn-observation, called by host/store-host.lisp fn-store-txn-observation-selected from host/native/io.lisp fnn-transaction-files with field 4, is unchanged when it was valid under OLD), fn-profile-upgrade-keeps-replay-bound (fn-profile-replay-within-boundp, called per record from fnn-durable-records), fn-profile-upgrade-keeps-publication-admissibility (fn-bs-publication-admissiblep, fnn-publish) and fn-profile-upgrade-keeps-verdict (fn-sbud-verdict, the owner's and store post's). Replay takes no profile argument, so an admitted store replays to the same state. fn-profile-upgrade-verdict-writes-only-upgrades: an :upgrade verdict of the function host/native/io.lisp fnn-command-upgrade-profile calls (through fn-store-profile-upgrade-verdict) carries octets that decode to the named profile, and that profile is an upgrade of the store's (under A-CRYPTO, through fn-bs-config-decode-of-encode); fn-profile-upgrade-budget-after-reopen: the budget the next open hands the owner is fn-sbud-budget of the named profile. fn-bs-profile-program-crash-is-old-or-new: for the byte program fnn-upgrade-profile-write runs (stage, fence, rename onto config.json, root barrier), from a store with nothing pending in which config.json names inode OLD-INO, every crash image of every cut of the successful run names OLD-INO with its old content or the new inode with exactly the staged octets; -crash-budget-is-old-or-new gives the budget as the old one or the new one. Covered scope: the successful run and its crash images; the syscall error arms are classified by the host (known before the rename, uncertain at or after) and witnessed natively, not modelled.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-002",
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-004"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/store-profile-upgrade.lisp",
+        "books/byte-store-profile-program.lisp",
+        "tests/acl2/store-profile-upgrade-tests.lisp",
+        "tests/test_native_profile_upgrade.py",
+        "tests/campaign/native_cuts.py",
+        "planning/evidence/manifests/certify-20260924T180001Z-3124349.json",
+        "planning/evidence/manifests/certify-20260924T180112Z-1750504.json",
+        "planning/evidence/m5-profile-upgrade-2026-09-24.md",
+        "planning/evidence/m5-profile-upgrade/native-profile-upgrade.log"
+      ],
+      "progress_note": "Lane m5-profile-upgrade (2026-09-24). Teeth in tests/acl2/store-profile-upgrade-tests.lisp: the relation over the four named profiles (two pairs), the verdict's five answers, 129 and 200 transaction names, the 24 MiB replay bound, 128 and 200 used, a reachable byte run whose rename cut has both images, and one must-fail per keystone hypothesis at constants (including a store with a pending write to config.json's inode and a step list that renames an unfenced stage). Native, developer image of 05b96703 on hbox: three articles, upgrade, budget 4096 with 3 used, the fourth POST accepted; same profile and downgrade refused through both entries; a held writer lock refuses; the five PROFILE_CUTS cuts x kill/eio x operator/store entries (20 cases) reopen with the old or the new frame byte for byte, with the candidate column's budget. Open: the checkpoint pack coverage (fn-store-checkpoint-compaction-coverage with field 4) is not in the monotone set; fn-store-txn-prefix-reclaim-plan keeps its own copy of the namespace bound.",
+      "events": [
+        "fn-profile-upgrade-keeps-txn-observation",
+        "fn-profile-upgrade-keeps-replay-bound",
+        "fn-profile-upgrade-keeps-publication-admissibility",
+        "fn-profile-upgrade-keeps-verdict",
+        "fn-profile-upgrade-verdict-writes-only-upgrades",
+        "fn-bs-config-decode-of-encode",
+        "fn-bs-profile-program-crash-is-old-or-new",
+        "fn-bs-profile-program-crash-budget-is-old-or-new"
+      ]
     }
   ]
 }
