@@ -104,3 +104,100 @@
                                        "all-co-resident" 0))) nil))
           *bpat-channel* *bpat-eid*))
         nil))
+
+; D23: the carried-source decision.  "peer" is the neighbour; it carries
+; dtn://x/, and "x" is x's own enrollment (a different listener port).
+(include-book "std/testing/must-fail" :dir :system)
+(defconst *bpat-x-rows*
+  (list (fn-cfg-row-make "x" "path-identity" "x.example.invalid" 0)
+        (fn-cfg-row-make "x" "auth-principal" "bp-only-no-nntp-principal" 0)
+        (fn-cfg-row-make "x" "transport-bp" "dtn://x/" 0)
+        (fn-cfg-row-make "x" "bp-trust" "network" 0)
+        (fn-cfg-row-make "x" "bp-boundary-listener" "127.0.0.1" 4999)
+        (fn-cfg-row-make "x" "bp-boundary-source" "127.0.0.1" 0)
+        (fn-cfg-row-make "x" "bp-boundary-translation" "none" 0)
+        (fn-cfg-row-make "x" "bp-boundary-originators" "all-co-resident" 0)))
+(defconst *bpat-carries-x*
+  (list (fn-cfg-row-make "peer" "bp-boundary-carries" "dtn://x/" 0)))
+(defun bpat-cfg (rows)
+  (fn-cfg-make 7 (fn-cfg-value-make nil 0 nil nil nil rows nil)))
+(defconst *bpat-carried-cfg*
+  (bpat-cfg (append *bpat-rows* *bpat-carries-x* *bpat-x-rows*)))
+(defconst *bpat-unenrolled-cfg* (bpat-cfg (append *bpat-rows* *bpat-carries-x*)))
+(defconst *bpat-uncarried-cfg* (bpat-cfg (append *bpat-rows* *bpat-x-rows*)))
+(defconst *bpat-p* (fn-record-string-octets "peer"))
+(defconst *bpat-x* (fn-record-string-octets "x"))
+(assert-event (fn-cfgp *bpat-carried-cfg*))
+(assert-event (fn-cfgp *bpat-unenrolled-cfg*))
+(assert-event (fn-cfgp *bpat-uncarried-cfg*))
+; The neighbour is still admitted on its own channel; x's boundary is on
+; another listener and does not make the peer's channel ambiguous.
+(assert-event
+ (equal (fn-bpaj-session-principal *bpat-carried-cfg* *bpat-channel* *bpat-eid*)
+        (list :admitted *bpat-p* 7)))
+(assert-event
+ (equal (fn-bpaj-carried-source-decision *bpat-carried-cfg* *bpat-p* 7
+                                         "dtn://peer/")
+        (list :direct *bpat-p*)))
+(assert-event
+ (equal (fn-bpaj-carried-source-decision *bpat-carried-cfg* *bpat-p* 7
+                                         "dtn://x/")
+        (list :carried *bpat-p* *bpat-x*)))
+(assert-event
+ (equal (fn-bpaj-carried-source-decision *bpat-carried-cfg* *bpat-x* 7
+                                         "dtn://x/")
+        (list :direct *bpat-x*)))
+(assert-event
+ (equal (fn-bpaj-carried-source-decision *bpat-uncarried-cfg* *bpat-p* 7
+                                         "dtn://x/")
+        '(:refused :source-not-carried)))
+(assert-event
+ (equal (fn-bpaj-carried-source-decision *bpat-unenrolled-cfg* *bpat-p* 7
+                                         "dtn://x/")
+        '(:refused :carried-source-unenrolled)))
+(assert-event
+ (equal (fn-bpaj-carried-source-decision *bpat-carried-cfg* *bpat-p* 8
+                                         "dtn://x/")
+        '(:refused :generation)))
+; A carried row names what the neighbour may carry, not what x may carry:
+; x is a direct boundary and carries nothing.
+(assert-event
+ (equal (fn-bpaj-carried-source-decision *bpat-carried-cfg* *bpat-x* 7
+                                         "dtn://peer/")
+        '(:refused :source-not-carried)))
+
+; Teeth.  fn-bpaj-carried-decision-is-the-authors-direct-decision without
+; its hypothesis: a refused decision names no author with a direct decision.
+(must-fail
+ (assert-event
+  (fn-bpaj-current-peer-eidp
+   *bpat-unenrolled-cfg*
+   (fn-bpaj-source-decision-principal
+    (fn-bpaj-carried-source-decision *bpat-unenrolled-cfg* *bpat-p* 7
+                                     "dtn://x/"))
+   7 "dtn://x/")))
+; fn-bpaj-unlisted-source-is-not-trusted: with the neighbour's own
+; transport row, or with its carries row, the source is trusted.
+(must-fail
+ (assert-event
+  (not (fn-bpaj-source-decision-trustedp
+        (fn-bpaj-carried-source-decision *bpat-carried-cfg* *bpat-p* 7
+                                         "dtn://peer/")))))
+(must-fail
+ (assert-event
+  (not (fn-bpaj-source-decision-trustedp
+        (fn-bpaj-carried-source-decision *bpat-carried-cfg* *bpat-p* 7
+                                         "dtn://x/")))))
+; fn-bpaj-carried-unenrolled-source-is-refused, one case per hypothesis.
+(defun bpat-unenrolledp (cfg principal generation)
+  (equal (fn-bpaj-carried-source-decision cfg principal generation "dtn://x/")
+         '(:refused :carried-source-unenrolled)))
+(assert-event (bpat-unenrolledp *bpat-unenrolled-cfg* *bpat-p* 7))
+(must-fail (assert-event   ; not a configuration
+            (bpat-unenrolledp
+             (fn-cfg-make 7 (fn-cfg-value-make '(junk) 0 nil nil nil
+                              (append *bpat-rows* *bpat-carries-x*) nil))
+             *bpat-p* 7)))
+(must-fail (assert-event (bpat-unenrolledp *bpat-unenrolled-cfg* *bpat-p* 8)))
+(must-fail (assert-event (bpat-unenrolledp *bpat-uncarried-cfg* *bpat-p* 7)))
+(must-fail (assert-event (bpat-unenrolledp *bpat-carried-cfg* *bpat-p* 7)))

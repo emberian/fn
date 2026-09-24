@@ -21,6 +21,12 @@
 (defun fn-owner-bp-request-trustedp (view state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-request-trustedp view (fn-owner-config state))))
+
+; D23: ACL2's source decision for a delivered view, as the line the host
+; prints (direct, carried with carrier and author, or the refusal reason).
+(defun fn-owner-bp-source-decision-line (view state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpah-source-decision-line view (fn-owner-config state))))
 (include-book "../books/bp-native-app-fast")
 (include-book "../books/bp-transit-join")
 

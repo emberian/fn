@@ -213,8 +213,49 @@ decoded as source-address for durable command compatibility."
 ; deliberately narrow: loopback IPv4, no translation, and every co-resident
 ; process in the originator set.  Its auth-principal value cannot be a SHA-256
 ; principal hex, so this row does not grant an NNTP peer login as a side effect.
+; D23: the source EIDs the neighbour may carry, one row each.
+(defun fn-native-admin-bp-carries-rows (name eids)
+  (declare (xargs :guard t))
+  (if (consp eids)
+      (cons (fn-cfg-row-make name "bp-boundary-carries" (car eids) 0)
+            (fn-native-admin-bp-carries-rows name (cdr eids)))
+    nil))
+
+; A carried EID is a configuration label with a BP scheme ("dtn:" or
+; "ipn:"), so it cannot be confused with the decimal limits of the long form.
+(defun fn-native-admin-bp-eid-wordp (word)
+  (declare (xargs :guard t))
+  (and (stringp word)
+       (fn-cfg-labelp word)
+       (<= 5 (length word))
+       (let ((chars (coerce word 'list)))
+         (or (equal (take 4 chars) '(#\d #\t #\n #\:))
+             (equal (take 4 chars) '(#\i #\p #\n #\:))))))
+
+(defun fn-native-admin-bp-carried-wordsp (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (and (fn-native-admin-bp-eid-wordp (car words))
+           (not (member-equal (car words) (cdr words)))
+           (fn-native-admin-bp-carried-wordsp (cdr words)))
+    (null words)))
+
+; `bp-boundary add NAME PATH BP-EID PORT [INBOUND MAX-OCTETS MAX-INFLIGHT]
+; [carries EID ...]': the base form's length (6 or 9) and the carried list.
+(defun fn-native-admin-bp-boundary-split (words)
+  (declare (xargs :guard t))
+  (cond ((and (true-listp words) (< 7 (len words))
+              (equal (nth 6 words) "carries")
+              (fn-native-admin-bp-carried-wordsp (nthcdr 7 words)))
+         (mv 6 (nthcdr 7 words)))
+        ((and (true-listp words) (< 10 (len words))
+              (equal (nth 9 words) "carries")
+              (fn-native-admin-bp-carried-wordsp (nthcdr 10 words)))
+         (mv 9 (nthcdr 10 words)))
+        (t (mv (len words) nil))))
+
 (defun fn-native-admin-bp-boundary-rows
-  (name path eid port inbound max-octets max-inflight)
+  (name path eid port inbound max-octets max-inflight carried)
   (declare (xargs :guard t))
   (append
    (list (fn-cfg-row-make name "path-identity" path 0)
@@ -230,11 +271,13 @@ decoded as source-address for durable command compatibility."
         (fn-cfg-row-make name "bp-boundary-source" "127.0.0.1" 0)
         (fn-cfg-row-make name "bp-boundary-translation" "none" 0)
         (fn-cfg-row-make name "bp-boundary-originators"
-                         "all-co-resident" 0))))
+                         "all-co-resident" 0))
+   (fn-native-admin-bp-carries-rows name carried)))
 
 (defun fn-native-admin-bp-boundary-plan (words)
   (declare (xargs :guard t))
-  (if (and (true-listp words) (member-equal (len words) '(6 9))
+  (mv-let (base carried) (fn-native-admin-bp-boundary-split words)
+  (if (and (true-listp words) (member-equal base '(6 9))
            (equal (nth 0 words) "bp-boundary")
            (equal (nth 1 words) "add")
            (fn-cfg-labelp (nth 2 words))
@@ -246,7 +289,7 @@ decoded as source-address for durable command compatibility."
                   (coerce (nth 5 words) 'list)))
            (<= (fn-native-admin-decimal-value
                 (coerce (nth 5 words) 'list)) 65535)
-           (or (equal (len words) 6)
+           (or (equal base 6)
                (and (fn-cfg-wildmatp (nth 6 words))
                     (fn-native-admin-decimalp (nth 7 words))
                     (<= 1 (fn-native-admin-decimal-value
@@ -263,16 +306,17 @@ decoded as source-address for durable command compatibility."
                     name (nth 3 words) (nth 4 words)
                     (fn-native-admin-decimal-value
                      (coerce (nth 5 words) 'list))
-                    (if (equal (len words) 9) (nth 6 words) nil)
-                    (if (equal (len words) 9)
+                    (if (equal base 9) (nth 6 words) nil)
+                    (if (equal base 9)
                         (fn-native-admin-decimal-value
                          (coerce (nth 7 words) 'list)) 0)
-                    (if (equal (len words) 9)
+                    (if (equal base 9)
                         (fn-native-admin-decimal-value
-                         (coerce (nth 8 words) 'list)) 0))))
+                         (coerce (nth 8 words) 'list)) 0)
+                    carried)))
         (fn-native-admin-result :accepted nil :set-bp-boundary
                                 (fn-record-string-octets name) 0 nil rows))
-    (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil)))
+    (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil))))
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is

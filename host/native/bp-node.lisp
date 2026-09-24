@@ -24,8 +24,15 @@
     (finish-output)
     (loop (sleep 1))))
 
+(defun fnn-bpnode-source-decision (view)
+  "Print ACL2's D23 source decision for VIEW; the host classifies nothing."
+  (let ((line (fnn-owner-core 'fn-owner-bp-source-decision-line view)))
+    (when (stringp line)
+      (fnn-out "BP node source ~a" line))))
+
 (defun fnn-bpnode-request-result
     (owner receipt-root destination policy issuer view node-id)
+  (fnn-bpnode-source-decision view)
   (unless (eq (fnn-owner-core 'fn-owner-bp-request-trustedp view) t)
     (return-from fnn-bpnode-request-result
       (values :request-refused '(0))))
@@ -73,6 +80,7 @@
 (defun fnn-bpnode-receipt-result
     (owner workflow-root view configured-peer)
   (declare (ignore configured-peer))
+  (fnn-bpnode-source-decision view)
   (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-trustedp view) t)
     (return-from fnn-bpnode-receipt-result
       (values :receipt-refused '(0))))
