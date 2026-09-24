@@ -26,7 +26,7 @@ path, and the full allocator byte/kernel relation. Two bounded Luna trials
 cover a client verdict display and proof-cost diagnosis. The client change
 landed after an article/verdict association correction; no proof speedup has
 yet been demonstrated. [Cleanup and recovery](worktree-recovery-2026-09-24.md)
-records 97 verified worktree archives and recovery from an external accidental
+records 101 verified worktree archives and recovery from an external accidental
 checkout reset. Old branch counts are not a feature backlog.
 
 The dated checkpoints below are historical observations, not competing
