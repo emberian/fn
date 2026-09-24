@@ -321,13 +321,44 @@
 (must-fail
  (assert-event
   (null (fn-bpn-nth 13 (car (fn-bpnf-held-list *bpcx-n08-r*))))))
-;; Finding: the served step's recovery flag compares the first effect, not
-;; its tag, to :restart-ready (bp-node-progress.lisp, the final branch of
-;; fn-bpnp-step), so a successful recovery keeps the volatile session table.
-;; The host recovers only at open with empty sessions, so no served effect
-;; follows today; the model's "recovery clears both" does not hold.
+;; Recovery clears both volatile fields.  Teeth of
+;; fn-bpnp-recovery-success-clears-sessions-and-pending-image
+;; (bp-node-progress-premises).  Witness: *bpcx-s3* carries the open session
+;; to the destination; the successful N08 recovery drops it and leaves no
+;; pending kind-8 wire.  (Before the fix the recovery flag compared the
+;; whole first effect with the bare keyword and kept the session table.)
+(assert-event
+ (and (consp (fn-bpnp-sessions *bpcx-s3*))
+      (equal (fn-cbor-ag-car *bpcx-n08-recover-event*) :recover-fnbs)
+      (equal (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects *bpcx-n08-recovered*)))
+             :restart-ready)
+      (null (fn-bpnp-sessions *bpcx-n08-r*))
+      (null (fn-bpnp-pending-image *bpcx-n08-r*))))
+
+;; Without the :restart-ready hypothesis: a recovery event from the same
+;; state whose epoch does not advance faults, and the fault keeps the
+;; session table.  Premises other than the dropped one hold; the conclusion
+;; is false.  The recovery-event hypothesis has no separating case: only
+;; fn-bpnf-recover-fnbs-step builds a :restart-ready effect.
+(defconst *bpcx-stale-recover-event*
+  (list :recover-fnbs (fn-bpnf-epoch *bpcx-s3*) nil :ready
+        (list :ready (fn-bpnf-held-list *bpcx-s3*) nil) 3))
+(defconst *bpcx-stale-recovered*
+  (fn-bpnp-step *bpcx-s3* *bpcx-stale-recover-event*))
+(assert-event
+ (and (fn-bpnp-host-eventp *bpcx-stale-recover-event*)
+      (equal (fn-cbor-ag-car *bpcx-stale-recover-event*) :recover-fnbs)
+      (equal (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects *bpcx-stale-recovered*)))
+             :restart-fault)
+      (not (and (null (fn-bpnp-sessions (fn-bpnf-answer-state *bpcx-stale-recovered*)))
+                (null (fn-bpnp-pending-image
+                       (fn-bpnf-answer-state *bpcx-stale-recovered*)))))
+      (equal (fn-bpnp-sessions (fn-bpnf-answer-state *bpcx-stale-recovered*))
+             (fn-bpnp-sessions *bpcx-s3*))))
 (must-fail
- (assert-event (null (fn-bpnp-sessions *bpcx-n08-r*))))
+ (assert-event
+  (and (null (fn-bpnp-sessions (fn-bpnf-answer-state *bpcx-stale-recovered*)))
+       (null (fn-bpnp-pending-image (fn-bpnf-answer-state *bpcx-stale-recovered*))))))
 
 ;; N11, refusal half: a structurally valid local administrative bundle
 ;; whose identity conflicts with a held bundle is refused :identity-conflict

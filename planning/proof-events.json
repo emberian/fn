@@ -1755,6 +1755,11 @@
           "kind": "theorem",
           "name": "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record",
           "note": "Subject fn-bpn-step; bridged to the called fn-bpnp-step on (:base E) by fn-bpnp-step-base-event-refines-fn-bpn-step. The served forwarding arm's own :cl-send (kind 8, fn-bpnp-attempt-persist-step) has no authorization keystone yet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-recovery-success-clears-sessions-and-pending-image",
+          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step; the only recovery event is built at bp-service.lisp:744 in fnn-bps-open): on a :recover-fnbs event whose first effect is tagged :restart-ready, the outbound session table and the pending kind-8 wire are empty afterwards. A faulted recovery keeps both. Teeth: tests/acl2/bp-node-counterexamples-tests (N08 recovery witness with a live session before; one must-fail for the :restart-ready hypothesis; the recovery-event hypothesis has no separating case since only fn-bpnf-recover-fnbs-step builds :restart-ready)."
         }
       ]
     },
