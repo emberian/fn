@@ -811,6 +811,16 @@ selectors and a `-of-constructor` theorem.
 | 19 | `(fn-bpn-rec-checkpoint-chunk generation index bytes)` | slice E, §3.6; only in a new generation's staging, never applied by ordinary replay |
 | 20 | `(fn-bpn-rec-checkpoint-manifest generation frontier chunk-digests)` | slice E, §3.6; the last object staged |
 
+The logical kind-6 dispatch record has a distinct received FNBS encoding:
+frame header `(FNBS, version 2, kind 6)` under the canonical epoch-operation
+final name. The already deployed `clock-domain.fnb` marker keeps `(FNBS,
+version 1, kind 6)` and its separate fixed final name. Specialized canonical
+decoders reject the opposite version, and the namespace planner never treats
+the marker name as a received lifecycle name. This version mapping preserves
+existing marker bytes; it does not make the current held-node dispatcher or
+forwarding attempt implementation complete. The first codec is
+`books/bp-fnbs-dispatch-codec.lisp`.
+
 Slice A's codec defines kinds 5 to 14 and refuses 15 to 20 at recovery as
 `(:unsupported-kind k)`; slice C adds 15 to 18 and slice E 19 and 20, each
 with its replay case, so the replay theorem gains one case per kind rather
