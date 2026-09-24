@@ -13,8 +13,9 @@
 ;
 ; Keystones:
 ;   fn-own-240-follows-consumed-completion       (P2; subject fn-own-finish,
-;                                                  which the host does not
-;                                                  call yet; see below)
+;                                                  which host/owner-host.lisp
+;                                                  fn-owner-finish-submission
+;                                                  calls; see below)
 ;   fn-own-pinned-view-survives-other-post       (P3, the plan's T6)
 ;   fn-ocfg-open-at-the-bound-refuses            (P5, the session bound)
 ;   fn-ocfg-fault-is-own-fault                   (P5, the wrapper's equation)
@@ -42,10 +43,55 @@
 ; fn-own-finish is the (:complete) event with its word computed here: the
 ; completion is consumed exactly as fn-own-complete consumes it, and the word
 ; is :durable only when that consumption happened and the completed record
-; carries the in-flight submission's Message-ID and octets.  Any other case
-; is :fault, which fn-own-outcome renders as the uncertain 441.  The host
-; should report this word instead of its own comparison.
-(defun fn-own-completion-names-submission-p (o)
+; carries the in-flight submission's Message-ID and the octets the owner
+; handed the Store for it (fn-own-sub-stored-octets under the live
+; configuration CFG).  Any other case is :fault, which fn-own-outcome renders
+; as the uncertain 441 (436 for transit).  host/owner-host.lisp
+; fn-owner-finish-submission reports this word, with CFG the configured
+; owner's fn-ocfg-config.
+
+; The octets the owner hands the Store for submission SUB under the live
+; configuration CFG.  host/owner-host.lisp fn-owner-take stages exactly this
+; value as fn-owner-submit-octets.  A local or control submission's are its
+; injected form.  A transit submission's are fn-peer-relayed-octets of the
+; peer's octets: this node's Path identity prepended and Xref removed (RFC
+; 5537 3.6/3.7, books/path-update.lisp).  They differ from the received
+; octets (fn-own-sub-octets) whenever a Path identity is configured, so a
+; completion compared with the received octets names a different article
+; (transit-436, 2026-09-24).
+(defun fn-own-sub-stored-octets (cfg sub)
+  (declare (xargs :guard t))
+  (let ((d (fn-own-sub-decision sub)))
+    (if (fn-peer-submissionp d)
+        (fn-peer-relayed-octets cfg (fn-peer-submission-peer d)
+                                (fn-peer-submission-octets d))
+      (fn-inj-decision-octets d))))
+
+;; The two arms, named by definition (they are not keystones).  A local or
+;; control submission's staged octets are its own: nothing is prepended, so
+;; for served POST the keystone below compares with the submission's octets
+;; exactly as before.  A transit submission's are fn-peer-relayed-octets of
+;; the received octets, whose Path is the received Path with this node's
+;; identity and diagnostic prepended when a Path identity is set
+;; (books/peer-inbound-invariants.lisp
+;; fn-peer-relayed-octets-keep-the-received-path-tail).
+(defthm fn-own-sub-stored-octets-of-a-local-submission-by-definition
+  (implies (not (fn-peer-submissionp (fn-own-sub-decision sub)))
+           (equal (fn-own-sub-stored-octets cfg sub)
+                  (fn-own-sub-octets sub)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
+
+(defthm fn-own-sub-stored-octets-of-a-transit-submission-by-definition
+  (implies (fn-peer-submissionp (fn-own-sub-decision sub))
+           (equal (fn-own-sub-stored-octets cfg sub)
+                  (fn-peer-relayed-octets
+                   cfg (fn-peer-submission-peer (fn-own-sub-decision sub))
+                   (fn-own-sub-octets sub))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
+
+(defun fn-own-completion-names-submission-p (o cfg)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
   (let ((sub (fn-own-inflight o))
         (record (fn-sn-completion-record (fn-own-store o))))
@@ -53,13 +99,13 @@
          (fn-record-p record)
          (equal (fn-record-msgid record)
                 (fn-record-octets-string (fn-own-sub-msgid sub)))
-         (equal (fn-record-payload record) (fn-own-sub-octets sub))
+         (equal (fn-record-payload record) (fn-own-sub-stored-octets cfg sub))
          t)))
 
-(defun fn-own-finish (o)
+(defun fn-own-finish (o cfg)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
   (cons (if (and (fn-sn-completion-enabledp (fn-own-store o))
-                 (fn-own-completion-names-submission-p o))
+                 (fn-own-completion-names-submission-p o cfg))
             :durable
           :fault)
         (fn-own-complete o)))
@@ -82,11 +128,13 @@
 ; store is fn-sn-finish of the old); exactly one acknowledgement, the
 ; completion pair, was appended to the store's success list and to the
 ; ledger; the in-flight submission is connection `id''s; the completed record
-; is an article record whose Message-ID and payload are that submission's;
-; and the pair names a record in the durable history.
+; is an article record whose Message-ID is that submission's and whose
+; payload is the octets the owner staged for it under CFG
+; (fn-own-sub-stored-octets); and the pair names a record in the durable
+; history.
 (defthm fn-own-240-follows-consumed-completion
-  (let* ((o2 (cdr (fn-own-finish o)))
-         (word (car (fn-own-finish o)))
+  (let* ((o2 (cdr (fn-own-finish o cfg)))
+         (word (car (fn-own-finish o cfg)))
          (pair (fn-sf-completion (fn-sn-files (fn-own-store o))))
          (record (fn-sn-completion-record (fn-own-store o)))
          (sub (fn-own-inflight o)))
@@ -115,23 +163,25 @@
                   (fn-record-p record)
                   (equal (fn-record-msgid record)
                          (fn-record-octets-string (fn-own-sub-msgid sub)))
-                  (equal (fn-record-payload record) (fn-own-sub-octets sub))
+                  (equal (fn-record-payload record)
+                         (fn-own-sub-stored-octets cfg sub))
                   (fn-sf-record-has-pairp
                    pair (fn-sf-records (fn-sn-files (fn-own-store o2)))))))
   :rule-classes nil
   :hints (("Goal"
            :cases ((and (fn-sn-completion-enabledp (fn-own-store o))
-                        (fn-own-completion-names-submission-p o)))
+                        (fn-own-completion-names-submission-p o cfg)))
            :use ((:instance fn-own-durable-reply-names-a-durable-record
-                            (o (cdr (fn-own-finish o)))
-                            (word (car (fn-own-finish o))))
+                            (o (cdr (fn-own-finish o cfg)))
+                            (word (car (fn-own-finish o cfg))))
                  (:instance fn-own-complete-preserves-relation)
                  fn-own-complete-keeps-every-connection
                  (:instance fn-own-complete-ledger-is-exact-pair)
                  (:instance fn-sn-finish-acknowledges-exact-pair
                             (s (fn-own-store o))))
            :in-theory (e/d (fn-own-finish fn-own-completion-names-submission-p)
-                           (fn-own-complete fn-own-relation fn-own-outcome
+                           (fn-own-sub-stored-octets
+                            fn-own-complete fn-own-relation fn-own-outcome
                             fn-served-post-outcome fn-sn-finish
                             fn-sn-completion-enabledp fn-sn-completion-record
                             fn-own-complete-preserves-relation
@@ -318,4 +368,5 @@
                         (:instance fn-ocfg-make-of-its-fields (x oc))))))
 
 (in-theory (disable fn-own-finish fn-own-completion-names-submission-p
+                    fn-own-sub-stored-octets
                     fn-ocfg-writer-eventp))

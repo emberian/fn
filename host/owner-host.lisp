@@ -544,8 +544,10 @@
 ; The article completion of the submission in flight (served POST, control
 ; post): the word is fn-own-finish's (books/owner-served-invariants.lisp),
 ; :durable only when fn-sn-finish consumed an enabled completion whose record
-; carries this submission's Message-ID and octets, and the owner installed is
-; its (fn-own-complete o).  That is the subject of
+; carries this submission's Message-ID and the octets fn-owner-take staged for
+; it (fn-own-sub-stored-octets under the live configuration: for transit, the
+; Path-updated fn-peer-relayed-octets), and the owner installed is its
+; (fn-own-complete o).  That is the subject of
 ; fn-own-240-follows-consumed-completion, so the host no longer decides the
 ; word by comparing phases.  With no config record staged, fn-ocfg-step's
 ; (:complete) is exactly fn-ocfg-with-owner of fn-own-complete
@@ -558,7 +560,7 @@
   (let ((oc (fn-owner-ocfg state)))
     (if (fn-ocfg-staged oc)
         (value :fault)
-      (let* ((result (fn-own-finish (fn-ocfg-owner oc)))
+      (let* ((result (fn-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)))
              (state (fn-owner-replace-core (cdr result) state)))
         (value (car result))))))
 
@@ -601,13 +603,12 @@
              ; function of the same octets (fn-peer-injection-arguments'
              ; payload) and leaves it in fn-owner-transit-payload, which the
              ; native drain compares with this before the store attempt.
+             ; fn-own-sub-stored-octets is the one definition of these
+             ; octets; fn-owner-finish-submission compares the completed
+             ; record with the same function of the same configuration.
              (state (f-put-global 'fn-owner-submit-octets
-                                  (if transitp
-                                      (fn-peer-relayed-octets
-                                       (fn-owner-config state)
-                                       (fn-peer-submission-peer decision)
-                                       (fn-peer-submission-octets decision))
-                                    (fn-inj-decision-octets decision))
+                                  (fn-own-sub-stored-octets
+                                   (fn-owner-config state) sub)
                                   state))
              ; A transit submission's memberships are not in the submission:
              ; they are fn-peer-scope-groups of the article's Newsgroups and
