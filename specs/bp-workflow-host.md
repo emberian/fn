@@ -203,6 +203,26 @@ faults after the canonical Store release record's final link and before its
 transactions-directory barrier. Both cuts report uncertainty, fence further
 mutation until recovery, and require replay before the release is reported.
 
+`bp-obligation request STORE WORKFLOW WORK ATTEMPT FNBS NODE-ID CONTACT-HOST
+CONTACT-PORT [LIFETIME CRC HOP-LIMIT TRANSFER-MRU WALL WALL-ERROR]` is the
+generic native request (M4, 2026-09-24). ACL2's `fn-bprq-plan`
+(`books/bp-request-plan.lisp`, through `fn-workflow-request-plan`) returns
+the whole plan for one work: a `:retry-request` for an attempt a reopen
+marked `:restart-observed` (so the next open replays the new attempt), the
+`:attempt` record, its durable outcome, the FNBS key (work, attempt,
+generation), the request ADU (`fn-bpo-request-adu` over the image those
+records make) and the work's peer EID. The host publishes the records in that
+order, takes the one `:submit` (`fn-workflow-take-submit`), then enqueues the
+ADU as one FNBS job under that key and offers it once to CONTACT-HOST:PORT;
+`bp-service resume` re-offers a durable job. Keystone
+`fn-bprq-plan-is-the-works-request`. The ION sender
+(`app-journal workflow-ion-submit`) is an adapter of the same attempt:
+`fn-bpiw-attempt-record` equals `fn-bprq-attempt-record`. Developer cuts
+`FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT` (attempt durable, outcome absent)
+and `FN_BP_OBLIGATION_TEST_PAUSE_AFTER_SUBMIT` (submit taken, no carrier).
+After the first the reopened image is fenced with the attempt pending and no
+native verb publishes its recovery outcome; the work stays outstanding.
+
 `fn-aj-authorize` is the admission function this path calls.  Its carried
 frontier owns the exact next filename, record count, aggregate byte count,
 configuration-first order, per-domain frame bound, and intent-resolution

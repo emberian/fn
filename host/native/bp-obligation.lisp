@@ -85,6 +85,103 @@
                 receipt-id profile)
        +fnn-exit-ok+))))
 
+;;; `bp-obligation request': the generic native request for one work.  ACL2
+;;; plans it whole (fn-workflow-request-plan -> fn-bprq-plan,
+;;; books/bp-request-plan.lisp): the :attempt record, its durable outcome, the
+;;; FNBS key (work attempt generation), the request ADU (fn-bpo-request-adu
+;;; over the image those two records make) and its destination EID.  The host
+;;; publishes the two records, takes the one :submit effect, and only then
+;;; hands the ADU to the FNBS carrier.  A work whose last attempt a reopen
+;;; marked :restart-observed gets the plan's :retry-request first.  No ION record, route or helper is used;
+;;; `app-journal workflow-ion-submit' is the ION adapter of the same attempt.
+
+(defun fnn-bpo-request-pause (selector marker)
+  ;; Developer-image process-death witness only, at a modelled journal cut.
+  (when (string= (or (fnn-developer-selector selector) "") "1")
+    (fnn-out "~a" marker)
+    (finish-output)
+    (loop (sleep 1))))
+
+(defun fnn-bpo-request-publish (store journal work-id attempt-id)
+  "Publish ACL2's attempt and outcome for WORK-ID; return (key adu destination)."
+  (fnn-bpo-call-with-owner-journal
+   store journal t
+   (lambda (opened service)
+     (declare (ignore service))
+     (let ((plan (fnn-core-state 'fn-workflow-request-plan work-id attempt-id)))
+       (unless (and (consp plan) (eq (first plan) :request)
+                    (= (length plan) 7))
+         (fnn-refuse "ACL2 refused a request for work ~a attempt ~a"
+                     work-id attempt-id))
+       (destructuring-bind (tag attempt outcome key adu destination retry) plan
+         (declare (ignore tag))
+         (unless (and (fnn-octet-list-p adu) (<= 1 (length adu) 65538)
+                      (stringp destination))
+           (fnn-fault "ACL2 returned an invalid request plan"))
+         ;; A restart-observed attempt is retried by the journaled policy
+         ;; decision first, so the next open replays the new attempt.
+         (when retry
+           (fnn-app-publish opened retry)
+           (fnn-out "BP obligation request durable retry work=~a attempt=~a generation=~d"
+                    (second retry) (third retry) (fourth retry)))
+         (fnn-app-publish opened attempt :reserve-resolution t)
+         (fnn-bpo-request-pause "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT"
+                                "BP OBLIGATION ATTEMPT DURABLE")
+         (fnn-app-publish opened outcome)
+         (unless (eq (fnn-core-state 'fn-workflow-take-submit
+                                     (first key) (second key) (third key))
+                     t)
+           (fnn-fault "durable attempt did not grant one submit effect"))
+         (fnn-out "BP obligation request durable attempt work=~a attempt=~a generation=~d destination=~a adu=~d"
+                  (first key) (second key) (third key) destination
+                  (length adu))
+         (fnn-bpo-request-pause "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_SUBMIT"
+                                "BP OBLIGATION SUBMIT TAKEN")
+         (list key adu destination))))))
+
+(defun fnn-command-bpo-owner-request
+    (store journal work-id attempt-id fnbs node-id contact-host contact-port
+     lifetime crc-type hop-limit transfer-mru wall wall-error)
+  (destructuring-bind (key adu destination)
+      (fnn-bpo-request-publish store journal work-id attempt-id)
+    ;; The carrier: one FNBS job keyed by ACL2's (work attempt generation),
+    ;; offered once now; `bp-service resume' re-offers a durable job.
+    (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit
+                                  transfer-mru))
+           (service (fnn-bps-open fnbs config wall wall-error)))
+      (unwind-protect
+           (let* ((work-octets (fnn-octet-list (fnn-string-octets (first key))))
+                  (attempt-octets
+                    (fnn-octet-list (fnn-string-octets (second key))))
+                  (generation (third key))
+                  (existing (fnn-core 'fn-bpn-host-existing-sequence
+                                      (fnn-bps-base service) work-octets
+                                      attempt-octets generation))
+                  (sequence
+                    (if (eq (fnn-core 'fn-bpn-host-existing-sequence-p existing)
+                            t)
+                        (fnn-core 'fn-bpn-host-existing-sequence-value existing)
+                      (fnn-bp-reserve-sequence (fnn-bps-tally service))))
+                  (route (list :route
+                               (fnn-octet-list (fnn-string-octets contact-host))
+                               contact-port
+                               (fnn-octet-list (fnn-string-octets node-id))
+                               +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
+                               transfer-mru))
+                  (event (list :enqueue work-octets attempt-octets generation
+                               sequence route (fnn-bp-eid destination) adu
+                               (fnn-bp-observation wall wall-error))))
+             (fnn-bps-drive-effects service (fnn-bps-step service event))
+             (case (fnn-bps-outcome service)
+               (:uncertain
+                (fnn-indeterminate "BP obligation request carrier publication is uncertain"))
+               (:refused (fnn-refuse "BP obligation request carrier was refused")))
+             (fnn-out "BP obligation request carrier durable work=~a attempt=~a generation=~d"
+                      (first key) (second key) generation)
+             (fnn-bps-attempt-ready service)
+             (fnn-bps-exit-code service))
+        (fnn-bps-release service)))))
+
 (defun fnn-dispatch-bp-obligation (command args)
   (flet ((need (n)
            (when (< (length args) n)
@@ -98,6 +195,19 @@
        (need 4)
        (fnn-command-bpo-owner-undertake
         (first args) (second args) (third args) (parse-integer (fourth args))))
+      ((string= command "request")
+       ;; STORE WORKFLOW WORK ATTEMPT FNBS NODE-ID CONTACT-HOST CONTACT-PORT
+       ;; [LIFETIME CRC HOP-LIMIT TRANSFER-MRU WALL WALL-ERROR]
+       (need 8)
+       (flet ((number (index default)
+                (fnn-tcl-number (fnn-tcl-arg args index) default)))
+         (fnn-command-bpo-owner-request
+          (first args) (second args) (third args) (fourth args) (fifth args)
+          (sixth args) (seventh args) (parse-integer (eighth args))
+          (number 8 +fnn-bp-lifetime+) (number 9 +fnn-bp-crc-type+)
+          (number 10 +fnn-bp-hop-limit+) (number 11 +fnn-tcl-transfer-mru+)
+          (let ((text (fnn-tcl-arg args 12))) (and text (parse-integer text)))
+          (number 13 0))))
       ((string= command "receipt")
        (need 6)
        (fnn-command-bpo-owner-receipt

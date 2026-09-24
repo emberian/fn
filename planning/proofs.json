@@ -3022,6 +3022,32 @@
         "fn-hm-open-refuses-a-lost-acknowledged-record",
         "fn-hm-decode-of-encode"
       ]
+    },
+    {
+      "id": "PRF-076",
+      "title": "The native request is the workflow's request for exactly that work, over the plan bp-obligation request executes",
+      "statement": "fn-bprq-plan S WORK ATTEMPT (books/bp-request-plan.lisp), called by host/workflow-host.lisp fn-workflow-request-plan, which host/native/bp-obligation.lisp fnn-bpo-request-publish calls, returns nil or (:request ATTEMPT-RECORD OUTCOME KEY ADU DESTINATION RETRY). fn-bprq-plan-is-the-works-request: whenever it returns a plan, the attempt record is an :attempt naming exactly WORK and ATTEMPT, KEY (the FNBS job key the host enqueues under) is (WORK ATTEMPT generation) with the attempt's generation, ADU decodes exactly (fn-bpa-decode-exact) to fn-bpa-make-request over the work WORK holds in the image reached by publishing RETRY (if any), the attempt and its durable outcome (fn-bprq-published-state), that request is fn-bpa-requestp with work id WORK, and DESTINATION is that work's peer EID. Hypothesis: the plan exists. The published image is the host's: fn-bpiw-apply on these records is fn-bprl-apply-journal-record (reachable witness in the test book, not a general theorem). ION is an adapter: fn-bpiw-attempt-record-is-the-generic-attempt (test book) equates the ION constructor with fn-bprq-attempt-record, which host/workflow-host.lisp fn-workflow-ion-attempt-record now calls. Not claimed: that the image's work fields equal those before the attempt (they are stated over the published image), any transport or receipt property, or recovery of a fenced attempt.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-012"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-request-plan.lisp",
+        "tests/acl2/bp-request-plan-tests.lisp",
+        "host/workflow-host.lisp",
+        "host/native/bp-obligation.lisp",
+        "tests/bp-dtn7/run_fn_dtn7_app_receipt.py",
+        "planning/evidence/m4-native-request-2026-09-24.md"
+      ],
+      "progress_note": "Lane m4-native-request (2026-09-24). Certified on hbox, w28 ACL2 8.7, 2 jobs: run-20260924T230759Z-4d2f (manifest certify-20260924T230813Z-2144048, bp-request-plan 7.6 s, tests 1.9 s) at the source of commit 41799aaf; the first run (certify-20260924T230223Z-2118502) certified the plan before the retry-request clause. Teeth: reachable witness over the committed-article image of bp-outbound-tests (the plan's attempt and ADU are the hand trace's exact record and octets); must-fail at the refusal witness for the one hypothesis; refusals for an in-flight attempt, a pending image, a fenced image and a work bound to no article (where the attempt alone would be admitted); a restart-observed work planned with its :retry-request replays through fn-bpiw-replay-journal while the same history without it is refused. Status stays in-progress: the lab evidence is on a scratch DTN developer image, and the recovery of an attempt fenced by a cut between the attempt and its outcome has no native verb.",
+      "events": [
+        "fn-bprq-plan-is-the-works-request"
+      ]
     }
   ]
 }
