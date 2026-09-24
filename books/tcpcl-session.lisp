@@ -1399,6 +1399,69 @@
    :hints (("Goal" :in-theory (enable fn-tcl-messagep)))
    :rule-classes nil))
 
+;; Split on the live inbound record so that each branch carries one stage
+;; instance: with both, the goal split across recv-segment's branches crossed
+;; with the assumptions of both instances.
+(local
+ (defthm fn-tcl-recv-segment-preserves-sessionp-at-start
+  (implies (and (not (fn-tcl-session-inbound s))
+                (fn-tcl-sessionp s) (fn-clock-timep now)
+                (fn-tcl-messagep m (fn-tcl-segment-mru s))
+                (equal (fn-tcl-msg-kind m) :xfer-segment)
+                (fn-tcl-transferringp (fn-tcl-session-phase s))
+                (fn-tcl-session-negotiated s))
+           (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-recv-segment s m now))))
+   :hints (("Goal" :in-theory (e/d (fn-tcl-recv-segment)
+                                   (fn-tcl-refuse fn-tcl-complete fn-tcl-stage
+                                    fn-tcl-broken-stream fn-tcl-ext-decision
+                                    fn-tcl-sessionp fn-tcl-messagep
+                                    fn-cbor-octetp fn-tcl-transferringp))
+            ; the stage lemma cited for the inbound record this branch
+            ; builds; as a rewrite rule it is not relieved
+            :use ((:instance fn-tcl-xfer-segment-message-facts
+                             (mru (fn-tcl-segment-mru s)))
+                  (:instance fn-tcl-stage-preserves-sessionp
+                             (inbound (fn-tcl-make-inbound
+                                       (fn-tcl-xfer-segment-xfer-id m)
+                                       (list (fn-tcl-xfer-segment-data m))
+                                       (len (fn-tcl-xfer-segment-data m))
+                                       (cadr (fn-tcl-ext-decision (fn-tcl-xfer-segment-ext m)
+                                                                  (fn-tcl-transfer-mru s)))))
+                             (flags (fn-tcl-xfer-segment-flags m))
+                             (xfer-id (fn-tcl-xfer-segment-xfer-id m))
+                             (len (len (fn-tcl-xfer-segment-data m)))))))))
+
+(local
+ (defthm fn-tcl-recv-segment-preserves-sessionp-continuing
+  (implies (and (fn-tcl-session-inbound s)
+                (fn-tcl-sessionp s) (fn-clock-timep now)
+                (fn-tcl-messagep m (fn-tcl-segment-mru s))
+                (equal (fn-tcl-msg-kind m) :xfer-segment)
+                (fn-tcl-transferringp (fn-tcl-session-phase s))
+                (fn-tcl-session-negotiated s))
+           (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-recv-segment s m now))))
+   :hints (("Goal" :in-theory (e/d (fn-tcl-recv-segment)
+                                   (fn-tcl-refuse fn-tcl-complete fn-tcl-stage
+                                    fn-tcl-broken-stream fn-tcl-ext-decision
+                                    fn-tcl-sessionp fn-tcl-messagep
+                                    fn-cbor-octetp fn-tcl-transferringp))
+            ; the stage lemma cited for the inbound record this branch
+            ; builds; as a rewrite rule it is not relieved
+            :use ((:instance fn-tcl-xfer-segment-message-facts
+                             (mru (fn-tcl-segment-mru s)))
+                  (:instance fn-tcl-stage-preserves-sessionp
+                             (inbound (fn-tcl-make-inbound
+                                       (fn-tcl-xfer-segment-xfer-id m)
+                                       (cons (fn-tcl-xfer-segment-data m)
+                                             (fn-tcl-inbound-staged (fn-tcl-session-inbound s)))
+                                       (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
+                                          (len (fn-tcl-xfer-segment-data m)))
+                                       (fn-tcl-inbound-total (fn-tcl-session-inbound s))))
+                             (flags (fn-tcl-xfer-segment-flags m))
+                             (xfer-id (fn-tcl-xfer-segment-xfer-id m))
+                             (len (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
+                                     (len (fn-tcl-xfer-segment-data m))))))))))
+
 (defthm fn-tcl-recv-segment-preserves-sessionp
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now)
                 (fn-tcl-messagep m (fn-tcl-segment-mru s))
@@ -1406,38 +1469,9 @@
                 (fn-tcl-transferringp (fn-tcl-session-phase s))
                 (fn-tcl-session-negotiated s))
            (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-recv-segment s m now))))
-  :hints (("Goal" :in-theory (e/d (fn-tcl-recv-segment)
-                                  (fn-tcl-refuse fn-tcl-complete fn-tcl-stage
-                                   fn-tcl-broken-stream fn-tcl-ext-decision
-                                   fn-tcl-sessionp fn-tcl-messagep
-                                   fn-cbor-octetp fn-tcl-transferringp))
-           ; the stage lemma cited for the two inbound records recv-segment
-           ; builds (START, continuation); as a rewrite rule it is not
-           ; relieved on either instance
-           :use ((:instance fn-tcl-xfer-segment-message-facts
-                            (mru (fn-tcl-segment-mru s)))
-                 (:instance fn-tcl-stage-preserves-sessionp
-                            (inbound (fn-tcl-make-inbound
-                                      (fn-tcl-xfer-segment-xfer-id m)
-                                      (list (fn-tcl-xfer-segment-data m))
-                                      (len (fn-tcl-xfer-segment-data m))
-                                      (cadr (fn-tcl-ext-decision (fn-tcl-xfer-segment-ext m)
-                                                                 (fn-tcl-transfer-mru s)))))
-                            (flags (fn-tcl-xfer-segment-flags m))
-                            (xfer-id (fn-tcl-xfer-segment-xfer-id m))
-                            (len (len (fn-tcl-xfer-segment-data m))))
-                 (:instance fn-tcl-stage-preserves-sessionp
-                            (inbound (fn-tcl-make-inbound
-                                      (fn-tcl-xfer-segment-xfer-id m)
-                                      (cons (fn-tcl-xfer-segment-data m)
-                                            (fn-tcl-inbound-staged (fn-tcl-session-inbound s)))
-                                      (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
-                                         (len (fn-tcl-xfer-segment-data m)))
-                                      (fn-tcl-inbound-total (fn-tcl-session-inbound s))))
-                            (flags (fn-tcl-xfer-segment-flags m))
-                            (xfer-id (fn-tcl-xfer-segment-xfer-id m))
-                            (len (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
-                                    (len (fn-tcl-xfer-segment-data m)))))))))
+  :hints (("Goal" :use (fn-tcl-recv-segment-preserves-sessionp-at-start
+                        fn-tcl-recv-segment-preserves-sessionp-continuing)
+           :in-theory (theory (quote minimal-theory)))))
 
 (defthm fn-tcl-unexpected-preserves-sessionp
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now))
@@ -1822,6 +1856,65 @@
                 (fn-tcl-transferringp (fn-tcl-session-phase s)))
            (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-broken-stream s live-id now)))))
 
+;; Split on the live inbound record so that each branch carries one stage
+;; instance: with both, the goal split across recv-segment's branches crossed
+;; with the assumptions of both instances.
+(local
+ (defthm fn-tcl-recv-segment-preserves-cheapp-at-start
+  (implies (and (not (fn-tcl-session-inbound s))
+                (fn-tcl-session-cheapp s) (fn-clock-timep now)
+                (fn-tcl-messagep m (fn-tcl-segment-mru s))
+                (equal (fn-tcl-msg-kind m) :xfer-segment)
+                (fn-tcl-transferringp (fn-tcl-session-phase s))
+                (fn-tcl-session-negotiated s))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-segment s m now))))
+   :hints (("Goal" :in-theory (e/d (fn-tcl-recv-segment)
+                                   (fn-tcl-refuse fn-tcl-complete fn-tcl-stage
+                                    fn-tcl-broken-stream fn-tcl-ext-decision
+                                    fn-tcl-session-cheapp fn-tcl-messagep
+                                    fn-cbor-octetp fn-tcl-transferringp))
+            :use ((:instance fn-tcl-xfer-segment-message-facts
+                             (mru (fn-tcl-segment-mru s)))
+                  (:instance fn-tcl-stage-preserves-cheapp
+                             (inbound (fn-tcl-make-inbound
+                                       (fn-tcl-xfer-segment-xfer-id m)
+                                       (list (fn-tcl-xfer-segment-data m))
+                                       (len (fn-tcl-xfer-segment-data m))
+                                       (cadr (fn-tcl-ext-decision (fn-tcl-xfer-segment-ext m)
+                                                                  (fn-tcl-transfer-mru s)))))
+                             (flags (fn-tcl-xfer-segment-flags m))
+                             (xfer-id (fn-tcl-xfer-segment-xfer-id m))
+                             (len (len (fn-tcl-xfer-segment-data m)))))))))
+
+(local
+ (defthm fn-tcl-recv-segment-preserves-cheapp-continuing
+  (implies (and (fn-tcl-session-inbound s)
+                (fn-tcl-session-cheapp s) (fn-clock-timep now)
+                (fn-tcl-messagep m (fn-tcl-segment-mru s))
+                (equal (fn-tcl-msg-kind m) :xfer-segment)
+                (fn-tcl-transferringp (fn-tcl-session-phase s))
+                (fn-tcl-session-negotiated s))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-segment s m now))))
+   :hints (("Goal" :in-theory (e/d (fn-tcl-recv-segment)
+                                   (fn-tcl-refuse fn-tcl-complete fn-tcl-stage
+                                    fn-tcl-broken-stream fn-tcl-ext-decision
+                                    fn-tcl-session-cheapp fn-tcl-messagep
+                                    fn-cbor-octetp fn-tcl-transferringp))
+            :use ((:instance fn-tcl-xfer-segment-message-facts
+                             (mru (fn-tcl-segment-mru s)))
+                  (:instance fn-tcl-stage-preserves-cheapp
+                             (inbound (fn-tcl-make-inbound
+                                       (fn-tcl-xfer-segment-xfer-id m)
+                                       (cons (fn-tcl-xfer-segment-data m)
+                                             (fn-tcl-inbound-staged (fn-tcl-session-inbound s)))
+                                       (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
+                                          (len (fn-tcl-xfer-segment-data m)))
+                                       (fn-tcl-inbound-total (fn-tcl-session-inbound s))))
+                             (flags (fn-tcl-xfer-segment-flags m))
+                             (xfer-id (fn-tcl-xfer-segment-xfer-id m))
+                             (len (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
+                                     (len (fn-tcl-xfer-segment-data m))))))))))
+
 (defthm fn-tcl-recv-segment-preserves-cheapp
   (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)
                 (fn-tcl-messagep m (fn-tcl-segment-mru s))
@@ -1829,35 +1922,9 @@
                 (fn-tcl-transferringp (fn-tcl-session-phase s))
                 (fn-tcl-session-negotiated s))
            (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-segment s m now))))
-  :hints (("Goal" :in-theory (e/d (fn-tcl-recv-segment)
-                                  (fn-tcl-refuse fn-tcl-complete fn-tcl-stage
-                                   fn-tcl-broken-stream fn-tcl-ext-decision
-                                   fn-tcl-session-cheapp fn-tcl-messagep
-                                   fn-cbor-octetp fn-tcl-transferringp))
-           :use ((:instance fn-tcl-xfer-segment-message-facts
-                            (mru (fn-tcl-segment-mru s)))
-                 (:instance fn-tcl-stage-preserves-cheapp
-                            (inbound (fn-tcl-make-inbound
-                                      (fn-tcl-xfer-segment-xfer-id m)
-                                      (list (fn-tcl-xfer-segment-data m))
-                                      (len (fn-tcl-xfer-segment-data m))
-                                      (cadr (fn-tcl-ext-decision (fn-tcl-xfer-segment-ext m)
-                                                                 (fn-tcl-transfer-mru s)))))
-                            (flags (fn-tcl-xfer-segment-flags m))
-                            (xfer-id (fn-tcl-xfer-segment-xfer-id m))
-                            (len (len (fn-tcl-xfer-segment-data m))))
-                 (:instance fn-tcl-stage-preserves-cheapp
-                            (inbound (fn-tcl-make-inbound
-                                      (fn-tcl-xfer-segment-xfer-id m)
-                                      (cons (fn-tcl-xfer-segment-data m)
-                                            (fn-tcl-inbound-staged (fn-tcl-session-inbound s)))
-                                      (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
-                                         (len (fn-tcl-xfer-segment-data m)))
-                                      (fn-tcl-inbound-total (fn-tcl-session-inbound s))))
-                            (flags (fn-tcl-xfer-segment-flags m))
-                            (xfer-id (fn-tcl-xfer-segment-xfer-id m))
-                            (len (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
-                                    (len (fn-tcl-xfer-segment-data m)))))))))
+  :hints (("Goal" :use (fn-tcl-recv-segment-preserves-cheapp-at-start
+                        fn-tcl-recv-segment-preserves-cheapp-continuing)
+           :in-theory (theory (quote minimal-theory)))))
 
 (defthm fn-tcl-unexpected-preserves-cheapp
   (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
