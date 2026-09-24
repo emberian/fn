@@ -5,9 +5,16 @@
 (include-book "bp-node-fragment-plan-tests")
 (include-book "std/testing/must-fail" :dir :system)
 
+(defconst *bpnfs-live-observation* (fn-clock-observation 1 2343 0 t))
+(assert-event (equal (fn-bpah-held-expiry *bpnff-p3* *bpnfs-live-observation*) :live))
+(assert-event (equal (fn-bpah-held-expiry *bpnff-p0* *bpnfs-live-observation*) :live))
+(assert-event (equal (car (fn-bpnf-family-plan-at
+                           *bpnff-state* *bpnff-p3*
+                           *bpnfs-live-observation*)) :ready))
 (defun bpnfs-proposal ()
   (declare (xargs :guard t :verify-guards nil))
-  (fn-bpnf-fragment-step *bpnff-state* '(:family 0)))
+  (fn-bpnf-fragment-step
+   *bpnff-state* (list :family 0 *bpnfs-live-observation*)))
 (defun bpnfs-pending ()
   (declare (xargs :guard t :verify-guards nil))
   (fn-bpnf-answer-state (bpnfs-proposal)))
@@ -46,7 +53,7 @@
         (fn-bpnf-answer (bpnfs-uncertain) nil)))
 (assert-event
  (equal (fn-bpnf-fragment-step
-         (bpnfs-uncertain) '(:family 2))
+         (bpnfs-uncertain) (list :family 2 *bpnfs-live-observation*))
         (fn-bpnf-answer (bpnfs-uncertain) nil)))
 (must-fail
  (assert-event
@@ -54,11 +61,9 @@
           (fn-bpnf-answer-state (bpnfs-durable)))
          (fn-bpnf-held-list *bpnff-state*))))
 
-; Pre-repair logical-state counterexample.  The nonzero fragment has exceeded
-; its own Bundle Age lifetime at the later observation.  The newly received
-; offset-zero fragment has a fresh local anchor.  The family selector still
-; includes the expired nonzero bytes.  This state is NOT reachable through
-; today's actual wire boundary: fn-bpn-receive refuses all fragments first.
+; Both wire fragments now pass the carrier boundary, while the application
+; ADU boundary still refuses fragment delivery.  At the later observation
+; the first fragment is expired, so the family selector must not consume it.
 (defconst *bpnfs-age-zero* (fn-bpb-bundle-age-block 2 0 0 0))
 (defconst *bpnfs-aged-b3*
   (fn-bpb-make-bundle (fn-bpb-bundle-primary *bpnff-b3*)
@@ -89,27 +94,33 @@
 (assert-event (fn-bpnf-heldp *bpnfs-aged-p3*))
 (assert-event (fn-bpnf-heldp *bpnfs-fresh-p0*))
 (assert-event
- (equal (fn-bpnf-receive-wire-event
+ (fn-bpnf-receive-wire-readyp
+  (fn-bpnf-receive-wire-event
          *bpnff-config* (fn-bpb-encode *bpnfs-aged-b3*)
-         *bpnfs-age-arrival* (fn-bpn-nth 4 *bpnfs-aged-p3*))
-        '(:refused :fragment-not-reassembled)))
+         *bpnfs-age-arrival* (fn-bpn-nth 4 *bpnfs-aged-p3*))))
 (assert-event
- (equal (fn-bpnf-receive-wire-event
+ (fn-bpnf-receive-wire-readyp
+  (fn-bpnf-receive-wire-event
          *bpnff-config* (fn-bpb-encode *bpnfs-fresh-b0*)
-         *bpnfs-age-later* (fn-bpn-nth 4 *bpnfs-fresh-p0*))
-        '(:refused :fragment-not-reassembled)))
+         *bpnfs-age-later* (fn-bpn-nth 4 *bpnfs-fresh-p0*))))
+(assert-event
+ (equal (fn-bpn-outcome-reason
+         (fn-bpn-receive *bpnff-config*
+                         (fn-bpb-encode *bpnfs-aged-b3*)
+                         *bpnfs-age-arrival*))
+        :fragment-not-reassembled))
 (must-fail
  (assert-event
-  (fn-bpnf-receive-wire-readyp
-   (fn-bpnf-receive-wire-event
-    *bpnff-config* (fn-bpb-encode *bpnfs-aged-b3*)
-    *bpnfs-age-arrival* (fn-bpn-nth 4 *bpnfs-aged-p3*)))))
+  (equal (car (fn-bpnf-family-next
+              *bpnfs-expiry-state* *bpnfs-age-later*)) :ready)))
 (assert-event (equal (fn-bpah-held-expiry *bpnfs-aged-p3* *bpnfs-age-later*)
                      :expired))
 (assert-event (equal (fn-bpah-held-expiry *bpnfs-fresh-p0* *bpnfs-age-later*)
                      :live))
-(assert-event (equal (car (fn-bpnf-family-next *bpnfs-expiry-state*)) :ready))
+(assert-event (equal (car (fn-bpnf-family-next
+                           *bpnfs-expiry-state* *bpnfs-age-later*)) nil))
 (assert-event (equal (car (car (fn-bpnf-answer-effects
                          (fn-bpnf-fragment-step
-                          *bpnfs-expiry-state* '(:family 0)))))
-                     :persist-family))
+                          *bpnfs-expiry-state*
+                          (list :family 0 *bpnfs-age-later*)))))
+                     nil))

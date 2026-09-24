@@ -17,11 +17,11 @@
              (equal (fn-bpnf-next-op st) (1+ op))
              (equal (fn-bpnf-next-arrival st)
                     (1+ (fn-bpn-nth 4 record)))
-             (fn-bpnf-family-recordp record)
+             (fn-bpnf-family-record-atp record)
              (equal (fn-bpn-nth 1 record) epoch)
              (equal (fn-bpn-nth 2 record) op)
              lock-owned final-absent)
-        (let ((frame (fn-bpnf-family-frame record)))
+        (let ((frame (fn-bpnf-family-v1-frame record)))
           (if (equal frame :bad)
               (list :fault :family-codec)
             (list :ok epoch op record
@@ -35,12 +35,12 @@
        (equal (car operation) :ok)
        (fn-frame-natp (nth 1 operation))
        (fn-frame-natp (nth 2 operation))
-       (fn-bpnf-family-recordp (nth 3 operation))
+       (fn-bpnf-family-record-atp (nth 3 operation))
        (equal (nth 4 operation)
               (fn-bpnf-stored-record-name (nth 1 operation)
                                           (nth 2 operation)))
        (equal (nth 5 operation)
-              (fn-bpnf-family-frame (nth 3 operation)))
+              (fn-bpnf-family-v1-frame (nth 3 operation)))
        (not (equal (nth 5 operation) :bad))
        (equal (nth 6 operation) (fn-jpub-initial t))))
 
@@ -66,6 +66,6 @@
            :in-theory (e/d (fn-bpnf-family-publication-authorize)
                            (fn-bpnf-operationp
                             fn-bpnf-operation-matchp
-                            fn-bpnf-family-recordp
-                            fn-bpnf-family-frame))))
+                            fn-bpnf-family-record-atp
+                            fn-bpnf-family-v1-frame))))
   :rule-classes nil)

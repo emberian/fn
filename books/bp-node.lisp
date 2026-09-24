@@ -388,7 +388,7 @@
 ; `fn-bpb-decode-yields-bundle` (exported by
 ; `books/bp-bundle-invariants`) followed by two conjuncts of two withdrawn
 ; recognizers.  Opened here and nowhere else.
-(defun fn-bpn-receive (config octets obs)
+(defun fn-bpn-receive-decision (config octets obs allow-fragments)
   (declare (xargs :guard (and (fn-bpn-configp config)
                               (fn-cbor-octet-listp octets)
                               (fn-clock-observationp obs))
@@ -423,7 +423,8 @@
              (primary (fn-bpb-bundle-primary bundle)))
         (cond ((not (fn-bpp-flags-conformantp primary))
                (fn-bpn-refused :flags-not-conformant))
-              ((fn-bpp-fragmentp (fn-bpp-flags primary))
+              ((and (not allow-fragments)
+                    (fn-bpp-fragmentp (fn-bpp-flags primary)))
                (fn-bpn-refused :fragment-not-reassembled))
               ((fn-bpn-hop-exceededp bundle)
                (fn-bpn-refused :hop-limit-exceeded))
@@ -432,6 +433,21 @@
               ((eq (fn-bpn-expiry bundle obs) :uncertain)
                (fn-bpn-uncertain bundle :lifetime-uncertain))
               (t (fn-bpn-accepted bundle)))))))
+
+; The custody path admits a validated fragment as a carrier.  Application
+; ADU callers retain the complete-bundle gate in fn-bpn-receive.  Both entry
+; points share the one decode, flag, hop and expiry decision above.
+(defun fn-bpn-receive-carrier (config octets obs)
+  (declare (xargs :guard (and (fn-bpn-configp config)
+                              (fn-cbor-octet-listp octets)
+                              (fn-clock-observationp obs))))
+  (fn-bpn-receive-decision config octets obs t))
+
+(defun fn-bpn-receive (config octets obs)
+  (declare (xargs :guard (and (fn-bpn-configp config)
+                              (fn-cbor-octet-listp octets)
+                              (fn-clock-observationp obs))))
+  (fn-bpn-receive-decision config octets obs nil))
 
 ; The ADU an accepted bundle carries: the payload block's data and nothing
 ; else.  A caller that has not checked `fn-bpn-acceptedp` gets nil.
