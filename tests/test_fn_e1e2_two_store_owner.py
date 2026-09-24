@@ -7,14 +7,17 @@ import socket
 import ssl
 import subprocess
 import time
+import unittest
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from tests.test_native_protected_peering import NativeProtectedPeeringTests, IMAGE, free_port
 
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
-HANDOFF = Path(os.environ["FN_E1E2_HANDOFF"])
-R_INPUT = Path(os.environ["FN_E1E2_R_SOURCE"])
+HANDOFF_TEXT = os.environ.get("FN_E1E2_HANDOFF")
+R_INPUT_TEXT = os.environ.get("FN_E1E2_R_SOURCE")
+HANDOFF = Path(HANDOFF_TEXT) if HANDOFF_TEXT else None
+R_INPUT = Path(R_INPUT_TEXT) if R_INPUT_TEXT else None
 R_ID = "<mini-e1-1bea29c16a63e8722f156770@example.invalid>"
 
 
@@ -99,6 +102,8 @@ class NativeTwoStoreMiniHandoff(NativeProtectedPeeringTests):
                     self.assertEqual(stream.readline(), b".\r\n")
                     return value
 
+    @unittest.skipUnless(HANDOFF_TEXT and R_INPUT_TEXT,
+                         "set isolated E1/E2 handoff and report source paths")
     def test_two_store_mini_exchange(self):
         self.assertTrue(HANDOFF.is_absolute())
         self.assertFalse(HANDOFF.exists())
