@@ -988,9 +988,9 @@ class NativeCheckpointTests(unittest.TestCase):
 
                     group = command("GROUP fn.letters")
                     self.assertTrue(group.startswith(b"211 "), group)
-                    _, count, low, high = group.split()[:4]
+                    _, count, low, high = (int(x) for x in group.split()[:4])
                     view = {"group": group}
-                    for number in range(int(low), int(high) + 1):
+                    for number in range(low, high + 1):
                         status = command("ARTICLE {}".format(number))
                         self.assertTrue(status.startswith(b"220 "), status)
                         view[number] = (status, block())

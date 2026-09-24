@@ -566,7 +566,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-009"
+        "PRF-009",
+        "PRF-073"
       ],
       "verification": [
         "proof",
@@ -580,9 +581,12 @@
         "host/native/io.lisp",
         "tests/acl2/checkpoint-compaction-tests.lisp",
         "tests/acl2/checkpoint-pack-retire-tests.lisp",
-        "tests/test_native_checkpoint.py"
+        "tests/test_native_checkpoint.py",
+        "books/checkpoint-compaction-preservation.lisp",
+        "tests/acl2/checkpoint-compaction-preservation-tests.lisp",
+        "planning/evidence/m5-compaction-2026-09-24.md"
       ],
-      "note": "A lossless selected prefix pack permits exact prefix-file reclamation and crash resumption while preserving every canonical Store event byte. Surviving covered files must match the pack and the uncovered suffix must be contiguous. Native pack-reclaim and pack-retire require an exclusive Store lock, excluding a live owner or read-only opener before any unlink; the new retire process-death fixture awaits a source-matched image run. A b074f94e developer-image fixture confirms that a live read-only opener refuses pack-reclaim before unlink and exact source/retention aggregates survive release, reclamation and reopen (planning/evidence/checkpoint-active-reader-b074-2026-09-24.md). The certified pack-retire model deletes only generations older than validated selected authority, permits partial deletion at each cut, and advances the pack allocator beyond the selected generation after gaps. It recovers superseded pack space, not retained source-event or article-object space. General concurrent physical reclamation, all physical crash cuts, filesystem qualification, and protected-closure reclamation of article objects remain open."
+      "note": "A lossless selected prefix pack permits exact prefix-file reclamation and crash resumption while preserving every canonical Store event byte. Surviving covered files must match the pack and the uncovered suffix must be contiguous. Native pack-reclaim and pack-retire require an exclusive Store lock, excluding a live owner or read-only opener before any unlink; the new retire process-death fixture awaits a source-matched image run. A b074f94e developer-image fixture confirms that a live read-only opener refuses pack-reclaim before unlink and exact source/retention aggregates survive release, reclamation and reopen (planning/evidence/checkpoint-active-reader-b074-2026-09-24.md). The certified pack-retire model deletes only generations older than validated selected authority, permits partial deletion at each cut, and advances the pack allocator beyond the selected generation after gaps. It recovers superseded pack space, not retained source-event or article-object space. General concurrent physical reclamation, all physical crash cuts, filesystem qualification, and protected-closure reclamation of article objects remain open. Lane m5-compaction (2026-09-24): PRF-073 proves over the called functions (fn-bs-pack-reclaim-plan, fn-profile-txn-observation, fn-ccp-observe-framed) that the open after a reclaim, at any cut, hands replay the identical record list the open before it did; natively the served view (GROUP, ARTICLE by number and Message-ID, HDR, retention) and the next number are unchanged across the reclaim and each of its cuts."
     },
     {
       "id": "STO-008",
@@ -845,14 +849,15 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-009"
+        "PRF-009",
+        "PRF-073"
       ],
       "verification": [
         "proof",
         "scenario"
       ],
       "evidence": [],
-      "note": "PRF-009 is planned with no events. No reclamation exists."
+      "note": "PRF-009 is planned with no events. No reclamation exists. Lane m5-compaction (2026-09-24): the transaction-prefix reclaim keeps every replayed obligation (retention pins and undertakings are Store events and the reconstructed event list is identical, PRF-073); protected article-object closure is still open."
     },
     {
       "id": "RET-006",

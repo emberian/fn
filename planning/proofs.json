@@ -2806,6 +2806,46 @@
         "fn-bs-profile-program-crash-is-old-or-new",
         "fn-bs-profile-program-crash-budget-is-old-or-new"
       ]
+    },
+    {
+      "id": "PRF-073",
+      "title": "Transaction-prefix reclaim keeps the reconstructed history, over the functions the reclaim and the next open call",
+      "statement": "Let NAMES be the transaction namespace the reclaim observed, LOWER the selected pack's boundary (fn-ccp-framed-boundary, the value fn-ccp-coverage-framed returns to host/native/checkpoint.lisp fnn-pack-lower-bound), and GONE any subset of fn-bs-pack-reclaim-plan NAMES MAXIMUM LOWER (the names fnn-pack-prefix-reclaim unlinks; every process-death image of its program deletes such a subset). fn-ccp-reclaim-keeps-namespace-observation: if fn-profile-txn-observation NAMES MAXIMUM LOWER (the open gate host/native/io.lisp fnn-transaction-files calls through fn-store-txn-observation-selected) is valid, then on NAMES without GONE it is valid and equals the old observation with exactly GONE's pairs left out. fn-ccp-covered-deletion-keeps-reconstruction: when fn-ccp-observe-framed (the body of host/checkpoint-host.lisp fn-store-checkpoint-compaction-observe, called by fnn-pack-recover-records inside fnn-recover) answers :ok on an observation, it answers identically on any sub-observation that leaves out only pairs below the pack boundary. fn-ccp-reclaim-preserves-reconstructed-history composes the two over the host's read of each issued pair: if the open before the reclaim reconstructed its history, the open after the reclaim (at any cut) observes a valid namespace and hands the generic replay the identical record list. fn-ccp-complete-observation-reconstructs-its-records: for a complete contiguous observation from 0 at least as long as the boundary, that list is exactly the records read, which is what the same open handed replay before any pack existed. Hypotheses: the pre-reclaim open succeeded (the reclaim command runs only after its own fnn-open-live-store), LOWER is the selected pack's boundary, and the bytes of every surviving name are unchanged (for the uncovered suffix, fn-bs-selected-reclaim-crash-preserves-suffix-payload in the byte model; the reclaim program writes no file content). Replay is a function of the record list, the frontier and the configuration records, and the reclaim program touches neither the frontier nor config.json, so GROUP counts and watermarks, ARTICLE by number and by Message-ID, HDR, retention pins and every other replayed fact are unchanged; that last step is by definition, not a theorem. One owner: fn-bs-pack-reclaim-plan reads fn-profile-txn-observation (no inline bound), and fn-ccp-profile-upgrade-keeps-reclaim-plan gives its monotonicity under an offline profile upgrade.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-007",
+        "RET-005"
+      ],
+      "depends_on": [
+        "PRF-009",
+        "PRF-072"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/checkpoint-compaction-preservation.lisp",
+        "tests/acl2/checkpoint-compaction-preservation-tests.lisp",
+        "books/byte-store-compaction-correspondence.lisp",
+        "host/checkpoint-host.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_checkpoint.py",
+        "tests/campaign/native_cuts.py",
+        "planning/evidence/manifests/certify-20260924T213534Z-827010.json",
+        "planning/evidence/m5-compaction-2026-09-24.md",
+        "planning/evidence/m5-compaction/native-modules.log"
+      ],
+      "progress_note": "Lane m5-compaction (2026-09-24). Certified on persvati (run-20260924T213519Z-7956, manifest certify-20260924T213534Z-827010, ACL2 8.7, every book under 4 s) and on hbox with the w28 toolchain. Teeth: a reachable five-event store (record, undertaking, release, identity, enrollment) whose open before, after losing covered names 1 and 3, and after the whole plan reconstructs the same five records; concrete counterexamples and a must-fail for each composition hypothesis (a suffix gap; losing the newest suffix name, which the gate accepts and which silently drops record 4; a plan computed above the pack boundary, same loss; a conflicting surviving covered file, refused before and accepted after). Native, developer image of this branch on hbox: six operator POSTs around a selected pack, then reclaim and every reclaim cut (each covered unlink occurrence and the directory barrier); GROUP, ARTICLE by number and by Message-ID, HDR Subject and store retention are identical, the suffix files byte-identical, and the next POST gets high+1. Open: the byte model states survival for the uncovered suffix only, not old-or-absent for a covered name; guards of the framed observe stay unverified (the Store-event decoder chain); one pack holds at most 4096 events and 4 MiB, so the exact-history pack cannot compact an arbitrarily large store; no operator entry reaches reclaim (developer `checkpoint` verb only).",
+      "events": [
+        "fn-ccp-reclaim-keeps-namespace-observation",
+        "fn-ccp-covered-deletion-keeps-reconstruction",
+        "fn-ccp-complete-observation-reconstructs-its-records",
+        "fn-ccp-reclaim-preserves-reconstructed-history",
+        "fn-ccp-profile-upgrade-keeps-reclaim-plan",
+        "fn-bs-selected-reclaim-crash-preserves-suffix-payload"
+      ]
     }
   ]
 }
