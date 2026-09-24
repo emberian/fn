@@ -527,6 +527,7 @@
     "books/owner-tls-prefix",
     "books/owner-config-observe",
     "books/peer-offer-indexed",
+    "books/peer-guard-carried",
     "books/served-carried",
     "books/owner-served-carried",
     "books/owner-offer-indexed",
@@ -561,6 +562,7 @@
     "tests/acl2/owner-config-observe-tests",
     "tests/acl2/owner-served-carried-tests",
     "tests/acl2/peer-offer-indexed-tests",
+    "tests/acl2/peer-guard-carried-tests",
     "tests/acl2/owner-commit-carried-tests",
     "tests/acl2/owner-prepare-carried-tests",
     "tests/acl2/owner-advance-carried-tests",
@@ -731,25 +733,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 738,
-    "books_in_root_closure": 736,
-    "roots": 727,
-    "theorems": 9800,
-    "functions": 6914,
-    "assert_events": 10702,
-    "must_fails": 868,
+    "books": 740,
+    "books_in_root_closure": 738,
+    "roots": 729,
+    "theorems": 9813,
+    "functions": 6928,
+    "assert_events": 10733,
+    "must_fails": 874,
     "encapsulates": 30,
     "guards": {
-      "verified": 2058,
+      "verified": 2059,
       "declared-off": 459,
-      "default-guarded": 3438,
-      "default-unguarded": 959
+      "default-guarded": 3445,
+      "default-unguarded": 965
     },
-    "suspect_theorems": 84,
+    "suspect_theorems": 85,
     "export_hygiene_warnings": 116,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 61,
-    "include_hygiene_warnings": 722,
+    "include_hygiene_warnings": 723,
     "host_names_warnings": 826,
     "hand_written_record_warnings": 18
   },
@@ -9230,6 +9232,33 @@
       "read_error": null
     },
     {
+      "book": "books/peer-guard-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 8,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "peer-offer-indexed"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-pgc-msgid-argp-forward"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/peer-inbound-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -9940,7 +9969,7 @@
       "book": "books/served-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
+      "theorems": 17,
       "functions": 12,
       "guards": {
         "verified": 1,
@@ -9955,6 +9984,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "peer-guard-carried",
         "peer-offer-indexed",
         "served-tls-prefix"
       ],
@@ -18497,6 +18527,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/peer-guard-carried-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 31,
+      "must_fails": 6,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-carried",
+        "peer-offer-indexed-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/peer-inbound-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -21009,6 +21067,14 @@
       "line": 1603,
       "reasons": [
         "instance-corollary: the statement is fn-post-step-pinned-preserves-consistent-session instantiated, discharging nothing"
+      ]
+    },
+    {
+      "theorem": "fn-pgc-msgid-argp-forward",
+      "book": "books/peer-guard-carried.lisp",
+      "line": 221,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-msgid-argp"
       ]
     },
     {
@@ -27082,6 +27148,13 @@
         "line": 3,
         "include": "topic-history-authorship-tests",
         "included": "tests/acl2/topic-history-authorship-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-guard-carried-tests.lisp",
+        "line": 7,
+        "include": "peer-offer-indexed-tests",
+        "included": "tests/acl2/peer-offer-indexed-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -33507,7 +33580,7 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1495,
+        "line": 1498,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
