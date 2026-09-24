@@ -707,7 +707,8 @@
   (implies (and (natp i) (< i (len starts)))
            (equal (nth i (fn-bpf-refragment-primaries parent starts))
                   (fn-bpf-refragment-block parent (nth i starts))))
-  :hints (("Goal" :induct (nth i starts))))
+  :hints (("Goal" :induct (nth i starts)
+           :in-theory (disable fn-bpf-refragment-block))))
 
 (defthm fn-bpf-refragment-primaries-compose-at
   (implies (and (fn-bpp-blockp parent)
@@ -736,4 +737,6 @@
                                fn-bpf-refragment-block-unfolds
                                fn-bpf-refragment-primaries
                                fn-bpf-refragment-block
-                               fn-bpf-fragment-block))))
+                               fn-bpf-fragment-block
+                               fn-bpf-fragment fn-bpp-blockp
+                               fn-bpf-fragmentablep))))
