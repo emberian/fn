@@ -64,6 +64,12 @@
               (fn-record-encode-groups (cdr groups)))
     nil))
 
+; Admitting this defun computes its type prescription over a fourteen-way
+; nested APPEND; with TRUE-LISTP-APPEND's type rule enabled beside
+; BINARY-APPEND's, type-set revisits every tail twice per level (6.4 s of
+; type reasoning, 3.9 million tries, for "no constraints").  Withdrawn for
+; the admission only; the derived type is the same.
+(local (in-theory (disable (:type-prescription true-listp-append))))
 (defun fn-record-encode-impl (record)
   (if (not (fn-record-p record))
       nil
@@ -94,6 +100,7 @@
                 nil
               (fn-cbor-encode (cons :uint (fn-record-stamp record)))))))
       (if (fn-cbor-at-mostp octets *fn-record-max-octets*) octets nil))))
+(local (in-theory (enable (:type-prescription true-listp-append))))
 
 (defun fn-record-schema0-encode (record)
   (fn-record-encode-impl (fn-record-with-stamp record :legacy)))
