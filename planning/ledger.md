@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 589 |
+| Books read | 593 |
 | Certification roots in the Makefile | 583 |
 | Books inside the root closure | 588 |
-| `defthm` and `defthmd` events | 8418 |
-| `defun` events | 6250 |
-| Functions with verified guards | 2022 |
-| Functions declared `:verify-guards nil` and never verified | 369 |
-| Functions left at the default with an explicit guard | 3060 |
+| `defthm` and `defthmd` events | 8440 |
+| `defun` events | 6267 |
+| Functions with verified guards | 2030 |
+| Functions declared `:verify-guards nil` and never verified | 371 |
+| Functions left at the default with an explicit guard | 3067 |
 | Functions left at the default with no guard | 799 |
-| `assert-event` checks | 9125 |
-| `must-fail` checks | 481 |
+| `assert-event` checks | 9137 |
+| `must-fail` checks | 484 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 76 |
 | Export-hygiene warnings | 102 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 39 |
-| Include-hygiene warnings | 505 |
+| Include-hygiene warnings | 508 |
 | Host-names warnings | 788 |
 | Hand-written-record warnings | 18 |
 
@@ -236,8 +236,10 @@ that `make certify` requests.
 | `books/config-store-traces.lisp` | root | 2 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 42 | 133 | 1/0/132/0 | 0 | 0 | 0 |
+| `books/consumer-event-index.lisp` | - | 16 | 10 | 2/1/7/0 | 0 | 0 | 0 |
 | `books/consumer-local-control.lisp` | root | 0 | 15 | 15/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-owner-local.lisp` | root | 1 | 11 | 11/0/0/0 | 0 | 0 | 0 |
+| `books/consumer-poll-index.lisp` | - | 6 | 7 | 6/1/0/0 | 0 | 0 | 0 |
 | `books/consumer-poll-projection.lisp` | root | 2 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-position.lisp` | root | 56 | 29 | 28/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |
@@ -545,8 +547,10 @@ that `make certify` requests.
 | `tests/acl2/config-store-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 0 | 0 |
 | `tests/acl2/config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 95 | 0 | 0 |
+| `tests/acl2/consumer-event-index-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 8 | 2 | 0 |
 | `tests/acl2/consumer-local-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
 | `tests/acl2/consumer-owner-local-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 0 | 0 |
+| `tests/acl2/consumer-poll-index-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 4 | 1 | 0 |
 | `tests/acl2/consumer-poll-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 36 | 8 | 0 |
 | `tests/acl2/consumer-store-events-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 6 | 1 | 0 |

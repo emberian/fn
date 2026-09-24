@@ -60,6 +60,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-cp-` | `consumer-position` | Experimental E2 v1 bounded cursor codec and finite register/ack/rebase/unregister decision kernel; its `:write` result is a proposal consumed by the Store and local-owner seam, not durable acceptance itself |
 | `fn-cpe-` | `consumer-store-events` | Versioned, bounded E2 Store-journal event grammar and exact codec for bootstrap, register, ack, rebase, unregister and incarnation rollover; durability requires the Store finish/recovery join |
 | `fn-csi-` | `consumer-store-invariants` | Completed Store prefix versus carried consumer projection, with explicit completing-window and recovery obligations |
+| `fn-cei-` | `consumer-event-index` | Rebuildable four-octet radix lookup of exact committed Store events by journal sequence; correspondence to the authoritative event list is required before served use |
 | `fn-col-` | `consumer-owner-local` | ACL2 local-owner command proposals and position query under a fixed local principal and immutable historical group-membership query |
 | `fn-ncl-` | `consumer-local-control` | Bounded local-control consumer command/reply codec and CLI grammar; the native adapter transports these bytes to the owner |
 | `fn-cpj-` | `consumer-poll-projection`, `tests/acl2/consumer-poll-projection-tests` | Read-only bounded projection of exact E2 cursor and schema-1 accepted article bytes; local Store provenance still requires the authenticated consumer poll caller |
