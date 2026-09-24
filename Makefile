@@ -788,6 +788,13 @@ check:
 # about two seconds; forms it does not model are counted as undecidable.
 # `make check-host-translate' is the dynamic check, when an ACL2 is local.
 	$(PYTHON) tools/host_shape_check.py
+# Every host file build.lisp `ld`s is `ld`ed by build-dtn.lisp or listed, with
+# its reason, as DTN-omitted; and no name an omitted file defines is spelled
+# as a counterpart in a raw module the DTN image loads.  At 6c0626c5 the DTN
+# images omitted host/checkpoint-host.lisp and could not `store init'.
+# Static, under a second, with its teeth test.
+	$(PYTHON) tools/build_lists_check.py
+	$(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every repository path this tree cites and no file answers.  On 2026-09-21
 # `books/stx-lace.lisp` was found citing a book and a test book that have
 # never existed, for the observation four keystones hypothesise.  The counts

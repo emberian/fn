@@ -1059,6 +1059,18 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defun fnn-lock-path (s) (fnn-join (fnn-store-root s) "writer.lock"))
 (defvar *fnn-clone-activation* nil)
 
+; The one ACL2-owned path-component decoder.  It lives here, not in
+; checkpoint.lisp, because every Store open decodes the clone fence name with
+; it, and host/native/build-dtn.lisp loads io.lisp without checkpoint.lisp.
+(defun fnn-checkpoint-name-result (value description)
+  "Validate and decode one ACL2-owned path component."
+  (unless (and (fnn-octet-list-p value) value
+               (every (lambda (octet) (< octet 128)) value)
+               (not (member (char-code #\/) value))
+               (not (member 0 value)))
+    (fnn-fault "ACL2 returned invalid ~a" description))
+  (fnn-octets-string (fnn-octets value)))
+
 (defun fnn-clone-fence-path (s)
   (fnn-join (fnn-store-root s)
             (fnn-checkpoint-name-result
