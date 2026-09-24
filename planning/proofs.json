@@ -1019,7 +1019,7 @@
     {
       "id": "PRF-026",
       "title": "The reader's verdict is the recorded verdict, three-valued (S6-1)",
-      "statement": "fn-stx-reader-verdict-is-the-recorded-verdict: HDR :fn-verified renders the verdict acceptance recorded for the article and does not recompute it per query; fn-stx-reader-verdict-is-typed: the rendered value is always a member of *fn-stx-verdicts*, so :unverified and :absent never collapse into one token.",
+      "statement": "A durable kind-4 (hybrid acceptance) completion through fn-sn-finish records that event's verdict under its Message-ID; a reader opened after the owner's (:complete) pins that verdict list; and one fn-own-read of HDR :fn-verified <msgid> on an ungated reader connection, framed at its last octet, answers exactly the pinned verdict for the retrieved article, with no keyring consulted. fn-stx-reader-verdict-is-the-recorded-verdict (books/stx-reader) is the definition restated and is not a proof event; it is no longer cited.",
       "milestone": "M4",
       "requirements": [
         "SUB-006"
