@@ -223,6 +223,26 @@
         {
           "kind": "theorem",
           "name": "fn-sn-finish-releases-an-obligation-only-by-its-matching-release"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-prepare-refuses-at-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-prepare-below-budget-is-the-owner-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-refusal-kind-at-budget-is-unaffordable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-budget-is-the-profile-admissibility"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-used-names-the-transaction-namespace"
         }
       ]
     },
