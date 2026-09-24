@@ -470,6 +470,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-ion-observation-tests \
 	books/bp-ion-workflow \
 	tests/acl2/bp-ion-workflow-tests \
+	books/bp-ion-workflow-replay \
+	tests/acl2/bp-ion-workflow-replay-tests \
 	books/journal \
 	tests/acl2/journal-tests \
 	books/exchange \

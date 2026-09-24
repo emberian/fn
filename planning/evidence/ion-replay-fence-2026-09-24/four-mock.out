@@ -1,0 +1,3 @@
+committed sequence=0 charge=2
+committed sequence=1 charge=2
+{"status": "passed", "seconds": 202.4, "evidence": "/tank/fn/scratch/ion-replay-lab/four-mock/four-node-k4om1jja/evidence.json"}
