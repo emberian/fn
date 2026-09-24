@@ -69,6 +69,16 @@
        (fn-bpnf-receive-wire-event
         *bpnmt-local-config* (fn-bpb-encode *bpnmt-n03-new*)
         *bpnmt-observation* *bpnmt-ingress*))
+      (fn-bpnf-host-eventp
+       (fn-bpnf-receive-wire-event-value
+        (fn-bpnf-receive-wire-event
+         *bpnmt-local-config* (fn-bpb-encode *bpnmt-n03-old*)
+         *bpnmt-observation* *bpnmt-ingress*)))
+      (fn-bpnf-host-eventp
+       (fn-bpnf-receive-wire-event-value
+        (fn-bpnf-receive-wire-event
+         *bpnmt-local-config* (fn-bpb-encode *bpnmt-n03-new*)
+         *bpnmt-observation* *bpnmt-ingress*)))
       (equal (len (fn-bpnf-held-list *bpnmt-n03-s2*)) 2)
       (equal (fn-bpn-nth 3 (second (fn-bpnf-held-list *bpnmt-n03-s2*))) 0)
       (equal (fn-bpn-nth 3 (first (fn-bpnf-held-list *bpnmt-n03-s2*))) 1)
@@ -86,6 +96,13 @@
              *bpnmt-local*)
       (equal (fn-bpah-held-class
               (first (fn-bpnf-held-list *bpnmt-n03-s2*))) :request)
+      (equal (fn-bpah-held-expiry
+              (first (fn-bpnf-held-list *bpnmt-n03-s2*))
+              *bpnmt-observation*) :live)
+      (equal (fn-bpah-held-expiry
+              (second (fn-bpnf-held-list *bpnmt-n03-s2*))
+              *bpnmt-observation*) :live)
+      (not (fn-bpn-machine-state-fenced (fn-bpnf-base *bpnmt-n03-s2*)))
       (not (fn-bpnf-issued *bpnmt-n03-s2*))))
 
 ; PENDING N03 positive: under an empty routing observation, a progress event
