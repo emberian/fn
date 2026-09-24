@@ -320,6 +320,7 @@
                  k0r-crash-image-authority-entries
                  (:instance k0r-crash-image-authority-known (bs bs))
                  k0r-relation-authority-known
+                 fn-bs-store-relation-unfolds
                  fn-bs-store-crash-image-is-kernel-admissible
                  (:instance fn-bs-crash-imagep-preserves-statep (s bs))
                  (:instance fn-sf-recovery-admissible-image-facts (s ks)
