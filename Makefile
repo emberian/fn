@@ -157,8 +157,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-identity-sequence-invariants-tests \
 	books/consumer-store-invariants \
 	tests/acl2/consumer-store-invariants-tests \
-	books/consumer-owner-local \
-	tests/acl2/consumer-owner-local-tests \
 	tests/acl2/store-node-resolution-tests \
 	tests/acl2/store-node-resolution-traces-tests \
 	tests/acl2/store-identity-traces-tests \
