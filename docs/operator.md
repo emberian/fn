@@ -66,8 +66,11 @@ STORE` opens the replayed Store read-only and prints each generation's status
 and principal, newest first. It does not print key payloads or read secrets.
 The private signing keys remain with the author; none enters a Store snapshot.
 Existing accepted verdicts stay pinned to their historical enrollment.
-These commands have scoped ACL2 source evidence; a matching native image run
-is still pending, so this paragraph is not a deployed-node claim.
+These commands have scoped ACL2 source evidence and a targeted native run on
+the frozen `863c2141` image, recorded in the
+[author-key lifecycle evidence](../planning/evidence/author-key-lifecycle-2026-09-24.md).
+That run covers the selected CLI tests on scratch Stores; it is not a
+deployed-node claim.
 
 `init` creates the store `[store] path` names and admits the groups the
 operator named, so a node is stood up with the same binary that runs it; the

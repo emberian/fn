@@ -252,9 +252,13 @@ path has a selector/replay projection theorem and a historical-verdict
 preservation theorem. Successful recovery reconstructs both from durable
 records; reachable A/B rotation/revocation/reopen and before/after-publication
 crash traces exercise the path.
-A matching native image run, portable succession/recovery policy and a full
-crash-phase lifecycle relation remain open. See [identity](../specs/identity.md)
-and `PRF-069`.
+The frozen `863c2141` image passed the targeted author lifecycle native
+subset on scratch Stores, including A/B-local authority, rotation,
+revocation, restart inspection and exact carrier verification. A portable
+succession/recovery policy, incoming signed-carrier admission and a full
+crash-phase lifecycle relation remain open. See the
+[author-key evidence](evidence/author-key-lifecycle-2026-09-24.md),
+[identity](../specs/identity.md) and `PRF-069`.
 
 The server waves (2026-09-20) move three of M3's five bullets without closing
 any. `books/served` takes the framing and reply projection out of `:program`-mode
