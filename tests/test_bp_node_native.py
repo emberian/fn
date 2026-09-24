@@ -266,6 +266,55 @@ class NativeBpNodeTests(unittest.TestCase):
             "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
         )
 
+    def unrouted_transit_bundle(self):
+        """ACL2 authors the older wire; Python only carries its octets."""
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-node")')
+            bridge.call('(include-book "books/codec-attach")')
+            sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
+            unrouted = "(cons :dtn '(47 47 117 110 114 111 117 116 101 100 47))"
+            form = (
+                "(fn-bpb-encode (fn-bpn-send-bundle "
+                f"(fn-bpn-config {sender} 3600000 2 32 1048576) "
+                f"{unrouted} '(1 2 3 4) 77 "
+                "(fn-clock-observation 0 0 0 nil)))"
+            )
+            path = self.tmp / "unrouted-transit.bundle"
+            path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            return path
+        finally:
+            bridge.close()
+
+    def test_older_unrouted_transit_does_not_block_younger_local_request(self):
+        receiver, port = self.start_node(True, once=False)
+        transit = self.unrouted_transit_bundle()
+        sent_old = self.invoke(
+            "tcpcl", "send", "127.0.0.1", port, transit,
+            self.tmp / "unrouted-sender-spool", "dtn://sender/",
+            "dtn://receiver/", 0, 65536, 1048576, 0,
+        )
+        self.assertEqual(sent_old.returncode, 0, sent_old.stderr)
+        self.wait_for_output(
+            receiver, b"BP node progress waiting reason=route", timeout=120)
+
+        sent_new = self.send_request(port, "after-unrouted-transit")
+        self.assertEqual(sent_new.returncode, 0, sent_new.stderr)
+        delivered = self.wait_for_output(
+            receiver, b"BP node delivery request-accepted", timeout=120)
+        self.assertIn(b"BP application handoff durable", delivered)
+        self.stop_process(receiver)
+
+        self.assertEqual(self.receiver_counts()[1], 1)
+        payloads = self.acl2_lifecycle_payloads(self.receiver_journal, 5)
+        self.assertIn(bytes((1, 2, 3, 4)), payloads)
+        self.assertIn(self.request_path.read_bytes(), payloads)
+        self.assertEqual(len(payloads), 2)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertIn(b"BP FNBS recovered held=2", restarted.stdout)
+        self.assertEqual(self.receiver_counts()[1], 1)
+
     @staticmethod
     def acl2_lifecycle_payloads(journal, kind):
         """Ask the ACL2 frame decoders for exact durable report payloads."""
