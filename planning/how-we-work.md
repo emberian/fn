@@ -1,6 +1,6 @@
 # How we work now
 
-The user's [broad capability wave](capability-wave-2026-09-24.md) authorizes
+The user's [broad capability wave](archive/capability-wave-2026-09-24.md) authorizes
 larger concurrent implementation steps and explicit intermediate integration
 failures. It supersedes sequencing that held dependent implementation until
 every prerequisite proof had landed. The loop below remains the standard for
