@@ -218,11 +218,11 @@ This is diagnostic adoption only: suffix-only startup is not claimed because
 the physical assumptions needed to replace full replay have not been
 discharged.
 
-The version-one auxiliary diagnostic compares the authoritative exact-history
+The version-two auxiliary diagnostic compares the authoritative exact-history
 replay with the reopened Store's historical authorship verdicts, keyring
-snapshots, completed dense sequence, and E2 consumer projection.  This is a
-recovery-time comparison only.  It reports `auxiliary=equal-v1` only when all
-four agree; disagreement is a corrupt selected checkpoint, not a repair that
+snapshots, completed dense sequence, E2 consumer projection, topic projection,
+and rebuilt consumer sequence index.  This is a recovery-time comparison only.
+It reports `auxiliary=equal-v2` only when all six agree; disagreement is a corrupt selected checkpoint, not a repair that
 replaces the live Store.  The node checkpoint format remains version one and
 contains only the node.  A selected `fn-cc` pack remains format zero and
 retains the exact original event bytes from dense sequence zero; expansion
@@ -309,3 +309,19 @@ covered byte string agrees with the pack; a conflicting surviving covered
 file returns `:conflict`.  The byte cut witnesses and source map are static
 model evidence until they run against a source-matched developer image.
 They do not qualify filesystem power-loss behavior.
+
+### Superseded pack retirement
+
+`checkpoint pack-retire ROOT` reopens the Store under its exclusive lock,
+validates the selected pack and its coverage, and asks
+`fn-cprt-retire-plan` for the strictly older generation names.  It unlinks
+those names only, with a `pack-retire-unlink` process-death cut after each
+unlink and a `pack-retire-directory` cut after the packs-directory barrier.
+The ACL2 crash-survivor model permits any issued unlink to reappear before
+the barrier; the selected generation is never in the plan.  A reopened Store
+can therefore retry retirement after either cut without selecting a different
+authority or changing exact event history.  The separate pack allocator
+accepts gaps left by retirement but always advances beyond the highest
+remaining generation.  Retirement recovers space occupied by superseded
+packs, not by retained source events or protected article objects.  The
+bounded generation number still has a finite lifetime and does not wrap.

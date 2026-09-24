@@ -210,6 +210,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-codec-tests \
 	books/checkpoint-publish \
 	tests/acl2/checkpoint-publish-tests \
+	books/checkpoint-pack-retire \
+	tests/acl2/checkpoint-pack-retire-tests \
 	books/checkpoint-compaction \
 	tests/acl2/checkpoint-compaction-tests \
 	books/checkpoint-auxiliary \

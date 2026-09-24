@@ -162,7 +162,7 @@
         "tests/acl2/checkpoint-auxiliary-tests.lisp",
         "planning/evidence/checkpoint-auxiliary-e2-t10-2026-09-23.md"
       ],
-      "execution_scope": "Partial: logical checkpoint/suffix equivalence and index reconstruction are certified. Source-pinned native tests cover capture/select/reopen, selected corruption without rollback, unselected isolation, byte-identical cross-open, namespace bounds and selected crash cuts. The namespace successor adds unconditional mismatch corruption and mutation fencing. Recovery still fully replays the journal and compares a private restore; suffix-only recovery, full owner/index integration and every-cut physical correspondence remain open. A source-pinned ACL2 selected-pack witness additionally reconstructs E2 history/incarnation/sequence and bound hybrid keyring/historical verdict from exact event bytes, with mismatched auxiliary projections rejected by the recovery-only checker. Combined native checkpoint/consumer/T10 reopen remains open."
+      "execution_scope": "Partial: logical checkpoint/suffix equivalence and index reconstruction are certified. Source-pinned native tests cover capture/select/reopen, selected corruption without rollback, unselected isolation, byte-identical cross-open, namespace bounds and selected crash cuts. The namespace successor adds unconditional mismatch corruption and mutation fencing. Recovery still fully replays the journal and compares a private restore; suffix-only recovery, full owner/index integration and every-cut physical correspondence remain open. A source-pinned ACL2 selected-pack witness additionally reconstructs E2 history/incarnation/sequence and bound hybrid keyring/historical verdict from exact event bytes; the version-two recovery-only checker also compares topic projection and the rebuilt consumer sequence index, rejecting mismatches. Combined native checkpoint/consumer/T10 reopen remains open."
     },
     {
       "id": "SCN-005",
@@ -187,10 +187,12 @@
       "evidence": [
         "books/checkpoint-compaction.lisp",
         "tests/acl2/checkpoint-compaction-tests.lisp",
+        "books/checkpoint-pack-retire.lisp",
+        "tests/acl2/checkpoint-pack-retire-tests.lisp",
         "host/native/checkpoint.lisp",
         "tests/test_native_checkpoint.py"
       ],
-      "execution_scope": "Partial: selected lossless prefix packs reconstruct exact Store event bytes; focused tests cover corruption, missing selected authority, crash after a prefix unlink, resumed reclamation, and suffix replay. The native active-reader lock-exclusion fixture is source-present but awaits a source-matched developer image run. General concurrent physical reclamation, article-object reclamation, every physical cut, and filesystem qualification remain open."
+      "execution_scope": "Partial: selected lossless prefix packs reconstruct exact Store event bytes; focused tests cover corruption, missing selected authority, crash after a prefix unlink, resumed reclamation, and suffix replay. A certified pack-retirement plan excludes selected authority and models arbitrary survival after issued unlinks. Native source tests cover pack-retirement cuts, retry, exact source preservation, and active-reader refusal, but await a source-matched developer image. General concurrent physical reclamation, article-object reclamation, every physical cut, and filesystem qualification remain open."
     },
     {
       "id": "SCN-006",

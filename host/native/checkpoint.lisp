@@ -78,7 +78,8 @@
   (let ((directory (fnn-pack-directory store)))
     (fnn-safe-directory directory t)
     (let* ((generations (fnn-pack-generations store))
-           (generation (fnn-core 'fn-store-checkpoint-next-generation generations))
+           (generation (fnn-core 'fn-store-checkpoint-pack-next-generation
+                                 generations))
            (captured (fnn-core 'fn-store-checkpoint-compaction-capture
                                (mapcar #'fnn-octet-list records) (fnn-store-frontier store))))
       (unless (and (integerp generation) (>= generation 0)
@@ -180,6 +181,41 @@
         (fnn-os-error (e)
           (fnn-indeterminate "transaction prefix reclamation is uncertain: ~a" e))))))
 
+(defun fnn-pack-retire-older-generations (store)
+  "Reclaim only pack generations older than validated selected authority."
+  (fnn-checkpoint-require-mutation-ready store)
+  ; This resolves an interrupted marker replacement, checks the selected
+  ; generation frame and its coverage, and refuses any missing authority.
+  (multiple-value-bind (raw coverage selected)
+      (fnn-pack-selected-raw-and-coverage store)
+    (declare (ignore raw))
+    (unless (and coverage (integerp selected) (>= selected 0))
+      (fnn-refuse "no selected pack generation to retain"))
+    (let* ((generations (fnn-pack-generations store))
+           (plan (fnn-core 'fn-store-checkpoint-pack-retire-plan
+                           generations selected)))
+      (unless (and (listp plan)
+                   (<= (length plan) (length generations))
+                   (every (lambda (generation)
+                            (and (integerp generation) (>= generation 0)
+                                 (< generation selected)
+                                 (member generation generations)))
+                          plan))
+        (fnn-fault "ACL2 refused pack generation retirement plan"))
+      (when (null plan) (return-from fnn-pack-retire-older-generations nil))
+      (setf (fnn-store-fenced store) t)
+      (handler-case
+          (progn
+            (dolist (generation plan)
+              (fnn-unlink (fnn-pack-generation-path store generation))
+              (fnn-checkpoint-test-stop "pack-retire-unlink"))
+            (fnn-fsync-dir (fnn-pack-directory store))
+            (fnn-checkpoint-test-stop "pack-retire-directory")
+            (setf (fnn-store-fenced store) nil)
+            plan)
+        (fnn-os-error (e)
+          (fnn-indeterminate "pack generation retirement is uncertain: ~a" e))))))
+
 (defun fnn-pack-selected-raw-and-coverage (store)
   ; Resolve any prior process-death window in generation/marker publication
   ; before consulting selected authority.  A barrier error cannot authorize a
@@ -207,7 +243,7 @@
         (unless (and (listp coverage) (eq (first coverage) :ok)
                      (integerp (second coverage)) (>= (second coverage) 0))
           (fnn-checkpoint-corrupt "selected pack coverage is invalid"))
-        (values raw coverage)))))
+        (values raw coverage generation)))))
 
 (defun fnn-pack-lower-bound (store)
   (multiple-value-bind (raw coverage) (fnn-pack-selected-raw-and-coverage store)
@@ -490,10 +526,10 @@
                   (let ((auxiliary
                          (fnn-core-state
                           'fn-store-checkpoint-auxiliary-differential)))
-                    (unless (equal auxiliary '(:ok 1))
+                    (unless (equal auxiliary '(:ok 2))
                       (fnn-checkpoint-corrupt
                        "full replay auxiliary state differs: ~s" auxiliary))
-                    (list :ok generation sequence differential :equal-v1))))))))
+                    (list :ok generation sequence differential :equal-v2))))))))
     (fnn-checkpoint-corruption (e)
       (list :corrupt (fnn-checkpoint-corruption-reason e)))))
 
@@ -544,6 +580,15 @@
     (unwind-protect
          (let ((removed (fnn-pack-prefix-reclaim store)))
            (fnn-out "reclaimed transaction-prefix=~d" (length removed))
+           +fnn-exit-ok+)
+      (fnn-store-close store))))
+
+(defun fnn-checkpoint-command-pack-retire (root)
+  (multiple-value-bind (store records) (fnn-open-live-store root t)
+    (declare (ignore records))
+    (unwind-protect
+         (let ((retired (fnn-pack-retire-older-generations store)))
+           (fnn-out "retired pack-generations=~d" (length retired))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 
@@ -832,6 +877,10 @@
          (unless (= (length args) 1)
            (error 'fnn-usage-error :message "checkpoint pack-reclaim ROOT"))
          (fnn-checkpoint-command-pack-reclaim (first args)))
+        ((string= command "pack-retire")
+         (unless (= (length args) 1)
+           (error 'fnn-usage-error :message "checkpoint pack-retire ROOT"))
+         (fnn-checkpoint-command-pack-retire (first args)))
         ((string= command "clone")
          (unless (= (length args) 2)
            (error 'fnn-usage-error :message

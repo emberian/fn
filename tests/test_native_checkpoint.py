@@ -596,6 +596,69 @@ class NativeCheckpointTests(unittest.TestCase):
         recovered = self.native("store", store, "recover")
         self.assertIn("transactions=1 articles=1", recovered.stdout)
 
+    def test_retiring_old_pack_generations_keeps_exact_retained_sources(self):
+        store = self.initialized("pack-retire")
+        before_first = self.native("store", store, "inspect",
+                                   "<checkpoint@example.invalid>").stdout
+        self.native("checkpoint", "pack", store, "select")
+        older = store / "packs" / "generation-0.fncp"
+        old_bytes = older.stat().st_size
+        self.native("store", store, "post", "<retired-pack-suffix@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
+        before_second = self.native("store", store, "inspect",
+                                    "<retired-pack-suffix@example.invalid>").stdout
+        before_retention = self.native("store", store, "retention").stdout
+        self.native("checkpoint", "pack", store, "select")
+        selected = store / "packs" / "generation-1.fncp"
+        selected_bytes = selected.read_bytes()
+        before_total = sum(p.stat().st_size for p in
+                           (store / "packs").glob("generation-*.fncp"))
+
+        retired = self.native("checkpoint", "pack-retire", store)
+        self.assertIn("retired pack-generations=1", retired.stdout)
+        self.assertFalse(older.exists())
+        self.assertEqual(selected.read_bytes(), selected_bytes)
+        self.assertEqual(sum(p.stat().st_size for p in
+                             (store / "packs").glob("generation-*.fncp")),
+                         before_total - old_bytes)
+        self.assertIn("transactions=2 articles=2",
+                      self.native("store", store, "recover").stdout)
+        self.assertEqual(self.native("store", store, "inspect",
+                                     "<checkpoint@example.invalid>").stdout,
+                         before_first)
+        self.assertEqual(self.native("store", store, "inspect",
+                                     "<retired-pack-suffix@example.invalid>").stdout,
+                         before_second)
+        self.assertEqual(self.native("store", store, "retention").stdout,
+                         before_retention)
+        # A later publication must advance to generation 2, never reuse 0.
+        self.assertIn("generation=2",
+                      self.native("checkpoint", "pack", store).stdout)
+
+    def test_pack_generation_retirement_death_reopens_and_retries(self):
+        for point in ("pack-retire-unlink", "pack-retire-directory"):
+            with self.subTest(point=point):
+                store = self.initialized(point)
+                self.native("checkpoint", "pack", store, "select")
+                self.native("checkpoint", "pack", store, "select")
+                self.native("checkpoint", "pack", store, "select")
+                selected = store / "packs" / "generation-2.fncp"
+                selected_bytes = selected.read_bytes()
+                before_source = self.native("store", store, "inspect",
+                                            "<checkpoint@example.invalid>").stdout
+                self.stopped_then_killed(("checkpoint", "pack-retire", store),
+                                         point)
+                self.assertEqual(selected.read_bytes(), selected_bytes)
+                self.assertIn("transactions=1 articles=1",
+                              self.native("store", store, "recover").stdout)
+                self.assertEqual(self.native("store", store, "inspect",
+                                             "<checkpoint@example.invalid>").stdout,
+                                 before_source)
+                self.native("checkpoint", "pack-retire", store)
+                self.assertFalse((store / "packs" / "generation-0.fncp").exists())
+                self.assertFalse((store / "packs" / "generation-1.fncp").exists())
+                self.assertEqual(selected.read_bytes(), selected_bytes)
+
     def test_selected_pack_missing_or_corrupt_fails_closed(self):
         for mode in ("missing", "corrupt"):
             with self.subTest(mode=mode):
@@ -720,6 +783,9 @@ class NativeCheckpointTests(unittest.TestCase):
                     refused = self.native("checkpoint", "pack-reclaim", store,
                                           expected=run_store.EXIT_REFUSED)
                     self.assertIn("store is already locked", refused.stderr)
+                    retire_refused = self.native("checkpoint", "pack-retire", store,
+                                                 expected=run_store.EXIT_REFUSED)
+                    self.assertIn("store is already locked", retire_refused.stderr)
                     self.assertEqual(self.transaction_bytes(store), before_transactions)
                     self.assertEqual(selected_pack.read_bytes(), before_pack)
                     self.assertEqual(read_pinned_article(), first_read)

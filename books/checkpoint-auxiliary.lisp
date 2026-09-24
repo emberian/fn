@@ -7,7 +7,7 @@
 (include-book "checkpoint-compaction")
 (include-book "native-config")
 
-(defconst *fn-cpa-version* 1)
+(defconst *fn-cpa-version* 2)
 (defconst *fn-cpa-clone-fence-name*
   '(99 108 111 110 101 45 112 101 110 100 105 110 103 46 102 110 99 101))
 (defconst *fn-cpa-clone-max-depth* 16)
@@ -39,14 +39,18 @@
 (defun fn-cpa-auxiliary-of-history (records)
   (declare (xargs :guard t :verify-guards nil))
   (let ((identity (fn-replay-identity records))
-        (consumer (fn-cpe-projection-replay nil records 0)))
+        (consumer (fn-cpe-projection-replay nil records 0))
+        (topic (fn-th-prefix-project records))
+        (event-index (fn-cei-build records)))
     (if (and (equal (fn-stxk-context-kind identity) :ok)
-             (equal (car consumer) :ok))
+             (equal (car consumer) :ok)
+             (equal (fn-th-at 0 topic) :ok))
         (list :ok *fn-cpa-version*
               (fn-replay-verdict-pairs (fn-stxk-context-verdicts identity))
               (fn-stxk-context-snapshots identity)
               (fn-stxk-context-next identity)
-              (fn-cp-nth 1 consumer))
+              (fn-cp-nth 1 consumer)
+              topic event-index)
       (list :bad :history))))
 
 (defun fn-cpa-store-auxiliary-agrees (store)
@@ -58,7 +62,9 @@
              (equal (nth 2 expected) (fn-sn-verdicts store))
              (equal (nth 3 expected) (fn-sn-keyring-snapshots store))
              (equal (nth 4 expected) (fn-sn-identity-next store))
-             (equal (nth 5 expected) (fn-sn-consumer store)))
+             (equal (nth 5 expected) (fn-sn-consumer store))
+             (equal (nth 6 expected) (fn-sn-topic store))
+             (equal (nth 7 expected) (fn-sn-event-index store)))
         (list :ok *fn-cpa-version*)
       (list :mismatch :auxiliary-state))))
 
