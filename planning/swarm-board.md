@@ -65,6 +65,38 @@ Lane runs stay within shared pools, at most two jobs each; combined runs use
 four. Live `.active.json` and per-book logs now identify actual work before
 completion. Native tests use disposable stores, never `/tank/fn/node`.
 
+### Following the repaired freeze — 04:12 UTC
+
+`f0d67034` passed the main static check and is the sole combined hbox run
+`run-20260924T041225Z-7481` at
+`/tank/fn/gates/topic-index-repaired-f0d67034-20260924`: 521 cached/kept,
+97 to certify, four jobs. No image verdict follows from submission.
+Root released the verified idle `cstatus` REPL with its normal stop command;
+it had held a shared slot after its codec work completed.
+
+The next packets proceed alongside that fixed test subject:
+
+- `bp_foundation` and `bp_counterexample_completion`: the actual outer
+  progress caller, route waits and an older-unrouted/younger-local trace;
+  forwarding/session policy and durable journal debt remain separate gaps.
+- `topic_metadata`: exact historical report retry as a distinct replayed
+  success without another event or charge; the current host incorrectly
+  refuses the ACL2 historical-success result.
+- `storage_kernel_completion`: shared owner callback correspondence beyond
+  the already landed inner Store callback result.
+- `mini_reply_join`: preserve definite refusal, uncertainty and transport
+  fault through the real reply signer, then complete the B3 exchange.
+- `consumer_contract`: native indexed-poll cost measurement on the shared
+  image when available.
+- `status_codec_proof` and `review_branch_inventory`: bounded peer-inbound
+  and Store-cluster proof-cost repairs, preserving theorem statements.
+- `assurance_review_followup`: identify and close a substantive guard gap
+  on an actual runtime caller, avoiding theorem-only guard-count work.
+
+The cost-history packet is integrated at `af47c79a`, with the aggregate
+summary correction at `7caa9a03`; eight focused tests and the integrated
+static check pass. None changes the frozen server/proof source.
+
 ### Previous cycle checkpoint
 
 Root recovered the two accidental main-checkout operations; see

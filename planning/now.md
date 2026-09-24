@@ -18,6 +18,15 @@ record/Store definitions closed in proofs. The [owner repair](evidence/owner-v6-
 and [K6 repair](evidence/byte-store-k6-provenance-cost-2026-09-24.md) have scoped
 certification; the next full combined run and image remain required.
 
+Frozen `f0d67034` passes `make check`; the repaired combined ACL2 run is
+`run-20260924T041225Z-7481` on hbox, under
+`/tank/fn/gates/topic-index-repaired-f0d67034-20260924`. It reused 521 of
+618 closure books and submitted 97 at four jobs. Its verdict and resulting
+native image remain pending. Later tooling-only commits `af47c79a` and
+`7caa9a03` make the proof-cost warning use current include closures across
+the manifest archive and exclude whole-certification summaries from event
+diagnosis. All eight focused cost tests and the integrated static check pass.
+
 The last shared qualified image is still `e160442f`. All three Luna feature
 runtime tests and the corrected BP deletion-report test passed on it; the
 [trial](experiments/luna-feature-trial-2026-09-24.md) records review cost and
