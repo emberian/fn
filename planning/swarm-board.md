@@ -51,6 +51,18 @@ this board.
 - `retire_old_worktrees` archived six further landed lanes, retaining branches,
   ignored logs and per-tree restore manifests outside the checkout.
 
+The `67d026ad` combined run is terminal failed: 263 passed, four actual
+failed theorem events and seven dependent failures; no image exists. The
+[manifest/cause record](evidence/wide-combined-67d026ad-red-2026-09-24.md)
+is retained. `consumer_contract` repairs acceptance-stamp; `status_codec_proof`
+repairs Store prepare (including the owner-prepare cascade); `bp_foundation`
+repairs BP observed-reopen premises; `storage_kernel_completion` finishes exact
+EIO counterexamples then repairs byte-model reopen. `assurance_review_followup`
+fixes live farm reporting: exited processes are not certified books. The
+qualifier waits for a coherent repaired cut and will use the 300-second bound.
+BP debt/dispatch and topic-v2 migration implementation proceed on separate
+branches; neither is silently folded into this repair cutoff.
+
 The older sections below describe their own checkpoints, not current image
 qualification. The live node remains protected.
 
