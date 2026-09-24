@@ -22,7 +22,14 @@ the difference explicit instead:
               (`'name`, how `fnn-core` and its siblings name a counterpart) in
               a raw module build-dtn.lisp loads, or called from a host file in
               its closure, unless DTN_OMITTED lists that name with the reason
-              the DTN image cannot reach the reference.
+              the DTN image cannot reach the reference;
+  raw         the same for the raw side: no raw module build-dtn.lisp loads
+              calls or `#'`-names a function defined only in a raw module that
+              build.lisp loads and build-dtn.lisp does not, unless
+              DTN_RAW_REACH gives the reason the call cannot run there.  The
+              first fix for the store-init failure loaded checkpoint-host and
+              the image then failed on `fnn-checkpoint-name-result`, which
+              io.lisp called and only checkpoint.lisp defined.
 
 Static, no ACL2.  It does not follow the books an omitted host file includes,
 and it cannot see a counterpart name computed at run time.
@@ -88,6 +95,18 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
                                       "is not loaded"}),
 }
 
+# (raw module that calls, raw function defined only outside the DTN image) -> why
+DTN_RAW_REACH: dict[tuple[str, str], str] = {
+    **{("host/native/admin.lisp", name):
+       "in fnn-owner-live-admin-serialized and fnn-owner-refresh-config-cache, the live "
+       "owner arm, which only control.lisp calls; control.lisp is not loaded"
+       for name in ("fnn-owner-action", "fnn-owner-core",
+                    "fnn-owner-feed-refresh-configuration", "fnn-owner-serialized")},
+    ("host/native/bp-service.lisp", "fnn-owner-core"):
+        "fnn-bps-tcpcl-ingress calls it only with a non-NIL owner and channel; bp.lisp "
+        "passes NIL NIL and bp-node.lisp, the caller with an owner, is not loaded",
+}
+
 LD = re.compile(r'^\s*\(ld\s+"([^"]+)"', re.M)
 LOAD = re.compile(r'\(load\s+"([^"]+)"')
 DEF = re.compile(r'^\s*\((?:defun|defund|defmacro|defconst|defabbrev)\s+([^\s()]+)', re.M | re.I)
@@ -95,6 +114,52 @@ DEF = re.compile(r'^\s*\((?:defun|defund|defmacro|defconst|defabbrev)\s+([^\s()]
 
 def strip_comments(text: str) -> str:
     return re.sub(r";[^\n]*", "", text)
+
+
+def strip_code(text: str) -> str:
+    """Raw Lisp without comments, strings or #| |# blocks (character literals kept)."""
+    out, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "#" and text.startswith("#\\", i):
+            out.append(text[i:i + 3]); i += 3
+        elif c == "#" and text.startswith("#|", i):
+            j = text.find("|#", i + 2); i = n if j < 0 else j + 2
+        elif c == ";":
+            j = text.find("\n", i); i = n if j < 0 else j
+        elif c == '"':
+            i += 1
+            while i < n and text[i] != '"':
+                i += 2 if text[i] == "\\" else 1
+            i += 1; out.append('""')
+        else:
+            out.append(c); i += 1
+    return "".join(out)
+
+
+RAW_DEF = re.compile(r"\((?:defun|defmacro)\s+([^\s()]+)", re.I)
+RAW_USE = re.compile(r"(?:\(|#')(fnn-[^\s()']+)", re.I)
+
+
+def raw_findings(root: Path, default_text: str, dtn_text: str,
+                 reach: dict[tuple[str, str], str]) -> list[str]:
+    default_raw = LOAD.findall(strip_comments(default_text))
+    dtn_raw = LOAD.findall(strip_comments(dtn_text))
+    code = {path: strip_code((root / path).read_text(encoding="utf-8"))
+            for path in set(default_raw) | set(dtn_raw)}
+    present = {name.lower() for path in dtn_raw for name in RAW_DEF.findall(code[path])}
+    absent: dict[str, str] = {}
+    for path in default_raw:
+        if path not in dtn_raw:
+            for name in RAW_DEF.findall(code[path]):
+                absent.setdefault(name.lower(), path)
+    out = []
+    for user in dtn_raw:
+        for name in sorted({use.lower() for use in RAW_USE.findall(code[user])}):
+            if name in absent and name not in present and (user, name) not in reach:
+                out.append(f"raw: {user} calls {name}, defined only in {absent[name]}, "
+                           f"which {DTN_BUILD} does not load")
+    return out
 
 
 def ld_closure(root: Path, build_text: str) -> list[str]:
@@ -114,7 +179,8 @@ def ld_closure(root: Path, build_text: str) -> list[str]:
 
 def findings(root: Path = ROOT, default_text: str | None = None,
              dtn_text: str | None = None,
-             omitted: dict[str, tuple[str, dict[str, str]]] | None = None) -> list[str]:
+             omitted: dict[str, tuple[str, dict[str, str]]] | None = None,
+             reach: dict[tuple[str, str], str] | None = None) -> list[str]:
     default_text = default_text if default_text is not None else (root / DEFAULT_BUILD).read_text()
     dtn_text = dtn_text if dtn_text is not None else (root / DTN_BUILD).read_text()
     omitted = DTN_OMITTED if omitted is None else omitted
@@ -150,6 +216,8 @@ def findings(root: Path = ROOT, default_text: str | None = None,
                 if called.search(text):
                     out.append(f"reached: {user} calls {name}, defined only in {path}, "
                                f"which {DTN_BUILD} does not load")
+    out.extend(raw_findings(root, default_text, dtn_text,
+                            DTN_RAW_REACH if reach is None else reach))
     return out
 
 
