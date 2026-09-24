@@ -130,6 +130,11 @@ committed-record count.
   `tests/acl2/store-history-marker-tests` 2.2 s. `--affected-by` on the new
   book selects only these two roots. The host includes it from the image
   build files, not from a certified host book.
+- persvati, `run-20260924T232158Z-fa11`, manifest
+  [`certify-20260924T232218Z-1792716`](manifests/certify-20260924T232218Z-1792716.json),
+  passed, source `72d40647` (the export also withdraws the two accessor
+  equalities), `--affected-by books/store-history-marker` (2 roots):
+  book 2.6 s, tests 2.3 s.
 - hbox, w28 `acl2-literal-4g`, `certify_books.py --incremental --jobs 6`
   over the default and DTN image roots (`proof_artifacts.py roots`) in
   `/tank/fn/scratch/m5-hist/src` (`git archive 7023c777`): 298 of 299

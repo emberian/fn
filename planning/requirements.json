@@ -635,6 +635,7 @@
         "host/native/owner.lisp",
         "tests/test_native_history_marker.py",
         "planning/evidence/manifests/certify-20260924T230629Z-1648710.json",
+        "planning/evidence/manifests/certify-20260924T232218Z-1792716.json",
         "planning/evidence/m5-history-lifetimes-2026-09-24.md"
       ],
       "implementation_note": "committed-history.json (FNSM kind 3) holds the committed-record count. fnn-mark-committed writes it through fn-hm-after-commit after each record's transaction-directory barrier and before fnn-finish, at all three publish sites. fnn-recover evaluates fn-hm-open-verdict once against the reconstructed record count and faults with history-short-of-marker or marker-damaged. An absent marker is admitted as unmarked, which covers stores written before it.",
