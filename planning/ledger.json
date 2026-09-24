@@ -587,25 +587,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 589,
+    "books": 593,
     "books_in_root_closure": 588,
     "roots": 583,
-    "theorems": 8418,
-    "functions": 6250,
-    "assert_events": 9125,
-    "must_fails": 481,
+    "theorems": 8440,
+    "functions": 6267,
+    "assert_events": 9137,
+    "must_fails": 484,
     "encapsulates": 26,
     "guards": {
-      "verified": 2022,
-      "declared-off": 369,
-      "default-guarded": 3060,
+      "verified": 2030,
+      "declared-off": 371,
+      "default-guarded": 3067,
       "default-unguarded": 799
     },
     "suspect_theorems": 76,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 39,
-    "include_hygiene_warnings": 505,
+    "include_hygiene_warnings": 508,
     "host_names_warnings": 788,
     "hand_written_record_warnings": 18
   },
@@ -4593,6 +4593,31 @@
       "read_error": null
     },
     {
+      "book": "books/consumer-event-index.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 16,
+      "functions": 10,
+      "guards": {
+        "verified": 2,
+        "declared-off": 1,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-position"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/consumer-local-control.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4640,6 +4665,32 @@
       "includes": [
         "consumer-store-projection",
         "owner",
+        "replay"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/consumer-poll-index.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 6,
+      "functions": 7,
+      "guards": {
+        "verified": 6,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 6,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-event-index",
         "replay"
       ],
       "system_includes": [],
@@ -12922,6 +12973,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/consumer-event-index-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 2,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/consumer-event-index"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/consumer-local-control-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -12968,6 +13046,33 @@
         "../../books/consumer-owner-local"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/consumer-poll-index-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 1,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/consumer-poll-index"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -19025,6 +19130,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/consumer-poll-index.lisp",
+        "line": 4,
+        "include": "consumer-event-index",
+        "included": "books/consumer-event-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/exchange.lisp",
         "line": 14,
         "include": "acceptance-alloc",
@@ -20929,6 +21041,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/consumer-event-index-tests.lisp",
+        "line": 3,
+        "include": "../../books/consumer-event-index",
+        "included": "books/consumer-event-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/consumer-local-control-tests.lisp",
         "line": 2,
         "include": "../../books/consumer-local-control",
@@ -20940,6 +21059,13 @@
         "line": 3,
         "include": "../../books/consumer-owner-local",
         "included": "books/consumer-owner-local.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-poll-index-tests.lisp",
+        "line": 3,
+        "include": "../../books/consumer-poll-index",
+        "included": "books/consumer-poll-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
