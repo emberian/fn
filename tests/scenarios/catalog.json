@@ -1026,18 +1026,20 @@
         "CNS-001"
       ],
       "steps": [
-        "Commit the immutable signed report in a separately administered Store while the consumer sleeps; register under a pinned history, incarnation, query and view.",
+        "Commit the immutable signed report in a separately administered Store while the consumer sleeps; register under a pinned history, incarnation, query and view, then query consumer status.",
         "Poll a bounded page, atomically bind the exact source and operation identity to the consumer inbox and immutable reply outbox, then acknowledge only the scanned committed prefix.",
+        "Query status before and after ACK and after Store reopen; compare committed ACK, journal frontier and event distance without treating the distance as unread or application work.",
         "At linked-but-unfinished Store records and consumer transaction/ack publication cuts, crash and reopen the Store and consumer database, settle uncertainty by querying both durable states, and repeat safely.",
         "Replace or clone the endpoint with a fresh durable incarnation, change the authorization view, and offer old cursors and delayed acknowledgements before explicit rebase."
       ],
       "expected": [
+        "Status returns only a registered consumer's committed ACK position, committed journal frontier and their ACL2-computed difference in Store events. It does not poll, mutate progress, or scan retained history.",
         "The Store position is unchanged by poll or reply generation and advances only on a durable consumer ack declaration.",
         "After recovery, Store progress equals replay of the committed prefix; the consumer has neither or both inbox/outbox records at its transaction cut and one operation-index result.",
         "A linked Store candidate is either absent or replayed once at recovery; no stale live projection is accepted as progress.",
         "Old incarnation, registration epoch and view cursors are refused without mutation; independent stores and consumers keep separate positions."
       ],
-      "note": "The ACL2 Store model is witnessed by tests/acl2/consumer-store-invariants-tests.lisp and its scoped manifest. Native image 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with killed reply/reopen and fenced clone cursor recovery, as recorded in planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md. The Mini consumer-owned transaction/ACK/reply join and complete two-store E2-01.. trace set remain unqualified; component passes do not establish the whole scenario."
+      "note": "The ACL2 Store model is witnessed by tests/acl2/consumer-store-invariants-tests.lisp and its scoped manifest. Native image 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with killed reply/reopen and fenced clone cursor recovery, as recorded in planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md. The local consumer-status command is an experimental v1 diagnostic and has no v0 gate. The Mini consumer-owned transaction/ACK/reply join and complete two-store E2-01.. trace set remain unqualified; component passes do not establish the whole scenario."
     },
     {
       "id": "SCN-032",

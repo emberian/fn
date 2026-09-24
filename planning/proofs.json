@@ -2345,6 +2345,33 @@
         "planning/evidence/manifests/certify-20260924T030421Z-3524851.json"
       ],
       "progress_note": "The merged slot-12 topic and slot-13 consumer index source passed 21 explicit Store, topic, native-control and indexed-poll ACL2 roots on persvati at d4b48fda. The source-level native owner/control path calls the ACL2 local proposal dispatcher after the connected same-euid credential observation. The staged native install/root/report/reopen test and combined saved image remain unqualified; the full reverse closure and proof-cost target remain open, so this is not yet a served durable-admission claim."
+    },
+    {
+      "id": "PRF-068",
+      "title": "Local consumer status reports the scoped committed journal distance",
+      "statement": "The experimental local-owner command `consumer status CONTROL ID` reports the registered consumer ACK, committed journal frontier and their event-distance from fixed committed Store projections after the same local principal, query-version and view-version scope checks used by position and poll. The diagnostic leaves owner state unchanged. This target remains in progress: the attempted general kind-9 FNCT accepted roundtrip for uint32 fields is not yet proved, and the native saved-image command has not yet been qualified. This does not prove native filesystem recovery or article unreadness/application processing; Store recovery authority remains PRF-064.",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-001"
+      ],
+      "depends_on": [
+        "PRF-064"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/consumer-owner-local.lisp",
+        "tests/acl2/consumer-owner-local-tests.lisp",
+        "books/consumer-local-control.lisp",
+        "tests/acl2/consumer-local-control-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "host/native/consumer-local.lisp",
+        "tests/native_owner_consumer_local_raw.lisp",
+        "tests/test_native_consumer_e2.py"
+      ],
+      "progress_note": "The handler shares position/poll scope lookup, reads fixed fields from the committed consumer projection and frontier, and constructs subtraction in ACL2. The first scoped farm run failed the proposed general status codec roundtrip; a bounded remote REPL bridge attempt proved the 13-byte frame input shape but not the complete roundtrip. The incomplete theorem was removed so behavior/test books can be certified separately. Corrected ACK witness distinguishes the durable ACK event (ACK becomes 2 and frontier advances) from the read-only status call. No source-matched saved-image run yet; no v0 gate changes."
     }
   ]
 }

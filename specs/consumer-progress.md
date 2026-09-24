@@ -3,7 +3,8 @@
 Status: **selected experiment contract; ACL2 decision, durable Store projection,
 and bounded local-owner poll implemented; native signed poll, advancing ACK
 with reply loss/reopen and fenced clone recovery passed in the scoped
-`1d26e01f` campaign**, 2026-09-23. This
+`1d26e01f` campaign**, 2026-09-23. A source-ready `consumer status` diagnostic
+is an experimental v1 addition and is not a v0 gate. This
 specifies E2 of [the sleeping-agent exchange](../planning/experiments/e1-e2-agent-exchange.md).
 It is an fn design guarantee, not an NNTP or BP requirement and not a v0 release
 gate. The selected E1 payload remains opaque to fn. The executable traces to
@@ -268,7 +269,8 @@ publication path must exercise refusal and ambiguity around its
 cuts, plus recovery cuts. The first local owner command source now runs through
 `fn-owner-consumer-local-{bootstrap,register,ack,position,poll,unregister}` in
 `host/owner-host.lisp`, which calls `fn-col-*` over the live owner. The
-`FNCT` kind-4/5 codec and CLI plan in `books/consumer-local-control.lisp`
+`FNCT` kind-4 request, kind-5 cursor reply, kind-6 poll reply and kind-9 status
+reply codec plus CLI plan in `books/consumer-local-control.lisp`
 carry bounded request/reply bytes over the existing mode-0600 Unix control
 socket. The host observes the connected peer's UID with Darwin `getpeereid`
 or Linux `SO_PEERCRED` after `getpeername`, refuses a failed observation or
@@ -289,6 +291,19 @@ scope refusal, replay, and a killed-owner-after-durable-register case;
 does not include poll or advancing ack. The `1d26e01f` campaign subsequently passed signed poll, advancing ACK with
 a killed reply, and recovered position; the broader two-store application
 transaction crash trace remains open.
+
+The experimental local-owner `consumer status CONTROL ID` diagnostic uses the
+same local principal, query version, view version and registered consumer entry
+as `position` and `poll`. It returns the committed ACK position, the committed
+journal frontier and their difference in Store journal events. That difference
+does not count unread or matching articles and says nothing about application
+work. ACL2 validates the scope and computes the subtraction; the native
+command only prints those fixed fields. Status performs a bounded registration
+table lookup and reads fixed fields. It does not poll, write an ACK or journal
+event, or scan retained history. This is an experimental v1 diagnostic and
+does not change the v0 release gate.
+Its fixed status reply payload is at most 13 octets. FNCT kinds 7 and 8 belong
+to the local topic-control packet.
 
 The local `consumer poll CONTROL ID CURSOR_OUT REPORT_OUT` source selector
 examines at most 16 consecutive committed Store events and stops at the first
