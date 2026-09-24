@@ -1,0 +1,8 @@
+From: gate@example.invalid
+Subject: repro transit
+Newsgroups: fn.letters
+Date: Thu, 24 Sep 2026 15:50:08 +0000
+Message-ID: <gamma@a.example.invalid>
+Path: a.gate.example.invalid!not-for-mail
+
+repro body.

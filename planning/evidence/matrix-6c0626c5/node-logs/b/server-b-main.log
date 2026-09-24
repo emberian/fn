@@ -1,0 +1,26 @@
+CONTROL /tank/fn/scratch/matrix-6c0626c5/stores/b/control.sock
+LISTENING 11191
+accepted peer connection=0 peer=a time=2026-09-24T15:46:11Z
+accepted peer connection=1 peer=a time=2026-09-24T15:46:12Z
+accepted post path=served connection=1 message-id=<native-matrix-1e2c0c6c2b11-b@example.invalid> agent=b.gate.example.invalid time=2026-09-24T15:46:12Z
+accepted peer connection=2 peer=a time=2026-09-24T15:46:12Z
+accepted peer connection=3 peer=a time=2026-09-24T15:46:12Z
+refused post path=served connection=3 message-id=<native-matrix-1e2c0c6c2b11-b@example.invalid> agent=b.gate.example.invalid time=2026-09-24T15:46:12Z
+accepted peer connection=4 peer=a time=2026-09-24T15:46:12Z
+accepted peer connection=5 peer=a time=2026-09-24T15:46:12Z
+accepted peer connection=6 peer=a time=2026-09-24T15:46:12Z
+accepted peer connection=7 peer=a time=2026-09-24T15:46:13Z
+accepted peer connection=8 peer=a time=2026-09-24T15:46:13Z
+accepted peer connection=9 peer=a time=2026-09-24T15:46:14Z
+accepted peer connection=10 peer=a time=2026-09-24T15:46:14Z
+accepted peer connection=11 peer=a time=2026-09-24T15:46:14Z
+accepted peer connection=12 peer=a time=2026-09-24T15:46:14Z
+accepted post path=served connection=12 message-id=<auth-b@example.invalid> agent=b.gate.example.invalid time=2026-09-24T15:46:14Z
+accepted peer connection=13 peer=a time=2026-09-24T15:46:14Z
+accepted post path=control message-id=<beta@b.example.invalid> time=2026-09-24T15:46:15Z
+duplicate post path=control message-id=<beta@b.example.invalid> time=2026-09-24T15:46:15Z
+refused post path=control message-id=<beta@b.example.invalid> time=2026-09-24T15:46:16Z
+accepted post path=control message-id=<stream-b@example.invalid> time=2026-09-24T15:46:16Z
+accepted peer connection=14 peer=a time=2026-09-24T15:46:18Z
+accepted peer connection=15 peer=a time=2026-09-24T15:46:19Z
+uncertain operator run

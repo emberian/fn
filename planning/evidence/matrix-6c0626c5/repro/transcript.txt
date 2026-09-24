@@ -1,0 +1,26 @@
+Hand reproduction of the transit finding on hbox, production image
+/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host (sha256 432622d2...),
+launched as FN_NATIVE_HOST=<image> packaging/fn-native operator <toml> run (nohup, stdout+stderr to run*.log).
+ihave.py sends IHAVE <id>, then the article dot-stuffed and terminated, then QUIT.
+
+1. Copy of matrix node B's store after the run (repro/, port 11196):
+   operator status  -> transactions=5 articles=5 staging-orphans=0 unsigned-legacy-experiment
+   operator recover -> recovered transactions=5 articles=5 (alpha, delivered before B died, is durable)
+   run; IHAVE <alpha@a.example.invalid> -> 435 duplicate (service stays up)
+   IHAVE <gamma@a.example.invalid> (fresh)  -> 335, then 436 transfer failed; the outcome is uncertain, connection closed
+   run.log last line: "uncertain operator run"; process exited
+   operator recover -> recovered transactions=6 articles=6 (gamma is durable)
+
+2. Fresh store (repro-fresh/, port 11197): store init fn.letters, fn.toml, run
+   IHAVE <gamma> -> 502 transit is not permitted on this connection   (no peer yet; run.log)
+   stop; operator peer add a a.gate.example.invalid 127.0.0.1 11190 'fn.*' - 127.0.0.1 true; run
+   IHAVE <gamma> -> 335, 235 article transferred OK; service stays up   (run2.log)
+   stop; operator policy set path-identity b.gate.example.invalid; run
+   IHAVE <delta@a.example.invalid> -> 335, then 436 transfer failed; the outcome is uncertain; "uncertain operator run", exited (run3.log)
+   operator recover -> recovered transactions=2 articles=2; run
+   ARTICLE <delta@a.example.invalid> -> 220, served with
+     Path: b.gate.example.invalid!!a.gate.example.invalid!not-for-mail   (run4.log)
+   run; operator group create fn.matrix.live (live, control channel) -> rc=0 accepted operator group;
+     GROUP fn.matrix.live -> 211 0 1 0 fn.matrix.live  (run5.log; hand probe, not the matrix row)
+
+Every process started here was stopped by its own PID (kill <pid>) or exited on its own.

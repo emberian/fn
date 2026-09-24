@@ -1,0 +1,9 @@
+[store]
+path = "/home/hbox/fn-deploy/native-6c0626c5-c60bb37/a/authgate/store"
+[listener]
+host = "127.0.0.1"
+port = 11292
+[auth]
+required = true
+[control]
+path = "/home/hbox/fn-deploy/native-6c0626c5-c60bb37/a/authgate/control.sock"

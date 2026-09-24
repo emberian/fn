@@ -1,0 +1,5 @@
+matrix: /Users/ember/dev/fn/build/lanes/matrix-6c0626c5/planning/evidence/v0-runs/20260924T154510.199004Z-c60bb37-bbfed39d182b/matrix.json
+evidence: /Users/ember/dev/fn/build/lanes/matrix-6c0626c5/planning/evidence/v0-runs/20260924T154510.199004Z-c60bb37-bbfed39d182b/report.md
+steps=220 failed=2 not-exercised=63
+  DISAGREES V0-INN-INTEROP (refused expected accepted): the lab's verdict: violated (25 held, 5 not-exercised, 3 violated)
+  DISAGREES V0-INN-LOOP-FN (accepted expected refused): fn-loop-refused=violated (None / None / None)

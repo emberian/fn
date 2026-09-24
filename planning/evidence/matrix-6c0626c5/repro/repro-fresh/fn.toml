@@ -1,0 +1,7 @@
+[store]
+path = "/tank/fn/scratch/matrix-6c0626c5/repro-fresh/store"
+[listener]
+host = "127.0.0.1"
+port = 11197
+[control]
+path = "/tank/fn/scratch/matrix-6c0626c5/repro-fresh/control.sock"

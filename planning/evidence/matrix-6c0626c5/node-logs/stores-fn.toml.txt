@@ -1,0 +1,15 @@
+[store]
+path = "/tank/fn/scratch/matrix-6c0626c5/stores/a/store"
+[listener]
+host = "127.0.0.1"
+port = 11190
+[control]
+path = "/tank/fn/scratch/matrix-6c0626c5/stores/a/control.sock"
+
+[store]
+path = "/tank/fn/scratch/matrix-6c0626c5/stores/b/store"
+[listener]
+host = "127.0.0.1"
+port = 11191
+[control]
+path = "/tank/fn/scratch/matrix-6c0626c5/stores/b/control.sock"
