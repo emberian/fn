@@ -436,7 +436,11 @@ def main(argv: list[str] | None = None) -> int:
             print(line)
         if args.write_baseline:
             if args.allow_regression:
-                entries = regression_baseline(computed[0], args.threshold)
+                # Every measured book over the threshold, plus the prior
+                # entries the ratchet would keep (unmeasured at the current
+                # closure): an allowance adds, it never forgets a defect.
+                entries = dict(verdict.proposed)
+                entries.update(regression_baseline(computed[0], args.threshold))
             elif verdict.failing:
                 print(f"proof_cost: refusing to write {args.baseline}: "
                       f"{len(verdict.failing)} book(s) above would be added or "

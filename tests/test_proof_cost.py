@@ -274,6 +274,26 @@ class ProofCostTests(unittest.TestCase):
                 self.assertEqual(proof_cost.load_baseline(path)["books/new"]["seconds"], 12.0)
                 self.assertEqual(proof_cost.main(["--baseline", str(path)]), 0)
 
+    def test_allow_regression_keeps_unmeasured_baseline_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "baseline.json"
+            proof_cost.write_baseline(path, {
+                "books/old": {"seconds": 40.0, "run": "r0", "host": "h", "verdict": "passed"}},
+                10.0)
+            selected = self.measurement("books/new", 12.0)
+            computed = (selected, set(), 1)
+            with mock.patch.object(proof_cost, "current_books",
+                                   return_value={"books/new", "books/old"}), \
+                    mock.patch.object(proof_cost, "history", return_value=computed), \
+                    mock.patch("sys.stdout"):
+                self.assertEqual(proof_cost.main(
+                    ["--baseline", str(path), "--write-baseline",
+                     "--allow-regression"]), 0)
+            written = proof_cost.load_baseline(path)
+            self.assertEqual(written["books/new"]["seconds"], 12.0)
+            self.assertEqual(written["books/old"]["seconds"], 40.0,
+                             "an allowance must not forget an unmeasured defect")
+
 
 if __name__ == "__main__":
     unittest.main()
