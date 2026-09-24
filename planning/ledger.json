@@ -18768,7 +18768,7 @@
     {
       "theorem": "fn-bpnfg-car-is-car",
       "book": "books/bp-node-fragment-guards.lisp",
-      "line": 141,
+      "line": 146,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-cbor-ag-car",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -19428,13 +19428,13 @@
       {
         "theorem": "fn-bpp-decode-of-encode",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 281,
+        "line": 285,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bpp-accepted-block-has-valid-crc",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 344,
+        "line": 348,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
