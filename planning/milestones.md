@@ -1,12 +1,14 @@
-Current task (2026-09-24): produce a frozen image past `863c2141` with the
-three red BP roots of the `8a1b31f9` cut repaired and BP N03 plus the
-interrupted-fragment native cases passing; as a stretch, one end-to-end
-signed-peering-into-Mini exchange across two Stores; bring proof cost down;
-keep the planning consolidated. [Now](now.md) names dev, the images, the goal
-and the active lanes; the [wind-down handoff](handoff-2026-09-24-winddown.md)
-is the restart record. No v0/v1 release is declared. The earlier status and
-current-task paragraphs, the retired six-wave checklist and the fiber records
-are in [archive/milestones-retired-2026-09-24.md](archive/milestones-retired-2026-09-24.md).
+Current task (2026-09-24, 07:00 EDT): the night's four judged items hold; the
+[restart record](handoff-2026-09-24-night.md) has the numbers. Image
+[`1a9dd747`](evidence/native-cut-1a9dd747-2026-09-24.md) is the last completed
+shared image pair (BP N03 and interrupted-fragment cases pass); the
+[two-Store join](evidence/two-store-join-1a9dd747-2026-09-24.md) completed
+under four cut families; the ten-second baseline is at 19 books. Next: the
+remaining cost books, the other native subsets on `1a9dd747`, and whether to
+deploy it (a separate decision). [Now](now.md) names dev, the images and the
+lanes. No v0/v1 release is declared. The earlier status and current-task
+paragraphs, the retired six-wave checklist and the fiber records are in
+[archive/milestones-retired-2026-09-24.md](archive/milestones-retired-2026-09-24.md).
 
 ## Earlier milestones
 

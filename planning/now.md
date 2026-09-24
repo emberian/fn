@@ -62,8 +62,10 @@ coordinate is on the [swarm board](swarm-board.md).
 
 ## Where to read next
 
-- [Wind-down handoff](handoff-2026-09-24-winddown.md): restart record, the
-  integrated capabilities and their limits, the final cut.
+- [Restart record for the Claude night](handoff-2026-09-24-night.md): the
+  numbers, the findings, what remains open, how to restart.
+- [Wind-down handoff](handoff-2026-09-24-winddown.md): gpt-6's record of the
+  integrated capabilities and their limits, and its final cut.
 - [How we work](how-we-work.md): the loop, the compute budget, convergence.
 - [AGENTS.md](../AGENTS.md): the assurance rules. They apply in full.
 - [Decisions](decisions.md): what ember has decided and when.
