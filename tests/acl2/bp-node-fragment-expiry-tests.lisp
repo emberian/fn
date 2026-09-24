@@ -6,10 +6,17 @@
 ; The existing family is complete.  An old kind-5 row without an arrival
 ; clock anchor is unknown and cannot authorize a new family proposal.
 (defconst *bpnfe-unknown* (fn-clock-observation 1 2343 0 t))
+(defconst *bpnfe-legacy-state*
+  (fn-bpnf-state (fn-bpnf-base *bpnff-state*)
+                 (list (update-nth 9 nil *bpnff-p3*)
+                       (update-nth 9 nil *bpnff-p0*))
+                 nil nil nil nil nil 3 0))
 (assert-event (equal (car (fn-bpnf-family-plan *bpnff-state* *bpnff-p3*))
                      :ready))
 (assert-event (equal (fn-bpnf-family-plan-at
-                      *bpnff-state* *bpnff-p3* *bpnfe-unknown*)
+                      *bpnfe-legacy-state*
+                      (car (fn-bpnf-held-list *bpnfe-legacy-state*))
+                      *bpnfe-unknown*)
                      '(:blocked :expiry)))
 
 ; For a common confident wall observation, every selected row is live and
