@@ -130,12 +130,7 @@
                            (fn-cbor-u32-bytes frontier)
                            (fn-cbor-u32-bytes gap))
                  (list code))))
-          (if (<= (len payload) *fn-ncl-status-max-payload*)
-              (let ((protected
-                     (fn-frame-protected *fn-nctrl-magic* *fn-nctrl-version*
-                                         *fn-ncl-status-reply-kind* payload)))
-                (append protected (fn-frame-trailer protected)))
-            :bad))
+          (fn-nctrl-seal *fn-ncl-status-reply-kind* payload))
       :bad)))
 
 (defun fn-ncl-status-open (octets)
@@ -319,11 +314,7 @@
 (verify-guards fn-ncl-request-decode)
 (verify-guards fn-ncl-reply-encode)
 (verify-guards fn-ncl-reply-decode)
-(verify-guards fn-ncl-status-reply-encode
-  :hints (("Goal"
-           :use ((:instance fn-cp-u32-bytes-true-listp (n ack))
-                 (:instance fn-cp-u32-bytes-true-listp (n frontier))
-                 (:instance fn-cp-u32-bytes-true-listp (n gap))))))
+(verify-guards fn-ncl-status-reply-encode)
 (verify-guards fn-ncl-status-open)
 (verify-guards fn-ncl-status-reply-decode)
 (verify-guards fn-ncl-poll-event-bytesp)
