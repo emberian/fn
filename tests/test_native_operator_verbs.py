@@ -162,7 +162,7 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
 
         again = self.operator("init", "fn.test")
         self.assertEqual(again.returncode, EXIT_REFUSED, again.stderr.decode())
-        self.assertIn(b"refused operator init STORE-EXISTS", again.stderr.upper())
+        self.assertIn(b"REFUSED OPERATOR INIT STORE-EXISTS", again.stderr.upper())
 
     def test_a_locked_store_is_refused_without_the_lock_being_touched(self):
         self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
@@ -458,14 +458,18 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         # used = 127 = budget-1.
         replies = self.post_many(ids[1:128])
         self.assertEqual(replies, ["240 article received OK"] * 127)
-        # used = budget and used stays = budget: refused by name, twice, and
-        # an already stored article is still answered as a duplicate.
+        # used = budget and used stays = budget: refused by name, twice.  A
+        # Message-ID the store already holds is still answered by the Store's
+        # existing-article decision, not by the budget: the owner injected
+        # headers into the stored copy, so this byte-different re-POST is the
+        # conflict answer.
         refused = self.post_many(ids[128:130] + ids[:1])
         self.assertEqual(
             refused[:2],
             ["441 posting failed; the store has no capacity for this article"] * 2)
-        self.assertEqual(refused[2],
-                         "441 posting failed; this article is already stored here")
+        self.assertEqual(
+            refused[2],
+            "441 posting failed; a different article with this Message-ID is stored here")
         self.stop(owner)
         full = self.headroom()
         self.assertEqual(full["transactions-used"], 128)

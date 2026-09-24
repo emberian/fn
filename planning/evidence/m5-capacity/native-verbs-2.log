@@ -1,0 +1,15 @@
+test_the_default_profile_budget_is_reported_and_refused_by_name (tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_the_default_profile_budget_is_reported_and_refused_by_name) ... ok
+test_the_scale_profile_is_reachable_from_init (tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_the_scale_profile_is_reachable_from_init) ... ok
+test_a_locked_store_is_refused_without_the_lock_being_touched (tests.test_native_operator_verbs.NativeOperatorInitTests.test_a_locked_store_is_refused_without_the_lock_being_touched) ... ok
+test_help_names_init (tests.test_native_operator_verbs.NativeOperatorInitTests.test_help_names_init) ... ok
+test_init_creates_the_configured_store_and_then_refuses_it (tests.test_native_operator_verbs.NativeOperatorInitTests.test_init_creates_the_configured_store_and_then_refuses_it) ... ok
+test_init_without_a_group_is_usage_and_writes_nothing (tests.test_native_operator_verbs.NativeOperatorInitTests.test_init_without_a_group_is_usage_and_writes_nothing) ... ok
+test_init_outcome_is_acl2s_and_the_host_only_observes (tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_init_outcome_is_acl2s_and_the_host_only_observes) ... ok
+test_peer_list_is_a_query_and_the_host_asks_acl2_which (tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_peer_list_is_a_query_and_the_host_asks_acl2_which) ... ok
+test_the_uncertain_word_is_acl2s_control_vocabulary (tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_the_uncertain_word_is_acl2s_control_vocabulary) ... ok
+test_uncertain_fault_is_gated_on_the_saved_image_profile (tests.test_native_operator_verbs.NativeOperatorVerbCompositionTests.test_uncertain_fault_is_gated_on_the_saved_image_profile) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 34.880s
+
+OK
