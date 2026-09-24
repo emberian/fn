@@ -460,6 +460,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-prepare-correspondence \
 	books/owner-agent \
 	books/owner-log \
+	books/consumer-event-index \
+	tests/acl2/consumer-event-index-tests \
+	books/consumer-poll-index \
+	tests/acl2/consumer-poll-index-tests \
+	books/consumer-event-index-store-invariants \
+	tests/acl2/consumer-event-index-store-invariants-tests \
+	books/consumer-owner-local \
+	tests/acl2/consumer-owner-local-tests \
+	books/consumer-owner-index-invariants \
+	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
 	tests/acl2/owner-verdict-tests \
 	tests/acl2/owner-operator-tests \
