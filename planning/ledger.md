@@ -13,15 +13,15 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 667 |
 | Certification roots in the Makefile | 656 |
 | Books inside the root closure | 665 |
-| `defthm` and `defthmd` events | 8884 |
-| `defun` events | 6569 |
+| `defthm` and `defthmd` events | 8912 |
+| `defun` events | 6571 |
 | Functions with verified guards | 2036 |
-| Functions declared `:verify-guards nil` and never verified | 402 |
+| Functions declared `:verify-guards nil` and never verified | 404 |
 | Functions left at the default with an explicit guard | 3294 |
 | Functions left at the default with no guard | 837 |
 | `assert-event` checks | 9678 |
 | `must-fail` checks | 570 |
-| `encapsulate` events | 28 |
+| `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 82 |
 | Export-hygiene warnings | 107 |
 | Enabled-projection warnings | 37 |
@@ -167,10 +167,10 @@ that `make certify` requests.
 | `books/bp-node-machine-guards.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-invariants.lisp` | root | 83 | 1 | 0/1/0/0 | 0 | 0 | 2 |
 | `books/bp-node-machine.lisp` | root | 70 | 95 | 47/3/45/0 | 0 | 0 | 1 |
-| `books/bp-node-progress-guards.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-node-progress-guards.lisp` | root | 29 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-node-progress-selection-invariants.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-node-progress.lisp` | root | 0 | 56 | 0/3/53/0 | 0 | 0 | 0 |
+| `books/bp-node-progress.lisp` | root | 0 | 57 | 0/5/52/0 | 0 | 0 | 0 |
 | `books/bp-node-receive-boundary.lisp` | root | 1 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-records.lisp` | root | 4 | 13 | 12/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-report-step.lisp` | root | 2 | 4 | 0/3/1/0 | 0 | 0 | 0 |
