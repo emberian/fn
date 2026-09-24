@@ -4934,6 +4934,7 @@
 ; (host/native/owner.lisp:718).  It calls the program-mode fn-owner-io
 ; (host/owner-host.lisp:299), which submits exactly this event through
 ; fn-ocfg-step.  Expose the Store-node projection of that called path.
+(include-book "owner-config")
 (include-book "owner-invariants")
 
 (defthm fn-bs-k0-owner-io-store-is-node-io
