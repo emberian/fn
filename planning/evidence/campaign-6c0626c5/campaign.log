@@ -1,0 +1,50 @@
+cut frontier-created
+cut frontier-written
+cut frontier-staged-durable
+cut frontier-replaced
+cut frontier-attempted
+cut frontier-durable
+cut frontier-reserved
+cut record-created
+cut record-written
+cut record-staged-durable
+cut record-linked
+cut record-attempted
+cut record-durable
+cut record-completing
+cut record-stage-unlinked
+cut record-staging-cleaned
+cut finish-consumed
+cut finish-durable
+cut recover-replayed
+cut recover-barrier-1
+cut recover-barrier-2
+cut recover-barrier-3
+cut recover-barrier-4
+cut recover-barrier-5
+cut recovery-stage-unlinked
+faults
+	Command being timed: "python3 -m tests.campaign.native_operator_campaign --images /tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5 --work /tank/fn/scratch/campaign-6c0626c5/work --out /tank/fn/scratch/campaign-6c0626c5/campaign.json"
+	User time (seconds): 33.88
+	System time (seconds): 35.57
+	Percent of CPU this job got: 44%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:37.26
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 319780
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1561
+	Minor (reclaiming a frame) page faults: 15690130
+	Voluntary context switches: 14241
+	Involuntary context switches: 3889
+	Swaps: 0
+	File system inputs: 210835
+	File system outputs: 8800
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+rc=0

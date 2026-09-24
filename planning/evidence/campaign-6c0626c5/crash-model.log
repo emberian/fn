@@ -1,0 +1,35 @@
+test_every_native_cut_has_a_byte_program_coordinate (tests.test_native_crash_model.NativeCrashFaultSurfaceTests.test_every_native_cut_has_a_byte_program_coordinate) ... ok
+test_missing_image_is_not_reported_as_a_skipped_campaign (tests.test_native_crash_model.NativeCrashFaultSurfaceTests.test_missing_image_is_not_reported_as_a_skipped_campaign) ... ok
+test_post_fault_environment_is_developer_image_only (tests.test_native_crash_model.NativeCrashFaultSurfaceTests.test_post_fault_environment_is_developer_image_only) ... ok
+test_all_native_post_process_death_cuts (tests.test_native_crash_model.NativeCrashModelTests.test_all_native_post_process_death_cuts) ... ok
+test_injected_outcomes_stay_refused_or_uncertain_and_recover (tests.test_native_crash_model.NativeCrashModelTests.test_injected_outcomes_stay_refused_or_uncertain_and_recover) ... ok
+test_recovery_stage_unlink_process_death_scans_and_reopens (tests.test_native_crash_model.NativeCrashModelTests.test_recovery_stage_unlink_process_death_scans_and_reopens) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 61.484s
+
+OK
+	Command being timed: "python3 -m unittest -v tests.test_native_crash_model"
+	User time (seconds): 51.52
+	System time (seconds): 7.08
+	Percent of CPU this job got: 95%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:01.64
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 467780
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 5
+	Minor (reclaiming a frame) page faults: 4586114
+	Voluntary context switches: 3072
+	Involuntary context switches: 839
+	Swaps: 0
+	File system inputs: 604575
+	File system outputs: 2
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+rc=0
