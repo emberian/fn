@@ -129,7 +129,9 @@ timed out at `fn-bpnp-issued-debt-delta`, whose guard `t` does not imply the
 base-state premise required by `fn-bpnf-family-apply-at`. Strengthening that
 helper's guard also requires proving that `fn-bpn-report-author-step` preserves
 the premise for the proposal-state call in `fn-bpnp-delegate-with-credit`.
-Do not fix this by adding whole-state revalidation to the served path.
+This is the first unresolved guard, not a claim that every later event in the
+guard book is already discharged. Do not fix it by adding whole-state
+revalidation to the served path.
 
 Until this section is updated with the final result, `863c2141` is the latest
 completed shared image described here. Current dev passes structural checks
