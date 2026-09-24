@@ -2,14 +2,17 @@
 ; is mutated only by Store events; workflow replay never replaces owner state.
 (in-package "ACL2")
 (include-book "../books/bp-release")
+(include-book "../books/bp-ion-workflow")
 
 (defun fn-owner-workflow-install-replay (records state)
  (declare (xargs :stobjs state :mode :program))
- (let* ((answer (fn-bprl-replay-journal (fn-sn-node (fn-owner-store state)) records)))
+ (let* ((answer (fn-bpiw-replay-journal (fn-sn-node (fn-owner-store state)) records)))
   (if (not (car answer))
       (value :fault)
     (let* ((workflow (fn-bp-journal-nth 1 answer))
            (state (f-put-global 'fn-workflow-state workflow state))
+           (state (f-put-global 'fn-workflow-ion-state
+                                (fn-bp-journal-nth 3 answer) state))
                (state (f-put-global 'fn-workflow-effects nil state))
                (state (f-put-global 'fn-workflow-recovered
                                     (fn-bp-work-ids
@@ -60,14 +63,17 @@
 
 (defun fn-owner-workflow-apply-record (record state)
  (declare (xargs :stobjs state :mode :program))
- (let* ((answer (fn-bprl-apply-journal-record
-                 (f-get-global 'fn-workflow-state state) record)))
+ (let* ((answer (fn-bpiw-apply
+                 (f-get-global 'fn-workflow-state state)
+                 (f-get-global 'fn-workflow-ion-state state) record)))
   (if (not (car answer))
       (value :fault)
     (let* ((workflow (fn-bp-journal-nth 1 answer))
            (state (f-put-global 'fn-workflow-state workflow state))
                (state (f-put-global 'fn-workflow-effects
-                                    (fn-bp-journal-nth 2 answer) state)))
+                                    (fn-bp-journal-nth 2 answer) state))
+               (state (f-put-global 'fn-workflow-ion-state
+                                    (fn-bp-journal-nth 3 answer) state)))
       (value :ready)))))
 
 (defun fn-owner-workflow-sync-store-node (state)

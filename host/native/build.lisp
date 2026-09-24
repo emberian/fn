@@ -57,6 +57,7 @@
 ; Canonical Store events own retention. The workflow wrapper below projects
 ; that Store into workflow state; the former reverse-copy join was removed.
 (include-book "books/bp-outbound")
+(include-book "books/bp-ion-workflow")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")
 ; The TCPCLv4 convergence layer: the octet grammar and the session machine the

@@ -222,7 +222,12 @@
                            "terms-id"))
    (cons :outcome '("txid" "tx-generation" "phase" "result"))
    (cons :retry-request '("work-id" "attempt-id" "attempt-generation"
-                          "policy-id"))))
+                          "policy-id"))
+   (cons :ion-route '("work-id" "attempt-id" "attempt-generation"
+                      "app-peer-eid" "bp-destination-eid" "bp-source-eid"))
+   (cons :ion-observed '("work-id" "attempt-id" "attempt-generation"
+                         "app-peer-eid" "bp-destination-eid" "bp-source-eid"
+                         "creation-msec" "creation-sequence"))))
 
 (defconst *fn-frame-receipt-field-names*
   (list

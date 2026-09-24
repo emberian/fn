@@ -309,6 +309,121 @@
       (fnn-refuse "workflow forwarding obligation is not admissible"))
     (fnn-app-publish journal record)))
 
+;;; Optional pinned-ION submission. The first network operation is inside the
+;;; C helper, after both the FNWF attempt and ION route records are durable.
+;;; Its observation file is transport evidence, not a receipt.
+
+(defun fnn-workflow-ion-private-directory (path)
+  (let* ((absolute (fnn-absolute path))
+         (st (fnn-safe-directory absolute t)))
+    (unless (and (= (sb-posix:stat-uid st) (sb-posix:geteuid))
+                 (zerop (logand (sb-posix:stat-mode st) #o077)))
+      (fnn-refuse "ION observation directory must be owner-private"))
+    (fnn-fsync-dir absolute)
+    absolute))
+
+(defun fnn-workflow-ion-request-file (directory adu)
+  (let* ((path (fnn-join directory
+                         (format nil "request.~a.adu" (fnn-random-hex 16))))
+         (fd nil))
+    (unless (and (fnn-octet-list-p adu) (< 0 (length adu))
+                 (<= (length adu) 65538))
+      (fnn-fault "ACL2 returned an invalid ION request ADU"))
+    (setq fd (fnn-open path
+                       (logior sb-posix:o-wronly sb-posix:o-creat
+                               sb-posix:o-excl +fnn-o-nofollow+)
+                       #o600))
+    (unwind-protect
+         (progn (fnn-write-all fd adu) (fnn-fsync-file fd))
+      (when fd (fnn-close fd)))
+    (fnn-fsync-dir directory)
+    path))
+
+(defun fnn-workflow-ion-run-helper (helper own destination peer adu ttl observation)
+  (let ((process
+          (handler-case
+              (sb-ext:run-program
+               helper (list own destination peer adu (format nil "~d" ttl)
+                            observation)
+               :search nil :wait nil :output *standard-output*
+               :error *error-output*)
+            (error (e)
+              (fnn-refuse "ION helper could not start before send: ~a" e)))))
+    (let ((deadline (+ (fnn-now) (* 90 internal-time-units-per-second))))
+      (loop while (sb-ext:process-alive-p process) do
+        (when (<= (fnn-seconds-to-deadline deadline) 0)
+          (ignore-errors (sb-ext:process-kill process sb-unix:sigkill))
+          (sb-ext:process-wait process)
+          (fnn-indeterminate "ION helper timed out after launch"))
+        (sleep 0.05)))
+    (sb-ext:process-wait process)
+    (sb-ext:process-exit-code process)))
+
+(defun fnn-workflow-ion-submit
+    (journal txid tx-generation work-id attempt-id bp-destination own-bp-eid
+             helper observation-directory)
+  (let* ((directory (fnn-workflow-ion-private-directory observation-directory))
+         (attempt (fnn-core-state 'fn-workflow-ion-attempt-record
+                                  txid tx-generation work-id attempt-id)))
+    (unless (and (consp attempt) (eq (first attempt) :attempt))
+      (fnn-refuse "ACL2 refused ION attempt"))
+    (let ((generation (sixth attempt))
+          (lifetime (tenth attempt)))
+      (fnn-app-publish journal attempt :reserve-resolution t)
+      (fnn-app-publish journal
+                       (list :outcome txid tx-generation :ordinary :durable))
+      (unless (eq (fnn-core-state 'fn-workflow-take-submit
+                                  work-id attempt-id generation) t)
+        (fnn-fault "durable ION attempt did not grant one submit effect"))
+      (let ((route (fnn-core-state 'fn-workflow-ion-route-record
+                                    work-id attempt-id generation
+                                    bp-destination own-bp-eid)))
+        (unless (and (consp route) (eq (first route) :ion-route))
+          (fnn-refuse "ACL2 refused ION route"))
+        (fnn-app-publish journal route)
+        (let* ((adu (fnn-core-state 'fn-workflow-ion-request-adu
+                                     work-id attempt-id generation))
+               (observation (fnn-join directory
+                                      (format nil "observation.~a"
+                                              (fnn-random-hex 16))))
+               (request nil))
+          (when (> (length observation) 240)
+            (fnn-refuse "ION observation path exceeds private source bound"))
+          (setq request (fnn-workflow-ion-request-file directory adu))
+          (unwind-protect
+               (let ((exit (fnn-workflow-ion-run-helper
+                            helper (seventh route) (sixth route) (fifth route)
+                            request lifetime observation)))
+                 (cond
+                  ((eql exit 1) (fnn-refuse "ION helper refused before send"))
+                  ((eql exit 5) (fnn-fault "ION helper rejected invocation"))
+                  ((not (eql exit 0))
+                   (fnn-indeterminate "ION send entered without durable observation"))
+                  (t
+                   (handler-case
+                       (let* ((raw (fnn-octet-list
+                                    (fnn-read-regular-bounded observation 1023)))
+                              (record (fnn-core-state
+                                       'fn-workflow-ion-observation-record
+                                       work-id attempt-id generation
+                                       bp-destination own-bp-eid raw)))
+                         (unless (and (consp record)
+                                      (eq (first record) :ion-observed))
+                           (fnn-indeterminate
+                            "ACL2 refused ION observation after send"))
+                         (fnn-app-publish journal record)
+                         (fnn-out
+                          "ION observed work=~a attempt=~a source=~a msec=~d sequence=~d"
+                          work-id attempt-id (seventh record)
+                          (eighth record) (ninth record))
+                         :observed)
+                     (error (e)
+                       (fnn-indeterminate
+                        "ION observation binding requires recovery: ~a" e))))))
+            (when request
+              (ignore-errors (fnn-unlink request)
+                             (fnn-fsync-dir directory)))))))))
+
 (defun fnn-workflow-commit-receipt-intent
     (journal intent canonical-release-callback)
   (unless (and (consp intent) (eq (first intent) :receipt-intent))
@@ -444,6 +559,42 @@
      (fnn-out "workflow durable undertaking work=~a charge=~d" work-id charge)
      +fnn-exit-ok+)))
 
+(defun fnn-command-workflow-ion-submit
+    (store-root journal-root txid tx-generation work-id attempt-id
+                bp-destination own-bp-eid helper observation-directory)
+  (fnn-app-call-with-journal
+   store-root journal-root :workflow t
+   (lambda (journal)
+     (unless (eq (fnn-workflow-ion-submit
+                  journal txid tx-generation work-id attempt-id
+                  bp-destination own-bp-eid helper observation-directory)
+                 :observed)
+       (fnn-indeterminate "ION attempt has no durable observed binding"))
+     +fnn-exit-ok+)))
+
+(defun fnn-command-workflow-ion-status
+    (store-root journal-root work-id attempt-id generation)
+  (fnn-app-call-with-journal
+   store-root journal-root :workflow nil
+   (lambda (journal)
+     (declare (ignore journal))
+     (let* ((status (fnn-core-state 'fn-workflow-ion-status
+                                     work-id attempt-id generation))
+            (record (second status)))
+       (case (first status)
+         (:observed
+          (fnn-out "ION observed work=~a attempt=~a source=~a msec=~d sequence=~d"
+                   work-id attempt-id (seventh record)
+                   (eighth record) (ninth record))
+          +fnn-exit-ok+)
+         (:uncertain
+          (fnn-out "ION uncertain work=~a attempt=~a; do not repost automatically"
+                   work-id attempt-id)
+          +fnn-exit-uncertain+)
+         (otherwise
+          (fnn-out "ION absent work=~a attempt=~a" work-id attempt-id)
+          +fnn-exit-refused+))))))
+
 (defun fnn-command-workflow-receipt
     (store-root journal-root receipt-path txid generation profile)
   (fnn-app-call-with-journal
@@ -515,6 +666,17 @@
        (need 4)
        (fnn-command-workflow-undertake
         (first args) (second args) (third args) (parse-integer (fourth args))))
+      ((string= command "workflow-ion-submit")
+       (need 10)
+       (fnn-command-workflow-ion-submit
+        (first args) (second args) (parse-integer (third args))
+        (parse-integer (fourth args)) (fifth args) (sixth args)
+        (seventh args) (eighth args) (ninth args) (tenth args)))
+      ((string= command "workflow-ion-status")
+       (need 5)
+       (fnn-command-workflow-ion-status
+        (first args) (second args) (third args) (fourth args)
+        (parse-integer (fifth args))))
       ((string= command "workflow-receipt")
        (need 6)
        (fnn-command-workflow-receipt

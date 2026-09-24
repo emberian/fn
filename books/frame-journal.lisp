@@ -50,7 +50,7 @@
 
 (defconst *fn-frame-workflow-kinds*
   '(:config :enqueue :attempt :transport :receipt-intent :outcome
-    :retry-request :undertake :release))
+    :retry-request :undertake :release :ion-route :ion-observed))
 
 (defconst *fn-frame-workflow-specs*
   (list
@@ -67,7 +67,9 @@
    (cons :retry-request '(:text :text :nat :text))
    ; Append-only kinds: the seven existing FNWF codes retain their bytes.
    (cons :undertake '(:text :nat))
-   (cons :release '(:text :text :text :text :text :text :text))))
+   (cons :release '(:text :text :text :text :text :text :text))
+   (cons :ion-route '(:text :text :nat :text :text :text))
+   (cons :ion-observed '(:text :text :nat :text :text :text :nat :nat))))
 
 (defconst *fn-frame-receipt-kinds*
   ; Append-only: the first four codes are the deployed version-1 FNRJ
