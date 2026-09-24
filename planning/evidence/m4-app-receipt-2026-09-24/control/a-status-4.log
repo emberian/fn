@@ -1,0 +1,4 @@
+$ fn bp-obligation status /tank/fn/scratch/m4-app-receipt/final/control/a-store /tank/fn/scratch/m4-app-receipt/final/control/a-fnwf work-bp-node
+BP obligation owner work=work-bp-node status=receipted pinned=no
+
+# rc=0

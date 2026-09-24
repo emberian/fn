@@ -1,0 +1,24 @@
+# target tests.test_bp_receive_integrity_native  start 2026-09-24T21:44:57Z  cwd /tank/fn/scratch/m4-app-receipt/tree
+# cmd: timeout 3600 python3 -m unittest -v tests.test_bp_receive_integrity_native
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/scratch/m4-app-receipt/tree/build/fn-host-dtn-developer
+# env FN_NATIVE_BP_NODE_HOST=/tank/fn/scratch/m4-app-receipt/tree/build/fn-host-dtn-developer
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/scratch/m4-app-receipt/tree/build/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/scratch/m4-app-receipt/tree/build/fn-host-dtn
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/scratch/m4-app-receipt/tree/build/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/scratch/m4-app-receipt/tree/build/fn-host-dtn
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/m4-app-receipt/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/m4-app-receipt/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_receive_core_fault_remains_exit_four (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_receive_core_fault_remains_exit_four) ... ok
+test_refusal_after_partial_segments_has_no_successful_end_ack (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_refusal_after_partial_segments_has_no_successful_end_ack) ... ok
+test_two_sessions_reusing_transfer_zero_keep_both_exact_wires (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_two_sessions_reusing_transfer_zero_keep_both_exact_wires) ... ok
+test_uncertain_publication_exits_and_prevents_next_session_mutation (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_uncertain_publication_exits_and_prevents_next_session_mutation) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.858s
+
+OK
+# rc=0 wall=0.9 end 2026-09-24T21:44:58Z

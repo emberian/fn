@@ -1,0 +1,7 @@
+$ fn bp-node serve 59521 /tank/fn/scratch/m4-app-receipt/final/control/b-fnbs /tank/fn/scratch/m4-app-receipt/final/control/b-store /tank/fn/scratch/m4-app-receipt/final/control/b-fnrj /tank/fn/scratch/m4-app-receipt/final/control/b-fnwf dtn://receiver/ dtn://sender/ dtn://receiver/ native-policy dtn://receiver/ 127.0.0.1 37347 0 3600000 2 32 1048576 843600851006 60000
+BP FNBS recovered held=0
+BP queue recovered jobs=0
+BP NODE LISTENING 59521
+TCPCL bp-node event (:SEND :CONTACT 6)
+TCPCL bp-node event (:SEND :SESS-INIT 40)
+TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)

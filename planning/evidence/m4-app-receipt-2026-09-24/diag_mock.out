@@ -1,0 +1,8 @@
+0000000000000000.wf config {}
+0000000000000001.wf enqueue {'txid': 101, 'tx-generation': 0, 'work-id': 'work:a1:relay-a', 'msgid': '<four-node-1@fn.example>'}
+fenced True
+recovery committed history False record True
+recovery absent history False record True
+history alone True
+install of history+recovery outcome: JournalFault('ACL2 rejected workflow journal')
+live apply of recovery outcome on the installed image: ready, fenced False

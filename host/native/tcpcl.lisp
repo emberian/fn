@@ -47,7 +47,7 @@
 (defconstant +fnn-tcl-write-timeout+ 30)
 
 (defstruct (fnn-tcl-conn (:conc-name fnn-tclc-))
-  fd tag spool session (carry nil) (held nil) (closing nil)
+  fd tag spool session (carry nil) (held nil) (closing nil) (broken nil)
   (pending nil) (trace nil) (inbound 0)
   (accepted 0) (refused 0) (uncertain 0) (outcome nil))
 
@@ -221,10 +221,19 @@ and faults without following or deleting anything."
 (defun fnn-tcl-flush (conn)
   (let ((queued (nreverse (fnn-tclc-held conn))))
     (setf (fnn-tclc-held conn) nil)
-    (dolist (message queued)
-      (fnn-send-all (fnn-tclc-fd conn)
-                    (fnn-octets (fnn-core 'fn-tcl-host-encode message))
-                    +fnn-tcl-write-timeout+))))
+    (unless (fnn-tclc-broken conn)
+      (handler-case
+          (dolist (message queued)
+            (fnn-send-all (fnn-tclc-fd conn)
+                          (fnn-octets (fnn-core 'fn-tcl-host-encode message))
+                          +fnn-tcl-write-timeout+))
+        ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
+          ;; The peer has gone (EPIPE or ECONNRESET on this session's own
+          ;; socket; dtn7-rs closes straight after its SESS_TERM).  What
+          ;; that means for each transfer is ACL2's: fnn-tcl-session hands
+          ;; the machine fn-tcl-host-tcp-closed and returns.
+          (setf (fnn-tclc-broken conn) t (fnn-tclc-closing conn) t)
+          (fnn-tcl-log conn "event" "peer gone before send: ~a" e))))))
 
 (defun fnn-tcl-drop (conn)
   "Discard unreleased octets: an acknowledgement whose bundle is not durable."
@@ -403,6 +412,8 @@ failure rather than a refusal."
                                  (fnn-tclc-inbound conn) expect)
                        t))
           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-terminate (fnn-tclc-session conn) wake)))))
+    (when (fnn-tclc-broken conn)
+      (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tcp-closed (fnn-tclc-session conn))))
     (when (fnn-tclc-closing conn) (ignore-errors (fnn-graceful-close fd)))
     conn))
 
