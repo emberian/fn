@@ -328,6 +328,33 @@
       (fnn-immutable-publish-effect
        publisher stage final dir frame :cleanup-directory dir))))
 
+(defun fnn-bps-persist-forward (service epoch operation-id record)
+  (let* ((dir (fnn-bps-lifecycle service))
+         (name (fnn-core 'fn-bpnf-stored-record-name epoch operation-id))
+         (final (fnn-join dir name))
+         (final-absent (if (fnn-lstat final) nil t))
+         (operation
+           (fnn-core 'fn-bpnp-forward-publication-authorize
+                     (fnn-bps-state service) epoch operation-id record
+                     (if (fnn-bps-lock-fd service) t nil) final-absent)))
+    (when (equal operation '(:fault :forward-codec))
+      (return-from fnn-bps-persist-forward :refused))
+    (unless (eq (fnn-core 'fn-bpnp-forward-publication-operationp operation) t)
+      (fnn-indeterminate
+       "bp-service: forward publication authority refused pending echo"))
+    (let* ((authorized-name
+             (fnn-core 'fn-bpnp-forward-publication-name operation))
+           (stage (fnn-join dir (format nil ".record-~d-~a"
+                                         (sb-posix:getpid) (fnn-random-hex 12))))
+           (frame (fnn-octets
+                   (fnn-core 'fn-bpnp-forward-publication-octets operation)))
+           (publisher
+             (fnn-core 'fn-bpnp-forward-publication-publisher operation)))
+      (unless (equal authorized-name name)
+        (fnn-fault "bp-service: forward name changed after authorization"))
+      (fnn-immutable-publish-effect
+       publisher stage final dir frame :cleanup-directory dir))))
+
 (defun fnn-bps-persist-kind-ten (service epoch operation-id record)
   (let* ((dir (fnn-bps-lifecycle service))
          (name (fnn-core 'fn-bpnf-stored-record-name epoch operation-id))

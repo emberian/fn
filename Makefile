@@ -306,8 +306,15 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-report-author \
 	tests/acl2/bp-report-author-tests \
 	books/bp-node-progress \
+	tests/acl2/bp-forward-live-tests \
 	books/bp-forward-image \
 	tests/acl2/bp-forward-image-tests \
+	books/bp-forward-attempt \
+	tests/acl2/bp-forward-attempt-tests \
+	books/bp-fnbs-forward-codec \
+	tests/acl2/bp-fnbs-forward-codec-tests \
+	books/bp-fnbs-forward-publication \
+	tests/acl2/bp-fnbs-forward-replay-tests \
 	books/bp-node-progress-invariants \
 	books/bp-node-progress-guards \
 	books/bp-node-progress-selection-invariants \

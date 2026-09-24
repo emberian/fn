@@ -6,6 +6,7 @@
 (include-book "bp-fnbs-delivery-replay")
 (include-book "bp-fnbs-deletion-codec")
 (include-book "bp-node-dispatch")
+(include-book "bp-fnbs-forward-codec")
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnf-family-replay-row-record (row)
@@ -19,7 +20,11 @@
               (if family family
                 (let ((deleted (fn-bpnf-delete-unframe (cadr row))))
                   (if deleted deleted
-                    (fn-bpnp-dispatch-unframe (cadr row))))))))))))
+                    (let ((dispatch (fn-bpnp-dispatch-unframe (cadr row))))
+                      (if dispatch dispatch
+                        (let ((attempt (fn-bpnp-attempt-unframe (cadr row))))
+                          (if attempt attempt
+                            (fn-bpnp-result-unframe (cadr row))))))))))))))))
 
 (defun fn-bpnf-family-replay-rows-aux
   (rows base held handoffs prior next-arrival)
@@ -78,6 +83,20 @@
           (let ((applied (fn-bpnp-dispatch-apply record held)))
             (if (not (equal (car applied) :ready))
                 (list :fault :kind-six-row)
+              (fn-bpnf-family-replay-rows-aux
+               (cdr rows) base (fn-bpn-nth 1 applied)
+               handoffs next next-arrival))))
+         ((equal (car record) :bpnf-attempting)
+          (let ((applied (fn-bpnp-attempt-apply record held)))
+            (if (not (equal (car applied) :ready))
+                (list :fault :kind-eight-row)
+              (fn-bpnf-family-replay-rows-aux
+               (cdr rows) base (fn-bpn-nth 1 applied)
+               handoffs next next-arrival))))
+         ((equal (car record) :bpnf-forwarded)
+          (let ((applied (fn-bpnp-forward-result-apply record held)))
+            (if (not (equal (car applied) :ready))
+                (list :fault :kind-nine-row)
               (fn-bpnf-family-replay-rows-aux
                (cdr rows) base (fn-bpn-nth 1 applied)
                handoffs next next-arrival))))
