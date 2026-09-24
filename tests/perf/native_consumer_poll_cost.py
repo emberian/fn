@@ -34,9 +34,9 @@ def main():
 
         # ACL2-owned neutral Store events; the helper never constructs a
         # cursor or decides which journal positions they consume.
-        for i in range(72):
-            case.register(node, "temporary", node["base"] / f"temp-{i}.fncu")
-            case.consumer("unregister", node, "temporary")
+        for i in range(144):
+            case.register(node, f"temporary-{i:03d}",
+                          node["base"] / f"temp-{i}.fncu")
 
         for i in range(8):
             cursor = node["base"] / f"advance-{i}.fncu"
