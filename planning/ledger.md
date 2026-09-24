@@ -785,7 +785,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpn-sf-host-recover-is-core-recover` | `books/bp-sequence-fidelity.lisp` | 299 | definition-restated: the conclusion is the body of fn-bpn-sf-host-recover; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-sf-host-reserve-is-core-reserve` | `books/bp-sequence-fidelity.lisp` | 278 | definition-restated: the conclusion is the body of fn-bpn-sf-host-reserve; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-step-emits-no-release` | `books/bp-node-machine.lisp` | 997 | instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing |
-| `fn-bpnfg-car-is-car` | `books/bp-node-fragment-guards.lisp` | 141 | definition-restated: the conclusion is the body of fn-cbor-ag-car; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-bpnfg-car-is-car` | `books/bp-node-fragment-guards.lisp` | 146 | definition-restated: the conclusion is the body of fn-cbor-ag-car; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpnp-primary-of-held` | `books/bp-node-progress-invariants.lisp` | 7 | definition-restated: the conclusion is the body of fn-bpnp-primary |
 | `fn-bpnpp-premises-components` | `books/bp-node-progress-premises.lisp` | 132 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bpnp-step-guard-premisesp |
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 94 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
