@@ -19,7 +19,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 421 |
 | Functions left at the default with an explicit guard | 3359 |
 | Functions left at the default with no guard | 921 |
-| `assert-event` checks | 10299 |
+| `assert-event` checks | 10300 |
 | `must-fail` checks | 739 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
@@ -699,7 +699,7 @@ that `make certify` requests.
 | `tests/acl2/owner-fault-tests.lisp` | root | 2 | 5 | 0/0/0/5 | 37 | 4 | 0 |
 | `tests/acl2/owner-feed-port-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 2 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 2 | 3 | 0/0/2/1 | 133 | 6 | 0 |
-| `tests/acl2/owner-log-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 5 | 0 |
+| `tests/acl2/owner-log-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 41 | 5 | 0 |
 | `tests/acl2/owner-numbering-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 25 | 3 | 0 |
 | `tests/acl2/owner-operator-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 34 | 8 | 0 |
 | `tests/acl2/owner-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 26 | 1 | 0 |
