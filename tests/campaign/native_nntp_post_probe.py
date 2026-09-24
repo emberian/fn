@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import signal
 import socket
@@ -169,10 +170,71 @@ CONFLICT = ("441 posting failed; a different article with this Message-ID is "
 NO_FROM = "441 posting failed; From is required\r\n"
 EXIT_UNCERTAIN = 3
 
-# Post cuts before any publication attempt: an EIO there is a known
-# pre-publication failure whose reservation ACL2 consumed, so the article is
-# absent and the owner keeps serving.
-PRE_PUBLICATION = {"frontier-staged-durable", "record-staged-durable"}
+# The expectation per cut is derived from its model coordinate
+# (native_cuts.POST_CUTS: the program and the cut's place in it), never from
+# a hand list of cut names (campaign 6c0626c5, H1: a hand list went stale
+# when lane p10-k0 added four cuts).  `post_arm' reads the program's steps:
+#
+#   refused    the cut precedes the program's first publication step (a
+#              rename or link into a directory other than staging): an EIO
+#              is a known pre-publication failure (P-RECORD `On error before
+#              941'), answered STORAGE_FAILED, the article absent, the owner
+#              serving on, a repost accepted;
+#   swallowed  the cut lies between two best-effort staging steps after the
+#              record's directory barrier (P-RECORD `Errors from 970-971 are
+#              swallowed'): the record is durable, the client gets 240, and
+#              the owner log must name the swallowed cleanup error once;
+#   consumed   the program issues no syscall at all (P-FINISH): the record
+#              is durable, so 240 or uncertain, never a refusal;
+#   uncertain  every other cut (at or after the publication attempt).
+#
+# native_cuts.verify_swallowed_cuts checks the host's `ignore-errors' holds
+# exactly the swallowed cuts; `verify_post_arms' checks each arm against the
+# table's candidate column.
+ARMS = ("refused", "swallowed", "consumed", "uncertain")
+
+
+def post_arm(cut) -> str:
+    steps = native_cuts.model_steps(cut.program)
+    if not any(s.kind in native_cuts.SYSCALL_KINDS for s in steps):
+        return "consumed"
+    index = native_cuts.cut_step_index(cut)
+    published = next(j for j, s in enumerate(steps)
+                     if s.kind in ("rename", "link") and s.directory != ":staging")
+    if index < published:
+        return "refused"
+    if native_cuts.swallowed_cut(cut):
+        return "swallowed"
+    return "uncertain"
+
+
+# The table's candidate column, as the fate a row must show (None: either).
+FATE = {"absent": False, "present": True, "either": None}
+# The arms that fix the fate whatever the table says; the table must agree.
+ARM_FATE = {"refused": "absent", "swallowed": "present", "consumed": "present"}
+
+
+def verify_post_arms() -> dict:
+    arms = {}
+    for cut in native_cuts.POST_CUTS:
+        arm = post_arm(cut)
+        want = ARM_FATE.get(arm)
+        if want is not None and cut.candidate != want:
+            raise AssertionError("{}: arm {} needs candidate {}, table says {}".format(
+                cut.name, arm, want, cut.candidate))
+        arms[cut.name] = arm
+    return arms
+
+
+# The owner-log line a swallowed cleanup error must leave, exactly once: it
+# names the staging cleanup and the error (EIO, errno 5).  The line's other
+# words are the host's to choose.
+SWALLOWED_LOG = re.compile(r"(?i)^(?=.*\bstaging\b)(?=.*\bcleanup\b)(?=.*(\bEIO\b|errno\W*5\b)).*$")
+
+
+def swallowed_log_lines(row) -> list:
+    text = (row.get("owner") or {}).get("stderr") or ""
+    return [line for line in text.splitlines() if SWALLOWED_LOG.match(line)]
 
 
 def _rc(row):
@@ -183,24 +245,39 @@ def _present(row):
     return (row.get("inspect_candidate") or {}).get("rc") == 0
 
 
+def _cut(name):
+    return next(c for c in native_cuts.POST_CUTS if c.name == name)
+
+
 def expectation(row) -> dict:
     """What P2 requires of one faulted row: replies allowed, owner exit, fate."""
-    cut, action = row["cut"], row["action"]
-    if action == "kill":
+    cut = _cut(row["cut"])
+    present = FATE[cut.candidate]
+    if row["action"] == "kill":
         # A dead process owes no line, and no 240 may precede the death.
-        return {"replies": {""}, "rc": -9, "present": None}
-    if cut in PRE_PUBLICATION:
-        return {"replies": {STORAGE_FAILED}, "rc": 0, "present": False}
-    if cut.startswith("finish-"):
-        # The record is durable: 240 or uncertain, never a refusal.
-        return {"replies": {OK_240, UNCERTAIN}, "rc": EXIT_UNCERTAIN,
-                "present": True}
-    return {"replies": {UNCERTAIN}, "rc": EXIT_UNCERTAIN, "present": None}
+        return {"arm": "kill", "replies": {""}, "rc": -9, "present": present,
+                "log_lines": None}
+    arm = post_arm(cut)
+    if arm == "refused":
+        return {"arm": arm, "replies": {STORAGE_FAILED}, "rc": 0, "present": False,
+                "log_lines": None}
+    if arm == "swallowed":
+        # 240 after the completion was consumed; the owner serves on and is
+        # stopped by SIGTERM.
+        return {"arm": arm, "replies": {OK_240}, "rc": 0, "present": True,
+                "log_lines": 1}
+    if arm == "consumed":
+        return {"arm": arm, "replies": {OK_240, UNCERTAIN}, "rc": EXIT_UNCERTAIN,
+                "present": True, "log_lines": None}
+    return {"arm": arm, "replies": {UNCERTAIN}, "rc": EXIT_UNCERTAIN,
+            "present": present, "log_lines": None}
 
 
-def _repost_ok(row, failures):
+def _repost_ok(row, failures, required=False):
     repost = (row.get("repost") or {}).get("reply")
     if repost is None:
+        if required and row.get("reread_owner_ready"):
+            failures.append("no repost was made to the restarted owner")
         return
     want = {DUPLICATE, CONFLICT} if _present(row) else {OK_240}
     if repost not in want:
@@ -217,11 +294,16 @@ def judge_cut(row) -> list:
         failures.append("owner exit {!r} != {}".format(_rc(row), want["rc"]))
     if want["present"] is not None and _present(row) != want["present"]:
         failures.append("candidate present={} != {}".format(_present(row), want["present"]))
+    if want["log_lines"] is not None:
+        lines = swallowed_log_lines(row)
+        if len(lines) != want["log_lines"]:
+            failures.append("owner log names the swallowed cleanup error {} times, "
+                            "not {}: {!r}".format(len(lines), want["log_lines"], lines))
     for label in ("prior", "candidate"):
         got = row.get("inspect_" + label) or {}
         if got.get("rc") == 0 and not got.get("identical"):
             failures.append(label + " does not reread identical")
-    _repost_ok(row, failures)
+    _repost_ok(row, failures, required=True)
     return failures
 
 
@@ -248,12 +330,13 @@ def judge(result) -> dict:
     rows = []
     for row in result["cuts"]:
         rows.append({"row": "{} {}".format(row["cut"], row["action"]),
+                     "arm": expectation(row)["arm"],
                      "reply": (row.get("post") or {}).get("reply"),
                      "rc": _rc(row), "present": _present(row),
                      "repost": (row.get("repost") or {}).get("reply"),
                      "failures": judge_cut(row)})
     for row in result["controls"]:
-        rows.append({"row": row["name"], "reply": (row.get("post") or {}).get("reply"),
+        rows.append({"row": row["name"], "arm": "control", "reply": (row.get("post") or {}).get("reply"),
                      "rc": _rc(row), "present": _present(row),
                      "repost": (row.get("repost") or {}).get("reply"),
                      "failures": judge_control(row)})
@@ -263,8 +346,8 @@ def judge(result) -> dict:
 
 def print_judgement(verdict) -> None:
     for row in verdict["rows"]:
-        print("{:<36} {:<5} rc={!s:<4} present={!s:<5} reply={!r} repost={!r}{}".format(
-            row["row"], "FAIL" if row["failures"] else "pass", row["rc"],
+        print("{:<36} {:<9} {:<5} rc={!s:<4} present={!s:<5} reply={!r} repost={!r}{}".format(
+            row["row"], row.get("arm", ""), "FAIL" if row["failures"] else "pass", row["rc"],
             row["present"], row["reply"], row["repost"],
             "".join("\n    " + f for f in row["failures"])))
     print("{} of {} rows pass".format(verdict["total"] - verdict["failed"],
@@ -290,6 +373,7 @@ def main(argv=None) -> int:
     if not (args.images and args.work and args.out):
         parser.error("--images, --work and --out are required to run the probe")
     native_cuts.verify_native_cut_map()
+    verify_post_arms()
     dev, prod = args.images / "fn-host-developer", args.images / "fn-host"
     if args.work.exists():
         shutil.rmtree(args.work)
