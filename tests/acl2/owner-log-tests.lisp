@@ -231,29 +231,33 @@
                                     fn-olog-symbol-text))))))
 
 ; The sender's lines.  A send-it prompt has no line; every outcome has one.
+; The feed's Message-ID is the octets fn-feed-namep admits (the 1a9dd747
+; developer image of this line printed `message-id=` empty when it was
+; read as a string).
+(assert-event (fn-feed-namep *olt-transit-msgid*))
 (defconst *olt-feed-439*
   (fn-olog-feed-reply-line *olt-served* "other"
-                           (fn-feed-response 439 "<relay@example.invalid>")))
+                           (fn-feed-response 439 *olt-transit-msgid*)))
 (assert-event
  (equal *olt-feed-439*
         (olt-text "refused feed peer=other message-id=<relay@example.invalid> code=439 time=2026-09-18T00:00:00Z")))
 (assert-event
  (null (fn-olog-feed-reply-line *olt-served* "other"
-                                (fn-feed-response 238 "<relay@example.invalid>"))))
+                                (fn-feed-response 238 *olt-transit-msgid*))))
 (assert-event
  (equal (fn-olog-line-word
          (fn-olog-feed-reply-line *olt-served* "other"
-                                  (fn-feed-response 431 "<relay@example.invalid>")))
+                                  (fn-feed-response 431 *olt-transit-msgid*)))
         (olt-text "deferred")))
 (assert-event
  (equal (fn-olog-line-word
          (fn-olog-feed-reply-line *olt-served* "other"
-                                  (fn-feed-response 438 "<relay@example.invalid>")))
+                                  (fn-feed-response 438 *olt-transit-msgid*)))
         (olt-text "duplicate")))
 (assert-event
  (equal (fn-olog-line-word
          (fn-olog-feed-reply-line *olt-served* "other"
-                                  (fn-feed-response 239 "<relay@example.invalid>")))
+                                  (fn-feed-response 239 *olt-transit-msgid*)))
         (olt-text "accepted")))
 ; Teeth: the send-it clause is load-bearing (a 238 has no class line).
 (must-fail
