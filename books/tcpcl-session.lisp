@@ -1379,6 +1379,21 @@
            (fn-cbor-octet-listp (fn-tcl-drop n x)))
   :hints (("Goal" :in-theory (enable fn-tcl-drop))))
 
+;; The fields of an XFER_SEGMENT message that recv-segment and the staged
+;; inbound record read.  Cited instead of opening fn-tcl-messagep, whose other
+;; arms (contact, SESS_INIT, ACK, ...) each split the goal.
+(local
+ (defthm fn-tcl-xfer-segment-message-facts
+   (implies (and (fn-tcl-messagep m mru)
+                 (equal (fn-tcl-msg-kind m) :xfer-segment))
+            (and (natp (fn-tcl-xfer-segment-xfer-id m))
+                 (<= (fn-tcl-xfer-segment-xfer-id m) *fn-tcl-max-u64*)
+                 (fn-tcl-item-listp (fn-tcl-xfer-segment-ext m))
+                 (fn-cbor-octet-listp (fn-tcl-xfer-segment-data m))
+                 (<= (len (fn-tcl-xfer-segment-data m)) mru)))
+   :hints (("Goal" :in-theory (enable fn-tcl-messagep)))
+   :rule-classes nil))
+
 (defthm fn-tcl-recv-segment-preserves-sessionp
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now)
                 (fn-tcl-messagep m (fn-tcl-segment-mru s))
@@ -1389,11 +1404,14 @@
   :hints (("Goal" :in-theory (e/d (fn-tcl-recv-segment)
                                   (fn-tcl-refuse fn-tcl-complete fn-tcl-stage
                                    fn-tcl-broken-stream fn-tcl-ext-decision
-                                   fn-tcl-sessionp))
+                                   fn-tcl-sessionp fn-tcl-messagep
+                                   fn-cbor-octetp fn-tcl-transferringp))
            ; the stage lemma cited for the two inbound records recv-segment
            ; builds (START, continuation); as a rewrite rule it is not
            ; relieved on either instance
-           :use ((:instance fn-tcl-stage-preserves-sessionp
+           :use ((:instance fn-tcl-xfer-segment-message-facts
+                            (mru (fn-tcl-segment-mru s)))
+                 (:instance fn-tcl-stage-preserves-sessionp
                             (inbound (fn-tcl-make-inbound
                                       (fn-tcl-xfer-segment-xfer-id m)
                                       (list (fn-tcl-xfer-segment-data m))
@@ -1491,7 +1509,11 @@
                 (fn-tcl-parse-okp (fn-tcl-decode-for s buf)))
            (fn-tcl-messagep (fn-tcl-parse-msg (fn-tcl-decode-for s buf))
                             (fn-tcl-segment-mru s)))
-  :hints (("Goal" :in-theory (e/d (fn-tcl-sessionp) (fn-tcl-messagep)))))
+  :hints (("Goal" :use ((:instance fn-tcl-segment-mru-natp)
+                        (:instance fn-tcl-sessionp-mru-bounds))
+           :in-theory (disable fn-tcl-messagep fn-tcl-sessionp
+                               fn-tcl-segment-mru-natp
+                               fn-tcl-sessionp-mru-bounds))))
 
 (defthm fn-tcl-decode-for-rest-octet-listp
   (implies (and (fn-cbor-octet-listp buf)
@@ -1801,8 +1823,11 @@
   :hints (("Goal" :in-theory (e/d (fn-tcl-recv-segment)
                                   (fn-tcl-refuse fn-tcl-complete fn-tcl-stage
                                    fn-tcl-broken-stream fn-tcl-ext-decision
-                                   fn-tcl-session-cheapp))
-           :use ((:instance fn-tcl-stage-preserves-cheapp
+                                   fn-tcl-session-cheapp fn-tcl-messagep
+                                   fn-cbor-octetp fn-tcl-transferringp))
+           :use ((:instance fn-tcl-xfer-segment-message-facts
+                            (mru (fn-tcl-segment-mru s)))
+                 (:instance fn-tcl-stage-preserves-cheapp
                             (inbound (fn-tcl-make-inbound
                                       (fn-tcl-xfer-segment-xfer-id m)
                                       (list (fn-tcl-xfer-segment-data m))
@@ -1899,7 +1924,11 @@
                 (fn-tcl-parse-okp (fn-tcl-decode-for s buf)))
            (fn-tcl-messagep (fn-tcl-parse-msg (fn-tcl-decode-for s buf))
                             (fn-tcl-segment-mru s)))
-  :hints (("Goal" :in-theory (e/d (fn-tcl-session-cheapp) (fn-tcl-messagep)))))
+  :hints (("Goal" :use ((:instance fn-tcl-segment-mru-natp-cheap)
+                        (:instance fn-tcl-session-cheapp-mru-bounds))
+           :in-theory (disable fn-tcl-messagep fn-tcl-session-cheapp
+                               fn-tcl-segment-mru-natp-cheap
+                               fn-tcl-session-cheapp-mru-bounds))))
 
 (defthm fn-tcl-drive-preserves-cheapp
   (implies (fn-tcl-session-cheapp s)
