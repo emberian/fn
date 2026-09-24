@@ -25,6 +25,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-checkpoint-` | `checkpoint` | Logical checkpoint capture, restore and checkpoint-plus-suffix replay |
 | `fn-cpc-` | `checkpoint-codec` | Canonical whole-state checkpoint bytes over the CBOR primitives: tagged node tree, header, both-direction canonicality, validation binding to capture, the FNCP frame magic and kind table (checkpoint, selection marker) |
 | `fn-cpp-` | `checkpoint-publish` | Checkpoint generation machine: stage, barriers, link, marker selection, crash images with old/new and absent/present choices, recovery with distinct none/ok/corrupt/missing outcomes |
+| `fn-cprt-` | `checkpoint-pack-retire` | Bounded selected-pack generation retirement, gap-aware monotone pack allocation and process-death namespace images |
 | `fn-cc-` | `checkpoint-compaction` | Lossless canonical Store-event prefix packs, overlap validation, and prefix-plus-suffix reconstruction |
 | `fn-cpa-` | `checkpoint-auxiliary` | Versioned recovery-only comparison of replayed consumer and historical authorship projections with the Store opened from exact journal history |
 | `fn-index-` | `index` | Derived group/number index and range queries |

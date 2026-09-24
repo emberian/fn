@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "../books/checkpoint-publish")
 (include-book "../books/checkpoint-compaction")
+(include-book "../books/checkpoint-pack-retire")
 (include-book "../books/checkpoint-auxiliary")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
@@ -128,6 +129,16 @@
 (defun fn-store-checkpoint-next-generation (generations)
   (declare (xargs :mode :program))
   (fn-cpp-next-generation generations))
+
+; Pack generations may have gaps after ACL2-authorized retirement.  The
+; selected generation stays present and fixes a monotone next number.
+(defun fn-store-checkpoint-pack-next-generation (generations)
+  (declare (xargs :mode :program))
+  (fn-cprt-next-generation generations))
+
+(defun fn-store-checkpoint-pack-retire-plan (generations selected)
+  (declare (xargs :mode :program))
+  (fn-cprt-retire-plan generations selected))
 
 ; Native compaction/recovery boundary.  The returned octet records are the
 ; exact prefix held by the selected summary followed by the observed suffix;
@@ -262,7 +273,7 @@
            nil)))
 
 ; The node-only checkpoint is not a complete Store image.  Compare the
-; consumer and historical authorship projections of the actual reopened
+; consumer, topic, derived index and historical authorship projections of the actual reopened
 ; Store with an independent replay of its exact journal records.  This runs
 ; once during selected-checkpoint diagnostics, never on a served request.
 (defun fn-store-checkpoint-auxiliary-differential (state)

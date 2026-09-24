@@ -72,7 +72,7 @@
 (assert-event (fn-sn-open-okp *cpa-open*))
 (defconst *cpa-reopened* (fn-sn-open-state *cpa-open*))
 (assert-event (equal (fn-cpa-store-auxiliary-agrees *cpa-reopened*)
-                     '(:ok 1)))
+                     '(:ok 2)))
 (assert-event (equal (fn-cp-nth 2 (fn-sn-consumer *cpa-reopened*))
                      '(110 101 119)))
 (assert-event (equal (fn-cp-nth 3 (fn-sn-consumer *cpa-reopened*)) 5))
@@ -146,7 +146,7 @@
 (assert-event
  (equal (fn-cpa-store-auxiliary-agrees
          (fn-sn-open-state *cpa-progress-after-rollover*))
-        '(:ok 1)))
+        '(:ok 2)))
 (make-event
  `(defconst *cpa-before-rollover*
     ',(fn-sn-open-observed '("fn.letters") 32 4
@@ -253,7 +253,22 @@
                            (list *cpa-h-keyring* *cpa-h-event*))))
 (assert-event (fn-sn-open-okp *cpa-h-open*))
 (defconst *cpa-h-store* (fn-sn-open-state *cpa-h-open*))
-(assert-event (equal (fn-cpa-store-auxiliary-agrees *cpa-h-store*) '(:ok 1)))
+(assert-event (equal (fn-cpa-store-auxiliary-agrees *cpa-h-store*) '(:ok 2)))
 (assert-event (equal (len (fn-sn-verdicts *cpa-h-store*)) 1))
 (assert-event (equal (fn-sn-keyring-snapshots *cpa-h-store*)
                      (list *cpa-h-keyring*)))
+; The historical topic projection carries the accepted source and snapshot
+; even before any topic anchor.  A node-only checkpoint would miss both.
+(assert-event (equal (fn-th-at 0 (fn-sn-topic *cpa-h-store*)) :ok))
+(assert-event (consp (fn-th-at 3 (fn-sn-topic *cpa-h-store*))))
+(assert-event
+ (equal (fn-cpa-store-auxiliary-agrees
+         (fn-sn-with-topic *cpa-h-store* nil))
+        '(:mismatch :auxiliary-state)))
+; A derived index is rebuilt from exact dense Store positions; replacing the
+; maintained value without changing the journal is a mismatch too.
+(assert-event (consp (fn-sn-event-index *cpa-h-store*)))
+(assert-event
+ (equal (fn-cpa-store-auxiliary-agrees
+         (fn-sn-with-event-index *cpa-h-store* nil))
+        '(:mismatch :auxiliary-state)))

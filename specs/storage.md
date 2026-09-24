@@ -105,6 +105,12 @@ or read-only opener holds an incompatible Store lock while a reader uses its
 pinned archive, so this command refuses before deletion when such a reader is
 active. This is an offline exclusion rule for this command; it is not a general
 proof of concurrent physical reclamation under a different storage layout.
+The native `pack-retire` command uses the same lock and retires only pack
+generations older than the validated selected generation.  Each unlink and
+the closing directory barrier are separate crash cuts.  This recovers space
+from redundant pack copies; the exact event stream and indefinite retention
+of protected sources are unchanged.  The gap-aware pack allocator advances
+past the selected high-water generation and never reuses a retired name.
 One selected pack is limited to 4096 events and 4 MiB of encoded bytes.  Since
 this tranche stores the complete canonical prefix rather than a semantic
 summary, it cannot compact an arbitrarily large history; rolling packs or a

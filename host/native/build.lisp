@@ -25,6 +25,7 @@
 (include-book "books/store-observed-traces")
 (include-book "books/store-node")
 (include-book "books/checkpoint-publish")
+(include-book "books/checkpoint-pack-retire")
 ; The native pack-reclaim command calls fn-bs-pack-reclaim-plan from this
 ; guard-verified book; checkpoint-publish does not include it.
 (include-book "books/byte-store-compaction-correspondence")
