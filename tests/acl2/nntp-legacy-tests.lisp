@@ -181,7 +181,7 @@
  (equal (lg-reply *lg-env* "CAPABILITIES")
         (lg-block "101 capability list follows"
                   '("VERSION 2" "READER" "OVER MSGID" "HDR" "NEWNEWS"
-                    "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT"
+                    "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT"
                     "IMPLEMENTATION fn-nntp-lab"))))
 (defconst *lg-help-lines*
   '("CAPABILITIES HELP QUIT MODE DATE POST"
