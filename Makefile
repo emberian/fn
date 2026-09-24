@@ -475,6 +475,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-ion-workflow-tests \
 	books/bp-ion-workflow-replay \
 	tests/acl2/bp-ion-workflow-replay-tests \
+	books/bp-request-plan \
+	tests/acl2/bp-request-plan-tests \
 	books/journal \
 	tests/acl2/journal-tests \
 	books/exchange \

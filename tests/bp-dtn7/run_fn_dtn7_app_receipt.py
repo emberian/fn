@@ -32,6 +32,15 @@ uncertain) and never inferred from a later step:
      A by `bp-contact tick`; A's `bp-node serve` matches it against the
      request's obligation (`receipt-accepted`, pin released) or not.
 
+`--native` (M4 native request, 2026-09-24) replaces step 1's bridge-authored
+ADU and `bp-service run` with `bp-obligation request`: A's own workflow
+publishes ACL2's attempt, takes the :submit and hands ACL2's request ADU to
+its FNBS carrier (books/bp-request-plan.lisp).  It adds a second, never
+requested control obligation on A whose pin must stay `yes`, and step 5:
+A is SIGKILLed by PID inside two request publications (after the :submit,
+before the carrier; after the attempt, before its outcome) and the work must
+stay outstanding and visible, never dropped.
+
 Counts come from the processes' own ACL2-decided lines and from the FNBS and
 FNWF state, never from a socket write.  No power-loss claim follows.
 """
@@ -261,6 +270,8 @@ def main(argv=None):
     ap.add_argument("--work", required=True, type=Path)
     ap.add_argument("--relays", type=int, default=1, choices=(0, 1, 2))
     ap.add_argument("--settle", type=float, default=40.0)
+    ap.add_argument("--native", action="store_true",
+                    help="A authors the request with `bp-obligation request'")
     ap.add_argument("--b-trusts", choices=("carried", "neighbour", "source"),
                     default="carried",
                     help="the EID B's boundary enrols: the TCPCL neighbour's "
@@ -272,7 +283,7 @@ def main(argv=None):
     if args.relays and not args.dtn7_repo:
         ap.error("--dtn7-repo is required unless --relays 0")
     lab = Lab(args)
-    report = dict(image=str(lab.image), relays=args.relays, dtn_time_ms=lab.wall,
+    report = dict(image=str(lab.image), relays=args.relays, dtn_time_ms=lab.wall, native=args.native,
                   topology=["fn-a"] + ["dtn7-r{}".format(i + 1)
                                        for i in range(args.relays)] + ["fn-b"])
     if args.relays:
@@ -292,6 +303,10 @@ def main(argv=None):
     a_wf, b_wf = lab.path("a-fnwf"), lab.path("b-fnwf")
     a_rj, b_rj = lab.path("a-fnrj"), lab.path("b-fnrj")
     a_port, b_port = free_port(), free_port()
+    extra_works = []   # (work, msgid) posted, enqueued and undertaken on A
+    if args.native:
+        for tag in ("control", "cut-submit", "cut-attempt"):
+            extra_works.append(("work-" + tag, "<m4-native-{}@example.invalid>".format(tag)))
     relays, hold = [], None
     b_serve = a_serve = None
     steps = []
@@ -322,6 +337,19 @@ def main(argv=None):
                                   "native-policy", "terms-native")),
             ("setup-undertake", ("bp-obligation", "undertake", a_store, a_wf, WORK, 3))):
             setup.append(lab.fn(tag, *argv).returncode)
+        for i, (work, msgid) in enumerate(extra_works):
+            extra = article.replace(MSGID, msgid.encode()).replace(
+                b"m4 application receipt across dtn7", work.encode())
+            lab.path(work + ".article").write_bytes(extra)
+            for tag, argv in (
+                ("setup-post-" + work, ("store", a_store, "post", msgid,
+                                        lab.path(work + ".article"), "-", "-", "fn.test")),
+                ("setup-enqueue-" + work, ("app-journal", "workflow-enqueue", a_store, a_wf,
+                                           2 + i, 0, work, msgid, "forward-" + work,
+                                           RECEIVER, "native-policy", "terms-native")),
+                ("setup-undertake-" + work, ("bp-obligation", "undertake", a_store, a_wf,
+                                             work, 3))):
+                setup.append(lab.fn(tag, *argv).returncode)
         # The last hop each side sees: dtn7's node ID, or the fn peer directly.
         b_neighbour = ("dtn://dtn7-r{}/".format(args.relays)
                        if args.relays and args.b_trusts in ("neighbour", "carried")
@@ -359,8 +387,9 @@ def main(argv=None):
         report["a_pinned_before"] = lab.fn("a-status-0", "bp-obligation", "status",
                                            a_store, a_wf, WORK).stdout.strip()
         request = lab.path("request.adu")
-        request.write_bytes(author_request(article))
-        report["request_adu"] = dict(octets=request.stat().st_size, sha256=sha16(request))
+        if not args.native:
+            request.write_bytes(author_request(article))
+            report["request_adu"] = dict(octets=request.stat().st_size, sha256=sha16(request))
 
         # --- relays and B --------------------------------------------------
         if args.relays:
@@ -399,10 +428,15 @@ def main(argv=None):
         b_serve, b_log = start_b("b-serve" if args.relays else "b-serve-0")
         # --- 1. A's request, held mid-transfer, first hop SIGKILLed ---------
         hold.arm(600)
+        send_argv = (["bp-obligation", "request", str(a_store), str(a_wf), WORK,
+                      WORK + "-attempt", str(a_fnbs), SENDER, "127.0.0.1", str(hold.port),
+                      "3600000", "2", "32", "1048576", lab.wall, "60000"]
+                     if args.native else
+                     ["bp-service", "run", "127.0.0.1", str(hold.port),
+                      str(request), str(a_fnbs), SENDER, RECEIVER, WORK, WORK + "-attempt", "0",
+                      "3600000", "2", "32", "1048576", lab.wall, "60000"])
         a_send = subprocess.Popen(
-            [str(lab.image), "--fn", "bp-service", "run", "127.0.0.1", str(hold.port),
-             str(request), str(a_fnbs), SENDER, RECEIVER, WORK, WORK + "-attempt", "0",
-             "3600000", "2", "32", "1048576", lab.wall, "60000"],
+            [str(lab.image), "--fn", *send_argv],
             stdout=lab.path("a-1-send.log").open("wb"), stderr=subprocess.STDOUT,
             env=lab.env, cwd=str(ROOT))
         lab.logs["a-1-send"] = lab.path("a-1-send.log")
@@ -467,6 +501,52 @@ def main(argv=None):
                  ("BP accepted", "BP received carrier"))],
              a_obligation=status.stdout.strip())
         report["a_pinned_after"] = status.stdout.strip()
+        if args.native:
+            control = lab.fn("a-status-control", "bp-obligation", "status", a_store, a_wf,
+                             "work-control")
+            step("4b the control obligation, never requested", control.stdout.strip(),
+                 ["a-status-control"], a_obligation=control.stdout.strip())
+            dead = free_port()
+
+            def cut(work, selector, marker):
+                tag = "a-5-" + work
+                log = lab.path(tag + ".log")
+                handle = log.open("wb")
+                argv = ["bp-obligation", "request", str(a_store), str(a_wf), work,
+                        work + "-a1", str(a_fnbs), SENDER, "127.0.0.1", str(dead),
+                        "3600000", "2", "32", "1048576", lab.wall, "60000"]
+                handle.write(("$ {}=1 fn {}\n".format(selector, " ".join(argv))).encode())
+                handle.flush()
+                env = dict(lab.env)
+                env[selector] = "1"
+                proc = subprocess.Popen([str(lab.image), "--fn", *argv], stdout=handle,
+                                        stderr=subprocess.STDOUT, env=env, cwd=str(ROOT))
+                lab.procs.append(dict(tag=tag, pid=proc.pid, proc=proc))
+                lab.logs[tag] = log
+                reached = lab.wait_log(log, marker, 90)
+                lab.stop(proc, "SIGKILL")
+                after = lab.fn(tag + "-status", "bp-obligation", "status", a_store, a_wf, work)
+                again = lab.fn(tag + "-again", "bp-obligation", "request", a_store, a_wf,
+                               work, work + "-a2", a_fnbs, SENDER, "127.0.0.1", dead,
+                               3600000, 2, 32, 1048576, lab.wall, 60000)
+                later = lab.fn(tag + "-status-2", "bp-obligation", "status", a_store, a_wf,
+                               work)
+                step("5 A SIGKILLed at {}".format(marker), after.stdout.strip(),
+                     [tag, tag + "-status", tag + "-again", tag + "-status-2"],
+                     marker_reached=bool(reached), sigkill=dict(pid=proc.pid),
+                     status_after_kill=after.stdout.strip(),
+                     request_again=outcome_of(again.returncode),
+                     request_again_lines=[l for l in (again.stdout + again.stderr).splitlines()
+                                          if l.startswith(("BP obligation", "fn: "))],
+                     status_after_again=later.stdout.strip())
+            cut("work-cut-submit", "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_SUBMIT",
+                "BP OBLIGATION SUBMIT TAKEN")
+            cut("work-cut-attempt", "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT",
+                "BP OBLIGATION ATTEMPT DURABLE")
+            final = {w: lab.fn("a-6-status-" + w, "bp-obligation", "status", a_store, a_wf,
+                               w).stdout.strip()
+                     for w in [WORK] + [w for w, _ in extra_works]}
+            report["a_final_status"] = final
         if args.relays:
             delivered = {}
             for d in relays:

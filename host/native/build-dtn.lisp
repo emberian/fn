@@ -43,6 +43,7 @@
 (include-book "books/bp-release")
 (include-book "books/bp-outbound")
 (include-book "books/bp-ion-workflow")
+(include-book "books/bp-request-plan")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")
 ; The TCPCLv4 convergence layer: the octet grammar and the session machine the
@@ -163,7 +164,6 @@
         (load "host/native/owner.lisp")
         (load "host/native/operator.lisp")
         (load "host/native/workflow.lisp")
-        (load "host/native/bp-obligation.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")
         ; The BPv7 node, over the convergence layer above it and nothing else.
@@ -171,6 +171,8 @@
         (load "host/native/bp-app.lisp")
         (load "host/native/bp-service.lisp")
         (load "host/native/bp-contact.lisp")
+        ; After FNBS: `bp-obligation request' hands its ADU to the carrier.
+        (load "host/native/bp-obligation.lisp")
         ; The node: FNBS, the owner Store and FNRJ/FNWF under one
         ; `bp-node serve' (specs/bp-node-machine.md).  `bp send' and `bp
         ; receive' above stay as the lab's transport tools.

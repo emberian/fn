@@ -85,6 +85,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bpnpb-` | `bp-node-progress-bridge` | The effects bridge from the served `fn-bpnp-step` to `fn-bpn-step` and the release/receipt-prepare confinement predicate over every served event; no executable behaviour |
 | `fn-bpnd-` | `bp-node-debt` | Exact received-FNBS physical record credit and held/attempt/handoff/fragment debt projections; served transitions carry the cached debt and update it from one row |
 | `fn-bpo-` | `bp-outbound` | Outbound projection of sender work to request ADUs and receipt validation |
+| `fn-bprq-` | `bp-request-plan` | The generic native request plan: the ACL2 attempt, its durable outcome, the FNBS key, the request ADU and destination that `bp-obligation request` executes; ION reuses its attempt constructor |
 | `fn-bpio-` | `bp-ion-observation` | Pinned-ION observation decode and exact durable-attempt identity gate |
 | `fn-bpiw-` | `bp-ion-workflow`, `bp-ion-workflow-replay` | Durable FNWF ION route and observed-ID replay overlay; replay against the live path |
 | `fn-bprl-` | `bp-release`, `bp-release-invariants`, `bp-workflow-constructors`, `bp-release-replay-status` | Sender-side forwarding-obligation release: typed release evidence and term, the `:forward` pin undertaking, the release decision over the node image, the `:undertake`/`:release` journal interpreter, canonical receipt-ADU-to-intent constructors for the native workflow caller, and host-called status replay refinement |

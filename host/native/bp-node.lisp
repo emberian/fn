@@ -230,7 +230,14 @@
                         (conn
                           (fnn-tcl-session
                            (fnn-socket-fd socket) :active
-                           (fnn-tcl-params node-id peer-id +fnn-tcl-keepalive+
+                           ;; No expected TCPCL peer.  PEER-ID is the
+                           ;; application peer: ACL2 selects the held bundle
+                           ;; by that destination (fn-bpnp-has-forward-
+                           ;; pendingp, then fn-bpnp-step's :session).  The
+                           ;; next hop is the operator's CONTACT-HOST:PORT,
+                           ;; and through a BPA it announces its own node
+                           ;; ID, as bp-service and bp-contact already allow.
+                           (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
                                            +fnn-tcl-segment-mru+ transfer-mru)
                            "bp-node-forward" (fnn-bps-root bp)
                            :on-ready
