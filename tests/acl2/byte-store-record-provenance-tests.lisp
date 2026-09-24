@@ -1237,7 +1237,7 @@
  (let* ((bs (bsk5-initial))
         (oc (bsk0-owner-frontier-entry))
         (s (fn-own-store (fn-ocfg-owner oc)))
-        (stage ".allocation-owner-k0")
+        (stage ".allocation-owner-k0"))
    (and (fn-sn-statep s)
         (fn-bs-store-relation bs (fn-sn-files s))
         (fn-bs-frontier-inputp (fn-sn-files s) stage
