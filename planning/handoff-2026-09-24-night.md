@@ -25,7 +25,7 @@ lane table.
    the lost-ACK cut answered UNCERTAIN and settled. Harness
    `tools/runbooks/two_store_join.py`.
 3. **Proof cost.** The ten-second baseline
-   (`planning/proof-cost-baseline.json`) went from 37 books to 19; the five
+   (`planning/proof-cost-baseline.json`) went from 37 books to 7; the five
    2x regressions (replay, store-identity-sequence-invariants,
    consumer-store-invariants, store-node-invariants, store-node-traces) are
    back under their earlier times, all from one leak, `fn-th-topic-eventp`
@@ -59,10 +59,13 @@ lane table.
 
 ## What remains open
 
-- 19 books over 10 s (owner-invariants 25 s, bp-node-foundation 17,
-  bp-primary-invariants 16, nntp-auth-fold 15, ...); two cost lanes were on
-  them at 07:00 EDT (see the lane table). `fn-th-local-admin-eventp` is still
-  enabled at export; `store-node-traces` at 9.9 s has no margin.
+- 7 books over 10 s at 07:40 EDT: byte-store-record-provenance 13.2 s,
+  tcpcl-octets 12.9, owner-invariants 11.8 (next: two local lemmas, see its
+  merge message), records 11.7, consumer-local-control 11.5, checkpoint-codec
+  10.7, store-node-traces 10.5 (no margin; measured 9.9 on persvati).
+  `fn-nntp-article-idp-is-consp` is exported enabled and costs every
+  dependent; a rule-class change reaching ~140 dependents is the fix to
+  decide. `fn-th-local-admin-eventp` is still enabled at export.
 - The step-premise corollaries carry the full premise set; splitting them
   into single-property theorems with their own teeth is the next experiment.
 - The two-Store join uses the retained Mini E1 source and the E2 identity,
