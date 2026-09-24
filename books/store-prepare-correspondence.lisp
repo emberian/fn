@@ -221,7 +221,10 @@
                (fn-sn-consumer s))
         (equal (fn-sn-identity-next (fn-sn-set-keyring s keyring))
                (fn-sn-identity-next s)))
-   :hints (("Goal" :in-theory (enable fn-sn-set-keyring)))))
+   :hints (("Goal" :in-theory (enable fn-sn-set-keyring
+                                      fn-sn-groups fn-sn-capacity
+                                      fn-sn-files fn-sn-node
+                                      fn-sn-consumer fn-sn-identity-next)))))
 
 (local
  (defthm fn-spc-set-keyring-keeps-completion-record

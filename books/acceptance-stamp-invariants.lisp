@@ -1,6 +1,9 @@
 ; T2a: the host-called constructor and durable stamp carrier.
 (in-package "ACL2")
 (include-book "store-node-invariants")
+; These proofs dispatch on the topic kind; opening its payload grammar in
+; every article replay case obscures that one-bit separation.
+(local (in-theory (disable fn-th-topic-eventp)))
 
 ; This projects the stamp conjunct of the actual durable completion theorem.
 ; The work is in fn-sn-actual-durable-completion-installs-record, whose proof
