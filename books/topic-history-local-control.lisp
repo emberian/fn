@@ -2,7 +2,6 @@
 ; peer UID is an OS observation supplied separately, never a request field.
 (in-package "ACL2")
 (include-book "native-control")
-(include-book "consumer-position")
 
 (defconst *fn-thlc-request-kind* 7)
 (defconst *fn-thlc-reply-kind* 8)
@@ -81,9 +80,9 @@
 
 (defun fn-thlc-cli-plan (command argv)
   (declare (xargs :guard t))
-  (let ((control (nth 0 argv))
-        (sequence (nth 1 argv))
-        (quota (nth 2 argv)))
+  (let ((control (fn-th-at 0 argv))
+        (sequence (fn-th-at 1 argv))
+        (quota (fn-th-at 2 argv)))
     (cond
      ((not (fn-thlc-absolute-pathp control)) (list :usage :control-path))
      ((equal command '(105 110 115 116 97 108 108)) ; install
