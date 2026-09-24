@@ -27,13 +27,13 @@ Newer isolated images have exchanged articles between hbox and persvati over
 and preserved [exact-source author signatures and their recorded verdicts](planning/evidence/native-t8-t10a-295bbe35-2026-09-23.md)
 through reopening a store. The [native BP delivery and receipt experiment](planning/evidence/native-topic-handoff-86323c89-2026-09-23.md)
 now exercises retries, restart and ambiguous publication within an explicitly
-trusted local setup. A [Mini consumer experiment](planning/evidence/dregg-e1-portable-consumer-p2.md)
-independently verifies a signed fn source, then records a durable Mini operation
-and reply. It recovers that reply after reopening and retains conflicting
-source evidence without executing the operation twice. It has not yet fetched
-or acknowledged the source through fn's consumer interface.
+trusted local setup. A [Mini consumer experiment](planning/evidence/native-mini-live-join-2026-09-24.md)
+now polls an actual fn owner, verifies the signed source, and records a durable
+Mini transaction. Only after reopening that transaction does Mini acknowledge
+the fn cursor; the next poll returns no repeat article. Completing the signed
+reply exchange and its crash cases is the next application boundary.
 These exercises qualify particular images and boundaries. Authenticated BP
-transit, durable fn polling and acknowledgement, and the remaining physical
+transit, the newer indexed consumer path, and the remaining physical
 crash-correspondence proofs are still being joined.
 [Current work](planning/now.md) distinguishes source, image, and deployed-node
 progress; there is no finished release yet.

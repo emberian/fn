@@ -13,8 +13,8 @@ calls `fn-owner-io` at `host/native/owner.lisp:101`. The program-mode host
 wrapper at `host/owner-host.lisp:299-302` submits
 `(:store (:io operation result))` through `fn-owner-step`, whose sole event
 decision is ACL2's `fn-ocfg-step`. The keystone
-`fn-bs-k0-owner-io-store-is-node-io` proves that this exact event changes
-the owner's Store-node projection by `fn-sn-io` and nothing else, for every
+`fn-bs-k0-owner-io-store-is-node-io` proves that this exact event's resulting
+Store-node projection equals the result of `fn-sn-io`, for every
 configured-owner value, operation and result. The four-event theorem
 `fn-bs-k0-owner-frontier-calls-match-byte-run` applies that projection to
 the earlier K0 byte interpreter trace: under a valid Store-node state,
