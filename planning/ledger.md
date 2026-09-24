@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 667 |
 | Certification roots in the Makefile | 656 |
 | Books inside the root closure | 665 |
-| `defthm` and `defthmd` events | 8878 |
+| `defthm` and `defthmd` events | 8883 |
 | `defun` events | 6569 |
 | Functions with verified guards | 2036 |
 | Functions declared `:verify-guards nil` and never verified | 402 |
@@ -21,7 +21,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions left at the default with no guard | 837 |
 | `assert-event` checks | 9678 |
 | `must-fail` checks | 570 |
-| `encapsulate` events | 27 |
+| `encapsulate` events | 28 |
 | Theorems flagged SUSPECT by shape | 82 |
 | Export-hygiene warnings | 107 |
 | Enabled-projection warnings | 37 |
@@ -119,7 +119,7 @@ that `make certify` requests.
 | `books/bp-contact-service.lisp` | root | 3 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-byte-invariants.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-byte-publisher.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-codec-invariants.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-codec-invariants.lisp` | root | 19 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-codec.lisp` | root | 1 | 14 | 0/1/13/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-deletion-codec.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-deletion-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
@@ -159,7 +159,7 @@ that `make certify` requests.
 | `books/bp-node-fragment-expiry.lisp` | root | 1 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-family.lisp` | root | 9 | 9 | 0/3/6/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-guards.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/bp-node-fragment-plan.lisp` | root | 1 | 3 | 0/2/1/0 | 0 | 0 | 0 |
+| `books/bp-node-fragment-plan.lisp` | root | 3 | 3 | 0/2/1/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-replacement.lisp` | root | 1 | 5 | 0/2/3/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-step.lisp` | root | 3 | 6 | 0/5/1/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-authorization.lisp` | root | 30 | 4 | 0/4/0/0 | 0 | 0 | 0 |
@@ -437,7 +437,7 @@ that `make certify` requests.
 | `books/tcpcl-invariants.lisp` | root | 62 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/tcpcl-octets.lisp` | root | 172 | 36 | 14/0/22/0 | 0 | 0 | 1 |
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
-| `books/tcpcl-session.lisp` | root | 98 | 57 | 9/0/48/0 | 0 | 0 | 0 |
+| `books/tcpcl-session.lisp` | root | 99 | 57 | 9/0/48/0 | 0 | 0 | 0 |
 | `books/tcpcl-spool.lisp` | root | 2 | 18 | 0/0/18/0 | 0 | 0 | 0 |
 | `books/topic-history-admission.lisp` | root | 5 | 17 | 0/0/17/0 | 0 | 0 | 0 |
 | `books/topic-history-authorship.lisp` | root | 5 | 4 | 0/0/4/0 | 0 | 0 | 1 |
@@ -821,8 +821,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 239 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-prov-transit-kindp-forward` | `books/provenance.lisp` | 56 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp |
 | `fn-prov-wire-of-a-string-is-itself-by-definition` | `books/provenance-codec.lisp` | 563 | branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value |
-| `fn-record-impl-encode-domain` | `books/records-canonicality.lisp` | 828 | branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value |
-| `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 663 | reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-record-impl-encode-domain` | `books/records-canonicality.lisp` | 831 | branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value |
+| `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 666 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 287 | branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 327 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
 | `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 411 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
