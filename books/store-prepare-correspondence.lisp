@@ -199,7 +199,11 @@
    (implies (fn-sn-statep s)
             (fn-sn-statep (fn-sn-set-keyring s keyring)))
    :hints (("Goal"
-            :in-theory (e/d (fn-sn-set-keyring fn-sn-statep)
+            :in-theory (e/d (fn-sn-set-keyring fn-sn-statep fn-sn-shapep
+                             fn-sn-groups fn-sn-capacity fn-sn-files
+                             fn-sn-node fn-sn-keyring
+                             fn-sn-keyring-generation fn-sn-verdicts
+                             fn-sn-keyring-snapshots fn-sn-identity-next)
                              (fn-sf-statep fn-node-statep
                               fn-stx-index-of-store))))))
 
