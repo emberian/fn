@@ -455,7 +455,7 @@ reopen predicate, writer-lock observation and observed final namespace."
   (let* ((s (f-get-global 'fn-store-sn state))
          (groups (fn-store-groups-from-codes group-codes (fn-store-sn-domain state))))
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (not (fn-octet-listp payload)) (> (len payload) *fn-store-max-payload*)
+            (not (fn-octet-listp payload)) (> (len payload) *fn-record-max-payload*)
             (equal groups :bad) (null groups)
             (not (fn-store-text-octetsp id-octets))
             (not (fn-store-text-octetsp subject-octets))
@@ -552,6 +552,12 @@ reopen predicate, writer-lock observation and observed final namespace."
   (let ((record (fn-sf-record-candidate
                  (fn-sn-files (f-get-global 'fn-store-sn state)))))
     (value (if record (fn-store-event-encode record) nil))))
+
+; The staged record's sequence: the developer `store post' names its
+; transaction file from it (books/store-budget-naming.lisp).
+(defun fn-store-sn-pending-sequence (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sbud-pending-sequence (f-get-global 'fn-store-sn state))))
 
 (defun fn-store-sn-finish (state)
   (declare (xargs :stobjs state :mode :program))
