@@ -678,11 +678,14 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 check:
 	$(PYTHON) tools/check_scaffold.py
 # A certified registry row must name existing ACL2 events whose defining
-# books have source- and include-closure-compatible manifest evidence. This
-# audit warns because older/partial evidence is not itself a failed theorem.
+# books have source- and include-closure-compatible manifest evidence, and
+# must itself cite an archived manifest that certified each event book at its
+# current digest. Any warning fails; --explain PRF-xxx names the manifest.
 	$(PYTHON) tools/certified_claims.py
-# Read-only warning over newest measured attempts at each current book/include
-# closure, grouped by host and toolchain. Installed pairs have no proof time.
+# Newest measured attempts at each current book/include closure, grouped by
+# host and toolchain. The ten-second rule is a ratchet over
+# planning/proof-cost-baseline.json: a new slow book, or one 25% over its
+# baseline, fails. Installed pairs have no proof time.
 	$(PYTHON) tools/proof_cost.py
 # Every host file loaded alone in its own ACL2: the dynamic half of the
 # host-names lint.  Needs FN_ACL2 and installed certificates; without
