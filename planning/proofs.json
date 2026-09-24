@@ -2658,7 +2658,8 @@
         "books/native-operator.lisp",
         "tests/acl2/native-admin-tests.lisp",
         "tests/acl2/native-operator-tests.lisp",
-        "tests/test_native_operator_verbs.py"
+        "tests/test_native_operator_verbs.py",
+        "planning/evidence/manifests/certify-20260924T160912Z-2158325.json"
       ],
       "progress_note": "Lanes group-name-validity (grammar, 2026-09-24) and group-names-2 (reserved names, 2026-09-24). Teeth: records-shape-tests has the grammar witnesses and seven must-fails; native-admin-tests and native-operator-tests have the reserved witnesses (example, example.test, Example.a, EXAMPLE.test, poster, POSTER, Poster refused; fn.example, examples.test, poster.x, fn.poster accepted; retire of example.test accepted) and one must-fail per hypothesis. fn-record-group-namep-bounds-length-by-definition is the local bound by definition and is not cited.",
       "events": [
