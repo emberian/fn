@@ -2291,6 +2291,33 @@
         "fn-own-read-is-served-step-on-pinned-prefix"
       ],
       "progress_note": "Scoped ACL2 certification and called-owner sparse/historical LISTGROUP witnesses are recorded in the group-bucket evidence. Indexed OVER/XOVER resolve selected-group bucket entries through the pinned trie; the called pinned dispatcher equality has direct reachable and malformed-state premise teeth, with redundant range, tag, bound and session assumptions removed. HDR remains on the archive fold. The native OVER/XOVER socket driver is prepared but has not run on a source-matched image; combined-image qualification and full dependent closure at integrated source remain open."
+    },
+    {
+      "id": "PRF-066",
+      "title": "Local consumer status reports the scoped committed journal distance",
+      "statement": "For the ACL2 local-owner status decision `fn-col-status`, successful output carries a scoped registered ACK no greater than its committed journal frontier and the event distance frontier minus ACK; its ACK agrees by definition with the position cursor for that consumer. The kind-9 FNCT status codec has a proved accepted roundtrip for uint32 fields whose gap equals frontier minus ACK. The native wrapper `fn-owner-consumer-local-status` delegates to that decision and tests cover its dispatch/read-only refusal. This does not prove native filesystem recovery or article unreadness/application processing; Store recovery authority remains PRF-064.",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-001"
+      ],
+      "depends_on": [
+        "PRF-064"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/consumer-owner-local.lisp",
+        "tests/acl2/consumer-owner-local-tests.lisp",
+        "books/consumer-local-control.lisp",
+        "tests/acl2/consumer-local-control-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "host/native/consumer-local.lisp",
+        "tests/native_owner_consumer_local_raw.lisp",
+        "tests/test_native_consumer_e2.py"
+      ],
+      "progress_note": "The status handler shares position/poll local-scope lookup, reads the committed consumer projection and frontier, and constructs the subtraction in ACL2. Scoped ACL2 certification and source-matched native image execution remain pending. No v0 gate changes."
     }
   ]
 }

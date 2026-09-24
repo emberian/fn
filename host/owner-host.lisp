@@ -418,6 +418,10 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-position (fn-owner-core state) consumer)))
 
+(defun fn-owner-consumer-local-status (consumer state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-status (fn-owner-core state) consumer)))
+
 (defun fn-owner-consumer-local-poll (consumer state)
   (declare (xargs :stobjs state :mode :program))
   (let ((decision (fn-col-poll (fn-owner-core state) consumer)))

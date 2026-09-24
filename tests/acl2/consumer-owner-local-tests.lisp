@@ -1,5 +1,6 @@
 ; Actual local-owner proposal subject, with committed Store witnesses.
 (in-package "ACL2")
+(include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/consumer-owner-local")
 
 (defun colt-reserve (s)
@@ -56,6 +57,24 @@
 (defconst *colt-o1* (fn-own-start *colt-s1* 2))
 (defconst *colt-position* (fn-col-position *colt-o1* *colt-id*))
 (assert-event (eq (car *colt-position*) :position))
+(defconst *colt-status-before-article* (fn-col-status *colt-o1* *colt-id*))
+(assert-event (eq (car *colt-status-before-article*) :status))
+(assert-event (posp (fn-cp-nth 3 *colt-status-before-article*)))
+(assert-event
+ (equal (fn-cp-nth 3 *colt-status-before-article*)
+        (- (fn-cp-nth 2 *colt-status-before-article*)
+           (fn-cp-nth 1 *colt-status-before-article*))))
+(assert-event
+ (equal (fn-cp-nth 1 *colt-status-before-article*)
+        (fn-cp-nth 9
+         (fn-cp-nth 1
+          (fn-cp-cursor-decode (cadr *colt-position*))))))
+(assert-event (equal (fn-col-status *colt-o1* '(88)) '(:refused :scope)))
+(must-fail
+ (assert-event
+  (equal (fn-cp-nth 3 (fn-col-status *colt-o1* '(88)))
+         (- (fn-cp-nth 2 (fn-col-status *colt-o1* '(88)))
+            (fn-cp-nth 1 (fn-col-status *colt-o1* '(88)))))))
 (defconst *colt-article*
   (fn-record-make 2 2 2 "<poll@fn.test>" '(65 66)
                   '("fn.test") "poll-pin" "poll-content" "poll-release"
@@ -146,6 +165,9 @@
 
 (defconst *colt-s2* (colt-commit *colt-s1* (cadr *colt-ack*)))
 (defconst *colt-o2* (fn-own-start *colt-s2* 2))
+(assert-event
+ (equal (fn-col-status *colt-o2* *colt-id*)
+        (fn-col-status *colt-o1* *colt-id*)))
 (assert-event (eq (car (fn-col-ack *colt-o2*
                                      (fn-cp-cursor-encode *colt-cursor*)))
                   :no-op))
