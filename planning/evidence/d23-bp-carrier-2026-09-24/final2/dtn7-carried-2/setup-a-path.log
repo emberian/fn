@@ -1,0 +1,5 @@
+$ fn operator /tank/fn/scratch/d23-bp/final2/dtn7-carried-2/a.toml policy set path-identity sender.bp.gate.invalid
+configured generation=2 record=00000002.cfg verification=VERIFIED
+accepted operator policy
+
+# rc=0

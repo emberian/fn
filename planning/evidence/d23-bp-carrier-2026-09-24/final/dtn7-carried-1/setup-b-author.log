@@ -1,0 +1,5 @@
+$ fn operator /tank/fn/scratch/d23-bp/final/dtn7-carried-1/b.toml bp-boundary add sender-author sender.bp.gate.invalid dtn://sender/ 44995 fn.test 32768 16
+configured generation=4 record=00000004.cfg verification=VERIFIED
+accepted operator bp-boundary
+
+# rc=0

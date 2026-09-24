@@ -1,0 +1,4 @@
+$ fn bp-node serve 55869 /tank/fn/scratch/d23-bp/final/dtn7-neighbour/a-fnbs /tank/fn/scratch/d23-bp/final/dtn7-neighbour/a-store /tank/fn/scratch/d23-bp/final/dtn7-neighbour/a-fnrj /tank/fn/scratch/d23-bp/final/dtn7-neighbour/a-fnwf dtn://sender/ dtn://receiver/ dtn://sender/ native-policy dtn://sender/ 127.0.0.1 56257 0 3600000 2 32 1048576 843604392908 60000
+BP FNBS recovered held=0
+BP queue recovered jobs=1
+BP NODE LISTENING 55869

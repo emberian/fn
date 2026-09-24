@@ -1,0 +1,6 @@
+$ fn bp-contact tick /tank/fn/scratch/d23-bp/final/dtn7-carried-2/b-fnbs dtn://receiver/ dtn://sender/ 0 60000 3600000 2 32 1048576 843604312941 60000
+BP FNBS recovered held=1
+BP queue recovered jobs=0
+BP contact closed peer=dtn://sender/
+
+# rc=0

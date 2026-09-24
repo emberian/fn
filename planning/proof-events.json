@@ -2836,6 +2836,27 @@
           "name": "fn-served-step-msgid-retrieval-carries-the-local-number"
         }
       ]
+    },
+    {
+      "id": "PRF-075",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-carried-decision-is-the-authors-direct-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-carried-request-is-judged-as-the-authors-direct-request"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-unlisted-carried-request-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-carried-unenrolled-request-is-refused"
+        }
+      ]
     }
   ]
 }

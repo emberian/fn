@@ -1,0 +1,4 @@
+$ fn bp-obligation undertake /tank/fn/scratch/d23-bp/final2/dtn7-carried-2/a-store /tank/fn/scratch/d23-bp/final2/dtn7-carried-2/a-fnwf work-bp-node 3
+BP obligation owner durable undertaking work=work-bp-node charge=3
+
+# rc=0

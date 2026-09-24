@@ -328,6 +328,24 @@ administration and the control socket. Its verbs:
 `reader` is refused and `model` faults, as the build header says, and the
 developer-only `owner` verb is not registered in either DTN image.
 
+**Relays (D23).** A BP boundary names one TCPCL neighbour. When that
+neighbour is a relaying BPA (dtn7-rs, ION), list the far fn nodes whose
+bundles it may carry, and enrol each far node under its own EID:
+
+```sh
+fn operator CONFIG bp-boundary add relay-r1 r1.example dtn://neighbour/ PORT carries dtn://far-node/
+fn operator CONFIG bp-boundary add far-node far.example dtn://far-node/ OTHER-PORT fn.* 32768 16
+```
+
+A request or receipt from `dtn://far-node/` carried by `relay-r1` is then
+judged under `far-node`'s enrolment (its path identity and inbound scope),
+never the relay's. A carried source with no enrolment of its own here is
+refused (`BP node source refused reason=carried-source-unenrolled`), and a
+source the neighbour does not carry is refused `source-not-carried`. The far
+node's PORT names a listener the far node would use if it connected
+directly; it must differ from the relay's so the two boundaries stay
+distinguishable on the channel.
+
 ## Install
 
 The development service needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified
