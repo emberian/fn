@@ -2662,6 +2662,22 @@ connection `fn-reader-reset' opens and projects with
   (push (cons verb handler) *fnn-verbs*)
   verb)
 
+(defun fnn-unregister-verb (verb)
+  "Withdraw VERB while a build script constructs the image, before it is saved."
+  (setq *fnn-verbs* (remove verb *fnn-verbs* :key #'car :test #'string=))
+  verb)
+
+;;; The surfaces a build script left out of its image.  The DTN build
+;;; (host/native/build-dtn.lisp) loads the owner and the operator for the BP
+;;; node, but not the NNTP service, credential administration or the control
+;;; socket; it names those here, and the operator refuses an ACL2 plan whose
+;;; action needs one as an unsupported entry (usage, exit 5) instead of
+;;; calling a function the image does not have.  The default image names none.
+(defvar *fnn-image-omitted-surfaces* nil)
+
+(defun fnn-image-omits-p (surface)
+  (and (member surface *fnn-image-omitted-surfaces*) t))
+
 (defun fnn-select-image-profile
     (&optional (name (or (sb-ext:posix-getenv "FN_NATIVE_PROFILE")
                          "production")))

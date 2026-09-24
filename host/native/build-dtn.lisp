@@ -81,6 +81,12 @@
 (include-book "books/bp-report-guards")
 (include-book "books/bp-app-handoff")
 (include-book "books/bp-receive-evidence")
+; The BP node's application side (host/native/bp-app.lisp, bp-node.lisp):
+; the owed-receipt handoff time and status the node's outbox asks, and the
+; application admission the default image carries.
+(include-book "books/bp-app-handoff-time")
+(include-book "books/bp-handoff-status")
+(include-book "books/bp-native-app-fast")
 
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
@@ -94,13 +100,20 @@
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
 (ld "host/config-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
+(ld "host/native-config-host.lisp" :ld-error-action :error)
+(ld "host/feed-filename-host.lisp" :ld-error-action :error)
+(ld "host/native-operator-host.lisp" :ld-error-action :error)
+; The canonical preimage the transit signature check verifies.
+(ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
 ;; The external freshness anchor.  Without it the image cannot answer the
 ;; anchor question at all and `recover' silently omitted the field the Python
 ;; host prints (HANDOFF-w3-native-host.md, "the differential's four findings").
 (ld "host/anchor-host.lisp" :ld-error-action :error)
 (ld "host/workflow-host.lisp" :ld-error-action :error)
 (ld "host/bp-receipt-journal-host.lisp" :ld-error-action :error)
+(ld "host/bp-release-owner-host.lisp" :ld-error-action :error)
 (ld "host/journal-publish-host.lisp" :ld-error-action :error)
+(ld "host/bp-native-app-host.lisp" :ld-error-action :error)
 ; The ACL2 side of the TCPCLv4 host: every protocol value the convergence
 ; layer needs, so that host/native/tcpcl.lisp computes none of them.
 (ld "host/tcpcl-host.lisp" :ld-error-action :error)
@@ -118,19 +131,57 @@
   (declare (xargs :mode :program :stobjs state))
   (prog2$ (cw "fn-native: raw entry not installed~%") (value :missing)))
 (progn! (set-raw-mode t)
+        ; The node verifies the hybrid signatures of a peer-authored transit
+        ; article before its owner commits it (owner.lisp
+        ; `fnn-owner-attempt-transit', reached from bp-app's BP transit), so
+        ; this image carries the same native crypto facility, OpenSSL pair and
+        ; restart revalidation as host/native/build.lisp, in the same order.
+        (load "host/native/crypto.lisp")
+        (fnn-crypto-initialize)
         (load "host/native/io.lisp")
         ; Select once during construction, before any diagnostic module loads.
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)
+        (load "host/native/tls.lisp")
+        (load "host/native/signatures.lisp")
+        (fnn-hsig-initialize)
+        (defun fn-native-entry (st)
+          (declare (ignore st))
+          (fnn-crypto-startup)
+          (fnn-tls-reset)
+          (fnn-hsig-reset)
+          (fnn-hsig-initialize)
+          (fnn-main)
+          (values nil :exited *the-live-state*))
         (load "host/native/immutable-publish.lisp")
         (load "host/native/admin.lisp")
+        (load "host/native/config.lisp")
+        (load "host/native/feed-filename.lisp")
+        ; The BP node's Store owner and its configuration (path identity,
+        ; enrolled BP boundaries) through the one public operator entry.
+        (load "host/native/owner.lisp")
+        (load "host/native/operator.lisp")
         (load "host/native/workflow.lisp")
+        (load "host/native/bp-obligation.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")
         ; The BPv7 node, over the convergence layer above it and nothing else.
         (load "host/native/bp.lisp")
+        (load "host/native/bp-app.lisp")
         (load "host/native/bp-service.lisp")
         (load "host/native/bp-contact.lisp")
+        ; The node: FNBS, the owner Store and FNRJ/FNWF under one
+        ; `bp-node serve' (specs/bp-node-machine.md).  `bp send' and `bp
+        ; receive' above stay as the lab's transport tools.
+        (load "host/native/bp-node.lisp")
+        ; What this image leaves out of the owner and operator it loaded:
+        ; the NNTP service (TLS, auth, the feed service, the listener), the
+        ; credential store and the control socket.  The operator refuses a
+        ; plan needing one as an unsupported entry (io.lisp
+        ; `*fnn-image-omitted-surfaces*'), and the developer-only raw `owner'
+        ; verb, whose only use is that NNTP service, is withdrawn.
+        (setq *fnn-image-omitted-surfaces* '(:nntp-service :credentials :control))
+        (fnn-unregister-verb "owner")
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The
         ; `model' verb writes reply octets to stdout and nothing else may.
