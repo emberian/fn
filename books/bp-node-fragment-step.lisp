@@ -156,3 +156,27 @@
                                fn-bpnf-family-v1-frame
                                fn-bpnf-family-record-atp)))
   :rule-classes nil)
+
+(defthm fn-bpnf-fragment-step-family-publication-has-live-sources
+  (implies (and (equal (fn-cbor-ag-car event) :family)
+                (equal (fn-cbor-ag-car
+                        (car (fn-bpnf-answer-effects
+                              (fn-bpnf-fragment-step st event))))
+                       :persist-family))
+           (fn-bpnf-family-rows-livep
+            (fn-bpnf-active-set
+             st (fn-bpnf-find-arrival
+                 (fn-bpn-nth 1 event) (fn-bpnf-held-list st)))
+            (fn-bpn-nth 2 event)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance
+                  fn-bpnf-family-plan-at-ready-binds-live-source-rows
+                  (anchor (fn-bpnf-find-arrival
+                           (fn-bpn-nth 1 event) (fn-bpnf-held-list st)))
+                  (observation (fn-bpn-nth 2 event))))
+           :in-theory (disable fn-bpnf-family-plan-at
+                               fn-bpnf-family-apply-at
+                               fn-bpnf-family-v1-frame
+                               fn-bpnf-family-record-atp
+                               fn-bpnf-active-set)))
+  :rule-classes nil)

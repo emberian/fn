@@ -113,6 +113,29 @@
  (assert-event
   (equal (car (fn-bpnf-family-next
               *bpnfs-expiry-state* *bpnfs-age-later*)) :ready)))
+
+; A blocked old family must not starve a later independent principal family.
+(defconst *bpnfs-other-p3*
+  (update-nth 9
+              (fn-bpnf-received-anchor *bpnfs-aged-b3* *bpnfs-age-later*)
+              (fn-bpnfft-held '(113) 2 *bpnfs-aged-b3*
+                               '(:dispatch-pending) nil)))
+(defconst *bpnfs-other-p0*
+  (update-nth 9
+              (fn-bpnf-received-anchor *bpnfs-fresh-b0* *bpnfs-age-later*)
+              (fn-bpnfft-held '(113) 3 *bpnfs-fresh-b0*
+                               '(:dispatch-pending) nil)))
+(defconst *bpnfs-other-family-state*
+  (fn-bpnf-state (fn-bpnf-base *bpnff-state*)
+                 (list *bpnfs-fresh-p0* *bpnfs-aged-p3*
+                       *bpnfs-other-p3* *bpnfs-other-p0*)
+                 nil nil nil nil nil 3 0))
+(assert-event
+ (and (fn-bpnf-heldp *bpnfs-other-p3*)
+      (fn-bpnf-heldp *bpnfs-other-p0*)
+      (equal (fn-bpnf-family-next
+              *bpnfs-other-family-state* *bpnfs-age-later*)
+             '(:ready 2))))
 (assert-event (equal (fn-bpah-held-expiry *bpnfs-aged-p3* *bpnfs-age-later*)
                      :expired))
 (assert-event (equal (fn-bpah-held-expiry *bpnfs-fresh-p0* *bpnfs-age-later*)

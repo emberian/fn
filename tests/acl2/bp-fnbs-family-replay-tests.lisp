@@ -26,13 +26,18 @@
          (fn-bpnf-stored-record-frame
           (fn-bpnf-stored-record 3 1 *bpnfr-p0-arrival-one*)))
    (list (fn-bpnf-stored-record-name 3 2)
-         (fn-bpnf-family-publication-frame *bpnfr-replay-family-record*))))
+         (fn-bpnf-family-v1-frame *bpnfr-replay-family-record*))))
 (defun bpnfr-replay-answer ()
   (declare (xargs :guard t :verify-guards nil))
   (fn-bpnf-family-replay-rows
    (bpnfr-replay-rows) (fn-bpnf-base *bpnff-state*)))
 (assert-event (equal (car *bpnfr-replay-plan*) :ready))
 (assert-event (equal (car (bpnfr-replay-answer)) :ready))
+(assert-event
+ (equal (car (nth 1 (bpnfr-replay-answer)))
+        (fn-bpn-nth 2
+         (fn-bpnf-family-apply-at
+          *bpnfr-replay-initial* *bpnfr-replay-family-record* 2))))
 (defconst *bpnfr-legacy-family-record*
   (fn-bpnf-family-record 3 2 0 2 (nth 2 *bpnfr-replay-plan*)))
 (defun bpnfr-legacy-replay-answer ()
