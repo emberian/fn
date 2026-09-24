@@ -13,8 +13,17 @@
         (list (list (make-list 32 :initial-element 85) *thnv-keyset*))))
 (defconst *thnv-report*
   (list :report *thnv-root-id* *thnv-root-id* nil))
+(defconst *thnv-second-root*
+  (list :root (make-list 32 :initial-element 2)
+        (make-list 32 :initial-element 85) *thnv-keyset*
+        '(102 110 46 116 101 115 116)
+        (list (list (make-list 32 :initial-element 85) *thnv-keyset*))))
 (assert-event (fn-th-value-p *thnv-root*))
 (assert-event (fn-th-value-p *thnv-report*))
+(assert-event (fn-th-value-p *thnv-second-root*))
+(assert-event
+ (equal (fn-th-field-encode *thnv-second-root*)
+        (fn-record-string-octets "v1 AQBYIAICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICWCBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVgwZm4vc3ViamVjdC92MQABAcmjsgg2ZV4az8b0lZmPWjT6gSLRAlTHSsiTBrBEYMR4R2ZuLnRlc3QBWCBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVgwZm4vc3ViamVjdC92MQABAcmjsgg2ZV4az8b0lZmPWjT6gSLRAlTHSsiTBrBEYMR4")))
 (assert-event
  (equal (fn-th-field-encode *thnv-root*)
         (fn-record-string-octets "v1 AQBYIAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBWCBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVgwZm4vc3ViamVjdC92MQABAcmjsgg2ZV4az8b0lZmPWjT6gSLRAlTHSsiTBrBEYMR4R2ZuLnRlc3QBWCBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVgwZm4vc3ViamVjdC92MQABAcmjsgg2ZV4az8b0lZmPWjT6gSLRAlTHSsiTBrBEYMR4")))
