@@ -57,6 +57,37 @@
           2 (fn-stxk-context-snapshots
              (fn-replay-identity-step
               (fn-sn-identity-context *hls-b-staged*) *hls-b2*))))))
+; Model crash before durable record-directory publication: B2 never enters
+; the history, even though it was a well-formed staged candidate.
+(make-event
+ `(defconst *hls-prepublication-recovered*
+    ',(fn-sn-recover (fn-sn-crash *hls-b-staged* :old :absent))))
+(assert-event (equal (fn-sf-phase (fn-sn-files *hls-prepublication-recovered*))
+                     :recovering))
+(assert-event (fn-snt-relation *hls-prepublication-recovered*))
+(assert-equal (fn-hls-current-enrollment *hls-prepublication-recovered* 1)
+              (list *sit-enrollment* *sit-principal* *sit-keys*))
+(assert-equal (fn-hls-current-enrollment *hls-prepublication-recovered* 2)
+              nil)
+(assert-equal
+ (fn-sn-verdict-lookup *hls-prepublication-recovered*
+                       "<signed@example.invalid>")
+ (fn-sn-verdict-lookup *sit-after-composite* "<signed@example.invalid>"))
+; A directory-observed B2 record survives a crash even before live finish.
+(make-event
+ `(defconst *hls-published-recovered*
+    ',(fn-sn-recover (fn-sn-crash *hls-b-completing* :old :present))))
+(assert-event (equal (fn-sf-phase (fn-sn-files *hls-published-recovered*))
+                     :recovering))
+(assert-event (fn-snt-relation *hls-published-recovered*))
+(assert-equal (fn-hls-current-enrollment *hls-published-recovered* 1)
+              (list *sit-enrollment* *sit-principal* *sit-keys*))
+(assert-equal (fn-hls-current-enrollment *hls-published-recovered* 2)
+              (list *hls-b2* *hls-b* *hls-b-keys*))
+(assert-equal
+ (fn-sn-verdict-lookup *hls-published-recovered*
+                       "<signed@example.invalid>")
+ (fn-sn-verdict-lookup *sit-after-composite* "<signed@example.invalid>"))
 (make-event `(defconst *hls-after-b* ',(fn-sn-finish *hls-b-completing*)))
 (assert-event (fn-snt-relation *hls-after-b*))
 (assert-event (fn-sn-identity-sequencep *hls-after-b*))

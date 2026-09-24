@@ -249,7 +249,9 @@ signature path and historical kind-4 verdict binding have advanced beyond the
 older checkpoint above. Operator-local per-principal rotation and revocation
 now have ACL2 source and control/CLI fixtures. The completed kind-3 Store-node
 path has a selector/replay projection theorem and a historical-verdict
-preservation theorem, with a reachable A/B rotation/revocation/reopen trace.
+preservation theorem. Successful recovery reconstructs both from durable
+records; reachable A/B rotation/revocation/reopen and before/after-publication
+crash traces exercise the path.
 A matching native image run, portable succession/recovery policy and a full
 crash-phase lifecycle relation remain open. See [identity](../specs/identity.md)
 and `PRF-069`.

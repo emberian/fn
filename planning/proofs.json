@@ -2472,9 +2472,10 @@
         "planning/evidence/manifests/certify-20260924T055039Z-854201.json",
         "books/hybrid-lifecycle-store-invariants.lisp",
         "tests/acl2/hybrid-lifecycle-store-invariants-tests.lisp",
-        "planning/evidence/manifests/certify-20260924T061218Z-1058761.json"
+        "planning/evidence/manifests/certify-20260924T061218Z-1058761.json",
+        "planning/evidence/manifests/certify-20260924T062045Z-1140805.json"
       ],
-      "progress_note": "The per-principal selector, next-generation event constructors and versioned tombstone are implemented. Completed kind-3 Store-node theorems equate the post-finish selector to identity replay and preserve the carried historical verdict list. A reachable Store trace commits A1 and a kind-4 verdict, then B2, A3 rotation and A4 tombstone through prepare/publication/finish; it checks maintained node/file and identity-sequence relations, then observed reopen. The host calls the selector under the serialized owner. Source-matched native execution, a full crash-phase relation for every lifecycle trace, and cost/index correspondence for a large snapshot history remain open. Local permission does not define portable succession or retroactive signature invalidation."
+      "progress_note": "The per-principal selector, next-generation event constructors and versioned tombstone are implemented. Completed kind-3 Store-node theorems equate the post-finish selector to identity replay and preserve historical verdicts; successful recovery theorems equate the carried selector and verdicts to replay of recovered durable records. A reachable Store trace commits A1 and a kind-4 verdict, then B2, A3 rotation and A4 tombstone, checking maintained node/file and identity-sequence relations and observed reopen. Selected crash cuts before and after B2 publication distinguish absent from durable enrollment. The host calls the selector under the serialized owner. Source-matched native execution, a global crash-phase relation for every lifecycle trace, and cost/index correspondence for a large snapshot history remain open. Local permission does not define portable succession or retroactive signature invalidation."
     }
   ]
 }
