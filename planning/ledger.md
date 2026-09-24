@@ -13,7 +13,11 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 616 |
 | Certification roots in the Makefile | 608 |
 | Books inside the root closure | 614 |
+<<<<<<< HEAD
 | `defthm` and `defthmd` events | 8558 |
+=======
+| `defthm` and `defthmd` events | 8559 |
+>>>>>>> 4fbedad8 (Repair native byte observation bridge for Store v6)
 | `defun` events | 6339 |
 | Functions with verified guards | 2034 |
 | Functions declared `:verify-guards nil` and never verified | 374 |
@@ -204,7 +208,7 @@ that `make certify` requests.
 | `books/byte-store-initializer.lisp` | root | 8 | 10 | 0/8/0/2 | 0 | 0 | 0 |
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
 | `books/byte-store-keystones.lisp` | root | 35 | 3 | 0/3/0/0 | 0 | 0 | 0 |
-| `books/byte-store-native-correspondence.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/byte-store-native-correspondence.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/byte-store-observation-scan.lisp` | root | 15 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/byte-store-observation.lisp` | root | 0 | 8 | 0/8/0/0 | 0 | 0 | 0 |
 | `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
