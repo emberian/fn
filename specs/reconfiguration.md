@@ -1278,8 +1278,9 @@ and their teeth in `tests/acl2/owner-config-tests.lisp`.
 - **A crash at any instant recovers the live generation.**
   `fn-ocfg-crash-at-any-instant-recovers-the-live-generation`: if nothing is
   staged and the durable configuration history replays through
-  `fn-cnode-config-replay` (`host/owner-host.lisp:172`, `fn-owner-recover`)
-  to the live configuration, then over the live arm's exact events
+  `fn-cnode-config-replay` (the configuration-only
+  replay; `fn-owner-recover` calls `fn-cpr-replay`, see "P6 recovery as the
+  host calls it" below) to the live configuration, then over the live arm's exact events
   (reconfigure, close the private connection, complete;
   `host/native/admin.lisp:123-146`) the old history replays to the live
   configuration until the record is durable, and afterwards the history with
@@ -1381,8 +1382,48 @@ statement's owner conjunct does not transfer
 path with `(:complete)` only on pins, served tables, connection records and
 the stage).
 
-Still open: headline 2 (`fn-ocfg-crash-at-any-instant-recovers-the-live-generation`)
-is over `fn-cnode-config-replay`, which no host line calls; recovery calls
-`fn-cpr-replay`. The configuration half over `fn-cpr-replay` is
-`fn-ocl-cpr-loop-configuration-is-the-record-fold`; no theorem equates the
-two replays' `:ok` verdicts.
+### P6 recovery as the host calls it (2026-09-24)
+
+Headline 2 is restated over the replay recovery calls, in
+`books/config-crash-replay.lisp`. `fn-owner-recover`
+(`host/owner-host.lisp:173`, reached from the native owner at
+`host/native/owner.lisp:467`) replays `(fn-cpr-replay config-records
+records)`: the decoded configuration journal and the decoded Store journal.
+
+- **The two replays, a refinement.** `fn-ocl-cpr-replay-ok-is-config-replay-ok`:
+  if `fn-cpr-replay` of the two journals is `:ok`, then
+  `fn-cnode-config-replay` of the configuration journal is `:ok` and both
+  recover the same configuration. The converse is false: `fn-cpr-replay` also
+  requires each record's transaction id to be no lower than the Store's next
+  one at that point, acceptability at the reservation the earlier Store
+  events produced, a properly terminated list and a valid Store journal. The
+  separating journal is the recovered test journal with its two records'
+  transaction ids made to descend (9 then 7): the configuration-only replay
+  accepts it and `fn-cpr-replay` refuses it with `:config-txid`
+  (`tests/acl2/config-crash-replay-tests.lisp`). The called path does not
+  write such a journal: `fn-cpo-configure-durable` appends a record only at
+  the Store frontier and only when `fn-cpr-replay` of the result is `:ok`.
+  On such a journal the host answers `:fault`; it never installs a
+  configuration from it.
+- **A crash at any instant recovers the live generation or the whole new
+  one.** `fn-ocl-crash-at-any-instant-recovers-the-live-generation` covers
+  the arm `(:reconfigure id deltas)` and `(:close id)` through `fn-ocfg-step`,
+  the durable write, then `fn-ocl-publish`, with one hypothesis,
+  `fn-ocl-config-historyp` (the live configuration is what `fn-cpr-replay` of
+  the store's own journals recovers). Three instants:
+  - Before the write, the store and both journals are unchanged, and they
+    replay `:ok` to the live configuration, which staging did not move.
+  - After the write and before publication, a replay of the configuration
+    journal with the record appended either fails (the host answers
+    `:fault`) or recovers exactly the model's `(:complete)` configuration:
+    the whole record applied, at its generation.
+  - On a `:durable` publication, the installed store's journals are exactly
+    those. Their replay is `:ok` and recovers the published configuration,
+    nothing is staged, and the hypothesis holds of the published owner. The
+    statement therefore chains across later reconfigurations.
+
+  The model theorem's hypothesis that nothing is staged is not needed.
+  `fn-ocfg-crash-at-any-instant-recovers-the-live-generation` and
+  `fn-ocfg-config-replay-of-one-more-record` stay model-level lemmas over
+  `fn-cnode-config-replay`; the equation above carries an `:ok` of the
+  called replay to them, not the reverse.
