@@ -124,7 +124,8 @@
                 (fn-sn-update fn-sn-make-v6
                  fn-sn-statep fn-sf-statep fn-store-event-p
                  fn-cei-correspondencep fn-cei-build
-                 fn-cei-build-aux)))))
+                 fn-cei-build-aux
+                 fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
 (defthm fn-ceis-prepare-topic-preserves-related
   (implies (and (fn-sn-statep s) (fn-ceis-relatedp s)

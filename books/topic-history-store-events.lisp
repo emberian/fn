@@ -213,3 +213,23 @@
            (fn-cbor-at-mostp (fn-th-topic-event-encode event)
                              *fn-th-topic-max-octets*))
   :hints (("Goal" :in-theory (enable fn-th-topic-event-encode))))
+
+; Export withdrawal, as books/consumer-store-events does for `fn-cpe-eventp'.
+; `fn-store-event-p' and the replay/Store dispatchers name this recognizer
+; beside the other kind recognizers.  Left enabled, every proof that only
+; dispatches on the event kind unfolds the topic anchor/admission shape (and
+; the source, authorship-reference and parent checks under it) into its case
+; split: measured 2026-09-24 on persvati, the unchanged
+; `fn-replay-apply-record-non-nil-is-node-state' (books/replay) took 51.5 s
+; and 27.2 million steps with this definition among its splitters, where it
+; had taken 0.32 s before topic events joined `fn-store-event-p'.  The shape
+; fact below is what a dispatching proof needs; a proof about topic content
+; enables the recognizer by name.
+(defthm fn-th-topic-event-shape-by-definition
+  (implies (fn-th-topic-eventp event)
+           (and (true-listp event)
+                (natp (fn-th-at 1 event))
+                (natp (fn-th-at 2 event))
+                (natp (fn-th-at 3 event))))
+  :rule-classes :forward-chaining)
+(in-theory (disable (:d fn-th-topic-eventp)))
