@@ -7,9 +7,11 @@
 
 (defun fn-bpnp-dispatched-held (h peer)
   (declare (xargs :guard t))
-  (update-nth 12 '(:forward-pending)
-              (update-nth 11 peer
-                          (update-nth 10 '(:dispatched :forward) h))))
+  (if (true-listp h)
+      (update-nth 12 '(:forward-pending)
+                  (update-nth 11 peer
+                              (update-nth 10 '(:dispatched :forward) h)))
+    h))
 
 (defun fn-bpnp-dispatch-matches-heldp (record h)
   (declare (xargs :guard t))

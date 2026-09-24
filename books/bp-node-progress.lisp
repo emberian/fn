@@ -249,6 +249,7 @@
   (let ((wait (fn-bpnp-wait-for (fn-bpnp-wait-key h) waits)))
     (and (equal (fn-bpn-nth 0 wait) :bpnp-wait)
          (equal (fn-bpn-nth 2 wait) :credit)
+         (rationalp free)
          (integerp (fn-bpn-nth 3 wait))
          (<= free (fn-bpn-nth 3 wait)))))
 
