@@ -1174,6 +1174,42 @@ the session ended without one.
 `(:resume peer session obs)` runs `fn-bpn-start-one` once. It is kept (§12,
 D-11) as a bounded action the loop issues, never a recursive retry (§9.1).
 
+### 4.3.1 Retry after an uncertain attempt (adopted 2026-09-24 by the coordinator, pending ember)
+
+The [decision candidate](../planning/decisions.md) of 2026-09-24. A held row
+whose attempt slot `(:forwarding epoch op peer session retries)` carries an
+`epoch` earlier than the current process epoch names a durable kind 8 that no
+kind 9 settled before its process died: it is **uncertain**, not lost and
+not delivered. The implemented layer (`fn-bpnp-step`) replays the kind 8 and
+keeps the slot instead of clearing it at restart, so that the retry count
+survives restarts:
+
+- `fn-bpnp-forward-candidatep` admits the row when its slot is uncertain,
+  names the session's peer and has `retries` below
+  `*fn-bpnp-max-forward-retries*` (3). The same arrival-order scan offers it;
+  a retry takes no precedence and has no separate path.
+- The offer is an ordinary kind 8 for the same arrival and primary identity,
+  with the forwarding image of the unchanged held bundle: same source,
+  creation timestamp and sequence. Nothing is re-authored and no sequence is
+  reserved. Applying it (live or at replay) replaces the uncertain slot and
+  sets `retries` to one more than before; the reserved result debt carries
+  over (the kind-8 delta is 0).
+- Duplicate control is the receiver's bundle-id admission
+  (`fn-bpnf-receive-decision`): a held, delivered or tombstoned id is
+  `:duplicate`. fn answers a duplicate with XFER_ACK, so a re-offer of a
+  bundle the peer already has settles as kind 9 `:sent`, terminal. The
+  default's "refused, settled with the refusal" clause would need XFER_REFUSE
+  reason 1 and a reason-carrying `fn-bpnp-tcpcl-outcome`; both are open.
+  Reassembled fragments are the exception: their rows are replaced by the
+  whole bundle, so a re-offered fragment is `:fresh` again at the receiver.
+- At the bound the row is **stranded**: never offered, never dropped, its
+  attempt and debt retained; a session to its peer that offers nothing
+  answers `(:forward-stranded arrival peer retries)`.
+
+A slot whose epoch is not earlier than the current epoch after recovery would
+not be classified; ordered replay makes every replayed attempt epoch earlier
+than the new epoch, and that replay fact is not yet a theorem.
+
 ### 4.4 Authoring: `fn-bpn-transmit-step`, `fn-bpn-report-step`
 
 `fn-bpn-transmit-step st submission destination sequence adu obs`:
@@ -3205,7 +3241,7 @@ The second review's traces (their labels; not requirement IDs):
 | N05 | repeated failed forwarding results near the reserve: every admitted cleanup keeps its credit | A1 (theorem, teeth), E (measured) |
 | N06 | publish a canonical file, deliver the uncertainty callback, then kill and recover: the visible record is admitted by the cut model with no fabricated confirmation | A2 |
 | N07 | durable attempt, restart with a different boot-domain monotonic origin: the domain gate fences before comparing retained Bundle Age anchors; autonomous cross-boot reanchoring remains open | A2 |
-| N08 | unanchored entry with an attempt in flight, restart: attempt cleared | A1 |
+| N08 | death after a durable kind 8 (attempt in flight), restart: the attempt is kept as uncertain; the next session to its next hop re-offers the same held bundle (retry 1); at the retry bound the row is stranded and reported, never dropped (§4.3.1) | A1 |
 | N09 | fragment an already-fragmented parent: offsets compose; the whole-parent theorem does not apply | C1, C2 |
 | N10 | nonzero-offset fragment arrives before the offset-zero one: primary and blocks come from the offset-zero fragment | C2 |
 | N11 | decodable local administrative bundle that conflicts with a held identity: refusal and kind 14, within T5's widened class | A1 |

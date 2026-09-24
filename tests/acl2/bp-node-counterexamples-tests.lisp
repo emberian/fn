@@ -305,22 +305,41 @@
  (assert-event
   (equal (fn-bpn-nth 2 (car (fn-bpnf-answer-effects *bpcx-n06-uncertain*))) :stored)))
 
-;; N08 (unanchored attempt cleared at restart): NOT HELD TODAY.  A durable
-;; kind 8 replayed at recovery keeps its :forwarding slot, and neither a new
-;; session nor a progress tick re-offers the row: the kind-8 liveness gap of
-;; planning/evidence/bp-forwarding-2026-09-24.md.  The spec's outcome is the
-;; must-fail; the assertion records today's stranded behaviour.  When the
-;; recovery settlement (ember's retry decision) lands, both flip.
+;; N08 (death after durable kind 8, restart), under the retry policy adopted
+;; by the coordinator on 2026-09-24 pending ember (spec 4.3.1).  Recovery
+;; keeps the durable attempt; the attempt's epoch precedes the recovered
+;; epoch, so the row is a forward candidate again, and the next session to
+;; its next hop re-offers it: a fresh kind 8 naming the same arrival and the
+;; same primary identity, the same forwarding image, retry count 1.  The
+;; progress tick still offers nothing (forwarding is session-driven).  The
+;; stranded-after-bound case is in bp-node-forward-retry-tests.
+(defconst *bpcx-n08-offer* (car (fn-bpnf-answer-effects *bpcx-n08-reopen*)))
+(defconst *bpcx-n08-resent* (bpcx-durable *bpcx-n08-reopen*))
 (assert-event
  (and (fn-bpnp-host-eventp *bpcx-n08-recover-event*)
       (equal (fn-bpnf-answer-effects *bpcx-n08-recovered*) '((:restart-ready 1)))
       (equal (fn-bpn-nth 0 (fn-bpn-nth 13 (car (fn-bpnf-held-list *bpcx-n08-r*))))
              :forwarding)
-      (null (fn-bpnf-answer-effects *bpcx-n08-reopen*))
+      (equal (car *bpcx-n08-offer*) :persist-attempt)
+      (equal (fn-bpn-nth 3 (fn-bpn-nth 3 *bpcx-n08-offer*))
+             (fn-bpn-nth 3 (fn-bpn-nth 3 *bpcx-attempt-effect*)))
+      (equal (fn-bpn-nth 4 (fn-bpn-nth 3 *bpcx-n08-offer*))
+             (fn-bpn-nth 4 (fn-bpn-nth 3 *bpcx-attempt-effect*)))
+      (equal (car (car (fn-bpnf-answer-effects *bpcx-n08-resent*))) :cl-send)
+      (equal (fn-bpn-nth 6 (car (fn-bpnf-answer-effects *bpcx-n08-resent*)))
+             (fn-bpn-nth 6 (car (fn-bpnf-answer-effects *bpcx-s3-answer*))))
+      (equal (fn-bpnp-attempt-retries
+              (fn-bpn-nth 13 (car (fn-bpnf-held-list
+                                   (fn-bpnf-answer-state *bpcx-n08-resent*)))))
+             1)
       (null (fn-bpnf-answer-effects *bpcx-n08-tick*))))
+;; Today's selector would strand it: the pre-policy candidate test (no
+;; attempt slot at all) rejects the recovered row.
 (must-fail
  (assert-event
   (null (fn-bpn-nth 13 (car (fn-bpnf-held-list *bpcx-n08-r*))))))
+(must-fail
+ (assert-event (null (fn-bpnf-answer-effects *bpcx-n08-reopen*))))
 ;; Recovery clears both volatile fields.  Teeth of
 ;; fn-bpnp-recovery-success-clears-sessions-and-pending-image
 ;; (bp-node-progress-premises).  Witness: *bpcx-s3* carries the open session

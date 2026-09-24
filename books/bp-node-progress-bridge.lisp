@@ -248,10 +248,25 @@
   (fn-bpnp-dispatch-persist-step st epoch op result)
   (fn-bpnp-dispatch-persist-step)))
 
+;; The stranded report of the kind-8 retry policy is neither a release nor
+;; a receipt preparation.
+(local
+ (defthm bpnpb-stranded-effects-confined
+   (fn-bpnpb-effects-confinedp (fn-bpnp-stranded-effects held peer epoch))
+   :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnp-stranded-effects
+                                fn-bpnpb-effects-confinedp
+                                fn-bpn-effect-kind-memberp
+                                car-cons cdr-cons
+                                (:executable-counterpart equal)
+                                (:executable-counterpart not)
+                                (:executable-counterpart fn-bpn-effect-kind-memberp))
+                              (theory 'minimal-theory))))))
+
 (local
  (fn-bpnpb-defquiet bpnpb-start-one
   (fn-bpnp-start-one st peer session mru observation)
-  (fn-bpnp-start-one)))
+  (fn-bpnp-start-one bpnpb-stranded-effects-confined)))
 
 (local
  (fn-bpnpb-defquiet bpnpb-attempt-persist-step

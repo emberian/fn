@@ -989,3 +989,33 @@ Mini consumption across two Stores as a stretch; proof cost down (books over
 planning consolidated. [Now](now.md) carries the goal and the lanes. Role
 names are neutral from here: a lane is named by its worktree and its model
 is written in its brief.
+
+### 2026-09-24: retry after a death following a durable kind 8 (candidate; default adopted by the coordinator 2026-09-24, pending ember)
+
+A forwarding attempt with a durable kind-8 record and no kind-9 result when
+its process died is **uncertain**: the peer may or may not hold the bundle.
+The default, parallel to NNTP's K5 ([peering](../specs/peering.md)) and to
+M4's recorded "explicit retry after uncertain BPA restart":
+
+- after recovery the row is re-eligible for forwarding with its **original**
+  held bundle (same source, creation timestamp and sequence; nothing is
+  re-authored and no sequence is allocated), offered by the ordinary
+  arrival-order selection on the next negotiated session to its next hop;
+- duplicate control is the receiver's: a bundle whose id it already holds
+  (held, delivered or tombstoned) is absorbed at admission by bundle id;
+- each re-offer counts; after `*fn-bpnp-max-forward-retries*` (3) re-offers
+  without a result the row is a **stranded obligation**: it stays held with
+  its attempt and its reserved result debt, is never re-offered or dropped,
+  and a session to its next hop that offers nothing reports
+  `(:forward-stranded arrival peer retries)`.
+
+One clause of the default does not match the machine: the default says a
+held or delivered duplicate is *refused* and the refused re-offer settles as
+kind 9 with the refusal. fn's receiver answers a duplicate with XFER_ACK
+(`fn-bpnf-callback-result`, `:duplicate` gives `(:accepted nil)`), so the
+re-offer settles as kind 9 `:sent`, which is terminal like `(:refused 1)`.
+Exactly one copy is held either way; sending XFER_REFUSE reason 1
+("Completed", RFC 9174 §5.2.4 Table 6) for a duplicate, and carrying the
+reason code to the sender (`fn-bpnp-tcpcl-outcome` maps every refusal to
+`:failed`), is left for ember. Machine: `books/bp-forward-attempt.lisp`,
+`books/bp-node-progress.lisp`; spec: [bp-node-machine §4.3.1](../specs/bp-node-machine.md).

@@ -332,6 +332,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-counterexamples-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
+	books/bp-node-forward-retry \
+	tests/acl2/bp-node-forward-retry-tests \
 	books/bp-fnbs-dispatch-codec \
 	books/bp-fnbs-dispatch-invariants \
 	books/bp-node-dispatch \
