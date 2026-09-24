@@ -23,6 +23,11 @@ connect those projections to the earlier A3 selectors under the admitted
 held-row invariant. `books/bp-node-progress-guards.lisp` verifies the exact
 host-called outer step's guard using the already maintained base-state
 premise; there is no whole-state recognizer in the executable body.
+The selector still performs quadratic retained-set work in the worst case:
+wait pruning scans held rows per wait, and eligibility scans waits per held
+row. The native owner configures at most 64 held rows; the 64-route snapshot
+limit is a separate bound and does not bound this work. A linear indexed
+selector and its correspondence proof remain a later cost obligation.
 
 The selected persvati run `run-20260924T043223Z-9fa3`,
 [manifest](manifests/certify-20260924T043228Z-116619.json), passed
