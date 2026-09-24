@@ -16,7 +16,7 @@ lane table.
    four jobs (manifests `certify-20260924T094824Z-1155517`,
    `certify-20260924T100056Z-1167472`); production and developer image pair
    built; BP N03 PASS (log `81a7d9e2…`), interrupted fragment PASS
-   (`ba9215f8…`), consumer E2 PASS (`081ab2d9…`). The three roots red at
+   (`ba9215f8…`), consumer E2 skipped on that run (a pass was recorded in error; the later native-subsets run is 2 of 4). The three roots red at
    `8a1b31f9` are green. Gate `/tank/fn/gates/qual-1a9dd747-20260924`.
 2. **The two-Store join** ([record](evidence/two-store-join-1a9dd747-2026-09-24.md)):
    signed peering into Mini consumption, report → ACK → signed reply →
