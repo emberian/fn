@@ -231,7 +231,7 @@
                                     fn-olog-symbol-text))))))
 
 ; The sender's lines.  A send-it prompt has no line; every outcome has one.
-; The feed's Message-ID is the octets fn-feed-namep admits (the 1a9dd747
+; The feed's Message-ID is the octets fn-feed-namep admits (the first
 ; developer image of this line printed `message-id=` empty when it was
 ; read as a string).
 (assert-event (fn-feed-namep *olt-transit-msgid*))
