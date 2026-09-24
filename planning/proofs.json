@@ -1052,7 +1052,7 @@
     {
       "id": "PRF-026",
       "title": "The reader's verdict is the recorded verdict, three-valued (S6-1)",
-      "statement": "A durable kind-4 (hybrid acceptance) completion through fn-sn-finish records that event's verdict under its Message-ID; a reader opened after the owner's (:complete) pins that verdict list; and one fn-own-read of HDR :fn-verified <msgid> on an ungated reader connection, framed at its last octet, answers exactly the pinned verdict for the retrieved article, with no keyring consulted. fn-stx-reader-verdict-is-the-recorded-verdict (books/stx-reader) is the definition restated and is not a proof event; it is no longer cited.",
+      "statement": "A durable kind-4 (hybrid acceptance) completion through fn-sn-finish records that event's verdict under its Message-ID; a reader opened after the owner's (:complete) pins that verdict list; and one fn-own-read of HDR :fn-verified <msgid> on an ungated reader connection, framed at its last octet, answers exactly the pinned verdict for the retrieved article, with no keyring consulted. A served NNTP POST (and a local control post or BP application submission) carrying an FN-Authorship carrier takes the transit classification: when ACL2 builds its kind-4 event under the node's current enrollment and that event is the completion record, the owner's (:complete) records its verdict at the POST's Message-ID and a later reader reports it; a present carrier the plan refuses renders its reason as its own 441 line and is never the unsigned arm. fn-stx-reader-verdict-is-the-recorded-verdict (books/stx-reader) is the definition restated and is not a proof event; it is no longer cited.",
       "milestone": "M4",
       "requirements": [
         "SUB-006"
@@ -1068,7 +1068,12 @@
         "fn-sn-finish-of-a-kind-4-acceptance-records-its-verdict",
         "fn-sn-finish-of-a-kind-4-acceptance-keeps-other-verdicts",
         "fn-own-reader-opened-after-completion-pins-the-finished-verdicts",
-        "fn-own-read-hdr-fn-verified-is-the-pinned-verdict"
+        "fn-own-read-hdr-fn-verified-is-the-pinned-verdict",
+        "fn-osp-authorized-event-binds-the-post",
+        "fn-osp-signed-post-finish-records-its-verdict",
+        "fn-osp-reader-after-signed-post-reports-its-verdict",
+        "fn-osp-served-refusal-renders-its-reason",
+        "fn-osp-plan-refusal-is-a-served-reason"
       ]
     },
     {

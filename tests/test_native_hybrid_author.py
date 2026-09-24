@@ -376,7 +376,8 @@ class NativeHybridAuthorTest(unittest.TestCase):
                 b"Newsgroups: fn.test\r\nSubject: signed over NNTP\r\n"
                 b"Message-ID: <" + stem.encode() + b"@example.invalid>\r\n"
                 b"\r\n.dot-prefixed signed body\r\nexact post source\r\n")
-            carried = self.root / (stem + "-carried.eml")
+            carried = self.root / (stem + ("-tampered" if tamper else "")
+                                   + "-carried.eml")
             signed = self.invoke(
                 "hybrid-sign-carrier", str(principal or self.principal),
                 str(self.ed_public), str(self.ed_secret), str(self.ml_public),
