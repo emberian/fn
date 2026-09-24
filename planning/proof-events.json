@@ -825,6 +825,11 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-pgc-peer-arm-is-peer-step-pinned",
+          "note": "D24: the peer arm is guard-verified with guard fn-pgc-peer-sessionp, the peer session recognizer without its node conjunct; its offer decision calls fn-pgc-retain-admissiblep, fn-retain-admissiblep's executable body with guard t, and its transfer arm is fn-peer-step's without that function's own session test. It equals fn-peer-step-pinned under fn-peer-sessionp, a named peer and the trie correspondence. The host's call (fn-owner-chunk -> fn-scar-ocfg-read-tls-prefix -> ... -> fn-scar-peer-step-pinned) supplies fn-peer-sessionp from the carried premise fn-node-statep of the store's node (fn-ocl-relation / fn-own-relation, established at open and preserved by every owner step) by one pointer comparison of the session's node with it, so no peer event evaluates fn-node-statep. Teeth: tests/acl2/peer-guard-carried-tests.lisp, including a structural check that no guard on the chain names fn-node-statep."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-ccar-own-finish-is-own-finish",
           "note": "The owner commit the host calls (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) equals fn-own-finish, word and owner, for every owner and configuration, and has fn-own-finish's guard, fn-sn-statep of the store; its guard-verified raw code finds the completion record at its sequence position instead of searching the whole history through fn-record-p ten times per commit. Teeth: tests/acl2/owner-commit-carried-tests.lisp."
         },
@@ -2563,8 +2568,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-pix-peer-step-pinned-is-peer-step-pinned",
-          "note": "The peer step the carried served fold runs (fn-scar-peer-step-pinned for a named peer) equals fn-peer-step-pinned under the trie correspondence alone, so every peer-inbound theorem over the reference step (K3 435/438 on a held Message-ID) holds of the host's call. Teeth: a held offer 435/438 and an absent offer 335/238 on a reachable node; the wrong trie answers 335 where the reference answers 435 (must-fail)."
+          "name": "fn-pgc-peer-arm-is-peer-step-pinned",
+          "note": "The peer arm the carried served fold runs (fn-scar-peer-step-pinned passes a named peer session to fn-pgc-peer-arm, books/peer-guard-carried.lisp) equals fn-peer-step-pinned under fn-peer-sessionp, a named peer and the trie correspondence, so every peer-inbound theorem over the reference step (K3 435/438 on a held Message-ID) holds of the host's call. Host line: host/owner-host.lisp fn-owner-chunk calls fn-scar-ocfg-read-tls-prefix. Teeth: tests/acl2/peer-guard-carried-tests.lisp (held 435/438, absent 335/238, transfer arm; must-fail per hypothesis: a session over a non-node-state, a reader session, the wrong trie)."
         },
         {
           "kind": "theorem",

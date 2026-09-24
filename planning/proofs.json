@@ -694,6 +694,7 @@
         "fn-opc-prepare-equals-owner-event-under-relation",
         "fn-ocfg-step-observe-is-fn-ocfg-observe",
         "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
+        "fn-pgc-peer-arm-is-peer-step-pinned",
         "fn-ccar-own-finish-is-own-finish",
         "fn-ccar-seek-is-find-record",
         "fn-pcar-sbud-prepare-is-sbud-prepare",
@@ -741,6 +742,9 @@
         "tests/acl2/owner-served-carried-tests.lisp",
         "planning/evidence/manifests/certify-20260924T163534Z-2387827.json",
         "planning/evidence/served-path-cost-2026-09-24.md",
+        "books/peer-guard-carried.lisp",
+        "tests/acl2/peer-guard-carried-tests.lisp",
+        "planning/evidence/d24-peer-guard-2026-09-24.md",
         "books/owner-commit-carried.lisp",
         "tests/acl2/owner-commit-carried-tests.lisp",
         "planning/evidence/manifests/certify-20260924T180005Z-3125113.json",
@@ -2537,7 +2541,7 @@
     {
       "id": "PRF-067",
       "title": "Pinned group buckets and OVER ranges refine the committed archive",
-      "statement": "For a projection-consistent accepted archive, fn-gidx-listgroup-command-of-build equates indexed LISTGROUP with the archive command. For an accepted archive, maintained bucket and trie correspondence, and an OVER or XOVER keyword, fn-nntp-carried-over-range-equals-archive-command equates the actual pinned archive dispatcher with the original response for every one-argument token; invalid ranges and untagged indexes fall through. fn-gidx-number-article-of-build proves that a bucket entry resolves through the trie to the same first article as the archive scan, including the identifier and number availability gates. For ARTICLE, HEAD, BODY and STAT and every argument list, fn-nntp-archive-command-pinned-msgid-arms-are-the-scan equates the same pinned dispatcher with the scanning archive dispatcher under the trie correspondence alone. fn-own-read reaches that dispatcher through served dispatch; fn-own-relation and fn-served-connp maintain the pins across view refresh, open, feed and read. On a peer connection, fn-pix-history-hasp-is-peer-history-hasp equates the IHAVE/CHECK history test the host's carried read runs (one fn-midx-lookup in the owner view's trie when the session node holds the list the trie is keyed to) with the fn-peer-history-hasp scan for every Message-ID, under fn-node-statep and the trie correspondence; fn-oix-ocfg-step-keeps-view-indexed carries that correspondence over every configured-owner event. The claim excludes arbitrary tagged indexes, unindexed HDR/GROUP/NEXT/LAST/NEWNEWS, the per-event fn-peer-sessionp evaluation on a peer connection (O(N^2), unchanged), disk indexing, and elapsed-time performance.",
+      "statement": "For a projection-consistent accepted archive, fn-gidx-listgroup-command-of-build equates indexed LISTGROUP with the archive command. For an accepted archive, maintained bucket and trie correspondence, and an OVER or XOVER keyword, fn-nntp-carried-over-range-equals-archive-command equates the actual pinned archive dispatcher with the original response for every one-argument token; invalid ranges and untagged indexes fall through. fn-gidx-number-article-of-build proves that a bucket entry resolves through the trie to the same first article as the archive scan, including the identifier and number availability gates. For ARTICLE, HEAD, BODY and STAT and every argument list, fn-nntp-archive-command-pinned-msgid-arms-are-the-scan equates the same pinned dispatcher with the scanning archive dispatcher under the trie correspondence alone. fn-own-read reaches that dispatcher through served dispatch; fn-own-relation and fn-served-connp maintain the pins across view refresh, open, feed and read. On a peer connection, fn-pix-history-hasp-is-peer-history-hasp equates the IHAVE/CHECK history test the host's carried read runs (one fn-midx-lookup in the owner view's trie when the session node holds the list the trie is keyed to) with the fn-peer-history-hasp scan for every Message-ID, under fn-node-statep and the trie correspondence; fn-oix-ocfg-step-keeps-view-indexed carries that correspondence over every configured-owner event. fn-pgc-peer-arm-is-peer-step-pinned equates the peer arm the carried read runs, which evaluates no fn-node-statep, with fn-peer-step-pinned under fn-peer-sessionp, a named peer and the trie correspondence. The claim excludes arbitrary tagged indexes, unindexed HDR/GROUP/NEXT/LAST/NEWNEWS, disk indexing, and elapsed-time performance.",
       "milestone": "M3",
       "requirements": [
         "STO-001",
@@ -2560,6 +2564,9 @@
         "books/peer-offer-indexed.lisp",
         "books/owner-offer-indexed.lisp",
         "tests/acl2/peer-offer-indexed-tests.lisp",
+        "books/peer-guard-carried.lisp",
+        "tests/acl2/peer-guard-carried-tests.lisp",
+        "planning/evidence/d24-peer-guard-2026-09-24.md",
         "tests/acl2/group-bucket-index-tests.lisp",
         "tests/acl2/nntp-range-indexed-tests.lisp",
         "tests/test_native_reader_index.py",
@@ -2584,7 +2591,7 @@
         "fn-midx-lookup-of-build-is-find-article-for-nonempty",
         "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan",
         "fn-pix-history-hasp-is-peer-history-hasp",
-        "fn-pix-peer-step-pinned-is-peer-step-pinned",
+        "fn-pgc-peer-arm-is-peer-step-pinned",
         "fn-oix-ocfg-step-keeps-view-indexed"
       ],
       "progress_note": "Scoped ACL2 certification and called-owner sparse/historical LISTGROUP witnesses are recorded in the group-bucket evidence. Indexed OVER/XOVER resolve selected-group bucket entries through the pinned trie; the called pinned dispatcher equality has direct reachable and malformed-state premise teeth, with redundant range, tag, bound and session assumptions removed. HDR remains on the archive fold. The native OVER/XOVER socket driver is prepared but has not run on a source-matched image; combined-image qualification and full dependent closure at integrated source remain open."
