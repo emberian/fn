@@ -575,6 +575,11 @@
           (fnn-indeterminate "bp-service: forwarding publication uncertain"))))
       (:forward-stale
        (fnn-out "BP forwarding callback stale"))
+      (:forward-stranded
+       ;; ACL2 decided the row reached the retry bound (spec 4.3.1); the
+       ;; host only reports it.  The row, its attempt and its debt stay held.
+       (fnn-out "BP forwarding stranded arrival=~d retries=~d"
+                (second effect) (fourth effect)))
       (:progress-wait
        (fnn-out "BP node progress waiting reason=~(~a~)" (third effect)))
       (:bundle-queue-accepted
