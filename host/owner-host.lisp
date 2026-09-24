@@ -167,15 +167,15 @@
     state))
 
 ; The process root.  A decoded observed image opens through
-; fn-cpo-open-observed exactly as host/store-node-host.lisp does; the owner
-; is started over that state (fn-own-open-observed-start-relation).  The
-; dispatch is on the typed result's kind, never on fn-sn-open-okp, which
-; would run the whole-state recognizer once more per recovery: a result of
-; kind :ok is fn-sn-open-okp by fn-own-open-kind-ok-is-okp
-; (books/owner-invariants.lisp, under fn-sn-open-observed-result-is-typed).
-; The physical configuration and Store records are interleaved by ACL2's
-; transaction ordering before the owner opens. The final configuration and
-; the carried Store history come from the same observed journals.
+; fn-cpo-open-observed exactly as host/store-node-host.lisp does.  The owner
+; installed below satisfies fn-ocl-relation and fn-scar-view-indexedp, the
+; premises of the carried served keystones, whenever max-conns is natural
+; and the open's kind is :ok (fn-orec-recover-installs-ocl-relation,
+; books/owner-recover-ocl.lisp).  The dispatch is on the typed result's kind,
+; never on fn-sn-open-okp, which would run the whole-state recognizer once
+; more per recovery: for fn-cpo-open-observed, kind :ok is fn-sn-open-okp
+; (fn-orec-open-kind-ok-is-okp).  The final configuration and the carried
+; Store history come from the same observed journals.
 (defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
   (declare (xargs :stobjs state :mode :program))
   (let ((records (fn-store-decode-records octet-records))
