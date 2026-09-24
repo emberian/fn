@@ -1,0 +1,8 @@
+{"image": "/tank/fn/scratch/served-path-cost/after-tree/build/fn-host-developer", "launcher_sha256": "eb65fa4fe4500f4e684a86c64f5bf853a564094d7fc057fa67f98d8826cfa1c7", "core_sha256": "eede6fcc672151f332ff44330b827d18dc360ebd4abb15dfb1c1390289ad583b", "articles": 16, "samples": 16, "port": 40881, "load_seconds": 1.7553183417767286, "rss_after_load_kib": 401864, "rss_after_stat_kib": 404744, "peer_mode_stream": "203 streaming permitted", "rss_after_peer_kib": 452744}
+post_first_quarter median 107.015 ms  p95 110.843 ms  max 110.843 ms
+post_last_quarter median 113.089 ms  p95 128.174 ms  max 128.174 ms
+stat_present median 0.180 ms  p95 0.237 ms  max 0.239 ms
+stat_absent median 0.078 ms  p95 0.079 ms  max 0.080 ms
+ihave_duplicate median 0.265 ms  p95 0.354 ms  max 0.368 ms
+check_duplicate median 0.289 ms  p95 0.295 ms  max 0.399 ms
+check_absent median 0.301 ms  p95 0.421 ms  max 0.687 ms

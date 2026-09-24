@@ -116,6 +116,11 @@
         {
           "kind": "theorem",
           "name": "fn-bprv-system-run-preserves-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-keeps-store",
+          "note": "The carried served read leaves the owner's store unchanged, with no hypothesis, so the store node's fn-node-statep, the carried read's premise, survives every read; across commits fn-ocl-relation's preservation theorems (books/config-owner-live.lisp) carry it. Teeth: tests/acl2/owner-served-carried-tests.lisp."
         }
       ]
     },
@@ -780,6 +785,11 @@
           "kind": "theorem",
           "name": "fn-ocfg-step-observe-is-fn-ocfg-observe",
           "note": "The per-read clock observation the host makes (host/owner-host.lisp fn-owner-observe) is fn-ocfg-step's (:observe obs) arm as a guard-verified transition, so executing it evaluates no whole-store guard. Teeth: tests/acl2/owner-config-observe-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
+          "note": "The per-read owner transition the host calls (host/owner-host.lisp fn-owner-chunk calls fn-scar-ocfg-read-tls-prefix) equals fn-ocfg-read-tls-prefix under fn-ocl-relation; it takes the store node's fn-node-statep from that relation instead of evaluating it (O(N^2) in the archive) four times per read. Teeth: tests/acl2/owner-served-carried-tests.lisp."
         }
       ]
     },
@@ -1255,6 +1265,11 @@
         {
           "kind": "theorem",
           "name": "fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-auth-step-pinned-is-auth-step-pinned",
+          "note": "The AUTHINFO/STARTTLS step the carried served fold runs (fn-scar-auth-step-pinned, reached from fn-owner-chunk through fn-scar-dispatch) equals fn-auth-step-pinned whenever the node it is given satisfies fn-node-statep, so every PRF-031 theorem over fn-auth-step-pinned holds of the host's call on owner-reachable states. Teeth: tests/acl2/owner-served-carried-tests.lisp."
         }
       ]
     },
