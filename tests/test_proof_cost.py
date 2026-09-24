@@ -210,5 +210,70 @@ class ProofCostTests(unittest.TestCase):
             self.assertIn("WARNING unmeasured: 2", "\n".join(lines))
 
 
+    def measurement(self, book, seconds, host="hbox", tool="tool-A", run="certify-x"):
+        return {(book, host, tool): proof_cost.Measurement(
+            book, seconds, "passed", run, host, tool)}
+
+    def test_ratchet_fails_new_and_regressed_books_and_names_improved(self):
+        selected = {}
+        selected.update(self.measurement("books/new", 12.0))
+        selected.update(self.measurement("books/held", 30.0))
+        selected.update(self.measurement("books/held", 34.0, host="persvati"))
+        selected.update(self.measurement("books/worse", 40.0))
+        selected.update(self.measurement("books/fast", 4.0))
+        baseline = {"books/held": {"seconds": 31.0}, "books/worse": {"seconds": 31.0},
+                    "books/fast": {"seconds": 15.0}, "books/unmeasured": {"seconds": 20.0},
+                    "books/gone": {"seconds": 20.0}}
+        books = {"books/new", "books/held", "books/worse", "books/fast",
+                 "books/unmeasured"}
+        verdict = proof_cost.ratchet(selected, books, baseline, 10)
+        failing = "\n".join(verdict.failing)
+        self.assertEqual(len(verdict.failing), 2)
+        self.assertIn("FAIL books/new: worst=12.000s > 10s", failing)
+        self.assertIn("not in baseline", failing)
+        # 40 > 31 * 1.25 = 38.75; the persvati 34s is within 25% of 31.
+        self.assertIn("FAIL books/worse: worst=40.000s > baseline 31.000s +25% = 38.750s",
+                      failing)
+        self.assertNotIn("books/held", failing)
+        self.assertTrue(any("KEPT books/held: worst=34.000s" in line
+                            for line in verdict.kept))
+        improved = "\n".join(verdict.improved)
+        self.assertIn("IMPROVED books/fast", improved)
+        self.assertIn("improved; remove from baseline", improved)
+        self.assertIn("IMPROVED books/gone", improved)
+        # Only-shrinking proposal: improved and gone dropped, nothing added,
+        # held not raised, unmeasured kept.
+        self.assertEqual(set(verdict.proposed),
+                         {"books/held", "books/worse", "books/unmeasured"})
+        self.assertEqual(verdict.proposed["books/held"]["seconds"], 31.0)
+
+    def test_ratchet_lowers_a_faster_baseline_number(self):
+        selected = self.measurement("books/held", 20.0, run="certify-new")
+        verdict = proof_cost.ratchet(selected, {"books/held"},
+                                     {"books/held": {"seconds": 31.0}}, 10)
+        self.assertEqual(verdict.failing, [])
+        self.assertEqual(verdict.proposed["books/held"],
+                         {"seconds": 20.0, "run": "certify-new", "host": "hbox",
+                          "verdict": "passed"})
+
+    def test_write_baseline_refuses_to_add_without_allow_regression(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "baseline.json"
+            selected = self.measurement("books/new", 12.0)
+            computed = (selected, set(), 1)
+            with mock.patch.object(proof_cost, "current_books", return_value={"books/new"}), \
+                    mock.patch.object(proof_cost, "history", return_value=computed), \
+                    mock.patch("sys.stdout"):
+                self.assertEqual(proof_cost.main(["--baseline", str(path)]), 1)
+                self.assertEqual(proof_cost.main(
+                    ["--baseline", str(path), "--write-baseline"]), 1)
+                self.assertFalse(path.exists())
+                self.assertEqual(proof_cost.main(
+                    ["--baseline", str(path), "--write-baseline",
+                     "--allow-regression"]), 0)
+                self.assertEqual(proof_cost.load_baseline(path)["books/new"]["seconds"], 12.0)
+                self.assertEqual(proof_cost.main(["--baseline", str(path)]), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
