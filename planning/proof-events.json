@@ -1073,15 +1073,13 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ocfg-crash-at-any-instant-recovers-the-live-generation",
-          "note": "headline 2; subjects fn-ocfg-step over the live arm's event sequence (host/native/admin.lisp) and fn-cnode-config-replay",
-          "pending_subject": "Subjects are fn-cnode-config-replay and fn-ocfg-step (:complete); no host line calls fn-cnode-config-replay (fn-owner-recover calls fn-cpr-replay, host/owner-host.lisp:173) and publication calls fn-ocl-publish (host/owner-host.lisp:271). fn-ocl-cpr-loop-configuration-is-the-record-fold and fn-ocl-publish-installs-the-whole-staged-record state the configuration half over the called functions; no theorem equates the :ok verdicts of fn-cpr-replay and fn-cnode-config-replay."
+          "name": "fn-ocl-crash-at-any-instant-recovers-the-live-generation",
+          "note": "headline 2 over the called functions; staging and the requester's close through fn-ocfg-step (host/owner-host.lisp:213, fn-owner-step from fn-owner-reconfigure-deltas and fn-owner-close; native arm host/native/admin.lisp:159-166), publication fn-ocl-publish (host/owner-host.lisp:271, fn-owner-reconfigure-complete; native host/native/admin.lisp:184), recovery fn-cpr-replay of (config-records records) at host/owner-host.lisp:173 in fn-owner-recover (native host/native/owner.lisp:467); one hypothesis fn-ocl-config-historyp. Model-level lemmas, not events: fn-ocfg-crash-at-any-instant-recovers-the-live-generation and fn-ocfg-config-replay-of-one-more-record (books/owner-config.lisp, over fn-cnode-config-replay). Helper: fn-ocl-cpr-replay-of-one-more-record."
         },
         {
           "kind": "theorem",
-          "name": "fn-ocfg-config-replay-of-one-more-record",
-          "note": "the replay keystone headline 2 uses; subject fn-cnode-config-replay",
-          "pending_subject": "fn-cnode-config-replay has no host caller; recovery calls fn-cpr-replay (host/owner-host.lisp:173). See fn-ocl-cpr-loop-configuration-is-the-record-fold."
+          "name": "fn-ocl-cpr-replay-ok-is-config-replay-ok",
+          "note": "the equation of the two replays' :ok verdicts, one direction: subject fn-cpr-replay (host/owner-host.lisp:173) implies fn-cnode-config-replay :ok with the same configuration; the converse is false (must-fail and the descending-txid journal in tests/acl2/config-crash-replay-tests)"
         },
         {
           "kind": "theorem",

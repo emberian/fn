@@ -525,6 +525,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-owner-live-tests \
 	books/config-owner-publish \
 	tests/acl2/config-owner-publish-tests \
+	books/config-crash-replay \
+	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
 	books/ideal \
 	books/nntp-index \
