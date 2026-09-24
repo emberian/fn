@@ -336,6 +336,12 @@ class NativeCheckpointTests(unittest.TestCase):
 
         self.native("checkpoint", "pack", source, "select")
         self.native("checkpoint", "pack-reclaim", source)
+        # Replace the lossless pack as well as the physical transaction
+        # prefix.  The clone must still recover the historical author verdict
+        # and exact signed source from the surviving selected generation.
+        self.native("checkpoint", "pack", source, "select")
+        self.assertIn("retired pack-generations=1",
+                      self.native("checkpoint", "pack-retire", source).stdout)
         target = self.base / "authored-clone"
         self.native("checkpoint", "clone", source, target)
         self.assertIn("articles=1",
@@ -631,14 +637,23 @@ class NativeCheckpointTests(unittest.TestCase):
                          before_second)
         self.assertEqual(self.native("store", store, "retention").stdout,
                          before_retention)
+        # With no older generation, the command has no directory barrier or
+        # process-death cut; a selected stop hook must never be reached.
+        no_op_env = dict(self.env)
+        no_op_env["FN_CHECKPOINT_TEST_STOP"] = "pack-retire-directory"
+        self.assertIn("retired pack-generations=0",
+                      self.native("checkpoint", "pack-retire", store,
+                                  env=no_op_env).stdout)
         # A later publication must advance to generation 2, never reuse 0.
         self.assertIn("generation=2",
                       self.native("checkpoint", "pack", store).stdout)
 
     def test_pack_generation_retirement_death_reopens_and_retries(self):
-        for point in ("pack-retire-unlink", "pack-retire-directory"):
-            with self.subTest(point=point):
-                store = self.initialized(point)
+        for point, occurrence in (("pack-retire-unlink", 1),
+                                  ("pack-retire-unlink", 2),
+                                  ("pack-retire-directory", 1)):
+            with self.subTest(point=point, occurrence=occurrence):
+                store = self.initialized(f"{point}-{occurrence}")
                 self.native("checkpoint", "pack", store, "select")
                 self.native("checkpoint", "pack", store, "select")
                 self.native("checkpoint", "pack", store, "select")
@@ -647,7 +662,7 @@ class NativeCheckpointTests(unittest.TestCase):
                 before_source = self.native("store", store, "inspect",
                                             "<checkpoint@example.invalid>").stdout
                 self.stopped_then_killed(("checkpoint", "pack-retire", store),
-                                         point)
+                                         point, occurrence=occurrence)
                 self.assertEqual(selected.read_bytes(), selected_bytes)
                 self.assertIn("transactions=1 articles=1",
                               self.native("store", store, "recover").stdout)

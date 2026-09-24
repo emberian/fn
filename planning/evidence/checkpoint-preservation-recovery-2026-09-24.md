@@ -47,3 +47,29 @@ source-matched saved image.  Certification does not prove host syscall
 behavior or power-loss ordering.  Retirement recovers duplicate-pack space
 only.  Exact retained events and protected article objects are not pruned;
 the 4096-generation namespace and 4096-event/4-MiB pack bound remain finite.
+
+## Native cut audit and bounded capacity follow-up
+
+The native sequence in `fnn-pack-retire-older-generations` matches the model
+as follows: opening/validating selected authority and computing a plan make no
+pack deletion; an empty plan returns without a barrier; each `fnn-unlink`
+attempt maps to one `:unlink :packs` transition (including a possibly applied
+attempt that returned an ambiguous OS error); the matching `pack-retire-unlink`
+hook is after each successful call; `fnn-fsync-dir` maps to `:fsync-dir :packs`
+and `pack-retire-directory` follows its success.  A failed unlink or barrier
+fences mutation and requires reopen.  The model now returns an empty program
+for the no-op plan, matching the actual native early return.  The native test
+will kill after both first and second unlinks, and after the directory barrier;
+its no-op case arms the directory stop hook and requires normal completion.
+
+The new `fn-cprt-retirement-never-increases-namespace-count` and
+`fn-cprt-issued-unretained-name-frees-one-slot` theorems state the bounded
+resource effect: a surviving deletion lowers the number of pack generation
+names, while an interrupted deletion that reappears does not.  This does not
+grant permission to delete retained Store events or article objects, and does
+not make the finite generation number wrap.  The additional source-matched
+scoped manifests are `certify-20260924T055821Z-924910.json` for the changed
+book and its previous test bytes and `certify-20260924T055927Z-936158.json`
+for the final ACL2 test bytes; both passed on the same toolchain.  Native
+execution is part of the combined image qualification handoff, not these
+manifests.

@@ -317,6 +317,8 @@ validates the selected pack and its coverage, and asks
 `fn-cprt-retire-plan` for the strictly older generation names.  It unlinks
 those names only, with a `pack-retire-unlink` process-death cut after each
 unlink and a `pack-retire-directory` cut after the packs-directory barrier.
+An empty plan returns without a barrier or retirement cut.  An ambiguous
+unlink error may already have removed its attempted name and requires reopen.
 The ACL2 crash-survivor model permits any issued unlink to reappear before
 the barrier; the selected generation is never in the plan.  A reopened Store
 can therefore retry retirement after either cut without selecting a different
