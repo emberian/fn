@@ -654,6 +654,30 @@ lock, so with the service running `fn status` reports what the control
 channel answers (liveness, committed version, open connections) and names
 the store-side fields `owner-held`.
 
+## Experimental offline ION/LTP submission
+
+The experimental offline ION/LTP sender uses the native developer image's
+`app-journal` verbs against one stopped owner and its Store/FNWF journal:
+
+```
+fn --fn app-journal workflow-ion-submit STORE FNWF TXID TXGEN WORK_ID ATTEMPT_ID BP_DEST_EID OWN_BP_EID PINNED_HELPER PRIVATE_OBSERVATION_DIR
+fn --fn app-journal workflow-ion-status STORE FNWF WORK_ID ATTEMPT_ID ATTEMPT_GENERATION
+```
+
+`BP_DEST_EID` is the ION route destination; the application peer comes from
+the durable work and is a separate EID. The helper path is a trusted pinned
+ION binary, and the observation directory must be owned by the invoking user
+with mode 0700. The submit command records the attempt and route before its
+first network operation; a successful exit means a real ION bundle ID was
+observed and durably bound, **not** that the peer accepted the application
+request. `workflow-ion-status` reports that binding after restart: exit 0 for
+observed, 3 for a route with uncertain send/observation, and 1 when no route
+was recorded. A route with no ID must never be automatically reposted. A
+returned application receipt follows the separate `workflow-receipt` command
+and its explicit authorization profile; neither an LTP ACK nor a BP delivery
+report releases an obligation. This experimental command awaits certified
+FNWF closure and a source-matched native image before operational use.
+
 ## What "uncertain" means, and what to do
 
 `uncertain` (exit 3) is not a soft failure. It means fn asked the operating

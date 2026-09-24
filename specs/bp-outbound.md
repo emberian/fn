@@ -69,3 +69,33 @@ workflow global installed by `Acl2WorkflowReplay` and is not a certified book.
 
 BP delivery and status reports remain transport evidence only. Application
 success still requires the matching receipt intent and durable outcome.
+
+## Pinned ION/LTP transport binding
+
+The optional native `app-journal workflow-ion-submit` path uses
+`books/bp-ion-workflow.lisp` over the same FNWF journal. ACL2 first authors an
+`:attempt` intent from the current durable work/configuration; its outcome is
+published before one `:submit` effect may be consumed. ACL2 then authors an
+append-only `:ion-route` record for that exact work, attempt and generation.
+It binds the work's **application peer EID** separately from the operator's
+configured **BP destination EID** and local ION source EID. That route record
+is durable before the C helper may call `bp_send`.
+
+The helper freezes the ACL2-authored request ADU to a private, barriered ION
+file source and publishes one exclusive `observed-v1` line containing the real
+RFC 9171 source EID, creation milliseconds and sequence. `fn-bpio-decode`
+checks the bounded line grammar and canonical decimal fields;
+`fn-bpiw-observation-record` checks its three EIDs against the durable current
+attempt and route. Only then may native FNWF publish `:ion-observed`. Replay
+rejects an observation without its prior route, mismatched route/source/peer,
+or a second ID for the same attempt. Its BP work state and effects remain
+unchanged. A missing line, helper timeout or failed FNWF publication after
+`bp_send` is **uncertain** and cannot authorize automatic repost.
+
+The existing native `workflow-receipt` operation accepts a returned kind-1
+application receipt only with its explicit local authorization profile and
+durable receipt intent/outcome. An ION bundle ID, LTP report or BP transport
+status cannot substitute for that authorization and cannot release the archive
+or forwarding obligation. The present CLI is a single-process, offline
+workflow caller under the Store and FNWF locks; it does not assert live owner
+dispatch, authenticated remote receipt policy, or every ION crash cut.

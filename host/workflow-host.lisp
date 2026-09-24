@@ -1,6 +1,7 @@
 ; Program-mode bridge: decoded bounded local records enter the executable model.
 (in-package "ACL2")
 (include-book "../books/bp-workflow-constructors")
+(include-book "../books/bp-ion-workflow")
 ; `fn-sn-node' is books/store-node's; include it rather than depend on a
 ; store session having been opened in this ACL2 first.
 (include-book "../books/store-node")
@@ -9,9 +10,11 @@
  (declare (xargs :stobjs state :mode :program))
  (let* ((sn (f-get-global 'fn-store-sn state))
         (node (and sn (fn-sn-node sn)))
-        (answer (fn-bprl-replay-journal node records)))
+        (answer (fn-bpiw-replay-journal node records)))
   (if (car answer)
       (let ((state (f-put-global 'fn-workflow-state (fn-bp-journal-nth 1 answer) state)))
+       (let ((state (f-put-global 'fn-workflow-ion-state
+                                  (fn-bp-journal-nth 3 answer) state)))
        ; Effects reconstructed from old durable records are audit history, not
        ; permission to repeat external actions after open.
        (let ((state (f-put-global 'fn-workflow-effects nil state)))
@@ -22,7 +25,7 @@
                       (fn-bp-work-ids
                        (fn-bp-state-works (fn-bp-journal-nth 1 answer)))
                       state)))
-         (value :ready))))
+         (value :ready)))))
     (value :fault))))
 
 (defun fn-workflow-state (state)
@@ -32,9 +35,10 @@
 (defun fn-workflow-reset (state)
  (declare (xargs :stobjs state :mode :program))
  (let ((state (f-put-global 'fn-workflow-state nil state)))
+  (let ((state (f-put-global 'fn-workflow-ion-state (fn-bpiw-initial) state)))
   (let ((state (f-put-global 'fn-workflow-effects nil state)))
    (let ((state (f-put-global 'fn-workflow-recovered nil state)))
-    (value :ready)))))
+    (value :ready))))))
 (defun fn-workflow-effects (state)
  (declare (xargs :stobjs state :mode :program))
  (value (f-get-global 'fn-workflow-effects state)))
@@ -91,21 +95,23 @@
 
 (defun fn-workflow-preflight-record (record state)
  (declare (xargs :stobjs state :mode :program))
- (let ((answer (fn-bprl-apply-journal-record
-                (f-get-global 'fn-workflow-state state) record)))
+ (let ((answer (fn-bpiw-apply
+                (f-get-global 'fn-workflow-state state)
+                (f-get-global 'fn-workflow-ion-state state) record)))
   (value (if (car answer) :ready :fault))))
 
 (defun fn-workflow-preflight-history (records state)
  (declare (xargs :stobjs state :mode :program))
  (let* ((sn (f-get-global 'fn-store-sn state))
         (node (and sn (fn-sn-node sn)))
-        (answer (fn-bprl-replay-journal node records)))
+        (answer (fn-bpiw-replay-journal node records)))
   (value (if (car answer) :ready :fault))))
 
 (defun fn-workflow-apply-record (record state)
  (declare (xargs :stobjs state :mode :program))
- (let ((answer (fn-bprl-apply-journal-record
-                (f-get-global 'fn-workflow-state state) record)))
+ (let ((answer (fn-bpiw-apply
+                (f-get-global 'fn-workflow-state state)
+                (f-get-global 'fn-workflow-ion-state state) record)))
   (if (not (car answer)) (value :fault)
    (let ((state (f-put-global 'fn-workflow-state
                               (fn-bp-journal-nth 1 answer) state)))
@@ -113,7 +119,9 @@
     ; effects remain historical and are never returned through this gate.
     (let ((state (f-put-global 'fn-workflow-effects
                                (fn-bp-journal-nth 2 answer) state)))
-     (value :ready))))))
+     (let ((state (f-put-global 'fn-workflow-ion-state
+                                (fn-bp-journal-nth 3 answer) state)))
+      (value :ready)))))))
 (defun fn-workflow-fencedp (state)
  (declare (xargs :stobjs state :mode :program))
  (value (if (fn-bp-state-fenced (f-get-global 'fn-workflow-state state)) t nil)))
@@ -143,3 +151,43 @@
            (equal (fn-bp-journal-nth 3 effect) generation))
       (let ((state (f-put-global 'fn-workflow-effects nil state))) (value t))
     (value nil))))
+
+; Native ION sender calls these exact ACL2 constructors. Raw Lisp only
+; publishes their returned records and executes their returned ADU bytes.
+(defun fn-workflow-ion-attempt-record
+    (txid tx-generation work-id attempt-id state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpiw-attempt-record
+          (f-get-global 'fn-workflow-state state)
+          txid tx-generation work-id attempt-id)))
+
+(defun fn-workflow-ion-route-record
+    (work-id attempt-id generation bp-destination own-bp-eid state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpiw-route-record
+          (f-get-global 'fn-workflow-state state)
+          (f-get-global 'fn-workflow-ion-state state)
+          work-id attempt-id generation bp-destination own-bp-eid)))
+
+(defun fn-workflow-ion-observation-record
+    (work-id attempt-id generation bp-destination own-bp-eid raw state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpiw-observation-record
+          (f-get-global 'fn-workflow-state state)
+          (f-get-global 'fn-workflow-ion-state state)
+          work-id attempt-id generation bp-destination own-bp-eid
+          (fn-record-octets-string raw))))
+
+(defun fn-workflow-ion-request-adu
+    (work-id attempt-id generation state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((result (fn-bpo-request-adu
+                 (f-get-global 'fn-workflow-state state)
+                 work-id attempt-id generation)))
+    (value (if (fn-bpo-result-okp result)
+               (fn-bpo-result-value result) nil))))
+
+(defun fn-workflow-ion-status (work-id attempt-id generation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpiw-status (f-get-global 'fn-workflow-ion-state state)
+                         work-id attempt-id generation)))

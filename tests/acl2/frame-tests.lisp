@@ -186,8 +186,26 @@
 ; -----------------------------------------------------------------------------
 ; Journal records: byte-exact conformance with the Python encoders replaced
 
-; FNWF codes 1 through 7 retain their vectors below.  The two appended
-; forwarding-obligation kinds use codes 8 and 9.
+; FNWF codes 1 through 7 retain their vectors below. Forwarding-obligation
+; kinds use codes 8 and 9; ION route/observation append codes 10 and 11.
+(assert-event
+ (equal (fn-frame-workflow-decode
+         (fn-frame-workflow-encode
+          :ion-route (list '(119) '(97) 0 '(100) '(50) '(49))
+          *fn-frame-test-digest*)
+         *fn-frame-test-digest*)
+        (fn-frame-ok *fn-frame-magic-workflow* 1 :ion-route
+                     (list '(119) '(97) 0 '(100) '(50) '(49)))))
+(assert-event
+ (equal (fn-frame-workflow-decode
+         (fn-frame-workflow-encode
+          :ion-observed
+          (list '(119) '(97) 0 '(100) '(50) '(49) 843544024799 4)
+          *fn-frame-test-digest*)
+         *fn-frame-test-digest*)
+        (fn-frame-ok *fn-frame-magic-workflow* 1 :ion-observed
+                     (list '(119) '(97) 0 '(100) '(50) '(49)
+                           843544024799 4))))
 (assert-event
  (equal (fn-frame-workflow-protected :undertake
                                       (list '(119 111 114 107 45 97) 3))

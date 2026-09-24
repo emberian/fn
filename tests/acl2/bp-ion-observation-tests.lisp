@@ -12,7 +12,10 @@
 ; The application peer and BP destination are separate identities.
 (assert-event
  (equal *bpio-bound*
-        '(:ok "work:out" "attempt:out" 0 "ipn:1.1" 843544024799 4)))
+        '(:ok (:ion-observed "work:out" "attempt:out" 0
+                             "dtn://destination/" "ipn:2.1" "ipn:1.1"
+                             843544024799 4))))
+(assert-event (fn-bpio-bound-recordp *bpo-state* (cadr *bpio-bound*)))
 (assert-event (equal (fn-bpio-decode *bpio-line*)
                      '("dtn://destination/" "ipn:2.1" "ipn:1.1"
                        843544024799 4)))
