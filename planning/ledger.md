@@ -13,21 +13,21 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 745 |
 | Certification roots in the Makefile | 734 |
 | Books inside the root closure | 743 |
-| `defthm` and `defthmd` events | 9903 |
-| `defun` events | 6988 |
+| `defthm` and `defthmd` events | 9914 |
+| `defun` events | 6996 |
 | Functions with verified guards | 2067 |
-| Functions declared `:verify-guards nil` and never verified | 461 |
-| Functions left at the default with an explicit guard | 3477 |
-| Functions left at the default with no guard | 983 |
-| `assert-event` checks | 10895 |
-| `must-fail` checks | 926 |
-| `encapsulate` events | 30 |
+| Functions declared `:verify-guards nil` and never verified | 465 |
+| Functions left at the default with an explicit guard | 3479 |
+| Functions left at the default with no guard | 985 |
+| `assert-event` checks | 10911 |
+| `must-fail` checks | 933 |
+| `encapsulate` events | 31 |
 | Theorems flagged SUSPECT by shape | 86 |
-| Export-hygiene warnings | 116 |
+| Export-hygiene warnings | 117 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 61 |
 | Include-hygiene warnings | 728 |
-| Host-names warnings | 830 |
+| Host-names warnings | 831 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -159,7 +159,7 @@ that `make certify` requests.
 | `books/bp-node-debt.lisp` | root | 2 | 17 | 0/0/17/0 | 0 | 0 | 0 |
 | `books/bp-node-dispatch.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-node-forward-lower-guards.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-node-forward-retry.lisp` | root | 17 | 3 | 0/0/2/1 | 0 | 0 | 0 |
+| `books/bp-node-forward-retry.lisp` | root | 23 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/bp-node-foundation.lisp` | root | 17 | 62 | 59/0/3/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-expiry.lisp` | root | 1 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-family.lisp` | root | 9 | 9 | 0/3/6/0 | 0 | 0 | 0 |
@@ -176,7 +176,7 @@ that `make certify` requests.
 | `books/bp-node-progress-bridge.lisp` | root | 17 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-guards.lisp` | root | 29 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/bp-node-progress-premises.lisp` | root | 40 | 5 | 0/3/0/2 | 0 | 0 | 1 |
+| `books/bp-node-progress-premises.lisp` | root | 43 | 5 | 0/3/0/2 | 0 | 0 | 1 |
 | `books/bp-node-progress-selection-invariants.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress.lisp` | root | 0 | 69 | 0/5/64/0 | 0 | 0 | 0 |
 | `books/bp-node-receive-boundary.lisp` | root | 1 | 8 | 8/0/0/0 | 0 | 0 | 0 |
@@ -336,7 +336,7 @@ that `make certify` requests.
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 22 | 14 | 0/0/14/0 | 0 | 0 | 0 |
-| `books/native-admin.lisp` | root | 20 | 57 | 1/0/56/0 | 0 | 0 | 0 |
+| `books/native-admin.lisp` | root | 22 | 59 | 1/0/58/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 6 | 46 | 0/0/46/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 3 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/native-config-observation.lisp` | root | 5 | 17 | 3/0/14/0 | 0 | 0 | 0 |
@@ -572,7 +572,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 13 | 0/12/1/0 | 37 | 38 | 0 |
 | `tests/acl2/bp-node-debt-cache-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 2 | 0 |
 | `tests/acl2/bp-node-debt-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 6 | 4 | 0 |
-| `tests/acl2/bp-node-forward-retry-tests.lisp` | root | 0 | 8 | 0/8/0/0 | 12 | 12 | 0 |
+| `tests/acl2/bp-node-forward-retry-tests.lisp` | root | 0 | 12 | 0/12/0/0 | 22 | 16 | 0 |
 | `tests/acl2/bp-node-forwarding-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 8 | 1 | 0 |
 | `tests/acl2/bp-node-foundation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 7 | 0 |
 | `tests/acl2/bp-node-fragment-expiry-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 1 | 0 |
@@ -698,7 +698,7 @@ that `make certify` requests.
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 5 | 0 |
-| `tests/acl2/native-admin-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 137 | 9 | 0 |
+| `tests/acl2/native-admin-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 143 | 12 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 42 | 0 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |

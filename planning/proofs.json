@@ -1974,13 +1974,7 @@
         "fn-bpnp-step-identity-conflict-is-refused-or-recorded",
         "fn-bpnp-step-conflict-publication-answers-refusal",
         "fn-bpnf-conflict-publication-success-binds-exact-echo",
-        "fn-bpnf-conflict-record-round-trip",
-        "fn-bpnp-recovery-success-installs-the-replayed-held",
-        "fn-bpnp-host-recovery-installs-the-durable-replay",
-        "fn-bpnp-tcpcl-outcome-keeps-the-refusal-reason",
-        "fn-bpnp-step-forward-result-records-the-transport-outcome",
-        "fn-bpnp-completed-refusal-settles-as-sent",
-        "fn-bpnp-other-refusal-is-not-settled"
+        "fn-bpnf-conflict-record-round-trip"
       ]
     },
     {
@@ -2816,8 +2810,7 @@
         "fn-record-group-namep-rejects-a-trailing-dot",
         "fn-native-admin-plan-refuses-a-reserved-group-create",
         "fn-native-operator-run-refuses-a-reserved-init-group",
-        "fn-native-admin-group-name-creatablep-is-the-rfc-5536-rule",
-        "fn-native-admin-plan-create-ignores-special-purpose"
+        "fn-native-admin-group-name-creatablep-is-the-rfc-5536-rule"
       ]
     },
     {
