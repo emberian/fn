@@ -99,6 +99,16 @@ The application EID and BP destination remain separate arguments. This helper
 does not yet replace `IonLtpSender` in fn's durable sender workflow and does
 not establish application acceptance or a receipt return leg.
 
+ION's file ZCO retains the source pathname and inode for later transmission;
+it does not copy the ADU at `bp_send()`. The helper copies the bounded input
+to a mode-0600 file in the observation's private mode-0700 directory and
+barriers that file and directory before entering `bp_send()`. It gives ION an
+unlink-on-final-reference file ref for this private copy, while the caller
+keeps its original durable ADU for retry. Once `bp_send()` has been entered,
+even an error return leaves the outcome uncertain and the helper never
+destroys the ADU ZCO: pinned ION can report an error at its final SDR commit.
+This repairs helper source lifetime, not workflow binding.
+
 Build and test on the pinned Linux ION host (never use ION's `killm`):
 
 ```sh
