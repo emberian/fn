@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-operator")
 (include-book "../../books/codec-attach")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defun fn-nop-test-argv (words)
   (if (consp words)
@@ -476,3 +477,119 @@
                        (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""))
                        (fn-nop-test-argv '("run"))))
                      nil))
+
+; -----------------------------------------------------------------------------
+; RFC 5536 s3.1.4 reserved names at `init' and `group create'.  A reserved
+; name in any position is a refusal (exit 1), not a usage error: the command
+; line is well formed and the node declines it.  The predicate is
+; `fn-native-admin-group-name-reservedp' (books/native-admin.lisp), the same
+; one `group create' applies.
+(defconst *fn-nop-init-example*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("init" "example.test"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-init-example*)
+                     :refused))
+(assert-event (equal (fn-native-operator-result-reason *fn-nop-init-example*)
+                     :reserved-group-name))
+(assert-event (equal (fn-native-operator-exit-code *fn-nop-init-example*) 1))
+(assert-event (null (fn-native-operator-result-init-group-octets
+                     *fn-nop-init-example*)))
+(assert-event (equal (fn-native-operator-result-native-action
+                      *fn-nop-init-example*)
+                     :none))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("init" "fn.test" "Poster"))))
+                     :reserved-group-name))
+(defconst *fn-nop-create-poster*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("group" "create" "poster"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-create-poster*)
+                     :refused))
+(assert-event (equal (fn-native-operator-result-reason *fn-nop-create-poster*)
+                     '(:administration :reserved-group-name)))
+(assert-event (equal (fn-native-operator-exit-code *fn-nop-create-poster*) 1))
+; Other administrative refusals keep their usage tag.
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("group" "create" "fn..test"))))
+                     :usage))
+; Retiring a reserved name a store already carries stays a plan.
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("group" "retire" "example.test"))))
+                     :accepted))
+
+; Teeth for `fn-native-operator-run-refuses-a-reserved-init-group', one
+; `must-fail' per hypothesis; the witnesses are `group retire example.test'
+; (first word not "init"), `init fn.test' with NAME outside the words, and
+; `init fn.test' with NAME the unreserved fn.test -- each accepted above or
+; in the `init' block.
+(defconst *fn-nop-init-fn-test*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("init" "fn.test"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-init-fn-test*)
+                     :accepted))
+(must-fail
+ (defthm fn-nop-reserved-without-init
+   (implies (and (member-equal name (cdr (fn-nop-argument-texts argv)))
+                 (fn-native-admin-group-name-reservedp name))
+            (not (equal (fn-native-operator-result-status
+                         (fn-native-operator-run config argv))
+                        :accepted)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                    fn-native-operator-command-preflight
+                                    fn-native-operator-preflight-needs-config-p
+                                    fn-nop-parse-command fn-nop-parse-init
+                                    fn-nop-usage fn-nop-refused fn-nop-result
+                                    fn-native-operator-result-status)
+                                   (fn-native-admin-group-name-reservedp
+                                    fn-native-admin-some-group-name-reservedp
+                                    fn-nop-parse-init-groups fn-nop-argument-texts
+                                    fn-nop-argvp fn-native-config-load
+                                    fn-ncfg-ascii-octetsp
+                                    fn-native-config-operator-availablep))))))
+(must-fail
+ (defthm fn-nop-reserved-without-membership
+   (implies (and (equal (car (fn-nop-argument-texts argv)) "init")
+                 (fn-native-admin-group-name-reservedp name))
+            (not (equal (fn-native-operator-result-status
+                         (fn-native-operator-run config argv))
+                        :accepted)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                    fn-native-operator-command-preflight
+                                    fn-native-operator-preflight-needs-config-p
+                                    fn-nop-parse-command fn-nop-parse-init
+                                    fn-nop-usage fn-nop-refused fn-nop-result
+                                    fn-native-operator-result-status)
+                                   (fn-native-admin-group-name-reservedp
+                                    fn-native-admin-some-group-name-reservedp
+                                    fn-nop-parse-init-groups fn-nop-argument-texts
+                                    fn-nop-argvp fn-native-config-load
+                                    fn-ncfg-ascii-octetsp
+                                    fn-native-config-operator-availablep))))))
+(must-fail
+ (defthm fn-nop-init-refused-without-reservation
+   (implies (and (equal (car (fn-nop-argument-texts argv)) "init")
+                 (member-equal name (cdr (fn-nop-argument-texts argv))))
+            (not (equal (fn-native-operator-result-status
+                         (fn-native-operator-run config argv))
+                        :accepted)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                    fn-native-operator-command-preflight
+                                    fn-native-operator-preflight-needs-config-p
+                                    fn-nop-parse-command fn-nop-parse-init
+                                    fn-nop-usage fn-nop-refused fn-nop-result
+                                    fn-native-operator-result-status)
+                                   (fn-native-admin-group-name-reservedp
+                                    fn-native-admin-some-group-name-reservedp
+                                    fn-nop-parse-init-groups fn-nop-argument-texts
+                                    fn-nop-argvp fn-native-config-load
+                                    fn-ncfg-ascii-octetsp
+                                    fn-native-config-operator-availablep))))))

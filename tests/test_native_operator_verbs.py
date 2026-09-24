@@ -201,6 +201,44 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
                          "usage: fn operator CONFIG init GROUP [GROUP...]\n")
 
 
+class NativeOperatorReservedGroupSourceTests(unittest.TestCase):
+    """RFC 5536 s3.1.4 reserved names are ACL2's refusal; the host adds none."""
+
+    def test_reserved_names_are_refused_by_acl2_at_init_and_create(self):
+        model = (ROOT / "books" / "native-operator.lisp").read_text(encoding="ascii")
+        admin = (ROOT / "books" / "native-admin.lisp").read_text(encoding="ascii")
+        initial = (ROOT / "host" / "config-host.lisp").read_text(encoding="ascii")
+        self.assertIn("(defun fn-native-admin-group-name-reservedp (text)", admin)
+        self.assertIn("(fn-native-admin-result :refused :reserved-group-name", admin)
+        self.assertIn("(fn-nop-refused :reserved-group-name \"init\"", model)
+        self.assertIn("(fn-native-admin-some-group-name-reservedp names)", initial)
+        for path in (ROOT / "host" / "native").glob("*.lisp"):
+            text = path.read_text(encoding="ascii").lower()
+            self.assertNotIn('"example"', text, path.name)
+            self.assertNotIn('"poster"', text, path.name)
+
+
+@unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
+class NativeOperatorReservedGroupTests(NativeOperatorVerbFixture):
+    def test_init_of_a_reserved_name_is_refused_and_writes_nothing(self):
+        for words in (("example.test",), ("fn.test", "Poster")):
+            refused = self.operator("init", *words)
+            self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+            self.assertIn(b"RESERVED-GROUP-NAME", refused.stderr.upper())
+            self.assertFalse(self.store.exists())
+
+    def test_group_create_poster_is_refused_and_publishes_nothing(self):
+        self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
+        before = sorted(p.name for p in (self.store / "config").iterdir())
+        refused = self.operator("group", "create", "poster")
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertIn(b"RESERVED-GROUP-NAME", refused.stderr.upper())
+        self.assertEqual(sorted(p.name for p in (self.store / "config").iterdir()),
+                         before)
+        created = self.operator("group", "create", "fn.poster")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+
+
 @unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
 class NativeOperatorPeerListTests(NativeOperatorVerbFixture):
     def setUp(self):
