@@ -225,7 +225,8 @@ published a certification of `dev`'s head since. The rules that follow:
   anything else the cache lacks certify. Root
   uses `--closure` for an explicitly fresh qualification such as the freeze;
   ordinary treewide convergence is incremental.
-- **A book over ten seconds is a defect.** On 2026-09-23 every book over
+- **A book over ten seconds at two jobs is a defect** (D26; a combined
+  closure at more jobs is recorded, not ratcheted). On 2026-09-23 every book over
   a minute turned out to be a recognizer, codec or table left enabled
   where one proof needed a shape fact, and each was repaired with hints,
   disables and local lemmas, no statement touched: 805 s to 3.7,
