@@ -1334,6 +1334,46 @@ class DuplicateOutcomeTests(unittest.TestCase):
         self.assertIn("different octets under the same Message-ID", fact)
 
 
+class TransitPeerDownTests(unittest.TestCase):
+    """A transit relay that finds its peer dead is not a missing feature."""
+
+    def gate(self, home, dead):
+        gate = native_gate(home)
+        gate.a.port, gate.b.port = 11190, 11191
+        gate.feed = lambda *args, **kwargs: Step("relay", "feed.py relay", 1,
+                                                 "RuntimeError", 0.0)
+        gate.payload = lambda step: {"offer": ""}
+        gate.alive = lambda node, tag="main": node.name not in dead
+        gate.dead = {name: "uncertain operator run" for name in dead}
+        return gate
+
+    def transit(self, gate, way):
+        return [row for row in gate.rows if row.id.startswith("V0-TRANSIT-")
+                and row.id.endswith("-" + way.upper())]
+
+    def test_a_dead_target_or_source_reads_not_exercised_peer_down(self):
+        for dead, way in (({"b"}, "ab"), ({"b"}, "ba")):
+            with tempfile.TemporaryDirectory() as home:
+                gate = self.gate(home, dead)
+                source, target = (gate.a, gate.b) if way == "ab" else (gate.b, gate.a)
+                gate.transit_direction(source, target, way)
+                rows = self.transit(gate, way)
+                self.assertEqual(len(rows), len(gate.TRANSIT_KEYS))
+                for row in rows:
+                    self.assertEqual(row.verdict, v0_matrix.NOT_EXERCISED, row.id)
+                    self.assertTrue(row.blocker.startswith(
+                        "not exercised: peer down"), row.blocker)
+                    self.assertIn("node B", row.blocker)
+
+    def test_no_answer_from_two_live_peers_is_still_not_built(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.gate(home, set())
+            gate.transit_direction(gate.a, gate.b, "ab")
+            rows = self.transit(gate, "ab")
+            self.assertTrue(rows)
+            self.assertTrue(all(row.verdict == v0_matrix.NOT_BUILT for row in rows))
+
+
 class InnRowTests(unittest.TestCase):
     """The INN rows are read from tools/inn_lab.py's findings and nothing else."""
 
@@ -1376,9 +1416,22 @@ class InnRowTests(unittest.TestCase):
             {"fn-serves-no-sender-xref": "violated", "fn-loop-refused": "violated"},
             verdict="violated"))}
         self.assertEqual(got["V0-INN-SERVING-AGENT"], v0_matrix.REFUSED)
-        self.assertEqual(got["V0-INN-LOOP-FN"], v0_matrix.ACCEPTED)
+        # A violated refusal check is a disagreement, never an acceptance.
+        self.assertEqual(got["V0-INN-LOOP-FN"], v0_matrix.UNCERTAIN)
         self.assertEqual(got["V0-INN-INTEROP"], v0_matrix.REFUSED)
         self.assertEqual(got["V0-INN-FEED-OUT"], v0_matrix.ACCEPTED)
+
+    def test_a_violated_check_never_counts_as_accepted(self):
+        # 6c0626c5: fn's service had stopped, every reply of the loop check
+        # was absent, and the row read "accepted".
+        names = [name for _, names in v0_matrix.INN_ROWS for name in names]
+        doc = self.findings({name: "violated" for name in names}, verdict="violated")
+        for key, verdict, observed, _ in v0_matrix.inn_rows(doc):
+            self.assertNotEqual(verdict, v0_matrix.ACCEPTED, key)
+            if key != "V0-INN-INTEROP":
+                self.assertNotEqual(verdict, v0_matrix.PLAN_BY_KEY[key].expected, key)
+            if key == "V0-INN-LOOP-FN":
+                self.assertIn("not an acceptance", observed)
 
     def test_an_undecided_or_absent_finding_is_not_exercised_with_its_reason(self):
         doc = self.findings({"innd-died": "not-exercised"}, verdict="inconclusive")
