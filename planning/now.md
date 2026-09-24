@@ -48,12 +48,13 @@ coordinate is on the [swarm board](swarm-board.md).
 
 | Lane | Intended result | Must cite |
 | --- | --- | --- |
-| plan-consolidate | this page, the archive moves, links repaired, `make check` passing | commit hashes, `make check` output |
+| plan-consolidate | done: this page, the archive moves, links repaired | merged, `make check` exit 0 |
 | bp-progress-guards | guard closure of `books/bp-node-progress-guards` without whole-state revalidation on the served path | farm run id and manifest; theorem statements; `green_check` line |
 | bp-selection-invariant | `fn-bpnp-step-progress-preserves-held-and-issued` certified, then the machine teeth book | farm run id and manifest; the subgoal repaired; teeth book result |
 | proof-cost-regressions | `store-node-invariants`, `consumer-store-invariants`, `store-identity-sequence-invariants`, `store-node-traces`, `replay` under 10 s, statements unchanged | before/after per-book times from certify logs, same host and toolchain |
 | check-ratchet | `proof_cost` and `certified_claims` fail `make check` against a committed baseline | the baseline file and the failing/passing `make check` runs |
-| worktree-retire | retire the landed worktrees under `build/lanes/` | per worktree: branch tip, merge evidence, archive if unmerged |
+| worktree-retire | done: 60 of 83 landed worktrees retired, 6 archive refs, [record](evidence/worktree-retirement-2026-09-24-claude.md) | merged `ec498722` |
+| bp-codec-cost | `checkpoint-compaction`, `records-canonicality`, `bp-node-fragment-plan`, `bp-fnbs-codec-invariants`, `tcpcl-session`, `bp-fnbs-byte-invariants` under 10 s, statements unchanged | before/after per-book times, same host and toolchain |
 
 ## Where to read next
 
