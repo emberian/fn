@@ -1352,8 +1352,15 @@ part of K0.
 ; scanner's prefix-agreement lemma, without assuming scan equality. The
 ; actual file-result pair 6 now re-establishes the full byte/kernel relation
 ; using separately proved state, authority and durable observations. The
-; root rename/directory-fence relation and
-; successful reserved pair are still open; this packet does not claim them.
+; actual root-directory-fenced pair 12 and directory-callback pair 14 now
+; satisfy the full byte/kernel relation from an already related ready input,
+; a typed next-frontier frame and a fresh staging name.
+; fn-bs-k0-frontier-native-call-sequence-matches-run also equates the four
+; fn-sn-io observations with those interpreted cuts at the Store-node layer.
+; This is a successful P-FRONTIER trace slice, not general K0: the shared
+; native owner calls fn-owner-io through fn-ocfg-step, and the owner-to-node
+; projection, call-entry relation establishment, error/torn outcomes and
+; physical syscall/barrier qualification remain separate obligations.
 
 ; K1. The scan never faults on a crash image of a related state.  No torn
 ; unit is ever under an authority name, because links and renames are
