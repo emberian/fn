@@ -528,6 +528,7 @@
     "books/owner-prepare-carried",
     "books/owner-advance-carried",
     "books/owner-commit-ocl",
+    "books/owner-recover-ocl",
     "tests/acl2/owner-tls-pin-tests",
     "tests/acl2/served-tls-prefix-tests",
     "books/nntp-auth-invariants",
@@ -557,6 +558,7 @@
     "tests/acl2/owner-commit-carried-tests",
     "tests/acl2/owner-prepare-carried-tests",
     "tests/acl2/owner-advance-carried-tests",
+    "tests/acl2/owner-recover-ocl-tests",
     "books/config-owner-publish",
     "tests/acl2/config-owner-publish-tests",
     "books/config-crash-replay",
@@ -723,13 +725,13 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 730,
-    "books_in_root_closure": 728,
-    "roots": 719,
-    "theorems": 9737,
+    "books": 732,
+    "books_in_root_closure": 730,
+    "roots": 721,
+    "theorems": 9749,
     "functions": 6879,
-    "assert_events": 10636,
-    "must_fails": 840,
+    "assert_events": 10657,
+    "must_fails": 843,
     "encapsulates": 30,
     "guards": {
       "verified": 2058,
@@ -741,7 +743,7 @@
     "export_hygiene_warnings": 116,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 61,
-    "include_hygiene_warnings": 703,
+    "include_hygiene_warnings": 706,
     "host_names_warnings": 825,
     "hand_written_record_warnings": 18
   },
@@ -8661,6 +8663,31 @@
       "includes": [
         "owner-config",
         "store-prepare-correspondence"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-recover-ocl.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-offer-indexed"
       ],
       "system_includes": [],
       "suspects": [],
@@ -17964,6 +17991,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-recover-ocl-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 21,
+      "must_fails": 3,
+      "defconsts": 6,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-recover-ocl",
+        "config-owner-publish-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-retention-preparation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24003,6 +24058,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-recover-ocl.lisp",
+        "line": 15,
+        "include": "owner-offer-indexed",
+        "included": "books/owner-offer-indexed.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner-signed-post.lisp",
         "line": 29,
         "include": "hybrid-lifecycle-store-invariants",
@@ -26625,6 +26687,20 @@
         "line": 5,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-recover-ocl-tests.lisp",
+        "line": 3,
+        "include": "../../books/owner-recover-ocl",
+        "included": "books/owner-recover-ocl.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-recover-ocl-tests.lisp",
+        "line": 5,
+        "include": "config-owner-publish-tests",
+        "included": "tests/acl2/config-owner-publish-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
