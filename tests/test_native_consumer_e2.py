@@ -8,6 +8,7 @@ ack and do not claim nonzero scan progress or consumer inbox processing.
 
 import os
 import json
+import re
 from pathlib import Path
 import shutil
 import socket
@@ -125,6 +126,21 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.assertFalse(target.exists())
         return None
 
+    def status(self, node, name, *, expected=0):
+        result = self.consumer("status", node, name, expected=expected)
+        if expected:
+            self.assertIn(b"consumer status refused", result.stdout)
+            return None
+        match = re.search(
+            rb"consumer status accepted committed-ack=(\d+) "
+            rb"committed-journal-frontier=(\d+) journal-event-distance=(\d+)",
+            result.stdout)
+        self.assertIsNotNone(match, result.stdout)
+        ack, frontier, distance = map(int, match.groups())
+        self.assertLessEqual(ack, frontier)
+        self.assertEqual(distance, frontier - ack)
+        return ack, frontier, distance
+
     def test_durable_scope_ack_and_unrelated_article(self):
         first = self.node("first")
         owner = self.start_owner(first)
@@ -137,6 +153,9 @@ class NativeConsumerE2Tests(unittest.TestCase):
         initial = self.register(first, "worker", token_path)
         self.assertEqual(self.position(first, "worker",
                                        first["base"] / "before.fncu"), initial)
+        before_status = self.status(first, "worker")
+        self.assertEqual(before_status[0], 0)
+        self.assertIsNone(self.status(first, "unknown", expected=1))
 
         # A normal accepted article adds a Store record but does not declare
         # consumer processing. The native POSITION output remains unchanged.
@@ -152,6 +171,10 @@ class NativeConsumerE2Tests(unittest.TestCase):
                       msgid, "--payload", article, "--group", "fn.test")
         self.assertEqual(self.position(first, "worker",
                                        first["base"] / "after-post.fncu"), initial)
+        after_post_status = self.status(first, "worker")
+        self.assertEqual(after_post_status[0], before_status[0])
+        self.assertGreater(after_post_status[1], before_status[1])
+        self.assertGreater(after_post_status[2], before_status[2])
         self.assertIn(b"consumer accepted",
                       self.consumer("ack", first, token_path).stdout)
         self.assertEqual(self.position(first, "worker",
@@ -183,6 +206,7 @@ class NativeConsumerE2Tests(unittest.TestCase):
         reopened = self.start_owner(first)
         self.assertEqual(self.position(first, "worker",
                                        first["base"] / "reopened.fncu"), current)
+        self.assertEqual(self.status(first, "worker")[0], 0)
         self.stop_owner(reopened)
 
     def test_lost_register_reply_resolves_by_reopened_position(self):
@@ -310,6 +334,8 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.consumer("poll", node, "worker", second_cursor, second_report)
         self.assertEqual(second_cursor.read_bytes(), continuation)
         self.assertEqual(second_report.read_bytes(), report)
+        status_before_ack = self.status(node, "worker")
+        self.assertEqual(status_before_ack[0], 0)
 
         # Optional cross-process Mini join.  The external driver must itself
         # call the live local poll route and establish its signed result; this
@@ -363,10 +389,13 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.assertEqual(self.position(node, "worker",
                                        node["base"] / "recovered-ack.fncu"),
                          continuation)
+        status_after_ack = self.status(node, "worker")
+        self.assertGreater(status_after_ack[0], status_before_ack[0])
         after_cursor = node["base"] / "after-ack-poll.fncu"
         after_report = node["base"] / "after-ack-poll.event"
         self.consumer("poll", node, "worker", after_cursor, after_report)
         self.assertEqual(after_report.read_bytes(), b"")
+        self.assertEqual(self.status(node, "worker"), status_after_ack)
         self.stop_owner(reopened)
 
         # Optional byte-for-byte synthetic fixture for an independent

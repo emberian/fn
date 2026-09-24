@@ -118,6 +118,10 @@
             ((and (consp status) (eq (first status) :consumer-poll-reply))
              (fnn-core 'fn-native-control-host-consumer-poll-reply-encode
                        (second status) (third status) (fourth status)))
+            ((and (consp status) (eq (first status) :consumer-status-reply))
+             (fnn-core 'fn-native-control-host-consumer-status-reply-encode
+                       (second status) (third status) (fourth status)
+                       (fifth status)))
             ((and (consp status) (eq (first status) :consumer-reply))
              (fnn-core 'fn-native-control-host-consumer-reply-encode
                        (second status) (third status)))
@@ -282,9 +286,10 @@ joins it before the process exits."
                         (fnn-owner-consumer-local-serialized
                          service (second consumer) (third consumer)
                          (fourth consumer))
-                      (if (eq (second consumer) :poll)
-                          (list :consumer-poll-reply :refused nil nil)
-                        (list :consumer-reply :refused nil))))
+                      (case (second consumer)
+                        (:poll (list :consumer-poll-reply :refused nil nil))
+                        (:status (list :consumer-status-reply :refused nil nil nil))
+                        (otherwise (list :consumer-reply :refused nil)))))
                    ((and (consp request) (eq (car request) :request))
                     (let ((msgid (second request))
                          (groups (third request))
@@ -320,7 +325,8 @@ joins it before the process exits."
     ;; not receive it, conservatively reports :uncertain.
     (fnn-control-test-after-submit
      (if (and (consp status)
-              (member (first status) '(:consumer-reply :consumer-poll-reply)))
+              (member (first status) '(:consumer-reply :consumer-poll-reply
+                                       :consumer-status-reply)))
          (second status) status))
     (fnn-control-send-reply socket status)))
 
@@ -557,14 +563,22 @@ joins it before the process exits."
                  (sb-bsd-sockets:socket-shutdown socket :direction :output)
                  (let* ((frame (fnn-control-read-frame
                                 socket (fnn-core
-                                        (if (eq operation :poll)
-                                            'fn-native-control-host-consumer-poll-max-frame
-                                          'fn-native-control-host-max-frame))))
+                                        (case operation
+                                          (:poll
+                                           'fn-native-control-host-consumer-poll-max-frame)
+                                          (:status
+                                           'fn-native-control-host-consumer-status-max-frame)
+                                          (otherwise
+                                           'fn-native-control-host-max-frame)))))
                         (reply (and (typep frame 'fnn-octets)
                                     (fnn-core
-                                     (if (eq operation :poll)
-                                         'fn-native-control-host-consumer-poll-reply-decode
-                                       'fn-native-control-host-consumer-reply-decode)
+                                     (case operation
+                                       (:poll
+                                        'fn-native-control-host-consumer-poll-reply-decode)
+                                       (:status
+                                        'fn-native-control-host-consumer-status-reply-decode)
+                                       (otherwise
+                                        'fn-native-control-host-consumer-reply-decode))
                                      (fnn-octet-list frame))))
                         (ordinary-status
                           (and (typep frame 'fnn-octets)
@@ -572,26 +586,43 @@ joins it before the process exits."
                                          (fnn-octet-list frame)))))
                    (if (and (consp reply)
                             (eq (first reply)
-                                (if (eq operation :poll)
-                                    :consumer-poll-reply :consumer-reply))
+                                (case operation
+                                  (:poll :consumer-poll-reply)
+                                  (:status :consumer-status-reply)
+                                  (otherwise :consumer-reply)))
                             (member (second reply)
                                     '(:accepted :refused :uncertain :fault))
-                            (fnn-octet-list-p (third reply))
-                            (or (not (eq operation :poll))
-                                (fnn-octet-list-p (fourth reply))))
+                            (if (eq operation :status)
+                                (or (and (eq (second reply) :accepted)
+                                         (every (lambda (value)
+                                                  (and (integerp value)
+                                                       (not (minusp value))))
+                                                (cddr reply)))
+                                    (and (eq (second reply) :refused)
+                                         (null (third reply))
+                                         (null (fourth reply))
+                                         (null (fifth reply))))
+                              (and (fnn-octet-list-p (third reply))
+                                   (or (not (eq operation :poll))
+                                       (fnn-octet-list-p (fourth reply)))))
+                            )
                        reply
-                     (list (if (eq operation :poll)
-                               :consumer-poll-reply :consumer-reply)
+                     (list (case operation
+                             (:poll :consumer-poll-reply)
+                             (:status :consumer-status-reply)
+                             (otherwise :consumer-reply))
                            (if (member ordinary-status
                                        '(:refused :uncertain :fault :busy))
                                (if (eq ordinary-status :busy)
                                    :refused ordinary-status)
                              (fnn-control-transport-outcome stage))
-                           nil nil)))))
+                           nil nil nil)))))
            (error ()
-             (list (if (eq operation :poll)
-                       :consumer-poll-reply :consumer-reply)
-                   (fnn-control-transport-outcome stage) nil nil)))
+             (list (case operation
+                     (:poll :consumer-poll-reply)
+                     (:status :consumer-status-reply)
+                     (otherwise :consumer-reply))
+                   (fnn-control-transport-outcome stage) nil nil nil)))
       (when socket (fnn-socket-shut socket)))))
 
 (defun fnn-control-submit (path-octets msgid-octets group-octets payload-path-octets)

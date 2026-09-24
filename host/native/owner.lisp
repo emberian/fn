@@ -845,6 +845,8 @@ client, which can issue POSITION after reconnecting."
                  (fnn-owner-core 'fn-owner-consumer-local-ack first))
                 (:position
                  (fnn-owner-core 'fn-owner-consumer-local-position first))
+                (:status
+                 (fnn-owner-core 'fn-owner-consumer-local-status first))
                 (:poll
                  (fnn-owner-core 'fn-owner-consumer-local-poll first))
                 (:unregister
@@ -852,7 +854,10 @@ client, which can issue POSITION after reconnecting."
                 (otherwise '(:refused :operation))))
             (kind (and (consp proposal) (first proposal))))
        (case kind
-         (:refused (list :consumer-reply :refused nil))
+         (:refused
+          (if (eq operation :status)
+              (list :consumer-status-reply :refused nil nil nil)
+            (list :consumer-reply :refused nil)))
          (:position
           (let ((token (second proposal)))
             (unless (fnn-octet-list-p token)
@@ -864,6 +869,14 @@ client, which can issue POSITION after reconnecting."
                          (fnn-octet-list-p report))
               (fnn-fault "ACL2 returned malformed consumer poll"))
             (list :consumer-poll-reply :accepted token report)))
+         (:status
+          (unless (and (= (length proposal) 4)
+                       (every (lambda (value)
+                                (and (integerp value) (not (minusp value))))
+                              (rest proposal)))
+            (fnn-fault "ACL2 returned malformed consumer status"))
+          (list :consumer-status-reply :accepted
+                (second proposal) (third proposal) (fourth proposal)))
          (:no-op
           (let ((token (fnn-core 'fn-cp-cursor-encode (second proposal))))
             (unless (fnn-octet-list-p token)

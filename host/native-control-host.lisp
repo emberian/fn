@@ -84,6 +84,19 @@
   (declare (xargs :mode :program))
   (fn-ncl-poll-reply-decode octets))
 
+(defun fn-native-control-host-consumer-status-reply-encode
+    (status ack frontier gap)
+  (declare (xargs :mode :program))
+  (fn-ncl-status-reply-encode status ack frontier gap))
+
+(defun fn-native-control-host-consumer-status-reply-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-ncl-status-reply-decode octets))
+
+(defun fn-native-control-host-consumer-status-max-frame ()
+  (declare (xargs :mode :program))
+  (+ *fn-frame-overhead-octets* *fn-ncl-status-max-payload*))
+
 (defun fn-native-control-host-consumer-cli-plan (command argv)
   (declare (xargs :mode :program))
   (fn-ncl-cli-plan command argv))
