@@ -22,6 +22,13 @@
 (assert-event (equal (fn-thlc-reply-decode
                       (fn-thlc-reply-encode :uncertain))
                      '(:topic-reply :uncertain)))
+(assert-event (equal (fn-thlc-reply-decode
+                      (fn-thlc-reply-encode :replayed-historical))
+                     '(:topic-reply :replayed-historical)))
+(assert-event (equal (fn-thlc-status-exit-code :replayed-historical) 0))
+(assert-event (equal (fn-thlc-reply-decode
+                      (fn-nctrl-seal *fn-thlc-reply-kind* '(5)))
+                     '(:refused :reply)))
 (must-fail
  (assert-event
   (equal (fn-thlc-request-decode

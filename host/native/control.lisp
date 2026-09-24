@@ -592,7 +592,8 @@ joins it before the process exits."
                    (cond
                     ((and (consp reply) (eq (first reply) :topic-reply)
                           (member (second reply)
-                                  '(:accepted :refused :uncertain :fault)))
+                                  '(:accepted :replayed-historical
+                                    :refused :uncertain :fault)))
                      (second reply))
                     ((member ordinary '(:refused :uncertain :fault :busy))
                      (if (eq ordinary :busy) :refused ordinary))

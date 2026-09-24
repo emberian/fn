@@ -255,6 +255,32 @@
                 (fn-th-select-accepted-event fn-th-verified-author-ref
                  fn-th-host-inspect-source)))))
 
+; A historical retry is the exact admission already in this anchor. The
+; source is selected and bound before this branch, and the branch precedes
+; current policy/roster/quota checks. It proposes no Store event.
+(defthm fn-th-report-retry-returns-retained-admission
+  (implies
+   (equal (car (fn-th-prepare-report
+                sequence txid generation accepted snapshot anchors))
+          :replayed-historical)
+   (let* ((selected (fn-th-select-accepted-event accepted snapshot))
+          (report (fn-th-at 0 (fn-stmt-value selected)))
+          (anchor (fn-th-find-anchor (fn-th-at 1 report) anchors))
+          (prior (fn-th-find-admission
+                  (fn-stxa-authored-id accepted)
+                  (fn-th-anchor-reports anchor))))
+     (and (fn-stmt-okp selected)
+          prior
+          (equal (fn-th-prepare-report
+                  sequence txid generation accepted snapshot anchors)
+                 (list :replayed-historical prior))
+          (equal (fn-th-at 4 prior) (fn-th-auth-ref-of accepted)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-th-prepare-report)
+                (fn-th-select-accepted-event fn-th-auth-ref-of
+                 fn-th-find-anchor fn-th-find-admission)))))
+
 (defthm fn-th-replace-anchor-preserves-distinct-topic
   (implies (and (not (equal topic other))
                 (equal (fn-th-anchor-topic replacement) topic))
