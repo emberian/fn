@@ -2,6 +2,7 @@
 ; 6, but their version and canonical names distinguish their authority.
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-dispatch-codec")
+(include-book "../../books/bp-fnbs-dispatch-invariants")
 (include-book "../../books/bp-clock-domain")
 
 (defconst *fn-test-bpnp-dispatch*
