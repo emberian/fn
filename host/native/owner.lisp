@@ -873,6 +873,20 @@ event. A carrier-absent article keeps the established legacy Store path."
                        (fnn-owner-transit-refused :event)))
                    (fnn-owner-identity-commit service event)))))))))))
 
+;;; The served POST's attempt, and the bound local submission's.  The one
+;;; ingress decision transit uses (fnn-owner-attempt-transit: ACL2's
+;;; fn-pa-carrier-form and fn-pa-current-plan over these octets and this
+;;; Store's enrollment, the primitive observation, fn-pa-authorized-event,
+;;; the kind-4 identity commit) with the poster's outcome word chosen by
+;;; ACL2 (fn-pa-served-word): a present carrier the plan refused carries the
+;;; plan's reason to its own 441 line, and a carrier-absent article is the
+;;; unsigned arm, fnn-owner-attempt, with its word unchanged.
+(defun fnn-owner-attempt-served (service msgid payload groups evidence)
+  (setq *fnn-owner-transit-detail* nil)
+  (let ((word (fnn-owner-attempt-transit service msgid payload groups evidence)))
+    (fnn-owner-core 'fn-owner-served-carried-word word
+                    *fnn-owner-transit-detail*)))
+
 (defun fnn-owner-retention-commit (service event)
   "Publish one ACL2-authored retention event through the normal Store path."
   (unless (and (listp event) (= (length event) 5)
@@ -1156,7 +1170,7 @@ refused or deferred peer transfer is never silent."
                   (let ((word (if transitp
                                   (fnn-owner-attempt-transit
                                    service msgid payload groups evidence)
-                                (fnn-owner-attempt
+                                (fnn-owner-attempt-served
                                  service msgid payload groups evidence))))
                     (fnn-owner-action 'fn-owner-submission-resolution
                                       word (fnn-octet-list evidence)
@@ -1230,7 +1244,8 @@ Every other caller submits exact authored octets and names them."
         (fnn-owner-feed-flush service)
         (let ((word (if commit-callback
                         (fnn-owner-bound-commit-word commit-callback)
-                      (fnn-owner-attempt service msgid payload groups evidence))))
+                      (fnn-owner-attempt-served
+                       service msgid payload groups evidence))))
           (fnn-owner-action 'fn-owner-submission-resolution
                             word (fnn-octet-list evidence) generation txid)
           (fnn-owner-feed-flush service)

@@ -281,7 +281,12 @@
   (declare (xargs :guard t))
   (and (member-equal completion
                      '(:refused :duplicate :conflict :malformed :unaffordable
-                       :storage-failed))
+                       :storage-failed
+                       ;; A signed POST refused at its FN-Authorship carrier
+                       ;; (books/peer-authored-accept.lisp fn-pa-served-word):
+                       ;; the plan's reason, or the signature observation.
+                       :article :carrier :carrier-shape :local-enrollment
+                       :signature))
        t))
 
 (defun fn-post-store-refusal-line (kind)
@@ -297,6 +302,16 @@
     "441 posting failed; the store has no capacity for this article")
    ((equal kind :storage-failed)
     "441 posting failed; the store could not write the article, nothing was stored")
+   ((equal kind :article)
+    "441 posting failed; the article carrying FN-Authorship does not parse")
+   ((equal kind :carrier)
+    "441 posting failed; the FN-Authorship carrier is malformed")
+   ((equal kind :carrier-shape)
+    "441 posting failed; the FN-Authorship carrier has the wrong shape")
+   ((equal kind :local-enrollment)
+    "441 posting failed; the signer has no current enrollment here (local-enrollment)")
+   ((equal kind :signature)
+    "441 posting failed; the author signature does not verify")
    (t "441 posting failed; the article was refused")))
 
 (defconst *fn-post-malformed-session-line*
