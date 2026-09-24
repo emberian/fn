@@ -6,6 +6,12 @@ ACL2 process exiting zero is insufficient evidence: each requested book must
 emit the success marker from the successful branch of `certify-book`, and the
 log must not contain an ACL2 certification/error marker.
 
+During each book run, `<book>.certify.log` is readable as ACL2 writes it and
+the matching `<book>.active.json` names the child PID, book, start time and
+log. Provisional waves use `<book>.pcert-<wave>` for both stems. The activity
+record is diagnostic: only the completed log, exit, marker and certificate
+checks below determine a manifest verdict.
+
 `--pcert` runs ACL2's provisional certification (`:DOC
 provisional-certification`) as three waves instead of one dependency-ordered
 pass.  Create skips proofs and writes each book's `.pcert0`; Convert does
@@ -551,7 +557,9 @@ def acl2_version_driver() -> str:
 
 
 def run_acl2(
-    executable: Path, driver: str, timeout_seconds: int
+    executable: Path, driver: str, timeout_seconds: int,
+    *, log_path: Path | None = None, book: str | None = None,
+    wave: str | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
     environment = os.environ.copy()
     # A user customization can alter the ACL2 world before certification.  Do
@@ -559,16 +567,65 @@ def run_acl2(
     environment["ACL2_CUSTOMIZATION"] = "NONE"
     environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
     environment.pop("ACL2_SYSTEM_BOOKS", None)
-    return subprocess.run(
-        [str(executable)],
-        cwd=ROOT,
-        input=driver.encode("utf-8"),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env=environment,
-        check=False,
-        timeout=timeout_seconds,
-    )
+    command = [str(executable)]
+    if log_path is None:
+        # The short version probe has no book to attribute and retains its
+        # original capture path. Book runs below expose output as it is made.
+        return subprocess.run(
+            command, cwd=ROOT, input=driver.encode("utf-8"),
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            env=environment, check=False, timeout=timeout_seconds)
+    if book is None:
+        raise ValueError("a streamed ACL2 log needs its book name")
+    activity_path = log_path.with_name(
+        log_path.name.removesuffix(".certify.log") + ".active.json")
+    started = time.monotonic()
+    started_utc = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    # A child writes directly to this file descriptor; no Python pipe or
+    # reader thread can hold its last goal until the process exits. The
+    # caller still decodes the complete bytes and applies the old verdict.
+    with log_path.open("wb") as log:
+        process = subprocess.Popen(
+            command, cwd=ROOT, stdin=subprocess.PIPE, stdout=log,
+            stderr=subprocess.STDOUT, env=environment)
+        activity = {
+            "book": book, "wave": wave, "pid": process.pid,
+            "started_utc": started_utc, "started_monotonic": started,
+            "log": log_path.name, "executable": str(executable),
+            "status": "running",
+        }
+        timed_out = False
+        try:
+            write_activity(activity_path, activity)
+            process.communicate(input=driver.encode("utf-8"),
+                                timeout=timeout_seconds)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            process.kill()
+            process.communicate()
+        except BaseException:
+            process.kill()
+            process.communicate()
+            raise
+        log.flush()
+    output = log_path.read_bytes()
+    activity.update({
+        "status": "timed-out" if timed_out else "exited",
+        "exit_code": process.returncode,
+        "elapsed_seconds": round(time.monotonic() - started, 3),
+    })
+    write_activity(activity_path, activity)
+    if timed_out:
+        raise subprocess.TimeoutExpired(command, timeout_seconds, output=output)
+    return subprocess.CompletedProcess(command, process.returncode, output)
+
+
+def write_activity(path: Path, activity: dict[str, Any]) -> None:
+    """Atomically publish one child's PID-to-book diagnostic record."""
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(json.dumps(activity, indent=2, sort_keys=True) + "\n",
+                         encoding="utf-8")
+    os.replace(temporary, path)
 
 
 def archived_walls(books: list[str], history: Path | None = None) -> dict[str, float]:
@@ -1080,6 +1137,7 @@ def main() -> int:
     cache_events: list[dict[str, Any]] = []
 
     def certify(book: str) -> None:
+        log_path = run_dir / (book.replace("/", "--") + ".certify.log")
         with acl2_slots.slot(f"certify {book}") as held:
             with record_lock:
                 # Started means started, not queued: a book waiting for a slot
@@ -1088,14 +1146,15 @@ def main() -> int:
                 slot_wait_seconds[book] = held.seconds
             started = time.monotonic()
             try:
-                result = run_acl2(acl2, drivers[book], args.timeout_seconds)
+                result = run_acl2(acl2, drivers[book], args.timeout_seconds,
+                                  log_path=log_path, book=book)
                 output = result.stdout.decode("utf-8", errors="replace")
                 code: int | str = result.returncode
             except subprocess.TimeoutExpired as error:
                 output = timeout_output(error).decode("utf-8", errors="replace")
                 code = f"timed out after {args.timeout_seconds} seconds"
             elapsed = time.monotonic() - started
-        (run_dir / (book.replace("/", "--") + ".certify.log")).write_text(output, encoding="utf-8")
+        log_path.write_text(output, encoding="utf-8")
         with record_lock:
             outputs[book] = output
             exit_codes[book] = code
@@ -1129,21 +1188,22 @@ def main() -> int:
                 f"wave did not finish\n")
             return
         budget = args.budget_seconds if wave == "convert" else args.timeout_seconds
+        log_path = run_dir / (book.replace("/", "--") + f".pcert-{wave}.certify.log")
         with acl2_slots.slot(f"pcert {wave} {book}") as held:
             with record_lock:
                 start_order.append(f"{book} {wave}")
                 slot_wait_seconds[f"{book} {wave}"] = held.seconds
             started = time.monotonic()
             try:
-                result = run_acl2(acl2, drivers[f"{book}.pcert-{wave}"], budget)
+                result = run_acl2(acl2, drivers[f"{book}.pcert-{wave}"], budget,
+                                  log_path=log_path, book=book, wave=wave)
                 output = result.stdout.decode("utf-8", errors="replace")
                 code: int | str = result.returncode
             except subprocess.TimeoutExpired as error:
                 output = timeout_output(error).decode("utf-8", errors="replace")
                 code = f"timed out after {budget} seconds"
             elapsed = time.monotonic() - started
-        (run_dir / (book.replace("/", "--") + f".pcert-{wave}.certify.log")
-         ).write_text(output, encoding="utf-8")
+        log_path.write_text(output, encoding="utf-8")
         with record_lock:
             wave_outputs[book][wave] = output
             wave_codes[book][wave] = code
