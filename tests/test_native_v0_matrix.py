@@ -1433,15 +1433,11 @@ class NewnewsSyntaxTests(unittest.TestCase):
 
     def rows(self, **replies):
         payload = dict(self.READS, **replies)
-
-        class Step:
-            command = "python3 matrix.py surface"
-            output = json.dumps(payload)
-            first_line = output
-
+        step = v0_matrix.Step("node A reader surface", "python3 matrix.py surface", 0,
+                              json.dumps(payload), 0.0, expect=None)
         with tempfile.TemporaryDirectory() as home:
             gate = native_gate(home)
-            gate.matrix = lambda *args, **kwargs: Step()
+            gate.matrix = lambda *args, **kwargs: step
             node = gate.a
             node.port = 11190
             gate.read_surface(node)
