@@ -2132,10 +2132,32 @@ whole arrival or bytes, recomputes the principal/coherence active set, and
 copies the offset-zero source's ingress and retained age anchor. The native
 service calls the fragment wrapper and ACL2 publisher authorization for kind
 18, then advances the family selector after durable kind-5 reception and
-cold recovery. The native interrupted-contact fixture and fragment-step
-guard closure remain to be qualified. This finite slice does not yet provide
+cold recovery. The native interrupted-contact fixture remains to be run
+against a saved image containing the activation. The fragment-step guard book
+certifies the called live wrapper; ordered recovery decoder guards remain
+open. This finite slice does not yet provide
 kind-10 conflict deletion, retransmission correlation after replacement,
 or proactive forwarding fragmentation.
+
+The fragment carrier and expiry-safe replacement activation uses one ACL2
+reception decision with an explicit carrier flag. The native
+`fnn-bps-receive` path calls `fn-bpnf-receive-wire-event`, which admits a
+validated fragment as a kind-5 retained carrier; application reception still
+rejects a partial fragment, and `fn-bpah-pending-view` still excludes it from
+Store. After durable kind-5 reception or cold recovery, the service takes one
+clock observation and asks `fn-bpnf-family-next` for an eligible family. The
+selector checks every selected fragment under that same observation, including
+the offset-zero source, without dropping expired or unknown-age members from
+the coherence set. It scans past an ineligible family so another complete,
+live family can progress. A successful `:family` proposal persists that exact
+observation in a version-1 kind-18 record. Both the live durable callback and
+ordered replay call `fn-bpnf-family-apply-at` against the recorded observation
+and recompute the exact source set and whole wire. The old five-field kind-18
+frame remains decodable as historical bytes but faults recovery with
+`:legacy-family-expiry`; replay never assigns it an invented observation. A
+definitive refusal retains source fragments, and uncertain publication fences
+ordinary events until recovery. This is a bounded local policy for incomplete
+or uncertain lifetime evidence, not a proof that remote clocks are honest.
 
 - `(:ok bytes)`: propose kind 18 `(fn-bpn-rec-reassembled token family held
   ids)`. Applied atomically: the fragment entries leave the live list (their
