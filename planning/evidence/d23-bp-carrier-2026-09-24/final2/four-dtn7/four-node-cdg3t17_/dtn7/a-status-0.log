@@ -1,0 +1,4 @@
+$ fn bp-obligation status /tank/fn/scratch/d23-bp/final2/four-dtn7/four-node-cdg3t17_/dtn7/a-store /tank/fn/scratch/d23-bp/final2/four-dtn7/four-node-cdg3t17_/dtn7/a-fnwf work-bp-node
+BP obligation owner work=work-bp-node status=outstanding pinned=yes
+
+# rc=0

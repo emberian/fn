@@ -1,0 +1,4 @@
+$ fn app-journal workflow-enqueue /tank/fn/scratch/d23-bp/final/dtn7-carried-2/a-store /tank/fn/scratch/d23-bp/final/dtn7-carried-2/a-fnwf 1 0 work-bp-node <m4-app-receipt@example.invalid> forward-bp-node dtn://receiver/ native-policy terms-native
+workflow durable work=work-bp-node status=outstanding
+
+# rc=0

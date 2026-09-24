@@ -1,0 +1,7 @@
+$ fn bp-node serve 39259 /tank/fn/scratch/d23-bp/final/control/b-fnbs /tank/fn/scratch/d23-bp/final/control/b-store /tank/fn/scratch/d23-bp/final/control/b-fnrj /tank/fn/scratch/d23-bp/final/control/b-fnwf dtn://receiver/ dtn://sender/ dtn://receiver/ native-policy dtn://receiver/ 127.0.0.1 57411 0 3600000 2 32 1048576 843604227314 60000
+BP FNBS recovered held=0
+BP queue recovered jobs=0
+BP NODE LISTENING 39259
+TCPCL bp-node event (:SEND :CONTACT 6)
+TCPCL bp-node event (:SEND :SESS-INIT 40)
+TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)

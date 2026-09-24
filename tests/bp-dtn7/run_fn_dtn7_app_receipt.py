@@ -324,7 +324,8 @@ def main(argv=None):
             setup.append(lab.fn(tag, *argv).returncode)
         # The last hop each side sees: dtn7's node ID, or the fn peer directly.
         b_neighbour = ("dtn://dtn7-r{}/".format(args.relays)
-                       if args.relays and args.b_trusts == "neighbour" else SENDER)
+                       if args.relays and args.b_trusts in ("neighbour", "carried")
+                       else SENDER)
         report["b_trusts"] = dict(mode=args.b_trusts, eid=b_neighbour)
         a_neighbour = "dtn://dtn7-r1/" if args.relays else RECEIVER
         carried = bool(args.relays) and args.b_trusts == "carried"

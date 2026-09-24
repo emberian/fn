@@ -1,0 +1,4 @@
+$ fn bp-obligation status /tank/fn/scratch/d23-bp/final/dtn7-neighbour/a-store /tank/fn/scratch/d23-bp/final/dtn7-neighbour/a-fnwf work-bp-node
+BP obligation owner work=work-bp-node status=outstanding pinned=yes
+
+# rc=0

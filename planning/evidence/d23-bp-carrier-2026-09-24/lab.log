@@ -1,0 +1,12 @@
+profile=dtn image=build/fn-host-dtn roots=105 result=loaded
+built build/fn-host-dtn-developer profile=developer (121M core)
+undefined lines: 0
+443977d848c7dc2ad393f3c0a43fa4507d05cc6c3e72c700ad90c9b0f2c45c1e  build/fn-host-dtn-developer
+ea069fcddf2a841a4279a3a790ec5e688f5f393937ec9138daba17ceec51af28  build/fn-host-dtn-developer.core
+control rc=0
+dtn7-carried-1 rc=0
+dtn7-carried-2 rc=0
+dtn7-neighbour rc=0
+four-dtn7 rc=0 {"status": "passed", "seconds": 77.7, "evidence": "/tank/fn/scratch/d23-bp/final/four-dtn7/four-node-te9xe6rq/evidence.json"}
+ALLDONE
+EXIT=0

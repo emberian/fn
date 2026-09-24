@@ -1,0 +1,5 @@
+$ fn operator /tank/fn/scratch/d23-bp/final2/four-dtn7/four-node-cdg3t17_/dtn7/b.toml bp-boundary add ingress-boundary rn.bp.gate.invalid dtn://dtn7-r2/ 35315 carries dtn://sender/
+configured generation=3 record=00000003.cfg verification=VERIFIED
+accepted operator bp-boundary
+
+# rc=0

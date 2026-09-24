@@ -1,0 +1,4 @@
+$ fn store /tank/fn/scratch/d23-bp/final2/dtn7-carried-2/a-store post <m4-app-receipt@example.invalid> /tank/fn/scratch/d23-bp/final2/dtn7-carried-2/article - - fn.test
+committed sequence=0 charge=3
+
+# rc=0
