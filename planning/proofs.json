@@ -699,8 +699,7 @@
         "fn-pcar-sbud-prepare-is-sbud-prepare",
         "fn-pcar-next-lower-is-next-lower",
         "fn-acar-own-outcome-is-reference-under-ocl-relation",
-        "fn-acar-scar-auth-sessionp-of-rebuilt-session",
-        "fn-orec-recover-installs-ocl-relation"
+        "fn-acar-scar-auth-sessionp-of-rebuilt-session"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -1192,8 +1191,7 @@
         "fn-ocfg-open-pins-the-live-configuration",
         "fn-ocfg-advance-observes-the-live-configuration",
         "fn-native-admin-live-group-delta-is-a-typed-delta",
-        "fn-native-admin-publication-is-authorized-only-under-the-lock",
-        "fn-orec-recover-installs-ocl-relation"
+        "fn-native-admin-publication-is-authorized-only-under-the-lock"
       ]
     },
     {
