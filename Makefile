@@ -533,6 +533,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-invariants \
 	books/owner-fault \
 	books/owner-prepare-correspondence \
+	books/owner-retention-preparation \
 	books/owner-agent \
 	books/owner-log \
 	books/consumer-event-index \
@@ -552,6 +553,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-tests \
 	tests/acl2/owner-config-tests \
 	tests/acl2/owner-prepare-correspondence-tests \
+	tests/acl2/owner-retention-preparation-tests \
 	books/relay \
 	books/relay-invariants \
 	books/relay-crash-invariants \

@@ -144,6 +144,17 @@ Use explicit result events rather than an event called simply `commit`:
    allocation counter, pending submission and feed state. The relations are proof
    state, not executable host flags or per-command recognizers. Recovery continues
    to replay the complete observed history and does not use the projection.
+
+   The native `fn-owner-prepare-retention` path constructs a distinct ACL2
+   retention event from the owner's identity sequence and acceptance txid,
+   using `fn-store-retention-event-make`, then calls the configured owner through
+   `fn-owner-step`. `fn-orpr-host-retention-prepare-branches` names the exact
+   logical `fn-ocfg-step` subject. From a reserved Store projection, an
+   unchanged projection takes the host's `:refused` branch; otherwise the
+   projection is `:record-staged` and its candidate equals those exact event
+   arguments. This is the logical caller handoff to publication, conditional
+   on a reserved input; it does not establish the byte relation at that input
+   or a physical directory barrier.
 10. `record-write(result)` creates an exclusive staging file. Write/create/file
     barrier failures before a final-name operation are known aborts. After a
     successful file barrier the candidate is `data-durable`.
