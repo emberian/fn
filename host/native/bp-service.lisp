@@ -163,9 +163,9 @@
 (defun fnn-bps-foundation-step (service event)
   ;; The initial base-state invariant is checked once at open.  This checks
   ;; only the bounded event before the exact guarded machine call.
-  (unless (eq (fnn-core 'fn-bpnf-host-eventp event) t)
+  (unless (eq (fnn-core 'fn-bpnp-host-eventp event) t)
     (fnn-indeterminate "bp-service: malformed foundation event"))
-  (let ((answer (fnn-core 'fn-bpn-report-author-step
+  (let ((answer (fnn-core 'fn-bpnp-step
                           (fnn-bps-state service) event)))
     (setf (fnn-bps-state service)
           (fnn-core 'fn-bpnf-answer-state answer))
