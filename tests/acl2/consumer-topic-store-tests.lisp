@@ -45,8 +45,9 @@
                    (fn-csi-full-relationp *cts-admin-reserved*)
                    (equal (fn-sf-phase (fn-sn-files *cts-admin-reserved*))
                           :reserved)))
-(defconst *cts-admin-staged*
-  (fn-snrt-step *cts-admin-reserved* (list :prepare-topic *cts-install*)))
+(make-event `(defconst *cts-admin-staged*
+               ',(fn-snrt-step *cts-admin-reserved*
+                               (list :prepare-topic *cts-install*))))
 (assert-event (equal (fn-sf-phase (fn-sn-files *cts-admin-staged*))
                      :record-staged))
 (assert-event (fn-csi-livep *cts-admin-staged*))
@@ -107,9 +108,10 @@
          nil (fn-sf-records (fn-sn-files *cts-admitted*)) 0)
         (list :ok (fn-sn-consumer *cts-admitted*))))
 
-(defconst *cts-open*
-  (fn-sn-open-observed '("fn.test") 32 8
-                       (fn-sf-records (fn-sn-files *cts-admitted*))))
+(make-event `(defconst *cts-open*
+               ',(fn-sn-open-observed
+                  '("fn.test") 32 8
+                  (fn-sf-records (fn-sn-files *cts-admitted*)))))
 (assert-event (fn-sn-open-okp *cts-open*))
 (defconst *cts-reopened* (fn-sn-open-state *cts-open*))
 (assert-event (and (fn-csi-full-relationp *cts-reopened*)
