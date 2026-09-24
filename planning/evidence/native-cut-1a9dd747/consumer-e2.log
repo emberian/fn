@@ -1,0 +1,9 @@
+test_different_local_uid_is_refused_by_owner (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_different_local_uid_is_refused_by_owner) ... skipped 'set FN_RUN_CONSUMER_E2E=1 and a source-matched FN_NATIVE_DEVELOPER_HOST'
+test_durable_scope_ack_and_unrelated_article (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_durable_scope_ack_and_unrelated_article) ... skipped 'set FN_RUN_CONSUMER_E2E=1 and a source-matched FN_NATIVE_DEVELOPER_HOST'
+test_lost_register_reply_resolves_by_reopened_position (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_lost_register_reply_resolves_by_reopened_position) ... skipped 'set FN_RUN_CONSUMER_E2E=1 and a source-matched FN_NATIVE_DEVELOPER_HOST'
+test_signed_composite_poll_and_lost_positive_ack_reply (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply) ... skipped 'set FN_RUN_CONSUMER_E2E=1 and a source-matched FN_NATIVE_DEVELOPER_HOST'
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK (skipped=4)

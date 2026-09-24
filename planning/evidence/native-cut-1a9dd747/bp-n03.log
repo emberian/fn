@@ -1,0 +1,6 @@
+test_older_unrouted_transit_does_not_block_younger_local_request (tests.test_bp_node_native.NativeBpNodeTests.test_older_unrouted_transit_does_not_block_younger_local_request) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 27.844s
+
+OK
