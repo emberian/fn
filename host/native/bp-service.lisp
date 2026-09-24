@@ -664,14 +664,17 @@
         (values result adu)))))
 
 (defun fnn-bps-tcpcl-ingress
-  (service conn session-counter xfer-id owner channel)
+  (fnbs-state conn session-counter xfer-id owner channel)
+  "The CL ingress ACL2 admits for one transfer, or NIL.  FNBS-STATE names the
+epoch: bp-node's live FNBS state, or the initial state for bp-app receive,
+which runs no FNBS machine."
   (let* ((negotiated
            (fnn-core 'fn-tcl-session-negotiated (fnn-tclc-session conn)))
          (announced
            (fnn-core 'fn-tcl-negotiated-peer-node-id negotiated))
          (answer (and owner channel
                       (fnn-owner-core 'fn-owner-bp-tcpcl-ingress
-                                      (fnn-bps-state service)
+                                      fnbs-state
                                       session-counter xfer-id channel
                                       announced))))
     (when (and answer (eq (first answer) :refused))

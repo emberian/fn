@@ -457,5 +457,94 @@ class BindTests(unittest.TestCase):
                       " ".join(signature.bind(1, [])))
 
 
+class RawArityTests(unittest.TestCase):
+    """`raw-arity`: calls of the native host's raw Common Lisp `defun`s."""
+
+    def scan(self, source: str, acl2_arity=None):
+        from tools import ledger
+        forms = ledger.Reader(textwrap.dedent(source)).top_level()
+        return harness_check.raw_arity_scan(
+            {"host/native/x.lisp": forms}, frozenset(), acl2_arity)[0]
+
+    # The break it exists for, in the shape it had at dev 552c763e
+    # (host/native/bp-app.lisp:213-215): nine required parameters, eight
+    # arguments, the ingress dropped.
+    DROPPED_INGRESS = """
+        (defun fnn-bpapp-accept-locked
+            (service journal inbound-id request node-id bundle-identity
+                     ingress bundle-source bundle-destination)
+          (list service journal inbound-id request node-id bundle-identity
+                ingress bundle-source bundle-destination))
+        (defun fnn-bpapp-deliver (service journal node-id identity adu source destination)
+          (multiple-value-setq (app-result receipt)
+            (fnn-owner-serialized
+             service nil
+             (lambda ()
+               (fnn-bpapp-accept-locked
+                service journal inbound-id (fnn-octets adu) node-id
+                (fnn-octets identity) source destination)))))
+        """
+
+    def test_the_eight_of_nine_call_is_caught(self):
+        found = self.scan(self.DROPPED_INGRESS)
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["callee"], "fnn-bpapp-accept-locked")
+        self.assertEqual(found[0]["problem"], "called with 8 arguments and takes 9")
+
+    def test_the_nine_argument_call_is_clean(self):
+        fixed = self.DROPPED_INGRESS.replace(
+            "(fnn-octets identity) source destination",
+            "(fnn-octets identity) ingress source destination")
+        self.assertEqual(self.scan(fixed), [])
+
+    def test_optional_rest_and_key_bound_the_count(self):
+        source = """
+            (defun fnn-a (x &optional y) (list x y))
+            (defun fnn-b (x &rest ys) (list x ys))
+            (defun fnn-c (x &key y) (list x y))
+            (defun fnn-use () (list (fnn-a 1) (fnn-a 1 2) (fnn-a 1 2 3)
+                                    (fnn-b) (fnn-b 1 2 3 4) (fnn-c 1 :y 2)))
+            """
+        found = [(row["callee"], row["problem"]) for row in self.scan(source)]
+        self.assertEqual(sorted(found), [
+            ("fnn-a", "called with 3 arguments and takes 1 to 2"),
+            ("fnn-b", "called with 0 arguments and takes at least 1")])
+
+    def test_binders_quote_and_local_functions_are_not_calls(self):
+        source = """
+            (defun fnn-a (x) x)
+            (defun fnn-use (fnn-a)
+              (flet ((fnn-a (x y) (list x y)))
+                (list (fnn-a 1 2) '(fnn-a 1 2) #'fnn-a
+                      (multiple-value-bind (fnn-a b) (values 1 2) (list b)))))
+            """
+        self.assertEqual(self.scan(source), [])
+
+    def test_a_funcall_of_a_named_function_is_a_call(self):
+        found = self.scan("(defun fnn-a (x) x) (defun fnn-u () (funcall #'fnn-a 1 2))")
+        self.assertEqual([row["callee"] for row in found], ["fnn-a"])
+
+    def test_a_dispatched_acl2_call_counts_state(self):
+        source = """
+            (defun fnn-core (name &rest args) (list name args))
+            (defun fnn-core-state (name &rest args) (list name args))
+            (defun fnn-u (o)
+              (list (fnn-core 'fn-pure o) (fnn-core-state 'fn-pure o)
+                    (fnn-core-state 'fn-stateful o)))
+            """
+        stale = {"fnn-call", "fnn-owner-core", "fnn-owner-action",
+                 "fnn-bpapp-core-record"}
+        found = [row for row in self.scan(source, {"fn-pure": 1, "fn-stateful": 2})
+                 if row["callee"] not in stale]
+        self.assertEqual([(row["callee"], row["problem"]) for row in found], [
+            ("fn-pure", "dispatched with 2 arguments (state included) and takes 1")])
+
+    def test_the_tree_has_no_raw_arity_finding(self):
+        found, counts = harness_check.raw_arity_findings(ROOT)
+        self.assertEqual(found, [])
+        self.assertGreater(counts["applications"], 1000)
+        self.assertGreater(counts["dispatched_applications"], 500)
+
+
 if __name__ == "__main__":
     unittest.main()

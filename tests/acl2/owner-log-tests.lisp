@@ -291,3 +291,56 @@
           (fn-olog-code-class-word (fn-feed-response-code response)))
    :hints (("Goal" :in-theory (e/d (fn-olog-code-class-word fn-olog-text)
                                    (fn-olog-field fn-olog-decimal fn-olog-time))))))
+
+; -----------------------------------------------------------------------------
+; The BP application receiver's refusal line
+;
+; fn-olog-bp-app-refusal-line, installed by host/bp-native-app-host.lisp
+; fn-owner-app-refusal-log and written by host/native/bp-app.lisp
+; fnn-bpapp-deliver.  The witness is the refusal every image before the
+; bp-app-receive lane produced: the planner found no admitted ingress.
+
+(defconst *olt-bp-app-no-principal*
+  (fn-olog-bp-app-refusal-line :refused :no-principal 0))
+(assert-event
+ (equal *olt-bp-app-no-principal*
+        (olt-text "refused bp-application xfer=0 result=refused reason=no-principal")))
+(assert-event (fn-olog-no-breakp *olt-bp-app-no-principal*))
+(assert-event
+ (equal (fn-olog-bp-app-refusal-line :busy :owner-busy 3)
+        (olt-text "deferred bp-application xfer=3 result=busy reason=owner-busy")))
+(assert-event
+ (equal (fn-olog-line-word (fn-olog-bp-app-refusal-line :submitted nil 1))
+        (olt-text "uncertain")))
+(assert-event
+ (equal (fn-olog-bp-app-refusal-line :clock-unusable nil 2)
+        (olt-text "refused bp-application xfer=2 result=clock-unusable reason=none")))
+
+; A line that said `refused' for every answer but acceptance would call a
+; busy owner's deferral and an unknown word refusals: :busy separates.
+(must-fail
+ (defthm olt-bp-app-line-refused-unless-accepted
+   (equal (equal (fn-olog-line-word
+                  (fn-olog-bp-app-refusal-line result reason xfer-id))
+                 (fn-olog-text "refused"))
+          (not (member-equal result '(:accepted :duplicate))))
+   :hints (("Goal" :in-theory (e/d (fn-olog-bp-app-class-word
+                                    fn-olog-class-word fn-olog-text)
+                                   (fn-olog-field fn-olog-decimal
+                                    fn-olog-symbol-text))))))
+(assert-event
+ (not (equal (fn-olog-line-word (fn-olog-bp-app-refusal-line :busy nil 0))
+             (olt-text "refused"))))
+
+; The weakest clause alone (`:refused') is not the class: an unusable clock
+; refuses too, with nothing written, and the line says so.
+(must-fail
+ (defthm olt-bp-app-line-refused-only-for-refused
+   (equal (equal (fn-olog-line-word
+                  (fn-olog-bp-app-refusal-line result reason xfer-id))
+                 (fn-olog-text "refused"))
+          (equal result :refused))
+   :hints (("Goal" :in-theory (e/d (fn-olog-bp-app-class-word
+                                    fn-olog-class-word fn-olog-text)
+                                   (fn-olog-field fn-olog-decimal
+                                    fn-olog-symbol-text))))))

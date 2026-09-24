@@ -417,7 +417,8 @@ may or may not be durable."
     (fnn-fault "bp: injected receive core fault"))
   (let* ((tally (fnn-bps-tally service))
          (ingress (fnn-bps-tcpcl-ingress
-                   service conn session-counter xfer-id owner channel)))
+                   (fnn-bps-state service) conn session-counter xfer-id
+                   owner channel)))
     (multiple-value-bind (result adu)
         (fnn-bps-receive service ingress octets)
       (case (first result)
