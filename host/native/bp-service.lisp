@@ -11,6 +11,10 @@
   root lifecycle tally state spool-lock lock-fd (stages nil)
   (next-session 0) (outcome :accepted))
 
+; Bound only during a negotiated outbound TCPCL contact.  The ACL2 effect
+; supplies the exact image after immutable kind-8 publication.
+(defvar *fnn-bps-forward-send* nil)
+
 (defvar *fnn-bps-lifecycle-enumerations* 0)
 
 (defun fnn-bps-lock (root)
@@ -518,6 +522,19 @@
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
+      ((:persist-attempt :persist-forward-result)
+       (unless (= (length effect) 4)
+         (fnn-indeterminate "bp-service: malformed forward publication effect"))
+       (let* ((epoch (second effect))
+              (operation-id (third effect))
+              (record (fourth effect))
+              (outcome (fnn-bps-persist-forward
+                        service epoch operation-id record)))
+         (when (eq outcome :uncertain)
+           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-drive-effects
+          service (fnn-bps-foundation-step
+                   service (list :persist-result epoch operation-id outcome)))))
       (:deliver
        (fnn-fault "bp-service: application delivery requires the owner caller"))
       (:delivery-answer
@@ -538,7 +555,28 @@
            (setf (fnn-bps-outcome service) :uncertain))
          (fnn-bps-drive-effects
           service (fnn-bps-step service (list :persist-result token outcome)))))
-      (:cl-send (fnn-bps-send-effect service effect))
+      (:cl-send
+       (if (= (length effect) 7)
+           (if *fnn-bps-forward-send*
+               (funcall *fnn-bps-forward-send* effect)
+             (fnn-indeterminate
+              "bp-service: durable forward attempt lacks its session"))
+         (fnn-bps-send-effect service effect)))
+      (:forward-ready
+       (fnn-out "BP forwarding result durable arrival=~d status=~(~a~)"
+                (second effect) (third effect)))
+      (:forward-answer
+       (case (second effect)
+         (:refused
+          (unless (eq (fnn-bps-outcome service) :uncertain)
+            (setf (fnn-bps-outcome service) :refused)))
+         (:uncertain
+          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-indeterminate "bp-service: forwarding publication uncertain"))))
+      (:forward-stale
+       (fnn-out "BP forwarding callback stale"))
+      (:progress-wait
+       (fnn-out "BP node progress waiting reason=~(~a~)" (third effect)))
       (:bundle-queue-accepted
        (fnn-out "BP queue accepted work=~a attempt=~a generation=~d status=~(~a~)"
                 (fnn-octets-string (fnn-octets (second effect)))

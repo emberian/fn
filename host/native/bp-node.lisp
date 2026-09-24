@@ -195,6 +195,73 @@
                node-id configured-peer))
   bp)
 
+(defun fnn-bpnode-forward-contact
+    (bp node-id peer-id contact-host contact-port transfer-mru wall wall-error)
+  "Drive one ACL2-selected held forwarding attempt on one negotiated session."
+  (let ((peer (fnn-bp-eid peer-id)))
+    (unless (eq (fnn-core 'fn-bpnp-has-forward-pendingp
+                           (fnn-core 'fn-bpnf-held-list (fnn-bps-state bp)) peer) t)
+      (return-from fnn-bpnode-forward-contact nil))
+    (let ((socket nil)
+          (sent nil)
+          (session-id
+            (cons (fnn-core 'fn-bpnf-epoch (fnn-bps-state bp))
+                  (incf (fnn-bps-next-session bp)))))
+      (handler-case
+          (unwind-protect
+               (progn
+                 (setq socket (fnn-tcl-connect contact-host contact-port))
+                 (let* ((*fnn-bps-forward-send*
+                          (lambda (effect)
+                            (unless (and (null sent) (= (length effect) 7)
+                                         (equal (second effect) peer)
+                                         (equal (third effect) session-id))
+                              (fnn-indeterminate
+                               "bp-node: forward effect does not match session"))
+                            (setq sent effect)))
+                        (conn
+                          (fnn-tcl-session
+                           (fnn-socket-fd socket) :active
+                           (fnn-tcl-params node-id peer-id +fnn-tcl-keepalive+
+                                           +fnn-tcl-segment-mru+ transfer-mru)
+                           "bp-node-forward" (fnn-bps-root bp)
+                           :on-ready
+                           (lambda (connection)
+                             (let* ((negotiated
+                                      (fnn-core 'fn-tcl-session-negotiated
+                                                (fnn-tclc-session connection)))
+                                    (mru (fnn-core 'fn-tcl-negotiated-transfer-mtu
+                                                   negotiated))
+                                    (obs (fnn-bp-observation wall wall-error)))
+                               (fnn-bps-drive-effects
+                                bp (fnn-bps-foundation-step
+                                    bp (list :session peer session-id t mru obs)))
+                               (when sent
+                                 (setf (fnn-tclc-pending connection)
+                                       (cons "bp-node-forward" (seventh sent)))
+                                 (fnn-out "BP forwarding attempt durable arrival=~d"
+                                          (sixth sent))))))))
+                   (when sent
+                     (let ((result
+                             (fnn-core 'fn-bpnp-tcpcl-outcome
+                                       (fnn-tclc-outcome conn))))
+                       (when (eq result :fence)
+                         (setf (fnn-bps-outcome bp) :uncertain)
+                         (fnn-indeterminate
+                          "bp-node: transport outcome uncertain after durable attempt"))
+                       (fnn-bps-drive-effects
+                        bp (fnn-bps-foundation-step
+                            bp (list :forward-result
+                                     (fourth sent) (fifth sent) session-id
+                                     result (fnn-bp-observation wall wall-error))))))))
+            (when socket (fnn-socket-shut socket)))
+        ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
+          (if sent
+              (fnn-indeterminate
+               "bp-node: transport failed after durable attempt: ~a" e)
+            (fnn-out "BP forwarding session unavailable: ~a" e))))
+      sent)))
+
 (defun fnn-bpnode-queue-outbox
     (bp owner receipt-root destination policy issuer node-id peer-id view
      contact-host contact-port transfer-mru wall wall-error)
@@ -397,6 +464,9 @@
            (fnn-bpnode-dispatch-pending
             bp owner receipt-root workflow-root destination policy issuer
             node-id peer-id)
+           (fnn-bpnode-forward-contact
+            bp node-id peer-id contact-host contact-port transfer-mru
+            wall wall-error)
            (fnn-bpnode-queue-outboxes
             bp owner receipt-root destination policy issuer node-id peer-id
             contact-host contact-port transfer-mru wall wall-error)
@@ -447,6 +517,9 @@
                 (fnn-bpnode-dispatch-pending
                  bp owner receipt-root workflow-root destination policy issuer
                  node-id peer-id)
+                (fnn-bpnode-forward-contact
+                 bp node-id peer-id contact-host contact-port transfer-mru
+                 wall wall-error)
                 (fnn-bpnode-queue-outboxes
                  bp owner receipt-root destination policy issuer node-id peer-id
                  contact-host contact-port transfer-mru wall wall-error)
