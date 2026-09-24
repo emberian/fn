@@ -351,7 +351,7 @@ and faults without following or deleting anything."
 ;;; The loop.  One `fn-tcl-drive' per chunk, with the carry prepended; a tick
 ;;; on every wakeup; `fn-tcl-tcp-closed' when the peer goes away.
 
-(defun fnn-tcl-session (fd role params tag spool &key bundle trace (expect 0))
+(defun fnn-tcl-session (fd role params tag spool &key bundle trace (expect 0) on-ready)
   "Drive one connection to its end and return the connection record.
 
 Only the active entity initiates the SESS_TERM handshake, and only once the
@@ -363,7 +363,8 @@ failure rather than a refusal."
          (session (fnn-core 'fn-tcl-host-initial role params now))
          (conn (make-fnn-tcl-conn :fd fd :tag tag :spool spool :session session
                                   :trace trace
-                                  :pending (and bundle (cons tag bundle)))))
+                                  :pending (and bundle (cons tag bundle))))
+         (ready-called nil))
     (unless session (fnn-refuse "tcpcl: the session machine refused these parameters"))
     (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-open session now))
     (loop
@@ -386,6 +387,11 @@ failure rather than a refusal."
                (setf (fnn-tclc-carry conn) (third triple))
                (fnn-tcl-apply conn triple "event")))
            (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake))))
+        (when (and on-ready (not ready-called)
+                   (eq (fnn-core 'fn-tcl-host-phase
+                                 (fnn-tclc-session conn)) :established))
+          (setq ready-called t)
+          (funcall on-ready conn))
         (fnn-tcl-offer conn wake)
         (when (and (eq role :active)
                    (null (fnn-tclc-pending conn))

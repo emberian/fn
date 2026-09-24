@@ -120,6 +120,22 @@
         (car sessions)
       (fn-bpnp-find-session (cdr sessions) peer session))))
 
+; A cheap host scheduling projection.  The session event remains the sole
+; authority to select a row and build its exact forwarding image.
+(defun fn-bpnp-has-forward-pendingp (held peer)
+  (declare (xargs :guard t :measure (acl2-count held)))
+  (if (atom held) nil
+    (or (and (equal (fn-bpn-nth 12 (car held)) '(:forward-pending))
+             (equal (fn-bpn-nth 11 (car held)) peer)
+             (null (fn-bpn-nth 14 (car held))))
+        (fn-bpnp-has-forward-pendingp (cdr held) peer))))
+
+(defun fn-bpnp-tcpcl-outcome (observed)
+  (declare (xargs :guard t))
+  (cond ((equal observed :accepted) :sent)
+        ((equal observed :refused) :failed)
+        (t :fence)))
+
 (defun fn-bpnp-wait-for (key waits)
   (declare (xargs :guard t :measure (acl2-count waits)))
   (if (atom waits) nil
