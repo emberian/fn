@@ -145,6 +145,35 @@
 (defun fn-bpn-host-authored-wire-operation-publication (operation)
   (fn-bpn-authored-wire-operation-publication operation))
 
+; A `bp send' retry re-offers a durable attempt; it never mints a second
+; identity for the same ADU (kind-8 retry policy, spec 4.3.1: the retried
+; bundle keeps its source, creation time and sequence).  NAME is the file
+; name the operator gave, WIRE its bytes as read from the journal.  The
+; answer is (creation-time sequence) exactly when WIRE decodes, NAME is the
+; authored-wire name of its sequence, and WIRE is byte for byte the bundle
+; this node authors for ADU to PEER under CONFIG at that creation time and
+; sequence; otherwise NIL, which the host reports as a refusal.  Neither the
+; host nor this function reads a counter: the identity is the one on the wire.
+(defun fn-bpn-host-authored-retry (config peer adu name wire)
+  (if (not (and (fn-bpn-configp config) (fn-bpp-eidp peer) (fn-bpb-datap adu)
+                (stringp name) (fn-cbor-octet-listp wire)))
+      nil
+    (let ((decoded (fn-bpb-decode wire (len wire))))
+      (if (not (and (fn-cbor-result-okp decoded)
+                    (fn-bpb-bundlep (fn-cbor-result-value decoded))))
+          nil
+        (let* ((primary (fn-bpb-bundle-primary (fn-cbor-result-value decoded)))
+               (creation (fn-bpp-creation-time primary))
+               (sequence (fn-bpp-sequence primary))
+               (obs (fn-clock-observation 0 creation 0 (not (equal creation 0)))))
+          (if (and (fn-bpp-timep sequence)
+                   (fn-clock-observationp obs)
+                   (equal name (coerce (fn-bpn-authored-wire-name-chars sequence)
+                                       'string))
+                   (equal wire (fn-bpn-send config peer adu sequence obs)))
+              (list creation sequence)
+            nil))))))
+
 ; -----------------------------------------------------------------------------
 ; Receiving.  The flat result is
 ;

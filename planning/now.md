@@ -105,15 +105,34 @@ check that also caught `fn config check` exiting 4, refusal reasons logged,
 for the server), and the deploy: **the hbox node runs `47bdb9a4`**
 ([record](evidence/node-hbox-47bdb9a4-2026-09-24.md)).
 
-**In flight:**
+Landed after the deploy: m4-dtn-n08 (N08 exactly-once on the default
+image; the DTN image lacks the node driver), stale-tests-2 (served crash
+model against the stored octets; a refused start exits 5), commit-path-cost
+(the POST commit's history search carried: commit CPU 20 -> 1 to 3 ms),
+m5-profile-upgrade (offline development-to-scale upgrade with its byte
+program and cuts, PRF-072), p8-signed-post (a signed POST over NNTP gets a
+durable verdict through the transit classification).
 
-| Lane | Intended result |
-| --- | --- |
-| m4-dtn-n08 | M4 on a DTN image with the kind-8 policy: N08 exactly-once after a death, the DTN modules, an interrupted contact on the pinned dtn7-rs, the four-node lab |
-| commit-path-cost | the whole-history `fn-record-p` per POST carried from open; CPU per POST re-measured |
-| m5-profile-upgrade | offline development-to-scale profile upgrade with an ACL2 upgrade-only predicate, a cut coordinate and the campaign cuts; the deployed store's budget past 128 |
-| p8-signed-post | a signed POST over NNTP classified by the same ACL2 plan as transit, with a durable verdict |
-| stale-tests-2 | served crash model judged against the stored octets; two raw scripts; the launcher exits 5 instead of waiting on stdin when OpenSSL is missing |
+Landed since: dtn-node-image (the DTN image runs the BP node; N08 and the
+dtn7-rs severed contact on it), p10-k0-recovery (K0 over all 25 cut
+coordinates), commit-path-2 (prepare fold and the advance's node check
+carried: 3.5 ms CPU per POST at N=120), second-count (the transaction file
+name and the payload bound are ACL2's). Image five `834124b1` is frozen with
+all four images built and its closure green; it is NOT yet qualified
+(matrix, campaign, native modules) nor deployed, and it predates the last
+four merges.
+
+**Not merged, kept for a follow-up:** `lane/p11-machine-gaps` at `8b273f87`
+(worktree `build/lanes/p11-machine-gaps`): N07 as a recovery-event boot-domain
+gate and N11 as a kind-14 conflict record with its codec (certified), but the
+keystone book `books/bp-node-machine-gaps.lisp` times out at the local lemma
+`bpgap-conflict-held-under-hypotheses`, and the host must drive the new
+`:persist-conflict` effect (bp-service.lisp `fnn-bps-drive-effects`, the
+TCPCL receive callback, and the N07 gate at :75-114 / :752) before any image
+carries the branch. Its LANEDUMP has the exact list. No lane is in flight;
+the context window rotates here; the next window starts
+by qualifying `834124b1` (three lanes as for 47bdb9a4), deploying it in
+place, and running the profile upgrade on the node store (decision 9).
 
 ## Where to read next
 

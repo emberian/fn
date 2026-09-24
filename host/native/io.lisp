@@ -989,11 +989,18 @@ which `fn-store-sn-prepare' then refuses."
   (fnn-as-octets (fnn-core 'fn-store-obligation-id-of
                            (fnn-octet-list msgid) (fnn-octet-list subject))))
 
-(defun fnn-post-boundary (msgid payload-length group-count charge)
-  (let ((value (fnn-core 'fn-store-post-boundary (fnn-octet-list msgid) payload-length
-                         group-count charge)))
+(defun fnn-post-boundary (profile msgid payload-length group-count charge)
+  "ACL2's POST boundary verdict under PROFILE, the values ACL2 decoded at open."
+  (let ((value (fnn-core 'fn-store-post-boundary profile (fnn-octet-list msgid)
+                         payload-length group-count charge)))
     (unless (keywordp value) (fnn-fault "ACL2 returned an unexpected boundary verdict"))
     value))
+
+(defun fnn-pending-sequence (value)
+  "The staged record's sequence as ACL2 returned it (fn-sbud-pending-sequence)."
+  (unless (and (integerp value) (>= value 0))
+    (fnn-fault "ACL2 returned no staged record sequence"))
+  value)
 
 (defun fnn-charge (length)
   (let ((value (fnn-core 'fn-store-charge length)))
@@ -1753,17 +1760,19 @@ from the live ACL2 configuration; the native host does not name a provenance."
   (when (null groups) (fnn-refuse "provide one or more distinct configured groups"))
   (fnn-group-codes groups (fnn-store-config-domain store)))
 
-(defun fnn-validate-post-boundary (store msgid payload groups charge)
-  (when (> (fnn-config-max-payload store) (fnn-constant :max-store))
-    (fnn-fault "configured payload bound disagrees with the model"))
-  (let ((verdict (fnn-post-boundary msgid (length payload) (length groups) charge)))
-    (case verdict
-      (:ok nil)
-      (:bad-message-id (fnn-refuse "Message-ID is not a valid RFC 5536 message identifier"))
-      (:payload-bound (fnn-refuse "payload exceeds the modelled bound"))
-      (:group-bound (fnn-refuse "group count exceeds codec bound"))
-      (:charge-bound (fnn-refuse "charge must be a positive uint32"))
-      (t (fnn-refuse "ACL2 refused the post boundary: ~(~a~)" verdict)))))
+(defun fnn-validate-post-boundary (verdict)
+  "Relay ACL2's POST boundary VERDICT (fn-sbud-post-boundary) as a refusal.
+
+The developer `store post' asks it over the profile it opened
+(fnn-post-boundary); the served owner over the profile it was handed
+(fn-owner-post-boundary).  The host compares no bound of its own."
+  (case verdict
+    (:ok nil)
+    (:bad-message-id (fnn-refuse "Message-ID is not a valid RFC 5536 message identifier"))
+    (:payload-bound (fnn-refuse "payload exceeds the modelled bound"))
+    (:group-bound (fnn-refuse "group count exceeds codec bound"))
+    (:charge-bound (fnn-refuse "charge must be a positive uint32"))
+    (t (fnn-refuse "ACL2 refused the post boundary: ~(~a~)" verdict))))
 
 (defun fnn-open-live-store (root writable &optional fault)
   (let ((store (make-fnn-store root :writable writable :fault fault)))
@@ -2048,13 +2057,16 @@ error for the same reason."
            :message "store post is available only in the developer image"))
   (let* ((msgid (fnn-octets (fnn-ascii-octet-list message-id)))
          (fault (fnn-post-entry-fault inject)))
-    (multiple-value-bind (store records) (fnn-open-live-store root t fault)
+    (let ((store (fnn-open-live-store root t fault)))
       (unwind-protect
            (let* ((payload (fnn-read-regular-bounded payload-path
                                                      (fnn-config-max-payload store)))
                   (codes (fnn-group-codes-for store groups))
-                  (charge (if charge-text (parse-integer charge-text) (fnn-charge (length payload)))))
-             (fnn-validate-post-boundary store msgid payload codes charge)
+                  (charge (if charge-text (parse-integer charge-text) (fnn-charge (length payload))))
+                  (sequence nil))
+             (fnn-validate-post-boundary
+              (fnn-post-boundary (fnn-store-config store) msgid (length payload)
+                                 (length codes) charge))
              (let ((existing (fnn-bridge-existing-action msgid payload codes)))
                (when (eq existing :duplicate)
                  (fnn-out "duplicate")
@@ -2074,7 +2086,9 @@ error for the same reason."
                      (fnn-indeterminate "ACL2 could not consume refused reservation"))
                    (fnn-refuse "ACL2 refused post: ~(~a~)" action))))
              (let ((record (fnn-bridge-pending-record)))
-               (handler-case (fnn-publish store (length records) record)
+               (setq sequence (fnn-pending-sequence
+                               (fnn-core-state 'fn-store-sn-pending-sequence)))
+               (handler-case (fnn-publish store sequence record)
                  (fnn-store-indeterminate (e) (error e))
                  (fnn-store-error (e)
                    (unless (fnn-store-fenced store)
@@ -2084,7 +2098,7 @@ error for the same reason."
                    (error e))))
              (setf (fnn-store-fenced store) t)
              (fnn-finish store)
-             (fnn-out "committed sequence=~d charge=~d" (length records) charge)
+             (fnn-out "committed sequence=~d charge=~d" sequence charge)
              +fnn-exit-ok+)
         (fnn-store-close store)))))
 
@@ -2203,7 +2217,11 @@ payloads, close, reopen, and report both timings as JSON on stdout."
                                             (fnn-charge (length payload)))
                         :prepared)
               (fnn-fault "probe prepare refused"))
-            (unless (eq (fnn-publish store sequence (fnn-bridge-pending-record)) :durable)
+            (unless (eq (fnn-publish store
+                                     (fnn-pending-sequence
+                                      (fnn-core-state 'fn-store-sn-pending-sequence))
+                                     (fnn-bridge-pending-record))
+                        :durable)
               (fnn-fault "probe publish refused"))
             (unless (eq (fnn-finish store) :durable) (fnn-fault "probe finish refused"))))))
     (let ((commit-seconds (/ (- (get-internal-real-time) started)
@@ -2661,6 +2679,22 @@ connection `fn-reader-reset' opens and projects with
 (defun fnn-register-verb (verb handler)
   (push (cons verb handler) *fnn-verbs*)
   verb)
+
+(defun fnn-unregister-verb (verb)
+  "Withdraw VERB while a build script constructs the image, before it is saved."
+  (setq *fnn-verbs* (remove verb *fnn-verbs* :key #'car :test #'string=))
+  verb)
+
+;;; The surfaces a build script left out of its image.  The DTN build
+;;; (host/native/build-dtn.lisp) loads the owner and the operator for the BP
+;;; node, but not the NNTP service, credential administration or the control
+;;; socket; it names those here, and the operator refuses an ACL2 plan whose
+;;; action needs one as an unsupported entry (usage, exit 5) instead of
+;;; calling a function the image does not have.  The default image names none.
+(defvar *fnn-image-omitted-surfaces* nil)
+
+(defun fnn-image-omits-p (surface)
+  (and (member surface *fnn-image-omitted-surfaces*) t))
 
 (defun fnn-select-image-profile
     (&optional (name (or (sb-ext:posix-getenv "FN_NATIVE_PROFILE")

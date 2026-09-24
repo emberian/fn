@@ -535,7 +535,7 @@ class NativeOwnerTests(unittest.TestCase):
 
     def test_article_over_the_body_limit_is_refused_and_the_owner_survives(self):
         # The 915 node's first defect.  An article whose CRLF-canonical size
-        # passes fn-own-body-limit (books/owner.lisp; *fn-store-max-payload*
+        # passes fn-own-body-limit (books/owner.lisp; *fn-record-max-payload*
         # is 32768) closes the wire mid-article -- books/wire.lisp
         # fn-wire-after-line answers (fn-wire-close ... :body-overlimit) -- so
         # the served step consumes a PREFIX of the socket read and leaves the

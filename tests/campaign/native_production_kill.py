@@ -63,7 +63,7 @@ from tests.campaign.native_operator_campaign import (  # noqa: E402
 
 ACCEPTED, REFUSED, UNCERTAIN, UNEXPECTED = 0, 1, 3, 4
 # Payload octets per size class.  fn-own-body-limit is 32768
-# (books/owner.lisp *fn-store-max-payload*); `over` exceeds it.
+# (books/owner.lisp; the record codec's *fn-record-max-payload*); `over` exceeds it.
 # The default store profile (the one `operator init` writes and the live node
 # runs) holds 128 transactions (tools/run_store.py MAX_TRANSACTION_COUNT; the
 # owner refuses at host/native/owner.lisp `fnn-owner-attempt`).  A store is

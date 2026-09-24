@@ -34,6 +34,9 @@
 (include-book "../books/owner-config-observe")
 (include-book "../books/owner-served-carried")
 (include-book "../books/owner-commit-carried")
+(include-book "../books/owner-prepare-carried")
+(include-book "../books/owner-advance-carried")
+(include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
@@ -69,10 +72,14 @@
 ; and `fn-store-prov-post' also read), and the store's payload bound.  ACL2
 ; derives all of it (books/owner-agent.lisp fn-oag-post-config, whose agent
 ; is the path-identity by fn-oag-post-config-agent-is-the-path-identity);
-; this wrapper only supplies the payload bound.
+; this wrapper only supplies the payload bound: the record codec's payload
+; field (`*fn-record-max-payload*', books/records-shape), which bounds every
+; profile's (`fn-sbud-payload-bound-within-record-codec').  The wire limit is
+; fixed before the profile is handed over; the POST boundary applies the
+; profile's own bound (`fn-owner-post-boundary').
 (defun fn-owner-post-config (cfg)
   (declare (xargs :mode :program))
-  (fn-oag-post-config cfg *fn-store-max-payload*))
+  (fn-oag-post-config cfg *fn-record-max-payload*))
 
 (defun fn-owner-ocfg (state)
   ; Internal, single-valued accessor for host wrappers.
@@ -312,7 +319,7 @@
   ; installed now, so the host installs it unconditionally and decides nothing.
   (declare (xargs :stobjs state :mode :program))
   (mv-let (verdict next)
-    (fn-ocl-publish (fn-owner-ocfg state) generation *fn-store-max-payload*)
+    (fn-ocl-publish (fn-owner-ocfg state) generation *fn-record-max-payload*)
     (let ((state (fn-owner-install-ocfg next state)))
       (value verdict))))
 
@@ -341,7 +348,7 @@
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (not (fn-octet-listp payload)) (> (len payload) *fn-store-max-payload*)
+            (not (fn-octet-listp payload)) (> (len payload) *fn-record-max-payload*)
             (equal groups :bad) (null groups)
             (not (fn-store-text-octetsp id-octets))
             (not (fn-store-text-octetsp subject-octets))
@@ -369,12 +376,18 @@
                  ; carried profile's budget fn-sbud-prepare is the identity
                  ; (fn-sbud-prepare-refuses-at-budget) and the word is
                  ; :unaffordable; below it, it is fn-opc-prepare.
+                 ; The call is fn-pcar-sbud-prepare
+                 ; (books/owner-prepare-carried.lisp), equal to
+                 ; fn-sbud-prepare with no hypothesis
+                 ; (fn-pcar-sbud-prepare-is-sbud-prepare): its candidate
+                 ; test reads the last record's txid instead of folding
+                 ; every record's through fn-record-p.
                  (budget (fn-sbud-budget (fn-owner-store-profile state) :article))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
                             state
                           (fn-owner-install-ocfg
-                           (fn-sbud-prepare before record budget)
+                           (fn-pcar-sbud-prepare before record budget)
                            state))))
             (if (equal record :clock-unusable)
                 (value :clock-unusable)
@@ -526,6 +539,22 @@
   (let ((record (fn-sf-record-candidate
                  (fn-sn-files (fn-owner-store state)))))
     (value (if record (fn-store-event-encode record) nil))))
+
+; The staged record's sequence, the one the host names its transaction file
+; from (host/native/owner.lisp fnn-owner-publish-prepared); the host holds no
+; count of its own.  It is the committed count
+; (books/store-budget-naming.lisp `fn-sbud-pending-sequence-is-used').
+(defun fn-owner-pending-sequence (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sbud-pending-sequence (fn-owner-store state))))
+
+; The POST admission boundary over the profile the owner was handed at open
+; (`fn-owner-install-profile'); without one the payload bound is 0.
+(defun fn-owner-post-boundary (msgid-octets payload-length group-count charge
+                                            state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sbud-post-boundary (fn-owner-store-profile state) msgid-octets
+                                payload-length group-count charge)))
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).
@@ -927,7 +956,7 @@
 (defun fn-owner-feed-render-command (command)
   (declare (xargs :mode :program))
   (fn-wire-render-feed-command command *fn-nntp-max-initial-line-octets*
-                               *fn-store-max-payload*))
+                               *fn-record-max-payload*))
 
 (defun fn-owner-feed-install-feed (records effects state)
   (declare (xargs :stobjs state :mode :program))
@@ -1109,7 +1138,13 @@
          (records (fn-own-outcome-journal-records
                    owner id word
                    (f-get-global 'fn-owner-shared-resolution-id state)))
-         (result (fn-own-outcome owner id word))
+         ; fn-acar-own-outcome (books/owner-advance-carried.lisp) is
+         ; fn-own-outcome under fn-ocl-relation
+         ; (fn-acar-own-outcome-is-reference-under-ocl-relation), which the
+         ; commit before it keeps (fn-ocmt-post-commit-preserves-ocl-relation):
+         ; the re-pin tests the rebuilt session at the node the held session
+         ; already carries instead of re-running fn-node-statep on it.
+         (result (fn-acar-own-outcome owner id word))
          (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
          (state (f-put-global 'fn-owner-shared-resolution-id nil state))
@@ -1189,6 +1224,10 @@
 (defun fn-owner-peer-carrier-form (received state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-carrier-form received)))
+
+(defun fn-owner-served-carried-word (word detail state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pa-served-word word detail)))
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge

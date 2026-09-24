@@ -11,6 +11,11 @@
 (defun nop-check (test control &rest args)
   (unless test (error (apply #'format nil control args))))
 
+(defvar *nop-sequence* 7
+  "The staged sequence the stubbed owner reports (fn-owner-pending-sequence).")
+(defvar *nop-published* nil
+  "The sequences fnn-publish was called with, most recent first.")
+
 (defun nop-condition (type thunk)
   (handler-case (progn (funcall thunk) nil)
     (error (e) (if (typep e type) e (error "expected ~a, got ~a" type e)))))
@@ -23,9 +28,14 @@
            (setf (symbol-function 'fnn-owner-core)
                  (lambda (name &rest ignored)
                    (declare (ignore ignored))
-                   (if (eq name 'fn-owner-pending-octets) '(1 2 3)
-                     (error "unexpected owner core call ~s" name))))
-           (setf (symbol-function 'fnn-publish) publish
+                   (case name
+                     (fn-owner-pending-octets '(1 2 3))
+                     (fn-owner-pending-sequence *nop-sequence*)
+                     (t (error "unexpected owner core call ~s" name)))))
+           (setf (symbol-function 'fnn-publish)
+                 (lambda (store sequence record)
+                   (push sequence *nop-published*)
+                   (funcall publish store sequence record))
                  (symbol-function 'fnn-owner-action) owner-action
                  (symbol-function 'fnn-finish) finish)
            (funcall thunk))
@@ -33,9 +43,10 @@
         (setf (symbol-function (car entry)) (cdr entry))))))
 
 (defun nop-refusal-then-valid ()
+  (setq *nop-published* nil)
   (let* ((store (%make-fnn-store :root "/raw" :writable t :lock-fd nil
                                  :config nil :frontier 0 :fenced nil))
-         (service (%make-fnn-owner-service :store store :records 0 :lock nil
+         (service (%make-fnn-owner-service :store store :lock nil
                                           :listener nil :stopping nil))
          (publishes 0) (aborts 0) (finishes 0))
     (nop-with-stubs
@@ -60,14 +71,18 @@
        (nop-check (eq (fnn-owner-publish-prepared service "test") :durable)
                   "valid operation after refusal did not commit")
        (nop-check (= finishes 1) "valid operation did not finish once")
-       (nop-check (= (fnn-owner-service-records service) 1)
-                  "valid operation did not advance record count once")))))
+       ;; Both attempts named the owner's staged sequence; the host counted
+       ;; nothing of its own.
+       (nop-check (equal *nop-published* (list *nop-sequence* *nop-sequence*))
+                  "publication did not name the owner's staged sequence: ~s"
+                  *nop-published*)))))
 
 (defun nop-uncertain-and-fault-stay-fenced ()
+  (setq *nop-published* nil)
   (dolist (kind '(fnn-store-indeterminate fnn-store-fault))
     (let* ((store (%make-fnn-store :root "/raw" :writable t :lock-fd nil
                                    :config nil :frontier 0 :fenced nil))
-           (service (%make-fnn-owner-service :store store :records 0 :lock nil
+           (service (%make-fnn-owner-service :store store :lock nil
                                             :listener nil :stopping nil))
            (aborts 0))
       (nop-with-stubs
@@ -85,8 +100,8 @@
                     "~a was downgraded" kind)
          (nop-check (fnn-store-fenced store) "~a did not preserve fence" kind)
          (nop-check (zerop aborts) "~a incorrectly ran known abort" kind)
-         (nop-check (zerop (fnn-owner-service-records service))
-                    "~a advanced record count" kind))))))
+         (nop-check (member *nop-sequence* *nop-published*)
+                    "~a publication did not name the staged sequence" kind))))))
 
 (nop-refusal-then-valid)
 (nop-uncertain-and-fault-stay-fenced)

@@ -50,17 +50,18 @@ class BuildListsCheckTests(unittest.TestCase):
 
     def test_unlisted_reference_into_an_omitted_file_is_found(self):
         omitted = dict(check.DTN_OMITTED)
-        reason, _ = omitted["host/bp-release-owner-host.lisp"]
-        omitted["host/bp-release-owner-host.lisp"] = (reason, {})
+        reason, _ = omitted["host/native-control-host.lisp"]
+        omitted["host/native-control-host.lisp"] = (reason, {})
         found = check.findings(omitted=omitted)
-        self.assertTrue(any("host/native/workflow.lisp names 'fn-owner-workflow-reset"
+        self.assertTrue(any("host/native/operator.lisp names "
+                            "'fn-native-control-host-status-exit-code"
                             in line for line in found), found)
 
     def test_unexplained_omission_is_found(self):
         omitted = dict(check.DTN_OMITTED)
-        del omitted["host/native-operator-host.lisp"]
+        del omitted["host/native-auth-host.lisp"]
         found = check.findings(omitted=omitted)
-        self.assertIn("omitted: host/native-operator-host.lisp", "\n".join(found))
+        self.assertIn("omitted: host/native-auth-host.lisp", "\n".join(found))
 
     def test_stale_entry_is_found(self):
         omitted = dict(check.DTN_OMITTED)
@@ -86,10 +87,11 @@ class BuildListsCheckTests(unittest.TestCase):
 
     def test_unlisted_raw_reach_is_found(self):
         reach = dict(check.DTN_RAW_REACH)
-        del reach[("host/native/bp-service.lisp", "fnn-owner-core")]
+        del reach[("host/native/operator.lisp", "fnn-native-auth-admin-execute")]
         found = check.findings(reach=reach)
-        self.assertEqual(found, ["raw: host/native/bp-service.lisp calls fnn-owner-core, "
-                                 "defined only in host/native/owner.lisp, which "
+        self.assertEqual(found, ["raw: host/native/operator.lisp calls "
+                                 "fnn-native-auth-admin-execute, defined only in "
+                                 "host/native/auth-admin.lisp, which "
                                  "host/native/build-dtn.lisp does not load"])
 
     def test_docstring_mention_is_not_a_call(self):
