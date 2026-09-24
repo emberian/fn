@@ -4,6 +4,7 @@
 (include-book "../../books/bp-fnbs-dispatch-codec")
 (include-book "../../books/bp-fnbs-dispatch-invariants")
 (include-book "../../books/bp-clock-domain")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *fn-test-bpnp-dispatch*
   (fn-bpnp-dispatch-record
@@ -25,3 +26,29 @@
  (equal (fn-bpnp-dispatch-unframe
          (fn-bpcd-frame *fn-test-bpnp-boot-id*))
         nil))
+
+(defconst *fn-test-bpnp-max-identity*
+  (fn-bpnp-dispatch-record 1 3 4
+    (make-list 1024 :initial-element 7) (list :ipn 9 10)))
+(assert-event (fn-bpnp-dispatch-recordp *fn-test-bpnp-max-identity*))
+(assert-event
+ (equal (fn-bpnp-dispatch-unframe
+         (fn-bpnp-dispatch-frame *fn-test-bpnp-max-identity*))
+        *fn-test-bpnp-max-identity*))
+(assert-event
+ (equal (fn-bpnp-dispatch-unframe
+         (fn-bpnp-dispatch-frame
+          (fn-bpnp-dispatch-record 1 4 5 '(9) (list :dtn-none))))
+        (fn-bpnp-dispatch-record 1 4 5 '(9) (list :dtn-none))))
+
+(defconst *fn-test-bpnp-overlong-identity*
+  (fn-bpnp-dispatch-record 1 3 4
+    (make-list 1025 :initial-element 7) (list :ipn 9 10)))
+(assert-event (not (fn-bpnp-dispatch-recordp *fn-test-bpnp-overlong-identity*)))
+(assert-event
+ (equal (fn-bpnp-dispatch-frame *fn-test-bpnp-overlong-identity*) :bad))
+(must-fail
+ (defthm fn-test-bpnp-round-trip-needs-record
+   (equal (fn-bpnp-dispatch-unframe
+           (fn-bpnp-dispatch-frame *fn-test-bpnp-overlong-identity*))
+          *fn-test-bpnp-overlong-identity*)))
