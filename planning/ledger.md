@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 701 |
-| Certification roots in the Makefile | 690 |
-| Books inside the root closure | 699 |
-| `defthm` and `defthmd` events | 9410 |
-| `defun` events | 6740 |
+| Books read | 703 |
+| Certification roots in the Makefile | 692 |
+| Books inside the root closure | 701 |
+| `defthm` and `defthmd` events | 9428 |
+| `defun` events | 6758 |
 | Functions with verified guards | 2039 |
-| Functions declared `:verify-guards nil` and never verified | 421 |
-| Functions left at the default with an explicit guard | 3359 |
-| Functions left at the default with no guard | 921 |
-| `assert-event` checks | 10300 |
-| `must-fail` checks | 739 |
+| Functions declared `:verify-guards nil` and never verified | 429 |
+| Functions left at the default with an explicit guard | 3368 |
+| Functions left at the default with no guard | 922 |
+| `assert-event` checks | 10312 |
+| `must-fail` checks | 752 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
 | Export-hygiene warnings | 109 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 55 |
-| Include-hygiene warnings | 671 |
+| Include-hygiene warnings | 675 |
 | Host-names warnings | 812 |
 | Hand-written-record warnings | 18 |
 
@@ -139,7 +139,7 @@ that `make certify` requests.
 | `books/bp-fnbs-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay.lisp` | root | 1 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/bp-forward-attempt.lisp` | root | 0 | 15 | 0/0/15/0 | 0 | 0 | 0 |
+| `books/bp-forward-attempt.lisp` | root | 0 | 20 | 0/0/20/0 | 0 | 0 | 0 |
 | `books/bp-forward-image.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-fragment-fast.lisp` | root | 15 | 8 | 6/0/0/2 | 0 | 0 | 0 |
 | `books/bp-fragment-invariants.lisp` | root | 62 | 3 | 0/0/0/3 | 0 | 0 | 3 |
@@ -155,6 +155,7 @@ that `make certify` requests.
 | `books/bp-node-debt.lisp` | root | 2 | 17 | 0/0/17/0 | 0 | 0 | 0 |
 | `books/bp-node-dispatch.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-node-forward-lower-guards.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-node-forward-retry.lisp` | root | 17 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/bp-node-foundation.lisp` | root | 17 | 62 | 59/0/3/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-expiry.lisp` | root | 1 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-family.lisp` | root | 9 | 9 | 0/3/6/0 | 0 | 0 | 0 |
@@ -167,12 +168,12 @@ that `make certify` requests.
 | `books/bp-node-machine-guards.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-invariants.lisp` | root | 83 | 1 | 0/1/0/0 | 0 | 0 | 2 |
 | `books/bp-node-machine.lisp` | root | 70 | 95 | 47/3/45/0 | 0 | 0 | 1 |
-| `books/bp-node-progress-bridge.lisp` | root | 16 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `books/bp-node-progress-bridge.lisp` | root | 17 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-guards.lisp` | root | 29 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-node-progress-premises.lisp` | root | 40 | 5 | 0/3/0/2 | 0 | 0 | 1 |
 | `books/bp-node-progress-selection-invariants.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-node-progress.lisp` | root | 0 | 57 | 0/5/52/0 | 0 | 0 | 0 |
+| `books/bp-node-progress.lisp` | root | 0 | 59 | 0/5/54/0 | 0 | 0 | 0 |
 | `books/bp-node-receive-boundary.lisp` | root | 1 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-records.lisp` | root | 4 | 13 | 12/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-report-step.lisp` | root | 2 | 4 | 0/3/1/0 | 0 | 0 | 0 |
@@ -540,9 +541,10 @@ that `make certify` requests.
 | `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
-| `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 16 | 14 | 0 |
+| `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 16 | 15 | 0 |
 | `tests/acl2/bp-node-debt-cache-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 2 | 0 |
 | `tests/acl2/bp-node-debt-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 6 | 4 | 0 |
+| `tests/acl2/bp-node-forward-retry-tests.lisp` | root | 0 | 8 | 0/8/0/0 | 12 | 12 | 0 |
 | `tests/acl2/bp-node-forwarding-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 8 | 1 | 0 |
 | `tests/acl2/bp-node-foundation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 7 | 0 |
 | `tests/acl2/bp-node-fragment-expiry-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 1 | 0 |
