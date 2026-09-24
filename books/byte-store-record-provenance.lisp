@@ -4863,3 +4863,69 @@
            :in-theory (disable fn-bs-run fn-bs-frontier-program
                                fn-bs-store-relation
                                fn-bs-frontier-directory-committedp))))
+
+; The native allocator reports the root-directory barrier through
+; fnn-observe -> fn-store-sn-io -> fn-sn-io (host/native/io.lisp:1536,
+; host/store-node-host.lisp:432).  Pair 12 is the cut after the physical
+; fsync; pair 14 is the cut after this exact callback.  Starting from the
+; related ready entry, all four native observation calls agree with the byte
+; interpreter's kernel states.  The physical syscall-outcome and crash-image
+; premises remain separate K0/platform obligations.
+(include-book "byte-store-native-correspondence")
+(include-book "store-node-invariants")
+
+(defthm fn-bs-k0-frontier-native-call-sequence-matches-run
+  (implies
+   (and (fn-sn-statep s)
+        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
+        (not (fn-bs-lookup bs :staging stage)))
+   (let* ((s1 (fn-sn-io s :start-frontier :ok))
+          (s2 (fn-sn-io s1 :frontier-file :ok))
+          (s3 (fn-sn-io s2 :frontier-replace :ok))
+          (s4 (fn-sn-io s3 :frontier-directory :ok))
+          (run (fn-bs-run bs (fn-sn-files s)
+                          (fn-bs-frontier-program stage octets)
+                          nil groups capacity))
+          (file-pair (nth 12 run))
+          (return-pair (nth 14 run)))
+     (and (equal (cdr file-pair) (fn-sn-files s3))
+          (equal (car return-pair) (car file-pair))
+          (equal (cdr return-pair) (fn-sn-files s4))
+          (fn-bs-store-relation (car return-pair) (fn-sn-files s4))
+          (equal (fn-sf-phase (fn-sn-files s4)) :reserved))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-frontier-dir-cut-kernel-is-replace-observation
+                            (ks (fn-sn-files s)))
+                 (:instance fn-bs-k0-frontier-reserved-pair-is-directory-callback
+                            (ks (fn-sn-files s)))
+                 (:instance fn-bs-k0-frontier-reserved-cut-establishes-relation
+                            (ks (fn-sn-files s)))
+                 (:instance fn-bs-native-io-is-byte-observation
+                            (operation :start-frontier) (result :ok))
+                 (:instance fn-bs-native-io-is-byte-observation
+                            (s (fn-sn-io s :start-frontier :ok))
+                            (operation :frontier-file) (result :ok))
+                 (:instance fn-bs-native-io-is-byte-observation
+                            (s (fn-sn-io (fn-sn-io s :start-frontier :ok)
+                                         :frontier-file :ok))
+                            (operation :frontier-replace) (result :ok))
+                 (:instance fn-bs-native-io-is-byte-observation
+                            (s (fn-sn-io (fn-sn-io
+                                           (fn-sn-io s :start-frontier :ok)
+                                           :frontier-file :ok)
+                                         :frontier-replace :ok))
+                            (operation :frontier-directory) (result :ok))
+                 (:instance fn-sn-io-preserves-state
+                            (operation :start-frontier) (result :ok))
+                 (:instance fn-sn-io-preserves-state
+                            (s (fn-sn-io s :start-frontier :ok))
+                            (operation :frontier-file) (result :ok))
+                 (:instance fn-sn-io-preserves-state
+                            (s (fn-sn-io (fn-sn-io s :start-frontier :ok)
+                                         :frontier-file :ok))
+                            (operation :frontier-replace) (result :ok)))
+           :in-theory (e/d (fn-sf-dispatch fn-bs-native-io-event)
+                           (fn-bs-run fn-bs-frontier-program fn-sn-io
+                            fn-bs-store-relation fn-sf-frontier-dir-result)))))
