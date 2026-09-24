@@ -435,6 +435,68 @@ class NativeBpNodeTests(unittest.TestCase):
         finally:
             bridge.close()
 
+    def test_death_after_kind_eight_retries_once_and_peer_holds_one_copy(self):
+        """N08 on the image: death after a durable kind 8 whose transfer ran.
+
+        The retry policy of spec 4.3.1 (default adopted 2026-09-24, pending
+        ember): recovery re-offers the same held bundle on the next session;
+        the peer's bundle-id admission absorbs the duplicate; the sender
+        records one kind-9 result.  Needs a developer image with the
+        FN_BP_NODE_TEST_PAUSE_AFTER_KIND_EIGHT_SENT selector; the class skips
+        without an image.
+        """
+        receiver, port = self.start_node(True, once=False)
+        _, younger = self.forward_mru_bundles()
+        sent = self.invoke(
+            "tcpcl", "send", "127.0.0.1", port, younger,
+            self.tmp / "retry-sender-spool", "dtn://sender/",
+            "dtn://receiver/", 0, 65536, 1048576, 0,
+        )
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.stop_process(receiver)
+        payload = self.acl2_lifecycle_payloads(self.receiver_journal, 5)[-1]
+
+        peer, peer_port = self.start_node(False, once=False)
+        self.relay.route(peer_port)
+        args = self.dispatch_receiver_args()
+        env = dict(self.env)
+        env["FN_BP_NODE_TEST_PAUSE_AFTER_KIND_EIGHT_SENT"] = "1"
+        cut = subprocess.Popen(
+            args, cwd=ROOT, env=env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, bufsize=0,
+        )
+        self.addCleanup(self.stop_process, cut)
+        self.wait_for_output(cut, b"BP NODE KIND8 SENT", timeout=240)
+        cut.kill()
+        cut.wait(timeout=15)
+        journal = self.receiver_journal / "lifecycle"
+        after_cut = len(tuple(journal.glob("*.fnb")))
+        self.assertEqual(
+            self.acl2_lifecycle_payloads(self.sender_journal, 5).count(payload), 1)
+
+        retried = subprocess.run(
+            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=240, check=False,
+        )
+        self.assertEqual(retried.returncode, 0, retried.stderr)
+        self.assertIn(b"BP FNBS recovered", retried.stdout)
+        self.assertIn(b"BP forwarding attempt durable", retried.stdout)
+        self.assertIn(b"BP forwarding result durable", retried.stdout)
+        self.assertIn(b"status=sent", retried.stdout)
+        self.assertNotIn(b"BP forwarding stranded", retried.stdout)
+        # The retry's kind 8 and its kind 9; the peer still holds one copy.
+        self.assertEqual(len(tuple(journal.glob("*.fnb"))), after_cut + 2)
+        self.assertEqual(
+            self.acl2_lifecycle_payloads(self.sender_journal, 5).count(payload), 1)
+
+        settled = subprocess.run(
+            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=120, check=False,
+        )
+        self.assertEqual(settled.returncode, 0, settled.stderr)
+        self.assertNotIn(b"BP forwarding attempt durable", settled.stdout)
+        self.assertEqual(len(tuple(journal.glob("*.fnb"))), after_cut + 2)
+
     @staticmethod
     def acl2_lifecycle_payloads(journal, kind):
         """Ask the ACL2 frame decoders for exact durable report payloads."""

@@ -611,35 +611,60 @@
          (equal (fn-bpn-nth 3 wait) peer)
          (equal (fn-bpn-nth 4 wait) mru))))
 
-(defun fn-bpnp-forward-candidatep (h peer observation)
+; A row with no attempt, or with an attempt left by an earlier process epoch
+; under the retry bound (bp-forward-attempt.lisp), is offered by the same
+; arrival-order scan: a retry takes no precedence and no separate path.
+(defun fn-bpnp-forward-candidatep (h peer observation epoch)
   (declare (xargs :guard t))
   (and (equal (fn-bpn-nth 0 h) :bpnf-held)
        (natp (fn-bpn-nth 3 h))
        (equal (fn-bpn-nth 11 h) peer)
        (equal (fn-bpn-nth 12 h) '(:forward-pending))
-       (null (fn-bpn-nth 13 h))
+       (or (null (fn-bpn-nth 13 h))
+           (fn-bpnp-retry-eligible-slotp (fn-bpn-nth 13 h) epoch peer))
        (null (fn-bpn-nth 14 h))
        (equal (fn-bpnp-held-expiry h observation) :live)))
 
-(defun fn-bpnp-forward-scan (ordered peer mru node observation waits free)
+; The oldest held row to this peer whose uncertain attempt reached the retry
+; bound: reported on a session that offers nothing, never dropped.
+(defun fn-bpnp-first-stranded (ordered peer epoch)
+  (declare (xargs :guard t :measure (acl2-count ordered)))
+  (if (atom ordered) nil
+    (let ((h (car ordered)))
+      (if (and (equal (fn-bpn-nth 0 h) :bpnf-held)
+               (equal (fn-bpn-nth 12 h) '(:forward-pending))
+               (null (fn-bpn-nth 14 h))
+               (fn-bpnp-stranded-slotp (fn-bpn-nth 13 h) epoch peer))
+          h
+        (fn-bpnp-first-stranded (cdr ordered) peer epoch)))))
+
+(defun fn-bpnp-stranded-effects (held peer epoch)
+  (declare (xargs :guard (true-listp held)))
+  (let ((stranded (fn-bpnp-first-stranded (reverse held) peer epoch)))
+    (and stranded
+         (list (list :forward-stranded (fn-bpn-nth 3 stranded) peer
+                     (fn-bpnp-attempt-retries (fn-bpn-nth 13 stranded)))))))
+
+(defun fn-bpnp-forward-scan
+  (ordered peer mru node observation waits free epoch)
   (declare (xargs :guard (natp mru) :measure (acl2-count ordered)))
   (if (atom ordered) (list :none waits)
     (let* ((h (car ordered))
            (key (fn-bpnp-wait-key h)))
-      (if (or (not (fn-bpnp-forward-candidatep h peer observation))
+      (if (or (not (fn-bpnp-forward-candidatep h peer observation epoch))
               (fn-bpnp-forward-mru-waitp h peer mru waits)
               (fn-bpnp-credit-blockedp h waits free))
           (fn-bpnp-forward-scan
-           (cdr ordered) peer mru node observation waits free)
+           (cdr ordered) peer mru node observation waits free epoch)
         (let ((image (fn-bpnp-forward-image h node observation)))
           (if (not (equal (car image) :ready))
               (fn-bpnp-forward-scan
-               (cdr ordered) peer mru node observation waits free)
+               (cdr ordered) peer mru node observation waits free epoch)
             (if (< mru (len (fn-bpn-nth 1 image)))
                 (fn-bpnp-forward-scan
                  (cdr ordered) peer mru node observation
                  (cons (list :bpnp-wait key :mru peer mru)
-                       (fn-bpnp-remove-wait key waits)) free)
+                       (fn-bpnp-remove-wait key waits)) free epoch)
               (list :ready h (fn-bpn-nth 1 image)
                     (fn-bpb-bundle-age (fn-bpn-nth 2 image))
                     waits))))))))
@@ -660,12 +685,15 @@
                                *fn-bpnp-control-margin*))
            (scan (fn-bpnp-forward-scan
                   (reverse (fn-bpnf-held-list st)) peer mru node observation
-                  (fn-bpnp-waits st) free))
+                  (fn-bpnp-waits st) free (fn-bpnf-epoch st)))
            (waits (if (equal (car scan) :ready)
                       (fn-bpn-nth 4 scan) (fn-bpn-nth 1 scan)))
+           (held (fn-bpnf-held-list st))
+           (epoch (fn-bpnf-epoch st))
            (st (fn-bpnp-with-waits st waits)))
       (if (not (equal (car scan) :ready))
-          (fn-bpnf-answer st nil)
+          (fn-bpnf-answer
+           st (fn-bpnp-stranded-effects held peer epoch))
         (let* ((h (fn-bpn-nth 1 scan))
                (wire (fn-bpn-nth 2 scan))
                (age (fn-bpn-nth 3 scan))

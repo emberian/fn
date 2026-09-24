@@ -102,6 +102,8 @@
 (verify-guards fn-bpnp-dispatch-persist-step)
 (verify-guards fn-bpnp-forward-mru-waitp)
 (verify-guards fn-bpnp-forward-candidatep)
+(verify-guards fn-bpnp-first-stranded)
+(verify-guards fn-bpnp-stranded-effects)
 ;; A ready forwarding image carries the bundle it encoded.
 (local
  (defthm fn-bpnp-forward-image-ready-bundlep-for-guard
@@ -126,7 +128,8 @@
                                fn-bpnp-forward-image fn-bpb-bundlep))))
 (verify-guards fn-bpnp-start-one
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-bpnp-forward-scan fn-bpn-machine-statep
+           :in-theory (disable fn-bpnp-forward-scan fn-bpnp-stranded-effects
+                               fn-bpn-machine-statep
                                fn-bpb-bundlep fn-bpnf-heldp))))
 (verify-guards fn-bpnp-attempt-persist-step)
 (verify-guards fn-bpnp-find-attempt)

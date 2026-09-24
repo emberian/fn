@@ -30,11 +30,46 @@
        (or (null (fn-bpn-nth 7 record))
            (fn-frame-natp (fn-bpn-nth 7 record)))))
 
+;; Retry after an uncertain send (decision candidate of 2026-09-24, default
+;; adopted by the coordinator, pending ember; specs/bp-node-machine.md 4.3.1).
+;; A slot (:forwarding epoch op peer session retries) whose epoch precedes the
+;; current process epoch names a durable kind 8 that no kind 9 settled before
+;; its process died.  The row is offered again, with its unchanged held bundle,
+;; on a later session to the same next hop; the receiver's bundle-id admission
+;; is the duplicate control.  Each re-offer counts; at the bound the row stays
+;; held with its reserved result debt and is reported, never re-offered.
+(defconst *fn-bpnp-max-forward-retries* 3)
+
+(defun fn-bpnp-attempt-retries (slot)
+  (declare (xargs :guard t))
+  (nfix (fn-bpn-nth 5 slot)))
+
+(defun fn-bpnp-uncertain-attemptp (slot epoch peer)
+  (declare (xargs :guard t))
+  (and (equal (fn-bpn-nth 0 slot) :forwarding)
+       (natp (fn-bpn-nth 1 slot))
+       (natp epoch)
+       (< (fn-bpn-nth 1 slot) epoch)
+       (equal (fn-bpn-nth 3 slot) peer)))
+
+(defun fn-bpnp-retry-eligible-slotp (slot epoch peer)
+  (declare (xargs :guard t))
+  (and (fn-bpnp-uncertain-attemptp slot epoch peer)
+       (< (fn-bpnp-attempt-retries slot) *fn-bpnp-max-forward-retries*)))
+
+(defun fn-bpnp-stranded-slotp (slot epoch peer)
+  (declare (xargs :guard t))
+  (and (fn-bpnp-uncertain-attemptp slot epoch peer)
+       (<= *fn-bpnp-max-forward-retries* (fn-bpnp-attempt-retries slot))))
+
 (defun fn-bpnp-attempted-held (h record)
   (declare (xargs :guard (true-listp h)))
   (update-nth 13
               (list :forwarding (fn-bpn-nth 1 record) (fn-bpn-nth 2 record)
-                    (fn-bpn-nth 5 record) (fn-bpn-nth 6 record))
+                    (fn-bpn-nth 5 record) (fn-bpn-nth 6 record)
+                    (if (fn-bpn-nth 13 h)
+                        (1+ (fn-bpnp-attempt-retries (fn-bpn-nth 13 h)))
+                      0))
               h))
 
 (defun fn-bpnp-attempt-matches-heldp (record h)
@@ -46,7 +81,9 @@
        (equal (fn-bpah-held-primary-identity h) (fn-bpn-nth 4 record))
        (equal (fn-bpn-nth 11 h) (fn-bpn-nth 5 record))
        (equal (fn-bpn-nth 12 h) '(:forward-pending))
-       (null (fn-bpn-nth 13 h))
+       (or (null (fn-bpn-nth 13 h))
+           (fn-bpnp-retry-eligible-slotp
+            (fn-bpn-nth 13 h) (fn-bpn-nth 1 record) (fn-bpn-nth 5 record)))
        (null (fn-bpn-nth 14 h))))
 
 (defun fn-bpnp-attempt-replace (arrival record held)
@@ -109,6 +146,15 @@
                   (update-nth 12 '(:dispatch-done) h)
                 h)))
 
+(defun fn-bpnp-attempt-slot-namesp (slot epoch op peer session)
+  (declare (xargs :guard t))
+  (and (true-listp slot) (equal (len slot) 6)
+       (equal (fn-bpn-nth 0 slot) :forwarding)
+       (equal (fn-bpn-nth 1 slot) epoch)
+       (equal (fn-bpn-nth 2 slot) op)
+       (equal (fn-bpn-nth 3 slot) peer)
+       (equal (fn-bpn-nth 4 slot) session)))
+
 (defun fn-bpnp-forward-result-matches-heldp (record h)
   (declare (xargs :guard t))
   (and (fn-bpnp-forward-result-recordp record)
@@ -117,10 +163,9 @@
        (equal (fn-bpn-nth 3 h) (fn-bpn-nth 3 record))
        (equal (fn-bpah-held-primary-identity h) (fn-bpn-nth 4 record))
        (equal (fn-bpn-nth 12 h) '(:forward-pending))
-       (equal (fn-bpn-nth 13 h)
-              (list :forwarding
-                    (fn-bpn-nth 5 record) (fn-bpn-nth 6 record)
-                    (fn-bpn-nth 11 h) (fn-bpn-nth 7 record)))
+       (fn-bpnp-attempt-slot-namesp
+        (fn-bpn-nth 13 h) (fn-bpn-nth 5 record) (fn-bpn-nth 6 record)
+        (fn-bpn-nth 11 h) (fn-bpn-nth 7 record))
        (null (fn-bpn-nth 14 h))))
 
 (defun fn-bpnp-forward-result-replace (arrival outcome held)
