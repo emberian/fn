@@ -1,0 +1,499 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+    "launcher_chain_sha256": [
+      "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g",
+  "acl2_executable_sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+  "acl2_exit_codes": {
+    "books/assumptions": 0,
+    "books/bp-ion-observation": 0,
+    "books/bp-ion-workflow": 0,
+    "books/bp-release": 0,
+    "books/byte-store-invariants": 0,
+    "books/frame": 0,
+    "books/frame-invariants": 0,
+    "books/frame-journal": 0,
+    "tests/acl2/bp-ion-observation-tests": 0,
+    "tests/acl2/bp-ion-workflow-tests": 0,
+    "tests/acl2/frame-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "launcher_chain_sha256": [
+        "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+      "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "size": 233686912
+    },
+    "launchers": [
+      {
+        "path": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+        "size": 279
+      }
+    ],
+    "runtime": {
+      "path": "/tank/fn/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/tank/fn/lanes/ion-observation-binding/build/acl2/certify-20260924T062917Z-1013202",
+  "book_failures": {
+    "books/bp-ion-workflow": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "tests/acl2/bp-ion-workflow-tests": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ]
+  },
+  "book_provenance": {
+    "books/acceptance": "installed",
+    "books/acceptance-alloc": "installed",
+    "books/acceptance-invariants": "installed",
+    "books/assumptions": "certified",
+    "books/bp-adu": "installed",
+    "books/bp-ion-observation": "certified",
+    "books/bp-ion-workflow": "certified",
+    "books/bp-outbound": "installed",
+    "books/bp-release": "certified",
+    "books/bp-workflow": "installed",
+    "books/bp-workflow-records": "installed",
+    "books/byte-store": "installed",
+    "books/byte-store-invariants": "certified",
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/defrecord": "installed",
+    "books/frame": "certified",
+    "books/frame-fields": "installed",
+    "books/frame-invariants": "certified",
+    "books/frame-journal": "certified",
+    "books/frame-octets": "installed",
+    "books/node": "installed",
+    "books/node-invariants": "installed",
+    "books/provenance": "installed",
+    "books/records": "installed",
+    "books/records-invariants": "installed",
+    "books/records-shape": "installed",
+    "books/retention": "installed",
+    "books/wildmat": "installed",
+    "tests/acl2/bp-ion-observation-tests": "certified",
+    "tests/acl2/bp-ion-workflow-tests": "certified",
+    "tests/acl2/bp-outbound-tests": "installed",
+    "tests/acl2/frame-tests": "certified"
+  },
+  "book_results": {
+    "books/assumptions": "passed",
+    "books/bp-ion-observation": "passed",
+    "books/bp-ion-workflow": "failed",
+    "books/bp-release": "passed",
+    "books/byte-store-invariants": "passed",
+    "books/frame": "passed",
+    "books/frame-invariants": "passed",
+    "books/frame-journal": "passed",
+    "tests/acl2/bp-ion-observation-tests": "passed",
+    "tests/acl2/bp-ion-workflow-tests": "failed",
+    "tests/acl2/frame-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/assumptions": 0.767,
+    "books/bp-ion-observation": 1.416,
+    "books/bp-ion-workflow": 1.218,
+    "books/bp-release": 1.469,
+    "books/byte-store-invariants": 3.871,
+    "books/frame": 2.618,
+    "books/frame-invariants": 1.817,
+    "books/frame-journal": 1.367,
+    "tests/acl2/bp-ion-observation-tests": 1.418,
+    "tests/acl2/bp-ion-workflow-tests": 1.016,
+    "tests/acl2/frame-tests": 1.015
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 180,
+  "cache_install": {
+    "directory": "/tank/fn/certcache",
+    "installed": 0,
+    "kept": 22,
+    "origins": {
+      "/tank/fn/gates/authorship-image-295bbe35": 6,
+      "/tank/fn/gates/takeover-v0-image-329a51a2": 16
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0"
+  },
+  "cert_cache": {
+    "already_cached": 9,
+    "directory": "/tank/fn/certcache",
+    "not_published": [
+      "books/bp-ion-workflow",
+      "tests/acl2/bp-ion-workflow-tests"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/frame-journal",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-ion-observation",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/bp-ion-observation-tests",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/frame",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/frame-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/frame-tests",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/byte-store-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/assumptions",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-release",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "book": "books/bp-ion-workflow",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "tests/acl2/bp-ion-workflow-tests",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      }
+    ],
+    "per_book_published": 9,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/assumptions": "88f40aca789a8d004fc07109aa3c60fe43709f9f4f7b3d10b426b4539058b1dd",
+    "books/bp-ion-observation": "945b3119a12ebd444ff16aaad263a819e35c50d2c40f5391a27795029481bf2b",
+    "books/bp-release": "9f3490984e97bd15e680977f778a44577af077107fe22bb15a22bf696d274cd0",
+    "books/byte-store-invariants": "1ac7e6666c24af4a761324853f362d4b0e7e9a33a0d49c69f721b39d7f49cf52",
+    "books/frame": "dc15ce914d761bf1355dd7f81d5c23de590d8185a8d6cfc2ca453d1aa04b78ef",
+    "books/frame-invariants": "967cd8ab6cc598988f2b7307d3c283b832f530d200f20b0aed9eafef8d4b474a",
+    "books/frame-journal": "79872163723965677edae2656c4e66e60b12a4d47ba36e7cba14d7b7a584a176",
+    "tests/acl2/bp-ion-observation-tests": "310a388d96a30765696d7b574bc9a113b8002c5bf0ab0d8e39708484f42ccec7",
+    "tests/acl2/frame-tests": "500bd4e6b6b3dcae1611083d13db30c451e605b2c66c6b605e093e75a65eb57f"
+  },
+  "certify_wall_seconds": 12.361,
+  "closure": false,
+  "command": [
+    "/tank/fn/toolchains/w28/acl2-literal-4g"
+  ],
+  "driver_digests_sha256": {
+    "books/assumptions": "e6ed38860c0d48f9d22b74e054b463cec2ed814f3fbcb70f39498d3b5ae2e7d8",
+    "books/bp-ion-observation": "b6828047cc3b0d76133935874a7d5f3d10615914c4fc514adb79e7f51e3870a6",
+    "books/bp-ion-workflow": "0f36cf574d497fe2a0c2f0f02f8d47df92fa992a1179e20c47f089fc8a46b387",
+    "books/bp-release": "beef81b0060bc7af708b82e631d2e1e385cc068639efb3cc286a4bae026f6f77",
+    "books/byte-store-invariants": "ae854e046b628920aba77f90c688a582d3a67e7d9237454985e7476e9f8ea3c3",
+    "books/frame": "cc9b6bb9e1b140adfeb36805e814bea2c513ab1da117df17f24edb915b248f4f",
+    "books/frame-invariants": "b43d1f0abc7135eea9cb504d56239f7769a475d20ac2d4acff42f3419b5f7f74",
+    "books/frame-journal": "ad6fb6109c59c7817aab79a358f5d42ff1d99bebfbf6cafd5c94fdc072985fc5",
+    "tests/acl2/bp-ion-observation-tests": "79d5cf8a274d33ce77c62f1f91b273bcb8d1359bc3ee3a4644eb8bc7fd0301ff",
+    "tests/acl2/bp-ion-workflow-tests": "2c360a2648ce28b325d5896d6e54d42b6f21c2f671cfa7ebd1d1bab3ae6b874e",
+    "tests/acl2/frame-tests": "b363a109fa9dcd59bcebaa6be7aedda9511dfad3a6a811f06309e2480519e4f5"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 40edeea7aa8f",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 c908c6685496",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 d14740931613",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 068b3700fd2f",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 42e5d5a6d4cd",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 7fa6ad152b7b",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 d5af7cd2819a",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 2fa4b304c9d4",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 f7a28ba62920",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 e5da9c96aa92",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 9d3b92c833f0"
+  ],
+  "failure": "ACL2 did not produce complete clean certification evidence. See certify.log. Books that failed: books/bp-ion-workflow, tests/acl2/bp-ion-workflow-tests",
+  "failure_markers": [
+    "ACL2 Error"
+  ],
+  "finished_utc": "2026-09-24T06:29:34+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "incremental": true,
+  "installed_books": {
+    "books/acceptance": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/acceptance-alloc": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/acceptance-invariants": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/bp-adu": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/bp-outbound": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/bp-workflow": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/bp-workflow-records": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/byte-store": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/cbor": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/cbor-invariants": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/defrecord": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/frame-fields": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/frame-octets": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/node": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/node-invariants": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/provenance": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/records": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/records-invariants": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/records-shape": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/retention": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/wildmat": "/tank/fn/gates/authorship-image-295bbe35",
+    "tests/acl2/bp-outbound-tests": "/tank/fn/gates/takeover-v0-image-329a51a2"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 40edeea7aa8f",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 c908c6685496",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 d14740931613",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 068b3700fd2f",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 42e5d5a6d4cd",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 7fa6ad152b7b",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 d5af7cd2819a",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 e5da9c96aa92",
+    "FN_CERTIFY_SUCCESS 8dc68c8ffb962d575abe7266cf150317 9d3b92c833f0"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/frame",
+    "books/frame-journal",
+    "books/bp-ion-observation",
+    "tests/acl2/bp-ion-observation-tests",
+    "books/bp-ion-workflow",
+    "tests/acl2/bp-ion-workflow-tests",
+    "tests/acl2/frame-tests"
+  ],
+  "requested_books": [
+    "books/frame-journal",
+    "books/frame",
+    "books/bp-ion-observation",
+    "tests/acl2/bp-ion-observation-tests",
+    "books/byte-store-invariants",
+    "books/assumptions",
+    "books/bp-release",
+    "books/bp-ion-workflow",
+    "tests/acl2/bp-ion-workflow-tests",
+    "books/frame-invariants",
+    "tests/acl2/frame-tests"
+  ],
+  "roots": [
+    "books/frame",
+    "books/frame-journal",
+    "books/bp-ion-observation",
+    "tests/acl2/bp-ion-observation-tests",
+    "books/bp-ion-workflow",
+    "tests/acl2/bp-ion-workflow-tests",
+    "tests/acl2/frame-tests"
+  ],
+  "run_id": "certify-20260924T062917Z-1013202",
+  "runner_sha256": "b6f65954d9cc10199cbbf44b04f3130697a8365ac2b2f2656ef33b1e1c1c5f0a",
+  "runner_unchanged": true,
+  "schedule": {
+    "books_with_archived_wall": 7,
+    "policy": "critical-path-first",
+    "predicted_critical_path_seconds": 10.597
+  },
+  "slot_wait_seconds": {
+    "books/assumptions": 0.0,
+    "books/bp-ion-observation": 0.0,
+    "books/bp-ion-workflow": 0.0,
+    "books/bp-release": 0.0,
+    "books/byte-store-invariants": 0.0,
+    "books/frame": 0.0,
+    "books/frame-invariants": 0.008,
+    "books/frame-journal": 0.0,
+    "tests/acl2/bp-ion-observation-tests": 0.0,
+    "tests/acl2/bp-ion-workflow-tests": 0.0,
+    "tests/acl2/frame-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "8d580e364f1fae2d871d462d81756c631abefb0ac21b88dfc2901fb40372fb76",
+    "books/acceptance.lisp": "a50ce3b2883c2f28a58cee5758b95366a777ee2ad9326de23f12275748c02960",
+    "books/assumptions.lisp": "934a65e68007e01b239ab50ae0c96897cbfb3f65d6a90ae91bc0522ed0cbd721",
+    "books/bp-adu.lisp": "719a1c26fadc034bcc6360ff6c095f37159d1ebe0cfb756a0d4a5d1980a3411e",
+    "books/bp-ion-observation.lisp": "abc882697ea763dd55ea6ef5a27bc75df80fa1b21cb1a30906f769b6c881be5a",
+    "books/bp-ion-workflow.lisp": "37c045c69ccf7ff1ad91b8a7221c6b80e870b99cc88dbf51e68b9371cf0e1bd9",
+    "books/bp-outbound.lisp": "bdb70c520549aee0725c5b5493a8755720ee76921764403f4ccc784d076cc8ba",
+    "books/bp-release.lisp": "0b197add3feb1454735d9a38aaba06bb3e29cbd186e8352a617e1de0a00fe405",
+    "books/bp-workflow-records.lisp": "b88269b8ef1fe526ef6da0ae6341615f09e6e349c05f5316a0822818fadeb8ad",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/byte-store-invariants.lisp": "8481c1f6ea615daf4b900d7c92ba27b49c0138476447dba01d9cd589876afe70",
+    "books/byte-store.lisp": "9c9864e72118155c5e1a4bd2c6dfee88c93d9d1f93f123197d77281f75d94432",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "cc309f21de8fb3b6f40dd2aba05bacc3af6add588f690d8833efbf0298767854",
+    "books/frame-journal.lisp": "c1acc66bad74896de17d50be5a5665289bcb16f3983719e9efc00f69ba7e9354",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "8e127b62bc7309d25137c7e7e245d1147e5adaaf240d428f73711d51cb64972b",
+    "books/node-invariants.lisp": "1605c6d1399f3ec77e7652e3baba094f34a2cc4e578df6e9f9682620dbefae3c",
+    "books/node.lisp": "dc13d507479a343fc694b69974a2eee3e4b387e85c02f0dccb9fb78d2e9d5572",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-invariants.lisp": "9f0afa3017215a9c574b7c6aca20b28798e8038244f03d3388f7187fd002ae5a",
+    "books/records-shape.lisp": "56696b8e7f89971ffbe80ea26477a0808d9b19b37e41c1aedfffebf787b5ff86",
+    "books/records.lisp": "76c4c69d2595d45fc3b140170b7efe54a309fbfc98021070c29dcb38c2f2739b",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-ion-observation-tests.lisp": "b085ff7844a0d88fce488ec3bacf9f776baa147cc2062fa3010fd08c05812a09",
+    "tests/acl2/bp-ion-workflow-tests.lisp": "854cf4ebb26402d1895dee48fe3980037fc343e71df9d396aa39581c3a19bf5e",
+    "tests/acl2/bp-outbound-tests.lisp": "43359fb2aa3bc867c977a23a50eb524bce661df118a912da5e8fc78e3eb8e4eb",
+    "tests/acl2/frame-tests.lisp": "7dcb70d1a4b742e8186174346373b3bdf270aa4bb5b64ef66509c833cf8ee303"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "8d580e364f1fae2d871d462d81756c631abefb0ac21b88dfc2901fb40372fb76",
+    "books/acceptance.lisp": "a50ce3b2883c2f28a58cee5758b95366a777ee2ad9326de23f12275748c02960",
+    "books/assumptions.lisp": "934a65e68007e01b239ab50ae0c96897cbfb3f65d6a90ae91bc0522ed0cbd721",
+    "books/bp-adu.lisp": "719a1c26fadc034bcc6360ff6c095f37159d1ebe0cfb756a0d4a5d1980a3411e",
+    "books/bp-ion-observation.lisp": "abc882697ea763dd55ea6ef5a27bc75df80fa1b21cb1a30906f769b6c881be5a",
+    "books/bp-ion-workflow.lisp": "37c045c69ccf7ff1ad91b8a7221c6b80e870b99cc88dbf51e68b9371cf0e1bd9",
+    "books/bp-outbound.lisp": "bdb70c520549aee0725c5b5493a8755720ee76921764403f4ccc784d076cc8ba",
+    "books/bp-release.lisp": "0b197add3feb1454735d9a38aaba06bb3e29cbd186e8352a617e1de0a00fe405",
+    "books/bp-workflow-records.lisp": "b88269b8ef1fe526ef6da0ae6341615f09e6e349c05f5316a0822818fadeb8ad",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/byte-store-invariants.lisp": "8481c1f6ea615daf4b900d7c92ba27b49c0138476447dba01d9cd589876afe70",
+    "books/byte-store.lisp": "9c9864e72118155c5e1a4bd2c6dfee88c93d9d1f93f123197d77281f75d94432",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "cc309f21de8fb3b6f40dd2aba05bacc3af6add588f690d8833efbf0298767854",
+    "books/frame-journal.lisp": "c1acc66bad74896de17d50be5a5665289bcb16f3983719e9efc00f69ba7e9354",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "8e127b62bc7309d25137c7e7e245d1147e5adaaf240d428f73711d51cb64972b",
+    "books/node-invariants.lisp": "1605c6d1399f3ec77e7652e3baba094f34a2cc4e578df6e9f9682620dbefae3c",
+    "books/node.lisp": "dc13d507479a343fc694b69974a2eee3e4b387e85c02f0dccb9fb78d2e9d5572",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-invariants.lisp": "9f0afa3017215a9c574b7c6aca20b28798e8038244f03d3388f7187fd002ae5a",
+    "books/records-shape.lisp": "56696b8e7f89971ffbe80ea26477a0808d9b19b37e41c1aedfffebf787b5ff86",
+    "books/records.lisp": "76c4c69d2595d45fc3b140170b7efe54a309fbfc98021070c29dcb38c2f2739b",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-ion-observation-tests.lisp": "b085ff7844a0d88fce488ec3bacf9f776baa147cc2062fa3010fd08c05812a09",
+    "tests/acl2/bp-ion-workflow-tests.lisp": "854cf4ebb26402d1895dee48fe3980037fc343e71df9d396aa39581c3a19bf5e",
+    "tests/acl2/bp-outbound-tests.lisp": "43359fb2aa3bc867c977a23a50eb524bce661df118a912da5e8fc78e3eb8e4eb",
+    "tests/acl2/frame-tests.lisp": "7dcb70d1a4b742e8186174346373b3bdf270aa4bb5b64ef66509c833cf8ee303"
+  },
+  "start_order": [
+    "books/frame-journal",
+    "books/bp-ion-observation",
+    "books/frame",
+    "tests/acl2/bp-ion-observation-tests",
+    "books/byte-store-invariants",
+    "books/frame-invariants",
+    "tests/acl2/frame-tests",
+    "books/assumptions",
+    "books/bp-release",
+    "books/bp-ion-workflow",
+    "tests/acl2/bp-ion-workflow-tests"
+  ],
+  "started_utc": "2026-09-24T06:29:17+00:00",
+  "status": "failed",
+  "timeout_seconds": 180,
+  "tree": "/tank/fn/lanes/ion-observation-binding"
+}
