@@ -1,4 +1,4 @@
-"""Isolated e160 native A/B owner for Mini's finite E1/E2 handoff."""
+"""Isolated source-pinned native A/B owner for Mini's finite E1/E2 handoff."""
 import json
 import os
 from pathlib import Path
@@ -177,9 +177,8 @@ class NativeTwoStoreMiniHandoff(NativeProtectedPeeringTests):
             (target / "b-preview.fncu").write_bytes(preview_cursor.read_bytes())
             (target / "b-preview.fn-e").write_bytes(preview_report.read_bytes())
             (target / "r-at-b.eml").write_bytes(r_at_b)
-            answer = self.native("consumer-project", preview_cursor, preview_report,
-                                 expected=1)
-            (target / "b-project-refusal.txt").write_bytes(answer.stdout + answer.stderr)
+            answer = self.native("consumer-project", preview_cursor, preview_report)
+            (target / "b-project.txt").write_bytes(answer.stdout + answer.stderr)
         observed_source, observed_id = self.projected_source(preview_cursor, preview_report)
         self.assertEqual(observed_source, source)
         self.assertEqual(observed_id, R_ID)
