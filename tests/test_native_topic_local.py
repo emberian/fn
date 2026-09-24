@@ -148,6 +148,7 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.assertIn(b"topic accepted", self.topic("report", "4",
                                                     expected=0).stdout)
         admitted_files = self.transactions()
+        self.assertGreater(len(admitted_files), 0)
         self.assertIn(b"topic accepted, replayed-historical",
                       self.topic("report", "4", expected=0).stdout)
         self.assertEqual(self.transactions(), admitted_files)
