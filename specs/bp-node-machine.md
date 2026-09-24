@@ -1002,6 +1002,13 @@ on each tick. Only a selected local carrier is ADU-classified; an unsupported
 class gets a volatile per-key class wait, leaving younger work selectable.
 
 This is the route-wait part of N03, not the four-class scheduler below.
+For the actual native caller, `fn-bpnp-step-progress-preserves-held-and-issued`
+proves that one `:progress` event leaves every held obligation and the issued
+durable FNBS operation unchanged. The certified N03 trace reaches two kind-5
+durable receives through `fn-bpnp-step`, records the older route-less transit
+wait, then delivers the younger local request and settles kind 7 without
+dropping the older row. A changed route generation rechecks the older row;
+failed cold recovery retains its wait, and successful replay clears it.
 Routeable transit is marked `:session` waiting until the forwarding/session
 slice exists. Session availability does not yet independently wake that wait;
 durable unsupported-ADU disposition, N04 MRU, and N05 journal debt remain
