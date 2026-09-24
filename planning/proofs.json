@@ -1258,7 +1258,8 @@
         "planning/evidence/manifests/certify-20260924T070931Z-1040432.json",
         "planning/evidence/manifests/certify-20260924T090657Z-1117779.json",
         "planning/evidence/manifests/certify-20260924T092518Z-2770102.json",
-        "planning/evidence/manifests/certify-20260924T145342Z-1464526.json"
+        "planning/evidence/manifests/certify-20260924T145342Z-1464526.json",
+        "planning/evidence/manifests/certify-20260924T153508Z-1499013.json"
       ]
     },
     {
@@ -1342,7 +1343,8 @@
         "tests/acl2/frame-trailer-tests.lisp",
         "planning/evidence/frame-trailer-one-owner-2026-09-21.md",
         "planning/evidence/manifests/certify-20260924T070931Z-1040432.json",
-        "planning/evidence/manifests/certify-20260924T145342Z-1464526.json"
+        "planning/evidence/manifests/certify-20260924T145342Z-1464526.json",
+        "planning/evidence/manifests/certify-20260924T153508Z-1499013.json"
       ],
       "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and the old tools/run_feed.py driver has since been deleted. W12 feed-durability owns the remaining FNFD envelope/recovery decisions in tools/feed_wire.py and their host adoption; that extension is separate from these trailer theorems."
     },
@@ -1727,7 +1729,8 @@
         "planning/evidence/feed-journal-w12-host.json",
         "planning/lanes/HANDOFF-w12-feed-durability.md",
         "planning/evidence/manifests/certify-20260924T070931Z-1040432.json",
-        "planning/evidence/manifests/certify-20260924T145342Z-1464526.json"
+        "planning/evidence/manifests/certify-20260924T145342Z-1464526.json",
+        "planning/evidence/manifests/certify-20260924T153508Z-1499013.json"
       ],
       "progress_note": "certify-20260921T062242Z-1643977 certified an older books/feed-journal digest; certify-20260924T070931Z-1040432 (hbox) records books/feed-journal and tests/acl2/feed-journal-tests passed at their current digests and include closures. Actual subject calls: host/owner-host.lisp fn-owner-feed-journal-scan calls fn-feed-journal-scan; tools/run_owner.py Acl2Owner.feed_journal_step calls fn-feed-journal-phase-step for Journal._step. The finite phase theorem extends that same step through arbitrary observations. Physical torn-suffix repair, barriers and the global owner fence have scoped live-scanner and host-method tests in tests/test_feed_journal_live.py and tests/test_feed_fence.py; those tests do not run the combined owner/NNTP path. This target does not prove physical byte-image survival, general K5 live/replay correspondence, acceptance/feed atomicity, detection of whole-prefix rollback, bounded total journal growth, or hardware durability."
     },
@@ -2051,7 +2054,8 @@
         "planning/evidence/manifests/certify-20260923T232942Z-484654.json",
         "planning/evidence/manifests/certify-20260924T005919Z-653679.json",
         "planning/evidence/manifests/certify-20260924T105650Z-3582222.json",
-        "planning/evidence/manifests/certify-20260924T145342Z-1464526.json"
+        "planning/evidence/manifests/certify-20260924T145342Z-1464526.json",
+        "planning/evidence/manifests/certify-20260924T153508Z-1499013.json"
       ],
       "events": [
         "fn-nntp-newnews-candidate-is-projectable",
