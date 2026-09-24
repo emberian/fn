@@ -1106,15 +1106,17 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k6-related-staged-durable-name-count-is-record-count)
                  (:instance fn-bs-store-relation-unfolds)
+                 (:instance fn-bs-kernel-candidates-are-typed)
                  (:instance fn-bs-txn-name-not-in-txn-names
                             (i (len (fn-bs-durable-names bs :transactions)))
                             (n (len (fn-bs-durable-names bs :transactions)))))
-           :in-theory (e/d (fn-bs-record-inputp fn-sf-statep
+           :in-theory (e/d (fn-bs-record-inputp fn-bs-durable-entry
+                            fn-bs-durable-names fn-bs-contiguous-namesp
+                            fn-sf-record-present-visiblep)
+                           (fn-bs-store-relation fn-bs-statep fn-sf-statep
                             fn-sf-phase-shapep fn-sf-candidatep
-                            fn-bs-durable-entry fn-bs-durable-names
-                            fn-bs-contiguous-namesp fn-store-event-sequence)
-                           (fn-bs-store-relation fn-bs-statep
-                            fn-bs-txn-names)))))
+                            fn-store-event-sequence fn-bs-txn-names
+                            fn-bs-txn-name-not-in-txn-names)))))
 
 (defthm fn-bs-k6-file-cut-dirs-are-input-dirs
   (implies (and (fn-bs-statep bs)
