@@ -29,6 +29,12 @@
  (equal (fn-sn-config-history (fn-sn-open-state *cpo-t-open*))
         *cpo-t-configs*))
 (assert-event
+ (equal (fn-sn-event-index (fn-sn-open-state *cpo-t-open*))
+        (fn-cei-build *cpo-t-events*)))
+(assert-event
+ (equal (fn-cei-get 1 (fn-sn-event-index (fn-sn-open-state *cpo-t-open*)))
+        (cadr *cpo-t-events*)))
+(assert-event
  (fn-cpo-history-relation (fn-sn-open-state *cpo-t-open*)))
 ; The legacy Store trace relation still replays the undertaking at final
 ; capacity 1; the configured image needs the historical relation above.
