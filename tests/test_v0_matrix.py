@@ -559,6 +559,24 @@ class ReportPublicationTests(unittest.TestCase):
                 v0_matrix.publish_current(self.repo, broken)
         self.assertFalse(self.target.exists())
 
+    def test_a_run_the_driver_stopped_early_cannot_publish(self):
+        # 6c0626c5: a gate error left every row not exercised, and the run
+        # was still written to planning/v0-matrix.json.
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        gate = make_gate(temp.name)
+        gate.backfill(stopped=v0_matrix.GateError("deploy identity is already active"))
+        stopped = gate.document("2026-09-21T06:00:00Z", 1.0)
+        self.assertEqual(v0_matrix.validate(stopped), [])
+        self.assertTrue(v0_matrix.stopped_early(stopped))
+        self.assertEqual(v0_matrix.stopped_early(self.doc), [])
+        with patch.object(v0_matrix, "resolve", return_value=("a" * 40, "aaaaaaa")):
+            with self.assertRaisesRegex(v0_matrix.GateError, "stopped early"):
+                v0_matrix.publish_current(self.repo, stopped)
+            with self.assertRaisesRegex(v0_matrix.GateError, "stopped early"):
+                v0_matrix.publish_current(self.repo, self.doc, stopped=True)
+        self.assertFalse(self.target.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

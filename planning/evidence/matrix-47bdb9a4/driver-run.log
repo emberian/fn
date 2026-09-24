@@ -1,0 +1,5 @@
+matrix: /Users/ember/dev/fn/build/lanes/matrix-47bdb9a4/planning/evidence/v0-runs/20260924T165406.451765Z-4ba40cf-6659d1842aa5/matrix.json
+evidence: /Users/ember/dev/fn/build/lanes/matrix-47bdb9a4/planning/evidence/v0-runs/20260924T165406.451765Z-4ba40cf-6659d1842aa5/report.md
+steps=220 failed=0 not-exercised=32
+python3 tools/v0_matrix.py HEAD --host hbox --tree native-47bdb9a4 --backend   6.88s user 4.33s system 6% cpu 2:59.54 total
+EXIT=0

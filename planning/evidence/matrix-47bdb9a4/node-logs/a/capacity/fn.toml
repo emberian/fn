@@ -1,0 +1,7 @@
+[store]
+path = "/home/hbox/fn-deploy/native-47bdb9a4-4ba40cf/a/capacity/store"
+[listener]
+host = "127.0.0.1"
+port = 11290
+[control]
+path = "/home/hbox/fn-deploy/native-47bdb9a4-4ba40cf/a/capacity/control.sock"
