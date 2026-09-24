@@ -49,6 +49,28 @@ class ProofCostTests(unittest.TestCase):
             source.write_text("; changed\n")
             self.assertIn("source-closure=stale", "\n".join(proof_cost.report(manifest, 10)))
 
+    def test_remote_manifest_tree_falls_back_to_explicit_checkout_comparison(self):
+        with tempfile.TemporaryDirectory() as directory:
+            checkout = Path(directory)
+            source = checkout / "books" / "remote.lisp"
+            source.parent.mkdir()
+            source.write_text('(in-package "ACL2")\n')
+            digest = proof_cost.certs.content_hash(source)
+            manifest = {
+                "tree": "/unavailable/farm/worktree",
+                "source_digests_sha256": {"books/remote.lisp": digest},
+            }
+            self.assertEqual(
+                proof_cost.source_scope(manifest, checkout),
+                "source-closure=matches (0 of 1 source digests differ; checkout comparison)",
+            )
+
+            source.write_text("; changed checkout bytes\n")
+            self.assertEqual(
+                proof_cost.source_scope(manifest, checkout),
+                "source-closure=stale (1 of 1 source digests differ; checkout comparison)",
+            )
+
     def test_missing_log_and_manifest_are_explicitly_unavailable(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
