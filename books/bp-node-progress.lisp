@@ -13,6 +13,10 @@
 ; cleanup debt.  The policy slot in spec §2.1 is not yet a host input.
 (defconst *fn-bpnp-control-margin* 1)
 
+(defun fn-bpnp-single-peer-routes (peer)
+  (declare (xargs :guard t))
+  (if (fn-bpp-eidp peer) (list (list peer peer)) nil))
+
 (defun fn-bpnp-routep (route)
   (declare (xargs :guard t))
   (and (true-listp route) (equal (len route) 2)
@@ -161,6 +165,31 @@
            (if route (equal (fn-bpn-nth 2 wait) :session)
              (equal (fn-bpn-nth 2 wait) :route))))))
 
+(defun fn-bpnp-credit-blockedp (h waits free)
+  (declare (xargs :guard t))
+  (let ((wait (fn-bpnp-wait-for (fn-bpnp-wait-key h) waits)))
+    (and (equal (fn-bpn-nth 0 wait) :bpnp-wait)
+         (equal (fn-bpn-nth 2 wait) :credit)
+         (integerp (fn-bpn-nth 3 wait))
+         (<= free (fn-bpn-nth 3 wait)))))
+
+(defun fn-bpnp-oldest-eligible-with-credit
+  (held node observation routes generation waits free selected)
+  (declare (xargs :guard t :measure (acl2-count held)))
+  (if (atom held) selected
+    (let* ((h (car held))
+           (selected
+            (if (and (fn-bpnp-live-pendingp h node observation)
+                     (not (fn-bpnp-blockedp
+                           h node routes generation waits))
+                     (not (fn-bpnp-credit-blockedp h waits free))
+                     (or (null selected)
+                         (< (nfix (fn-bpn-nth 3 h))
+                            (nfix (fn-bpn-nth 3 selected)))))
+                h selected)))
+      (fn-bpnp-oldest-eligible-with-credit
+       (cdr held) node observation routes generation waits free selected))))
+
 (defun fn-bpnp-oldest-eligible
   (held node observation routes generation waits selected)
   (declare (xargs :guard t :measure (acl2-count held)))
@@ -213,6 +242,119 @@
             (fn-bpaj-eid-text (fn-bpp-source primary))
             (fn-bpaj-eid-text (fn-bpp-destination primary))))))
 
+; Each result is computed from the single issued row, not from a served
+; fold over the held list.  NIL means that no justified local delta exists.
+(defun fn-bpnp-issued-debt-delta (st node)
+  (declare (xargs :guard t))
+  (let* ((issued (fn-bpnf-issued st))
+         (kind (fn-bpn-nth 3 issued))
+         (record (fn-bpn-nth 4 issued)))
+    (cond
+     ((equal kind :store)
+      (fn-bpnd-held-debt record node))
+     ((equal kind :deliver)
+      (let* ((before (fn-bpnf-find-arrival
+                      (fn-bpn-nth 3 record) (fn-bpnf-held-list st)))
+             (status (fn-bpn-nth 5 record))
+             (handoff
+              (if (member-equal status
+                                '(:request-accepted :request-duplicate
+                                  :request-returned))
+                  (fn-bpnf-handoff
+                   (fn-bpn-nth 6 record) (fn-bpnp-wait-key before) :owed)
+                nil)))
+        (if (and before (fn-bpah-delivery-matches-heldp record before))
+            (fn-bpnd-held-handoff-delta
+             before (fn-bpah-delivered-held before record) handoff node)
+          nil)))
+     ((equal kind :family)
+      (let* ((applied (fn-bpnf-family-apply-at
+                       st record (fn-bpn-nth 4 record))))
+        (if (equal (car applied) :ready)
+            (fn-bpnd-family-delta
+             (fn-bpn-nth 3 applied) (fn-bpn-nth 2 applied) node)
+          nil)))
+     ((equal kind :dispatch)
+      (let* ((before (fn-bpnf-find-arrival
+                      (fn-bpn-nth 3 record) (fn-bpnf-held-list st)))
+             (applied (fn-bpnp-dispatch-apply
+                       record (fn-bpnf-held-list st))))
+        (if (and before (equal (car applied) :ready))
+            (fn-bpnd-held-delta before (fn-bpn-nth 2 applied) node)
+          nil)))
+     ((equal kind :delete)
+      (let* ((row (fn-bpn-nth 0 record))
+             (before (fn-bpnf-find-arrival
+                      (fn-bpn-nth 3 row) (fn-bpnf-held-list st))))
+        (if before
+            (fn-bpnd-held-delta
+             before (fn-bpn-report-tombstone-held before row) node)
+          nil)))
+     (t nil))))
+
+(defun fn-bpnp-received-publicationp (issued effects)
+  (declare (xargs :guard t))
+  (let ((kind (fn-bpn-nth 3 issued))
+        (effect (fn-bpn-nth 0 effects)))
+    (or (and (equal kind :store)
+             (equal (fn-bpn-nth 0 effect) :receive-answer)
+             (equal (fn-bpn-nth 2 effect) :stored))
+        (and (equal kind :deliver)
+             (equal effect '(:delivery-answer :durable)))
+        (and (equal kind :family)
+             (equal (fn-bpn-nth 0 effect) :family-ready))
+        (and (equal kind :delete)
+             (equal (fn-bpn-nth 0 effect) :delete-ready)))))
+
+(defun fn-bpnp-credit-refusal (st event kind)
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (or (not (equal (fn-cbor-ag-car event) :base))
+                                  (fn-bpn-machine-eventp (fn-bpn-nth 1 event)))
+                              (or (not (equal (fn-cbor-ag-car event)
+                                              :recover-fnbs))
+                                  (and (true-listp (fn-bpn-nth 2 event))
+                                       (<= (len (fn-bpn-nth 2 event))
+                                           *fn-bpn-machine-max-records*))))
+                  :verify-guards nil))
+  (cond
+   ((equal kind :store)
+    (fn-bpnf-answer
+     st (list (list :receive-answer (fn-bpn-nth 3 event)
+                    '(:refused :capacity)))))
+   ((equal kind :family)
+    (fn-bpnf-answer st (list (list :family-answer :refused))))
+   ((equal kind :deliver)
+    ; The app decision may already be durable in FNRJ.  Preserve its
+    ; recovery-only fence rather than reporting a definitive refusal.
+    (fn-bpn-report-author-step
+     st (list :deliver-result (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+              (fn-bpn-nth 3 event) :uncertain '(0))))
+   ((equal kind :delete)
+    (fn-bpnf-answer st (list (list :delete-answer :refused))))
+   (t (fn-bpnf-answer st nil))))
+
+(defun fn-bpnp-credit-proposal-kind (effect issued)
+  (declare (xargs :guard t))
+  (let ((tag (fn-bpn-nth 0 effect))
+        (kind (fn-bpn-nth 3 issued)))
+    (if (or (and (equal tag :persist) (equal kind :store))
+            (and (equal tag :persist-delivery) (equal kind :deliver))
+            (and (equal tag :persist-family) (equal kind :family))
+            (and (equal tag :persist-delete) (equal kind :delete)))
+        kind nil)))
+
+(defun fn-bpnp-publication-fault-effect (issued)
+  (declare (xargs :guard t))
+  (let ((kind (fn-bpn-nth 3 issued)))
+    (cond
+     ((equal kind :store)
+      (list :receive-answer (fn-bpn-nth 4 (fn-bpn-nth 4 issued))
+            '(:uncertain :debt-correlation)))
+     ((equal kind :deliver) (list :delivery-answer :uncertain))
+     ((equal kind :family) (list :family-answer :uncertain))
+     ((equal kind :delete) (list :delete-answer :uncertain))
+     (t (list :dispatch-answer :uncertain)))))
+
 (defun fn-bpnp-transit-dispatch-step (st h peer node)
   (declare (xargs :guard t))
   (let* ((record (fn-bpnp-dispatch-record
@@ -233,9 +375,15 @@
                 (fn-bpnp-used st) (fn-bpnp-debt st)
                 *fn-bpnp-control-margin* delta
                 (if (< delta 0) :pay :spend)))
-          (fn-bpnf-answer
-           st (list (list :progress-wait (fn-bpnp-wait-key h)
-                          :credit (fn-bpnp-used st))))
+          (let* ((key (fn-bpnp-wait-key h))
+                 (free (fn-bpnd-free
+                        (fn-bpnp-used st) (fn-bpnp-debt st)
+                        *fn-bpnp-control-margin*))
+                 (waits (cons (list :bpnp-wait key :credit free)
+                              (fn-bpnp-remove-wait key (fn-bpnp-waits st)))))
+            (fn-bpnf-answer
+             (fn-bpnp-with-waits st waits)
+             (list (list :progress-wait key :credit free))))
         (fn-bpnf-answer
          (fn-bpnf-state-with-arrival
           (fn-bpnf-base st) (fn-bpnf-held-list st)
@@ -261,9 +409,12 @@
     (let* ((waits (fn-bpnp-prune-waits
                    (fn-bpnp-waits st) (fn-bpnf-held-list st)))
            (st (fn-bpnp-with-waits st waits))
-           (h (fn-bpnp-oldest-eligible
+           (h (fn-bpnp-oldest-eligible-with-credit
                (fn-bpnf-held-list st) node observation routes generation
-               waits nil)))
+               waits
+               (fn-bpnd-free (fn-bpnp-used st) (fn-bpnp-debt st)
+                             *fn-bpnp-control-margin*)
+               nil)))
       (if (not h)
           (let ((uncertain
                  (fn-bpnp-oldest-uncertain-local
@@ -372,10 +523,88 @@
            (fn-frame-natp (fn-bpn-nth 4 event)))
     (fn-bpnf-host-eventp event)))
 
+(defun fn-bpnp-delegate-with-credit (st event)
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (or (not (equal (fn-cbor-ag-car event) :base))
+                                  (fn-bpn-machine-eventp (fn-bpn-nth 1 event)))
+                              (or (not (equal (fn-cbor-ag-car event)
+                                              :recover-fnbs))
+                                  (and (true-listp (fn-bpn-nth 2 event))
+                                       (<= (len (fn-bpn-nth 2 event))
+                                           *fn-bpn-machine-max-records*))))
+                  :verify-guards nil))
+  (let* ((answer (fn-bpn-report-author-step st event))
+         (effects (fn-bpnf-answer-effects answer))
+         (effect (fn-bpn-nth 0 effects))
+         (inner (fn-bpnf-answer-state answer))
+         (node (fn-bpn-config-node-id
+                (fn-bpn-machine-state-config (fn-bpnf-base st))))
+         (kind (fn-bpnp-credit-proposal-kind effect (fn-bpnf-issued inner)))
+         (proposal-delta (and kind (fn-bpnp-issued-debt-delta inner node)))
+         (ready (and (equal (fn-cbor-ag-car event) :recover-fnbs)
+                     (equal (fn-bpn-nth 0 effect) :restart-ready)))
+         (published
+          (and (equal (fn-cbor-ag-car event) :persist-result)
+               (equal (fn-bpn-nth 3 event) :durable)
+               (fn-bpnf-operation-matchp
+                (fn-bpnf-issued st)
+                (fn-bpn-nth 1 event) (fn-bpn-nth 2 event))
+               (fn-bpnp-received-publicationp (fn-bpnf-issued st) effects)))
+         (published-delta
+          (and published (fn-bpnp-issued-debt-delta st node))))
+    (cond
+     (ready
+      (fn-bpnf-answer
+       (fn-bpnp-with-credit
+        (fn-bpnp-with-waits inner nil)
+        (fn-bpn-nth 5 event)
+        (fn-bpnd-debt inner
+                      (fn-bpn-config-node-id
+                       (fn-bpn-machine-state-config (fn-bpnf-base inner)))))
+       effects))
+     ((and kind
+           (not (and (integerp proposal-delta)
+                     (fn-bpnd-admitp
+                      (fn-bpnp-used st) (fn-bpnp-debt st)
+                      *fn-bpnp-control-margin*
+                      proposal-delta
+                      (if (< proposal-delta 0) :pay :spend)))))
+      (let ((refusal (fn-bpnp-credit-refusal st event kind)))
+        (fn-bpnf-answer
+         (fn-bpnp-with-credit
+          (fn-bpnf-answer-state refusal)
+          (fn-bpnp-used st) (fn-bpnp-debt st))
+         (fn-bpnf-answer-effects refusal))))
+     ((and published (not (integerp published-delta)))
+      ; A visible final that cannot be applied from its exact issued row
+      ; remains a recovery-only uncertainty, never an accepted callback.
+      (fn-bpnf-answer
+       (fn-bpnp-with-credit
+        (fn-bpnf-with-issued
+         st (fn-bpnf-operation
+             (fn-bpn-nth 1 (fn-bpnf-issued st))
+             (fn-bpn-nth 2 (fn-bpnf-issued st))
+             (fn-bpn-nth 3 (fn-bpnf-issued st))
+             (fn-bpn-nth 4 (fn-bpnf-issued st)) :uncertain))
+        (fn-bpnp-used st) (fn-bpnp-debt st))
+       (list (fn-bpnp-publication-fault-effect (fn-bpnf-issued st)))))
+     (t
+      (fn-bpnf-answer
+       (fn-bpnp-with-credit
+        (fn-bpnp-with-waits inner (fn-bpnp-waits st))
+        (if published (1+ (nfix (fn-bpnp-used st)))
+          (fn-bpnp-used st))
+        (if published (+ (nfix (fn-bpnp-debt st)) published-delta)
+          (fn-bpnp-debt st)))
+       effects)))))
+
 (defun fn-bpnp-step (st event)
   (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
                               (fn-bpnp-host-eventp event))
                   :verify-guards nil))
+  (if (and (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :uncertain)
+           (not (equal (fn-cbor-ag-car event) :recover-fnbs)))
+      (fn-bpnf-answer st nil)
   (if (equal (fn-cbor-ag-car event) :progress)
       (let ((answer
              (fn-bpnp-progress-step
@@ -391,21 +620,4 @@
         (fn-bpnp-dispatch-persist-step
          st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
          (fn-bpn-nth 3 event))
-    (let* ((answer (fn-bpn-report-author-step st event))
-           (ready (and (equal (fn-cbor-ag-car event) :recover-fnbs)
-                       (equal (fn-bpn-nth 0
-                               (fn-bpn-nth 0 (fn-bpnf-answer-effects answer)))
-                              :restart-ready)))
-           (next (fn-bpnp-with-waits
-                  (fn-bpnf-answer-state answer)
-                  (if ready nil (fn-bpnp-waits st)))))
-      (fn-bpnf-answer
-       (if ready
-           (fn-bpnp-with-credit
-            next (fn-bpn-nth 5 event)
-            (fn-bpnd-debt
-             next
-             (fn-bpn-config-node-id
-              (fn-bpn-machine-state-config (fn-bpnf-base next)))))
-         (fn-bpnp-with-credit next (fn-bpnp-used st) (fn-bpnp-debt st)))
-       (fn-bpnf-answer-effects answer))))))
+      (fn-bpnp-delegate-with-credit st event)))))
