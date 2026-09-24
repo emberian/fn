@@ -2,6 +2,20 @@
 (in-package "ACL2")
 (include-book "store-node-resolution")
 
+; The v6 Store constructor appends a derived event index.  Keep its journal
+; cursor selector explicit here so reservation and abort proofs do not unfold
+; the whole 14-field constructor after a node update.
+(local
+ (defthm fn-sis-identity-next-of-v6
+   (equal (fn-sn-identity-next
+           (fn-sn-make-v6 groups capacity files node keyring index
+                          keyring-generation verdicts snapshots identity-next
+                          config-history consumer topic event-index))
+          identity-next)
+   :hints (("Goal" :in-theory (enable fn-sn-identity-next
+                                      fn-sn-make-v6)))))
+(local (in-theory (disable fn-sn-make-v6)))
+
 ; A successful record-directory observation has appended the record before the
 ; single fn-sn-finish call advances the carried journal cursor.  Therefore the
 ; completing phase is exactly one record ahead; every other observable phase
@@ -36,8 +50,9 @@
 (defthm fn-sn-refuse-reservation-preserves-identity-next
   (equal (fn-sn-identity-next (fn-sn-refuse-reservation s txid))
          (fn-sn-identity-next s))
-  :hints (("Goal" :in-theory (enable fn-sn-refuse-reservation
-                                      fn-sn-update))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-refuse-reservation
+                                   fn-sn-update)
+                                  (fn-sn-make-v6)))))
 
 (defthm fn-sn-refuse-reservation-preserves-identity-sequence
   (implies (fn-sn-identity-sequencep s)
@@ -338,7 +353,8 @@
                  (fn-sis-step-ok-next fn-sis-enabled-files-and-pair
                   fn-replay-identity-step fn-replay-apply-record
                   fn-replay-apply-retention-event fn-store-retention-event-p
-                  fn-stxe-p fn-stxk-p fn-stxa-p fn-sf-statep fn-node-statep
+                  fn-stxe-p fn-stxk-p fn-stxa-p fn-th-topic-eventp
+                  fn-th-local-admin-eventp fn-sf-statep fn-node-statep
                   fn-record-shape-vocabulary fn-record-record-vocabulary))))))
 
 (local
