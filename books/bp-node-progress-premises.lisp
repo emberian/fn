@@ -724,6 +724,100 @@
                          natp (:e natp) (:e equal))
                        (theory 'minimal-theory)))))
 
+;; ---------------------------------------------------------------------
+;; The kind-8 retry count survives recovery (spec bp-node-machine 4.3.1).
+;; The count lives in each held row's attempt slot, (:forwarding epoch op
+;; peer session retries).  No kind-8 record stores it: ordered replay derives
+;; it, one durable kind 8 at a time, through fn-bpnp-attempt-apply, the
+;; function the live :persist-result arm also calls.  What recovery must not
+;; do is reset it; these two theorems say it installs the replayed rows
+;; exactly, so the count after recovery is the count the durable rows give.
+
+(local
+ (defthm fn-bpnpp-recover-fnbs-step-ready-held
+   (implies (equal (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects
+                                              (fn-bpnf-recover-fnbs-step
+                                               st e r s rr))))
+                   :restart-ready)
+            (equal (fn-bpnf-held-list (fn-bpnf-answer-state
+                                       (fn-bpnf-recover-fnbs-step st e r s rr)))
+                   (fn-bpn-nth 1 rr)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories
+                        '(fn-bpnf-recover-fnbs-step fn-bpnf-answer
+                          fn-bpnf-answer-state fn-bpnf-answer-effects
+                          fn-bpnpp-constructor-fields
+                          fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
+                          zp natp (:e zp) (:e natp) (:e equal))
+                        (theory 'minimal-theory))))))
+
+;; KEYSTONE.  A recovery through fn-bpnp-step that answers :restart-ready
+;; installs, as its held list, exactly the replay result the event carries.
+;; The recovery-event hypothesis scopes the statement to the arm the proof
+;; opens (only fn-bpnf-recover-fnbs-step builds :restart-ready, so it has no
+;; separating must-fail); without :restart-ready (a clock-domain fence) the
+;; held list is the one before recovery.
+(defthm fn-bpnp-recovery-success-installs-the-replayed-held
+  (implies (and (equal (fn-cbor-ag-car event) :recover-fnbs)
+                (equal (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects
+                                                    (fn-bpnp-step st event))))
+                       :restart-ready))
+           (equal (fn-bpnf-held-list
+                   (fn-bpnf-answer-state (fn-bpnp-step st event)))
+                  (fn-bpn-nth 1 (fn-bpn-nth 4 event))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnpp-recover-fnbs-step-ready-held
+                            (e (fn-bpn-nth 1 event)) (r (fn-bpn-nth 2 event))
+                            (s (fn-bpn-nth 3 event)) (rr (fn-bpn-nth 4 event)))
+                 (:instance fn-bpnpp-recover-fnbs-step-outcome
+                            (e (fn-bpn-nth 1 event)) (r (fn-bpn-nth 2 event))
+                            (s (fn-bpn-nth 3 event)) (rr (fn-bpn-nth 4 event))))
+           :in-theory (union-theories
+                       '(fn-bpnp-step fn-bpnp-preserve-runtime-answer
+                         fn-bpnp-delegate-with-credit
+                         fn-bpnpp-author-step-of-recovery
+                         fn-bpnp-credit-proposal-kind
+                         fn-bpnpp-slot-writer-fields
+                         fn-bpnpp-answer-effects-of-answer
+                         fn-bpnpp-constructor-fields
+                         fn-bpnp-conflict-held fn-bpnp-clock-domain-fence
+                         fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
+                         natp (:e natp) (:e equal))
+                       (theory 'minimal-theory)))))
+
+;; The same, over the event the host builds (host/native/bp-service.lisp,
+;; the recovery path: fn-bpnf-family-recover-auto-event over the rows read
+;; from the FNBS directory, with ACL2's clock-domain decision appended): the
+;; held rows, and so every attempt slot's retry count, after a ready
+;; recovery are those fn-bpnf-family-replay-rows computes from the durable
+;; rows.  A process restart therefore cannot reset the count below what the
+;; durable kind-8 rows record.
+(defthm fn-bpnp-host-recovery-installs-the-durable-replay
+  (let ((event (append (fn-bpnf-family-recover-auto-event
+                        st base-records sequence-ready rows)
+                       (list domain))))
+    (implies (equal (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects
+                                                 (fn-bpnp-step st event))))
+                    :restart-ready)
+             (equal (fn-bpnf-held-list
+                     (fn-bpnf-answer-state (fn-bpnp-step st event)))
+                    (fn-bpn-nth 1 (fn-bpnf-family-replay-rows
+                                   rows (fn-bpnf-base st))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnp-recovery-success-installs-the-replayed-held
+                            (event (append (fn-bpnf-family-recover-auto-event
+                                            st base-records sequence-ready rows)
+                                           (list domain)))))
+           :in-theory (union-theories
+                       '(fn-bpnf-family-recover-auto-event
+                         fn-bpn-nth fn-cbor-ag-car binary-append
+                         car-cons cdr-cons zp natp
+                         (:e zp) (:e natp) (:e binary-+) (:e equal) (:e consp) (:e <))
+                       (theory 'minimal-theory)))))
+
 ;; Open: the host builds fn-bpnf-initial-state and refuses to serve unless
 ;; its base satisfies fn-bpn-machine-invariantp (host/native/bp-service.lisp,
 ;; the two invariant checks in the open path).  That check is the whole

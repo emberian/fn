@@ -359,3 +359,96 @@
                                 (:executable-counterpart not)
                                 (:executable-counterpart zp))
                               (theory 'minimal-theory)))))
+;; ---------------------------------------------------------------------
+;; The sender's reading of a TCPCL refusal (RFC 9174 5.2.4; spec
+;; bp-node-machine 4.3.1).  host/native/bp-node.lisp fnn-bpnode-forward-contact
+;; calls fn-bpnp-tcpcl-outcome with the connection's outcome and the Reason
+;; Code of the peer's XFER_REFUSE, and hands the result to fn-bpnp-step as the
+;; :forward-result event's outcome.
+
+;; A peer refusal is its own result, never :failed, and keeps its reason.
+(defthm fn-bpnp-tcpcl-outcome-keeps-the-refusal-reason
+  (implies (fn-frame-natp reason)
+           (and (equal (fn-bpnp-tcpcl-outcome :refused reason)
+                       (list :refused reason))
+                (fn-bpnp-forward-outcomep
+                 (fn-bpnp-tcpcl-outcome :refused reason))))
+  :hints (("Goal" :in-theory (enable fn-bpnp-tcpcl-outcome
+                                     fn-bpnp-forward-outcomep))))
+
+;; KEYSTONE.  The proposal fn-bpnp-step makes for a :forward-result event
+;; records the event's outcome in the kind-9 record, unchanged: every
+;; refusal reason reaches the durable result distinctly.
+(defthm fn-bpnp-step-forward-result-records-the-transport-outcome
+  (let ((effect (car (fn-bpnf-answer-effects (fn-bpnp-step st event)))))
+    (implies (and (equal (fn-cbor-ag-car event) :forward-result)
+                  (equal (car effect) :persist-forward-result))
+             (equal (fn-bpn-nth 8 (fn-bpn-nth 3 effect))
+                    (fn-bpn-nth 4 event))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnp-step fn-bpnp-forward-result-propose-step
+                         fn-bpnp-forward-result-record
+                         fn-bpnp-domain-recover-eventp fn-bpnp-conflict-held
+                         fn-bpnf-answer fn-bpnf-answer-effects
+                         fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons natp (:e natp) (:e car)
+                         (:e zp) (:e binary-+) (:e equal))
+                       (theory 'minimal-theory)))))
+
+;; KEYSTONE.  Completed (reason 1): the peer already holds the complete
+;; bundle.  Applying its kind 9 (fn-bpnp-forward-result-apply, which the
+;; :persist-result arm and ordered replay both call) gives exactly the
+;; answer, rows and row that :sent gives: the row is forwarded and its
+;; attempt cleared.  The receiver still acknowledges a duplicate
+;; (fn-bpnf-receive-decision); this is only the sender's meaning of reason 1.
+(encapsulate ()
+(local
+ (defthm fn-bpnfr-held-completed-is-held-sent
+   (equal (fn-bpnp-forward-result-held h '(:refused 1))
+          (fn-bpnp-forward-result-held h :sent))
+   :hints (("Goal" :in-theory (enable fn-bpnp-forward-result-held
+                                      fn-bpnp-forward-terminalp)))))
+(local
+ (defthm fn-bpnfr-replace-completed-is-replace-sent
+   (equal (fn-bpnp-forward-result-replace arrival '(:refused 1) held)
+          (fn-bpnp-forward-result-replace arrival :sent held))
+   :hints (("Goal" :induct (fn-bpnp-forward-result-replace arrival :sent held)
+            :in-theory (union-theories
+                        '(fn-bpnp-forward-result-replace
+                          fn-bpnfr-held-completed-is-held-sent)
+                        (theory 'minimal-theory))))))
+(defthm fn-bpnp-completed-refusal-settles-as-sent
+  (equal (fn-bpnp-forward-result-apply
+          (fn-bpnp-forward-result-record
+           epoch op arrival identity attempt-epoch attempt-op session
+           (fn-bpnp-tcpcl-outcome :refused 1))
+          held)
+         (fn-bpnp-forward-result-apply
+          (fn-bpnp-forward-result-record
+           epoch op arrival identity attempt-epoch attempt-op session :sent)
+          held))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnp-forward-result-apply
+                         fn-bpnp-forward-result-matches-heldp
+                         fn-bpnp-forward-result-recordp
+                         fn-bpnp-forward-result-record
+                         fn-bpnfr-held-completed-is-held-sent
+                         fn-bpnfr-replace-completed-is-replace-sent
+                         fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
+                         natp (:e natp)
+                         (:e fn-bpnp-tcpcl-outcome) (:e fn-bpnp-forward-outcomep)
+                         (:e zp) (:e binary-+) (:e equal) (:e len) (:e true-listp)
+                         len true-listp)
+                       (theory 'minimal-theory))))))
+
+;; Every other reason stays a non-terminal result: the row stays forward
+;; pending for a later session.
+(defthm fn-bpnp-other-refusal-is-not-settled
+  (implies (and (fn-frame-natp reason) (not (equal reason 1)))
+           (not (fn-bpnp-forward-terminalp
+                 (fn-bpnp-tcpcl-outcome :refused reason))))
+  :hints (("Goal" :in-theory (enable fn-bpnp-tcpcl-outcome
+                                     fn-bpnp-forward-terminalp))))

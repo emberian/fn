@@ -1197,14 +1197,38 @@ survives restarts:
 - Duplicate control is the receiver's bundle-id admission
   (`fn-bpnf-receive-decision`): a held, delivered or tombstoned id is
   `:duplicate`. fn answers a duplicate with XFER_ACK, so a re-offer of a
-  bundle the peer already has settles as kind 9 `:sent`, terminal. The
-  default's "refused, settled with the refusal" clause would need XFER_REFUSE
-  reason 1 and a reason-carrying `fn-bpnp-tcpcl-outcome`; both are open.
-  Reassembled fragments are the exception: their rows are replaced by the
+  bundle the peer already has settles as kind 9 `:sent`, terminal. A peer
+  that instead answers XFER_REFUSE with reason code 1 (Completed, RFC 9174
+  §5.2.4: it already holds the complete bundle) is read the same way on the
+  sender: `fn-bpnp-tcpcl-outcome` takes the connection outcome and the
+  refusal's reason code, and returns `(:refused 1)`, which
+  `fn-bpnp-forward-terminalp` settles exactly as `:sent`
+  (`fn-bpnp-completed-refusal-settles-as-sent`). Every other reason is kept
+  as its own non-terminal kind-9 result `(:refused r)`
+  (`fn-bpnp-tcpcl-outcome-keeps-the-refusal-reason`,
+  `fn-bpnp-step-forward-result-records-the-transport-outcome`,
+  `fn-bpnp-other-refusal-is-not-settled`); a refusal with no peer reason
+  (the session machine declined to start the transfer) is `:failed`. fn's
+  receiver keeps acknowledging a duplicate. Neither transport indication is
+  the application's retention receipt. Reassembled fragments are the exception: their rows are replaced by the
   whole bundle, so a re-offered fragment is `:fresh` again at the receiver.
 - At the bound the row is **stranded**: never offered, never dropped, its
   attempt and debt retained; a session to its peer that offers nothing
-  answers `(:forward-stranded arrival peer retries)`.
+  answers `(:forward-stranded arrival peer retries)`. Nothing resumes it:
+  no later session, restart or kind 9 can re-arm the slot, and no operator
+  verb releases or re-arms it yet (an open item; see
+  [the operator guide](../docs/operator.md#stranded-forwarding-rows)).
+- The count is not stored in any record. Ordered replay derives it, one
+  durable kind 8 at a time, through `fn-bpnp-attempt-apply` (the function the
+  live `:persist-result` arm also calls), and recovery installs the replayed
+  rows exactly (`fn-bpnp-recovery-success-installs-the-replayed-held`, and
+  over the host's event `fn-bpnp-host-recovery-installs-the-durable-replay`,
+  books/bp-node-progress-premises.lisp), so a restart cannot reset it below
+  what the durable kind-8 rows record. A settled kind 9 does clear the slot:
+  the budget bounds re-offers of *uncertain* attempts, and a row whose
+  attempts keep settling as a non-terminal result (`:failed`, or a refusal
+  other than reason 1) is offered again on each later session without a
+  count.
 
 A slot whose epoch is not earlier than the current epoch after recovery would
 not be classified; ordered replay makes every replayed attempt epoch earlier

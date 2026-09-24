@@ -621,7 +621,7 @@ its outcome, which is the refusal to the offering ingress."
       (:forward-stranded
        ;; ACL2 decided the row reached the retry bound (spec 4.3.1); the
        ;; host only reports it.  The row, its attempt and its debt stay held.
-       (fnn-out "BP forwarding stranded arrival=~d retries=~d"
+       (fnn-out "BP forwarding stranded arrival=~d retries=~d (held; no session or restart re-offers it)"
                 (second effect) (fourth effect)))
       (:progress-wait
        (fnn-out "BP node progress waiting reason=~(~a~)" (third effect)))

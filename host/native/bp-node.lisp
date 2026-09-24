@@ -252,7 +252,8 @@
                    (when sent
                      (let ((result
                              (fnn-core 'fn-bpnp-tcpcl-outcome
-                                       (fnn-tclc-outcome conn))))
+                                       (fnn-tclc-outcome conn)
+                                       (fnn-tclc-refusal conn))))
                        (when (eq result :fence)
                          (setf (fnn-bps-outcome bp) :uncertain)
                          (fnn-indeterminate
