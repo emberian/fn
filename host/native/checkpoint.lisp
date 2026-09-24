@@ -16,14 +16,9 @@
 (defun fnn-checkpoints (store)
   (fnn-join (fnn-store-root store) "checkpoints"))
 
-(defun fnn-checkpoint-name-result (value description)
-  "Validate and decode one ACL2-owned path component."
-  (unless (and (fnn-octet-list-p value) value
-               (every (lambda (octet) (< octet 128)) value)
-               (not (member (char-code #\/) value))
-               (not (member 0 value)))
-    (fnn-fault "ACL2 returned invalid ~a" description))
-  (fnn-octets-string (fnn-octets value)))
+; fnn-checkpoint-name-result, which decodes every ACL2-owned checkpoint path
+; component below, is in io.lisp: opening any Store decodes the clone fence
+; name with it, and the DTN image loads io.lisp without this file.
 
 (defun fnn-checkpoint-selection-name ()
   (fnn-checkpoint-name-result
