@@ -39,15 +39,15 @@
             (fn-pgc-release-ids (cdr xs)))
     nil))
 
-(defthm fn-pgc-obligation-ids-is-retain-obligation-ids
+(local (defthm fn-pgc-obligation-ids-is-retain-obligation-ids
   (equal (fn-pgc-obligation-ids xs) (fn-retain-obligation-ids xs))
   :hints (("Goal" :in-theory (enable fn-pgc-obligation-ids
-                                     fn-retain-obligation-ids))))
+                                     fn-retain-obligation-ids)))))
 
-(defthm fn-pgc-release-ids-is-retain-release-ids
+(local (defthm fn-pgc-release-ids-is-retain-release-ids
   (equal (fn-pgc-release-ids xs) (fn-retain-release-ids xs))
   :hints (("Goal" :in-theory (enable fn-pgc-release-ids
-                                     fn-retain-release-ids))))
+                                     fn-retain-release-ids)))))
 
 ; fn-retain-admissiblep's :exec body, whose only guard need is the two
 ; numbers it adds and compares; those are tested here, and are true under
