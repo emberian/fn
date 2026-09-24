@@ -2,6 +2,12 @@
 (in-package "ACL2")
 (include-book "byte-store-native-correspondence")
 
+(local
+ (defthm fn-bs-native-store-files-are-a-kernel-state
+   (implies (fn-sn-statep s)
+            (fn-sf-statep (fn-sn-files s)))
+   :hints (("Goal" :in-theory (enable fn-sn-statep)))))
+
 ; A reported link error is uncertain only when the namespace operation may
 ; have been issued.  With the physical link preconditions explicit, the byte
 ; state retains a pending transaction-directory operation, the kernel fences,
@@ -35,8 +41,14 @@
            (fn-sf-fencedp
             (fn-sn-files (fn-sn-io s :record-link :error))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sn-io fn-sn-file-step fn-sn-update
-                                     fn-sf-record-link-result fn-sf-fencedp))))
+  :hints (("Goal"
+           :use (fn-bs-native-store-files-are-a-kernel-state
+                 (:instance fn-bs-native-io-is-byte-observation
+                            (operation :record-link) (result :error)))
+           :in-theory (e/d (fn-bs-native-io-event fn-sf-dispatch
+                            fn-sf-record-link-result fn-sf-fencedp)
+                           (fn-sn-statep fn-sn-io fn-sn-update
+                            fn-sf-statep)))))
 
 ; The allocator has the same issued-but-unobserved boundary at rename(2).
 ; The staging deletion is a separate operation, so the recovery obligation
@@ -68,8 +80,14 @@
            (fn-sf-fencedp
             (fn-sn-files (fn-sn-io s :frontier-replace :error))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sn-io fn-sn-file-step fn-sn-update
-                                     fn-sf-frontier-replace-result fn-sf-fencedp))))
+  :hints (("Goal"
+           :use (fn-bs-native-store-files-are-a-kernel-state
+                 (:instance fn-bs-native-io-is-byte-observation
+                            (operation :frontier-replace) (result :error)))
+           :in-theory (e/d (fn-bs-native-io-event fn-sf-dispatch
+                            fn-sf-frontier-replace-result fn-sf-fencedp)
+                           (fn-sn-statep fn-sn-io fn-sn-update
+                            fn-sf-statep)))))
 
 ; An error return from the transaction-directory barrier resolves some
 ; physical outcome but cannot report commitment.  The byte syscall drains
@@ -98,8 +116,14 @@
            (fn-sf-fencedp
             (fn-sn-files (fn-sn-io s :record-directory :error))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sn-io fn-sn-file-step fn-sn-update
-                                     fn-sf-record-dir-result fn-sf-fencedp))))
+  :hints (("Goal"
+           :use (fn-bs-native-store-files-are-a-kernel-state
+                 (:instance fn-bs-native-io-is-byte-observation
+                            (operation :record-directory) (result :error)))
+           :in-theory (e/d (fn-bs-native-io-event fn-sf-dispatch
+                            fn-sf-record-dir-result fn-sf-fencedp)
+                           (fn-sn-statep fn-sn-io fn-sn-update
+                            fn-sf-statep)))))
 
 (defthm fn-bs-frontier-directory-error-resolves-choice-and-fences
   (implies (and (fn-sf-statep ks)
@@ -124,5 +148,11 @@
            (fn-sf-fencedp
             (fn-sn-files (fn-sn-io s :frontier-directory :error))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sn-io fn-sn-file-step fn-sn-update
-                                     fn-sf-frontier-dir-result fn-sf-fencedp))))
+  :hints (("Goal"
+           :use (fn-bs-native-store-files-are-a-kernel-state
+                 (:instance fn-bs-native-io-is-byte-observation
+                            (operation :frontier-directory) (result :error)))
+           :in-theory (e/d (fn-bs-native-io-event fn-sf-dispatch
+                            fn-sf-frontier-dir-result fn-sf-fencedp)
+                           (fn-sn-statep fn-sn-io fn-sn-update
+                            fn-sf-statep)))))
