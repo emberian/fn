@@ -14,13 +14,20 @@ leaving application ACK unchanged. BP recovery faults retain volatile waits;
 successful recovery clears them. Full N03 selection, N04 forwarding/session
 policy and N05 durable debt remain open.
 
-The next ordinary combined run must qualify this union before image building.
-In particular, closing Store updater definitions may expose downstream proofs
-that relied on expansion rather than exported selector laws. There is no new
-image claim yet; `e160442f` remains the last shared qualified image and
-`da5fd8cb` the protected live node. The earlier failed manifests remain retained.
-Native qualification will use one production/developer pair for topic retry,
-indexed consumer/status, fragment/recovery and the new BP progress fixture.
+The frozen `67d026ad` ordinary combined run finished with 263 new passes and
+11 failures: four theorem failures and seven missing-certificate dependents.
+The [original manifest and cause record](evidence/wide-combined-67d026ad-red-2026-09-24.md)
+preserve the 379.439-second run. No image was built. Consumer/topic composition
+passed; repairs now address acceptance-stamp finish, Store keyring preparation,
+BP observed reopen and the byte-model reopen theorem. Some failures involve
+closed updater definitions; the BP reopening premises are being checked for a
+real missing topic-history validity condition. `e160442f` remains the last
+shared qualified image and `da5fd8cb` the protected live node.
+
+Later `694d9e84` adds a read-only native retention diagnostic and an
+active-reader/reclamation fixture, both pending a matching image. Native
+qualification will use one repaired production/developer pair for topic retry,
+indexed consumer/status, fragment/recovery, BP progress and reclamation.
 
 In parallel, the allocator lane is proving the actual failed root-directory
 barrier path; Mini's compiled replay profiling has localized most reply staging
