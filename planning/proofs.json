@@ -79,7 +79,12 @@
         "books/owner-commit-carried.lisp",
         "tests/acl2/owner-commit-carried-tests.lisp",
         "planning/evidence/manifests/certify-20260924T180005Z-3125113.json",
-        "planning/evidence/commit-path-cost-2026-09-24.md"
+        "planning/evidence/commit-path-cost-2026-09-24.md",
+        "books/owner-commit-ocl.lisp",
+        "tests/acl2/owner-advance-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
+        "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
+        "planning/evidence/commit-path-2-2026-09-24.md"
       ],
       "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. The host-called store prepare projection now preserves that relation after observed open across the actual post-open mutators without replaying the appended history per prepare. Provenance, complete runtime guards and physical refinement remain open. BP joint durable/pending sender binding and fixed-Store receiver state/context/decision invariants now hold through actual transitions and arbitrary finite replay; changing-Store composition remains open. CHANGED 2026-09-22 (w31/freeze-3): `fn-snt-relation` (books/store-node-traces) now covers the two publications whose node effect is deferred to `fn-sn-finish` -- `fn-sn-prepare-retention` (`6ab2c783`) and `fn-sn-prepare-identity` (`4bb7bb3d`) -- and the fault arm `fn-sn-recover` grew in `40bb3f74`. Before this it was false of every state those three transitions produce, so `fn-snrt-step-preserves-relation`, `fn-own-step-preserves-relation` and `fn-opc-configured-step-preserves-owner-relation` above it were false with it and no run had said so. What the deferred arm says is weaker than the article arm by design: it carries the replayed node at the reservation's transaction id and the equation between the applied event and the replay of the extended history, and no proposal standing on the live node, because there is none until the directory barrier."
     },
@@ -200,7 +205,12 @@
         "tests/acl2/retention-tests.lisp",
         "books/store-node-retention.lisp",
         "tests/acl2/store-node-retention-tests.lisp",
-        "planning/evidence/manifests/certify-20260924T161235Z-2188032.json"
+        "planning/evidence/manifests/certify-20260924T161235Z-2188032.json",
+        "books/owner-prepare-carried.lisp",
+        "tests/acl2/owner-prepare-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
+        "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
+        "planning/evidence/commit-path-2-2026-09-24.md"
       ],
       "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities. P9 over the host-called functions (books/store-node-retention.lisp, 2026-09-24): fn-spc-prepare (host/store-node-host.lisp:472, answered :refused at :475 when it returns its input) returns the live store state unchanged whenever the record's charge exceeds the room the node's retention capacity leaves, with that comparison its only hypothesis; fn-node-prepare does the same; fn-node-prepare-refuses-whatever-retain-admit-refuses is the named equation that makes RET-002's fn-retain-admit-refuses-unaffordable-obligation a statement about the called function (fn-retain-admit's no-op is exactly the inadmissible case, and in that case prepare refuses). fn-sn-finish (store-node-host.lisp:546): every article accepted before a completion is accepted after it on every arm (no hypothesis beyond membership), and an obligation leaves the ledger only when the completed record is a retention release, not an undertaking, matching its id, subject, kind and evidence; Store releases name kind :forward, so no arm releases an article's :archive pin (corollary fn-sn-finish-keeps-every-archive-obligation). Teeth: tests/acl2/store-node-retention-tests.lisp, reachable witnesses from fn-sn-initial through the host's io/prepare/finish (capacity 10, 2 reserved, charge 9 refused and 8 staged; article, undertaking and release arms) and one must-fail per hypothesis; the identity, consumer and topic arms have no concrete witness. Scope: charges are abstract units, not physical bytes; there is no archive-release event in v0, so 'until explicit release' is 'kept' for articles; crash/recover and sweep are not covered here. Authorized/committed evidence validation remains open. M5 transaction budget over the called prepare (books/owner-store-budget.lisp, 2026-09-24): fn-sbud-prepare, which host/owner-host.lisp fn-owner-prepare installs, is the identity when the budget is at most the owner Store's committed record count and is fn-opc-prepare below it; its refusal word is :unaffordable; the budget is the persisted profile's admissibility (fn-sbud-budget-is-the-profile-admissibility) and is fixed at init. Teeth in tests/acl2/owner-store-budget-tests.lisp and tests/acl2/store-budget-tests.lisp; farm manifest certify-20260924T161235Z-2188032."
     },
@@ -720,7 +730,14 @@
         "books/owner-commit-carried.lisp",
         "tests/acl2/owner-commit-carried-tests.lisp",
         "planning/evidence/manifests/certify-20260924T180005Z-3125113.json",
-        "planning/evidence/commit-path-cost-2026-09-24.md"
+        "planning/evidence/commit-path-cost-2026-09-24.md",
+        "books/owner-prepare-carried.lisp",
+        "tests/acl2/owner-prepare-carried-tests.lisp",
+        "books/owner-advance-carried.lisp",
+        "tests/acl2/owner-advance-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
+        "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
+        "planning/evidence/commit-path-2-2026-09-24.md"
       ],
       "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open."
     },
@@ -783,7 +800,12 @@
         "books/owner-commit-carried.lisp",
         "tests/acl2/owner-commit-carried-tests.lisp",
         "planning/evidence/manifests/certify-20260924T180005Z-3125113.json",
-        "planning/evidence/commit-path-cost-2026-09-24.md"
+        "planning/evidence/commit-path-cost-2026-09-24.md",
+        "books/owner-advance-carried.lisp",
+        "tests/acl2/owner-advance-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
+        "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
+        "planning/evidence/commit-path-2-2026-09-24.md"
       ],
       "progress_note": "Actual implemented command/step and arbitrary finite raw event traces preserve session/cursor consistency under a valid archive projection. All dispatcher branches produce typed reply octets/close effects; closed sessions emit none. Exact bridge partitions and reconnect cases pass targeted tests. Full RFC responses/READER bundle, injection/POST and effects-to-I/O refinement remain open. fn-served-step and fn-served-run preserve the connection and type their effects, over the same fn-nntp-step the session keystones are about; the w5/legacy-commands branches (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) are covered by the unchanged statements of fn-nntp-step-effects-well-formed and fn-nntp-step-preserves-consistent-session. Open: NNT-001's capability/dispatch mismatch, and the owner."
     },
