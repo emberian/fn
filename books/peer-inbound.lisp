@@ -1579,13 +1579,13 @@
             (fn-nntp-result-session
              (fn-nntp-command-pinned session archive index verdicts env tokens))
             archive))
-  :hints (("Goal" :in-theory
-           (e/d (fn-nntp-command-pinned)
-                (fn-nntp-session-command fn-nntp-archive-command-pinned
-                 fn-nntp-archive-keywordp fn-nntp-keyword-tokenp
-                 fn-nntp-single fn-nntp-projectionp
-                 fn-nntp-result-session fn-nntp-session-consistentp))
-           :expand ((fn-nntp-session-consistentp session archive))))))
+  ; This is exactly the reader theorem.  Reopening the command here also
+  ; opens the pinned-index relation in every dispatch arm.
+  :hints (("Goal"
+           :use ((:instance fn-nntp-command-pinned-preserves-consistent-session))
+           :in-theory (disable fn-nntp-command-pinned
+                               fn-gidx-pin-correspondencep
+                               fn-nntp-command-pinned-preserves-consistent-session)))))
 
 (local (defthm fn-peer-nntp-step-pinned-preserves-consistent-session
   (implies (and (fn-nntp-session-consistentp session archive)
@@ -1594,14 +1594,11 @@
             (fn-nntp-result-session
              (fn-nntp-step-pinned session archive index verdicts env wire-event))
             archive))
-  :hints (("Goal" :in-theory
-           (e/d (fn-nntp-step-pinned)
-                (fn-nntp-make-result fn-nntp-command-pinned
-                 fn-nntp-projectionp fn-statep fn-nntp-sessionp
-                 fn-nntp-session-openp fn-nntp-command-inputp
-                 fn-nntp-tokenize fn-nntp-command-arguments-at-mostp
-                 fn-nntp-result-session fn-nntp-single
-                 fn-nntp-session-consistentp))))))
+  :hints (("Goal"
+           :use ((:instance fn-nntp-step-pinned-preserves-consistent-session))
+           :in-theory (disable fn-nntp-step-pinned
+                               fn-gidx-pin-correspondencep
+                               fn-nntp-step-pinned-preserves-consistent-session)))))
 
 (local (defthm fn-peer-post-step-pinned-preserves-consistent-session
   (implies (and (fn-post-session-consistentp ps archive)
@@ -1612,26 +1609,10 @@
                                        observation injection wire-event))
             archive))
   :hints (("Goal"
-           :use ((:instance fn-peer-nntp-step-pinned-preserves-consistent-session
-                            (session (fn-post-session-base ps))
-                            (env (fn-nntp-env observation nil
-                                              (and (fn-inj-config-allow config) t))))
-                 (:instance fn-nntp-consistent-session-is-session
-                            (session (fn-nntp-result-session
-                                      (fn-nntp-step-pinned
-                                       (fn-post-session-base ps) archive index
-                                       verdicts
-                                       (fn-nntp-env observation nil
-                                                    (and (fn-inj-config-allow config) t))
-                                       wire-event))))
-                 (:instance fn-nntp-consistent-session-is-session
-                            (session (fn-post-session-base ps))))
-           :in-theory (e/d (fn-nntp-post-step-pinned
-                            fn-post-session-consistentp fn-post-sessionp)
-                           (fn-nntp-step-pinned fn-nntp-session-consistentp
-                            fn-nntp-sessionp
-                            fn-post-offeredp
-                            fn-inj-decide fn-inj-injectedp))))))
+           :use ((:instance fn-post-step-pinned-preserves-consistent-session))
+           :in-theory (disable fn-nntp-post-step-pinned
+                               fn-gidx-pin-correspondencep
+                               fn-post-step-pinned-preserves-consistent-session)))))
 
 (defthm fn-peer-delegate-pinned-preserves-consistent-session
   (implies (and (fn-peer-session-consistentp ps archive)
@@ -1675,6 +1656,7 @@
            :in-theory (e/d (fn-peer-step-pinned)
                            (fn-peer-delegate-pinned fn-peer-step
                             fn-peer-command fn-peer-session-consistentp
+                            fn-gidx-pin-correspondencep
                             fn-peer-sessionp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp)))))
@@ -1707,6 +1689,7 @@
            (e/d (fn-peer-step-pinned)
                 (fn-peer-delegate-pinned fn-peer-step fn-peer-command
                  fn-peer-session-consistentp fn-peer-sessionp
+                 fn-gidx-pin-correspondencep
                  fn-nntp-effectsp fn-post-result-effects
                  fn-midx-correspondencep fn-nntp-command-inputp
                  fn-nntp-tokenize fn-nntp-keyword-tokenp
