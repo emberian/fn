@@ -2982,7 +2982,13 @@
         "fn-bpaj-carried-decision-is-the-authors-direct-decision",
         "fn-bpaj-carried-request-is-judged-as-the-authors-direct-request",
         "fn-bpaj-unlisted-carried-request-is-refused",
-        "fn-bpaj-carried-unenrolled-request-is-refused"
+        "fn-bpaj-carried-unenrolled-request-is-refused",
+        "fn-bpaj-source-decision-ignores-release-rows",
+        "fn-bpah-unauthorized-issuer-releases-nothing",
+        "fn-bpah-carrier-without-release-row-releases-nothing",
+        "fn-bpah-released-receipt-names-exactly-its-obligation",
+        "fn-bpah-receipt-naming-other-terms-releases-nothing",
+        "fn-bpah-request-trust-ignores-release-rows"
       ]
     },
     {
