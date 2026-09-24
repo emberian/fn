@@ -1130,7 +1130,10 @@
         (fn-store-octets->string evidence) charge
         (fn-sn-keyring-snapshots s)
         observed-ml-key ed-observation ml-observation
-        (fn-owner-clock-observation state))))))
+        ;; Read the owner clock directly: fn-owner-clock-observation is an
+        ;; error triple, and ACL2 refuses it where one value is required
+        ;; (the 9c344d1d image build, native-build-production.log:8292).
+        (fn-own-clock (fn-owner-core state)))))))
 
 (defun fn-owner-article-count (state)
   (declare (xargs :stobjs state :mode :program))
