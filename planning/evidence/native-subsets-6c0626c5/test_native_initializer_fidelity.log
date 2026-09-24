@@ -1,0 +1,50 @@
+# target tests.test_native_initializer_fidelity  start 2026-09-24T15:47:48Z  cwd /tank/fn/scratch/native-subsets-6c0626c5/tree
+# cmd: python3 -m unittest -v tests.test_native_initializer_fidelity
+# sbcl on PATH: /tank/fn/scratch/native-subsets-6c0626c5/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=99cee8c066aec7ad1d011df32345bfc4539ed315b8687ad75c66b280cc9e07c0
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=f9ba0c633b5e3fe69f8983b3ed1a44e00ad3bff16021e9e14f1bd42d20335fad
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=6c0626c5ad5691966fdbbae475dcd886ec425f28
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-6c0626c5/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-6c0626c5/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/runtime/sbcl-home/
+test_existing_valid_init_takes_actual_eexist_links_then_reopens (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_existing_valid_init_takes_actual_eexist_links_then_reopens) ... ok
+test_fresh_init_then_new_process_recover (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_fresh_init_then_new_process_recover) ... ok
+test_history_fenced_process_death_retries_through_config_eexist (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_history_fenced_process_death_retries_through_config_eexist) ... ok
+test_live_initializer_lock_refuses_second_initializer_before_metadata (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_live_initializer_lock_refuses_second_initializer_before_metadata) ... ok
+test_post_history_fence_eio_stops_before_frontier_publication (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_post_history_fence_eio_stops_before_frontier_publication) ... ok
+test_second_config_enumeration_eacces_is_not_empty_history (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_second_config_enumeration_eacces_is_not_empty_history) ... ok
+test_sigkill_after_actual_config_eexist_leaves_existing_store_openable (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_after_actual_config_eexist_leaves_existing_store_openable) ... ok
+test_sigkill_after_frontier_publication_recovers_in_a_new_process (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_after_frontier_publication_recovers_in_a_new_process) ... ok
+test_sigkill_at_history_fence_is_process_death_then_faulted_restart (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_at_history_fence_is_process_death_then_faulted_restart) ... ok
+test_sigkill_before_metadata_makes_restart_fault (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_before_metadata_makes_restart_fault) ... ok
+test_source_map_exposes_each_current_initializer_model_cut (tests.test_native_initializer_fidelity.NativeInitializerSourceMapTests.test_source_map_exposes_each_current_initializer_model_cut) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 1.668s
+
+OK
+# rc=0 wall=1.7 end 2026-09-24T15:47:49Z

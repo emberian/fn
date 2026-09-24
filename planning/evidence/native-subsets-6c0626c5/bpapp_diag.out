@@ -1,0 +1,39 @@
+pids receiver 1581079 sender 1581084
+sender poll None
+== sender rc 143
+-- stdout tail
+ BP FNBS recovered held=0
+BP queue recovered jobs=0
+BP authored creation=0 sequence=0 lifetime=3600000 payload=392 octets=489
+BP wire authored path=/tmp/fn-native-bp-app-uikzsxxc/sender-spool/authored-0.wire
+TCPCL active aux (:SEND :CONTACT 6)
+TCPCL active event (:SEND :SESS-INIT 38)
+TCPCL active event (:SESSION-UP 10 1024 1048576 NIL)
+TCPCL active aux (:SEND :XFER-SEGMENT 511)
+TCPCL active event (:OUTBOUND-REFUSED 0 "active" 4)
+TCPCL active refused outbound xfer=0 reason=4
+TCPCL active aux (:SEND :KEEPALIVE 1)
+TCPCL active aux (:SEND :KEEPALIVE 1)
+TCPCL active aux (:SEND :KEEPALIVE 1)
+TCPCL active aux (:SEND :KEEPALIVE 1)
+
+-- stderr tail
+ 
+receiver poll None
+== receiver rc 143
+-- stdout tail
+ TCPCL bp-app event (:SEND :CONTACT 6)
+TCPCL bp-app event (:SEND :SESS-INIT 40)
+TCPCL bp-app event (:SESSION-UP 10 1024 1048576 NIL)
+TCPCL bp-app event (:SEND :XFER-ACK 18)
+TCPCL bp-app event (:BUNDLE-RECEIVED 0 489)
+BP application refused xfer=0
+TCPCL bp-app refused inbound xfer=0 reason=REFUSED
+TCPCL bp-app aux (:SEND :KEEPALIVE 1)
+TCPCL bp-app aux (:SEND :KEEPALIVE 1)
+TCPCL bp-app aux (:SEND :KEEPALIVE 1)
+TCPCL bp-app aux (:SEND :KEEPALIVE 1)
+TCPCL bp-app aux (:SESSION-DOWN)
+
+-- stderr tail
+ 

@@ -1,0 +1,4 @@
+(fn-stmt-okp nil) => b'NIL\nACL2 !>'
+(fn-record-result-okp nil) => b'NIL\nACL2 !>'
+(fn-stxa-bindsp nil) => b'NIL\nACL2 !>'
+(fn-stxa-decode-exact nil) => b'(:ERROR :ACCEPTED-ARTICLE)\nACL2 !>'

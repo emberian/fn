@@ -1,0 +1,117 @@
+# target tests.test_bp_service_native  start 2026-09-24T15:46:20Z  cwd /tank/fn/scratch/native-subsets-6c0626c5/tree
+# cmd: python3 -m unittest -v tests.test_bp_service_native
+# sbcl on PATH: /tank/fn/scratch/native-subsets-6c0626c5/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=99cee8c066aec7ad1d011df32345bfc4539ed315b8687ad75c66b280cc9e07c0
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=f9ba0c633b5e3fe69f8983b3ed1a44e00ad3bff16021e9e14f1bd42d20335fad
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=6c0626c5ad5691966fdbbae475dcd886ec425f28
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-6c0626c5/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-6c0626c5/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/runtime/sbcl-home/
+test_append_uses_recovered_frontier_without_namespace_rescan (tests.test_bp_service_native.NativeBpServiceTests.test_append_uses_recovered_frontier_without_namespace_rescan) ... FAIL
+test_cleanup_barrier_failure_does_not_retract_durable_record (tests.test_bp_service_native.NativeBpServiceTests.test_cleanup_barrier_failure_does_not_retract_durable_record) ... FAIL
+test_corrupt_clock_domain_fences_before_replay (tests.test_bp_service_native.NativeBpServiceTests.test_corrupt_clock_domain_fences_before_replay) ... ok
+test_hidden_stage_is_bounded_recovery_evidence (tests.test_bp_service_native.NativeBpServiceTests.test_hidden_stage_is_bounded_recovery_evidence) ... ok
+test_legacy_durable_records_without_clock_domain_fence (tests.test_bp_service_native.NativeBpServiceTests.test_legacy_durable_records_without_clock_domain_fence) ... ok
+test_monotonic_age_expires_interrupted_work (tests.test_bp_service_native.NativeBpServiceTests.test_monotonic_age_expires_interrupted_work) ... ok
+test_namespace_bound_is_applied_during_directory_enumeration (tests.test_bp_service_native.NativeBpServiceTests.test_namespace_bound_is_applied_during_directory_enumeration) ... ok
+test_outage_restart_duplicate_and_conflict (tests.test_bp_service_native.NativeBpServiceTests.test_outage_restart_duplicate_and_conflict) ... ok
+test_prelink_publication_failure_is_refused (tests.test_bp_service_native.NativeBpServiceTests.test_prelink_publication_failure_is_refused) ... FAIL
+test_recovery_rejects_corrupt_name_gap_and_token_binding (tests.test_bp_service_native.NativeBpServiceTests.test_recovery_rejects_corrupt_name_gap_and_token_binding) ... ok
+test_send_core_fault_remains_exit_four (tests.test_bp_service_native.NativeBpServiceTests.test_send_core_fault_remains_exit_four) ... FAIL
+test_shared_spool_owner_precedes_lifecycle_mutation (tests.test_bp_service_native.NativeBpServiceTests.test_shared_spool_owner_precedes_lifecycle_mutation) ... ok
+test_transport_uncertain_dominates_refused_article (tests.test_bp_service_native.NativeBpServiceTests.test_transport_uncertain_dominates_refused_article) ... FAIL
+test_visible_clock_domain_after_barrier_error_recovers_without_work (tests.test_bp_service_native.NativeBpServiceTests.test_visible_clock_domain_after_barrier_error_recovers_without_work) ... FAIL
+test_visible_final_never_converts_failed_authority_barrier_to_durable (tests.test_bp_service_native.NativeBpServiceTests.test_visible_final_never_converts_failed_authority_barrier_to_durable) ... FAIL
+test_wall_jump_after_interrupted_contact_retains_anchored_work (tests.test_bp_service_native.NativeBpServiceTests.test_wall_jump_after_interrupted_contact_retains_anchored_work) ... ok
+
+======================================================================
+FAIL: test_append_uses_recovered_frontier_without_namespace_rescan (tests.test_bp_service_native.NativeBpServiceTests.test_append_uses_recovered_frontier_without_namespace_rescan)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_service_native.py", line 285, in test_append_uses_recovered_frontier_without_namespace_rescan
+    self.assertEqual(first.returncode, 3, first.stderr)
+AssertionError: 5 != 3 : fn-host: error: FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION is a developer-image selector; this production image does not start with it
+
+
+======================================================================
+FAIL: test_cleanup_barrier_failure_does_not_retract_durable_record (tests.test_bp_service_native.NativeBpServiceTests.test_cleanup_barrier_failure_does_not_retract_durable_record)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_service_native.py", line 225, in test_cleanup_barrier_failure_does_not_retract_durable_record
+    self.assertEqual(cut.returncode, 3, cut.stderr)
+AssertionError: 5 != 3 : fn-host: error: FN_IMMUTABLE_PUBLISH_TEST_FAIL is a developer-image selector; this production image does not start with it
+
+
+======================================================================
+FAIL: test_prelink_publication_failure_is_refused (tests.test_bp_service_native.NativeBpServiceTests.test_prelink_publication_failure_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_service_native.py", line 239, in test_prelink_publication_failure_is_refused
+    self.assertEqual(refused.returncode, 1, refused.stderr)
+AssertionError: 5 != 1 : fn-host: error: FN_IMMUTABLE_PUBLISH_TEST_FAIL is a developer-image selector; this production image does not start with it
+
+
+======================================================================
+FAIL: test_send_core_fault_remains_exit_four (tests.test_bp_service_native.NativeBpServiceTests.test_send_core_fault_remains_exit_four)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_service_native.py", line 248, in test_send_core_fault_remains_exit_four
+    self.assertEqual(result.returncode, 4, result.stderr)
+AssertionError: 5 != 4 : fn-host: error: FN_BP_SERVICE_TEST_SEND_FAULT is a developer-image selector; this production image does not start with it
+
+
+======================================================================
+FAIL: test_transport_uncertain_dominates_refused_article (tests.test_bp_service_native.NativeBpServiceTests.test_transport_uncertain_dominates_refused_article)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_service_native.py", line 365, in test_transport_uncertain_dominates_refused_article
+    self.assertIn(
+AssertionError: 'BP refused xfer=' not found in 'BP FNBS recovered held=0\nBP queue recovered jobs=0\nBP LISTENING 44871\n' : the mixed-outcome cut requires a reachable refused article
+
+======================================================================
+FAIL: test_visible_clock_domain_after_barrier_error_recovers_without_work (tests.test_bp_service_native.NativeBpServiceTests.test_visible_clock_domain_after_barrier_error_recovers_without_work)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_service_native.py", line 169, in test_visible_clock_domain_after_barrier_error_recovers_without_work
+    self.assertEqual(cut.returncode, 3, cut.stderr)
+AssertionError: 5 != 3 : fn-host: error: FN_BP_CLOCK_DOMAIN_TEST_FAIL is a developer-image selector; this production image does not start with it
+
+
+======================================================================
+FAIL: test_visible_final_never_converts_failed_authority_barrier_to_durable (tests.test_bp_service_native.NativeBpServiceTests.test_visible_final_never_converts_failed_authority_barrier_to_durable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_service_native.py", line 208, in test_visible_final_never_converts_failed_authority_barrier_to_durable
+    self.assertEqual(cut.returncode, 3, cut.stderr)
+AssertionError: 5 != 3 : fn-host: error: FN_IMMUTABLE_PUBLISH_TEST_FAIL is a developer-image selector; this production image does not start with it
+
+
+----------------------------------------------------------------------
+Ran 16 tests in 6.826s
+
+FAILED (failures=7)
+# rc=1 wall=6.9 end 2026-09-24T15:46:27Z

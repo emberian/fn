@@ -1,0 +1,164 @@
+# target tests.test_bp_node_native  start 2026-09-24T15:46:35Z  cwd /tank/fn/scratch/native-subsets-6c0626c5/tree
+# cmd: python3 -m unittest -v tests.test_bp_node_native
+# sbcl on PATH: /tank/fn/scratch/native-subsets-6c0626c5/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=99cee8c066aec7ad1d011df32345bfc4539ed315b8687ad75c66b280cc9e07c0
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=f9ba0c633b5e3fe69f8983b3ed1a44e00ad3bff16021e9e14f1bd42d20335fad
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=6c0626c5ad5691966fdbbae475dcd886ec425f28
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-6c0626c5/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-6c0626c5/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/runtime/sbcl-home/
+test_absent_bp_trust_keeps_custody_but_refuses_request_application (tests.test_bp_node_native.NativeBpNodeTests.test_absent_bp_trust_keeps_custody_but_refuses_request_application) ... ok
+test_absent_bp_trust_refuses_receipt_release (tests.test_bp_node_native.NativeBpNodeTests.test_absent_bp_trust_refuses_receipt_release) ... FAIL
+test_admitted_channel_without_inbound_scope_refuses_store_request (tests.test_bp_node_native.NativeBpNodeTests.test_admitted_channel_without_inbound_scope_refuses_store_request) ... ok
+test_ambiguous_fnrj_decision_fences_until_cold_replay (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_fnrj_decision_fences_until_cold_replay) ... ok
+test_ambiguous_outbox_publication_is_uncertain_not_refused (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_outbox_publication_is_uncertain_not_refused) ... FAIL
+test_conflicting_return_job_fences_after_request_commit (tests.test_bp_node_native.NativeBpNodeTests.test_conflicting_return_job_fences_after_request_commit) ... FAIL
+test_death_after_durable_outbox_does_not_allocate_second_sequence (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_durable_outbox_does_not_allocate_second_sequence) ... FAIL
+test_death_after_fnrj_receipt_decision_replays_one_article (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article) ... FAIL
+test_death_after_kind_seven_replays_owed_outbox (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_seven_replays_owed_outbox) ... FAIL
+test_deletion_report_intent_recovers_and_observation_does_not_release (tests.test_bp_node_native.NativeBpNodeTests.test_deletion_report_intent_recovers_and_observation_does_not_release) ... ok
+test_exact_receipt_with_wrong_carrier_peer_fences (tests.test_bp_node_native.NativeBpNodeTests.test_exact_receipt_with_wrong_carrier_peer_fences) ... FAIL
+test_expired_recovered_kind_five_never_enters_store (tests.test_bp_node_native.NativeBpNodeTests.test_expired_recovered_kind_five_never_enters_store) ... ok
+test_kind_five_ambiguous_publication_never_delivers_to_store (tests.test_bp_node_native.NativeBpNodeTests.test_kind_five_ambiguous_publication_never_delivers_to_store) ... ok
+test_older_mru_wait_allows_younger_forward_and_replays (tests.test_bp_node_native.NativeBpNodeTests.test_older_mru_wait_allows_younger_forward_and_replays) ... FAIL
+test_older_unrouted_transit_does_not_block_younger_local_request (tests.test_bp_node_native.NativeBpNodeTests.test_older_unrouted_transit_does_not_block_younger_local_request) ... FAIL
+test_request_retry_queues_distinct_receipt_carriers_and_releases_pin (tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin) ... FAIL
+
+======================================================================
+FAIL: test_absent_bp_trust_refuses_receipt_release (tests.test_bp_node_native.NativeBpNodeTests.test_absent_bp_trust_refuses_receipt_release)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 530, in test_absent_bp_trust_refuses_receipt_release
+    self.assertEqual(receiver.returncode, 0, err)
+AssertionError: 3 != 0 : b'store: bp-service: application handoff uncertain\n'
+
+======================================================================
+FAIL: test_ambiguous_outbox_publication_is_uncertain_not_refused (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_outbox_publication_is_uncertain_not_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 652, in test_ambiguous_outbox_publication_is_uncertain_not_refused
+    self.kill_at_durable_cut(
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 608, in kill_at_durable_cut
+    self.wait_for_output(receiver, marker, timeout=120)
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 553, in wait_for_output
+    raise AssertionError(
+AssertionError: native marker b'BP NODE KIND7 DURABLE' absent: b'TCPCL bp-node event (:SEND :CONTACT 6)\nTCPCL bp-node event (:SEND :SESS-INIT 40)\nTCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)\nTCPCL bp-node event (:SEND :XFER-ACK 18)\nTCPCL bp-node event (:BUNDLE-RECEIVED 0 518)\nBP accepted xfer=0 adu=421 path=/tmp/fn-bp-node-a3-a0k73ngm/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb\nTCPCL bp-node accepted xfer=0 path=/tmp/fn-bp-node-a3-a0k73ngm/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb\nTCPCL bp-node event (:SEND :SESS-TERM 3)\nTCPCL bp-node event (:PEER-TERMINATING 0)\nTCPCL bp-node event (:CLOSE)\nTCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed\nBP node application uncertain: owner BP transit Store outcome is uncertain\n'; store: bp-service: application handoff uncertain
+
+
+======================================================================
+FAIL: test_conflicting_return_job_fences_after_request_commit (tests.test_bp_node_native.NativeBpNodeTests.test_conflicting_return_job_fences_after_request_commit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 575, in test_conflicting_return_job_fences_after_request_commit
+    self.assertIn(b"conflicting durable bytes", err)
+AssertionError: b'conflicting durable bytes' not found in b'store: bp-service: application handoff uncertain\n'
+
+======================================================================
+FAIL: test_death_after_durable_outbox_does_not_allocate_second_sequence (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_durable_outbox_does_not_allocate_second_sequence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 635, in test_death_after_durable_outbox_does_not_allocate_second_sequence
+    self.kill_at_durable_cut(
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 608, in kill_at_durable_cut
+    self.wait_for_output(receiver, marker, timeout=120)
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 553, in wait_for_output
+    raise AssertionError(
+AssertionError: native marker b'BP NODE OUTBOX DURABLE' absent: b'TCPCL bp-node event (:SEND :CONTACT 6)\nTCPCL bp-node event (:SEND :SESS-INIT 40)\nTCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)\nTCPCL bp-node event (:SEND :XFER-ACK 18)\nTCPCL bp-node event (:BUNDLE-RECEIVED 0 518)\nBP accepted xfer=0 adu=421 path=/tmp/fn-bp-node-a3-gm_rhdbh/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb\nTCPCL bp-node accepted xfer=0 path=/tmp/fn-bp-node-a3-gm_rhdbh/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb\nTCPCL bp-node event (:SEND :SESS-TERM 3)\nTCPCL bp-node event (:PEER-TERMINATING 0)\nTCPCL bp-node event (:CLOSE)\nTCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed\nBP node application uncertain: owner BP transit Store outcome is uncertain\n'; store: bp-service: application handoff uncertain
+
+
+======================================================================
+FAIL: test_death_after_fnrj_receipt_decision_replays_one_article (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 614, in test_death_after_fnrj_receipt_decision_replays_one_article
+    self.kill_at_durable_cut(
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 608, in kill_at_durable_cut
+    self.wait_for_output(receiver, marker, timeout=120)
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 553, in wait_for_output
+    raise AssertionError(
+AssertionError: native marker b'BP APP DECISION DURABLE' absent: b'TCPCL bp-node event (:SEND :CONTACT 6)\nTCPCL bp-node event (:SEND :SESS-INIT 40)\nTCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)\nTCPCL bp-node event (:SEND :XFER-ACK 18)\nTCPCL bp-node event (:BUNDLE-RECEIVED 0 518)\nBP accepted xfer=0 adu=421 path=/tmp/fn-bp-node-a3-0aisls6f/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb\nTCPCL bp-node accepted xfer=0 path=/tmp/fn-bp-node-a3-0aisls6f/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb\nTCPCL bp-node event (:SEND :SESS-TERM 3)\nTCPCL bp-node event (:PEER-TERMINATING 0)\nTCPCL bp-node event (:CLOSE)\nTCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed\nBP node application uncertain: owner BP transit Store outcome is uncertain\n'; store: bp-service: application handoff uncertain
+
+
+======================================================================
+FAIL: test_death_after_kind_seven_replays_owed_outbox (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_seven_replays_owed_outbox)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 625, in test_death_after_kind_seven_replays_owed_outbox
+    self.kill_at_durable_cut(
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 608, in kill_at_durable_cut
+    self.wait_for_output(receiver, marker, timeout=120)
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 553, in wait_for_output
+    raise AssertionError(
+AssertionError: native marker b'BP NODE KIND7 DURABLE' absent: b'TCPCL bp-node event (:SEND :CONTACT 6)\nTCPCL bp-node event (:SEND :SESS-INIT 40)\nTCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)\nTCPCL bp-node event (:SEND :XFER-ACK 18)\nTCPCL bp-node event (:BUNDLE-RECEIVED 0 518)\nBP accepted xfer=0 adu=421 path=/tmp/fn-bp-node-a3-6pcmcsix/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb\nTCPCL bp-node accepted xfer=0 path=/tmp/fn-bp-node-a3-6pcmcsix/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb\nTCPCL bp-node event (:SEND :SESS-TERM 3)\nTCPCL bp-node event (:PEER-TERMINATING 0)\nTCPCL bp-node event (:CLOSE)\nTCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed\nBP node application uncertain: owner BP transit Store outcome is uncertain\n'; store: bp-service: application handoff uncertain
+
+
+======================================================================
+FAIL: test_exact_receipt_with_wrong_carrier_peer_fences (tests.test_bp_node_native.NativeBpNodeTests.test_exact_receipt_with_wrong_carrier_peer_fences)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 580, in test_exact_receipt_with_wrong_carrier_peer_fences
+    self.kill_at_durable_cut(
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 608, in kill_at_durable_cut
+    self.wait_for_output(receiver, marker, timeout=120)
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 553, in wait_for_output
+    raise AssertionError(
+AssertionError: native marker b'BP NODE KIND7 DURABLE' absent: b'TCPCL bp-node event (:SEND :CONTACT 6)\nTCPCL bp-node event (:SEND :SESS-INIT 40)\nTCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)\nTCPCL bp-node event (:SEND :XFER-ACK 18)\nTCPCL bp-node event (:BUNDLE-RECEIVED 0 518)\nBP accepted xfer=0 adu=421 path=/tmp/fn-bp-node-a3-9mfp4cq_/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb\nTCPCL bp-node accepted xfer=0 path=/tmp/fn-bp-node-a3-9mfp4cq_/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb\nTCPCL bp-node event (:SEND :SESS-TERM 3)\nTCPCL bp-node event (:PEER-TERMINATING 0)\nTCPCL bp-node event (:CLOSE)\nTCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed\nBP node application uncertain: owner BP transit Store outcome is uncertain\n'; store: bp-service: application handoff uncertain
+
+
+======================================================================
+FAIL: test_older_mru_wait_allows_younger_forward_and_replays (tests.test_bp_node_native.NativeBpNodeTests.test_older_mru_wait_allows_younger_forward_and_replays)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 382, in test_older_mru_wait_allows_younger_forward_and_replays
+    self.assertEqual(
+AssertionError: 6 != 7
+
+======================================================================
+FAIL: test_older_unrouted_transit_does_not_block_younger_local_request (tests.test_bp_node_native.NativeBpNodeTests.test_older_unrouted_transit_does_not_block_younger_local_request)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 303, in test_older_unrouted_transit_does_not_block_younger_local_request
+    delivered = self.wait_for_output(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 553, in wait_for_output
+    raise AssertionError(
+AssertionError: native marker b'BP node delivery request-accepted' absent: b'TCPCL bp-node event (:SEND :CONTACT 6)\nTCPCL bp-node event (:SEND :SESS-INIT 40)\nTCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)\nTCPCL bp-node event (:SEND :XFER-ACK 18)\nTCPCL bp-node event (:BUNDLE-RECEIVED 0 518)\nBP accepted xfer=0 adu=421 path=/tmp/fn-bp-node-a3-q_gs9ngu/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000001.fnb\nTCPCL bp-node accepted xfer=0 path=/tmp/fn-bp-node-a3-q_gs9ngu/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000001.fnb\nTCPCL bp-node event (:SEND :SESS-TERM 3)\nTCPCL bp-node event (:PEER-TERMINATING 0)\nTCPCL bp-node event (:CLOSE)\nTCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed\nBP node application uncertain: owner BP transit Store outcome is uncertain\n'; store: bp-service: application handoff uncertain
+
+
+======================================================================
+FAIL: test_request_retry_queues_distinct_receipt_carriers_and_releases_pin (tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_bp_node_native.py", line 462, in test_request_retry_queues_distinct_receipt_carriers_and_releases_pin
+    self.assertEqual(first.returncode, 0, err)
+AssertionError: 3 != 0 : b'store: bp-service: application handoff uncertain\n'
+
+----------------------------------------------------------------------
+Ran 16 tests in 228.868s
+
+FAILED (failures=10)
+# rc=1 wall=228.9 end 2026-09-24T15:50:24Z

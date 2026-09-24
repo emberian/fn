@@ -1,0 +1,43 @@
+# target tests.test_bp_obligation_native  start 2026-09-24T15:46:34Z  cwd /tank/fn/scratch/native-subsets-6c0626c5/tree
+# cmd: python3 -m unittest -v tests.test_bp_obligation_native
+# sbcl on PATH: /tank/fn/scratch/native-subsets-6c0626c5/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=99cee8c066aec7ad1d011df32345bfc4539ed315b8687ad75c66b280cc9e07c0
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=f9ba0c633b5e3fe69f8983b3ed1a44e00ad3bff16021e9e14f1bd42d20335fad
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=6c0626c5ad5691966fdbbae475dcd886ec425f28
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-6c0626c5/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-6c0626c5/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/runtime/sbcl-home/
+test_pinned_predicate_uses_value_caller (tests.test_bp_obligation_native.NativeBpObligationBoundaryTests.test_pinned_predicate_uses_value_caller) ... ok
+test_shared_owner_admits_and_recovers_forward_pin (tests.test_bp_obligation_native.NativeBpObligationTests.test_shared_owner_admits_and_recovers_forward_pin) ... ok
+test_shared_owner_capacity_refusal_publishes_nothing (tests.test_bp_obligation_native.NativeBpObligationTests.test_shared_owner_capacity_refusal_publishes_nothing) ... ok
+test_shared_owner_refuses_unsigned_receipt_profile (tests.test_bp_obligation_native.NativeBpObligationTests.test_shared_owner_refuses_unsigned_receipt_profile) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.253s
+
+OK
+# rc=0 wall=1.3 end 2026-09-24T15:46:35Z

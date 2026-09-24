@@ -1,0 +1,58 @@
+# target tests.test_native_storage_codec  start 2026-09-24T15:48:05Z  cwd /tank/fn/scratch/native-subsets-6c0626c5/tree
+# cmd: python3 -m unittest -v tests.test_native_storage_codec
+# sbcl on PATH: /tank/fn/scratch/native-subsets-6c0626c5/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=99cee8c066aec7ad1d011df32345bfc4539ed315b8687ad75c66b280cc9e07c0
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=f9ba0c633b5e3fe69f8983b3ed1a44e00ad3bff16021e9e14f1bd42d20335fad
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=6c0626c5ad5691966fdbbae475dcd886ec425f28
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-6c0626c5/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-6c0626c5/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/runtime/sbcl-home/
+test_native_config_scan_is_bounded_and_acl2_bound (tests.test_native_storage_codec.NativeConfigNamespaceSourceTests.test_native_config_scan_is_bounded_and_acl2_bound) ... ok
+test_acl2_frontier_maximum_refuses_before_staging (tests.test_native_storage_codec.NativeStorageCodecTests.test_acl2_frontier_maximum_refuses_before_staging) ... ok
+test_injected_allocator_barrier_failure_consumes_the_id_after_recovery (tests.test_native_storage_codec.NativeStorageCodecTests.test_injected_allocator_barrier_failure_consumes_the_id_after_recovery) ... ok
+test_injected_record_barrier_failure_replays_visible_publication (tests.test_native_storage_codec.NativeStorageCodecTests.test_injected_record_barrier_failure_replays_visible_publication) ... ok
+test_legacy_json_is_retained_and_requires_offline_migration (tests.test_native_storage_codec.NativeStorageCodecTests.test_legacy_json_is_retained_and_requires_offline_migration) ... ok
+test_native_and_python_cross_open_identical_acl2_frames (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_and_python_cross_open_identical_acl2_frames) ... FAIL
+test_native_config_namespace_refuses_mismatched_name_and_symlink (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_config_namespace_refuses_mismatched_name_and_symlink) ... ok
+test_native_namespace_codec_binds_filename_to_decoded_record_sequence (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_namespace_codec_binds_filename_to_decoded_record_sequence) ... ok
+test_native_publication_cut_stays_uncertain_until_recovery (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_publication_cut_stays_uncertain_until_recovery) ... ok
+test_native_refuses_truncated_or_malformed_metadata (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_refuses_truncated_or_malformed_metadata) ... ok
+test_native_scan_uses_bounded_acl2_transaction_observation (tests.test_native_storage_codec.NativeTransactionNamespaceSourceTests.test_native_scan_uses_bounded_acl2_transaction_observation) ... ok
+
+======================================================================
+FAIL: test_native_and_python_cross_open_identical_acl2_frames (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_and_python_cross_open_identical_acl2_frames)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_native_storage_codec.py", line 134, in test_native_and_python_cross_open_identical_acl2_frames
+    self.assertEqual(
+AssertionError: b'FNS[360 chars]02\xe5<$,\xc7\xe4_y2i\xbdq\x99\x02{\xbd\xbf\xb[42 chars]\x19' != b'FNS[360 chars]02\xe1\'\xe1\xa5va\x08\xde\xef\x97\x12*N\xb4\x[50 chars]\x10'
+
+----------------------------------------------------------------------
+Ran 11 tests in 68.994s
+
+FAILED (failures=1)
+# rc=1 wall=69.1 end 2026-09-24T15:49:14Z

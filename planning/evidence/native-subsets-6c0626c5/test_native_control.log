@@ -1,0 +1,62 @@
+# target tests.test_native_control  start 2026-09-24T15:47:19Z  cwd /tank/fn/scratch/native-subsets-6c0626c5/tree
+# cmd: python3 -m unittest -v tests.test_native_control
+# sbcl on PATH: /tank/fn/scratch/native-subsets-6c0626c5/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=99cee8c066aec7ad1d011df32345bfc4539ed315b8687ad75c66b280cc9e07c0
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=f9ba0c633b5e3fe69f8983b3ed1a44e00ad3bff16021e9e14f1bd42d20335fad
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=6c0626c5ad5691966fdbbae475dcd886ec425f28
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/native-subsets-6c0626c5/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/native-subsets-6c0626c5/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-6c0626c5-20260924/build/images/6c0626c5/runtime/sbcl-home/
+test_every_selector_is_read_only_through_the_accessor (tests.test_native_control.NativeControlCutGateTests.test_every_selector_is_read_only_through_the_accessor) ... ok
+test_feed_stop_follows_fnfd_flush_and_precedes_socket_send (tests.test_native_control.NativeControlCutGateTests.test_feed_stop_follows_fnfd_flush_and_precedes_socket_send) ... ok
+test_the_gate_runs_before_dispatch (tests.test_native_control.NativeControlCutGateTests.test_the_gate_runs_before_dispatch) ... ok
+test_the_reply_is_the_owners_status (tests.test_native_control.NativeControlCutGateTests.test_the_reply_is_the_owners_status) ... FAIL
+test_the_stop_is_directed_at_the_calling_thread (tests.test_native_control.NativeControlCutGateTests.test_the_stop_is_directed_at_the_calling_thread) ... ok
+test_control_worker_ceiling_returns_busy (tests.test_native_control.NativeControlTests.test_control_worker_ceiling_returns_busy) ... ok
+test_disabled_posting_refuses_cli_and_served_post (tests.test_native_control.NativeControlTests.test_disabled_posting_refuses_cli_and_served_post) ... ok
+test_lost_reply_after_submission_is_uncertain_and_recovers (tests.test_native_control.NativeControlTests.test_lost_reply_after_submission_is_uncertain_and_recovers) ... ok
+test_operator_post_is_injected_and_refuses_what_post_refuses (tests.test_native_control.NativeControlTests.test_operator_post_is_injected_and_refuses_what_post_refuses)
+`operator post` injects as the served POST does (INN lab of ... ok
+test_partial_frame_has_one_absolute_deadline (tests.test_native_control.NativeControlTests.test_partial_frame_has_one_absolute_deadline) ... ok
+test_prelisten_sigterm_skips_modules_and_reopens (tests.test_native_control.NativeControlTests.test_prelisten_sigterm_skips_modules_and_reopens) ... ok
+test_shared_control_path_is_not_stolen_by_another_store (tests.test_native_control.NativeControlTests.test_shared_control_path_is_not_stolen_by_another_store) ... ok
+test_the_production_image_refuses_every_selector_at_startup (tests.test_native_control.NativeControlTests.test_the_production_image_refuses_every_selector_at_startup) ... ok
+test_two_clients_sigterm_cleanup_and_restart (tests.test_native_control.NativeControlTests.test_two_clients_sigterm_cleanup_and_restart) ... ok
+
+======================================================================
+FAIL: test_the_reply_is_the_owners_status (tests.test_native_control.NativeControlCutGateTests.test_the_reply_is_the_owners_status)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-subsets-6c0626c5/tree/tests/test_native_control.py", line 106, in test_the_reply_is_the_owners_status
+    self.assertIn("(member (first status) '(:consumer-reply :consumer-poll-reply))", body)
+AssertionError: "(member (first status) '(:consumer-reply :consumer-poll-reply))" not found in '(defun fnn-control-handle-client (control socket)\n  (let* ((service (fnn-control-state-service control))\n         (maximum (if (fboundp \'fn-native-hybrid-control-host-max-frame)\n                      (fnn-core \'fn-native-hybrid-control-host-max-frame)\n                    (fnn-core \'fn-native-control-host-max-frame)))\n         (status\n           (handler-case\n               (let* ((frame (prog1 (fnn-control-read-frame socket maximum)\n                               (fnn-control-answering control socket)))\n                      (request\n                        (and (typep frame \'fnn-octets)\n                             (fnn-core \'fn-native-control-host-request-decode\n                                       (fnn-octet-list frame))))\n                      (admin\n                        (and (typep frame \'fnn-octets)\n                             (fnn-core \'fn-native-control-host-admin-decode\n                                       (fnn-octet-list frame))))\n                      (topic\n                        (and (typep frame \'fnn-octets)\n                             (fnn-core \'fn-native-control-host-topic-request-decode\n                                       (fnn-octet-list frame))))\n                      (consumer\n                        (and (typep frame \'fnn-octets)\n                             (fnn-core \'fn-native-control-host-consumer-request-decode\n                                       (fnn-octet-list frame)))))\n                 (cond\n                   ((and *fnn-hybrid-control-handler*\n                         (funcall *fnn-hybrid-control-handler* service frame)))\n                   ((and (consp topic) (eq (first topic) :topic))\n                    (multiple-value-bind (owner-p uid)\n                        (fnn-control-peer-is-owner-p socket)\n                      (if owner-p\n                          (list :topic-reply\n                                (fnn-owner-topic-local-serialized\n                                 service (second topic) (third topic)\n                                 (fourth topic) uid))\n                        (list :topic-reply :refused))))\n                   ((and (consp consumer) (eq (car consumer) :consumer))\n                      (if (fnn-control-peer-is-owner-p socket)\n                        (fnn-owner-consumer-local-serialized\n                         service (second consumer) (third consumer)\n                         (fourth consumer))\n                      (case (second consumer)\n                        (:poll (list :consumer-poll-reply :refused nil nil))\n                        (:status (list :consumer-status-reply :refused nil nil nil))\n                        (otherwise (list :consumer-reply :refused nil)))))\n                   ((and (consp request) (eq (car request) :request))\n                    (let ((msgid (second request))\n                         (groups (third request))\n                         (article (fourth request)))\n                     (unless (and (fnn-octet-list-p msgid)\n                                  (listp groups)\n                                  (every #\'fnn-octet-list-p groups)\n                                  (fnn-octet-list-p article))\n                       (fnn-fault "ACL2 returned a malformed control request"))\n                     (fnn-owner-control-submit-serialized\n                      service (fnn-octets msgid)\n                      (mapcar #\'fnn-octets groups) (fnn-octets article))))\n                   ((and (consp admin) (eq (car admin) :admin))\n                    (fnn-owner-live-admin-serialized service (second admin)))\n                   (t :refused)))\n             ;; The owner has already fenced itself on these two (exit 3 and\n             ;; exit 4, `fnn-owner-shared-action-locked\'); the reason goes to\n             ;; the owner\'s log, and the caller gets the status word.\n             (fnn-store-indeterminate (condition)\n               (fnn-err "control request uncertain; owner fenced: ~a" condition)\n               :uncertain)\n             (fnn-store-fault (condition)\n               (fnn-err "control request fault; owner stopped: ~a" condition)\n               :fault)\n             (fnn-store-error () :refused)\n             (fnn-os-error () :refused)\n             (sb-bsd-sockets:socket-error () :refused)\n             (error (condition)\n               (fnn-owner-fault-service service nil condition)\n               :fault))))\n    ;; A peer that disappears here creates no uncertainty for the owner: the\n    ;; status already records its durable observation.  The client, which did\n    ;; not receive it, conservatively reports :uncertain.\n    (fnn-control-test-after-submit\n     (if (and (consp status)\n              (member (first status)\n                      \'(:topic-reply :consumer-reply :consumer-poll-reply\n                        :consumer-status-reply)))\n         (second status) status))\n    (fnn-control-send-reply socket status)))\n\n'
+
+----------------------------------------------------------------------
+Ran 14 tests in 22.267s
+
+FAILED (failures=1)
+# rc=1 wall=22.3 end 2026-09-24T15:47:41Z
