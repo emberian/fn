@@ -249,6 +249,11 @@
                          (setf (fnn-bps-outcome bp) :uncertain)
                          (fnn-indeterminate
                           "bp-node: transport outcome uncertain after durable attempt"))
+                       ;; Model cut N08: kind 8 durable, the transfer ran, no
+                       ;; kind 9 proposed.  Recovery re-offers (spec 4.3.1).
+                       (fnn-bpnode-pause-at-durable-cut
+                        "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_EIGHT_SENT"
+                        "BP NODE KIND8 SENT")
                        (fnn-bps-drive-effects
                         bp (fnn-bps-foundation-step
                             bp (list :forward-result

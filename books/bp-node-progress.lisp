@@ -638,6 +638,13 @@
           h
         (fn-bpnp-first-stranded (cdr ordered) peer epoch)))))
 
+(defun fn-bpnp-stranded-effects (held peer epoch)
+  (declare (xargs :guard (true-listp held)))
+  (let ((stranded (fn-bpnp-first-stranded (reverse held) peer epoch)))
+    (and stranded
+         (list (list :forward-stranded (fn-bpn-nth 3 stranded) peer
+                     (fn-bpnp-attempt-retries (fn-bpn-nth 13 stranded)))))))
+
 (defun fn-bpnp-forward-scan
   (ordered peer mru node observation waits free epoch)
   (declare (xargs :guard (natp mru) :measure (acl2-count ordered)))
@@ -681,17 +688,12 @@
                   (fn-bpnp-waits st) free (fn-bpnf-epoch st)))
            (waits (if (equal (car scan) :ready)
                       (fn-bpn-nth 4 scan) (fn-bpn-nth 1 scan)))
+           (held (fn-bpnf-held-list st))
+           (epoch (fn-bpnf-epoch st))
            (st (fn-bpnp-with-waits st waits)))
       (if (not (equal (car scan) :ready))
-          (let ((stranded (fn-bpnp-first-stranded
-                           (reverse (fn-bpnf-held-list st)) peer
-                           (fn-bpnf-epoch st))))
-            (fn-bpnf-answer
-             st
-             (and stranded
-                  (list (list :forward-stranded (fn-bpn-nth 3 stranded) peer
-                              (fn-bpnp-attempt-retries
-                               (fn-bpn-nth 13 stranded)))))))
+          (fn-bpnf-answer
+           st (fn-bpnp-stranded-effects held peer epoch))
         (let* ((h (fn-bpn-nth 1 scan))
                (wire (fn-bpn-nth 2 scan))
                (age (fn-bpn-nth 3 scan))
