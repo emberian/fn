@@ -1714,7 +1714,14 @@
         "planning/evidence/bp-progress-route-wait-2026-09-24.md",
         "planning/evidence/manifests/certify-20260924T043228Z-116619.json",
         "planning/evidence/manifests/certify-20260924T044207Z-205038.json",
-        "planning/evidence/manifests/certify-20260924T044347Z-220667.json"
+        "planning/evidence/manifests/certify-20260924T044347Z-220667.json",
+        "books/bp-fnbs-namespace.lisp",
+        "books/bp-node-debt.lisp",
+        "tests/acl2/bp-node-debt-tests.lisp",
+        "planning/evidence/bp-node-debt-api-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T050306Z-394216.json",
+        "planning/evidence/manifests/certify-20260924T050557Z-424764.json",
+        "planning/evidence/manifests/certify-20260924T051441Z-507929.json"
       ],
       "pending_subject": "The native host directly calls fn-bpn-step. The maintained lifecycle invariant and durable send/queue authorization now have source-pinned certified keystones; physical publication observations, full application/Store trace composition and all reachable crash cuts remain open.",
       "progress_note": "The actual fn-bpn-step preserves fn-bpn-lifecycle-invariantp under that input invariant and fn-bpn-machine-eventp, and under the lifecycle invariant its send and queue-accept effects require the exact durable authorization or an exact retained duplicate. The hbox source-pinned closure and reachable authorization counterexamples are archived in bp-lifecycle-assurance-w18-2026-09-21.md; the duplicate persvati dependency timeout remains negative evidence. These logical results assume the reported persistence outcomes and do not establish physical durability or a current combined native image. Native lifecycle append consumes the shared immutable publisher; authority-barrier failure remains uncertain.",
