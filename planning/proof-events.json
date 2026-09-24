@@ -145,6 +145,14 @@
         {
           "kind": "theorem",
           "name": "fn-own-pinned-view-survives-other-post"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-served-watermarks-never-decrease"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-served-local-number-is-never-reassigned"
         }
       ]
     },
