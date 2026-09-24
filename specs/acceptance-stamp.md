@@ -378,7 +378,9 @@ are T4's to state.
                 (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
-                (not (fn-stxa-p (fn-sn-completion-record s))))
+                (not (fn-stxa-p (fn-sn-completion-record s)))
+                (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (and
             (consp (fn-find-article
                     (fn-record-msgid (fn-sn-completion-record s))
@@ -422,12 +424,18 @@ conclusion includes presence so that the event-kind premise has real teeth.
 Teeth (article arm): the witness is a state driven from `fn-sn-initial`
 through the reservation, `fn-sn-prepare` of an `fn-sn-article-record` built
 from a 2026 observation, and the file steps to `:completing`; it asserts
-`fn-sn-completion-enabledp` and the four arm facts, then the conclusion.
+`fn-sn-completion-enabledp` and the six article-arm exclusions, then the
+conclusion.
 `must-fail`: drop `fn-sn-completion-enabledp` (the same state one step before
 `:completing`: finish is a no-op, the article is absent); drop each arm
 exclusion in turn with a completion record of that kind (a retention event,
 a verdict event, a keyring snapshot event, a kind-4 composite), each of
 which installs no article under the completion record's own msgid accessor.
+The consumer event and valid topic administrator install also advance Store
+history without adding an article. The topic witness satisfies all former
+exclusions, while `fn-replay-journal-article-stamps` omits it and retains the
+ordinary article's stamp; a `must-fail` on the former classification premises
+demonstrates why the topic exclusion is necessary.
 Teeth (composite arm): the witness is the kind-4 composite from
 `tests/acl2/stx-accept-records-tests.lisp` rebuilt with a stamped child;
 `must-fail` for each of its two hypotheses likewise.
@@ -443,9 +451,7 @@ reaches through `fn-sf-replay-node` at every open (`fn-store-sn-recover`,
   (let ((article (if (fn-stxa-p record)
                      (fn-replay-composite-record record)
                    record)))
-    (implies (and (not (fn-store-retention-event-p record))
-                  (not (fn-stxe-p record))
-                  (not (fn-stxk-p record))
+    (implies (and (fn-replay-article-eventp record)
                   (consp (fn-replay-apply-record node record)))
              (and
               (consp (fn-find-article
