@@ -79,7 +79,7 @@
 (check (not (member :commit *calls* :key #'car))
        "idempotent ack wrote a second event")
 
-(setf *status* '(:refused :scope) *calls* nil)
+(setf *proposal* '(:refused :scope) *calls* nil)
 (check (equal (fnn-owner-consumer-local-serialized :service :ack '(9) nil)
               '(:consumer-reply :refused nil))
        "scope refusal was not preserved")
@@ -105,7 +105,7 @@
        "status did not return ACL2's committed ACK, frontier and event distance")
 (check (equal *calls* '((fn-owner-consumer-local-status (7))))
        "status wrote a consumer event or bypassed ACL2 decision")
-(setf *proposal* '(:refused :scope) *calls* nil)
+(setf *status* '(:refused :scope) *calls* nil)
 (check (equal (fnn-owner-consumer-local-serialized :service :status '(88) nil)
               '(:consumer-status-reply :refused nil nil nil))
        "status scope refusal was not preserved")
