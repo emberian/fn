@@ -45,11 +45,15 @@
 ; and does not hide the second row.  Publication uncertainty is different:
 ; an issued uncertain operation still fences the foundation step below.
 (defconst *bpaht-wall-less* (fn-clock-observation 1001 0 0 nil))
+(defconst *bpaht-wall-arrival* (fn-clock-observation 1000 10000 0 t))
+(defconst *bpaht-old-authored*
+  (fn-bpn-send-bundle *bpah-config* *bpah-local*
+                      *bpah-adu* 7 *bpaht-wall-arrival*))
 (defconst *bpaht-old-bundle*
   (fn-bpb-make-bundle
-   (fn-bpb-bundle-primary *bpah-bundle*)
-   (list (car (fn-bpb-bundle-blocks *bpah-bundle*)))
-   (fn-bpb-bundle-payload *bpah-bundle*)))
+   (fn-bpb-bundle-primary *bpaht-old-authored*)
+   (list (car (fn-bpb-bundle-blocks *bpaht-old-authored*)))
+   (fn-bpb-bundle-payload *bpaht-old-authored*)))
 (defconst *bpaht-new-bundle*
   (fn-bpn-send-bundle *bpah-config* *bpah-local*
                       *bpah-adu* 8 *bpah-obs*))
@@ -59,7 +63,8 @@
   (fn-bpnf-step
    *bpaht-cold*
    (list :receive-bundle *bpaht-old-bundle*
-         (fn-bpb-encode *bpaht-old-bundle*) *bpah-ingress* *bpaht-arrival*)))
+         (fn-bpb-encode *bpaht-old-bundle*) *bpah-ingress*
+         *bpaht-wall-arrival*)))
 (defconst *bpaht-old-accepted*
   (fn-bpnf-step (fn-bpnf-answer-state *bpaht-old-proposal*)
                  '(:persist-result 1 0 :durable)))
@@ -80,6 +85,16 @@
 
 (assert-event (fn-bpb-bundlep *bpaht-old-bundle*))
 (assert-event (fn-bpb-bundlep *bpaht-new-bundle*))
+(assert-event
+ (fn-bpn-acceptedp
+  (fn-bpn-receive *bpah-config*
+                  (fn-bpb-encode *bpaht-old-bundle*)
+                  *bpaht-wall-arrival*)))
+(assert-event
+ (fn-bpn-acceptedp
+  (fn-bpn-receive *bpah-config*
+                  (fn-bpb-encode *bpaht-new-bundle*)
+                  *bpaht-arrival*)))
 (assert-event (not (equal (fn-bpb-bundle-id *bpaht-old-bundle*)
                           (fn-bpb-bundle-id *bpaht-new-bundle*))))
 (assert-event (equal (car (car (fn-bpnf-answer-effects *bpaht-old-proposal*)))

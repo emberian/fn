@@ -9,8 +9,10 @@ The owner still stops on `:uncertain` and dispatches only `:ready`.
 
 The ACL2 witness in `tests/acl2/bp-app-handoff-time-tests.lisp` creates two
 kind-5 proposals through `fn-bpnf-step` and supplies matched durable
-publication results. The older bundle has no Bundle Age block and its
-wall-less current observation is `:uncertain`; the newer bundle has a
+publication results. Both exact wires are first accepted by `fn-bpn-receive`
+under their arrival observations. The older bundle has no Bundle Age block:
+it is admitted under an accurate wall reading, then its later wall-less
+observation is `:uncertain`. The newer bundle has a
 persisted Bundle Age anchor and is `:live`. Both held rows are valid local
 pending carriers, with distinct bundle IDs and strict arrival order. The
 test selects the newer key, checks a `:deliver` effect, and checks that the
