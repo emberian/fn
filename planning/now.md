@@ -9,9 +9,9 @@ log that lived here is [archive/now-2026-09-24.md](archive/now-2026-09-24.md).
 - **dev** is `46f2660d`. All fn source packets from the 2026-09-24 wave are
   integrated; the [wind-down handoff](handoff-2026-09-24-winddown.md) is the
   restart record and the source for everything in this section.
-- **Last completed shared image:** [`863c2141`](evidence/863-native-cut-2026-09-24.md),
-  with the runtime scopes the handoff records. Later fixes (BP identity,
-  pack namespace, signed receiver) are integrated but untested on an image.
+- **Last completed shared image:** [`1a9dd747`](evidence/native-cut-1a9dd747-2026-09-24.md)
+  (2026-09-24 06:10 EDT): closure green, image pair built, BP N03 and the
+  interrupted-fragment case pass on it. Before it, [`863c2141`](evidence/863-native-cut-2026-09-24.md).
 - **Live node:** hbox `/tank/fn/node` on `da5fd8cb`
   ([node record](evidence/node-hbox-da5fd8cb-2026-09-23.md)). Nothing tonight
   replaces it.
