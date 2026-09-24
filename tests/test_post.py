@@ -158,7 +158,7 @@ class StorePostTests(unittest.TestCase):
 
     def test_a_duplicate_supplied_message_id_is_the_refused_441(self):
         # The store refuses a Message-ID it already holds for a different
-        # article: fn-pb-existing-action's :conflict (D25: the poster's bytes differ), relayed as the owner's
+        # article: fn-pb-existing-action's :conflict (D25: the posters' sources differ), relayed as the owner's
         # :conflict word and rendered by the book as the conflict refusal
         # line (fn-post-store-refusal-line), never as 240 and never as the
         # uncertain line.

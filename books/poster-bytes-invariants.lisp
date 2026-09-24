@@ -43,7 +43,7 @@
                 (not (member-equal 10 agent)))
            (equal (fn-pb-path-agent (append (fn-inj-path-line agent) rest))
                   agent))
-  :hints (("Goal" :in-theory (enable fn-inj-path-line))))
+  :hints (("Goal" :in-theory (enable fn-inj-path-line fn-inj-strip))))
 
 (local (in-theory (disable fn-pb-path-agent)))
 
@@ -130,12 +130,15 @@
 ; the generated Message-ID and Date lines, then the source.
 (defun fn-pb-v1-injection (date msgid agent gid gdate source)
   (declare (xargs :guard t))
-  (append (fn-inj-path-line agent)
-          (fn-inj-injection-date-line date)
-          (fn-inj-injection-info-line agent)
-          (if gid (fn-inj-message-id-line msgid) nil)
-          (if gdate (fn-inj-date-line date) nil)
-          source))
+  (fn-inj-append
+   (fn-inj-path-line agent)
+   (fn-inj-append
+    (fn-inj-injection-date-line date)
+    (fn-inj-append
+     (fn-inj-injection-info-line agent)
+     (fn-inj-append (if gid (fn-inj-message-id-line msgid) nil)
+                    (fn-inj-append (if gdate (fn-inj-date-line date) nil)
+                                   source))))))
 
 ; A v1 record is read under v1.  Where v1 is unambiguous -- a supplied
 ; Message-ID and Date, and a source that opens with neither this Message-ID's
@@ -225,15 +228,6 @@
        (fn-own-conn-group-index conn))
       word))))
 
-(defmacro fn-pb-outcome-hints ()
-  ''(("Goal" :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
-                              fn-own-outcome-rendering fn-own-refusal-wordp
-                              fn-post-store-refusalp fn-pb-existing-action)
-                             (fn-served-post-outcome fn-own-advance
-                              fn-own-feed-durable fn-own-find-conn
-                              fn-served-make-conn-group-indexed
-                              fn-pb-same-articlep fn-find-article)))))
-
 ; The duplicate line, `441 posting failed; this article is already stored
 ; here' (fn-post-store-refusal-line), for the same article and groups, while
 ; no completion has been consumed.
@@ -251,7 +245,13 @@
              (equal (car (fn-own-outcome
                           o id (fn-pb-existing-action msgid payload groups s)))
                     (fn-pb-served-reply o id :duplicate))))
-  :hints ((fn-pb-outcome-hints))
+  :hints (("Goal" :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
+                                   fn-own-outcome-rendering fn-own-refusal-wordp
+                                   fn-post-store-refusalp fn-pb-existing-action)
+                                  (fn-served-post-outcome fn-own-advance
+                                   fn-own-feed-durable fn-own-find-conn
+                                   fn-served-make-conn-group-indexed
+                                   fn-pb-same-articlep fn-find-article))))
   :rule-classes nil)
 
 ; The conflict line, `441 posting failed; a different article with this
@@ -270,7 +270,13 @@
              (equal (car (fn-own-outcome
                           o id (fn-pb-existing-action msgid payload groups s)))
                     (fn-pb-served-reply o id :conflict))))
-  :hints ((fn-pb-outcome-hints))
+  :hints (("Goal" :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
+                                   fn-own-outcome-rendering fn-own-refusal-wordp
+                                   fn-post-store-refusalp fn-pb-existing-action)
+                                  (fn-served-post-outcome fn-own-advance
+                                   fn-own-feed-durable fn-own-find-conn
+                                   fn-served-make-conn-group-indexed
+                                   fn-pb-same-articlep fn-find-article))))
   :rule-classes nil)
 
 ; KEYSTONE (K1 closed, served).  The held article is one source injected at
