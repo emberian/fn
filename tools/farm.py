@@ -10,7 +10,7 @@ cache.
 
     python3 tools/farm.py submit persvati --jobs 12 --affected-by books/wire.lisp
     python3 tools/farm.py wait persvati run-20260919T101500Z-4f2a
-    python3 tools/farm.py status hbox
+    python3 tools/farm.py status hbox --remote-root /tank/fn/gates/my-run
 
 ``submit`` mirrors this worktree to the requested absolute path on the host,
 installs from the box's cache into the mirrored tree, starts the runner
@@ -31,6 +31,10 @@ substrate for four new books.  ``wait`` blocks on that id, printing progress
 every poll and never spinning; it returns the runner's own exit code.  hbox's
 runner is wrapped in ``swarm-build``, which enforces a memory cap there: the
 containment is structural, not courtesy to another tenant (there is none).
+``status`` takes one read-only remote snapshot. During a run it counts only
+exited and active ACL2 children from activity records; ACL2 can exit zero
+after a failed theorem. Only the terminal manifest supplies passed and failed
+book counts. Missing activity is shown as unknown, never as zero progress.
 
 **The box cache is seeded by the runner, one book at a time.**  The runner
 publishes each pair as that book certifies, so what the box holds tracks what
@@ -727,21 +731,108 @@ def fetch_logs(host: str, identifier: str, root: Path, remote: Path,
     return brought
 
 
-def status(host: str, root: Path) -> int:
-    script = (
-        f"cd {remote_quote(root)}/build/farm 2>/dev/null || "
-        f"{{ echo 'no runs'; exit 0; }}; "
-        "for log in *.log; do [ -e \"$log\" ] || continue; id=${log%.log}; "
-        "state=$(cat \"$id.status\" 2>/dev/null || echo running); "
-        "printf '%s %s %s\\n' \"$id\" \"$state\" "
-        "\"$(grep -c FN_CERTIFY_SUCCESS \"$log\" 2>/dev/null || echo 0)\"; done"
-    )
-    result = ssh(host, script, check=False)
-    print(f"{host}:{root}")
-    print("run-id status books-certified from-cache")
-    for line in result.stdout.rstrip().splitlines():
-        identifier = line.split(" ", 1)[0]
-        print(f"{line} {cache_summary(run_record(root, identifier))}".rstrip())
+STATUS_SNAPSHOT = r'''
+import datetime as dt
+import json
+from pathlib import Path
+import re
+
+root = Path.cwd()
+farm = root / "build/farm"
+stamp = re.compile(r"(?:run|certify)-(\d{8}T\d{6}Z)-")
+
+def read_json(path):
+    try:
+        value = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    return value if isinstance(value, dict) else None
+
+def time_of(path):
+    found = stamp.match(path.name)
+    return (dt.datetime.strptime(found.group(1), "%Y%m%dT%H%M%SZ")
+            .replace(tzinfo=dt.timezone.utc) if found else None)
+
+logs = sorted(farm.glob("run-*.log"))
+dirs = sorted((path for path in (root / "build/acl2").glob("certify-*")
+               if path.is_dir()), key=lambda path: path.name)
+now = dt.datetime.now(dt.timezone.utc)
+rows = []
+for log in logs:
+    started = time_of(log)
+    if started is None:
+        continue
+    next_starts = [value for value in (time_of(other) for other in logs)
+                   if value is not None and value > started]
+    cutoff = min(next_starts) if next_starts else started + dt.timedelta(minutes=15)
+    cutoff = min(cutoff, started + dt.timedelta(minutes=15))
+    # The runner creates one certify directory soon after submit. Do not
+    # borrow an old directory or guess when concurrent directories overlap.
+    matching = [path for path in dirs if (when := time_of(path)) is not None
+                and started <= when < cutoff]
+    directory = matching[0] if len(matching) == 1 else None
+    status_file = log.with_suffix(".status")
+    state = status_file.read_text().strip() if status_file.exists() else "running"
+    row = {"run_id": log.stem, "state": state, "data": "missing"}
+    if directory is not None and state != "running":
+        manifest = read_json(directory / "manifest.json")
+        if manifest is not None:
+            row.update(data="manifest", manifest=manifest.get("status", "unknown"),
+                       active=0, age_seconds=None)
+            results = manifest.get("book_results")
+            if isinstance(results, dict):
+                row.update(passed=sum(value == "passed" for value in results.values()),
+                           failed=sum(value == "failed" for value in results.values()))
+    elif directory is not None:
+        activities = [value for path in directory.glob("*.active.json")
+                      if (value := read_json(path)) is not None]
+        if activities:
+            ages = []
+            for activity in activities:
+                if activity.get("status") == "running":
+                    try:
+                        began = dt.datetime.fromisoformat(activity["started_utc"])
+                        ages.append(max(0, int((now - began).total_seconds())))
+                    except (KeyError, TypeError, ValueError):
+                        pass
+            row.update(data="observed",
+                       exited=sum(value.get("status") in ("exited", "timed-out")
+                                  for value in activities),
+                       active=sum(value.get("status") == "running" for value in activities),
+                       age_seconds=max(ages) if ages else None)
+    rows.append(row)
+print(json.dumps(rows))
+'''
+
+
+def status_script(root: Path) -> str:
+    """Read one remote snapshot; never start a proof or publish a pair."""
+    return f"cd {remote_quote(root)} && python3 -c {shlex.quote(STATUS_SNAPSHOT)}"
+
+
+def status(host: str, remote: Path, local_root: Path | None = None) -> int:
+    result = ssh(host, status_script(remote), check=False)
+    if result.returncode != 0:
+        raise FarmError(f"{host}: cannot read status under {remote}: "
+                        f"{result.stdout.strip() or f'ssh exited {result.returncode}'}")
+    try:
+        rows = json.loads(result.stdout)
+    except ValueError as error:
+        raise FarmError(f"{host}: invalid status snapshot under {remote}: {error}") from error
+    print(f"{host}:{remote}")
+    print("run-id state data manifest-passed manifest-failed observed-exited "
+          "active oldest-active cache-installed+kept/origins")
+    for row in rows:
+        identifier = row["run_id"]
+        cache = cache_summary(run_record(local_root or remote, identifier)) or "-"
+        age = (f"{row['age_seconds']}s" if row.get("age_seconds") is not None
+               else "-")
+        counts = [str(row.get(key, "-")) for key in
+                  ("passed", "failed", "exited", "active")]
+        label = row["data"]
+        if label == "manifest":
+            label += f"({row['manifest']})"
+        print(" ".join([identifier, row["state"], label, *counts, age, cache]))
     return 0
 
 
@@ -822,7 +913,7 @@ def main(argv: list[str] | None = None) -> int:
                                 if arguments.remote_root else None))
         remote = (expand_remote(arguments.host, arguments.remote_root)
                   if arguments.remote_root else root)
-        return status(arguments.host, remote)
+        return status(arguments.host, remote, root)
     except FarmError as error:
         print(str(error), file=sys.stderr)
         return 2

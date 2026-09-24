@@ -684,16 +684,106 @@ class WaitTests(unittest.TestCase):
 
 
 class StatusTests(unittest.TestCase):
+    @staticmethod
+    def snapshot(root: Path) -> list[dict]:
+        result = subprocess.run(["sh", "-c", farm.status_script(root)],
+                                text=True, capture_output=True, check=True)
+        return json.loads(result.stdout)
+
+    @staticmethod
+    def make_run(root: Path, identifier: str, state: str | None = None) -> None:
+        directory = root / "build/farm"
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / f"{identifier}.log").write_text("runner output comes later\n")
+        if state is not None:
+            (directory / f"{identifier}.status").write_text(state + "\n")
+
+    def test_live_snapshot_counts_exited_and_active_without_a_verdict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            identifier = "run-20260924T045402Z-31bd"
+            self.make_run(root, identifier)
+            evidence = root / "build/acl2/certify-20260924T045427Z-915676"
+            evidence.mkdir(parents=True)
+            (evidence / "books--done.certify.log").write_text("ACL2 !> theorem failed\n")
+            (evidence / "books--failed.certify.log").write_text("ACL2 error\n")
+            (evidence / "books--active.certify.log").write_text("current goal\n")
+            for name, status, code in (("done", "exited", 0),
+                                       ("failed", "exited", 1),
+                                       ("active", "running", None)):
+                record = {"book": f"books/{name}", "status": status,
+                          "started_utc": "2026-09-24T04:54:27+00:00",
+                          "log": f"books--{name}.certify.log"}
+                if code is not None:
+                    record["exit_code"] = code
+                (evidence / f"books--{name}.active.json").write_text(json.dumps(record))
+            row, = self.snapshot(root)
+            self.assertEqual((row["state"], row["data"], row["exited"],
+                              row["active"]),
+                             ("running", "observed", 2, 1))
+            # ACL2 may exit 0 on a theorem failure; only the final manifest
+            # has a book verdict, even when every child has exited.
+            self.assertNotIn("passed", row)
+            self.assertNotIn("failed", row)
+            self.assertGreaterEqual(row["age_seconds"], 0)
+
+    def test_terminal_manifest_replaces_live_observations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_run(root, "run-20260924T045402Z-31bd", "1")
+            evidence = root / "build/acl2/certify-20260924T045427Z-915676"
+            evidence.mkdir(parents=True)
+            (evidence / "books--stale.active.json").write_text(json.dumps(
+                {"status": "running", "started_utc": "2026-09-24T04:54:27+00:00"}))
+            (evidence / "manifest.json").write_text(json.dumps(
+                {"status": "failed", "book_results": {"books/a": "passed",
+                                                       "books/b": "failed"}}))
+            row, = self.snapshot(root)
+            self.assertEqual((row["state"], row["data"], row["manifest"],
+                              row["passed"], row["failed"], row["active"]),
+                             ("1", "manifest", "failed", 1, 1, 0))
+
+    def test_missing_or_stale_activity_is_unknown_not_zero(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_run(root, "run-20260924T045402Z-31bd")
+            stale = root / "build/acl2/certify-20260924T044000Z-123"
+            stale.mkdir(parents=True)
+            (stale / "books--old.active.json").write_text('{"status":"running"}')
+            row, = self.snapshot(root)
+            self.assertEqual(row["data"], "missing")
+            self.assertNotIn("passed", row)
+            fresh = root / "build/acl2/certify-20260924T045427Z-915676"
+            fresh.mkdir(parents=True)
+            row, = self.snapshot(root)
+            self.assertEqual(row["data"], "missing")
+            self.assertNotIn("active", row)
+
+    def test_terminal_without_manifest_does_not_claim_zero_failures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_run(root, "run-20260924T045402Z-31bd", "1")
+            evidence = root / "build/acl2/certify-20260924T045427Z-915676"
+            evidence.mkdir(parents=True)
+            (evidence / "books--a.active.json").write_text(json.dumps(
+                {"status": "exited", "exit_code": 0}))
+            row, = self.snapshot(root)
+            self.assertEqual((row["state"], row["data"]), ("1", "missing"))
+            self.assertNotIn("failed", row)
+
     def test_status_lists_runs_without_starting_anything(self):
-        fake = Fake([])
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
-            with driving(fake, root / "cache"):
+            commands = []
+            def local_ssh(host, script, check=False):
+                commands.append(script)
+                return subprocess.run(["sh", "-c", script], text=True,
+                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            with mock.patch.object(farm, "ssh", local_ssh):
                 self.assertEqual(farm.status("persvati", root), 0)
-            script = fake.scripts()[0]
-            self.assertIn("build/farm", script)
-            self.assertNotIn("certify_books.py", script)
-            self.assertEqual(fake.rsyncs(), [])
+            self.assertEqual(len(commands), 1)
+            self.assertIn("python3 -c", commands[0])
+            self.assertNotIn("certify_books.py", commands[0])
 
 
 if __name__ == "__main__":
