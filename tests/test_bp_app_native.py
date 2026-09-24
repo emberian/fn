@@ -358,9 +358,15 @@ class NativeBpApplicationTests(unittest.TestCase):
                                 self.msgid.decode("ascii"))
         self.assertEqual(inspected.returncode, 0, inspected.stderr.decode())
         self.assertEqual(inspected.stdout, self.article)
+        # A BP request is peer transit (specs/bp-node-machine.md, the
+        # :request-transit-intent join): the Store record's provenance is
+        # the one fn-peer-injection-arguments gives, naming the principal
+        # the channel admitted.  The `bp-receive node=... label=...' form is
+        # the historical control-submission binding, which a request only
+        # took while the ingress was dropped and no principal was admitted.
         provenance = self.recovered_provenance()
-        self.assertIn(b"bp-receive node=dtn://receiver/", provenance)
-        self.assertIn(b" label=native-policy", provenance)
+        self.assertIn(b"peer-transit:sender-boundary", provenance)
+        self.assertNotIn(b"bp-receive", provenance)
 
         result_files = sorted(
             (self.sender_spool / "receive-evidence").glob("*.adu")
