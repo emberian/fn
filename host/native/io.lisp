@@ -1033,7 +1033,6 @@ resolves the names against `domain' and the host carries that list verbatim."
 
 (defun fnn-config-capacity (store) (second (fnn-store-config store)))
 (defun fnn-config-max-payload (store) (third (fnn-store-config store)))
-(defun fnn-config-max-recovery (store) (fourth (fnn-store-config store)))
 (defun fnn-config-max-transactions (store) (nth 4 (fnn-store-config store)))
 
 (defun make-fnn-store (root &key writable fault)
@@ -1445,7 +1444,10 @@ after the syscall."
         (fnn-check-regular path)
         (let ((record (fnn-unframe (fnn-read-regular-bounded path bound))))
           (incf aggregate (length record))
-          (when (> aggregate (fnn-config-max-recovery store))
+          ;; ACL2's bound (fn-profile-replay-within-boundp, monotone under a
+          ;; profile upgrade: fn-profile-upgrade-keeps-replay-bound).
+          (unless (fnn-core 'fn-store-profile-replay-within-bound
+                            (fnn-store-config store) aggregate)
             (fnn-fault "transaction recovery input exceeds configured bound"))
           (unless (= (fnn-bridge-record-sequence record) sequence)
             (fnn-fault "record sequence does not match immutable filename"))
@@ -1879,6 +1881,85 @@ in-process retry."
                 (fnn-out "initialized ~a" (fnn-store-root store)))
       (fnn-store-close store))
     +fnn-exit-ok+))
+
+;; The offline profile upgrade's cuts, in the order
+;; `fnn-upgrade-profile-write' reaches them: fn-bs-profile-program's
+;; (books/byte-store-profile-program.lisp) five `:cut' steps.
+(defparameter +fnn-profile-model-cuts+
+  '("profile-created" "profile-written" "profile-staged-durable"
+    "profile-replaced" "profile-durable"))
+
+(defun fnn-profile-test-fault ()
+  "Developer-only FN_NATIVE_PROFILE_FAULT=MODEL-CUT:eio|kill selector.
+
+Not an operator option: it selects one `fnn-at' cut of the profile upgrade's
+byte program.  kill is SIGKILL at the cut, so the next command is a new
+process; eio raises the host's EIO there."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_PROFILE_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless colon
+          (fnn-fault "invalid FN_NATIVE_PROFILE_FAULT (expected MODEL-CUT:eio|kill)"))
+        (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
+          (unless (member label +fnn-profile-model-cuts+ :test #'string=)
+            (fnn-fault "unknown FN_NATIVE_PROFILE_FAULT cut: ~a" label))
+          (list (intern (string-upcase label) :keyword)
+                (cond ((string= action "eio") 'fnn-os-error)
+                      ((string= action "kill") :fnn-test-kill)
+                      (t (fnn-fault "invalid FN_NATIVE_PROFILE_FAULT action: ~a" action)))
+                "developer-only native profile-upgrade fault"))))))
+
+(defun fnn-upgrade-profile-write (store octets)
+  "P-PROFILE, books/byte-store-profile-program.lisp `fn-bs-profile-program'.
+
+Stage OCTETS under a `.stage-' name (the recovery sweep's), fence it, rename
+it onto config.json, fence the root.  Before the rename a failure is known:
+config.json is the old frame and the stage is an orphan the next open sweeps
+(exit 1).  At or after it the outcome is uncertain (exit 3): the next open
+reads whichever frame the directory holds, old or new, never a torn one
+(fn-bs-profile-program-crash-is-old-or-new)."
+  (let ((stage (fnn-join (fnn-staging store) (format nil ".stage-profile-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
+        (attempted nil))
+    (handler-case
+        (progn
+          (fnn-write-staged-at store stage octets :profile-created :profile-written)
+          (fnn-at store :profile-staged-durable)
+          (setq attempted t)
+          (fnn-replace stage (fnn-config-path store))
+          (fnn-at store :profile-replaced)
+          (fnn-fsync-dir (fnn-store-root store))
+          (fnn-at store :profile-durable))
+      (fnn-os-error (e)
+        (if attempted
+            (fnn-indeterminate "store profile replacement is indeterminate: ~a" e)
+            (fnn-refuse-io "known failure before the profile replacement: ~a" e))))))
+
+(defun fnn-command-upgrade-profile (root profile)
+  "Offline: replace the store's profile by PROFILE when ACL2 calls it an upgrade.
+
+The store is opened as `recover' opens it: the exclusive writer lock (so a
+running owner refuses this with `store is already locked'), the old profile's
+bounds, full replay and recovery barriers.  ACL2's verdict
+(`fn-profile-upgrade-verdict') decides and supplies the frame; the host only
+writes it.  Same profile and anything but an upgrade are refused (exit 1) and
+write nothing."
+  (multiple-value-bind (store records) (fnn-open-live-store root t (fnn-profile-test-fault))
+    (unwind-protect
+         (let ((verdict (fnn-core 'fn-store-profile-upgrade-verdict
+                                  (fnn-store-config store) profile)))
+           (unless (and (consp verdict) (member (first verdict) '(:upgrade :refused)))
+             (fnn-fault "ACL2 returned a malformed profile verdict"))
+           (if (eq (first verdict) :refused)
+               (fnn-refuse "store profile upgrade refused: ~(~a~)" (second verdict))
+               (destructuring-bind (octets old-budget new-budget) (rest verdict)
+                 (unless (and (fnn-octet-list-p octets) octets
+                              (integerp old-budget) (integerp new-budget))
+                   (fnn-fault "ACL2 returned a malformed profile frame"))
+                 (fnn-upgrade-profile-write store (fnn-octets octets))
+                 (fnn-out "upgraded profile=~(~a~) transactions-used=~d transactions-budget=~d previous-budget=~d"
+                          profile (length records) new-budget old-budget)
+                 +fnn-exit-ok+)))
+      (fnn-store-close store))))
 
 (defparameter +fnn-cli-faults+
   (list (cons "prepublish" (list :record-staged-durable 'fnn-store-error
@@ -2613,6 +2694,7 @@ serialized profile when the saved image later starts."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+    "FN_NATIVE_PROFILE_FAULT"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
@@ -2691,6 +2773,11 @@ serialized profile when the saved image later starts."
            (cond ((string= command "init") (fnn-command-init root rest))
                  ((string= command "recover") (fnn-command-recover root))
                  ((string= command "status") (fnn-command-status root))
+                 ((string= command "upgrade-profile")
+                  (need 4)
+                  (fnn-command-upgrade-profile
+                   root (fnn-core 'fn-store-profile-word
+                                  (fnn-octet-list (fnn-string-octets (first rest))))))
                  ((string= command "retention") (fnn-command-retention root))
                  ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))

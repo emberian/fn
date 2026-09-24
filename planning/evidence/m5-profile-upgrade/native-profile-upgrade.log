@@ -1,0 +1,11 @@
+test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) ... ok
+test_the_verb_is_acl2s_and_the_host_writes_the_program (tests.test_native_profile_upgrade.ProfileUpgradeSourceTests.test_the_verb_is_acl2s_and_the_host_writes_the_program) ... ok
+test_a_running_owner_refuses_the_upgrade (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_a_running_owner_refuses_the_upgrade) ... ok
+test_same_profile_and_downgrade_write_nothing (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_same_profile_and_downgrade_write_nothing) ... ok
+test_three_articles_then_scale_then_the_next_post (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_three_articles_then_scale_then_the_next_post) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 9.559s
+
+OK
+profile cuts: [(('profile-created', 'eio', 'operator'), 128), (('profile-created', 'eio', 'store'), 128), (('profile-created', 'kill', 'operator'), 128), (('profile-created', 'kill', 'store'), 128), (('profile-durable', 'eio', 'operator'), 4096), (('profile-durable', 'eio', 'store'), 4096), (('profile-durable', 'kill', 'operator'), 4096), (('profile-durable', 'kill', 'store'), 4096), (('profile-replaced', 'eio', 'operator'), 4096), (('profile-replaced', 'eio', 'store'), 4096), (('profile-replaced', 'kill', 'operator'), 4096), (('profile-replaced', 'kill', 'store'), 4096), (('profile-staged-durable', 'eio', 'operator'), 128), (('profile-staged-durable', 'eio', 'store'), 128), (('profile-staged-durable', 'kill', 'operator'), 128), (('profile-staged-durable', 'kill', 'store'), 128), (('profile-written', 'eio', 'operator'), 128), (('profile-written', 'eio', 'store'), 128), (('profile-written', 'kill', 'operator'), 128), (('profile-written', 'kill', 'store'), 128)]
