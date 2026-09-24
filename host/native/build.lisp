@@ -175,10 +175,12 @@
         (fnn-hsig-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
-          (fnn-crypto-startup)
-          (fnn-tls-reset)
-          (fnn-hsig-reset)
-          (fnn-hsig-initialize)
+          ; A refused start exits 5 with its reason (io.lisp).
+          (fnn-native-startup (lambda ()
+                                (fnn-crypto-startup)
+                                (fnn-tls-reset)
+                                (fnn-hsig-reset)
+                                (fnn-hsig-initialize)))
           (fnn-main)
           (values nil :exited *the-live-state*))
         ; Bounded raw file read only; parsing, defaults and availability are

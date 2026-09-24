@@ -6,10 +6,42 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
-(define-condition fnn-store-error (error) ())
-(define-condition fnn-store-indeterminate (fnn-store-error) ())
-(define-condition fnn-store-fault (fnn-store-error) ())
-(define-condition fnn-os-error (error) ())
+;; The deployed forms this boundary runs, loaded by name so a rename fails
+;; here rather than leaving a stale stub in its place: the Store condition
+;; hierarchy the commit word classifies by, and the stderr writer the
+;; uncertain arm reports through (fnn-err, since 000c6b6e "Log the reason
+;; when a bound Store commit raises indeterminate") with what it calls.
+(defun load-deployed-forms (path wanted)
+  (let ((missing (copy-list wanted)))
+    (with-open-file (stream path)
+      (loop for form = (read stream nil :eof)
+            until (eq form :eof)
+            when (and (consp form)
+                      (member (car form) '(defun defmacro defvar define-condition))
+                      (member (list (car form) (cadr form)) wanted :test #'equal))
+              do (eval form)
+                 (setf missing (remove (list (car form) (cadr form)) missing
+                                       :test #'equal))))
+    (when missing (error "deployed forms missing from ~a: ~s" path missing))))
+
+(load-deployed-forms "host/native/io.lisp"
+                     '((define-condition fnn-store-error)
+                       (define-condition fnn-store-fault)
+                       (define-condition fnn-store-indeterminate)
+                       (define-condition fnn-os-error)
+                       (defvar *fnn-stderr*)
+                       (defun fnn-concat)
+                       (defun fnn-string-octets)
+                       (defun fnn-emit)
+                       (defun fnn-err)))
+
+;; The deployed fnn-err writes to *fnn-stderr*; here that is a scratch file,
+;; read back below to check the uncertain arm names its reason.
+(defparameter *stderr-path*
+  (format nil "/tmp/fn-bound-commit-raw-~d.err" (sb-posix:getpid)))
+(setq *fnn-stderr* (open *stderr-path* :direction :output
+                         :element-type '(unsigned-byte 8)
+                         :if-exists :supersede :if-does-not-exist :create))
 
 (defparameter *bound-word* nil)
 (defparameter *bound-inflight* nil)
@@ -80,7 +112,7 @@
 ; A real callback preflight signals rather than returning :refused.  The
 ; condition must be settled before another control request reaches :take.
 (flet ((submit () :submitted)
-       (refuse () (error 'fnn-store-error))
+       (refuse () (error 'fnn-store-error :message "preflight"))
        (commit () :durable))
   (unless (eq (fnn-owner-complete-bound-submission
                :service #'submit *bound-msgid* *bound-payload* *bound-groups*
@@ -100,8 +132,15 @@
 ; Only a known semantic refusal can be converted to a completion word.
 ; Ambiguity retains its class, and fault/OS conditions reach the owner fence.
 (unless (eq (fnn-owner-bound-commit-word
-             (lambda () (error 'fnn-store-indeterminate))) :uncertain)
+             (lambda () (error 'fnn-store-indeterminate :message "barrier EIO")))
+            :uncertain)
   (error "ambiguous Store callback lost its uncertainty"))
+(close *fnn-stderr*)
+(let ((logged (with-open-file (in *stderr-path*) (read-line in nil ""))))
+  (delete-file *stderr-path*)
+  (unless (and (search "Store outcome uncertain" logged)
+               (search "barrier EIO" logged))
+    (error "uncertain bound commit did not log its reason: ~s" logged)))
 (dolist (condition '(fnn-store-fault fnn-os-error))
   (unless (handler-case
               (progn (fnn-owner-bound-commit-word
