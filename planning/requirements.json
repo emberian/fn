@@ -203,7 +203,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -766,10 +766,12 @@
         "tests/evidence/2026-09-18-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "books/retention-invariants.lisp",
-        "tests/acl2/retention-tests.lisp"
+        "tests/acl2/retention-tests.lisp",
+        "books/store-node-retention.lisp",
+        "tests/acl2/store-node-retention-tests.lisp"
       ],
       "implementation_note": "Abstract reservations compose with acceptance; local adapter also refuses configured bounds and tests duplicates at capacity. Physical-space reservation accounting remains open.",
-      "note": "T11's keystone, fn-retain-admit-refuses-unaffordable-obligation (books/retention-invariants.lisp), states the refusal: whenever a charge exceeds the room the capacity leaves, fn-retain-admit answers the input state unchanged, with a fn-retain-statep hypothesis proved unnecessary (admission already refuses every non-state through fn-retain-admissiblep's first conjunct). fn-node-prepare (books/node.lisp:185-188), the one function through which every reachable caller (POST via fn-sn-prepare-node, peer transit via fn-peer-decide-transfer, the config and BP-receiver replay paths) proposes an obligation, tests the identical fn-retain-admissiblep call before it would reach fn-retain-admit, so this keystone accounts for its refusal too. Teeth in tests/acl2/retention-tests.lisp: a capacity-10 ledger with 6 reserved refuses a charge of 5 and admits the same obligation at charge 4. Charges remain abstract units, not measured physical bytes, which is why AGENTS.md's twins rule still bites: physical-space reservation accounting is open (implementation_note)."
+      "note": "Refusal over the host-called function: fn-spc-prepare-refuses-unaffordable-obligation (books/store-node-retention.lisp) -- when a record's charge exceeds the room the live node's retention capacity leaves, fn-spc-prepare, which fn-store-sn-prepare calls at host/store-node-host.lisp:472, returns the store state unchanged and the host answers :refused (:475), not :prepared and not an uncertain outcome; fn-node-prepare-refuses-unaffordable-obligation states the same at the node. fn-retain-admit-refuses-unaffordable-obligation (books/retention-invariants.lisp) is reached through the called function by fn-node-prepare-refuses-whatever-retain-admit-refuses: whenever fn-retain-admit would answer its input unchanged, fn-node-prepare refuses, and fn-retain-admit-is-a-no-op-exactly-when-inadmissible says that no-op is exactly fn-node-prepare's refusal test. Teeth: tests/acl2/store-node-retention-tests.lisp (a store with capacity 10 and 2 reserved refuses a charge of 9 and stages 8; one must-fail per hypothesis) and the capacity must-fail in tests/acl2/retention-tests.lisp. Charges remain abstract units, not measured physical bytes, which is why AGENTS.md's twins rule still bites: physical-space reservation accounting is open (implementation_note)."
     },
     {
       "id": "RET-003",
@@ -1280,7 +1282,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1299,7 +1301,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
