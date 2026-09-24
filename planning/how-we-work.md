@@ -116,6 +116,17 @@ private slot directories or raise shared limits to get around a queue. Release
 idle proof sessions when others need their slots. Reserve wide full-closure
 runs for a shared qualification purpose, not one per agent.
 
+For a remote proof REPL, set both `FN_ACL2` and `FN_CERT_CACHE` in the remote
+shell. Farm submission records its cache option; a later standalone REPL does
+not inherit that option. The current hbox pair is
+`FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g` and
+`FN_CERT_CACHE=/tank/fn/certcache`; persvati uses
+`FN_ACL2=/home/ember/fn-gates/toolchains/w25/acl2-literal` and
+`FN_CERT_CACHE=/home/ember/fn-certcache`. A missing dependency set is not a
+single-origin restriction: the REPL composes compatible cached dependencies.
+Check the actual cache path and source/toolchain match before falling back to
+repeated farm attempts. Stop the REPL after the bounded experiment.
+
 Preserve the under-three-minute edit-to-verdict target. Record queue delay,
 cache/install time, proof time and total elapsed time separately. Investigate
 books over ten seconds through their event logs and enabled rules, with
