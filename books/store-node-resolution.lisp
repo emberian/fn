@@ -488,6 +488,7 @@
                              fn-record-shape-vocabulary
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-th-topic-eventp fn-th-prefix-step
                              fn-replay-apply-record
                              fn-replay-apply-retention-event)))))
 
@@ -628,7 +629,8 @@
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
                 (not (fn-stxa-p (fn-sn-completion-record s)))
-                (not (fn-cpe-eventp (fn-sn-completion-record s))))
+                (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (and (fn-sn-record-bindsp (fn-sn-node s) (fn-sn-completion-record s))
                 (equal (fn-sn-node next)
                        (fn-node-complete (fn-sn-node s)
@@ -646,7 +648,7 @@
                              fn-sn-committed-recordp fn-node-complete
                              fn-record-shape-vocabulary
                              fn-store-event-p fn-store-retention-event-p
-                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p fn-th-topic-eventp
                              fn-replay-apply-record
                              fn-replay-apply-retention-event
                              fn-sn-prepare-retention fn-sn-prepare-identity
