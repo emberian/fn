@@ -14,17 +14,20 @@
 (defthm fn-th-topic-event-is-not-stxk
   (implies (fn-th-topic-eventp event)
            (not (fn-stxk-p event)))
-  :hints (("Goal" :in-theory (enable fn-stxk-p fn-stxk-shapep
+  :hints (("Goal" :in-theory (enable fn-th-topic-eventp
+                                     fn-stxk-p fn-stxk-shapep
                                      fn-stxk-sequence))))
 
 (defthm fn-th-topic-event-is-not-stxe
   (implies (fn-th-topic-eventp event)
            (not (fn-stxe-p event)))
-  :hints (("Goal" :in-theory (enable fn-stxe-p fn-stxe-shapep
+  :hints (("Goal" :in-theory (enable fn-th-topic-eventp
+                                     fn-stxe-p fn-stxe-shapep
                                      fn-stxe-sequence))))
 
 (defthm fn-th-topic-event-is-not-stxa
   (implies (fn-th-topic-eventp event)
            (not (fn-stxa-p event)))
-  :hints (("Goal" :in-theory (enable fn-stxa-p fn-stxa-shapep
+  :hints (("Goal" :in-theory (enable fn-th-topic-eventp
+                                     fn-stxa-p fn-stxa-shapep
                                      fn-stxa-sequence))))

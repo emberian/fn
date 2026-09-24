@@ -31,7 +31,7 @@
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-store-event-p
                                       fn-store-retention-event-p
-                                      fn-cpe-eventp
+                                      fn-cpe-eventp fn-th-topic-eventp
                                       fn-record-shape-vocabulary
                                       fn-record-record-vocabulary))))
 (local
