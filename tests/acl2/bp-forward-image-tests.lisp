@@ -19,7 +19,7 @@
 (defconst *bpnfi-held*
   (fn-bpnf-held nil (fn-bpb-bundle-id *bpnfi-bundle*) 0 nil nil nil
                 *bpnfi-bundle* (fn-bpb-encode *bpnfi-bundle*)
-                '(:observed-age 0 1000) nil nil nil nil nil nil))
+                '(:observed-age 0 1000) nil nil nil nil nil 0))
 (defconst *bpnfi-image*
   (fn-bpnp-forward-image *bpnfi-held* *bpnfi-local* *bpnfi-forward*))
 

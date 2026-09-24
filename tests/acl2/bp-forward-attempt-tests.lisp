@@ -1,6 +1,8 @@
 ; One row's kind-8 reservation and kind-9 settlement are shared by replay.
 (in-package "ACL2")
 (include-book "../../books/bp-forward-attempt")
+(include-book "../../books/bp-node-dispatch")
+(include-book "../../books/bp-node-debt")
 
 (defconst *bpnfa-local* (cons :dtn '(47 47 98 112 45 108 111 99 97 108 47)))
 (defconst *bpnfa-peer* (cons :dtn '(47 47 98 112 45 112 101 101 114 47)))
@@ -12,7 +14,7 @@
   (fn-bpnf-held nil (fn-bpb-bundle-id *bpnfa-bundle*) 0 nil nil nil
                 *bpnfa-bundle* (fn-bpb-encode *bpnfa-bundle*)
                 '(:observed-age 0 1000) nil nil '(:dispatch-pending)
-                nil nil nil))
+                nil nil 0))
 (defconst *bpnfa-dispatch*
   (fn-bpnp-dispatch-record 0 0 0
                              (fn-bpah-held-primary-identity *bpnfa-h0*)

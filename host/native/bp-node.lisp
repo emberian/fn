@@ -239,7 +239,7 @@
                                (when sent
                                  (setf (fnn-tclc-pending connection)
                                        (cons "bp-node-forward" (seventh sent)))
-                                 (fnn-out "BP forwarding attempt durable arrival=~d"
+                                 (fnn-out "BP forwarding attempt durable key=~s"
                                           (sixth sent))))))))
                    (when sent
                      (let ((result
