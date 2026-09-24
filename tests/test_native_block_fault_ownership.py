@@ -1,10 +1,11 @@
-"""Identity checks for the opt-in private device-EIO campaign."""
+"""Identity checks for the opt-in private block-fault campaign."""
 from dataclasses import replace
 import os
 from pathlib import Path
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 from unittest import mock
@@ -78,6 +79,22 @@ class NativeBlockFaultOwnershipTests(unittest.TestCase):
                 self.tracee, signal.SIGCONT, session_id=101, core=self.core))
             send.assert_called_once_with(79, signal.SIGCONT)
             close.assert_called_once_with(79)
+
+    def test_snapshot_mount_refuses_bytes_outside_owned_private_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            device = mock.Mock(base=base)
+            outside = base.parent / "unrelated.img"
+            with self.assertRaisesRegex(RuntimeError, "outside the owned"):
+                fault.OwnedSnapshotMount(device, outside)
+            alternate = base / "not-the-cut.img"
+            with self.assertRaisesRegex(RuntimeError, "outside the owned"):
+                fault.OwnedSnapshotMount(device, alternate)
+            owned = base / "cut-snapshot.img"
+            owned.write_bytes(b"private image")
+            snapshot = fault.OwnedSnapshotMount(device, owned)
+            self.assertEqual(snapshot.backing, owned)
+            self.assertEqual(snapshot.mount, base / "snapshot-mnt")
 
     @unittest.skipUnless(Path("/proc").is_dir(), "Linux process inventory required")
     def test_live_same_core_in_another_session_is_excluded(self):
