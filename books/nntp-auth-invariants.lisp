@@ -608,6 +608,42 @@
                                    fn-auth-with-base)
                                   (fn-auth-principal-match))))))
 
+(local (defthm fn-auth-served-command-login-installs-the-flag
+  (implies (and (not (fn-auth-session-subject as))
+                (fn-auth-session-subject
+                 (fn-post-result-session (fn-auth-command as config keyword args))))
+           (iff (fn-auth-postingp
+                 (fn-post-result-session (fn-auth-command as config keyword args)))
+                (fn-auth-cred-postingp
+                 (fn-auth-find-cred (fn-auth-session-pending as)
+                                    (fn-auth-config-creds
+                                     (fn-auth-session-config as))))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-command fn-auth-authinfo fn-auth-starttls
+                            fn-auth-postingp fn-auth-checkp)
+                           (fn-auth-single fn-auth-bind-principal-peer
+                            fn-auth-clear-principal-peer
+                            fn-auth-gatedp fn-auth-find-cred
+                            fn-authsec-checkp fn-auth-cred-postingp
+                            fn-auth-cred-principal fn-auth-token-argp
+                            fn-auth-sessionp
+                            fn-nntp-keywordp fn-nntp-keyword-tokenp
+                            fn-nntp-multi fn-auth-capability-lines-for-peer
+                            fn-auth-peer-record fn-inj-config-allow
+                            fn-auth-config-protected-onlyp
+                            fn-auth-config-tls-availablep
+                            fn-auth-config-requiredp))))))
+
+(local (defthm fn-auth-served-delegate-keeps-the-subject
+  (equal (fn-auth-session-subject
+          (fn-post-result-session
+           (fn-auth-delegate-pinned as archive index verdicts config
+                                    observation injection wire-event)))
+         (fn-auth-session-subject as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-delegate-pinned fn-auth-with-base)
+                                  (fn-peer-step-pinned))))))
+
 ; KEYSTONE (c1).  Whatever the wire event, a step that takes a connection
 ; with no subject to one with a subject installs the posting allowance of the
 ; credential enrolled under the cached name, and nothing else.
@@ -627,23 +663,14 @@
                                      (fn-auth-session-config as))))))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-auth-step-pinned fn-auth-command
-                            fn-auth-authinfo fn-auth-starttls
-                            fn-auth-tls-established fn-auth-delegate-pinned
-                            fn-auth-with-base fn-auth-postingp
-                            fn-auth-checkp)
-                           (fn-peer-step-pinned fn-auth-single
-                            fn-auth-bind-principal-peer
-                            fn-auth-clear-principal-peer
-                            fn-auth-gatedp fn-auth-find-cred
-                            fn-authsec-checkp fn-auth-cred-postingp
-                            fn-auth-cred-principal fn-auth-token-argp
-                            fn-auth-sessionp fn-auth-tls-eventp
-                            fn-nntp-keywordp fn-nntp-keyword-tokenp
-                            fn-nntp-tokenize fn-nntp-command-inputp
-                            fn-nntp-command-arguments-at-mostp
-                            fn-nntp-multi fn-auth-capability-lines-for-peer
-                            fn-auth-peer-record fn-inj-config-allow)))))
+           :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-established)
+                           (fn-auth-command fn-auth-delegate-pinned
+                            fn-auth-postingp fn-auth-cred-postingp
+                            fn-auth-find-cred fn-auth-sessionp
+                            fn-auth-tls-eventp
+                            fn-nntp-keyword-tokenp fn-nntp-tokenize
+                            fn-nntp-command-inputp
+                            fn-nntp-command-arguments-at-mostp)))))
 
 ; KEYSTONE (c2).  An authenticated principal whose credential lacks the
 ; posting flag is answered 440 to POST, and nothing happens.
