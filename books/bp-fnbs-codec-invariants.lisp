@@ -14,7 +14,12 @@
                   peer))
   :hints (("Goal"
            :use ((:instance fn-bpp-value-eid-of-eid-value (e peer)))
-           :in-theory (enable fn-bpn-peer-from-octets fn-bpn-peer-octets))))
+           :in-theory (e/d (fn-bpn-peer-from-octets fn-bpn-peer-octets
+                            fn-bpc-encode)
+                           (fn-bpp-value-eid-of-eid-value
+                            fn-bpc-enc fn-bpc-decode-exact
+                            fn-bpp-eid-value fn-bpp-value-eid
+                            fn-bpp-eidp)))))
 
 (defthm fn-bpnf-six-field-ingress-reconstructs
   (implies (and (true-listp ingress)
@@ -93,11 +98,13 @@
                   (+ 76 (len (nth 6 values))
                      (len (nth 8 values)) (len (nth 10 values)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (enable fn-frame-fields-octets
-                              fn-frame-field-octets
-                              fn-frame-len-of-append
-                              fn-frame-u64-bytes-len
-                              fn-frame-u32-bytes-len))))
+           :in-theory (e/d (fn-frame-fields-octets
+                            fn-frame-field-octets
+                            fn-frame-len-of-append
+                            fn-frame-u64-bytes-len
+                            fn-frame-u32-bytes-len)
+                           (fn-frame-values-okp fn-cp-append-assoc
+                            fn-cp-u32-bytes-four binary-append)))))
 
 (defthm fn-bpnf-kind-five-fits-with-peer-bound
   (implies (and (fn-frame-values-okp *fn-bpnf-stored-fields* values)
@@ -194,32 +201,70 @@
            :in-theory (enable fn-bpnf-cl-ingressp
                               fn-bpn-machine-textp fn-frame-textp))))
 
-(defthm fn-bpnf-stored-values-fit-frame
-  (implies
-   (and (fn-bpnf-stored-recordp record)
-        (equal (len (fn-bpnf-stored-record-values record)) 11)
-        (fn-frame-values-okp
-         *fn-bpnf-stored-fields* (fn-bpnf-stored-record-values record)))
-   (fn-cbor-at-mostp
-    (fn-frame-fields-octets
-     *fn-bpnf-stored-fields* (fn-bpnf-stored-record-values record))
-    *fn-bpn-lifecycle-max-payload*))
-  :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bpnf-kind-five-fits-with-peer-bound
-                            (values (fn-bpnf-stored-record-values record)))
-                 (:instance fn-bpnf-eid-encoded-peer-fits
-                            (peer (fn-bpn-nth 3 (nth 4 (nth 3 record)))))
-                 (:instance fn-bpnf-ingress-principal-fits
-                            (ingress (nth 4 (nth 3 record)))))
-           :in-theory (e/d (fn-bpnf-stored-recordp
-                            fn-bpnf-stored-record-values
-                            fn-bpnf-frame-ingressp)
-                           (fn-bpnf-heldp fn-frame-values-okp
-                            fn-frame-fields-octets fn-bpn-peer-octets
-                            fn-bpnf-kind-five-fits-with-peer-bound
-                            fn-bpnf-eid-encoded-peer-fits
-                            fn-bpnf-ingress-principal-fits)))))
+; The bound needs only three shape facts: the record's ingress is a CL
+; ingress with an EID peer, its wire is within the held-image bound, and
+; value fields 6, 8 and 10 are the peer octets, principal and wire whatever
+; the anchor.  Stating them keeps the record recognizer closed.
+(encapsulate
+  ()
+  (local
+   (defthm fn-bpnf-stored-recordp-ingress-and-wire
+     (implies (fn-bpnf-stored-recordp record)
+              (and (fn-bpnf-cl-ingressp (nth 4 (nth 3 record)))
+                   (fn-bpp-eidp (fn-bpn-nth 3 (nth 4 (nth 3 record))))
+                   (<= (len (fn-bpnf-held-wire (nth 3 record)))
+                       *fn-bpnf-max-held-image*)))
+     :hints (("Goal" :in-theory (e/d (fn-bpnf-stored-recordp
+                                      fn-bpnf-frame-ingressp)
+                                     (fn-bpnf-heldp fn-bpnf-frame-held
+                                      fn-bpnf-stored-anchorp
+                                      fn-bpnf-held-wire fn-bpnf-held-bundle
+                                      fn-bpp-eidp))))))
+
+  (local
+   (defthm fn-bpnf-stored-record-values-variable-fields
+     (let ((held (nth 3 record)))
+       (and (equal (nth 6 (fn-bpnf-stored-record-values record))
+                   (fn-bpn-peer-octets (fn-bpn-nth 3 (nth 4 held))))
+            (equal (nth 8 (fn-bpnf-stored-record-values record))
+                   (if (fn-bpn-nth 4 (nth 4 held))
+                       (fn-bpn-nth 4 (nth 4 held))
+                     '(0)))
+            (equal (nth 10 (fn-bpnf-stored-record-values record))
+                   (fn-bpnf-held-wire held))))
+     :hints (("Goal" :in-theory (e/d (fn-bpnf-stored-record-values)
+                                     (fn-bpn-peer-octets fn-bpnf-held-wire
+                                      fn-bpn-nth))))))
+
+  (defthm fn-bpnf-stored-values-fit-frame
+    (implies
+     (and (fn-bpnf-stored-recordp record)
+          (equal (len (fn-bpnf-stored-record-values record)) 11)
+          (fn-frame-values-okp
+           *fn-bpnf-stored-fields* (fn-bpnf-stored-record-values record)))
+     (fn-cbor-at-mostp
+      (fn-frame-fields-octets
+       *fn-bpnf-stored-fields* (fn-bpnf-stored-record-values record))
+      *fn-bpn-lifecycle-max-payload*))
+    :rule-classes nil
+    :hints (("Goal" :do-not-induct t
+             :use ((:instance fn-bpnf-kind-five-fits-with-peer-bound
+                              (values (fn-bpnf-stored-record-values record)))
+                   (:instance fn-bpnf-eid-encoded-peer-fits
+                              (peer (fn-bpn-nth 3 (nth 4 (nth 3 record)))))
+                   (:instance fn-bpnf-ingress-principal-fits
+                              (ingress (nth 4 (nth 3 record))))
+                   (:instance fn-bpnf-stored-recordp-ingress-and-wire))
+             :in-theory (disable fn-bpnf-stored-record-values
+                                 fn-bpnf-stored-recordp
+                                 fn-bpnf-stored-recordp-ingress-and-wire
+                                 fn-bpnf-cl-ingressp fn-bpp-eidp
+                                 fn-bpnf-held-wire fn-bpnf-heldp
+                                 fn-frame-values-okp
+                                 fn-frame-fields-octets fn-bpn-peer-octets
+                                 fn-bpnf-kind-five-fits-with-peer-bound
+                                 fn-bpnf-eid-encoded-peer-fits
+                                 fn-bpnf-ingress-principal-fits)))))
 
 (defthm fn-bpnf-valid-kind-five-encodes
   (implies

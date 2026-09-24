@@ -61,6 +61,27 @@
               (list :ready whole wire
                     (fn-bpnf-family-consumed-ids rows) zero))))))))
 
+;; The plan returns the query unchanged when its tag is not :ok, so the
+;; theorem needs only that a query never carries the :ready tag.  Stating that
+;; keeps the reassembly reference closed in the main proof.
+(local
+ (defthm fn-bpnf-reassemble-is-not-ready
+   (not (equal (car (fn-bpf-reassemble fs total)) :ready))
+   :hints (("Goal" :in-theory (e/d (fn-bpf-reassemble)
+                                   (fn-bpf-inputsp fn-bpf-canvas
+                                    fn-bpf-first-index))))))
+
+(local
+ (defthm fn-bpnf-fragment-query-is-not-ready
+   (not (equal (car (fn-bpnf-fragment-query st anchor)) :ready))
+   :hints (("Goal" :in-theory (disable fn-bpf-reassemble
+                                       fn-bpnf-active-fragmentp
+                                       fn-bpnf-active-set
+                                       fn-bpnf-fragment-cells
+                                       fn-bpnf-held-list
+                                       fn-bpp-total-adu-length
+                                       fn-bpnf-held-bundle)))))
+
 (defthm fn-bpnf-family-ready-has-valid-whole
   (implies (equal (car (fn-bpnf-family-plan st anchor)) :ready)
            (and (fn-bpb-bundlep (cadr (fn-bpnf-family-plan st anchor)))
@@ -72,8 +93,11 @@
                  (fn-bpnf-active-set st anchor))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-bpnf-active-set fn-bpnf-fragment-query
+                               fn-bpnf-fragment-query-is-reference
                                fn-bpnf-offset-zero-source
                                fn-bpnf-family-whole-bundle
+                               fn-bpnf-family-consumed-ids
+                               fn-bpnf-held-list
                                fn-bpb-bundlep fn-bpb-encode
                                fn-bpnf-held-octets)))
   :rule-classes nil)
