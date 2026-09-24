@@ -77,6 +77,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-attach \
 	books/store-events \
 	tests/acl2/store-events-tests \
+	books/store-retention-codec-invariants \
+	tests/acl2/store-retention-codec-invariants-tests \
 	books/consumer-position \
 	tests/acl2/consumer-position-tests \
 	books/consumer-store-events \
@@ -179,6 +181,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-record-fence-tests \
 	books/byte-store-record-provenance \
 	tests/acl2/byte-store-record-provenance-tests \
+	books/byte-store-retention-publication \
+	tests/acl2/byte-store-retention-publication-tests \
 	books/byte-store-keystones \
 	books/byte-store-observation \
 	tests/acl2/byte-store-observation-tests \
