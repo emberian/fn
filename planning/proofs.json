@@ -2854,6 +2854,42 @@
         "fn-ccp-profile-upgrade-keeps-reclaim-plan",
         "fn-bs-selected-reclaim-crash-preserves-suffix-payload"
       ]
+    },
+    {
+      "id": "PRF-074",
+      "title": "D23 relay trust: a carried request or receipt is judged under the author's own enrollment, over the functions bp-node calls",
+      "statement": "fn-bpaj-carried-source-decision CFG P G SOURCE (books/bp-session-admission.lisp) is the one decision for a delivered bundle: :direct when SOURCE is the delivering neighbour P's own enrolled EID; :carried P A when P's boundary has a (P \"bp-boundary-carries\" SOURCE 0) row and A is the unique boundary directly enrolled with transport-bp SOURCE; else refused with :generation, :source-not-carried or :carried-source-unenrolled. fn-bpaj-carried-decision-is-the-authors-direct-decision: a carried decision names an author whose own delivery of SOURCE at the same generation is decided :direct under A. fn-bpaj-carried-request-is-judged-as-the-authors-direct-request: for a carried view and a view identical except that its CL ingress names A at the same generation, fn-bpah-request-trustedp and fn-bpah-receipt-trustedp (host/bp-native-app-host.lisp, called by host/native/bp-node.lisp fnn-bpnode-request-result and fnn-bpnode-receipt-result) answer the same and fn-bpaj-transit-plan (called by fn-owner-app-plan-install) returns the same plan. fn-bpaj-unlisted-carried-request-is-refused: when P's boundary has neither a transport-bp nor a carries row for SOURCE, neither check trusts the view and the plan is (:refused :no-principal). fn-bpaj-carried-unenrolled-request-is-refused: for a CL ingress at the current generation of a well-formed configuration whose neighbour carries SOURCE while no row enrols SOURCE as a transport-bp EID, the decision is (:refused :carried-source-unenrolled), neither check trusts it and the plan is refused.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-046"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-session-admission.lisp",
+        "books/bp-app-handoff.lisp",
+        "books/bp-transit-join.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/bp-session-admission-tests.lisp",
+        "tests/acl2/bp-app-handoff-tests.lisp",
+        "tests/acl2/bp-transit-join-tests.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "host/bp-native-app-host.lisp",
+        "host/native/bp-node.lisp",
+        "tests/bp-dtn7/run_fn_dtn7_app_receipt.py",
+        "specs/bp-node-machine.md",
+        "planning/evidence/d23-bp-carrier-2026-09-24.md"
+      ],
+      "progress_note": "Lane d23-bp-carrier (2026-09-24). The bp-boundary verb takes `carries EID ...'; its rows ride the :set-peer delta, the configuration record round-trips and replay recovers them (ground witness in native-admin-tests). Teeth: one must-fail per hypothesis of each theorem and reachable witnesses in bp-transit-join-tests (a relay carrying dtn://b/ with dtnB enrolled plans the same :submit under dtnB), bp-session-admission-tests and bp-app-handoff-tests (a relayed receipt). Open: bp-node serve's own forwarding still expects the application peer as its TCPCL neighbour (a routing choice, not this rule); verification of a signed article against the author's enrollment is the posting path's.",
+      "events": [
+        "fn-bpaj-carried-decision-is-the-authors-direct-decision",
+        "fn-bpaj-carried-request-is-judged-as-the-authors-direct-request",
+        "fn-bpaj-unlisted-carried-request-is-refused",
+        "fn-bpaj-carried-unenrolled-request-is-refused"
+      ]
     }
   ]
 }
