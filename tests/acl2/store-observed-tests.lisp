@@ -54,6 +54,27 @@
 (assert-event (equal (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*))
                      '(:error :replay)))
 
+; Two individually well-formed administrator installs are an invalid topic
+; history.  The other replay projections accept these Store-neutral events;
+; the actual observed-open caller refuses the historical topic fault.
+(defconst *fn-so-admin-id* (make-list 32 :initial-element 71))
+(defconst *fn-so-admin0*
+  (fn-stmt-value
+   (fn-th-local-admin-install 0 1 1 501 *fn-so-admin-id* nil)))
+(defconst *fn-so-admin1*
+  (fn-stmt-value
+   (fn-th-local-admin-install 1 2 2 501 *fn-so-admin-id* nil)))
+(defconst *fn-so-duplicate-admin* (list *fn-so-admin0* *fn-so-admin1*))
+(assert-event (fn-sn-observed-historyp 3 *fn-so-duplicate-admin*))
+(assert-event (fn-sf-history-recoverablep *fn-so-groups* 10
+                                          *fn-so-duplicate-admin* 3))
+(assert-event (fn-sn-observed-identity-okp *fn-so-duplicate-admin*))
+(assert-event (fn-sn-observed-consumer-okp *fn-so-duplicate-admin*))
+(assert-event (not (fn-sn-observed-topic-okp *fn-so-duplicate-admin*)))
+(assert-event
+ (equal (fn-sn-open-observed *fn-so-groups* 10 3 *fn-so-duplicate-admin*)
+        '(:error :replay)))
+
 (defconst *fn-so-four*
   (fn-sn-observed-rebarrier (fn-sn-open-state *fn-so-replayed*) 4))
 (defconst *fn-so-five*
