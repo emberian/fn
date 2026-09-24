@@ -340,8 +340,9 @@
                   (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                      (fn-sf-records (fn-sn-files s))
                                      (fn-sf-frontier (fn-sn-files s)))))
-  :hints (("Goal" :in-theory (e/d (fn-snt-relation fn-own-store-idlep)
-                                  (fn-snt-pending-linkp fn-sf-record-phasep)))))
+  ; This is the idle arm of the relation.  Keep every other arm and its
+  ; growing Store recognizers opaque, as in the Store exact-replay lemma.
+  :hints (("Goal" :in-theory '(fn-snt-relation fn-own-store-idlep))))
 
 (defthm fn-own-related-records-true-list
   (implies (fn-snt-relation s)
