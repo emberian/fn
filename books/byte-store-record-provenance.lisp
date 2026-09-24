@@ -2786,8 +2786,9 @@
                             (ks (fn-sn-files s))
                             (groups (fn-sn-groups s))
                             (capacity (fn-sn-capacity s))))
-           :in-theory (e/d (fn-sn-prepare fn-sn-update)
-                           (fn-sn-statep fn-node-statep
+           :in-theory (e/d (fn-sn-prepare)
+                           (fn-sn-update fn-sn-make-v6
+                            fn-sn-statep fn-node-statep
                             fn-sn-prepare-node fn-sn-record-bindsp
                             fn-sf-prepare-record fn-bs-store-relation)))))
 
