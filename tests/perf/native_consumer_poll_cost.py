@@ -34,7 +34,9 @@ def main():
 
         # ACL2-owned neutral Store events; the helper never constructs a
         # cursor or decides which journal positions they consume.
-        for i in range(144):
+        # The test Store's journal cap is 128, so retain a 16-event tail
+        # after six bounded 16-event cursor advances within that cap.
+        for i in range(109):
             name = f"temporary-{i:03d}"
             target = node["base"] / f"temp-{i}.fncu"
             outcome = case.native("consumer", "register", node["control"],
@@ -51,7 +53,7 @@ def main():
             if not target.read_bytes().startswith(b"fncu\x01"):
                 raise AssertionError((i, "missing ACL2 cursor"))
 
-        for i in range(8):
+        for i in range(6):
             cursor = node["base"] / f"advance-{i}.fncu"
             report = node["base"] / f"advance-{i}.event"
             case.consumer("poll", node, "high", cursor, report)
@@ -61,7 +63,7 @@ def main():
 
         low_before = case.status(node, "low")
         high_before = case.status(node, "high")
-        if low_before[0] != 0 or high_before[0] < 128:
+        if low_before[0] != 0 or high_before[0] < 96:
             raise AssertionError((low_before, high_before))
         if high_before[2] < 16:
             raise AssertionError("insufficient journal tail for full high window")
