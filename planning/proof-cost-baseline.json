@@ -4,19 +4,13 @@
   "tolerance": 0.25,
   "books": {
     "books/byte-store-record-provenance": {
-      "seconds": 13.188,
-      "run": "certify-20260924T102224Z-3270826",
+      "seconds": 13.184,
+      "run": "certify-20260924T105922Z-3604838",
       "host": "persvati",
       "verdict": "passed"
     },
     "books/checkpoint-codec": {
       "seconds": 10.732,
-      "run": "certify-20260924T102224Z-3270826",
-      "host": "persvati",
-      "verdict": "passed"
-    },
-    "books/config-owner-live": {
-      "seconds": 10.132,
       "run": "certify-20260924T102224Z-3270826",
       "host": "persvati",
       "verdict": "passed"
@@ -27,40 +21,10 @@
       "host": "persvati",
       "verdict": "passed"
     },
-    "books/nntp-auth-fold": {
-      "seconds": 14.853,
-      "run": "certify-20260924T094824Z-1155517",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/nntp-effects": {
-      "seconds": 11.395,
-      "run": "certify-20260923T232942Z-484654",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/nntp-invariants": {
-      "seconds": 12.721,
-      "run": "certify-20260923T232820Z-480447",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/owner-config": {
-      "seconds": 11.084,
-      "run": "certify-20260924T102224Z-3270826",
-      "host": "persvati",
-      "verdict": "passed"
-    },
     "books/owner-invariants": {
-      "seconds": 29.03,
-      "run": "certify-20260924T105037Z-1249009",
-      "host": "hbox",
-      "verdict": "passed"
-    },
-    "books/peer-inbound": {
-      "seconds": 10.545,
-      "run": "certify-20260924T094652Z-1154343",
-      "host": "hbox",
+      "seconds": 11.833,
+      "run": "certify-20260924T105650Z-3582222",
+      "host": "persvati",
       "verdict": "passed"
     },
     "books/records": {

@@ -1945,7 +1945,8 @@
         "planning/evidence/manifests/certify-20260923T170842Z-2026382.json",
         "planning/evidence/manifests/certify-20260923T232820Z-480447.json",
         "planning/evidence/manifests/certify-20260923T232942Z-484654.json",
-        "planning/evidence/manifests/certify-20260924T005919Z-653679.json"
+        "planning/evidence/manifests/certify-20260924T005919Z-653679.json",
+        "planning/evidence/manifests/certify-20260924T105650Z-3582222.json"
       ],
       "events": [
         "fn-nntp-newnews-candidate-is-projectable",

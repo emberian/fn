@@ -40,8 +40,10 @@ log that lived here is [archive/now-2026-09-24.md](archive/now-2026-09-24.md).
 Measure 3 with the tool, not prose: the ratchet baseline counts 37 books
 over 10 s at `46f2660d` (slowest measurement per book, any host); the
 night's target in those terms is 27 or fewer, and a book leaves the
-baseline only by a passing measurement under 10 s. At 06:45 EDT the
-baseline holds 19 books.
+baseline only by a passing measurement under 10 s. At 07:40 EDT the
+baseline holds 7 books (store-node-traces 10.5 s, checkpoint-codec 10.7,
+consumer-local-control 11.5, records 11.7, owner-invariants 11.8,
+tcpcl-octets 12.9, byte-store-record-provenance 13.2).
 
 ## Active lanes (batch 1)
 
