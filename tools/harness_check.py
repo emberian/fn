@@ -735,6 +735,315 @@ def acl2_findings(root: Path) -> tuple[list[dict], dict]:
 
 
 # --------------------------------------------------------------------------
+# the raw Common Lisp half
+# --------------------------------------------------------------------------
+#
+# `acl2-arity` binds calls to ACL2 `defun`s.  The native host's own adapter
+# functions are raw Common Lisp `defun`s in files the image `load`s under
+# `(set-raw-mode t)`; ACL2 never translates them, and SBCL compiles a call
+# with the wrong number of positional arguments into a runtime error at that
+# call, or -- when the image is built without full warnings -- into a call that
+# binds its arguments one slot early.  host/native/bp-app.lisp called
+# `fnn-bpapp-accept-locked' (nine required parameters) with eight, dropping
+# the ingress, and the application planner refused every request
+# (planning/evidence/stale-native-tests-2026-09-24.md, finding 1).  Nothing
+# in `make check` read that call.  **raw-arity** does: every `defun` in a
+# raw-loaded host file gives a lambda list, and every application of that
+# name in a raw-loaded file must supply between its required and its
+# positional maximum (unbounded under `&rest', `&body' or `&key').  Names
+# defined twice, or that are also ACL2 functions, are counted and not
+# decided.  Backquote templates are not walked except for their unquoted
+# forms: a template is code only once a macro expands it.
+
+# The adapter reaches an ACL2 function through a dispatcher that takes its
+# name quoted and its arguments spread: `(fnn-core 'fn-x a b)' applies
+# fn-x to (a b), and a state-returning dispatcher appends `state'.  The
+# number is how many arguments the dispatcher adds.  Each must keep the
+# lambda list (name &rest args), or the lint reports the table as stale.
+RAW_DISPATCHERS = {"fnn-call": 0, "fnn-core": 0, "fnn-core-state": 1,
+                   "fnn-owner-core": 1, "fnn-owner-action": 1,
+                   "fnn-bpapp-core-record": 1}
+
+RAW_LAMBDA_KEYWORDS = {"&optional", "&rest", "&body", "&key", "&aux",
+                       "&allow-other-keys", "&whole", "&environment"}
+RAW_OPAQUE = {"quote", "declare", "declaim", "function", "in-package",
+              "defpackage", "defstruct", "define-condition", "deftype",
+              "defsetf", "defconstant", "defparameter", "defvar"}
+
+
+def raw_lambda_range(formals) -> tuple[int, int | None] | None:
+    """(required, positional maximum or None) of a raw lambda list."""
+    if not isinstance(formals, list):
+        return None
+    required = 0
+    optional = 0
+    mode = "required"
+    unbounded = False
+    for item in formals:
+        text = str(item) if isinstance(item, str) else None
+        if text in RAW_LAMBDA_KEYWORDS:
+            mode = text
+            if text in ("&rest", "&body", "&key"):
+                unbounded = True
+            continue
+        if mode == "required":
+            required += 1
+        elif mode == "&optional":
+            optional += 1
+    return required, (None if unbounded else required + optional)
+
+
+def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> None:
+    """Every `(f a ...)` a raw Common Lisp form evaluates, with its count."""
+    if not isinstance(form, list) or not form:
+        return
+    head_ = form[0]
+    name = str(head_) if isinstance(head_, str) else None
+
+    def walk(items, local=shadowed):
+        for item in items:
+            raw_applications(item, found, local)
+
+    if name is None:
+        walk(form)
+        return
+    if name in RAW_OPAQUE:
+        return
+    if name == "quasiquote":
+        def unquoted(x):
+            if isinstance(x, list) and x:
+                if isinstance(x[0], str) and str(x[0]) in ("unquote", "unquote-splicing"):
+                    walk(x[1:])
+                else:
+                    for item in x:
+                        unquoted(item)
+        unquoted(form[1:])
+        return
+    if name in ("let", "let*", "symbol-macrolet"):
+        for binding in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
+            if isinstance(binding, list):
+                walk(binding[1:])
+        walk(form[2:])
+        return
+    if name in ("multiple-value-bind", "destructuring-bind", "multiple-value-setq",
+                "lambda", "the", "mv-let"):
+        walk(form[2:])
+        return
+    if name in ("flet", "labels", "macrolet"):
+        local = set(shadowed)
+        bindings = form[1] if len(form) > 1 and isinstance(form[1], list) else []
+        for binding in bindings:
+            if isinstance(binding, list) and binding and isinstance(binding[0], str):
+                local.add(str(binding[0]))
+        local = frozenset(local)
+        for binding in bindings:
+            if isinstance(binding, list):
+                walk(binding[2:], local if name == "labels" else shadowed)
+        walk(form[2:], local)
+        return
+    if name in ("dolist", "dotimes"):
+        if len(form) > 1 and isinstance(form[1], list):
+            walk(form[1][1:])
+        walk(form[2:])
+        return
+    if name in ("do", "do*"):
+        for binding in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
+            if isinstance(binding, list):
+                walk(binding[1:])
+        if len(form) > 2 and isinstance(form[2], list):
+            walk(form[2])
+        walk(form[3:])
+        return
+    if name == "cond":
+        for clause in form[1:]:
+            if isinstance(clause, list):
+                walk(clause)
+        return
+    if name in ("case", "ecase", "ccase", "typecase", "etypecase", "ctypecase"):
+        if len(form) > 1:
+            raw_applications(form[1], found, shadowed)
+        for clause in form[2:]:
+            if isinstance(clause, list):
+                walk(clause[1:])
+        return
+    if name in ("handler-case", "restart-case"):
+        if len(form) > 1:
+            raw_applications(form[1], found, shadowed)
+        for clause in form[2:]:
+            if isinstance(clause, list):
+                walk(clause[2:])
+        return
+    if name == "handler-bind":
+        for binding in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
+            if isinstance(binding, list):
+                walk(binding[1:])
+        walk(form[2:])
+        return
+    if name in ("block", "return-from", "catch", "throw"):
+        walk(form[2:] if name in ("block", "return-from") else form[1:])
+        return
+    if name in ("defun", "defmacro", "defun-inline", "defund", "defmethod"):
+        walk(form[3:])
+        return
+    if name.startswith("with-") and len(form) > 1 and isinstance(form[1], list):
+        walk(form[1][1:])
+        walk(form[2:])
+        return
+    if name in ("funcall", "apply") and len(form) > 1:
+        target = form[1]
+        if (name == "funcall" and isinstance(target, list) and len(target) == 2
+                and isinstance(target[0], str) and str(target[0]) == "function"
+                and isinstance(target[1], str) and str(target[1]) not in shadowed):
+            found.append((str(target[1]), len(form) - 2))
+        walk(form[1:])
+        return
+    if name in RAW_DISPATCHERS and len(form) > 1:
+        target = form[1]
+        if (isinstance(target, list) and len(target) == 2
+                and isinstance(target[0], str) and str(target[0]) == "quote"
+                and isinstance(target[1], str)):
+            found.append(("'" + str(target[1]).lower(),
+                          len(form) - 2 + RAW_DISPATCHERS[name]))
+    if name not in shadowed and not name.startswith((":", "&")):
+        found.append((name, len(form) - 1))
+    walk(form[1:])
+
+
+def raw_definitions(sources: dict[str, list]) -> tuple[dict, set]:
+    """Raw `defun` name -> (required, maximum, where); names defined twice."""
+    seen: dict[str, list] = {}
+    for relative, forms in sorted(sources.items()):
+        def visit(form, line):
+            if not isinstance(form, list) or not form or not isinstance(form[0], str):
+                return
+            name = str(form[0])
+            if name in ("progn", "progn!", "eval-when", "locally"):
+                for item in form[1:]:
+                    visit(item, line)
+                return
+            if name == "defun" and len(form) >= 3 and isinstance(form[1], str):
+                bounds = raw_lambda_range(form[2])
+                if bounds is not None:
+                    seen.setdefault(str(form[1]), []).append(
+                        (bounds[0], bounds[1], "{}:{}".format(relative, line)))
+        for form, line in forms:
+            visit(form, line)
+    defined = {}
+    ambiguous = set()
+    for name, rows in seen.items():
+        if len({(low, high) for low, high, _ in rows}) == 1:
+            defined[name] = rows[0]
+        else:
+            ambiguous.add(name)
+    return defined, ambiguous
+
+
+def raw_arity_scan(sources: dict[str, list], exclude: set[str] = frozenset(),
+                   acl2_arity: dict[str, int] | None = None
+                   ) -> tuple[list[dict], dict]:
+    """Findings over SOURCES: relative path -> [(form, line)] of raw files.
+
+    EXCLUDE names ACL2 functions (not decided as raw); ACL2_ARITY, when
+    given, is the formal count of each ACL2 function a dispatcher may name.
+    """
+    defined, ambiguous = raw_definitions(sources)
+    for name in list(defined):
+        if name in exclude:
+            del defined[name]
+            ambiguous.add(name)
+    acl2_arity = acl2_arity or {}
+    findings: list[dict] = []
+    counts = {"raw_files": len(sources), "raw_definitions": len(defined),
+              "undecided_definitions": len(ambiguous), "applications": 0,
+              "dispatched_applications": 0}
+    if acl2_arity:
+        for name in sorted(RAW_DISPATCHERS):
+            row = defined.get(name)
+            if row is None or (row[0], row[1]) != (1, None):
+                findings.append({
+                    "lint": "raw-arity", "where": row[2] if row else "tools/harness_check.py",
+                    "callee": name,
+                    "problem": "RAW_DISPATCHERS names it, but it is not a raw "
+                               "(name &rest args) defun"})
+    for relative, forms in sorted(sources.items()):
+        for form, line in forms:
+            applications: list = []
+            raw_applications(form, applications)
+            for name, count in applications:
+                if name.startswith("'"):
+                    callee = name[1:]
+                    if callee not in acl2_arity:
+                        continue
+                    counts["dispatched_applications"] += 1
+                    if count != acl2_arity[callee]:
+                        findings.append({
+                            "lint": "raw-arity",
+                            "where": "{}:{}".format(relative, line),
+                            "callee": callee,
+                            "problem": "dispatched with {} argument{} (state "
+                                       "included) and takes {}".format(
+                                           count, "" if count == 1 else "s",
+                                           acl2_arity[callee]),
+                        })
+                    continue
+                if name not in defined:
+                    continue
+                low, high, where = defined[name]
+                counts["applications"] += 1
+                if count < low or (high is not None and count > high):
+                    wanted = (str(low) if high == low else
+                              "{} to {}".format(low, high) if high is not None
+                              else "at least {}".format(low))
+                    findings.append({
+                        "lint": "raw-arity",
+                        "where": "{}:{}".format(relative, line),
+                        "callee": name,
+                        "defined": where,
+                        "problem": "called with {} argument{} and takes {}".format(
+                            count, "" if count == 1 else "s", wanted),
+                    })
+    findings.sort(key=lambda row: row["where"])
+    return findings, counts
+
+
+def raw_arity_findings(root: Path) -> tuple[list[dict], dict]:
+    from tools import ledger
+
+    books = {relative: ledger.analyze_book(path, relative)
+             for path, relative in ledger.book_paths()}
+    hosts = ledger.load_hosts()
+    tree = ledger.Tree(books, ledger.makefile_roots(), hosts)
+    raw = ledger.raw_host_paths(tree)
+    sources = {relative: hosts[relative].forms for relative in raw}
+    macros: set[str] = set()
+    for book in books.values():
+        macros |= book.macros
+    for host in hosts.values():
+        macros |= host.macros
+    arity = {name: len(function.formals)
+             for name, function in tree.functions.items()
+             if isinstance(function.formals, list) and name not in macros}
+    # The ACL2-mode host wrappers (`fn-owner-*', `fn-tcl-host-*', ...) are
+    # most of what the adapter dispatches to, and no book defines them.
+    from tools import host_shape_check
+    wrappers: list = []
+    for relative, host in sorted(hosts.items()):
+        if relative in raw:
+            continue
+        for form, _line in host.forms:
+            host_shape_check.definitions_in(form, relative, True, wrappers)
+    seen: dict[str, set] = {}
+    for definition in wrappers:
+        seen.setdefault(definition.name, set()).add(len(definition.formals))
+    for name, lengths in seen.items():
+        if name in macros or name in arity:
+            continue
+        if len(lengths) == 1:
+            arity[name] = lengths.pop()
+    return raw_arity_scan(sources, set(tree.functions) | set(seen), arity)
+
+
+# --------------------------------------------------------------------------
 # the waiver half
 # --------------------------------------------------------------------------
 
@@ -928,6 +1237,7 @@ def _enclosing_test(parsed: ast.Module, call: ast.Call, lines: list[str]) -> str
 LINTS = {
     "signatures": (signature_findings, True),
     "acl2-arity": (acl2_findings, True),
+    "raw-arity": (raw_arity_findings, True),
     "waivers": (waiver_findings, True),
 }
 

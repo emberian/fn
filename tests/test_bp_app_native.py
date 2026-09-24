@@ -86,11 +86,13 @@ class NativeBpApplicationTests(unittest.TestCase):
         principal (books/bp-transit-join.lisp `fn-bpaj-ingress-peer'): with
         no boundary for the sender's EID the plan is `(:refused
         :no-principal)'.  This is the enrollment the fragment and node
-        fixtures carry (tests/test_bp_fragment_node_native.py).
+        fixtures carry (tests/test_bp_fragment_node_native.py).  Admission
+        (books/bp-session-admission.lisp) binds the boundary to the port
+        the receiver listens on, so every receiver listens on `self.port'.
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
             reservation.bind(("127.0.0.1", 0))
-            sender_port = reservation.getsockname()[1]
+            self.port = reservation.getsockname()[1]
         config = self.temp / "receiver-fn.toml"
         config.write_text(f'[store]\npath = "{self.store}"\n', encoding="ascii")
         policy = self.invoke("operator", config, "policy", "set",
@@ -98,7 +100,7 @@ class NativeBpApplicationTests(unittest.TestCase):
         self.assertEqual(policy.returncode, 0, policy.stderr.decode())
         trusted = self.invoke(
             "operator", config, "bp-boundary", "add", "sender-boundary",
-            "sender.bp.gate.invalid", "dtn://sender/", sender_port,
+            "sender.bp.gate.invalid", "dtn://sender/", self.port,
             "fn.test", 32768, 16)
         self.assertEqual(trusted.returncode, 0, trusted.stderr.decode())
 
@@ -109,14 +111,16 @@ class NativeBpApplicationTests(unittest.TestCase):
             stderr=subprocess.PIPE, timeout=timeout, check=False,
         )
 
-    def start_receiver(self, pause=False, fail_decision_namespace=False):
+    def start_receiver(self, pause=False, fail_decision_namespace=False,
+                       port=None):
+        port = self.port if port is None else port
         env = dict(self.env)
         if pause:
             env["FN_BP_APP_TEST_PAUSE_AFTER_DECISION"] = "1"
         if fail_decision_namespace:
             env["FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE"] = "1"
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "bp-app", "receive", "0",
+            [str(IMAGE), "--fn", "bp-app", "receive", str(port),
              str(self.receiver_spool), str(self.store), str(self.receipts),
              "dtn://receiver/", "dtn://sender/", "dtn://receiver/",
              "native-policy", "dtn://receiver/", "1", "8"],
@@ -129,7 +133,10 @@ class NativeBpApplicationTests(unittest.TestCase):
                 f"receiver failed: {line!r} "
                 f"{stop_and_diagnostics(process)}"
             )
-        return process, int(line.rsplit(b" ", 1)[1])
+        actual_port = int(line.rsplit(b" ", 1)[1])
+        if port:
+            self.assertEqual(actual_port, port)
+        return process, actual_port
 
     def start_sender(self, port):
         return subprocess.Popen(
@@ -237,6 +244,36 @@ class NativeBpApplicationTests(unittest.TestCase):
         self.assertEqual(recovered.returncode, 0, recovered.stderr.decode())
         self.assertIn(b"status=receipted", recovered.stdout)
         self.assertIn(b"pinned=no", recovered.stdout)
+
+    def test_unadmitted_channel_is_refused_with_the_planner_reason(self):
+        """A receiver on a port no boundary names admits no principal.
+
+        The planner refuses `:no-principal'; the receiver's line is ACL2's
+        (books/owner-log.lisp fn-olog-bp-app-refusal-line) and carries that
+        reason; the one-shot sender ends its session on the refusal and exits
+        with the refused code instead of awaiting a receipt that cannot come.
+        """
+        receiver, port = self.start_receiver(port=0)
+        self.assertNotEqual(port, self.port)
+        sender = self.start_sender(port)
+        try:
+            sender_out, sender_err = sender.communicate(timeout=180)
+            receiver_out, receiver_err = receiver.communicate(timeout=180)
+            self.assertEqual(sender.returncode, 1, sender_err.decode())
+            self.assertEqual(receiver.returncode, 1, receiver_err.decode())
+            self.assertIn(
+                b"refused bp-application xfer=0 result=refused "
+                b"reason=no-principal\n", receiver_err)
+            self.assertIn(b"BP summary accepted=0", sender_out)
+            self.assertNotIn(b"BP application accepted", receiver_out)
+        finally:
+            for process in (receiver, sender):
+                if process.poll() is None:
+                    process.kill()
+                    process.wait(timeout=10)
+                process.stdout.close()
+                process.stderr.close()
+        self.assertEqual(self.recovered_counts()[1], 0)
 
     def test_unsupported_receipt_profile_refuses_before_file_read(self):
         sender_store, workflow = self.prepare_sender_obligation()
