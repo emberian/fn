@@ -663,7 +663,7 @@
     "books": 667,
     "books_in_root_closure": 665,
     "roots": 656,
-    "theorems": 8912,
+    "theorems": 8916,
     "functions": 6571,
     "assert_events": 9678,
     "must_fails": 570,
@@ -10053,7 +10053,7 @@
       "book": "books/tcpcl-session.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 99,
+      "theorems": 103,
       "functions": 57,
       "guards": {
         "verified": 9,

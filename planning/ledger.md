@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 667 |
 | Certification roots in the Makefile | 656 |
 | Books inside the root closure | 665 |
-| `defthm` and `defthmd` events | 8912 |
+| `defthm` and `defthmd` events | 8916 |
 | `defun` events | 6571 |
 | Functions with verified guards | 2036 |
 | Functions declared `:verify-guards nil` and never verified | 404 |
@@ -437,7 +437,7 @@ that `make certify` requests.
 | `books/tcpcl-invariants.lisp` | root | 62 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/tcpcl-octets.lisp` | root | 172 | 36 | 14/0/22/0 | 0 | 0 | 1 |
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
-| `books/tcpcl-session.lisp` | root | 99 | 57 | 9/0/48/0 | 0 | 0 | 0 |
+| `books/tcpcl-session.lisp` | root | 103 | 57 | 9/0/48/0 | 0 | 0 | 0 |
 | `books/tcpcl-spool.lisp` | root | 2 | 18 | 0/0/18/0 | 0 | 0 | 0 |
 | `books/topic-history-admission.lisp` | root | 5 | 17 | 0/0/17/0 | 0 | 0 | 0 |
 | `books/topic-history-authorship.lisp` | root | 5 | 4 | 0/0/4/0 | 0 | 0 | 1 |
