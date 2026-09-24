@@ -92,7 +92,7 @@ class NativeReaderIndexTest(unittest.TestCase):
         status = stream.readline(4096)
         self.assertTrue(status, "missing NNTP reply to " + line)
         rows = []
-        if multiline and status[:1] == b"2":
+        if multiline and status[:1] in (b"1", b"2"):
             while True:
                 row = stream.readline(32769)
                 self.assertTrue(row, "unterminated reply to " + line)

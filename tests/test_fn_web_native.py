@@ -546,14 +546,14 @@ class NativeProtectedWebClientTests(unittest.TestCase):
         # article's local number there (RFC 3977 section 6.2.1.2), so the
         # lookup is a resume point; without a group it has none.
         self.assertIn("/find?" + html.escape(urlencode(
-            {"id": root_article["message_id"], "group": "fn.agents"})), wrong[2])
+            {"id": reply_article["message_id"], "group": "fn.agents"})), wrong[2])
         found = self.http(server, "GET", "/find?" + urlencode(
-            {"id": root_article["message_id"], "group": "fn.agents"}))
+            {"id": reply_article["message_id"], "group": "fn.agents"}))
         self.assertEqual(found[0], 200)
-        self.assertIn("Local #%d in fn.agents" % root_number, found[2])
+        self.assertIn("Local #%d in fn.agents" % reply_number, found[2])
         self.assertIn("/resume?" + html.escape(urlencode(
-            {"group": "fn.agents", "number": root_number,
-             "id": root_article["message_id"]})), found[2])
+            {"group": "fn.agents", "number": reply_number,
+             "id": reply_article["message_id"]})), found[2])
         bare = self.http(server, "GET", "/find?" + urlencode(
             {"id": root_article["message_id"]}))
         self.assertEqual(bare[0], 200)

@@ -96,9 +96,11 @@
                 '(:command (83 84 65 84 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62))))
 (assert-event (equal (fn-nntp-result-session *fn-nntp-by-id*)
                      (fn-nntp-result-session *fn-nntp-group*)))
+; RFC 3977 section 6.2.1.2: a group is selected and the article is in it,
+; so the Message-ID form answers its number there, 1.
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-by-id*)
-        '((:reply (50 50 51 32 48 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 32 114 101 116 114 105 101 118 101 100 13 10)))))
+        '((:reply (50 50 51 32 49 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 32 114 101 116 114 105 101 118 101 100 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0*
