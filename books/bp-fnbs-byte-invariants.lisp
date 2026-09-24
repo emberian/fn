@@ -121,7 +121,8 @@
                            (fn-bpnf-byte-one-pending-link-has-two-crash-names
                             fn-bpnf-byte-crash-keeps-fenced-record
                             fn-bpnf-stored-record-name
-                            fn-bpnf-stored-record-unframe)))))
+                            fn-bpnf-stored-record-unframe
+                            fn-bpnf-stored-recordp)))))
 
 (defthm fn-bpnf-actual-link-crash-is-absent-or-exact
   (implies

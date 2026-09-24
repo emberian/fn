@@ -139,6 +139,14 @@
        (fn-cc-octet-event-listp suffix (fn-cc-sequence summary)
                                 (fn-cc-frontier summary) final-frontier)))
 
+;; The event-list recognizer is recursive over variable arguments, so the
+;; theorems below never unfold it; but while enabled, each attempt to open it
+;; rewrites its body, which inlines the Store event decoder (16.7 M steps for
+;; the next theorem alone).  Every theorem here uses it only as the same term
+;; on both sides, so it stays closed.  The vocabulary theory at the end of
+;; the book disables it for includers as before.
+(local (in-theory (disable fn-cc-octet-event-listp)))
+
 (defthm fn-cc-partial-deletion-preserves-exact-history
   (implies (and (fn-cc-summaryp summary)
                 (fn-cc-valid-suffixp summary suffix final-frontier)
