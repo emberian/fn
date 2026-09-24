@@ -278,6 +278,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-fragment-family-tests \
 	books/bp-node-fragment-plan \
 	tests/acl2/bp-node-fragment-plan-tests \
+	books/bp-node-fragment-expiry \
+	tests/acl2/bp-node-fragment-expiry-tests \
 	books/bp-fnbs-family-codec \
 	tests/acl2/bp-fnbs-family-codec-tests \
 	books/bp-fnbs-deletion-codec \
