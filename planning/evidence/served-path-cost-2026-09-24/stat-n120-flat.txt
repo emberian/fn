@@ -1,0 +1,56 @@
+
+Number of samples:   10566
+Sample interval:     0.001 seconds
+Total sampling time: 10.566 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=1593569 "fn-sprof" RUNNING {120F0E0763}> (680/1048576 bytes, 5 hash buckets)
+   #<THREAD tid=1593571 "fn local control accept" RUNNING {120F5BE9C3}> (136/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=1593895 "fn owner client" RUNNING {1237290143}> (1865432/2097152 bytes, 4407 hash buckets)
+   #<THREAD tid=1593570 "fn outbound feed" RUNNING {120F4FEB13}> (440/1048576 bytes, 3 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2   2474  23.4   2474  23.4   2474  23.4        -  SB-KERNEL:STRING=*
+   4    741   7.0    741   7.0   3215  30.4        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+   6    477   4.5   1157  11.0   3692  34.9        -  FN-NODE-BINDING-IDS
+   8    453   4.3    955   9.0   4145  39.2        -  FN-NODE-BINDING-MSGIDS
+  10    439   4.2    944   8.9   4584  43.4        -  FN-ARTICLE-MSGIDS
+  12    428   4.1    428   4.1   5012  47.4        -  FN-AG-CAR
+  14    403   3.8   1611  15.2   5415  51.2        -  FN-ALL-ARTICLE-MEMBERSHIPS
+  16    383   3.6    383   3.6   5798  54.9        -  FN-AG-CDR
+  18    322   3.0    482   4.6   6120  57.9        -  FN-OCTET-LISTP
+  20    273   2.6    314   3.0   6393  60.5        -  FN-AG-APPEND
+  22    247   2.3    247   2.3   6640  62.8        -  EQUAL
+  24    188   1.8   2668  25.3   6828  64.6        -  SB-KERNEL:%MEMBER-TEST
+  26    176   1.7    176   1.7   7004  66.3        -  FN-OCTETP
+  28    162   1.5    285   2.7   7166  67.8        -  FN-ARTICLE-MEMBERSHIPS
+  30    155   1.5    173   1.6   7321  69.3        -  FN-PAIR-EQUALP
+  32    119   1.1    119   1.1   7440  70.4        -  foreign function memcmp
+  34    112   1.1   1512  14.3   7552  71.5        -  FN-RETAIN-FIND-ID
+  36    106   1.0    347   3.3   7658  72.5        -  FN-PAIR-MEMBERP
+  38     97   0.9   1352  12.8   7755  73.4        -  FN-AG-MEMBER
+  40     92   0.9    166   1.6   7847  74.3        -  FN-NODE-BINDING-ID
+  42     50   0.5    726   6.9   7897  74.7        -  FN-NODE-FIND-BINDING
+  44     33   0.3     33   0.3   7930  75.1        -  FN-NODE-BINDING-MSGID
+  46     31   0.3     31   0.3   7961  75.3        -  FN-RETAIN-OBLIGATION-ID
+  48     29   0.3     29   0.3   7990  75.6        -  FN-ARTICLE-MSGID
+  50     21   0.2   2237  21.2   8011  75.8        -  FN-NODE-BINDING-LISTP
+  52     21   0.2     44   0.4   8032  76.0        -  FN-RETAIN-OBLIGATION-IDS
+  54     20   0.2     20   0.2   8052  76.2        -  foreign function __write
+  56     18   0.2     18   0.2   8070  76.4        -  TRUE-LISTP
+  58     12   0.1     24   0.2   8082  76.5        -  FN-NODE-BINDINGP
+  60     10   0.1   1240  11.7   8092  76.6        -  FN-MEMBERSHIPS-CONFLICTSP
+  62     10   0.1     31   0.3   8102  76.7        -  FN-MEMBERSHIPS-BELOW-NEXTSP
+  64     10   0.1     10   0.1   8112  76.8        -  foreign function poll
+  66      9   0.1   1672  15.8   8121  76.9        -  FN-ARTICLE-LISTP
+  68      9   0.1   1252  11.8   8130  76.9        -  FN-ARTICLES-FRESHP
+  70      9   0.1     13   0.1   8139  77.0        -  FN-ARTICLE-GROUPS
+  72      8   0.1    591   5.6   8147  77.1        -  FN-ARTICLEP
+  74      7   0.1   2302  21.8   8154  77.2        -  FN-NODE-ARTICLES-HAVE-ARCHIVE-BINDINGSP
+  76      7   0.1     22   0.2   8161  77.2        -  FN-RETAIN-SUM
+  78      7   0.1      7   0.1   8168  77.3        -  foreign function syscall
+  80      6   0.1   1370  13.0   8174  77.4        -  FN-SUBSETP
+------------------------------------------------------------------------
+       2208  20.9                                     elsewhere
