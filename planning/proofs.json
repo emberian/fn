@@ -2881,9 +2881,11 @@
         "host/native/bp-node.lisp",
         "tests/bp-dtn7/run_fn_dtn7_app_receipt.py",
         "specs/bp-node-machine.md",
-        "planning/evidence/d23-bp-carrier-2026-09-24.md"
+        "planning/evidence/d23-bp-carrier-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T222100Z-2041510.json",
+        "planning/evidence/manifests/certify-20260924T221731Z-2038126.json"
       ],
-      "progress_note": "Lane d23-bp-carrier (2026-09-24). The bp-boundary verb takes `carries EID ...'; its rows ride the :set-peer delta, the configuration record round-trips and replay recovers them (ground witness in native-admin-tests). Teeth: one must-fail per hypothesis of each theorem and reachable witnesses in bp-transit-join-tests (a relay carrying dtn://b/ with dtnB enrolled plans the same :submit under dtnB), bp-session-admission-tests and bp-app-handoff-tests (a relayed receipt). Open: bp-node serve's own forwarding still expects the application peer as its TCPCL neighbour (a routing choice, not this rule); verification of a signed article against the author's enrollment is the posting path's.",
+      "progress_note": "Lane d23-bp-carrier (2026-09-24). Certified on hbox with the w28 toolchain: run-20260924T222039Z-5919 (manifest certify-20260924T222100Z-2041510, 85 books, the affected set of bp-session-admission, native-admin and native-operator, every book under 9 s); bp-session-admission and its tests in certify-20260924T221731Z-2038126. Lab: through dtn7-rs with one and two relays the request is accepted under the author's enrollment and the receipt is accepted at home (planning/evidence/d23-bp-carrier-2026-09-24.md). The bp-boundary verb takes `carries EID ...'; its rows ride the :set-peer delta, the configuration record round-trips and replay recovers them (ground witness in native-admin-tests). Teeth: one must-fail per hypothesis of each theorem and reachable witnesses in bp-transit-join-tests (a relay carrying dtn://b/ with dtnB enrolled plans the same :submit under dtnB), bp-session-admission-tests and bp-app-handoff-tests (a relayed receipt). Open: bp-node serve's own forwarding still expects the application peer as its TCPCL neighbour (a routing choice, not this rule); verification of a signed article against the author's enrollment is the posting path's.",
       "events": [
         "fn-bpaj-carried-decision-is-the-authors-direct-decision",
         "fn-bpaj-carried-request-is-judged-as-the-authors-direct-request",
