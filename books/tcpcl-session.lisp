@@ -1271,7 +1271,8 @@
                  (implies (not (fn-tcl-session-negotiated s)) (and (not inbound) (not outbound)))))
            (fn-tcl-sessionp (fn-tcl-next s phase inbound outbound term last-tx)))
   :hints (("Goal" :in-theory (disable fn-tcl-sessionp-facts fn-tcl-inboundp fn-tcl-outboundp fn-tcl-paramsp
-                                      fn-tcl-negotiatedp fn-tcl-peer-initp))))
+                                      fn-tcl-negotiatedp fn-tcl-peer-initp
+                                      fn-tcl-rolep fn-tcl-phasep fn-tcl-termp fn-clock-timep))))
 
 (defthm fn-tcl-with-outbound-preserves-sessionp
   (implies (and (fn-tcl-sessionp s)
@@ -1317,7 +1318,11 @@
                 (fn-tcl-peer-initp m)
                 (equal (fn-tcl-session-phase s) :messaging))
            (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-recv-init s m now))))
-  :hints (("Goal" :in-theory (e/d (fn-tcl-sessionp) (fn-tcl-negotiate fn-tcl-init-acceptablep)))))
+  :hints (("Goal" :in-theory (e/d (fn-tcl-sessionp)
+                                  (fn-tcl-negotiate fn-tcl-init-acceptablep
+                                   fn-tcl-rolep fn-tcl-termp fn-clock-timep
+                                   fn-tcl-paramsp fn-tcl-outboundp
+                                   fn-tcl-inboundp)))))
 
 ; The statement is unchanged; what the macro adds is the theory, pinned here:
 ; `fn-tcl-sessionp' and its eleven sub-recognizers stay shut and only the
@@ -1749,7 +1754,8 @@
                                       fn-tcl-sessionp-facts fn-tcl-session-cheapp-facts
                                       fn-tcl-inbound-cheapp fn-tcl-outbound-cheapp
                                       fn-tcl-paramsp
-                                      fn-tcl-negotiatedp fn-tcl-peer-initp))))
+                                      fn-tcl-negotiatedp fn-tcl-peer-initp
+                                      fn-tcl-rolep fn-tcl-phasep fn-tcl-termp fn-clock-timep))))
 
 (defthm fn-tcl-with-outbound-preserves-cheapp
   (implies (and (fn-tcl-session-cheapp s)
@@ -1789,7 +1795,10 @@
                 (equal (fn-tcl-session-phase s) :messaging))
            (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-init s m now))))
   :hints (("Goal" :in-theory (e/d (fn-tcl-session-cheapp)
-                                  (fn-tcl-negotiate fn-tcl-init-acceptablep)))))
+                                  (fn-tcl-negotiate fn-tcl-init-acceptablep
+                                   fn-tcl-rolep fn-tcl-termp fn-clock-timep
+                                   fn-tcl-paramsp fn-tcl-outbound-cheapp
+                                   fn-tcl-inbound-cheapp)))))
 
 (defthm fn-tcl-refuse-preserves-cheapp
   (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
