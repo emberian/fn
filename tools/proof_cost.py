@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Report certification wall cost from one manifest and its existing ACL2 logs.
+"""Report measured ACL2 book cost at the current source and include closure.
 
 This is a read-only diagnostic, not a certification or cache-validity check.
-Installed books have no proof work in this run; missing per-event logs are
-reported as unavailable rather than inferred from another source.
+The default scans archived and local manifests, retaining the newest matching
+measurement for each book, host and toolchain. An installed certificate has no
+proof time in that run. `--manifest` keeps the one-run diagnostic.
 """
 
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 from datetime import datetime
 import json
 from pathlib import Path
@@ -19,6 +21,8 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs  # noqa: E402
+import green_check  # noqa: E402
+import ledger  # noqa: E402
 
 SUMMARY = re.compile(r"(?m)^Summary\s*$")
 FORM = re.compile(r"(?m)^Form:\s*(.*)$")
@@ -125,21 +129,163 @@ def report(path: Path, threshold: float) -> list[str]:
     return lines
 
 
+@dataclass(frozen=True)
+class Measurement:
+    book: str
+    seconds: float
+    verdict: str
+    run_id: str
+    host: str
+    toolchain: str
+
+
+def current_books(root: Path) -> set[str]:
+    """The current Makefile-root closure, even before the ledger is rewritten."""
+    books: set[str] = set()
+    for name in ledger.makefile_roots():
+        books.update(certs.closure(root, name))
+    return books
+
+
+def history(root: Path, books: set[str], *, toolchain: str | None = None,
+            host: str | None = None,
+            runs: list[tuple[green_check.Run, dict]] | None = None
+            ) -> tuple[dict[tuple[str, str, str], Measurement], set[str], int]:
+    """Select timed attempts; certs owns current closure hashing/comparison.
+
+    `book_wall_seconds` names work attempted in that run. An installed-only
+    row never replaces an earlier measured attempt, and a failed attempt
+    retains its failed verdict. Shared dependency bytes are memoized by
+    certs.book_facts, and each requested book's closure is built only once.
+    """
+    runs = green_check.manifests(root) if runs is None else runs
+    closures: dict[str, list[str] | None] = {}
+    selected: dict[tuple[str, str, str], Measurement] = {}
+    installed_current: set[str] = set()
+    measured_rows = 0
+
+    def listing(book: str) -> list[str] | None:
+        if book not in closures:
+            try:
+                closures[book] = certs.closure_listing(certs.closure(root, book))
+            except (certs.UnreadableBook, OSError):
+                closures[book] = None
+        return closures[book]
+
+    def matches(book: str, manifest: dict) -> bool:
+        if book not in books:
+            return False
+        key = listing(book)
+        sources = manifest.get("source_digests_sha256") or {}
+        after = manifest.get("source_digests_sha256_after") or {}
+        return (key is not None and isinstance(sources, dict)
+                and not certs.closure_drift(key, sources)
+                and (not after or (isinstance(after, dict)
+                                   and not certs.closure_drift(key, after))))
+
+    for run, manifest in runs:
+        identity = str(manifest.get("acl2_toolchain_identity") or "unknown")
+        machine = run.where
+        if (toolchain is not None and identity != toolchain
+                or host is not None and machine != host):
+            continue
+        walls = manifest.get("book_wall_seconds") or {}
+        results = manifest.get("book_results") or {}
+        installed = manifest.get("installed_books") or {}
+        if not all(isinstance(field, dict) for field in (walls, results, installed)):
+            continue
+        for book in installed:
+            if book not in walls and matches(book, manifest):
+                installed_current.add(book)
+        for book, seconds in walls.items():
+            if (book in installed or not isinstance(seconds, (int, float))
+                    or isinstance(seconds, bool) or seconds < 0):
+                continue
+            measured_rows += 1
+            if not matches(book, manifest):
+                continue
+            key = (book, machine, identity)
+            # green_check.manifests is ordered by run-id timestamp; a newer
+            # partial run only replaces the books it actually measured.
+            selected[key] = Measurement(
+                book, float(seconds), str(results.get(book, "unknown")),
+                run.run_id, machine, identity)
+    return selected, installed_current, measured_rows
+
+
+def history_report(root: Path, threshold: float, *, toolchain: str | None = None,
+                   host: str | None = None,
+                   books: set[str] | None = None,
+                   runs: list[tuple[green_check.Run, dict]] | None = None
+                   ) -> list[str]:
+    books = current_books(root) if books is None else books
+    selected, installed, rows = history(
+        root, books, toolchain=toolchain, host=host, runs=runs)
+    measured_books = {record.book for record in selected.values()}
+    missing = books - measured_books
+    installed_only = missing & installed
+    lines = [
+        f"scope: current-root-books={len(books)} measured-rows-considered={rows} "
+        f"books-with-matching-measurement={len(measured_books)} "
+        f"unmeasured={len(missing)} installed-only={len(installed_only)}; "
+        "newest per book/host/toolchain, current include closure",
+        "scope: archived and local measured attempts; elapsed time is per ACL2 "
+        "process, never inferred from installed certificates; failed attempts "
+        "retain their verdict",
+    ]
+    if toolchain:
+        lines.append(f"filter: toolchain={toolchain}")
+    if host:
+        lines.append(f"filter: host={host}")
+    groups: dict[tuple[str, str], list[Measurement]] = {}
+    for record in selected.values():
+        groups.setdefault((record.host, record.toolchain), []).append(record)
+    slow_count = 0
+    for (machine, identity), records in sorted(groups.items()):
+        lines.append(f"origin: host={machine} toolchain={identity} "
+                     f"matching-measured-books={len(records)}")
+        for record in sorted(records, key=lambda item: (-item.seconds, item.book)):
+            if record.seconds <= threshold:
+                continue
+            slow_count += 1
+            log = (root / "build/acl2" / record.run_id
+                   / (record.book.replace("/", "--") + ".certify.log"))
+            event = slowest_event(log)
+            detail = (f"; slowest-event={event[0]} {event[1]:.2f}s"
+                      if event else "; per-event=unavailable")
+            lines.append(f"WARNING {record.book}: process-wall={record.seconds:.3f}s "
+                         f"> {threshold:g}s verdict={record.verdict} "
+                         f"run={record.run_id}{detail}")
+    if not slow_count:
+        lines.append(f"No matching measured attempt exceeds {threshold:g}s.")
+    if missing:
+        examples = ", ".join(sorted(missing)[:8])
+        lines.append(f"WARNING unmeasured: {len(missing)} current books have no "
+                     f"matching timed attempt; installed-only={len(installed_only)}; "
+                     f"examples={examples}")
+    return lines
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, help="one certification manifest")
+    parser.add_argument("--toolchain", help="exact toolchain identity filter for history mode")
+    parser.add_argument("--host", help="host filter for history mode")
     parser.add_argument("--threshold", type=float, default=10.0,
                         help="warn above this per-book process wall, seconds")
     args = parser.parse_args(argv)
     if args.threshold < 0:
         parser.error("--threshold must be nonnegative")
-    path = args.manifest or latest_manifest(ROOT)
-    if path is None:
-        print("proof_cost: no local certification manifest; cost unavailable")
-        return 0
     try:
-        print("\n".join(report(path, args.threshold)))
-    except (OSError, ValueError, json.JSONDecodeError) as error:
+        if args.manifest:
+            if args.toolchain or args.host:
+                parser.error("--host/--toolchain apply only to history mode")
+            lines = report(args.manifest, args.threshold)
+        else:
+            lines = history_report(ROOT, args.threshold,
+                                   toolchain=args.toolchain, host=args.host)
+        print("\n".join(lines))
+    except (OSError, ValueError, KeyError, certs.UnreadableBook) as error:
         print(f"proof_cost: {error}")
         return 2
     return 0

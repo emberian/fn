@@ -5,11 +5,33 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from tools import proof_cost
 
 
 class ProofCostTests(unittest.TestCase):
+    def fixture_book(self, root: Path, name: str, text: str) -> None:
+        path = root / f"{name}.lisp"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    def fixture_run(self, stamp: str, *, host: str = "hbox", toolchain: str = "tool-A",
+                    sources: dict[str, str], walls: dict[str, float],
+                    installed: dict[str, str] | None = None,
+                    results: dict[str, str] | None = None):
+        run_id = f"certify-{stamp}-1"
+        run = proof_cost.green_check.Run(run_id, host, True, sources)
+        manifest = {
+            "run_id": run_id, "acl2_toolchain_identity": toolchain,
+            "source_digests_sha256": sources,
+            "source_digests_sha256_after": sources,
+            "book_wall_seconds": walls,
+            "book_results": results or {book: "passed" for book in walls},
+            "installed_books": installed or {},
+        }
+        return run, manifest
+
     def test_report_names_slow_certified_book_and_omits_installed_book(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -71,6 +93,17 @@ class ProofCostTests(unittest.TestCase):
                 "source-closure=stale (1 of 1 source digests differ; checkout comparison)",
             )
 
+    def test_current_book_scope_reads_includes_without_a_generated_ledger(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture_book(root, "books/base", '(in-package "ACL2")\n')
+            self.fixture_book(root, "books/top",
+                              '(in-package "ACL2")\n(include-book "base")\n')
+            with mock.patch.object(proof_cost.ledger, "makefile_roots",
+                                   return_value=["books/top"]):
+                self.assertEqual(proof_cost.current_books(root),
+                                 {"books/top", "books/base"})
+
     def test_missing_log_and_manifest_are_explicitly_unavailable(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -83,6 +116,96 @@ class ProofCostTests(unittest.TestCase):
             lines = proof_cost.report(manifest, 10)
             self.assertIn("source-closure=current-bytes unavailable", lines)
             self.assertIn("per-event=unavailable", "\n".join(lines))
+
+    def test_newest_partial_run_does_not_hide_older_matching_slow_book(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture_book(root, "books/base", '(in-package "ACL2")\n')
+            self.fixture_book(root, "books/slow",
+                              '(in-package "ACL2")\n(include-book "base")\n')
+            self.fixture_book(root, "books/fast", '(in-package "ACL2")\n')
+            sources = {f"{book}.lisp": proof_cost.certs.content_hash(
+                root / f"{book}.lisp") for book in
+                ("books/base", "books/slow", "books/fast")}
+            old = self.fixture_run("20260901T010000Z", sources=sources,
+                                   walls={"books/slow": 55.0})
+            partial = self.fixture_run("20260902T010000Z", sources=sources,
+                                       walls={"books/fast": 1.0},
+                                       installed={"books/slow": "cache-origin"})
+            wrong_closure = self.fixture_run(
+                "20260903T010000Z",
+                sources={**sources, "books/base.lisp": "0" * 64},
+                walls={"books/slow": 1.0})
+            selected, _, _ = proof_cost.history(
+                root, {"books/slow", "books/fast"},
+                runs=[old, partial, wrong_closure])
+            slow = selected[("books/slow", "hbox", "tool-A")]
+            self.assertEqual((slow.seconds, slow.run_id), (55.0, old[0].run_id))
+            lines = proof_cost.history_report(
+                root, 10, books={"books/slow", "books/fast"},
+                runs=[old, partial, wrong_closure])
+            self.assertIn("WARNING books/slow: process-wall=55.000s", "\n".join(lines))
+            self.assertNotIn("WARNING books/fast", "\n".join(lines))
+
+    def test_changed_book_or_include_cannot_supply_current_measurement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture_book(root, "books/base", '(in-package "ACL2")\n')
+            top = '(in-package "ACL2")\n(include-book "base")\n'
+            self.fixture_book(root, "books/top", top)
+            sources = {f"{book}.lisp": proof_cost.certs.content_hash(
+                root / f"{book}.lisp") for book in ("books/base", "books/top")}
+            run = self.fixture_run("20260901T010000Z", sources=sources,
+                                   walls={"books/top": 45.0})
+            self.assertEqual(len(proof_cost.history(root, {"books/top"}, runs=[run])[0]), 1)
+            self.fixture_book(root, "books/top", top + "; new own bytes\n")
+            self.assertEqual(proof_cost.history(root, {"books/top"}, runs=[run])[0], {})
+            self.fixture_book(root, "books/top", top)
+            self.fixture_book(root, "books/base", '(in-package "ACL2")\n; new include bytes\n')
+            self.assertEqual(proof_cost.history(root, {"books/top"}, runs=[run])[0], {})
+
+    def test_host_and_toolchain_remain_separate_and_failed_cost_is_named(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture_book(root, "books/x", '(in-package "ACL2")\n')
+            sources = {"books/x.lisp": proof_cost.certs.content_hash(
+                root / "books/x.lisp")}
+            runs = [
+                self.fixture_run("20260901T010000Z", sources=sources,
+                                 walls={"books/x": 50.0}),
+                self.fixture_run("20260902T010000Z", host="persvati",
+                                 sources=sources, walls={"books/x": 60.0}),
+                self.fixture_run("20260903T010000Z", toolchain="tool-B",
+                                 sources=sources, walls={"books/x": 70.0},
+                                 results={"books/x": "failed"}),
+            ]
+            selected, _, _ = proof_cost.history(root, {"books/x"}, runs=runs)
+            self.assertEqual(set(selected), {
+                ("books/x", "hbox", "tool-A"),
+                ("books/x", "persvati", "tool-A"),
+                ("books/x", "hbox", "tool-B")})
+            self.assertEqual(selected[("books/x", "hbox", "tool-B")].verdict, "failed")
+            filtered, _, _ = proof_cost.history(
+                root, {"books/x"}, toolchain="tool-A", host="hbox", runs=runs)
+            self.assertEqual(list(filtered), [("books/x", "hbox", "tool-A")])
+
+    def test_installed_only_and_never_measured_are_not_zero_cost(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for book in ("books/cached", "books/unseen"):
+                self.fixture_book(root, book, '(in-package "ACL2")\n')
+            source = {"books/cached.lisp": proof_cost.certs.content_hash(
+                root / "books/cached.lisp")}
+            run = self.fixture_run("20260901T010000Z", sources=source,
+                                   walls={}, installed={"books/cached": "prior"})
+            selected, installed, _ = proof_cost.history(
+                root, {"books/cached", "books/unseen"}, runs=[run])
+            self.assertEqual(selected, {})
+            self.assertEqual(installed, {"books/cached"})
+            lines = proof_cost.history_report(
+                root, 10, books={"books/cached", "books/unseen"}, runs=[run])
+            self.assertIn("unmeasured=2 installed-only=1", lines[0])
+            self.assertIn("WARNING unmeasured: 2", "\n".join(lines))
 
 
 if __name__ == "__main__":
