@@ -2,12 +2,17 @@
 
 Set FN_NATIVE_DEVELOPER_HOST to a frozen developer image and FN_NATIVE_TEST_ROOT
 to its source snapshot. This test creates and removes only its own Store.
+The web client is a separate Python process; the second fixture exercises its
+current source against the pinned native image's existing NNTP and modelled
+post-publication death cut, without rebuilding the native image.
 """
 import http.client
+import json
 import os
 from pathlib import Path
 import re
 import select
+import socket
 import subprocess
 import sys
 import tempfile
@@ -15,6 +20,8 @@ import threading
 import unittest
 from types import SimpleNamespace
 from urllib.parse import urlencode
+
+from tests.native_process import wait_for_announcement, stop_and_diagnostics
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import fn_web  # noqa: E402
@@ -119,6 +126,138 @@ class NativeWebClientTests(unittest.TestCase):
                 except subprocess.TimeoutExpired:
                     owner.kill()
                     owner.communicate(timeout=30)
+
+    def test_durable_draft_lost_post_reply_and_restart_keep_one_native_article(self):
+        with tempfile.TemporaryDirectory(prefix="fn-web-outbox-native-") as temporary:
+            base = Path(temporary)
+            store, outbox = base / "store", base / "outbox"
+            environment = dict(os.environ)
+            environment["ACL2_CUSTOMIZATION"] = "NONE"
+            environment.pop("ACL2_SYSTEM_BOOKS", None)
+            environment.pop("FN_NATIVE_POST_FAULT", None)
+            initialized = subprocess.run(
+                [str(IMAGE), "--fn", "store", str(store), "init", "fn.agents"],
+                cwd=ROOT, env=environment, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=120, check=False)
+            self.assertEqual(initialized.returncode, 0,
+                             initialized.stderr.decode(errors="replace"))
+            with socket.socket() as probe:
+                probe.bind(("127.0.0.1", 0))
+                port = probe.getsockname()[1]
+            args = SimpleNamespace(host="127.0.0.1", port=port,
+                                   timeout=15.0, plain=True, cafile=None)
+            backend = fn_web.Backend(args, "", "")
+            owner = server = thread = None
+
+            def start_owner(fault=False):
+                env = dict(environment)
+                if fault:
+                    env["FN_NATIVE_POST_FAULT"] = "postpublish:kill"
+                process = subprocess.Popen(
+                    [str(IMAGE), "--fn", "owner", "run", str(store),
+                     str(port), "0", "8"], cwd=ROOT, env=env,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                line = wait_for_announcement(process, b"LISTENING ", timeout=120)
+                self.assertEqual(int(line.split()[1]), port)
+                return process
+
+            def start_web():
+                web = fn_web.WebServer(0, backend, outbox)
+                worker = threading.Thread(target=web.serve_forever, daemon=True)
+                worker.start()
+                return web, worker
+
+            def request(method, path, fields=None):
+                conn = http.client.HTTPConnection("127.0.0.1", server.server_port,
+                                                  timeout=45)
+                headers = {}
+                payload = None
+                if method == "POST":
+                    headers = {"Content-Type": "application/x-www-form-urlencoded",
+                               "Origin": "http://127.0.0.1:%d" % server.server_port}
+                    payload = urlencode({"csrf": server.token, "group": "fn.agents",
+                                         "subject": "Native durable draft",
+                                         "sender": "Human <h@local.invalid>",
+                                         "references": "", "body": "saved draft"} | fields)
+                conn.request(method, path, body=payload, headers=headers)
+                reply = conn.getresponse()
+                answer = reply.status, dict(reply.getheaders()), reply.read().decode("utf-8")
+                conn.close()
+                return answer
+
+            def restart_web():
+                nonlocal server, thread
+                server.shutdown()
+                server.server_close()
+                thread.join(5)
+                server, thread = start_web()
+
+            try:
+                owner = start_owner(fault=True)
+                server, thread = start_web()
+                composed = request("GET", "/compose?group=fn.agents")
+                self.assertEqual(composed[0], 200)
+                token = re.search(r"name='submission_id' value='([^']+)'",
+                                  composed[2]).group(1)
+                saved = request("POST", "/post", {"submission_id": token,
+                    "action": "save", "subject": "", "body": "rough draft"})
+                self.assertEqual(saved[0], 303)
+                self.assertEqual(list((store / "transactions").glob("*.txn")), [])
+                restart_web()
+                self.assertIn("rough draft", request("GET", "/draft?id=" + token)[2])
+                final_body = "native final source survives a lost reply"
+                posted = request("POST", "/post", {"submission_id": token,
+                    "action": "post", "subject": "Native final", "body": final_body})
+                self.assertEqual(posted[0], 303)
+                result = request("GET", posted[1]["Location"])
+                self.assertIn("badge uncertain", result[2])
+                self.assertEqual(owner.wait(timeout=30), -9,
+                                 stop_and_diagnostics(owner, timeout=1))
+                owner.stdout.close()
+                owner.stderr.close()
+                owner = None
+                saved_record = json.loads((outbox / (token + ".json")).read_text())
+                self.assertEqual(saved_record["result"]["word"], "uncertain")
+                msgid = saved_record["message_id"]
+                source = subprocess.run(
+                    [str(IMAGE), "--fn", "store", str(store), "inspect", msgid],
+                    cwd=ROOT, env=environment, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, timeout=60, check=False)
+                self.assertEqual(source.returncode, 0,
+                                 source.stderr.decode(errors="replace"))
+                exact_article = ("\r\n".join(saved_record["lines"]) + "\r\n").encode()
+                self.assertTrue(source.stdout.endswith(exact_article))
+                self.assertIn(final_body.encode(), source.stdout)
+                before_files = {p.name: p.read_bytes()
+                                for p in (store / "transactions").glob("*.txn")}
+                self.assertEqual(len(before_files), 1)
+
+                owner = start_owner()
+                restart_web()
+                self.assertIn("badge uncertain", request("GET", "/result?id=" + token)[2])
+                observed = request("GET", "/settle?id=" + token)
+                self.assertIn("now serves this Message-ID", observed[2])
+                self.assertIn("badge uncertain", observed[2])
+                duplicate = request("POST", "/post", {"submission_id": token,
+                    "action": "post", "subject": "Another article", "body": "do not send"})
+                self.assertEqual(duplicate[0], 303)
+                self.assertEqual({p.name: p.read_bytes()
+                                  for p in (store / "transactions").glob("*.txn")},
+                                 before_files)
+                restart_web()
+                self.assertIn("now serves this Message-ID",
+                              request("GET", "/result?id=" + token)[2])
+                self.assertIn("badge uncertain", request("GET", "/result?id=" + token)[2])
+            finally:
+                if server is not None:
+                    server.shutdown()
+                    server.server_close()
+                if thread is not None:
+                    thread.join(5)
+                if owner is not None:
+                    stop_and_diagnostics(owner, timeout=30)
+                    owner.stdout.close()
+                    owner.stderr.close()
 
 
 if __name__ == "__main__":
