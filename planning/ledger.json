@@ -512,8 +512,10 @@
     "books/served-tls-prefix",
     "books/owner-tls-prefix",
     "books/owner-config-observe",
+    "books/peer-offer-indexed",
     "books/served-carried",
     "books/owner-served-carried",
+    "books/owner-offer-indexed",
     "books/owner-commit-carried",
     "books/owner-prepare-carried",
     "books/owner-advance-carried",
@@ -543,6 +545,7 @@
     "tests/acl2/config-owner-live-tests",
     "tests/acl2/owner-config-observe-tests",
     "tests/acl2/owner-served-carried-tests",
+    "tests/acl2/peer-offer-indexed-tests",
     "tests/acl2/owner-commit-carried-tests",
     "tests/acl2/owner-prepare-carried-tests",
     "tests/acl2/owner-advance-carried-tests",
@@ -712,25 +715,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 719,
-    "books_in_root_closure": 717,
-    "roots": 708,
-    "theorems": 9590,
-    "functions": 6841,
-    "assert_events": 10551,
-    "must_fails": 814,
+    "books": 722,
+    "books_in_root_closure": 720,
+    "roots": 711,
+    "theorems": 9657,
+    "functions": 6848,
+    "assert_events": 10584,
+    "must_fails": 818,
     "encapsulates": 30,
     "guards": {
-      "verified": 2046,
+      "verified": 2049,
       "declared-off": 440,
-      "default-guarded": 3402,
-      "default-unguarded": 953
+      "default-guarded": 3404,
+      "default-unguarded": 955
     },
-    "suspect_theorems": 83,
+    "suspect_theorems": 84,
     "export_hygiene_warnings": 116,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 59,
-    "include_hygiene_warnings": 692,
+    "include_hygiene_warnings": 697,
     "host_names_warnings": 826,
     "hand_written_record_warnings": 18
   },
@@ -8417,6 +8420,36 @@
       "read_error": null
     },
     {
+      "book": "books/owner-offer-indexed.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 53,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-publish",
+        "owner-advance-carried",
+        "owner-commit-carried",
+        "owner-config-observe",
+        "owner-prepare-carried",
+        "owner-served-carried"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-prepare-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8496,12 +8529,12 @@
       "book": "books/owner-served-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
-      "functions": 4,
+      "theorems": 12,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 4,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8923,6 +8956,34 @@
         "fn-peer-nntp-command-pinned-preserves-consistent-session",
         "fn-peer-nntp-step-pinned-preserves-consistent-session",
         "fn-peer-post-step-pinned-preserves-consistent-session"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/peer-offer-indexed.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 4,
+      "guards": {
+        "verified": 3,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "msgid-index",
+        "peer-inbound"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-pix-msgid-argp-forward"
       ],
       "read_error": null
     },
@@ -9561,6 +9622,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "peer-offer-indexed",
         "served-tls-prefix"
       ],
       "system_includes": [],
@@ -18017,6 +18079,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/peer-offer-indexed-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 33,
+      "must_fails": 4,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-offer-indexed",
+        "owner-served-carried-tests",
+        "peer-inbound-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/policy-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -20472,6 +20563,14 @@
       "line": 1603,
       "reasons": [
         "instance-corollary: the statement is fn-post-step-pinned-preserves-consistent-session instantiated, discharging nothing"
+      ]
+    },
+    {
+      "theorem": "fn-pix-msgid-argp-forward",
+      "book": "books/peer-offer-indexed.lisp",
+      "line": 229,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-msgid-argp"
       ]
     },
     {
@@ -23636,6 +23735,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-offer-indexed.lisp",
+        "line": 26,
+        "include": "owner-config-observe",
+        "included": "books/owner-config-observe.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner-signed-post.lisp",
         "line": 29,
         "include": "hybrid-lifecycle-store-invariants",
@@ -23675,6 +23781,13 @@
         "line": 65,
         "include": "records-stamp",
         "included": "books/records-stamp.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/peer-offer-indexed.lisp",
+        "line": 24,
+        "include": "msgid-index",
+        "included": "books/msgid-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -26349,6 +26462,27 @@
         "line": 9,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-offer-indexed-tests.lisp",
+        "line": 4,
+        "include": "../../books/owner-offer-indexed",
+        "included": "books/owner-offer-indexed.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-offer-indexed-tests.lisp",
+        "line": 6,
+        "include": "peer-inbound-tests",
+        "included": "tests/acl2/peer-inbound-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-offer-indexed-tests.lisp",
+        "line": 7,
+        "include": "owner-served-carried-tests",
+        "included": "tests/acl2/owner-served-carried-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -32739,7 +32873,7 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1490,
+        "line": 1495,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
