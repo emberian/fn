@@ -1,0 +1,4 @@
+$ fn bp-obligation status /tank/fn/scratch/d23-issuer/final/relay1-listed/a-store /tank/fn/scratch/d23-issuer/final/relay1-listed/a-fnwf work-bp-node
+BP obligation owner work=work-bp-node status=receipted pinned=no
+
+# rc=0

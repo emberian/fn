@@ -1,0 +1,5 @@
+$ fn operator /tank/fn/scratch/d23-issuer/final/relay1-none/a.toml bp-boundary add return-boundary r1.bp.gate.invalid dtn://dtn7-r1/ 46145 carries dtn://receiver/
+configured generation=3 record=00000003.cfg verification=VERIFIED
+accepted operator bp-boundary
+
+# rc=0
