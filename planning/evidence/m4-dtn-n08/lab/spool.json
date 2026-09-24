@@ -1,0 +1,23 @@
+{
+  "artifact_set": "unknown",
+  "barrier_failure_fenced": false,
+  "contention_refused": true,
+  "exit_codes": {
+    "barrier": 5,
+    "contender": 1,
+    "symlink": 4,
+    "unlink": 5
+  },
+  "fail_closed_symlink": true,
+  "image": "/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/fn-host-dtn",
+  "image_sha256": "095382bae2b3ff377a2f27b119c0d5f5b247c983f4846d7176fbcd661e1e282c",
+  "listener_output": [
+    "TCPCL LISTENING 42725"
+  ],
+  "ok": false,
+  "owner_alive": true,
+  "recovered": true,
+  "scenario": "tcpcl-spool-recovery",
+  "source_revision": "1b73486898d9b49fc1907690a406a7a422dabcc4",
+  "unlink_failure_fenced": false
+}

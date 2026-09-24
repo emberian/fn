@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "/tank/fn/scratch/m4-dtn-n08/tree/tests/bp-dtn7/run_four_node_lab.py", line 743, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/tank/fn/scratch/m4-dtn-n08/tree/tests/bp-dtn7/run_four_node_lab.py", line 736, in main
+    report = run_lab(run, dtn7_repo=args.dtn7_repo, revision=args.revision)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m4-dtn-n08/tree/tests/bp-dtn7/run_four_node_lab.py", line 512, in run_lab
+    outbound.journal.recover_intent(pending, "committed")
+  File "/tank/fn/scratch/m4-dtn-n08/tree/tools/workflow_journal.py", line 304, in recover_intent
+    return self.publish_outcome(values["txid"], values["tx-generation"],
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m4-dtn-n08/tree/tools/workflow_journal.py", line 292, in publish_outcome
+    return self.publish("outcome", {"txid": txid, "tx-generation": generation,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/m4-dtn-n08/tree/tools/workflow_journal.py", line 215, in publish
+    raise JournalError("ACL2 rejected workflow durable history before publication")
+tools.workflow_journal.JournalError: ACL2 rejected workflow durable history before publication

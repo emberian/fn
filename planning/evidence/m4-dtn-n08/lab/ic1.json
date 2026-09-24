@@ -1,0 +1,264 @@
+{
+  "carrier_log_tail": [
+    " 2026-09-24T17:47:33.056Z INFO  dtn7::cla::tcp          > Started TCP session for dtn://fn-a/ @ 127.0.0.1:35921 | refuse existing bundles: false",
+    " 2026-09-24T17:47:33.056Z INFO  dtn7::cla::tcp          > Transmission time: 9.484\u00b5s for 1 bundles in 136 bytes to 127.0.0.1:35921",
+    " 2026-09-24T17:47:33.219Z INFO  dtn7::core::processing  > Sending bundle dtn://dtn7c/-843587253052-0 via tcp to 127.0.0.1:35921 (dtn://fn-a/) failed after 165.210859ms",
+    " 2026-09-24T17:47:33.219Z DEBUG dtn7::core::processing  > Error while transferring bundle dtn://dtn7c/-843587253052-0: CLA tcp failed to send bundle",
+    " 2026-09-24T17:47:33.219Z DEBUG dtn7::core::processing  > Reporting failed sending to peer: fn-a",
+    " 2026-09-24T17:47:33.219Z INFO  dtn7::core::processing  > Failed to forward bundle to any CLA: dtn://dtn7c/-843587253052-0",
+    " 2026-09-24T17:47:33.219Z DEBUG dtn7::routing::epidemic > removed \"fn-a\" from sent list for bundle dtn://dtn7c/-843587253052-0",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::dtnd::janitor     > running janitor",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::routing::epidemic > checking PEERS due to SenderForBundle request (bp=dtn://dtn7c/-843587253052-0 {ForwardPending})",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::routing::epidemic > Attempting direct delivery of bundle dtn://dtn7c/-843587253052-0 to fn-a",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::core::processing  > Attempting forwarding of dtn://dtn7c/-843587253052-0 to nodes: [ClaSenderTask { tx: Sender { chan: Tx { inner: Chan { tx: Tx { block_tail: 0x57a7574bfc10, tail_position: 2 }, semaphore: Semaphore { semaphore: Semaphore { permits: 200 }, bound: 200 }, rx_waker: AtomicWaker, tx_count: 2, rx_fields: \"...\" } } }, dest: \"127.0.0.1:35921\", cla_name: \"tcp\", next_hop: Dtn(1, DtnAddress(\"//fn-a/\")) }]",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::core::processing  > Attempting forwarding of dtn://dtn7c/-843587253052-0 to nodes: [ClaSenderTask { tx: Sender { chan: Tx { inner: Chan { tx: Tx { block_tail: 0x57a7574bfc10, tail_position: 2 }, semaphore: Semaphore { semaphore: Semaphore { permits: 200 }, bound: 200 }, rx_waker: AtomicWaker, tx_count: 2, rx_fields: \"...\" } } }, dest: \"127.0.0.1:35921\", cla_name: \"tcp\", next_hop: Dtn(1, DtnAddress(\"//fn-a/\")) }]",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::core::processing  > Bundle contains an hop count block: dtn://dtn7c/-843587253052-0 32 1",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::core::processing  > Sending bundle to a CLA: dtn://dtn7c/-843587253052-0 127.0.0.1:35921 tcp",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::cla::tcp          > TcpConvergenceLayer: received transfer command for 127.0.0.1:35921",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::cla::tcp          > Locking connection for 127.0.0.1:35921",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::cla::tcp          > Connecting to 127.0.0.1:35921",
+    " 2026-09-24T17:47:40.497Z DEBUG dtn7::cla::tcp          > Sending bundle to 127.0.0.1:35921",
+    " 2026-09-24T17:47:40.498Z INFO  dtn7::cla::tcp          > Transmission time: 51.339\u00b5s for 1 bundles in 136 bytes to 127.0.0.1:35921",
+    " 2026-09-24T17:47:40.643Z INFO  dtn7::core::processing  > Sending bundle dtn://dtn7c/-843587253052-0 via tcp to 127.0.0.1:35921 (dtn://fn-a/) failed after 146.071193ms",
+    " 2026-09-24T17:47:40.644Z DEBUG dtn7::core::processing  > Error while transferring bundle dtn://dtn7c/-843587253052-0: CLA tcp failed to send bundle",
+    " 2026-09-24T17:47:40.644Z DEBUG dtn7::core::processing  > Reporting failed sending to peer: fn-a",
+    " 2026-09-24T17:47:40.644Z INFO  dtn7::core::processing  > Failed to forward bundle to any CLA: dtn://dtn7c/-843587253052-0",
+    " 2026-09-24T17:47:40.644Z DEBUG dtn7::routing::epidemic > removed \"fn-a\" from sent list for bundle dtn://dtn7c/-843587253052-0",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::dtnd::janitor     > running janitor",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::routing::epidemic > checking PEERS due to SenderForBundle request (bp=dtn://dtn7c/-843587253052-0 {ForwardPending})",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::routing::epidemic > Attempting direct delivery of bundle dtn://dtn7c/-843587253052-0 to fn-a",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::core::processing  > Attempting forwarding of dtn://dtn7c/-843587253052-0 to nodes: [ClaSenderTask { tx: Sender { chan: Tx { inner: Chan { tx: Tx { block_tail: 0x57a7574bfc10, tail_position: 3 }, semaphore: Semaphore { semaphore: Semaphore { permits: 200 }, bound: 200 }, rx_waker: AtomicWaker, tx_count: 2, rx_fields: \"...\" } } }, dest: \"127.0.0.1:35921\", cla_name: \"tcp\", next_hop: Dtn(1, DtnAddress(\"//fn-a/\")) }]",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::core::processing  > Attempting forwarding of dtn://dtn7c/-843587253052-0 to nodes: [ClaSenderTask { tx: Sender { chan: Tx { inner: Chan { tx: Tx { block_tail: 0x57a7574bfc10, tail_position: 3 }, semaphore: Semaphore { semaphore: Semaphore { permits: 200 }, bound: 200 }, rx_waker: AtomicWaker, tx_count: 2, rx_fields: \"...\" } } }, dest: \"127.0.0.1:35921\", cla_name: \"tcp\", next_hop: Dtn(1, DtnAddress(\"//fn-a/\")) }]",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::core::processing  > Bundle contains an hop count block: dtn://dtn7c/-843587253052-0 32 1",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::core::processing  > Sending bundle to a CLA: dtn://dtn7c/-843587253052-0 127.0.0.1:35921 tcp",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::cla::tcp          > TcpConvergenceLayer: received transfer command for 127.0.0.1:35921",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::cla::tcp          > Locking connection for 127.0.0.1:35921",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::cla::tcp          > Connecting to 127.0.0.1:35921",
+    " 2026-09-24T17:47:50.497Z DEBUG dtn7::cla::tcp          > Sending bundle to 127.0.0.1:35921",
+    " 2026-09-24T17:47:50.497Z INFO  dtn7::cla::tcp          > Transmission time: 44.735\u00b5s for 1 bundles in 136 bytes to 127.0.0.1:35921",
+    " 2026-09-24T17:47:50.695Z INFO  dtn7::core::processing  > Sending bundle dtn://dtn7c/-843587253052-0 via tcp to 127.0.0.1:35921 (dtn://fn-a/) failed after 197.943684ms",
+    " 2026-09-24T17:47:50.695Z DEBUG dtn7::core::processing  > Error while transferring bundle dtn://dtn7c/-843587253052-0: CLA tcp failed to send bundle",
+    " 2026-09-24T17:47:50.695Z DEBUG dtn7::core::processing  > Reporting failed sending to peer: fn-a",
+    " 2026-09-24T17:47:50.695Z INFO  dtn7::core::processing  > Failed to forward bundle to any CLA: dtn://dtn7c/-843587253052-0",
+    " 2026-09-24T17:47:50.695Z DEBUG dtn7::routing::epidemic > removed \"fn-a\" from sent list for bundle dtn://dtn7c/-843587253052-0",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::dtnd::janitor     > running janitor",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::routing::epidemic > checking PEERS due to SenderForBundle request (bp=dtn://dtn7c/-843587253052-0 {ForwardPending})",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::routing::epidemic > Attempting direct delivery of bundle dtn://dtn7c/-843587253052-0 to fn-a",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::core::processing  > Attempting forwarding of dtn://dtn7c/-843587253052-0 to nodes: [ClaSenderTask { tx: Sender { chan: Tx { inner: Chan { tx: Tx { block_tail: 0x57a7574bfc10, tail_position: 4 }, semaphore: Semaphore { semaphore: Semaphore { permits: 200 }, bound: 200 }, rx_waker: AtomicWaker, tx_count: 2, rx_fields: \"...\" } } }, dest: \"127.0.0.1:35921\", cla_name: \"tcp\", next_hop: Dtn(1, DtnAddress(\"//fn-a/\")) }]",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::core::processing  > Attempting forwarding of dtn://dtn7c/-843587253052-0 to nodes: [ClaSenderTask { tx: Sender { chan: Tx { inner: Chan { tx: Tx { block_tail: 0x57a7574bfc10, tail_position: 4 }, semaphore: Semaphore { semaphore: Semaphore { permits: 200 }, bound: 200 }, rx_waker: AtomicWaker, tx_count: 2, rx_fields: \"...\" } } }, dest: \"127.0.0.1:35921\", cla_name: \"tcp\", next_hop: Dtn(1, DtnAddress(\"//fn-a/\")) }]",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::core::processing  > Bundle contains an hop count block: dtn://dtn7c/-843587253052-0 32 1",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::core::processing  > Sending bundle to a CLA: dtn://dtn7c/-843587253052-0 127.0.0.1:35921 tcp",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::cla::tcp          > TcpConvergenceLayer: received transfer command for 127.0.0.1:35921",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::cla::tcp          > Locking connection for 127.0.0.1:35921",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::cla::tcp          > Connecting to 127.0.0.1:35921",
+    " 2026-09-24T17:48:00.497Z DEBUG dtn7::cla::tcp          > Sending bundle to 127.0.0.1:35921",
+    " 2026-09-24T17:48:00.497Z INFO  dtn7::cla::tcp          > Transmission time: 54.624\u00b5s for 1 bundles in 136 bytes to 127.0.0.1:35921",
+    " 2026-09-24T17:48:00.684Z INFO  dtn7::core::processing  > Sending bundle dtn://dtn7c/-843587253052-0 via tcp to 127.0.0.1:35921 (dtn://fn-a/) failed after 186.830173ms",
+    " 2026-09-24T17:48:00.684Z DEBUG dtn7::core::processing  > Error while transferring bundle dtn://dtn7c/-843587253052-0: CLA tcp failed to send bundle",
+    " 2026-09-24T17:48:00.684Z DEBUG dtn7::core::processing  > Reporting failed sending to peer: fn-a",
+    " 2026-09-24T17:48:00.684Z INFO  dtn7::core::processing  > Failed to forward bundle to any CLA: dtn://dtn7c/-843587253052-0",
+    " 2026-09-24T17:48:00.684Z DEBUG dtn7::routing::epidemic > removed \"fn-a\" from sent list for bundle dtn://dtn7c/-843587253052-0",
+    " 2026-09-24T17:48:03.174Z ERROR dtn7::cla::tcp          > Failed parsing package: ReadError(Kind(UnexpectedEof))",
+    " 2026-09-24T17:48:03.174Z INFO  dtn7::cla::tcp          > Session terminated for dtn://fn-a/ (127.0.0.1:35921)"
+  ],
+  "dest_before_carrier_death": [],
+  "dtn7": "/tank/fn/dtn7/repo",
+  "dtn7_revision": "4daf02d7ea927e9293753b2a5c4497457f6e5a40",
+  "dtn7_version": "dtn7-rs 0.21.0",
+  "dtn_time_ms": "843587212495",
+  "dtnd_processes": {
+    "dtn7c": [
+      {
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7c",
+          "-W",
+          "/tank/fn/scratch/m4-dtn-n08/lab/ic1/dtn7c",
+          "-D",
+          "sled",
+          "-C",
+          "tcp:port=50035",
+          "-w",
+          "44037",
+          "-i",
+          "0",
+          "--disable_nd",
+          "-d"
+        ],
+        "log": "/tank/fn/scratch/m4-dtn-n08/lab/ic1/dtn7c/dtnd-0.log",
+        "pid": 1735822,
+        "stopped": "SIGKILL rc=-9"
+      },
+      {
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7c",
+          "-W",
+          "/tank/fn/scratch/m4-dtn-n08/lab/ic1/dtn7c",
+          "-D",
+          "sled",
+          "-C",
+          "tcp:port=50035",
+          "-w",
+          "44037",
+          "-i",
+          "0",
+          "--disable_nd",
+          "-d",
+          "-s",
+          "tcp://127.0.0.1:53139/dtn7d",
+          "-s",
+          "tcp://127.0.0.1:35921/fn-a"
+        ],
+        "log": "/tank/fn/scratch/m4-dtn-n08/lab/ic1/dtn7c/dtnd-1.log",
+        "pid": 1735952,
+        "stopped": "SIGTERM rc=-15"
+      }
+    ],
+    "dtn7d": [
+      {
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7d",
+          "-W",
+          "/tank/fn/scratch/m4-dtn-n08/lab/ic1/dtn7d",
+          "-D",
+          "mem",
+          "-C",
+          "tcp:port=53139",
+          "-w",
+          "51039",
+          "-i",
+          "0",
+          "--disable_nd",
+          "-d",
+          "-e",
+          "incoming"
+        ],
+        "log": "/tank/fn/scratch/m4-dtn-n08/lab/ic1/dtn7d/dtnd-0.log",
+        "pid": 1735784,
+        "stopped": "SIGTERM rc=-15"
+      }
+    ]
+  },
+  "fn_a_receive_pid": 1735948,
+  "image": "/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/fn-host-dtn",
+  "step1_interrupted": {
+    "authored": [
+      "843587212495",
+      "0"
+    ],
+    "lines": [
+      "BP authored creation=843587212495 sequence=0 lifetime=3600000 payload=44 octets=149"
+    ],
+    "outcome": "refused-or-other",
+    "rc": 4,
+    "tcpcl": []
+  },
+  "step2_retry": {
+    "authored": [
+      "843587212495",
+      "1"
+    ],
+    "authored_wire": [
+      {
+        "head": [
+          159,
+          137,
+          7,
+          0,
+          2,
+          130,
+          1,
+          112,
+          47,
+          47,
+          100,
+          116,
+          110,
+          55,
+          100,
+          47
+        ],
+        "name": "authored-0.wire",
+        "octets": 149,
+        "path": "/tank/fn/scratch/m4-dtn-n08/lab/ic1/fn-a-send/authored-0.wire",
+        "sha256": "b238e560f64a135b6b61daf352f1bdf0042449c4c0674ce2f7e2cef11b9369f0"
+      },
+      {
+        "head": [
+          159,
+          137,
+          7,
+          0,
+          2,
+          130,
+          1,
+          112,
+          47,
+          47,
+          100,
+          116,
+          110,
+          55,
+          100,
+          47
+        ],
+        "name": "authored-1.wire",
+        "octets": 149,
+        "path": "/tank/fn/scratch/m4-dtn-n08/lab/ic1/fn-a-send/authored-1.wire",
+        "sha256": "9c138cf3e6706e9394fc9360df6ded064c7fc3994cdc2ed64dd84247453829f7"
+      }
+    ],
+    "lines": [
+      "BP authored creation=843587212495 sequence=1 lifetime=3600000 payload=44 octets=149",
+      "BP summary accepted=0 refused=0 uncertain=0"
+    ],
+    "outcome": "accepted",
+    "rc": 0,
+    "same_identity_as_step1": false,
+    "tcpcl": [
+      "TCPCL active accepted outbound xfer=0",
+      "TCPCL active summary accepted=1 refused=0 uncertain=0 phase=closed",
+      "BP summary accepted=0 refused=0 uncertain=0"
+    ]
+  },
+  "step3_carrier_restart": {
+    "carrier_pids": [
+      1735822,
+      1735952
+    ],
+    "copies_of_adu": 1,
+    "dest_deliveries": [
+      "fn-a -> dtn7d across an interrupted contact"
+    ]
+  },
+  "step4_return": {
+    "accepted": [],
+    "dtnsend_carrier_rc": 0,
+    "dtnsend_dest_rc": 0,
+    "fn_lines": [
+      "BP refused xfer=1 reason=receive-boundary",
+      "BP refused xfer=2 reason=receive-boundary",
+      "BP refused xfer=3 reason=receive-boundary",
+      "BP refused xfer=4 reason=receive-boundary"
+    ],
+    "fn_rc": null,
+    "refusal_reasons": [
+      "receive-boundary",
+      "receive-boundary",
+      "receive-boundary",
+      "receive-boundary"
+    ],
+    "refused": [
+      "00000000000000000000.refused",
+      "00000000000000000001.refused",
+      "00000000000000000002.refused",
+      "00000000000000000003.refused"
+    ],
+    "uncertain": []
+  }
+}
