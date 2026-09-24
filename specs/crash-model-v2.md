@@ -1357,10 +1357,13 @@ part of K0.
 ; a typed next-frontier frame and a fresh staging name.
 ; fn-bs-k0-frontier-native-call-sequence-matches-run also equates the four
 ; fn-sn-io observations with those interpreted cuts at the Store-node layer.
-; This is a successful P-FRONTIER trace slice, not general K0: the shared
-; native owner calls fn-owner-io through fn-ocfg-step, and the owner-to-node
-; projection, call-entry relation establishment, error/torn outcomes and
-; physical syscall/barrier qualification remain separate obligations.
+; The shared native owner calls fn-owner-io through fn-ocfg-step;
+; fn-bs-k0-owner-io-store-is-node-io proves that exact :store/:io event's
+; Store-node projection, and fn-bs-k0-owner-frontier-calls-match-byte-run
+; joins the four successive configured-owner callbacks to pairs 12 and 14.
+; This is a successful P-FRONTIER trace slice, not general K0: call-entry
+; relation establishment, error/torn outcomes and physical syscall/barrier
+; qualification remain separate obligations.
 
 ; K1. The scan never faults on a crash image of a related state.  No torn
 ; unit is ever under an authority name, because links and renames are
