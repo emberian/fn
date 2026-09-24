@@ -795,6 +795,100 @@
 ; Field laws are the exported interface to the v6 updates.  Their proofs
 ; read the constructor's selector law; includers need not open fourteen
 ; positional slots just to carry a projection through a transition.
+(defthm fn-sn-shapep-of-fn-sn-with-consumer
+  (fn-sn-shapep (fn-sn-with-consumer s consumer))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-consumer)
+                                 (fn-sn-make-v6 fn-sn-shapep)))))
+(defthm fn-sn-shapep-of-fn-sn-with-topic
+  (fn-sn-shapep (fn-sn-with-topic s topic))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-topic)
+                                 (fn-sn-make-v6 fn-sn-shapep)))))
+(defthm fn-sn-shapep-of-fn-sn-update-replayed
+  (fn-sn-shapep
+   (fn-sn-update-replayed s files node index identity-context))
+  :hints (("Goal" :in-theory (e/d (fn-sn-update-replayed)
+                                 (fn-sn-make-v6 fn-sn-shapep)))))
+(defthm fn-sn-state-fields-of-fn-sn-with-consumer
+  (and
+       (equal (fn-sn-groups (fn-sn-with-consumer s consumer))
+              (fn-sn-groups s))
+       (equal (fn-sn-capacity (fn-sn-with-consumer s consumer))
+              (fn-sn-capacity s))
+       (equal (fn-sn-files (fn-sn-with-consumer s consumer))
+              (fn-sn-files s))
+       (equal (fn-sn-node (fn-sn-with-consumer s consumer))
+              (fn-sn-node s))
+       (equal (fn-sn-index (fn-sn-with-consumer s consumer))
+              (fn-sn-index s))
+       (equal (fn-sn-keyring (fn-sn-with-consumer s consumer))
+              (fn-sn-keyring s))
+       (equal (fn-sn-keyring-generation (fn-sn-with-consumer s consumer))
+              (fn-sn-keyring-generation s))
+       (equal (fn-sn-verdicts (fn-sn-with-consumer s consumer))
+              (fn-sn-verdicts s))
+       (equal (fn-sn-keyring-snapshots (fn-sn-with-consumer s consumer))
+              (fn-sn-keyring-snapshots s))
+       (equal (fn-sn-identity-next (fn-sn-with-consumer s consumer))
+              (fn-sn-identity-next s))
+       (equal (fn-sn-config-history (fn-sn-with-consumer s consumer))
+              (fn-sn-config-history s)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-with-consumer)
+                (fn-sn-make-v6 fn-sn-groups fn-sn-capacity fn-sn-files fn-sn-node fn-sn-index fn-sn-keyring fn-sn-keyring-generation fn-sn-verdicts fn-sn-keyring-snapshots fn-sn-identity-next fn-sn-config-history)))))
+(defthm fn-sn-state-fields-of-fn-sn-with-topic
+  (and
+       (equal (fn-sn-groups (fn-sn-with-topic s topic))
+              (fn-sn-groups s))
+       (equal (fn-sn-capacity (fn-sn-with-topic s topic))
+              (fn-sn-capacity s))
+       (equal (fn-sn-files (fn-sn-with-topic s topic))
+              (fn-sn-files s))
+       (equal (fn-sn-node (fn-sn-with-topic s topic))
+              (fn-sn-node s))
+       (equal (fn-sn-index (fn-sn-with-topic s topic))
+              (fn-sn-index s))
+       (equal (fn-sn-keyring (fn-sn-with-topic s topic))
+              (fn-sn-keyring s))
+       (equal (fn-sn-keyring-generation (fn-sn-with-topic s topic))
+              (fn-sn-keyring-generation s))
+       (equal (fn-sn-verdicts (fn-sn-with-topic s topic))
+              (fn-sn-verdicts s))
+       (equal (fn-sn-keyring-snapshots (fn-sn-with-topic s topic))
+              (fn-sn-keyring-snapshots s))
+       (equal (fn-sn-identity-next (fn-sn-with-topic s topic))
+              (fn-sn-identity-next s))
+       (equal (fn-sn-config-history (fn-sn-with-topic s topic))
+              (fn-sn-config-history s)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-with-topic)
+                (fn-sn-make-v6 fn-sn-groups fn-sn-capacity fn-sn-files fn-sn-node fn-sn-index fn-sn-keyring fn-sn-keyring-generation fn-sn-verdicts fn-sn-keyring-snapshots fn-sn-identity-next fn-sn-config-history)))))
+(defthm fn-sn-state-fields-of-fn-sn-update-replayed
+  (and
+       (equal (fn-sn-groups (fn-sn-update-replayed s files node index identity-context))
+              (fn-sn-groups s))
+       (equal (fn-sn-capacity (fn-sn-update-replayed s files node index identity-context))
+              (fn-sn-capacity s))
+       (equal (fn-sn-files (fn-sn-update-replayed s files node index identity-context))
+              files)
+       (equal (fn-sn-node (fn-sn-update-replayed s files node index identity-context))
+              node)
+       (equal (fn-sn-index (fn-sn-update-replayed s files node index identity-context))
+              index)
+       (equal (fn-sn-keyring (fn-sn-update-replayed s files node index identity-context))
+              (fn-sn-keyring s))
+       (equal (fn-sn-keyring-generation (fn-sn-update-replayed s files node index identity-context))
+              (fn-sn-keyring-generation s))
+       (equal (fn-sn-verdicts (fn-sn-update-replayed s files node index identity-context))
+              (fn-replay-verdict-pairs (fn-stxk-context-verdicts identity-context)))
+       (equal (fn-sn-keyring-snapshots (fn-sn-update-replayed s files node index identity-context))
+              (fn-stxk-context-snapshots identity-context))
+       (equal (fn-sn-identity-next (fn-sn-update-replayed s files node index identity-context))
+              (fn-stxk-context-next identity-context))
+       (equal (fn-sn-config-history (fn-sn-update-replayed s files node index identity-context))
+              (fn-sn-config-history s)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-update-replayed)
+                (fn-sn-make-v6 fn-sn-groups fn-sn-capacity fn-sn-files fn-sn-node fn-sn-index fn-sn-keyring fn-sn-keyring-generation fn-sn-verdicts fn-sn-keyring-snapshots fn-sn-identity-next fn-sn-config-history)))))
 (defthm fn-sn-consumer-of-fn-sn-with-consumer
   (equal (fn-sn-consumer (fn-sn-with-consumer s consumer)) consumer)
   :hints (("Goal" :in-theory (e/d (fn-sn-with-consumer) (fn-sn-make-v6)))))
@@ -831,6 +925,38 @@
   (equal (fn-sn-identity-next (fn-sn-with-event-index s event-index))
          (fn-sn-identity-next s))
   :hints (("Goal" :in-theory (e/d (fn-sn-with-event-index) (fn-sn-make-v6)))))
+; fn-sn-statep reads these fields.  Keep the derived-index update opaque in
+; proofs of host transitions such as fn-sn-io, which need only the carried
+; state fields and shape.  Files and identity-next have their own laws.
+(defthm fn-sn-core-fields-of-fn-sn-with-event-index
+  (and (fn-sn-shapep (fn-sn-with-event-index s event-index))
+       (equal (fn-sn-groups (fn-sn-with-event-index s event-index))
+              (fn-sn-groups s))
+       (equal (fn-sn-capacity (fn-sn-with-event-index s event-index))
+              (fn-sn-capacity s))
+       (equal (fn-sn-node (fn-sn-with-event-index s event-index))
+              (fn-sn-node s))
+       (equal (fn-sn-index (fn-sn-with-event-index s event-index))
+              (fn-sn-index s))
+       (equal (fn-sn-keyring (fn-sn-with-event-index s event-index))
+              (fn-sn-keyring s))
+       (equal (fn-sn-keyring-generation
+               (fn-sn-with-event-index s event-index))
+              (fn-sn-keyring-generation s))
+       (equal (fn-sn-verdicts (fn-sn-with-event-index s event-index))
+              (fn-sn-verdicts s))
+       (equal (fn-sn-keyring-snapshots
+               (fn-sn-with-event-index s event-index))
+              (fn-sn-keyring-snapshots s))
+       (equal (fn-sn-config-history
+               (fn-sn-with-event-index s event-index))
+              (fn-sn-config-history s)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-event-index)
+                                 (fn-sn-make-v6 fn-sn-shapep
+                                  fn-sn-groups fn-sn-capacity fn-sn-node
+                                  fn-sn-index fn-sn-config-history
+                                  fn-sn-keyring fn-sn-keyring-generation
+                                  fn-sn-verdicts fn-sn-keyring-snapshots)))))
 (defthm fn-sn-files-of-fn-sn-update-replayed
   (equal (fn-sn-files
           (fn-sn-update-replayed s files node index identity-context))
