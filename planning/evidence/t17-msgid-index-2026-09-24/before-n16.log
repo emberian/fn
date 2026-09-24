@@ -1,0 +1,9 @@
+{"image": "/tank/fn/scratch/p2-wire/tree/build/fn-host-developer", "launcher_sha256": "50092191c2b014fc04ecaaaf456df2b772f3f9370cf56760a723ce18993f9b2d", "core_sha256": "09ed86fa10c6998a20ff37caed446ab74d3fa93256e0ce9c20ac26898ce9f65a", "articles": 16, "samples": 16, "port": 49353, "load_seconds": 1.1988339852541685, "rss_after_load_kib": 401160, "rss_after_stat_kib": 405192, "peer_mode_stream": "203 streaming permitted", "rss_after_peer_kib": 452808}
+post_first_quarter median 48.708 ms  p95 50.950 ms  max 50.950 ms
+post_last_quarter median 75.501 ms  p95 96.615 ms  max 96.615 ms
+stat_present median 0.614 ms  p95 0.695 ms  max 0.725 ms
+stat_absent median 0.564 ms  p95 0.581 ms  max 0.590 ms
+ihave_duplicate median 0.603 ms  p95 0.713 ms  max 0.733 ms
+check_duplicate median 0.659 ms  p95 0.714 ms  max 0.812 ms
+check_absent median 0.670 ms  p95 0.693 ms  max 0.713 ms
+rc=0
