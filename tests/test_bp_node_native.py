@@ -59,7 +59,7 @@ class NativeBpNodeTests(unittest.TestCase):
             b"Subject: native BP node A3\r\n"
             b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
             b"Message-ID: " + self.msgid + b"\r\n"
-            b"Xref: sender.bp.gate.invalid fn.test:1\r\n\r\nA3 body\r\n"
+            b"\r\nA3 body\r\n"
         )
         for store in (self.receiver_store, self.sender_store):
             initialized = self.invoke("store", store, "init", "fn.test")
