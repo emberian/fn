@@ -871,13 +871,14 @@
    (equal (car (fn-own-outcome *own-taken* 4 :refused))
           (own-w2-rhs *own-taken* 4 :refused))
    :rule-classes nil))
-; natp mark: a mark of nil is below the ledger by <, yet nothing was consumed.
+; natp mark: a mark of nil is below the ledger in ACL2's logic (< treats a
+; non-number as 0), yet nothing was consumed.
 (defconst *own-w2-nil-mark*
   (own-w2-with *own-p-done* (fn-own-conns *own-p-done*)
                (fn-own-sub-make 4 (fn-own-sub-version (fn-own-inflight *own-p-done*))
                                 nil (fn-own-sub-decision (fn-own-inflight *own-p-done*)))))
-(assert-event (< (fn-own-sub-mark (fn-own-inflight *own-w2-nil-mark*))
-                 (len (fn-own-ledger *own-w2-nil-mark*))))
+(assert-event (and (null (fn-own-sub-mark (fn-own-inflight *own-w2-nil-mark*)))
+                   (< 0 (len (fn-own-ledger *own-w2-nil-mark*)))))
 (must-fail
  (defthm own-w2-needs-a-natural-mark
    (equal (car (fn-own-outcome *own-w2-nil-mark* 4 :refused))
