@@ -1,0 +1,114 @@
+iteration 0 single late 120.25
+iteration 1 single window 83.4
+iteration 2 single over-limit 26.55
+iteration 3 single window 136.51
+iteration 4 single early 4.88
+iteration 5 single late 89.07
+iteration 6 single over-limit 6.75
+iteration 7 single early 25.24
+iteration 8 single window 58.84
+iteration 9 single early 45.76
+iteration 10 single late 125.36
+iteration 11 single early 46.33
+iteration 12 single mid-article 3.75
+iteration 13 single window 32.06
+iteration 14 single window 158.81
+iteration 15 single window 106.08
+iteration 16 concurrent early 0.25
+iteration 17 single late 268.48
+iteration 18 concurrent window 154.41
+iteration 19 single window 32.39
+iteration 20 concurrent window 146.63
+iteration 21 single mid-article 3.7
+iteration 22 single late 147.91
+iteration 23 single window 64.47
+iteration 24 single window 90.03
+iteration 25 single mid-article 13.5
+iteration 26 single window 122.91
+iteration 27 single window 69.34
+iteration 28 single over-limit 7.63
+iteration 29 concurrent window 186.17
+iteration 30 single window 159.61
+iteration 31 single window 53.4
+iteration 32 single window 96.44
+iteration 33 single window 130.62
+iteration 34 concurrent window 107.65
+iteration 35 single window 34.91
+iteration 36 single window 76.62
+iteration 37 single over-limit 10.1
+iteration 38 single window 120.48
+iteration 39 single window 42.87
+iteration 40 single late 87.14
+iteration 41 single window 143.23
+iteration 42 single late 155.12
+iteration 43 concurrent window 140.83
+iteration 44 concurrent late 117.46
+iteration 45 single window 104.23
+iteration 46 concurrent early 3.67
+iteration 47 single early 31.24
+iteration 48 single early 12.23
+iteration 49 single early 109.41
+iteration 50 single late 97.93
+iteration 51 single over-limit 4.84
+iteration 52 single early 84.12
+iteration 53 single late 92.89
+iteration 54 single mid-article 4.45
+iteration 55 single window 46.85
+iteration 56 single early 45.07
+iteration 57 single early 9.23
+iteration 58 single mid-article 1.94
+iteration 59 single window 100.81
+iteration 60 single early 18.56
+iteration 61 single window 164.32
+iteration 62 single window 55.14
+iteration 63 single over-limit 21.19
+iteration 64 single window 49.68
+iteration 65 single early 44.82
+iteration 66 single window 68.12
+iteration 67 single early 39.56
+iteration 68 concurrent window 97.51
+iteration 69 single late 146.14
+iteration 70 single mid-article 16.26
+iteration 71 single mid-article 5.28
+iteration 72 single early 71.01
+iteration 73 single window 74.38
+iteration 74 single window 45.56
+iteration 75 single late 156.08
+iteration 76 single window 174.98
+iteration 77 concurrent late 234.73
+iteration 78 single late 161.65
+iteration 79 single early 19.5
+iteration 80 single early 61.39
+iteration 81 single mid-article 17.11
+iteration 82 single late 152.06
+iteration 83 single window 111.41
+iteration 84 single late 154.3
+iteration 85 single early 29.43
+iteration 86 single early 10.11
+iteration 87 single window 95.27
+iteration 88 single early 81.05
+iteration 89 single window 174.18
+	Command being timed: "python3 -m tests.campaign.native_production_kill run --image /tank/fn/gates/qual-47bdb9a4-20260924/build/images/47bdb9a4/fn-host --work /tank/fn/scratch/campaign-47bdb9a4/pk-work --out /tank/fn/scratch/campaign-47bdb9a4/pk-run.json --seed 3 --kills 80 --concurrent 10"
+	User time (seconds): 551.90
+	System time (seconds): 60.53
+	Percent of CPU this job got: 93%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 10:53.63
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1402416
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 144
+	Minor (reclaiming a frame) page faults: 43510622
+	Voluntary context switches: 15140
+	Involuntary context switches: 9551
+	Swaps: 0
+	File system inputs: 1496928
+	File system outputs: 38373
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+rc=0
