@@ -46,7 +46,8 @@
         "fn-bprv-store-step-preserves-evolving-invariant",
         "fn-bprv-apply-record-preserves-evolving-invariant",
         "fn-bprv-system-run-preserves-invariant",
-        "fn-scar-ocfg-read-keeps-store"
+        "fn-scar-ocfg-read-keeps-store",
+        "fn-ccar-own-finish-preserves-sn-statep"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -74,7 +75,11 @@
         "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md",
         "books/owner-served-carried.lisp",
         "planning/evidence/manifests/certify-20260924T163534Z-2387827.json",
-        "planning/evidence/served-path-cost-2026-09-24.md"
+        "planning/evidence/served-path-cost-2026-09-24.md",
+        "books/owner-commit-carried.lisp",
+        "tests/acl2/owner-commit-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T180005Z-3125113.json",
+        "planning/evidence/commit-path-cost-2026-09-24.md"
       ],
       "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. The host-called store prepare projection now preserves that relation after observed open across the actual post-open mutators without replaying the appended history per prepare. Provenance, complete runtime guards and physical refinement remain open. BP joint durable/pending sender binding and fixed-Store receiver state/context/decision invariants now hold through actual transitions and arbitrary finite replay; changing-Store composition remains open. CHANGED 2026-09-22 (w31/freeze-3): `fn-snt-relation` (books/store-node-traces) now covers the two publications whose node effect is deferred to `fn-sn-finish` -- `fn-sn-prepare-retention` (`6ab2c783`) and `fn-sn-prepare-identity` (`4bb7bb3d`) -- and the fault arm `fn-sn-recover` grew in `40bb3f74`. Before this it was false of every state those three transitions produce, so `fn-snrt-step-preserves-relation`, `fn-own-step-preserves-relation` and `fn-opc-configured-step-preserves-owner-relation` above it were false with it and no run had said so. What the deferred arm says is weaker than the article arm by design: it carries the replayed node at the reservation's transaction id and the equation between the applied event and the replay of the extended history, and no proposal standing on the live node, because there is none until the directory barrier."
     },
@@ -668,7 +673,9 @@
         "fn-spc-prepare-equals-specification-under-relation",
         "fn-opc-prepare-equals-owner-event-under-relation",
         "fn-ocfg-step-observe-is-fn-ocfg-observe",
-        "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation"
+        "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
+        "fn-ccar-own-finish-is-own-finish",
+        "fn-ccar-seek-is-find-record"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -709,7 +716,11 @@
         "books/owner-served-carried.lisp",
         "tests/acl2/owner-served-carried-tests.lisp",
         "planning/evidence/manifests/certify-20260924T163534Z-2387827.json",
-        "planning/evidence/served-path-cost-2026-09-24.md"
+        "planning/evidence/served-path-cost-2026-09-24.md",
+        "books/owner-commit-carried.lisp",
+        "tests/acl2/owner-commit-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T180005Z-3125113.json",
+        "planning/evidence/commit-path-cost-2026-09-24.md"
       ],
       "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open."
     },
@@ -752,7 +763,8 @@
         "fn-served-run-preserves-connp",
         "fn-served-step-effects-are-typed",
         "fn-served-run-effects-are-typed",
-        "fn-own-240-follows-consumed-completion"
+        "fn-own-240-follows-consumed-completion",
+        "fn-ccar-own-finish-is-own-finish"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -767,7 +779,11 @@
         "books/nntp-effects.lisp",
         "tests/test_reader_partitions.py",
         "tests/evidence/2026-09-18-reader-checkpoint-index.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/owner-commit-carried.lisp",
+        "tests/acl2/owner-commit-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T180005Z-3125113.json",
+        "planning/evidence/commit-path-cost-2026-09-24.md"
       ],
       "progress_note": "Actual implemented command/step and arbitrary finite raw event traces preserve session/cursor consistency under a valid archive projection. All dispatcher branches produce typed reply octets/close effects; closed sessions emit none. Exact bridge partitions and reconnect cases pass targeted tests. Full RFC responses/READER bundle, injection/POST and effects-to-I/O refinement remain open. fn-served-step and fn-served-run preserve the connection and type their effects, over the same fn-nntp-step the session keystones are about; the w5/legacy-commands branches (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) are covered by the unchanged statements of fn-nntp-step-effects-well-formed and fn-nntp-step-preserves-consistent-session. Open: NNT-001's capability/dispatch mismatch, and the owner."
     },
