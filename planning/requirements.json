@@ -1245,7 +1245,8 @@
         "PRF-010",
         "PRF-015",
         "PRF-028",
-        "PRF-067"
+        "PRF-067",
+        "PRF-073"
       ],
       "verification": [
         "proof",
@@ -1262,7 +1263,7 @@
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open.",
+      "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open. LIST COUNTS (RFC 6048 section 2.2) answers each group's exact count from the pinned buckets (PRF-073), and a Message-ID retrieval answers the article's number in the selected group, or 0 (RFC 3977 section 6.2.1.2).",
       "keystones": [
         "fn-nntp-step-preserves-carried-projection",
         "fn-index-rebuild-correspondence",
