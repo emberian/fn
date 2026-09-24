@@ -97,7 +97,20 @@ python3 tools/fn_client.py "${NODE[@]}" show '<fn-client.20260922T034404Z.3fd1ce
 ```
 
 An exit of 0 means that article is there; an exit of 1 with `430` means it is
-not and the post may be retried. Never map an uncertain outcome onto either of
+not and the post may be retried.
+
+**Create and persist the Message-ID before the uncertain network operation.**
+Write the Message-ID down (a file, your notes) before you send, and retry with
+`--message-id` set to it and the same text. The node compares the text you
+sent, not the octets it stored (decision D25, the injection inverse): a resend
+of the same text under the same Message-ID is answered
+`441 posting failed; this article is already stored here` at any later time,
+whether or not you supplied a Date, and stores nothing a second time; the same
+Message-ID with any changed octet -- a word, a Date you changed or dropped --
+is `441 ... a different article with this Message-ID is stored here`. Without
+a Message-ID you kept, identical text cannot tell a retry from a deliberate
+second post: each post without one gets a fresh Message-ID and is a new
+article. To post the same text again on purpose, give it a new Message-ID. Never map an uncertain outcome onto either of
 the others in a wrapper script.
 
 ### The watermark
