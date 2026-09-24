@@ -441,6 +441,66 @@
       (fn-hsig-article-event-snapshot-bindsp-v1 event snapshot)
     (fn-hsig-article-event-snapshot-bindsp-v0 event snapshot)))
 
+;; D23 (planning/decisions.md, 2026-09-24): a composite a node stores for a
+;; neighbour whose boundary allowlists the author, when this node holds no
+;; enrollment of the author.  It binds the article record, the authored source
+;; and the carrier exactly as schema 1 does, names the carrier's principal in
+;; its verdict, and carries the token :carried at keyring generation 0, which
+;; no enrollment ever has (fn-hl-next-generationp starts at 1).  No signature
+;; is checked here and none is claimed: replay admits it without a snapshot
+;; (books/replay.lisp fn-replay-identity-step) and the reader renders it
+;; `carried', never `verified' (books/stx-verify.lisp fn-stx-verified-item).
+(defun fn-hsig-article-event-carried-bindsp (event)
+  (declare (xargs :guard t))
+  (if (not (and (fn-stxa-p event)
+                (equal (fn-stxa-schema event) *fn-stxa-carried-version*)
+                (equal (fn-stxa-keyring-generation event) 0)
+                (equal (fn-stxa-profile event) *fn-hsig-profile-tag*)))
+      nil
+    (let* ((article (fn-record-decode-exact (fn-stxa-article-record event)))
+           (verdict (fn-stxe-decode-exact (fn-stxa-verdict-event event)))
+           (received (and (fn-record-result-okp article)
+                          (fn-record-payload (fn-record-result-record article))))
+           (plan (fn-hc-received-plan received)))
+      (and (fn-stxa-bindsp event)
+           (fn-record-result-okp article)
+           (fn-hsig-carried-record-metadatap
+            (fn-stxa-authored-source event) received
+            (fn-record-result-record article))
+           (fn-hc-okp plan)
+           (true-listp (fn-hc-value plan))
+           (equal (len (fn-hc-value plan)) 2)
+           (let ((carrier (cadr (fn-hc-value plan))))
+             (and (true-listp carrier) (equal (len carrier) 3)
+                  (equal (car (fn-hc-value plan))
+                         (fn-stxa-authored-source event))
+                  (equal (fn-stxa-authored-id event)
+                         (fn-hsig-authored-source-id
+                          (fn-stxa-authored-source event)))
+                  (fn-hsig-exact-octets-p (first carrier) 32)
+                  (fn-stmt-okp verdict)
+                  (equal (fn-stxe-token (fn-stmt-value verdict)) :carried)
+                  (equal (fn-stxe-detail (fn-stmt-value verdict))
+                         (first carrier))))))))
+
+(defthm fn-hsig-article-event-carried-bindsp-facts
+  (implies (fn-hsig-article-event-carried-bindsp event)
+           (and (fn-stxa-p event)
+                (fn-stxa-bindsp event)
+                (equal (fn-stxa-keyring-generation event) 0)
+                (fn-stmt-okp (fn-stxe-decode-exact (fn-stxa-verdict-event event)))
+                (equal (fn-stxe-token
+                        (fn-stmt-value
+                         (fn-stxe-decode-exact (fn-stxa-verdict-event event))))
+                       :carried)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-hsig-article-event-carried-bindsp)
+                                  (fn-stxa-bindsp fn-stxa-p
+                                   fn-stxe-decode-exact
+                                   fn-hc-received-plan
+                                   fn-hsig-carried-record-metadatap
+                                   fn-hsig-authored-source-id)))))
+
 (in-theory (disable (:d fn-hsig-keyring-snapshot)
                     (:d fn-hsig-octet-fields-to-strings)
                     (:d fn-hsig-authored-source-fields)
@@ -458,4 +518,5 @@
                     (:d fn-hsig-authorized-injected-carried-submission-event)
                     (:d fn-hsig-article-event-snapshot-bindsp-v0)
                     (:d fn-hsig-article-event-snapshot-bindsp-v1)
-                    (:d fn-hsig-article-event-snapshot-bindsp)))
+                    (:d fn-hsig-article-event-snapshot-bindsp)
+                    (:d fn-hsig-article-event-carried-bindsp)))

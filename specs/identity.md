@@ -171,8 +171,28 @@ snapshots. Absent carrier is the unsigned arm; present and valid under the
 node's current enrollment of the principal, with both native observations
 verified, is a kind-4 acceptance whose verdict `HDR :fn-verified` reports;
 present and invalid is refused with its reason as its own 441 line
-(`fn-pa-served-word`), never the unsigned arm. An unenrolled principal is
-`local-enrollment` (decision register, 2026-09-24 entry on D02's scope).
+(`fn-pa-served-word`), never the unsigned arm. On a served POST an
+unenrolled principal is `local-enrollment` (decision register, 2026-09-24
+entry on D02's scope).
+
+**Carried, not verified (D23).** NNTP transit asks the same
+`fn-pa-current-plan` with one more input: the carried-source list of the
+boundary that delivered the article ([peering §1.2.2](peering.md#122-the-carried-source-list-d23)).
+When this node has no keyring snapshot of the carrier's principal at all
+(never enrolled, never revoked) and that list names it, the plan is
+`(:carried source principal keys signatures)`. The node stores the article
+byte-exact, as a kind-4 composite whose verdict token is `:carried`, whose
+detail is the carrier's principal and whose keyring generation is 0, which
+no enrollment has (`fn-pa-carried-event`,
+`fn-hsig-article-event-carried-bindsp`). It takes no signature observation
+and claims none. Its feed relays the stored octets, carrier intact. `HDR
+:fn-verified` answers `carried <principal-hex>`, never `verified`. A node that
+enrolled the author verifies as before and answers `verified`. A principal
+that is on no list and not enrolled is still refused with
+`local-enrollment` (439 on transit). A revoked principal, or one enrolled
+under other keys, is refused whatever the list says. Served POST, bound
+submissions and BP transit pass no list, so they keep the D02 decision
+(`fn-pa-current-plan-without-carried-list-never-carries`).
 
 The companion `hybrid-verify-source ARTICLE ML-PUBLIC-PEM` uses the same
 ACL2 carrier projection and native two-suite decision. On success it emits
@@ -333,6 +353,12 @@ all three.
   keys is unrelated, and a reader cannot resolve it to keys. A verifier can
   confirm that the carried keys are its pins, but not that generation N held
   them.
+
+A fourth form, `carried <principal-hex>` (D23), is not a claim about the
+signature. It says that this node holds the article for a neighbour whose
+boundary lists that principal and that the node verified nothing.
+`tools/fn_verify.py` exits 3 (cannot decide) on it and reports its own
+check beside it. To get a decision, ask a node that enrolled the author.
 
 The line also does not show whether the node should have accepted, that is,
 whether enrollment was current or group policy allowed the post. Those

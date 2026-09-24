@@ -152,6 +152,30 @@ configuration generation (`fn-cfg-group-livep`). Outbound: an article is
 least one of the newsgroup names", stated per direction. Distribution header
 matching is not modeled (no requirement carries it; noted as open).
 
+#### 1.2.2 The carried-source list (D23)
+
+A boundary may name principals whose signed articles this node accepts from
+that neighbour without enrolling them. The list is extra rows in the peer's
+configuration group. `peer-config`'s typed six-field record ignores them, and
+`config`'s `:set-peer` admits any rows keyed by the peer:
+
+```
+(name "carries-principal" HEX 0)      ; repeatable; HEX = 64 lowercase hex of a principal
+```
+
+`fn peer add NAME ... --carries HEX [--carries HEX ...]` writes them
+(`fn-store-cfg-set-peer`, host/store-node-host.lisp; a malformed HEX is
+refused as `:carries`). `fn-pa-peer-carried-sources`
+(books/peer-authored-accept.lisp) reads the delivering peer's list at the
+transit decision (`fn-owner-transit-decide`). `fn-pa-current-plan` uses it
+only when this node has no snapshot of the principal. The receiver then stores
+the article with a `:carried` verdict and relays it. It does not verify it
+([identity](identity.md), "Carried, not verified"). A node that enrolled the
+author verifies against its own enrollment and never against the list or
+the carrier. This is a local trust policy, not an RFC requirement. The list
+admits an item. It does not vouch for the item. The BP boundary's list is
+the BP lane's (D23, `bp-session-admission`); this list is NNTP only.
+
 #### 1.2.1 Peer changes are not transport-only
 
 Reconfiguration §2.3 and theorem §3.7 call listener and peer changes "effects,

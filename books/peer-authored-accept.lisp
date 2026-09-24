@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "hybrid-lifecycle")
 (include-book "hybrid-carrier")
+(include-book "config")
 
 ; The classifier prevents a malformed or unauthorized FN-Authorship field
 ; from falling through to the legacy article-only Store path.  An article
@@ -46,10 +47,55 @@
                     (list :ok (car value) (car carrier) (cadr carrier)
                           (caddr carrier))))))))))))
 
-; (:ok source principal keys signatures exact-current-snapshot generation).
-; The current B-local per-principal selection (including a revocation
-; tombstone) is made by ACL2 against the carried Store snapshot history.
-(defun fn-pa-current-plan (received snapshots)
+; D23 (planning/decisions.md, 2026-09-24).  A peer boundary's carried-source
+; list: the principals whose signed articles this node holds and relays for
+; that neighbour without an enrollment of its own.  It is rows of the peer's
+; configuration group (books/peer-config.lisp keeps its typed record and
+; ignores other slots; books/config.lisp admits any rows keyed by the peer),
+;
+;   (name "carries-principal" HEX 0)       ; repeatable, one per principal
+;
+; HEX the 64 lowercase hexadecimal characters of the 32-octet principal, the
+; spelling the HDR :fn-verified line and `auth-principal' use.  The list is
+; compared as rendered octets, so no hex is parsed here.
+(defconst *fn-pa-carries-slot* "carries-principal")
+
+(defun fn-pa-carried-sources (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (let ((rest (fn-pa-carried-sources (cdr rows))))
+        (if (and (equal (fn-cfg-row-b (car rows)) *fn-pa-carries-slot*)
+                 (stringp (fn-cfg-row-c (car rows))))
+            (cons (fn-record-string-octets (fn-cfg-row-c (car rows))) rest)
+          rest))
+    nil))
+
+; The list for the peer that delivered: its rows in the configured table.
+(defun fn-pa-peer-carried-sources (peer peers)
+  (declare (xargs :guard t))
+  (fn-pa-carried-sources (fn-cfg-rows-with-key peers peer)))
+
+(defun fn-pa-carriesp (principal carried)
+  (declare (xargs :guard t))
+  (and (fn-hsig-exact-octets-p principal 32)
+       (true-listp carried)
+       (member-equal (fn-stx-hex-octets principal) carried)
+       t))
+
+; The one acceptance decision for a present carrier (served POST, bound local
+; submission, NNTP transit).  Four outcomes:
+;   (:ok source principal keys signatures exact-current-snapshot generation)
+;     this node's current enrollment of the principal names the carried keys;
+;   (:carried source principal keys signatures)
+;     D23: this node has no snapshot of the principal at all (never enrolled,
+;     never revoked) and CARRIED, the delivering boundary's list, names it;
+;   (:refused REASON), carrier-form's refusals and :local-enrollment;
+;   :absent, the unsigned arm.
+; CARRIED is nil on every path without a delivering peer (served POST, bound
+; submission, BP transit), where the decision is the D02 one unchanged
+; (fn-pa-current-plan-without-carried-list-never-carries).  A revoked
+; principal, or one enrolled under other keys, is refused whatever the list.
+(defun fn-pa-current-plan (received snapshots carried)
   (declare (xargs :guard t))
   (let ((form (fn-pa-carrier-form received)))
     (if (not (and (consp form) (eq (car form) :ok))) form
@@ -63,14 +109,17 @@
                                    (fn-stxk-keyring-generation current) nil))
                    (enrolled (fn-hl-current-enrollment
                               generation snapshots)))
-              (if (and (true-listp enrolled)
-                       (equal (len enrolled) 3)
-                       (equal (car enrolled) current)
-                       (equal (cadr enrolled) principal)
-                       (equal (caddr enrolled) keys))
-                  (list :ok source principal keys signatures
-                        current generation)
-                (list :refused :local-enrollment))))))
+              (cond ((and (true-listp enrolled)
+                          (equal (len enrolled) 3)
+                          (equal (car enrolled) current)
+                          (equal (cadr enrolled) principal)
+                          (equal (caddr enrolled) keys))
+                     (list :ok source principal keys signatures
+                           current generation))
+                    ((and (null current)
+                          (fn-pa-carriesp principal carried))
+                     (list :carried source principal keys signatures))
+                    (t (list :refused :local-enrollment)))))))
 
 ; The caller supplies primitive observations, not an authorization Boolean.
 ; This constructor reselects the exact carrier and current enrollment itself,
@@ -81,7 +130,7 @@
               content-subject release-evidence charge snapshots
               observed-ml-key ed-observation ml-observation clock-observation)
   (declare (xargs :guard t))
-  (let ((plan (fn-pa-current-plan received snapshots)))
+  (let ((plan (fn-pa-current-plan received snapshots nil)))
     (if (not (and (consp plan) (eq (car plan) :ok))) nil
       (fn-hsig-authorized-carried-submission-event-base
        sequence txid generation (nth 6 plan)
@@ -91,8 +140,146 @@
        observed-ml-key ed-observation ml-observation clock-observation
        (fn-hc-okp (fn-hc-received-plan received))))))
 
+;; D23: the carried arm's Store event.  The same article record, authored
+;; source and carrier the schema-1 constructor binds
+;; (fn-hsig-authorized-carried-submission-event-base), with no enrolled
+;; snapshot, no primitive observation, and a verdict whose token is :carried,
+;; whose detail is the carrier's principal and whose keyring generation is 0.
+;; It is returned only when replay's carried branch admits it
+;; (fn-hsig-article-event-carried-bindsp), so the host has nothing to commit
+;; otherwise.  Host: host/owner-host.lisp fn-owner-peer-carried-relay-event.
+(defun fn-pa-carried-event
+    (sequence txid generation msgid received groups obligation-id
+              content-subject release-evidence charge snapshots carried
+              clock-observation)
+  (declare (xargs :guard t))
+  (let ((plan (fn-pa-current-plan received snapshots carried)))
+    (if (not (and (consp plan) (eq (car plan) :carried))) nil
+      (let* ((source (nth 1 plan))
+             (principal (nth 2 plan))
+             (fields (fn-hsig-authored-source-fields source))
+             (stamp (fn-record-stamp-of-observation clock-observation))
+             (record (fn-record-make sequence txid generation msgid received
+                                     groups obligation-id content-subject
+                                     release-evidence charge stamp))
+             (source-id (fn-hsig-authored-source-id source)))
+        (if (and (natp stamp) fields source-id
+                 (equal msgid (car fields))
+                 (equal groups (cadr fields))
+                 (equal charge (fn-charge-for-payload (len received)))
+                 (fn-hsig-carried-record-metadatap source received record))
+            (let* ((verdict (fn-stxe-make sequence txid generation msgid
+                                          :carried principal 0
+                                          *fn-hsig-profile-tag*))
+                   (event (fn-stxa-make-carried
+                           sequence txid generation 0 *fn-hsig-profile-tag*
+                           (fn-record-string-octets content-subject)
+                           (fn-record-encode record)
+                           (fn-stxe-encode verdict)
+                           source source-id)))
+              (if (fn-hsig-article-event-carried-bindsp event) event nil))
+          nil)))))
+
+;; ---------------------------------------------------------------------------
+;; D23 keystones over fn-pa-current-plan, the function
+;; host/owner-host.lisp fn-owner-peer-carrier-plan calls for every present
+;; carrier (served POST, bound submission and transit).
+
+; The carrier's own form is :absent, (:refused REASON) or (:ok ...): the
+; carried arm is only ever the plan's.
+(defthm fn-pa-carrier-form-is-never-carried
+  (not (equal (car (fn-pa-carrier-form received)) :carried))
+  :hints (("Goal" :in-theory (e/d (fn-pa-carrier-form)
+                                  (fn-pa-carrier-kind fn-hc-received-plan)))))
+
+; Four outcomes and no fifth: accepted under this node's enrollment, carried
+; for the delivering boundary, refused with a reason, or the unsigned arm.
+(defthm fn-pa-current-plan-outcomes
+  (let ((plan (fn-pa-current-plan received snapshots carried)))
+    (or (equal plan :absent)
+        (equal (car plan) :ok)
+        (equal (car plan) :carried)
+        (equal (car plan) :refused)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carrier-form)
+                                  (fn-pa-carrier-kind fn-hc-received-plan
+                                   fn-hl-current-for-principal
+                                   fn-hl-current-enrollment fn-pa-carriesp)))))
+
+; The carried arm needs both: the delivering boundary lists the principal,
+; and this node has no snapshot of it (never enrolled, never revoked).
+(defthm fn-pa-carried-arm-needs-the-list-and-no-local-snapshot
+  (let ((plan (fn-pa-current-plan received snapshots carried)))
+    (implies (equal (car plan) :carried)
+             (and (fn-pa-carriesp (nth 2 plan) carried)
+                  (null (fn-hl-current-for-principal (nth 2 plan) snapshots))
+                  (equal (nth 1 plan) (nth 1 (fn-pa-carrier-form received)))
+                  (equal (nth 2 plan) (nth 2 (fn-pa-carrier-form received))))))
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carrier-form)
+                                  (fn-pa-carrier-kind fn-hc-received-plan
+                                   fn-hl-current-for-principal
+                                   fn-hl-current-enrollment fn-pa-carriesp)))))
+
+; Off the carried arm the decision is the D02 one: an enrolled receiver
+; accepts exactly as before and an unlisted, unenrolled principal is refused
+; with :local-enrollment, whatever list the boundary carries.
+(defthm fn-pa-current-plan-off-the-carried-arm-is-the-d02-plan
+  (implies (not (equal (car (fn-pa-current-plan received snapshots carried))
+                       :carried))
+           (equal (fn-pa-current-plan received snapshots carried)
+                  (fn-pa-current-plan received snapshots nil)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carriesp)
+                                  (fn-pa-carrier-form
+                                   fn-hl-current-for-principal
+                                   fn-hl-current-enrollment)))))
+
+; Every path without a delivering peer passes nil: it never carries.
+(defthm fn-pa-current-plan-without-carried-list-never-carries
+  (not (equal (car (fn-pa-current-plan received snapshots nil)) :carried))
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carriesp)
+                                  (fn-pa-carrier-form
+                                   fn-hl-current-for-principal
+                                   fn-hl-current-enrollment)))))
+
+(defthm fn-pa-carried-event-requires-the-carried-arm
+  (implies (fn-pa-carried-event
+            sequence txid generation msgid received groups obligation-id
+            content-subject release-evidence charge snapshots carried
+            clock-observation)
+           (equal (car (fn-pa-current-plan received snapshots carried))
+                  :carried))
+  :hints (("Goal" :in-theory
+           (e/d (fn-pa-carried-event)
+                (fn-pa-current-plan fn-hsig-article-event-carried-bindsp
+                 fn-stxa-make-carried fn-stxe-encode 
+                 fn-record-make fn-hsig-carried-record-metadatap)))))
+
+; The carried event is what replay's carried branch admits, and its verdict
+; is :carried naming the carrier's principal: never :verified.
+(defthm fn-pa-carried-event-is-a-carried-record
+  (let ((e (fn-pa-carried-event
+            sequence txid generation msgid received groups obligation-id
+            content-subject release-evidence charge snapshots carried
+            clock-observation)))
+    (implies e
+             (and (fn-hsig-article-event-carried-bindsp e)
+                  (equal (fn-stxa-keyring-generation e) 0)
+                  (equal (fn-stxe-token
+                          (fn-stmt-value
+                           (fn-stxe-decode-exact (fn-stxa-verdict-event e))))
+                         :carried))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-pa-carried-event)
+                (fn-pa-current-plan fn-hsig-article-event-carried-bindsp
+                 fn-stxa-bindsp fn-stxa-p
+                 fn-stxa-make-carried fn-stxe-encode 
+                 fn-record-make fn-hsig-carried-record-metadatap
+                 fn-stxe-decode-exact
+                 fn-hc-received-plan fn-hsig-authored-source-id)))))
+
 (defthm fn-pa-absent-is-only-parser-confirmed-absence
-  (implies (equal (fn-pa-current-plan received snapshots) :absent)
+  (implies (equal (fn-pa-current-plan received snapshots carried) :absent)
            (equal (fn-pa-carrier-kind received) :absent))
   :hints (("Goal" :in-theory (enable fn-pa-current-plan
                                      fn-pa-carrier-form))))
@@ -102,7 +289,7 @@
             sequence txid generation msgid received groups obligation-id
             content-subject release-evidence charge snapshots
             observed-ml-key ed-observation ml-observation clock-observation)
-           (equal (car (fn-pa-current-plan received snapshots)) :ok))
+           (equal (car (fn-pa-current-plan received snapshots nil)) :ok))
   :hints (("Goal" :in-theory
            (e/d (fn-pa-authorized-event)
                 (fn-pa-current-plan fn-hc-received-plan
@@ -130,4 +317,5 @@
 (defthm fn-pa-served-word-without-detail-by-definition
   (equal (fn-pa-served-word word nil) word))
 
-(in-theory (disable (:d fn-pa-current-plan) (:d fn-pa-authorized-event)))
+(in-theory (disable (:d fn-pa-current-plan) (:d fn-pa-authorized-event)
+                    (:d fn-pa-carried-event) (:d fn-pa-carriesp)))
