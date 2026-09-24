@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 683 |
 | Certification roots in the Makefile | 672 |
 | Books inside the root closure | 681 |
-| `defthm` and `defthmd` events | 9199 |
+| `defthm` and `defthmd` events | 9205 |
 | `defun` events | 6646 |
 | Functions with verified guards | 2036 |
 | Functions declared `:verify-guards nil` and never verified | 417 |
 | Functions left at the default with an explicit guard | 3306 |
 | Functions left at the default with no guard | 887 |
-| `assert-event` checks | 10020 |
+| `assert-event` checks | 10022 |
 | `must-fail` checks | 681 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
@@ -170,7 +170,7 @@ that `make certify` requests.
 | `books/bp-node-progress-bridge.lisp` | root | 16 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-guards.lisp` | root | 29 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/bp-node-progress-premises.lisp` | root | 34 | 5 | 0/3/0/2 | 0 | 0 | 1 |
+| `books/bp-node-progress-premises.lisp` | root | 40 | 5 | 0/3/0/2 | 0 | 0 | 1 |
 | `books/bp-node-progress-selection-invariants.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress.lisp` | root | 0 | 57 | 0/5/52/0 | 0 | 0 | 0 |
 | `books/bp-node-receive-boundary.lisp` | root | 1 | 8 | 8/0/0/0 | 0 | 0 | 0 |
@@ -531,7 +531,7 @@ that `make certify` requests.
 | `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
-| `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 14 | 14 | 0 |
+| `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 16 | 14 | 0 |
 | `tests/acl2/bp-node-debt-cache-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 2 | 0 |
 | `tests/acl2/bp-node-debt-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 6 | 4 | 0 |
 | `tests/acl2/bp-node-forwarding-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 8 | 1 | 0 |

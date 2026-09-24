@@ -679,9 +679,9 @@
     "books": 683,
     "books_in_root_closure": 681,
     "roots": 672,
-    "theorems": 9199,
+    "theorems": 9205,
     "functions": 6646,
-    "assert_events": 10020,
+    "assert_events": 10022,
     "must_fails": 681,
     "encapsulates": 30,
     "guards": {
@@ -2944,7 +2944,7 @@
       "book": "books/bp-node-progress-premises.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 34,
+      "theorems": 40,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -12575,9 +12575,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 14,
+      "assert_events": 16,
       "must_fails": 14,
-      "defconsts": 64,
+      "defconsts": 66,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [

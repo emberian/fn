@@ -1829,7 +1829,8 @@
         "fn-bpnp-step-progress-preserves-held",
         "fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch",
         "fn-bpn-step-preserves-lifecycle-invariant",
-        "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record"
+        "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record",
+        "fn-bpnp-recovery-success-clears-sessions-and-pending-image"
       ]
     },
     {
