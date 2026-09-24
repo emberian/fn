@@ -4,6 +4,12 @@ Snapshot: `e657b1cf`, 2026-09-24. The retrospective is factual; the cycle
 below is a recommendation for discussion. It changes no requirement, release
 gate, authority policy or deployment. The live hbox node remains `da5fd8cb`.
 
+Follow-up: the user selected worktree cleanup, finite packet integration and
+bounded Luna trials. [Current work](now.md) and the
+[integration record](evidence/cleanup-integration-2026-09-24.md) supersede the
+queued/branch dispositions below; 101 trees have been archived and removed,
+and ADVANCE, OVER and allocator/index foundation packets are now on `dev`.
+
 The review covers the last **300 first-parent landings**, from `f1fdaf8d`
 (exclusive) to `e657b1cf`, including 393 commits through merged ancestry.
 That is roughly seven hours of September 23 development. A landing may be a

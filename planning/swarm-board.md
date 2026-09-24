@@ -28,8 +28,10 @@ revision and theorem hypotheses when sharing a proof so its scope is clear.
 Root restored the integrated checkout after an accidental external reset;
 see [recovery](worktree-recovery-2026-09-24.md). ADVANCE, OVER, allocator
 frontier packets and the pure consumer-index foundation are integrated.
-Root prepares one shared incremental qualification and native image; no lane
-should duplicate its dependency build. The previous baseline is e657b1cf.
+Combined a785ae03 qualification passed; native_qualification builds one shared
+production/developer image and exercises it. No lane should duplicate its
+build. The current farm gate is `/tank/fn/gates/cleanup-repaired-dfc4c384-20260924`,
+run `run-20260924T010752Z-f65a`; the original manifest is filed.
 
 - `consumer_contract` factors duplicate poll definitions without changing the
   called selector, then joins the index to Store/owner. Coordinates slot13
@@ -46,8 +48,9 @@ should duplicate its dependency build. The previous baseline is e657b1cf.
 - `native_qualification` preserves the live Mini evidence and coordinates the
   next shared image for D1b, reader and bound-input qualification.
 - `luna_reader_verdict` landed the corrected historical server-verdict display;
-  `luna_proof_cost` has a bounded hint experiment awaiting the shared current
-  dependency cache. Failed attempts establish no speedup.
+  `luna_proof_cost` landed a certified local hint/helper, reducing target prover
+  steps without changing its statement. The evidence records failed attempts
+  and the final successful combined certification.
 - `retire_old_worktrees` completed verified archival of 101 inactive or landed worktrees;
   active trees and all branch tips remain available.
 
