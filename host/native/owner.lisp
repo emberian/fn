@@ -135,7 +135,7 @@ function supplied no observation at all, which is a defect here."
   (fnn-owner-action 'fn-owner-finish))
 
 (defun fnn-owner-finish-submission ()
-  "The article completion's word, fn-own-finish's (host/owner-host.lisp)."
+  "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
   (fnn-owner-action 'fn-owner-finish-submission))
 
 (defun fnn-owner-name-list (octets)
