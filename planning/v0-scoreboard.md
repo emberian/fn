@@ -24,4 +24,4 @@ update their cells when they land; the audit records
 Decisions for ember: signed articles cannot relay through an fn node that has not enrolled the author (peer-authored ingress refuses with 439; by design or a gap?); the ten-second rule's job count (the ratchet takes the worst measurement at any job count); P2 refusal reason on the wire; P5 restatement; P8 non-fn verifier and `fn-sig-verify` attachment; P11 retry policy after a possible send.
 
 Image under test: `1a9dd747` ([record](evidence/native-cut-1a9dd747-2026-09-24.md)).
-Deployed node: `da5fd8cb`.
+Deployed node: `47bdb9a4` since 2026-09-24 17:30 UTC ([record](evidence/node-hbox-47bdb9a4-2026-09-24.md)); before it `da5fd8cb`.

@@ -1,4 +1,6 @@
-Current task (2026-09-24, 07:00 EDT): the night's four judged items hold; the
+Current task (2026-09-24, 13:35 EDT): the hbox node runs `47bdb9a4`
+([record](evidence/node-hbox-47bdb9a4-2026-09-24.md)), the plan's T0 for the
+v0 push; the scoreboard says which of P1 to P11 hold on it. Earlier: the night's four judged items hold; the
 [restart record](handoff-2026-09-24-night.md) has the numbers. Image
 [`1a9dd747`](evidence/native-cut-1a9dd747-2026-09-24.md) is the last completed
 shared image pair (BP N03 and interrupted-fragment cases pass); the
