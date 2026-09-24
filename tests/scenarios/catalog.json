@@ -192,7 +192,7 @@
         "host/native/checkpoint.lisp",
         "tests/test_native_checkpoint.py"
       ],
-      "execution_scope": "Partial: selected lossless prefix packs reconstruct exact Store event bytes; focused tests cover corruption, missing selected authority, crash after a prefix unlink, resumed reclamation, and suffix replay. A certified pack-retirement plan excludes selected authority and models arbitrary survival after issued unlinks. Native source tests cover pack-retirement cuts, retry, exact source preservation, and active-reader refusal, but await a source-matched developer image. General concurrent physical reclamation, article-object reclamation, every physical cut, and filesystem qualification remain open."
+      "execution_scope": "Partial: selected lossless prefix packs reconstruct exact Store event bytes; focused tests cover corruption, missing selected authority, crash after a prefix unlink, resumed reclamation, and suffix replay. A certified pack-retirement plan excludes selected authority and models arbitrary survival after issued unlinks. Native source tests cover pack-retirement cuts, retry, exact source preservation, and active-reader refusal; pack-retirement awaits a source-matched developer image. The b074f94e developer-image fixture confirms active-reader exclusion before pack-reclaim unlink and exact source/retention preservation after release, reclamation and reopen (planning/evidence/checkpoint-active-reader-b074-2026-09-24.md). General concurrent physical reclamation, article-object reclamation, every physical cut, and filesystem qualification remain open."
     },
     {
       "id": "SCN-006",
