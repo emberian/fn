@@ -1588,8 +1588,13 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnp-step-progress-preserves-held-and-issued",
-          "note": "The native BP service calls this exact outer transition. For one :progress event it preserves held obligations and issued durable operation; the two-kind-5 N03 trace and dropped-event-kind tooth are in bp-node-machine-teeth-tests. Four-class fairness, forwarding/MRU and reserve debt remain open."
+          "name": "fn-bpnp-step-progress-preserves-held",
+          "note": "The native BP service calls this exact outer transition. One :progress event leaves the held list unchanged; the two-kind-5 N03 trace and dropped-event-kind tooth are in bp-node-machine-teeth-tests. Four-class fairness, MRU and reserve debt remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch",
+          "note": "Same called transition. One :progress event either leaves the issued operation unchanged or, only when nothing was issued, installs a :pending :dispatch at the current epoch and next operation id; its durability is decided by the later matched :persist-result. The routed forwarding witness and the kind-5 receive hypothesis tooth are in bp-node-machine-teeth-tests. Replaces fn-bpnp-step-progress-preserves-held-and-issued, whose issued half is false on the routed transit-dispatch arm."
         }
       ]
     },
