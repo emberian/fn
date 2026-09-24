@@ -2996,9 +2996,10 @@
         "host/native/owner.lisp",
         "tests/test_native_history_marker.py",
         "planning/evidence/manifests/certify-20260924T230629Z-1648710.json",
+        "planning/evidence/manifests/certify-20260924T232218Z-1792716.json",
         "planning/evidence/m5-history-lifetimes-2026-09-24.md"
       ],
-      "progress_note": "Lane m5-history-lifetimes (2026-09-24). Certified on persvati (run-20260924T230612Z-64bc, manifest certify-20260924T230629Z-1648710, ACL2 8.7 w25, book 2.5 s, tests 2.2 s). Teeth: a reachable seven-step history (commit, burn, commit crashed after rename with the old marker, surviving uncertain record, commit, burn, lost uncertain) that is admitted, refuses a lost newest record by name, and admits the same history after further burns. For every hypothesis of both keystones, a concrete instance where the others hold and the conclusion is false. Open: the crash table is not a program of the fn-bs byte model; an absent marker is admitted; an unacknowledged survivor above the marker is not covered.",
+      "progress_note": "Lane m5-history-lifetimes (2026-09-24). Certified on persvati (run-20260924T230612Z-64bc, manifest certify-20260924T230629Z-1648710, ACL2 8.7 w25, book 2.5 s, tests 2.2 s; at 72d40647, run-20260924T232158Z-fa11, manifest certify-20260924T232218Z-1792716, book 2.6 s, tests 2.3 s). Teeth: a reachable seven-step history (commit, burn, commit crashed after rename with the old marker, surviving uncertain record, commit, burn, lost uncertain) that is admitted, refuses a lost newest record by name, and admits the same history after further burns. For every hypothesis of both keystones, a concrete instance where the others hold and the conclusion is false. Open: the crash table is not a program of the fn-bs byte model; an absent marker is admitted; an unacknowledged survivor above the marker is not covered.",
       "events": [
         "fn-hm-run-keeps-every-open-admitted",
         "fn-hm-open-refuses-a-lost-acknowledged-record",
