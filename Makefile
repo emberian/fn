@@ -349,6 +349,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-debt-tests \
 	books/bp-node-debt-cache-invariants \
 	tests/acl2/bp-node-debt-cache-tests \
+	tests/acl2/bp-node-forwarding-teeth-tests \
 	books/bp-fnbs-publication \
 	tests/acl2/bp-fnbs-publication-tests \
 	books/bp-clock-domain \

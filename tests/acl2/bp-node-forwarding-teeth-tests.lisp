@@ -135,3 +135,111 @@
       (equal (fn-bpnp-debt *bpfx-s4*) 4)
       (equal (fn-bpnp-debt *bpfx-s4*)
              (fn-bpnd-debt *bpfx-s4* *bpfx-local*))))
+
+; The live :session event scans oldest first.  The no-fragment older row
+; cannot fit this MRU, so its volatile per-key wait is retained while the
+; younger row proposes a kind-8 attempt on the same session.  No debt is
+; spent until the kind-8 final is durable.
+(defconst *bpfx-session* (cons 1 1))
+(defconst *bpfx-session-event*
+  (list :session *bpfx-dest* *bpfx-session* t 32768 *bpfx-observation*))
+(make-event
+ `(defconst *bpfx-open*
+    ',(fn-bpnp-step *bpfx-s4* *bpfx-session-event*)))
+(defconst *bpfx-attempt-effect*
+  (car (fn-bpnf-answer-effects *bpfx-open*)))
+(defconst *bpfx-attempt-record* (fn-bpn-nth 3 *bpfx-attempt-effect*))
+(assert-event
+ (and (fn-bpnp-host-eventp *bpfx-session-event*)
+      (equal (car *bpfx-attempt-effect*) :persist-attempt)
+      (equal (fn-bpn-nth 3 *bpfx-attempt-record*) 1)
+      (equal (fn-bpn-nth 2
+                         (fn-bpnp-wait-for
+                          (fn-bpnp-wait-key *bpfx-old-held*)
+                          (fn-bpnp-waits (fn-bpnf-answer-state *bpfx-open*))))
+             :mru)
+      (equal (fn-bpnp-used (fn-bpnf-answer-state *bpfx-open*)) 4)
+      (equal (fn-bpnp-debt (fn-bpnf-answer-state *bpfx-open*)) 4)))
+
+; At an MRU that fits the no-fragment older image, the age priority reverses
+; the selected arrival.  The small-MRU younger selection is therefore a
+; consequence of the negotiated limit, not the held-list storage order.
+(defconst *bpfx-wide-session-event*
+  (list :session *bpfx-dest* *bpfx-session* t 65536 *bpfx-observation*))
+(make-event
+ `(defconst *bpfx-wide-open*
+    ',(fn-bpnp-step *bpfx-s4* *bpfx-wide-session-event*)))
+(assert-event
+ (and (equal (car (car (fn-bpnf-answer-effects *bpfx-wide-open*)))
+             :persist-attempt)
+      (equal (fn-bpn-nth
+              3 (fn-bpn-nth
+                 3 (car (fn-bpnf-answer-effects *bpfx-wide-open*))))
+             0)))
+(must-fail
+ (assert-event
+  (equal (fn-bpn-nth 3 *bpfx-attempt-record*)
+         (fn-bpn-nth
+          3 (fn-bpn-nth
+             3 (car (fn-bpnf-answer-effects *bpfx-wide-open*)))))))
+(defconst *bpfx-s5-answer*
+  (fn-bpnp-step
+   (fn-bpnf-answer-state *bpfx-open*)
+   (list :persist-result (fn-bpn-nth 1 *bpfx-attempt-effect*)
+         (fn-bpn-nth 2 *bpfx-attempt-effect*) :durable)))
+(defconst *bpfx-s5* (fn-bpnf-answer-state *bpfx-s5-answer*))
+(defconst *bpfx-send-effect*
+  (car (fn-bpnf-answer-effects *bpfx-s5-answer*)))
+(assert-event
+ (and (equal (car *bpfx-send-effect*) :cl-send)
+      (< (len (fn-bpn-nth 6 *bpfx-send-effect*)) 32768)
+      (equal (fn-bpnp-used *bpfx-s5*) 5)
+      (equal (fn-bpnp-debt *bpfx-s5*) 5)
+      (equal (fn-bpnp-debt *bpfx-s5*)
+             (fn-bpnd-debt *bpfx-s5* *bpfx-local*))
+      (equal (fn-bpn-nth 12
+                         (fn-bpnf-find-arrival 0 (fn-bpnf-held-list *bpfx-s5*)))
+             '(:forward-pending))
+      (equal (fn-bpn-nth 0
+                         (fn-bpn-nth 13
+                                     (fn-bpnf-find-arrival
+                                      1 (fn-bpnf-held-list *bpfx-s5*))))
+             :forwarding)))
+
+; A carrier result is a proposal until its own kind-9 final.  Only the
+; durable :sent result closes the younger row and pays its attempt debt.
+(defconst *bpfx-result-event*
+  (list :forward-result
+        (fn-bpn-nth 1 *bpfx-attempt-effect*)
+        (fn-bpn-nth 2 *bpfx-attempt-effect*)
+        *bpfx-session* :sent *bpfx-observation*))
+(make-event
+ `(defconst *bpfx-result-proposal*
+    ',(fn-bpnp-step *bpfx-s5* *bpfx-result-event*)))
+(defconst *bpfx-result-effect*
+  (car (fn-bpnf-answer-effects *bpfx-result-proposal*)))
+(defconst *bpfx-s6-answer*
+  (fn-bpnp-step
+   (fn-bpnf-answer-state *bpfx-result-proposal*)
+   (list :persist-result (fn-bpn-nth 1 *bpfx-result-effect*)
+         (fn-bpn-nth 2 *bpfx-result-effect*) :durable)))
+(defconst *bpfx-s6* (fn-bpnf-answer-state *bpfx-s6-answer*))
+(assert-event
+ (and (fn-bpnp-host-eventp *bpfx-result-event*)
+      (equal (car *bpfx-result-effect*) :persist-forward-result)
+      (equal (fn-bpnp-used
+              (fn-bpnf-answer-state *bpfx-result-proposal*)) 5)
+      (equal (fn-bpnp-debt
+              (fn-bpnf-answer-state *bpfx-result-proposal*)) 5)
+      (equal (car (car (fn-bpnf-answer-effects *bpfx-s6-answer*)))
+             :forward-ready)
+      (equal (fn-bpnp-used *bpfx-s6*) 6)
+      (equal (fn-bpnp-debt *bpfx-s6*) 3)
+      (equal (fn-bpnp-debt *bpfx-s6*)
+             (fn-bpnd-debt *bpfx-s6* *bpfx-local*))
+      (equal (fn-bpn-nth 12
+                         (fn-bpnf-find-arrival 0 (fn-bpnf-held-list *bpfx-s6*)))
+             '(:forward-pending))
+      (equal (fn-bpn-nth 12
+                         (fn-bpnf-find-arrival 1 (fn-bpnf-held-list *bpfx-s6*)))
+             '(:dispatch-done))))
