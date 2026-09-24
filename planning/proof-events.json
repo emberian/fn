@@ -1572,43 +1572,6 @@
       ]
     },
     {
-      "id": "PRF-046",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-step-preserves-lifecycle-invariant"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-step-queue-acceptance-is-durable-or-exact-duplicate"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnp-step-progress-preserves-held",
-          "note": "The native BP service calls this exact outer transition. One :progress event leaves the held list unchanged; the two-kind-5 N03 trace and dropped-event-kind tooth are in bp-node-machine-teeth-tests. Four-class fairness, MRU and reserve debt remain open."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch",
-          "note": "Same called transition. One :progress event either leaves the issued operation unchanged or, only when nothing was issued, installs a :pending :dispatch at the current epoch and next operation id; its durability is decided by the later matched :persist-result. The routed forwarding witness and the kind-5 receive hypothesis tooth are in bp-node-machine-teeth-tests. Replaces fn-bpnp-step-progress-preserves-held-and-issued, whose issued half is false on the routed transit-dispatch arm."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnp-step-preserves-guard-premises",
-          "note": "Same called transition (host/native/bp-service.lisp:172, after fn-bpnp-host-eventp at :170). For every host event, one step keeps the guard premises of fn-bpnp-step: the session table is fn-bpnp-session-listp, the held list is a true list, and the base is fn-bpn-machine-invariantp, which is carried in place of the guard's fn-bpn-machine-statep because the existing fn-bpn-step, fn-bpn-restart-step and fn-bpn-propose preservation lemmas are stated for the invariant and the host checks exactly that invariant on the base at open (host/native/bp-service.lisp:712 initial, :757 after recovery); fn-bpnp-initial-state-guard-premises closes the initial state from that check. The reachable witness and one negative case per premise conjunct and for the host-event hypothesis are in bp-node-progress-premises-tests."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnp-host-trace-preserves-guard-premises",
-          "note": "Induction of the step keystone over a list of host events: premises that hold at open hold after every served step of the trace."
-        }
-      ]
-    },
-    {
       "id": "PRF-048",
       "events": [
         {
