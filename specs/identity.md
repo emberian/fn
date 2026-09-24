@@ -75,6 +75,12 @@ article Store; an indexed active-key table and its correspondence remain a
 cost obligation if this history becomes large. This is local same-owner
 control policy, not an offline revocation or portable principal-succession
 protocol.
+For a completed kind-3 Store-node event, the maintained-path projection in
+`books/hybrid-lifecycle-store-invariants.lisp` equates the post-finish local
+selector to the identity replay step and proves that earlier carried verdicts
+are unchanged. Its trace checks the node/file and journal-sequence relations
+through A/B enrollment, A rotation, A tombstone and observed reopen. A general
+crash-phase relation for all possible lifecycle traces remains an obligation.
 
 `fn-hsig-subject-body-injective` proves that equality of two valid authored
 subject bodies implies equality of their principal, ordered Ed25519 and
