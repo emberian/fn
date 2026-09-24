@@ -79,7 +79,7 @@ class NativeWebClientTests(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertIn("fn.agents", page)
                 status, page = request("POST", "/post", subject="Native web first",
-                                       body_text="First native owner body")
+                                       body_text="First native owner body <visible>")
                 self.assertEqual(status, 200)
                 self.assertIn("<span class='badge accepted'>accepted</span>", page)
                 status, page = request("POST", "/post", subject="Native web second",
@@ -105,7 +105,7 @@ class NativeWebClientTests(unittest.TestCase):
 
                 status, page = request("GET", "/a?group=fn.agents&number=1")
                 self.assertEqual(status, 200)
-                self.assertIn("First native owner body", page)
+                self.assertIn("First native owner body &lt;visible&gt;", page)
                 self.assertIn("Viewing does not acknowledge application processing", page)
             finally:
                 if server is not None:
