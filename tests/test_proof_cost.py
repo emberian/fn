@@ -58,7 +58,9 @@ class ProofCostTests(unittest.TestCase):
             (run / "books--slow.certify.log").write_text(
                 "Summary\nForm: ( ENCAPSULATE ...)\nTime: 99.00 seconds\n"
                 "Summary\nForm: ( DEFTHM SLOW-LEMMA ...)\n"
-                "Time: 11.00 seconds (prove: 10.00)\n")
+                "Time: 11.00 seconds (prove: 10.00)\n"
+                "Summary\nForm: (CERTIFY-BOOK \"books/slow\" ...)\n"
+                "Time: 12.00 seconds\n")
             lines = proof_cost.report(manifest, 10)
             joined = "\n".join(lines)
             self.assertIn("installed=1 certified-attempted=1", joined)

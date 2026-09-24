@@ -27,7 +27,7 @@ import ledger  # noqa: E402
 SUMMARY = re.compile(r"(?m)^Summary\s*$")
 FORM = re.compile(r"(?m)^Form:\s*(.*)$")
 TIME = re.compile(r"(?m)^Time:\s*([0-9]+(?:\.[0-9]+)?) seconds")
-WRAPPER = re.compile(r"^\(\s*(?:ENCAPSULATE|PROGN|MAKE-EVENT)\b", re.I)
+WRAPPER = re.compile(r"^\(\s*(?:ENCAPSULATE|PROGN|MAKE-EVENT|CERTIFY-BOOK)\b", re.I)
 
 
 def latest_manifest(root: Path) -> Path | None:
