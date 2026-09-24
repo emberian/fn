@@ -10,11 +10,18 @@ from __future__ import annotations
 
 import argparse
 from collections import OrderedDict
+import fcntl
+import hashlib
 import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hmac
+import json
+import os
+from pathlib import Path
 import re
 import secrets
+import stat
+import tempfile
 import threading
 from types import SimpleNamespace
 from typing import Optional, Tuple
@@ -238,6 +245,230 @@ class SubmissionBook:
             return entry
 
 
+class OutboxError(Exception):
+    """Local outbox persistence failed; no new network submission is safe."""
+
+
+class OutboxFull(OutboxError):
+    pass
+
+
+class DurableSubmissionBook(SubmissionBook):
+    """Private single-writer spool; intent reaches disk before any NNTP call."""
+
+    def __init__(self, backend: Backend, directory: Path):
+        super().__init__(backend)
+        self.durable = True
+        self.directory = directory.expanduser().absolute()
+        self.fenced = None
+        self.lock_fd = None
+        self.dir_fd = None
+        self.target = self._target()
+        try:
+            self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+            info = self.directory.lstat()
+            if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or \
+                    stat.S_IMODE(info.st_mode) != 0o700:
+                raise OutboxError("outbox directory must be owned by this user with mode 0700")
+            self.dir_fd = os.open(self.directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            self.lock_fd = os.open(self.directory / ".lock",
+                                   os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+            lock_info = os.fstat(self.lock_fd)
+            if not stat.S_ISREG(lock_info.st_mode) or lock_info.st_uid != os.getuid() or \
+                    stat.S_IMODE(lock_info.st_mode) != 0o600:
+                raise OutboxError("outbox lock must be a private regular file")
+            try:
+                fcntl.flock(self.lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise OutboxError("outbox is open in another client") from exc
+            paths = sorted(self.directory.iterdir())
+            if len(paths) > MAX_SUBMISSIONS * 2 + 1:
+                raise OutboxError("outbox has too many files")
+            for path in paths:
+                if path.name == ".lock":
+                    continue
+                if re.fullmatch(r"\.record-[A-Za-z0-9_]{8}", path.name):
+                    leftover = path.lstat()
+                    if not stat.S_ISREG(leftover.st_mode) or \
+                            leftover.st_uid != os.getuid() or \
+                            stat.S_IMODE(leftover.st_mode) != 0o600:
+                        raise OutboxError("outbox has an unsafe temporary file")
+                    path.unlink()
+                    os.fsync(self.dir_fd)
+                    continue
+                if not re.fullmatch(r"[A-Za-z0-9_-]{32}\.json", path.name):
+                    raise OutboxError("outbox contains an unexpected file")
+                entry = self._read(path)
+                self.entries[path.stem] = entry
+            if len(self.entries) > MAX_SUBMISSIONS:
+                raise OutboxError("outbox exceeds its record limit")
+        except Exception:
+            self.close()
+            raise
+
+    def _target(self):
+        args = self.backend.args
+        cafile = getattr(args, "cafile", None)
+        ca_digest = hashlib.sha256(Path(cafile).expanduser().read_bytes()).hexdigest() \
+            if cafile and not args.plain else ""
+        return {"host": args.host, "port": args.port, "plain": bool(args.plain),
+                "user": self.backend.user, "ca_sha256": ca_digest}
+
+    def close(self):
+        if self.lock_fd is not None:
+            os.close(self.lock_fd)
+            self.lock_fd = None
+        if self.dir_fd is not None:
+            os.close(self.dir_fd)
+            self.dir_fd = None
+
+    def _read(self, path):
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or \
+                    stat.S_IMODE(info.st_mode) != 0o600 or info.st_size > 32768:
+                raise OutboxError("outbox record is not a bounded private file")
+            raw = bytearray()
+            while len(raw) <= 32768:
+                chunk = os.read(fd, 32769 - len(raw))
+                if not chunk:
+                    break
+                raw.extend(chunk)
+        finally:
+            os.close(fd)
+        try:
+            saved = json.loads(raw)
+            if saved["version"] != 1 or saved["target"] != self.target:
+                raise OutboxError("outbox record has another version or target")
+            if saved["token"] != path.stem or not group_token(saved["group"]) or \
+                    not isinstance(saved["lines"], list) or not saved["lines"] or \
+                    not all(isinstance(line, str) for line in saved["lines"]) or \
+                    len("\r\n".join(saved["lines"]).encode()) > MAX_BODY + 4096 or \
+                    not isinstance(saved["message_id"], str) or \
+                    not saved["message_id"].startswith("<") or \
+                    not saved["message_id"].endswith(">"):
+                raise OutboxError("outbox record is malformed")
+            original = saved["result"]
+            if original is None:
+                result = fn_client.Result(fn_client.UNCERTAIN,
+                    fn_client.unsettled(saved["message_id"],
+                        "the client restarted with an in-flight durable intent"),
+                    {"message_id": saved["message_id"]}, "")
+            elif isinstance(original, dict) and original["word"] in (
+                    fn_client.ACCEPTED, fn_client.REFUSED,
+                                       fn_client.UNCERTAIN) and isinstance(original["detail"], str):
+                result = fn_client.Result(original["word"], original["detail"],
+                                          {"message_id": saved["message_id"]}, "")
+            else:
+                raise OutboxError("outbox outcome is malformed")
+            observation = saved.get("settlement")
+            if observation is not None and (not isinstance(observation, dict) or
+                    observation["word"] not in
+                    (fn_client.DONE, fn_client.REFUSED, fn_client.UNCERTAIN) or
+                    not isinstance(observation["detail"], str)):
+                raise OutboxError("outbox observation is malformed")
+            return {"group": saved["group"], "lines": tuple(saved["lines"]),
+                    "message_id": saved["message_id"], "result": result,
+                    "settlement": (fn_client.Result(observation["word"],
+                                   observation["detail"], {}, "") if observation else None),
+                    "original_recorded": original is not None, "record_error": None}
+        except (KeyError, TypeError, UnicodeError, ValueError, AttributeError) as exc:
+            raise OutboxError("outbox record is malformed") from exc
+
+    def _write(self, token, entry, original, settlement):
+        saved = {"version": 1, "token": token, "target": self.target,
+                 "group": entry["group"], "lines": list(entry["lines"]),
+                 "message_id": entry["message_id"], "result": original,
+                 "settlement": settlement}
+        data = json.dumps(saved, ensure_ascii=True, separators=(",", ":")).encode()
+        if len(data) > 32768:
+            raise OutboxError("outbox record exceeds 32 KiB")
+        fd, temporary = tempfile.mkstemp(prefix=".record-", dir=self.directory)
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, self.directory / (token + ".json"))
+            os.fsync(self.dir_fd)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+
+    def _fence(self, exc):
+        self.fenced = "outbox persistence failed: " + str(exc)
+        return self.fenced
+
+    def new(self, group: str) -> str:
+        with self.lock:
+            if self.fenced:
+                raise OutboxError(self.fenced)
+            if len(self.entries) >= MAX_SUBMISSIONS:
+                stale = next((token for token, entry in self.entries.items()
+                              if entry["lines"] is None), None)
+                if stale is None:
+                    raise OutboxFull("outbox is full; archive records while the client is stopped")
+                del self.entries[stale]
+            token = secrets.token_urlsafe(24)
+            self.entries[token] = {"group": group, "lines": None, "message_id": "",
+                                   "result": None, "settlement": None,
+                                   "original_recorded": False, "record_error": None}
+            return token
+
+    def submit(self, token, group, subject, sender, references, body):
+        with self.lock:
+            entry = self.entries.get(token)
+            if entry is None:
+                return None
+            if group != entry["group"]:
+                raise ValueError("form group does not match its submission identifier")
+            if entry["result"] is not None:
+                return entry
+            if self.fenced:
+                raise OutboxError(self.fenced)
+            lines, msgid = self.backend.prepare(group, subject, sender, references, body)
+            entry["lines"], entry["message_id"] = tuple(lines), msgid
+            if sum(one["lines"] is not None for one in self.entries.values()) > MAX_SUBMISSIONS:
+                raise OutboxFull("outbox is full")
+            try:
+                self._write(token, entry, None, None)
+            except (OSError, OutboxError) as exc:
+                raise OutboxError(self._fence(exc)) from exc
+            # The durable in-flight marker also prevents a second send if a
+            # later local exception occurs before the response is recorded.
+            entry["result"] = fn_client.Result(fn_client.UNCERTAIN,
+                fn_client.unsettled(msgid, "an in-flight attempt has no recorded answer"),
+                {"message_id": msgid}, "")
+            try:
+                answer = self.backend.post(group, entry["lines"], msgid)
+            except (OSError, Disconnected) as exc:
+                answer = fn_client.Result(fn_client.UNCERTAIN,
+                    fn_client.unsettled(msgid, str(exc)), {"message_id": msgid}, "")
+            entry["result"] = answer
+            original = {"word": answer.word, "detail": answer.detail}
+            try:
+                self._write(token, entry, original, None)
+                entry["original_recorded"] = True
+            except (OSError, OutboxError) as exc:
+                entry["record_error"] = self._fence(exc)
+            return entry
+
+    def settle(self, token):
+        entry = super().settle(token)
+        with self.lock:
+            if entry is not None and entry["settlement"] is not None and not self.fenced:
+                observation = {"word": entry["settlement"].word,
+                               "detail": entry["settlement"].detail}
+                original = ({"word": entry["result"].word, "detail": entry["result"].detail}
+                            if entry["original_recorded"] else None)
+                try:
+                    self._write(token, entry, original, observation)
+                except (OSError, OutboxError) as exc:
+                    entry["record_error"] = self._fence(exc)
+        return entry
+
+
 def e(value) -> str:
     return html.escape(str(value if value is not None else ""), quote=True)
 
@@ -353,7 +584,10 @@ class Handler(BaseHTTPRequestHandler):
                 "<meta name='viewport' content='width=device-width,initial-scale=1'>"
                 "<title>" + e(title) + " · fn</title><style>" + STYLE + "</style>"
                 "<body><header><h1><a href='/'>fn / news</a></h1>"
-                "<span class='muted'>local reader</span></header>" + content + "</body></html>")
+                + ("<a href='/outbox'>Local outbox</a>" if getattr(
+                    self.server.submissions, "durable", False) else
+                   "<span class='muted'>local reader</span>") +
+                "</header>" + content + "</body></html>")
         encoded = page.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -391,8 +625,8 @@ class Handler(BaseHTTPRequestHandler):
         entry = (self.server.submissions.settle(token) if settle else
                  self.server.submissions.get(token))
         if entry is None:
-            self.page("Submission unavailable", "<p>This form's local record has expired or "
-                      "the web client restarted. No post was sent for this request. "
+            self.page("Submission unavailable", "<p>No local record has this identifier. "
+                      "A form may have expired before its first submission. "
                       "Check the node by Message-ID if you kept it.</p>", 410)
             return
         result = entry["result"]
@@ -425,9 +659,15 @@ class Handler(BaseHTTPRequestHandler):
                   "'>Check whether the node serves this Message-ID</a></p>"
                   "<details><summary>Node response and diagnostic detail</summary><pre>" +
                   e(result.detail) + "</pre></details>"
+                  + ("<p class='hint'>" + e(entry.get("record_error")) +
+                     ". This process is fenced from new submissions. The node answer above "
+                     "was observed here, but its local recording is uncertain.</p>"
+                     if entry.get("record_error") else "") +
                   "<p class='muted'>Refresh this page safely; it never sends another POST. "
-                  "This client keeps the exact submitted source and result only while "
-                  "this process runs and the form remains in its bounded memory.</p>"
+                  + ("The durable outbox keeps the source and recorded result across restart."
+                     if getattr(self.server.submissions, "durable", False) else
+                     "This client keeps the exact submitted source and result only while "
+                     "this process runs and the form remains in its bounded memory.") + "</p>"
                   "</article>")
 
     def redirect(self, location: str):
@@ -464,6 +704,16 @@ class Handler(BaseHTTPRequestHandler):
                                 e(group_summary(row)) + "</p></article>"
                                 for row in result.data["groups"])
                 self.page("Groups", "<h2>Groups</h2>" + (cards or "<p>No groups are served.</p>"))
+            elif path == "/outbox" and getattr(self.server.submissions, "durable", False):
+                with self.server.submissions.lock:
+                    rows = [(token, entry["message_id"], entry["result"].word)
+                            for token, entry in self.server.submissions.entries.items()
+                            if entry["message_id"]]
+                cards = "".join("<article><a href='" + e(href("/result", id=token)) +
+                                "'>" + e(msgid) + "</a> · " + e(word) + "</article>"
+                                for token, msgid, word in rows)
+                self.page("Outbox", "<nav><a href='/'>Groups</a></nav><h2>Local outbox</h2>" +
+                          (cards or "<p>No submitted records.</p>"))
             elif path == "/g":
                 group = values.get("name", "")
                 if not group_token(group):
@@ -608,6 +858,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.page("Not found", "<p>Page not found.</p>", 404)
         except ValueError as exc:
             self.page("Invalid request", "<p>" + e(exc) + "</p>", 400)
+        except OutboxFull as exc:
+            self.page("Outbox full", "<p>" + e(exc) + "</p>", 507)
+        except OutboxError as exc:
+            self.page("Outbox unavailable", "<p>" + e(exc) + "</p>", 503)
 
     def do_POST(self):
         if not self.valid_host() or self.path != "/post":
@@ -649,16 +903,31 @@ class Handler(BaseHTTPRequestHandler):
             self.redirect(href("/result", id=submission_id))
         except (ValueError, UnicodeDecodeError) as exc:
             self.page("Invalid post", "<p>" + e(exc) + "</p>", 400)
+        except OutboxFull as exc:
+            self.page("Outbox full", "<p>" + e(exc) + "</p>", 507)
+        except OutboxError as exc:
+            self.page("Outbox unavailable", "<p>" + e(exc) + "</p>", 503)
 
 
 class WebServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, port: int, backend: Backend):
+    def __init__(self, port: int, backend: Backend, outbox: Optional[Path] = None):
         self.backend = backend
         self.token = secrets.token_urlsafe(32)
-        self.submissions = SubmissionBook(backend)
-        super().__init__(("127.0.0.1", port), Handler)
+        self.submissions = (DurableSubmissionBook(backend, outbox) if outbox else
+                            SubmissionBook(backend))
+        try:
+            super().__init__(("127.0.0.1", port), Handler)
+        except Exception:
+            if outbox:
+                self.submissions.close()
+            raise
+
+    def server_close(self):
+        super().server_close()
+        if getattr(self.submissions, "durable", False):
+            self.submissions.close()
 
 
 def main(argv=None):
@@ -668,6 +937,8 @@ def main(argv=None):
     parser.add_argument("--cafile")
     parser.add_argument("--plain", action="store_true")
     parser.add_argument("--credentials")
+    parser.add_argument("--outbox", type=Path,
+                        help="private durable local submission directory")
     parser.add_argument("--timeout", type=float, default=15.0)
     args = parser.parse_args(argv)
     fn_client.resolve(args, parser)
@@ -678,9 +949,12 @@ def main(argv=None):
     user, password = ("", "") if args.plain else fn_client.credentials(args, parser)
     if not args.plain and not (user and password):
         parser.error("set client credentials or pass a mode-0600 --credentials file")
-    with WebServer(args.port, Backend(args, user, password)) as server:
-        print("fn web client: http://127.0.0.1:%d/" % server.server_port, flush=True)
-        server.serve_forever()
+    try:
+        with WebServer(args.port, Backend(args, user, password), args.outbox) as server:
+            print("fn web client: http://127.0.0.1:%d/" % server.server_port, flush=True)
+            server.serve_forever()
+    except (OSError, OutboxError) as exc:
+        parser.error("local web client: " + str(exc))
 
 
 if __name__ == "__main__":

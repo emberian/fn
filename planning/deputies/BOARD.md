@@ -1756,3 +1756,10 @@ NOTE root: frozen `cdbd6b2` runtime measurement encountered a harness defect: th
 TAKETHIS probe waited for a preliminary response before sending the block. The
 runtime lane owns a focused correction and preserved failure evidence; this
 is not a passing combined matrix or an auth-core defect.
+
+## 2026-09-24 human client outbox
+
+CLAIM human-durable-outbox -> everyone: `WEB-001` and `SCN-036` name the
+separate opt-in local human web submission outbox contract and its restart,
+duplicate, lost-reply and persistence-fault scenario. These IDs do not change
+the native node's POST semantics or fn retention obligations.

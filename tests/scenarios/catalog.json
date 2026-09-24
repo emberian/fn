@@ -1152,6 +1152,25 @@
         "planning/evidence/manifests/certify-20260924T042906Z-890015.json"
       ],
       "execution_scope": "The merged ACL2 topic/index Store, observed reopen, local proposal/control and native-control roots passed on persvati; after status kind 9 joined, its affected scope/index/native-control roots also passed. The source-matched native install/root/report/reopen scenario and whole reverse closure remain unqualified."
+    },
+    {
+      "id": "SCN-036",
+      "title": "Durable local human submission without automatic repost",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": ["WEB-001"],
+      "steps": [
+        "Compose one article with a persistent outbox, race two HTTP POST handlers, restart the web client, and submit the same identifier again.",
+        "Lose the NNTP reply after article bytes, restart with both a recorded uncertain reply and a bare in-flight intent, and make a read-only ARTICLE settlement observation.",
+        "Inject local file and directory fsync failures before and after the NNTP attempt, then fill the bounded spool."
+      ],
+      "expected": [
+        "The exact source, Message-ID and target are frozen before the sole NNTP attempt; duplicate handlers and restart do not repost.",
+        "In-flight and lost-reply outcomes remain uncertain; an ARTICLE lookup records only what is currently served.",
+        "An intent write failure sends no article; a reply-record write failure retains the known node answer in the running process and fences new submissions; a full spool preserves all prior records."
+      ],
+      "evidence": ["tests/test_fn_web.py", "tools/fn_web.py"],
+      "execution_scope": "Real local HTTP and fake NNTP socket tests exercise this separate client's behavior. A source-matched native-node run, physical power-loss qualification, and general external-web security audit remain open."
     }
   ]
 }

@@ -1,6 +1,9 @@
 """The separate web client against an actual NNTP socket and HTTP requests."""
 from concurrent.futures import ThreadPoolExecutor
 import http.client
+import html
+import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -8,6 +11,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from types import SimpleNamespace
 from urllib.parse import urlencode
 
@@ -44,6 +48,22 @@ class WebClientTests(unittest.TestCase):
         self.server.server_close()
         self.thread.join(5)
         self.node.stop()
+        if hasattr(self, "outbox_temp"):
+            self.outbox_temp.cleanup()
+
+    def enable_outbox(self):
+        self.outbox_temp = tempfile.TemporaryDirectory()
+        self.outbox_path = Path(self.outbox_temp.name) / "submissions"
+        self.restart_outbox()
+
+    def restart_outbox(self):
+        backend = self.server.backend
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(5)
+        self.server = fn_web.WebServer(0, backend, self.outbox_path)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
 
     def request(self, method, path, body=None, origin=True):
         connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port,
@@ -388,6 +408,150 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(self.request("POST", "/post", {
             "submission_id": first})[0], 410)
         self.assertNotIn("POST", self.node.seen)
+
+    def test_durable_outbox_restart_duplicate_and_single_instance(self):
+        self.enable_outbox()
+        token = self.form_id()
+        with self.assertRaisesRegex(fn_web.OutboxError, "another client"):
+            fn_web.DurableSubmissionBook(self.server.backend, self.outbox_path)
+        sent = self.request("POST", "/post", {"submission_id": token})
+        self.assertEqual(sent[0], 303)
+        record = self.outbox_path / (token + ".json")
+        saved = json.loads(record.read_text())
+        self.assertEqual(saved["result"]["word"], "accepted")
+        self.assertEqual(saved["target"]["port"], self.node.port)
+        self.assertEqual(record.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(self.outbox_path.stat().st_mode & 0o777, 0o700)
+        self.assertIn("A real post", saved["lines"])
+        self.assertEqual(self.node.seen.count("POST"), 1)
+        self.restart_outbox()
+        self.assertIn(html.escape(saved["message_id"]),
+                      self.request("GET", "/outbox")[2])
+        self.assertIn("badge accepted", self.request("GET", sent[1]["Location"])[2])
+        duplicate = self.request("POST", "/post", {"submission_id": token,
+                                                      "body": "different source"})
+        self.assertEqual(duplicate[0], 303)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+        self.assertEqual(json.loads(record.read_text())["lines"], saved["lines"])
+
+        other_args = SimpleNamespace(host="127.0.0.1", port=self.node.port + 1,
+                                     timeout=5.0, plain=True, cafile=None)
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(5)
+        with self.assertRaisesRegex(fn_web.OutboxError, "another version or target"):
+            fn_web.DurableSubmissionBook(
+                fn_web.Backend(other_args, "", ""), self.outbox_path)
+        self.server = fn_web.WebServer(0, self.server.backend, self.outbox_path)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+    def test_durable_refusal_remains_refusal_after_restart(self):
+        self.enable_outbox()
+        self.node.refuse_post = True
+        token = self.form_id()
+        sent = self.request("POST", "/post", {"submission_id": token})
+        self.assertEqual(sent[0], 303)
+        self.restart_outbox()
+        page = self.request("GET", "/result?id=" + token)[2]
+        self.assertIn("badge refused", page)
+        self.assertEqual(self.request("POST", "/post", {"submission_id": token})[0], 303)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+
+    def test_durable_inflight_restart_and_lost_reply_never_repost(self):
+        self.enable_outbox()
+        token = self.form_id()
+        entry = self.server.submissions.entries[token]
+        lines, msgid = self.server.backend.prepare("fn.agents", "hello",
+            "human <h@local.invalid>", "", "in-flight source")
+        entry["lines"], entry["message_id"] = tuple(lines), msgid
+        self.server.submissions._write(token, entry, None, None)
+        self.restart_outbox()
+        self.assertIn("badge uncertain", self.request("GET", "/result?id=" + token)[2])
+        self.assertEqual(self.request("POST", "/post", {"submission_id": token})[0], 303)
+        self.assertNotIn("POST", self.node.seen)
+
+        lost = self.form_id()
+        self.node.drop_after_article = True
+        sent = self.request("POST", "/post", {"submission_id": lost})
+        self.assertEqual(sent[0], 303)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+        self.restart_outbox()
+        self.assertIn("badge uncertain", self.request("GET", sent[1]["Location"])[2])
+        self.assertEqual(self.request("POST", "/post", {"submission_id": lost})[0], 303)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+        saved = json.loads((self.outbox_path / (lost + ".json")).read_text())
+        self.node.drop_after_article = False
+        self.node.inject("fn.agents", saved["lines"])
+        observed = self.request("GET", "/settle?id=" + lost)[2]
+        self.assertIn("now serves this Message-ID", observed)
+        self.assertIn("badge uncertain", observed)
+        self.restart_outbox()
+        again = self.request("GET", "/result?id=" + lost)[2]
+        self.assertIn("now serves this Message-ID", again)
+        self.assertIn("badge uncertain", again)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+
+    def test_durable_restart_discards_only_incomplete_temp_write(self):
+        self.enable_outbox()
+        first = self.form_id()
+        self.assertEqual(self.request("POST", "/post", {"submission_id": first})[0], 303)
+        temp = self.outbox_path / ".record-abcdefgh"
+        temp.write_text("half a JSON record")
+        temp.chmod(0o600)
+        self.restart_outbox()
+        self.assertFalse(temp.exists())
+        self.assertIn("badge accepted", self.request("GET", "/result?id=" + first)[2])
+        self.assertEqual(self.node.seen.count("POST"), 1)
+
+    def test_durable_concurrent_submit_and_full_spool_preserve_records(self):
+        self.enable_outbox()
+        token = self.form_id()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first, second = list(pool.map(lambda body: self.request(
+                "POST", "/post", {"submission_id": token, "body": body}),
+                ("first", "second")))
+        self.assertEqual((first[0], second[0]), (303, 303))
+        self.assertEqual(self.node.seen.count("POST"), 1)
+        for index in range(fn_web.MAX_SUBMISSIONS - 1):
+            token2 = self.server.submissions.new("fn.agents")
+            entry = self.server.submissions.entries[token2]
+            entry["lines"] = ("Message-ID: <local-%d@example.invalid>" % index, "")
+            entry["message_id"] = "<local-%d@example.invalid>" % index
+            entry["result"] = fn_web.fn_client.Result(
+                fn_web.fn_client.UNCERTAIN, "local fixture", {}, "")
+            self.server.submissions._write(token2, entry,
+                {"word": "uncertain", "detail": "local fixture"}, None)
+        self.assertEqual(self.request("GET", "/compose?group=fn.agents")[0], 507)
+        self.assertEqual(len(list(self.outbox_path.glob("*.json"))), fn_web.MAX_SUBMISSIONS)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+
+    def test_durable_fsync_failures_before_and_after_network(self):
+        self.enable_outbox()
+        token = self.form_id()
+        actual_fsync = os.fsync
+        with mock.patch.object(fn_web.os, "fsync", side_effect=OSError("intent EIO")):
+            denied = self.request("POST", "/post", {"submission_id": token})
+        self.assertEqual(denied[0], 503)
+        self.assertNotIn("POST", self.node.seen)
+        self.assertEqual(self.request("GET", "/compose?group=fn.agents")[0], 503)
+
+        self.restart_outbox()
+        token = self.form_id()
+        calls = [0]
+        def fail_result_barrier(fd):
+            calls[0] += 1
+            if calls[0] == 4:
+                raise OSError("result directory EIO")
+            return actual_fsync(fd)
+        with mock.patch.object(fn_web.os, "fsync", side_effect=fail_result_barrier):
+            sent = self.request("POST", "/post", {"submission_id": token})
+        self.assertEqual(sent[0], 303)
+        page = self.request("GET", sent[1]["Location"])[2]
+        self.assertIn("badge accepted", page)
+        self.assertIn("outbox persistence failed", page)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+        self.assertEqual(self.request("GET", "/compose?group=fn.agents")[0], 503)
 
 
 if __name__ == "__main__":
