@@ -58,14 +58,32 @@ def article(i):
 
 
 class Conn:
+    """One client connection that does not add TCP timers to what it times.
+
+    TCP_NODELAY sends each command at once.  TCP_QUICKACK (Linux, re-armed
+    before every read because the kernel clears it) acknowledges each reply
+    segment at once, so a server reply written in more than one segment is
+    not held by the server's Nagle wait for the client's delayed ACK (the
+    40 ms and 200 ms modes of planning/evidence/commit-path-2-2026-09-24.md).
+    """
+
     def __init__(self, port):
         self.sock = socket.create_connection(("127.0.0.1", port), timeout=600)
+        self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.stream = self.sock.makefile("rwb", buffering=0)
-        self.greeting = self.stream.readline()
+        self.greeting = self.readline()
+
+    def quickack(self):
+        if hasattr(socket, "TCP_QUICKACK"):
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_QUICKACK, 1)
+
+    def readline(self):
+        self.quickack()
+        return self.stream.readline()
 
     def line(self, text):
         self.stream.write(text.encode("ascii") + b"\r\n")
-        return self.stream.readline()
+        return self.readline()
 
     def timed(self, text):
         started = time.perf_counter()
@@ -136,7 +154,7 @@ def main():
                 raise SystemExit("POST %d: %r" % (i, r))
             body = article(i)
             c.stream.write(body + b".\r\n")
-            r = c.stream.readline()
+            r = c.readline()
             if not r.startswith(b"240"):
                 raise SystemExit("POST %d body: %r" % (i, r))
             load.append(time.perf_counter() - t0)
