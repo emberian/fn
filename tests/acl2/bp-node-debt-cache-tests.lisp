@@ -33,7 +33,7 @@
                    (fn-bpn-nth 3 *bpndc-record*)
                    (fn-bpnf-held-list *bpnd-s2*))
                   *bpndc-record*)
-                 *bpnd-local*))
+                 *bpnd-local*)))
       (equal (fn-bpnd-debt *bpnd-after-state* *bpnd-local*)
              (+ (fn-bpnd-debt *bpnd-s2* *bpnd-local*)
                 (fn-bpnd-held-handoff-delta
@@ -47,12 +47,12 @@
 ; record.  An empty held list has no matching arrival and cannot acquire the
 ; hypothetical delivered row/debt that the conclusion would require.
 (assert-event
- (not (mv-nth 0 (fn-bpah-apply-delivery *bpndc-record* nil))))
+ (not (car (mv-list 3 (fn-bpah-apply-delivery *bpndc-record* nil)))))
 (must-fail
  (assert-event
   (equal
    (fn-bpnd-held-list-debt
-    (mv-nth 1 (fn-bpah-apply-delivery *bpndc-record* nil))
+    (cadr (mv-list 3 (fn-bpah-apply-delivery *bpndc-record* nil)))
     *bpnd-local*)
    (+ (fn-bpnd-held-list-debt nil *bpnd-local*)
       (fn-bpnd-held-delta
