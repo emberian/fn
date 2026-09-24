@@ -615,12 +615,12 @@
     "roots": 606,
     "theorems": 8614,
     "functions": 6356,
-    "assert_events": 9370,
+    "assert_events": 9375,
     "must_fails": 521,
     "encapsulates": 27,
     "guards": {
-      "verified": 2035,
-      "declared-off": 379,
+      "verified": 2036,
+      "declared-off": 378,
       "default-guarded": 3133,
       "default-unguarded": 809
     },
@@ -8762,12 +8762,12 @@
       "theorems": 96,
       "functions": 65,
       "guards": {
-        "verified": 35,
-        "declared-off": 3,
+        "verified": 36,
+        "declared-off": 2,
         "default-guarded": 27,
         "default-unguarded": 0
       },
-      "verify_guards_events": 35,
+      "verify_guards_events": 36,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -16085,9 +16085,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 116,
+      "assert_events": 121,
       "must_fails": 0,
-      "defconsts": 0,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -18019,7 +18019,7 @@
       {
         "theorem": "fn-ocl-connection-archive-has-pinned-domain",
         "book": "books/config-owner-live.lisp",
-        "line": 1320,
+        "line": 1324,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

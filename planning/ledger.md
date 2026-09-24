@@ -15,11 +15,11 @@ stale. Counts describe artifacts, not coverage; see
 | Books inside the root closure | 614 |
 | `defthm` and `defthmd` events | 8614 |
 | `defun` events | 6356 |
-| Functions with verified guards | 2035 |
-| Functions declared `:verify-guards nil` and never verified | 379 |
+| Functions with verified guards | 2036 |
+| Functions declared `:verify-guards nil` and never verified | 378 |
 | Functions left at the default with an explicit guard | 3133 |
 | Functions left at the default with no guard | 809 |
-| `assert-event` checks | 9370 |
+| `assert-event` checks | 9375 |
 | `must-fail` checks | 521 |
 | `encapsulate` events | 27 |
 | Theorems flagged SUSPECT by shape | 81 |
@@ -390,7 +390,7 @@ that `make certify` requests.
 | `books/store-node-invariants.lisp` | root | 159 | 2 | 0/1/0/1 | 0 | 0 | 2 |
 | `books/store-node-resolution.lisp` | root | 37 | 8 | 6/0/0/2 | 0 | 0 | 2 |
 | `books/store-node-traces.lisp` | root | 90 | 8 | 5/0/1/2 | 0 | 0 | 1 |
-| `books/store-node.lisp` | root | 96 | 65 | 35/3/27/0 | 0 | 0 | 1 |
+| `books/store-node.lisp` | root | 96 | 65 | 36/2/27/0 | 0 | 0 | 1 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 39 | 16 | 15/0/1/0 | 0 | 0 | 1 |
 | `books/store-prepare-correspondence.lisp` | root | 19 | 4 | 2/0/0/2 | 0 | 0 | 0 |
@@ -662,7 +662,7 @@ that `make certify` requests.
 | `tests/acl2/store-identity-traces-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 61 | 0 | 0 |
 | `tests/acl2/store-node-composite-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 1 | 0 |
 | `tests/acl2/store-node-existing-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
-| `tests/acl2/store-node-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 116 | 0 | 0 |
+| `tests/acl2/store-node-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 121 | 0 | 0 |
 | `tests/acl2/store-node-index-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 80 | 0 | 0 |
 | `tests/acl2/store-node-resolution-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 21 | 0 | 0 |
 | `tests/acl2/store-node-resolution-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
