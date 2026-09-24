@@ -504,6 +504,8 @@
     "books/served-tls-prefix",
     "books/owner-tls-prefix",
     "books/owner-config-observe",
+    "books/served-carried",
+    "books/owner-served-carried",
     "tests/acl2/owner-tls-pin-tests",
     "tests/acl2/served-tls-prefix-tests",
     "books/nntp-auth-invariants",
@@ -528,6 +530,7 @@
     "tests/acl2/config-owner-read-invariants-tests",
     "tests/acl2/config-owner-live-tests",
     "tests/acl2/owner-config-observe-tests",
+    "tests/acl2/owner-served-carried-tests",
     "books/config-owner-publish",
     "tests/acl2/config-owner-publish-tests",
     "books/config-crash-replay",
@@ -691,25 +694,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 698,
-    "books_in_root_closure": 696,
-    "roots": 687,
-    "theorems": 9383,
-    "functions": 6724,
-    "assert_events": 10284,
-    "must_fails": 737,
+    "books": 701,
+    "books_in_root_closure": 699,
+    "roots": 690,
+    "theorems": 9410,
+    "functions": 6740,
+    "assert_events": 10299,
+    "must_fails": 739,
     "encapsulates": 30,
     "guards": {
-      "verified": 2038,
+      "verified": 2039,
       "declared-off": 421,
-      "default-guarded": 3344,
+      "default-guarded": 3359,
       "default-unguarded": 921
     },
     "suspect_theorems": 83,
     "export_hygiene_warnings": 109,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 55,
-    "include_hygiene_warnings": 670,
+    "include_hygiene_warnings": 671,
     "host_names_warnings": 812,
     "hand_written_record_warnings": 18
   },
@@ -8289,6 +8292,33 @@
       "read_error": null
     },
     {
+      "book": "books/owner-served-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-live",
+        "owner-tls-prefix",
+        "served-carried"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-served-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -9279,6 +9309,31 @@
         "clock",
         "defrecord",
         "frame"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/served-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 12,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served-tls-prefix"
       ],
       "system_includes": [],
       "suspects": [],
@@ -17218,6 +17273,34 @@
       "encapsulates": 0,
       "includes": [
         "../../books/owner-retention-preparation"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-served-carried-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 2,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-served-carried",
+        "config-owner-live-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -25466,6 +25549,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-served-carried-tests.lisp",
+        "line": 5,
+        "include": "config-owner-live-tests",
+        "included": "tests/acl2/config-owner-live-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-served-invariants-tests.lisp",
         "line": 10,
         "include": "owner-tests",
@@ -31804,28 +31894,28 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 487,
+        "line": 488,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 487,
+        "line": 488,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 944,
+        "line": 945,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1435,
+        "line": 1441,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
