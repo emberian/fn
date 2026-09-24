@@ -1,0 +1,17 @@
+init a rc=0
+init b rc=0
+[store]
+path = "/tank/fn/scratch/matrix-1a9dd747/stores/a/store"
+[listener]
+host = "127.0.0.1"
+port = 11190
+[control]
+path = "/tank/fn/scratch/matrix-1a9dd747/stores/a/control.sock"
+initialized /tank/fn/scratch/matrix-1a9dd747/stores/a/store
+initialized /tank/fn/scratch/matrix-1a9dd747/stores/b/store
+allocation-frontier.json
+config
+config.json
+staging
+transactions
+writer.lock

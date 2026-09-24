@@ -1,0 +1,7 @@
+[store]
+path = "/home/hbox/fn-deploy/native-1a9dd747-83cec9b/loopback/store"
+[listener]
+host = "0.0.0.0"
+port = 11294
+[control]
+path = "/home/hbox/fn-deploy/native-1a9dd747-83cec9b/loopback/control.sock"

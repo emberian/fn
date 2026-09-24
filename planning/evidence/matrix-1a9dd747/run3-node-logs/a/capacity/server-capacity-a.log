@@ -1,0 +1,4 @@
+CONTROL /home/hbox/fn-deploy/native-1a9dd747-83cec9b/a/capacity/control.sock
+LISTENING 11290
+refused post path=control message-id=<capacity-a@example.invalid> time=2026-09-24T14:34:41Z
+accepted operator run
