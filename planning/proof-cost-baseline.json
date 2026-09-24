@@ -9,15 +9,9 @@
       "host": "hbox",
       "verdict": "passed"
     },
-    "books/byte-store-k0": {
-      "seconds": 10.538,
-      "run": "certify-20260924T153301Z-1495651",
-      "host": "hbox",
-      "verdict": "passed"
-    },
     "books/byte-store-record-provenance": {
-      "seconds": 19.46,
-      "run": "certify-20260924T153301Z-1495651",
+      "seconds": 15.902,
+      "run": "certify-20260924T163203Z-1621257",
       "host": "hbox",
       "verdict": "passed"
     },
