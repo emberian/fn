@@ -203,6 +203,12 @@ is set at invocation. Use `operator CONFIG post` or NNTP submission for
 production posting. Raw insertion remains available on developer images;
 Store inspection and recovery remain production operations.
 
+The low-level native `--fn store ROOT retention` diagnostic opens the recovered
+Store under a shared lock and prints `pins=N reserved=B` from the ACL2
+retention ledger. It reports aggregate active pins and reserved charge; it does
+not decide release or identify an obligation. Like `store ROOT status`, it
+refuses with exit 1 if a live writer holds the Store lock.
+
 A production image refuses to start when any selector in the registry is set in
 its environment, even to the empty string, or when `store ROOT post` is given
 a FAULT other than `-`. `fnn-main` runs `fnn-developer-selector-gate` before

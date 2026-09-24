@@ -1935,6 +1935,17 @@ this reads only whether there is one."
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 
+(defun fnn-command-retention (root)
+  "Report the replayed ACL2 ledger's pin count and reserved charge."
+  (multiple-value-bind (store records) (fnn-open-live-store root nil)
+    (declare (ignore records))
+    (unwind-protect
+         (progn
+           (fnn-out "pins=~d reserved=~d"
+                    (fnn-bridge-pin-count) (fnn-bridge-reserved))
+           +fnn-exit-ok+)
+      (fnn-store-close store))))
+
 (defun fnn-command-config (root)
   "The replayed configuration: generation, served table, domain."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
@@ -2414,7 +2425,7 @@ connection `fn-reader-reset' opens and projects with
 ;;; ---------------------------------------------------------------------------
 ;;; Entry.  tools/fn_native.py validates the command line with the Python
 ;;; parsers and hands over a fixed positional protocol after "--fn":
-;;;   store ROOT init [GROUP...] | recover | status | config
+;;;   store ROOT init [GROUP...] | recover | status | retention | config
 ;;;   store ROOT post MESSAGE-ID PAYLOAD CHARGE|- FAULT|- GROUP...
 ;;;   store ROOT inspect MESSAGE-ID
 ;;;   store ROOT probe COUNT
@@ -2555,6 +2566,7 @@ serialized profile when the saved image later starts."
            (cond ((string= command "init") (fnn-command-init root rest))
                  ((string= command "recover") (fnn-command-recover root))
                  ((string= command "status") (fnn-command-status root))
+                 ((string= command "retention") (fnn-command-retention root))
                  ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))
                  ((string= command "probe") (need 4) (fnn-command-probe root (parse-integer (first rest))))
