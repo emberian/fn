@@ -29,6 +29,7 @@
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
 (include-book "../books/config-owner-live")
+(include-book "../books/config-owner-publish")
 (include-book "../books/owner-tls-prefix")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
@@ -213,16 +214,11 @@
     state))
 
 ; The live control path is deliberately small for this packet: a configured
-; client asks to create or retire one group.  ACL2 constructs the delta,
-; checks the pinned generation and staged/clock/reservation conditions, and
-; produces the exact record that the host persists.  Python carries only the
-; kind/name request and the resulting octets.
-(defun fn-owner-config-deltas (kind name)
-  (declare (xargs :mode :program))
-  (cond ((equal kind :create-group)
-         (list (fn-cfg-create-group name *fn-cfg-default-policy-id*)))
-        ((equal kind :remove-group) (list (fn-cfg-remove-group name)))
-        (t nil)))
+; client asks to create or retire one group.  ACL2 constructs the delta
+; (`fn-ocl-request-deltas', books/config-owner-publish.lisp), checks the
+; pinned generation and staged/clock/reservation conditions, and produces the
+; exact record that the host persists.  Python carries only the kind/name
+; request and the resulting octets.
 
 (defun fn-owner-reconfigure-deltas (id deltas state)
   (declare (xargs :stobjs state :mode :program))
@@ -248,7 +244,7 @@
     (if (equal name :bad)
         (let ((state (f-put-global 'fn-owner-config-reason :group-name state)))
           (value :refused))
-      (let ((deltas (fn-owner-config-deltas kind name)))
+      (let ((deltas (fn-ocl-request-deltas kind name)))
         (if (null deltas)
             (let ((state (f-put-global 'fn-owner-config-reason :delta-kind state)))
               (value :refused))
@@ -264,26 +260,17 @@
 
 (defun fn-owner-reconfigure-complete (generation state)
   ; This is called only after Store.write_config_record has named the record
-  ; durable. An uncertain write has no call here and forces recovery. ACL2
-  ; installs the new Store domain/capacity and carried physical history in
-  ; one owner transition while preserving existing connection pins.
+  ; durable. An uncertain write has no call here and forces recovery.  The
+  ; whole completion is ACL2's `fn-ocl-publish' (books/config-owner-publish):
+  ; the refusal, the Store domain/capacity and carried physical history in one
+  ; owner transition, the posting configuration of the published generation,
+  ; and the verdict.  On :refused and :recovery-required its owner is the one
+  ; installed now, so the host installs it unconditionally and decides nothing.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((before (fn-owner-ocfg state))
-         (record (fn-ocfg-staged before)))
-    (if (or (not record)
-            (not (equal (fn-cfg-record-generation record) generation)))
-        (value :refused)
-      (let ((next (fn-ocl-complete before)))
-        (if (fn-ocfg-staged next)
-            ; The record is physically durable, but the live model could not
-            ; install it. The native caller fences and reopens this history.
-            (value :recovery-required)
-          (let* ((state (fn-owner-install-ocfg next state))
-                 (cfg (fn-owner-config state))
-                 (state (fn-owner-replace-core
-                         (fn-own-configure (fn-owner-core state)
-                                           (fn-owner-post-config cfg)) state)))
-            (value :durable)))))))
+  (mv-let (verdict next)
+    (fn-ocl-publish (fn-owner-ocfg state) generation *fn-store-max-payload*)
+    (let ((state (fn-owner-install-ocfg next state)))
+      (value verdict))))
 
 (defun fn-owner-config-generation (state)
   (declare (xargs :stobjs state :mode :program))

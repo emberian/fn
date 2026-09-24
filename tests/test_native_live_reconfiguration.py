@@ -113,7 +113,11 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         live = (ROOT / "books" / "config-owner-live.lisp").read_text(encoding="ascii")
         self.assertIn("(fn-cpo-open-observed config-records frontier records)", owner)
         self.assertIn("(fn-cpo-open-observed config-records frontier records)", store)
-        self.assertIn("(fn-ocl-complete before)", owner)
+        publish = (ROOT / "books" / "config-owner-publish.lisp").read_text(encoding="ascii")
+        self.assertIn("(fn-ocl-publish (fn-owner-ocfg state) generation", owner)
+        self.assertIn("(fn-ocl-complete oc)", publish)
+        self.assertIn("(fn-ocl-request-deltas kind name)", owner)
+        self.assertNotIn("(defun fn-owner-config-deltas", owner)
         self.assertIn("(fn-own-refresh", live)
 
     def test_the_live_arm_is_the_event_sequence_the_theorem_names(self):
