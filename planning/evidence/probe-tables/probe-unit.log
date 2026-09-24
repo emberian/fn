@@ -1,0 +1,17 @@
+test_consumed_and_uncertain_arms (tests.test_native_nntp_post_probe.JudgeTeethTests.test_consumed_and_uncertain_arms) ... ok
+test_kill_rows_take_the_table_fate (tests.test_native_nntp_post_probe.JudgeTeethTests.test_kill_rows_take_the_table_fate) ... ok
+test_refused_arm (tests.test_native_nntp_post_probe.JudgeTeethTests.test_refused_arm) ... ok
+test_swallowed_arm_needs_one_log_line (tests.test_native_nntp_post_probe.JudgeTeethTests.test_swallowed_arm_needs_one_log_line) ... ok
+test_the_stale_table_answer_fails_at_a_new_cut (tests.test_native_nntp_post_probe.JudgeTeethTests.test_the_stale_table_answer_fails_at_a_new_cut) ... ok
+test_a_cut_moved_out_of_ignore_errors_is_caught (tests.test_native_nntp_post_probe.PostArmDerivationTests.test_a_cut_moved_out_of_ignore_errors_is_caught) ... ok
+test_a_table_disagreeing_with_the_arm_is_refused (tests.test_native_nntp_post_probe.PostArmDerivationTests.test_a_table_disagreeing_with_the_arm_is_refused) ... ok
+test_every_post_cut_has_the_arm_its_coordinate_gives (tests.test_native_nntp_post_probe.PostArmDerivationTests.test_every_post_cut_has_the_arm_its_coordinate_gives) ... ok
+test_the_arm_follows_the_publication_step_not_the_name (tests.test_native_nntp_post_probe.PostArmDerivationTests.test_the_arm_follows_the_publication_step_not_the_name) ... ok
+test_the_host_swallows_exactly_the_swallowed_cuts (tests.test_native_nntp_post_probe.PostArmDerivationTests.test_the_host_swallows_exactly_the_swallowed_cuts) ... ok
+test_the_6c0626c5_run_fails_only_on_the_silent_swallow (tests.test_native_nntp_post_probe.RecordedRunTests.test_the_6c0626c5_run_fails_only_on_the_silent_swallow) ... skipped 'recorded 6c0626c5 probe absent'
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.011s
+
+OK (skipped=1)
+rc=0
