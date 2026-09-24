@@ -110,11 +110,26 @@ owner read at open and the count of the store it carries. The budget cannot
 be raised by a configuration record: the profile bounds the work of opening
 the store (the transaction directory is enumerated up to the budget, the
 replay input up to the aggregate bound) before any configuration record is
-read. Raising it means a new store (`init --profile scale` and a migration of
-the articles), or an offline profile upgrade that does not exist yet. The
-retention charge capacity is a different number and IS reconfigurable
+read. Raising it is an offline step on the existing store:
+
+```text
+fn operator /path/to/fn.toml store upgrade-profile scale
+upgraded profile=scale transactions-used=7 transactions-budget=4096 previous-budget=128
+```
+
+It opens the store as `recover` does, so it is refused (1, `store is already
+locked`) while an owner runs: stop the unit first. ACL2 decides
+(`fn-profile-upgrade-verdict`, `books/store-profile-upgrade.lisp`): only an
+upgrade is written (same format, no bound smaller), so `development` to
+`scale` is the one upgrade; the same profile (`same-profile`) and a downgrade
+(`not-an-upgrade`) are refused (1) and write nothing. The new frame replaces
+`config.json` by stage, fsync, rename and root fsync; a death at any point
+leaves the old or the new profile, never a torn one
+(`fn-bs-profile-program-crash-is-old-or-new`), and an I/O error before the
+rename is a refusal (1), at or after it an uncertain outcome (3) that the next
+`status` resolves by reading whichever frame is there. The retention charge capacity is a different number and IS reconfigurable
 (`capacity DECIMAL-UINT32`). Any profile word other than `development` or
-`scale` is a usage error (5).
+`scale` is a usage error (5), at `init` and at `store upgrade-profile`.
 
 `status` prints the headroom beside the counts, from ACL2
 (`fn-sbud-headroom`), not from a host count:

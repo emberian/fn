@@ -30,6 +30,20 @@ staging/       bounded incomplete transfers and transaction input
 indexes/       rebuildable lookup/search structures
 ```
 
+Store profile. The metadata frame `config.json` (FNSM, books/byte-store-frame.lisp)
+bounds the work of opening a store before any configuration record is replayed:
+the transaction-namespace observation (`fn-profile-txn-observation`), the
+aggregate replay input (`fn-profile-replay-within-boundp`) and the per-record
+publication ceiling. It is written by `init` and changed only offline, by the
+profile upgrade (`operator CONFIG store upgrade-profile PROFILE`,
+books/store-profile-upgrade.lisp): ACL2 admits only an upgrade
+(`fn-profile-upgradep`: same record and frontier format, no bound smaller), and
+each gate above is monotone under one, so a store valid under the old profile is
+valid under the new one and replays to the same state (replay takes no profile).
+The write is the byte program `fn-bs-profile-program`
+(books/byte-store-profile-program.lisp), whose crash images name the old frame or
+the new one at every cut. This is a local-policy choice of fn; no RFC governs it.
+
 STO-002: acceptance publishes one transaction containing the source references,
 duplicate-history effects, all local group allocations, and any obligations or
 reservations accepted in that operation. No partially committed cross-post or
