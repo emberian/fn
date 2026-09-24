@@ -612,13 +612,19 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertTrue(line.startswith(b"111 "), line)
         return line.split()[1]
 
-    def post_article(self, port, message_id):
+    def post_article(self, port, message_id, dated=True):
+        # An article that supplies Date and Message-ID gets no Injection-Date
+        # (RFC 5537 section 3.5 item 11), so a test of the injection clock
+        # posts without a Date.
+        article = self.article(message_id)
+        if not dated:
+            article = article.replace(b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n", b"")
         with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
             stream = client.makefile("rwb", buffering=0)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"POST\r\n")
             self.assertTrue(stream.readline().startswith(b"340 "))
-            stream.write(self.article(message_id) + b".\r\n")
+            stream.write(article + b".\r\n")
             self.assertTrue(stream.readline().startswith(b"240 "))
             stream.write(b"QUIT\r\n")
             stream.readline()
@@ -646,12 +652,14 @@ class NativeOwnerTests(unittest.TestCase):
         process, port = self.start_owner(once=False)
         try:
             first = self.date_reading(port)
-            self.post_article(port, b"<native-owner-clock-one@example.invalid>")
+            self.post_article(port, b"<native-owner-clock-one@example.invalid>",
+                              dated=False)
             # Past the one-second resolution of the rendered value, so a fresh
             # reading cannot be mistaken for the pinned one.
             time.sleep(1.2)
             second = self.date_reading(port)
-            self.post_article(port, b"<native-owner-clock-two@example.invalid>")
+            self.post_article(port, b"<native-owner-clock-two@example.invalid>",
+                              dated=False)
             self.assertLess(first, second,
                             "DATE answered {!r} twice".format(first))
             self.assertIsNone(process.poll(), "the owner stopped mid-run")

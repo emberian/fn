@@ -58,16 +58,14 @@ def free_port():
 
 
 # What `operator post` stores (books/owner.lisp fn-own-operator-submit): the
-# injecting agent's Path, Injection-Date and Injection-Info lines, then the
-# submitted octets unchanged.  These stores set no `path-identity`, so the
-# agent is the owner's fallback identity (host/owner-host.lisp
-# `*fn-owner-agent*').  The Injection-Date is the owner's clock, so only its
-# RFC 5322 shape is fixed here.
+# injecting agent's Path line and Injection-Info line, then the submitted
+# octets unchanged.  These articles supply Date and Message-ID, so no
+# Injection-Date is added (RFC 5537 section 3.5 item 11;
+# fn-inj-no-injection-date-when-date-and-message-id-are-supplied).  These
+# stores set no `path-identity`, so the agent is the owner's fallback identity
+# (host/owner-host.lisp `*fn-owner-agent*').
 INJECTION_PREFIX = re.compile(
     rb"\APath: fn\.example\.invalid!not-for-mail\r\n"
-    rb"Injection-Date: (Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} "
-    rb"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} "
-    rb"\d{2}:\d{2}:\d{2} \+0000\r\n"
     rb"Injection-Info: fn\.example\.invalid\r\n")
 
 

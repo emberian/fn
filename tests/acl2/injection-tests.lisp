@@ -30,14 +30,13 @@
 ; degenerate.
 (assert-event (equal (fn-inj-instant-of 843004800000) '(2026 9 18 0 0 0 5)))
 
-; The whole injected article, exactly as ACL2 produces it.  Path,
-; Injection-Date, Injection-Info, the generated Message-ID and the generated
-; Date precede the supplied source, which follows verbatim.
+; The whole injected article, exactly as ACL2 produces it.  Path, then the
+; generated Injection-Date, Message-ID and Date, then Injection-Info, which
+; closes the injected block; the supplied source follows verbatim.
 (assert-event
  (equal (fn-inj-decision-octets *fn-t-decision*)
         (append
-
-         '(80 97 116 104 58 32 102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 33 110 111 116 45 102 111 114 45 109 97 105 108 13 10 73 110 106 101 99 116 105 111 110 45 68 97 116 101 58 32 70 114 105 44 32 49 56 32 83 101 112 32 50 48 50 54 32 48 48 58 48 48 58 48 48 32 43 48 48 48 48 13 10 73 110 106 101 99 116 105 111 110 45 73 110 102 111 58 32 102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 13 10 77 101 115 115 97 103 101 45 73 68 58 32 60 48 48 48 48 48 48 48 48 56 52 51 48 48 52 56 48 48 48 48 48 46 48 48 48 48 48 48 48 48 48 48 48 48 48 49 48 48 48 48 48 48 46 102 110 64 102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 68 97 116 101 58 32 70 114 105 44 32 49 56 32 83 101 112 32 50 48 50 54 32 48 48 58 48 48 58 48 48 32 43 48 48 48 48 13 10)
+         '(80 97 116 104 58 32 102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 33 110 111 116 45 102 111 114 45 109 97 105 108 13 10 73 110 106 101 99 116 105 111 110 45 68 97 116 101 58 32 70 114 105 44 32 49 56 32 83 101 112 32 50 48 50 54 32 48 48 58 48 48 58 48 48 32 43 48 48 48 48 13 10 77 101 115 115 97 103 101 45 73 68 58 32 60 48 48 48 48 48 48 48 48 56 52 51 48 48 52 56 48 48 48 48 48 46 48 48 48 48 48 48 48 48 48 48 48 48 48 49 48 48 48 48 48 48 46 102 110 64 102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 68 97 116 101 58 32 70 114 105 44 32 49 56 32 83 101 112 32 50 48 50 54 32 48 48 58 48 48 58 48 48 32 43 48 48 48 48 13 10 73 110 106 101 99 116 105 111 110 45 73 110 102 111 58 32 102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 13 10)
          *fn-t-good*)))
 
 (assert-event (fn-inj-injectedp *fn-t-decision*))
@@ -224,13 +223,21 @@
 (defconst *it-lab-obs* (fn-clock-observation 1000000 843427607000 500 t))
 (defconst *it-lab-decision* (fn-inj-decide *it-lab-proto* *it-lab-cfg* *it-lab-obs*))
 (assert-event (fn-inj-injectedp *it-lab-decision*))
-; What innd received, octet for octet.
+; The lab's proto-article supplied both Date and Message-ID, so since
+; 2026-09-24 no Injection-Date is added (RFC 5537 section 3.5 item 11): the
+; injected article is the Path line, the Injection-Info line and the source.
 (assert-event
  (equal (fn-inj-decision-octets *it-lab-decision*)
         (append (it-lines (list "Path: fnA.hbox.test!not-for-mail"
-                                "Injection-Date: Tue, 22 Sep 2026 21:26:47 +0000"
                                 "Injection-Info: fnA.hbox.test"))
                 *it-lab-proto*)))
+; What innd received on 2026-09-22, octet for octet: the recipe v1 injection,
+; which added an Injection-Date here.
+(defconst *it-lab-v1*
+  (append (it-lines (list "Path: fnA.hbox.test!not-for-mail"
+                          "Injection-Date: Tue, 22 Sep 2026 21:26:47 +0000"
+                          "Injection-Info: fnA.hbox.test"))
+          *it-lab-proto*))
 
 (defun it-from-value (source)
   (declare (xargs :mode :program))
@@ -352,3 +359,151 @@
  (defthm it-every-configuration-allows-posting
    (fn-inj-config-allow config)))
 
+
+; -----------------------------------------------------------------------------
+; RFC 5537 section 3.5 item 11 and the injection inverse (2026-09-24).
+
+; The four generated-field cases, one proto-article each.
+(defconst *it-date-proto*          ; Date supplied, Message-ID generated
+  (it-lines (list "From: p@example.invalid" "Newsgroups: fn.letters"
+                  "Subject: s" "Date: Tue, 22 Sep 2026 21:26:21 +0000"
+                  "" "body")))
+(defconst *it-obs-b* (fn-clock-observation 2000000 843427699000 500 t))
+
+; Keystone fn-inj-no-injection-date-when-date-and-message-id-are-supplied:
+; the lab's article injects to the same octets at two clock readings 92 s
+; apart, and the injected article has no Injection-Date field.
+(assert-event
+ (equal (fn-inj-decision-octets *it-lab-decision*)
+        (fn-inj-decision-octets (fn-inj-decide *it-lab-proto* *it-lab-cfg* *it-obs-b*))))
+(assert-event
+ (null (fn-article-get-headers
+        (fn-article-result-article
+         (fn-article-parse (fn-inj-decision-octets *it-lab-decision*)))
+        *fn-inj-injection-date-name*)))
+; Keystone fn-inj-injection-date-is-the-clock-otherwise: each of the three
+; other cases carries exactly one Injection-Date, and it moves with the clock.
+(assert-event
+ (let ((a (fn-article-result-article
+           (fn-article-parse
+            (fn-inj-decision-octets (fn-inj-decide *it-date-proto* *it-lab-cfg*
+                                                   *it-lab-obs*))))))
+   (equal (len (fn-article-get-headers a *fn-inj-injection-date-name*)) 1)))
+(assert-event (not (equal (fn-inj-decision-octets
+                           (fn-inj-decide *fn-t-withid* *fn-t-cfg* *fn-t-obs*))
+                          (fn-inj-decision-octets
+                           (fn-inj-decide *fn-t-withid* *fn-t-cfg* *fn-t-obs-next*)))))
+; Teeth: without "both supplied" the octets are not Path, Injection-Info and
+; the source (the Date-less *fn-t-withid* carries a stamp); without
+; "otherwise" there is no Injection-Date (the lab's article).
+(must-fail
+ (defthm it-no-stamp-without-both-supplied
+   (implies (fn-inj-injectedp (fn-inj-decide source config observation))
+            (equal (fn-inj-decision-octets (fn-inj-decide source config observation))
+                   (fn-inj-append (fn-inj-path-line (fn-inj-config-agent config))
+                                  (fn-inj-append
+                                   (fn-inj-injection-info-line
+                                    (fn-inj-config-agent config))
+                                   source))))
+   :hints (("Goal" :in-theory (disable fn-inj-decide)))))
+(assert-event (not (equal (fn-inj-decision-octets
+                           (fn-inj-decide *fn-t-withid* *fn-t-cfg* *fn-t-obs*))
+                          (append (fn-inj-path-line *fn-t-agent*)
+                                  (fn-inj-injection-info-line *fn-t-agent*)
+                                  *fn-t-withid*))))
+(must-fail
+ (defthm it-stamp-always
+   (implies (fn-inj-injectedp (fn-inj-decide source config observation))
+            (fn-inj-prefixp
+             (fn-inj-append (fn-inj-path-line (fn-inj-config-agent config))
+                            (fn-inj-injection-date-line
+                             (fn-inj-date-octets
+                              (fn-inj-instant-of (fn-clock-wall observation)))))
+             (fn-inj-decision-octets (fn-inj-decide source config observation))))
+   :hints (("Goal" :in-theory (disable fn-inj-decide)))))
+(assert-event (not (fn-inj-prefixp
+                    (append (fn-inj-path-line *it-lab-agent*)
+                            (fn-inj-injection-date-line
+                             (fn-inj-date-octets (fn-inj-instant-of 843427607000))))
+                    (fn-inj-decision-octets *it-lab-decision*))))
+; Keystone fn-inj-a-supplied-injection-date-is-never-replaced: the article
+; carrying an Injection-Date above is refused (:injection-date-present), so
+; no accepted article's Injection-Date replaces a poster's.
+
+; Keystone fn-inj-source-of-inverts-the-injection, all four cases: both
+; generated, Date generated, Message-ID generated, nothing generated.
+(defun it-inverts (source cfg obs)
+  (declare (xargs :mode :program))
+  (let ((d (fn-inj-decide source cfg obs)))
+    (and (fn-inj-injectedp d)
+         (equal (fn-inj-source-of (fn-inj-decision-octets d)
+                                  (fn-inj-config-agent cfg)
+                                  (fn-inj-decision-msgid d))
+                (cons t source)))))
+(assert-event (it-inverts *fn-t-good* *fn-t-cfg* *fn-t-obs*))
+(assert-event (it-inverts *fn-t-withid* *fn-t-cfg* *fn-t-obs*))
+(assert-event (it-inverts *it-date-proto* *it-lab-cfg* *it-lab-obs*))
+(assert-event (it-inverts *it-lab-proto* *it-lab-cfg* *it-lab-obs*))
+; A Date the poster wrote that equals the injection's rendering is still
+; the poster's: a source opening with it keeps it, and a source without it
+; is a different source.
+(defconst *it-date-first*
+  (append (it-lines (list "Date: Tue, 22 Sep 2026 21:26:47 +0000"
+                          "Message-ID: <first@example.invalid>"))
+          (it-lines (list "From: p@example.invalid" "Newsgroups: fn.letters"
+                          "Subject: s" "" "body"))))
+(defconst *it-date-first-stripped*
+  (append (it-lines (list "Message-ID: <first@example.invalid>"))
+          (it-lines (list "From: p@example.invalid" "Newsgroups: fn.letters"
+                          "Subject: s" "" "body"))))
+(assert-event (it-inverts *it-date-first* *it-lab-cfg* *it-lab-obs*))
+(assert-event (it-inverts *it-date-first-stripped* *it-lab-cfg* *it-lab-obs*))
+(assert-event
+ (not (equal (fn-inj-source-of
+              (fn-inj-decision-octets (fn-inj-decide *it-date-first* *it-lab-cfg* *it-lab-obs*))
+              *it-lab-agent* (it-octets "<first@example.invalid>"))
+             (fn-inj-source-of
+              (fn-inj-decision-octets (fn-inj-decide *it-date-first-stripped*
+                                                     *it-lab-cfg* *it-lab-obs*))
+              *it-lab-agent* (it-octets "<first@example.invalid>")))))
+; Tooth for the one hypothesis: a refusal's octets give back no source.
+(must-fail
+ (defthm it-inverse-without-injection
+   (equal (fn-inj-source-of
+           (fn-inj-decision-octets (fn-inj-decide source config observation))
+           (fn-inj-config-agent config)
+           (fn-inj-decision-msgid (fn-inj-decide source config observation)))
+          (cons t source))
+   :hints (("Goal" :in-theory (disable fn-inj-decide)))))
+(assert-event (null (fn-inj-source-of
+                     (fn-inj-decision-octets
+                      (fn-inj-decide *it-yue-proto* *it-lab-cfg* *it-lab-obs*))
+                     *it-lab-agent* nil)))
+; Another agent gives back nothing.
+(assert-event (null (fn-inj-source-of (fn-inj-decision-octets *it-lab-decision*)
+                                      (it-octets "fnB.hbox.test")
+                                      (fn-inj-decision-msgid *it-lab-decision*))))
+
+; Recipe v1 records.  The lab's v1 octets (supplied Date and Message-ID, a
+; source opening with From) read back exactly.  A v1 record whose source
+; position opens with a Date line of the injection's date, or with the
+; record's Message-ID line, is ambiguous under v1 and reads back nothing.
+(assert-event (equal (fn-inj-source-of *it-lab-v1* *it-lab-agent*
+                                       (fn-inj-decision-msgid *it-lab-decision*))
+                     (cons t *it-lab-proto*)))
+(defconst *it-v1-generated-date*
+  (append (it-lines (list "Path: fnA.hbox.test!not-for-mail"
+                          "Injection-Date: Tue, 22 Sep 2026 21:26:47 +0000"
+                          "Injection-Info: fnA.hbox.test"
+                          "Date: Tue, 22 Sep 2026 21:26:47 +0000"))
+          *it-date-first-stripped*))
+(assert-event (null (fn-inj-source-of *it-v1-generated-date* *it-lab-agent*
+                                      (it-octets "<first@example.invalid>"))))
+(defconst *it-v1-generated-id*
+  (append (it-lines (list "Path: fnA.hbox.test!not-for-mail"
+                          "Injection-Date: Tue, 22 Sep 2026 21:26:47 +0000"
+                          "Injection-Info: fnA.hbox.test"
+                          "Message-ID: <g@example.invalid>"))
+          *it-date-proto*))
+(assert-event (null (fn-inj-source-of *it-v1-generated-id* *it-lab-agent*
+                                      (it-octets "<g@example.invalid>"))))
