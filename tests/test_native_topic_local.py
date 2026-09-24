@@ -199,13 +199,43 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.assertIn(b"replayed-historical",
                       self.topic("report", "4", expected=0).stdout)
         self.assertEqual(self.transactions(), mixed)
+        revoked = self.invoke("hybrid-revoke", self.control, "2", self.principal)
+        self.assertEqual(revoked.returncode, 0,
+                         (revoked.stdout + revoked.stderr).decode("utf-8", "replace"))
+        after_revoke = self.transactions()
+        self.assertGreater(len(after_revoke), len(mixed))
+        self.assertIn(b"replayed-historical",
+                      self.topic("report", "4", expected=0).stdout)
+        self.assertEqual(self.transactions(), after_revoke)
         self.stop_owner(reopened)
+
+        before_status = self.invoke("store", self.store, "status")
+        before_retention = self.invoke("store", self.store, "retention")
+        self.assertEqual(before_status.returncode, 0, before_status.stderr.decode())
+        self.assertEqual(before_retention.returncode, 0,
+                         before_retention.stderr.decode())
+        for words in (("checkpoint", "pack", self.store, "select"),
+                      ("checkpoint", "pack-reclaim", self.store),
+                      ("checkpoint", "pack", self.store, "select"),
+                      ("checkpoint", "pack-retire", self.store),
+                      ("checkpoint", "publish", self.store, "select")):
+            result = self.invoke(*words)
+            self.assertEqual(result.returncode, 0,
+                             (result.stdout + result.stderr).decode("utf-8", "replace"))
+        self.assertEqual(self.invoke("store", self.store, "status").stdout,
+                         before_status.stdout)
+        self.assertEqual(self.invoke("store", self.store, "retention").stdout,
+                         before_retention.stdout)
+        checkpoint = self.invoke("checkpoint", "status", self.store)
+        self.assertEqual(checkpoint.returncode, 0, checkpoint.stderr.decode())
+        self.assertIn(b"auxiliary=equal-v2", checkpoint.stdout)
+        compacted = self.transactions()
 
         final = self.start_owner()
         self.topic("anchor", "6", "1", expected=1)
         self.assertIn(b"replayed-historical",
                       self.topic("report", "4", expected=0).stdout)
-        self.assertEqual(self.transactions(), mixed)
+        self.assertEqual(self.transactions(), compacted)
         self.stop_owner(final)
 
     def test_fresh_v2_anchor_refuses_legacy_reopen(self):
