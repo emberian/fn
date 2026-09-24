@@ -219,6 +219,126 @@ the recorded verdict remains historical, while current capability uses the
 current keyring. Only after the composite finish/index theorem covers this
 record can a served `:fn-verified` value be attributed to that accepted event.
 
+## The signed bytes
+
+This section is the whole contract an independent verifier needs. Each step
+names the ACL2 function that defines it; where the prose and that function
+disagree, the function is what the node runs and the prose is the defect.
+`tests/test_fn_verify.py` (`SpecBookTieTests`, run by `make check`) fails when
+a function or constant named here is no longer defined, or when the book's
+constants, this section and `tools/fn_verify.py` state different tag bytes,
+widths or dropped field names. It does not compare the layouts themselves;
+`FakeNodeVerifyTests` and the native run in the
+[P8 record](../planning/evidence/p8-verifier-2026-09-24.md) do that.
+
+**Carrier.** The `FN-Authorship` value is the field's unfolded value with
+SP and HTAB removed, then strict base64 (`fn-hc-field-decode`). The decoded
+binary is the nine canonical CBOR items above in that order, each with a
+minimal head and nothing after the ninth (`fn-hc-decode`). The value is at
+most 8192 octets (`*fn-hc-max-field-octets*`) and the binary at most 5405
+(`*fn-hc-max-binary-octets*`).
+
+**Authored source** (`fn-hc-authored-source`, over the article
+`fn-hc-received-plan` parsed). These are the article's octets, not the NNTP
+dot-stuffed wire form.
+
+1. The header is the field lines before the first empty line. A field is its
+   first physical line and every continuation line (one starting with SP or
+   HTAB) after it. Field names match case-insensitively
+   (`fn-hc-reserved-namep` compares the lower-cased name).
+2. The received article must carry exactly one `FN-Authorship` field and no
+   `FN-Statement` or `FN-Policy` field. Anything else is refused, and no
+   source is inferred (`fn-hc-received-plan`, `fn-hc-no-other-reservedp`).
+3. Every physical line of every field named `FN-Authorship`, `Path`, `Xref`,
+   `Injection-Date` or `Injection-Info` is dropped (`fn-hc-source-header`).
+   These are the fields an injecting, relaying or serving agent adds or
+   rewrites (RFC 5537 §3.2.1 and §3.5, RFC 5536 §3.2.14). Dropping them is an
+   fn profile choice, not an RFC requirement.
+4. Every other field is kept in received order. Each physical line is kept
+   byte-exact, without its CRLF, followed by CRLF (`fn-stx-field-octets`).
+   Folding, whitespace and case are not normalized.
+5. Then one CRLF (the empty line), then the body octets unchanged.
+6. The result must itself parse as an article with exactly one each of
+   `From`, `Subject`, `Date`, `Message-ID` and `Newsgroups`, and with no
+   reserved field (`fn-hc-required-sourcep`, `fn-hc-fields-nativep`). It is
+   at most 32768 octets (`*fn-article-max-octets*`).
+
+**Preimage** (`fn-hsig-signed-preimage`, which is `fn-digest-tagged-preimage`
+of `*fn-hsig-domain-tag*` and `fn-hsig-subject-body`), in order:
+
+| Octets | Content | Defined by |
+| --- | --- | --- |
+| 2 | `58 1c`: the CBOR byte-string head for 28 octets | `fn-digest-tagged-preimage` |
+| 28 | ASCII `fn-authored-source-hybrid-v1` | `*fn-hsig-domain-tag*` |
+| 1 | `01`, the profile version | `*fn-hsig-version*` |
+| 1 | `01`, the suite | `*fn-hsig-suite*` |
+| 32 | the principal | `fn-hsig-subject-body` |
+| 1 | `01`, the Ed25519 algorithm | `*fn-hsig-ed25519-algorithm*` |
+| 32 | the Ed25519 public key | `*fn-hsig-ed25519-public-key-octets*` |
+| 1 | `02`, the ML-DSA-65 algorithm | `*fn-hsig-ml-dsa-65-algorithm*` |
+| 1952 | the ML-DSA-65 public key | `*fn-hsig-ml-dsa-65-public-key-octets*` |
+| 2 | the source length, unsigned big-endian | `fn-cbor-u16-bytes` |
+| n | the authored source | `fn-hsig-subject-body` |
+
+After the tag, the body is raw octets: no CBOR items, no padding. The
+fixed widths delimit the key set, and the final length makes an empty or
+prefix-related source unambiguous (`fn-hsig-subject-body-injective`). The
+principal and keys come from the carrier.
+
+**Signatures.** Both primitives sign the preimage itself, not a digest of
+it (a stronger fn choice: authorship is not reduced to a content-id).
+
+- Ed25519 is pure Ed25519 (RFC 8032 §5.1), not Ed25519ph or Ed25519ctx. The
+  public key is 32 octets and the signature 64
+  (`*fn-hsig-ed25519-signature-octets*`). The node uses libsodium
+  `crypto_sign_verify_detached`.
+- ML-DSA-65 is pure ML-DSA (FIPS 204 Algorithms 2 and 3), not HashML-DSA,
+  with the empty context string: the signed message is `00 00` followed by
+  the preimage. The public key is the 1952-octet FIPS 204 encoding and the
+  signature 3309 octets (`*fn-hsig-ml-dsa-65-signature-octets*`). The node
+  calls OpenSSL `EVP_PKEY_verify_message_init` with NULL parameters
+  (`host/native/signatures.lisp`), which is OpenSSL's pure, empty-context
+  default. Signing is hedged, so equal inputs do not give equal signatures.
+  A verifier checks signatures and never compares their bytes.
+
+Both must verify, and `fn-hsig-authorize` decides. Neither signature alone
+authorizes.
+
+## What a `:fn-verified` line binds
+
+`HDR :fn-verified` ([substrate transport §5](substrate-transport.md#5-the-agent-angle); RFC
+3977 §8.5 lets a server define metadata items with a leading colon) is the
+node's claim. The claim has three limits, and an independent verifier needs
+all three.
+
+- **It binds a Message-ID, not content.** The line names the article by
+  number or Message-ID and carries no content identity. A node or a path to
+  it can therefore serve another article under the requested Message-ID, and
+  the line still reads `verified`. A verifier must check that the
+  `Message-ID` field in the signed source is the one it asked for.
+  `tools/fn_verify.py` does this. It treats a mismatch as not verified, so a
+  `verified` line over it is a disagreement (exit 2).
+- **The node publishes no keyring.** No NNTP command returns the keys behind
+  a `verified` line, and `hybrid-key-history` prints no key material. This is
+  deliberate. Keys fetched from the node would only repeat the node's claim,
+  so a check against them would not be independent. A verifier pins each
+  author's Ed25519 and ML-DSA-65 public keys out of band, from the author,
+  and accepts the carrier's keys only when they equal the pins for the
+  carrier's principal. Signatures that verify under the carrier's own keys
+  do not say whose those keys are. This is a local policy, not an RFC
+  requirement.
+- **The generation is local.** The `keyring N` term is this node's global
+  kind-3 snapshot generation (`hybrid-enroll` above). Every enrollment,
+  rotation and revocation on this Store advances it, whatever the principal. Another node's number for the same
+  keys is unrelated, and a reader cannot resolve it to keys. A verifier can
+  confirm that the carried keys are its pins, but not that generation N held
+  them.
+
+The line also does not show whether the node should have accepted, that is,
+whether enrollment was current or group policy allowed the post. Those
+checks are local node policy. The independent check covers the signature
+half only.
+
 ## The seam
 
 `fn-digest` (any object to 32 octets) and the triple `fn-sig-public-key`,
