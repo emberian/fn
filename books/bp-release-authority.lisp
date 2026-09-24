@@ -233,6 +233,22 @@
                                         (fn-bp-state-used-txs wf) 0)))
                             (generation 0) (authorizedp t))))))
 
+(local (defthm fn-bpah-other-terms-name-no-obligation
+  (implies (or (not (fn-bp-work-outstandingp work))
+               (not (equal (fn-bpa-receipt-subject receipt)
+                           (fn-bp-work-subject work)))
+               (not (equal (fn-bpa-receipt-policy-id receipt)
+                           (fn-bp-work-policy-id work)))
+               (not (equal (fn-bpa-receipt-terms-id receipt)
+                           (fn-bp-work-terms-id work))))
+           (not (fn-bpah-receipt-names-obligationp wf receipt work)))
+  :hints (("Goal" :in-theory (e/d (fn-bpah-receipt-names-obligationp
+                                   fn-bp-authorized-receiptp
+                                   fn-bprl-receipt-from-adu)
+                                  (fn-bp-workp fn-bp-configp fn-bp-receiptp
+                                   fn-bpa-receiptp fn-bp-statep
+                                   fn-bp-work-outstandingp))))))
+
 ; KEYSTONE 3.  A receipt naming a different work, subject, policy or terms
 ; than the held obligation its work id finds releases nothing, whoever
 ; issued it.
@@ -247,16 +263,15 @@
                  (not (equal (fn-bpa-receipt-terms-id receipt)
                              (fn-bp-work-terms-id work))))
              (equal (fn-bpah-receipt-release-record view cfg wf) nil)))
-  :hints (("Goal" :in-theory (e/d (fn-bpah-view-release-authorizedp
-                                   fn-bpah-receipt-authorizes-releasep
-                                   fn-bpah-receipt-names-obligationp
-                                   fn-bp-authorized-receiptp
-                                   fn-bprl-receipt-from-adu)
-                                  (fn-bprl-receipt-auto-record
-                                   fn-bpah-release-issuer-authorizedp
-                                   fn-bpah-receipt-trustedp
-                                   fn-bp-workp fn-bp-configp
-                                   fn-bpa-decode-exact)))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpah-view-release-authorizedp
+                                fn-bpah-receipt-authorizes-releasep)
+                              (theory 'minimal-theory))
+           :use ((:instance fn-bpah-release-record-needs-authorization)
+                 (:instance fn-bpah-other-terms-name-no-obligation
+                            (receipt (fn-bpah-view-receipt view))
+                            (work (fn-bpah-receipt-obligation
+                                   wf (fn-bpah-view-receipt view))))))))
 
 ; KEYSTONE 4.  The request path is unchanged by the release list: two
 ; configurations at one generation that agree once release rows are

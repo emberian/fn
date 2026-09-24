@@ -605,7 +605,9 @@ decoded as source-address for durable command compatibility."
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan fn-native-admin-words)
                                   (fn-native-admin-peer-plan fn-record-group-namep
                                    fn-path-identityp fn-native-admin-decimalp
-                                   fn-native-admin-decimal-value fn-native-admin-argvp))
+                                   fn-native-admin-decimal-value fn-native-admin-argvp
+                                   fn-native-admin-bp-boundary-split
+                                   fn-native-admin-bp-boundary-rows))
            :use ((:instance fn-native-admin-peer-plan-kind
                             (words (fn-native-admin-words argv)))))))
 )
