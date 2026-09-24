@@ -629,7 +629,7 @@
     "suspect_theorems": 77,
     "export_hygiene_warnings": 103,
     "enabled_projection_warnings": 35,
-    "teeth_form_warnings": 42,
+    "teeth_form_warnings": 41,
     "include_hygiene_warnings": 544,
     "host_names_warnings": 801,
     "hand_written_record_warnings": 18
@@ -18769,12 +18769,6 @@
         "check": "fn-ceis-stale-index-does-not-satisfy-correspondence",
         "book": "tests/acl2/consumer-event-index-store-invariants-tests.lisp",
         "line": 44,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "coit-caller-equality-needs-derived-index-relation",
-        "book": "tests/acl2/consumer-owner-index-invariants-tests.lisp",
-        "line": 40,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {

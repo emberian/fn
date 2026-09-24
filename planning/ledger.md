@@ -25,7 +25,7 @@ stale. Counts describe artifacts, not coverage; see
 | Theorems flagged SUSPECT by shape | 77 |
 | Export-hygiene warnings | 103 |
 | Enabled-projection warnings | 35 |
-| Teeth-form warnings | 42 |
+| Teeth-form warnings | 41 |
 | Include-hygiene warnings | 544 |
 | Host-names warnings | 801 |
 | Hand-written-record warnings | 18 |

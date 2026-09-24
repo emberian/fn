@@ -38,6 +38,7 @@
              (fn-col-poll-list-reference
               (fn-own-start *coit-stale-index* 2) *colt-id*))))
 (must-fail
- (defthm coit-caller-equality-needs-derived-index-relation
-   (equal (fn-col-poll o consumer)
-          (fn-col-poll-list-reference o consumer))))
+ (assert-event
+  (equal (fn-col-poll (fn-own-start *coit-stale-index* 2) *colt-id*)
+         (fn-col-poll-list-reference
+          (fn-own-start *coit-stale-index* 2) *colt-id*))))
