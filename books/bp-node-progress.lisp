@@ -276,6 +276,9 @@
       (fn-bpnf-answer
        (fn-bpnp-with-waits
         (fn-bpnf-answer-state answer)
-        (if (equal (fn-cbor-ag-car event) :recover-fnbs)
+        (if (and (equal (fn-cbor-ag-car event) :recover-fnbs)
+                 (equal (fn-bpn-nth 0
+                         (fn-bpn-nth 0 (fn-bpnf-answer-effects answer)))
+                        :restart-ready))
             nil (fn-bpnp-waits st)))
        (fn-bpnf-answer-effects answer)))))
