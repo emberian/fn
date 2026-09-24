@@ -592,11 +592,11 @@
     "books": 595,
     "books_in_root_closure": 592,
     "roots": 585,
-    "theorems": 8447,
+    "theorems": 8449,
     "functions": 6264,
     "assert_events": 9143,
     "must_fails": 485,
-    "encapsulates": 26,
+    "encapsulates": 27,
     "guards": {
       "verified": 2025,
       "declared-off": 372,
@@ -7106,7 +7106,7 @@
       "book": "books/owner-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 42,
+      "theorems": 43,
       "functions": 44,
       "guards": {
         "verified": 0,
@@ -7119,7 +7119,7 @@
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
         "config-stream",
         "owner-fault",
@@ -7276,7 +7276,7 @@
       "book": "books/owner-prepare-correspondence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 18,
+      "theorems": 19,
       "functions": 3,
       "guards": {
         "verified": 1,

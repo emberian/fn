@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 595 |
 | Certification roots in the Makefile | 585 |
 | Books inside the root closure | 592 |
-| `defthm` and `defthmd` events | 8447 |
+| `defthm` and `defthmd` events | 8449 |
 | `defun` events | 6264 |
 | Functions with verified guards | 2025 |
 | Functions declared `:verify-guards nil` and never verified | 372 |
@@ -21,7 +21,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions left at the default with no guard | 799 |
 | `assert-event` checks | 9143 |
 | `must-fail` checks | 485 |
-| `encapsulate` events | 26 |
+| `encapsulate` events | 27 |
 | Theorems flagged SUSPECT by shape | 76 |
 | Export-hygiene warnings | 102 |
 | Enabled-projection warnings | 35 |
@@ -330,13 +330,13 @@ that `make certify` requests.
 | `books/node-traces.lisp` | root | 12 | 24 | 0/0/24/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 37 | 33 | 27/0/6/0 | 0 | 0 | 2 |
 | `books/owner-agent.lisp` | root | 31 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/owner-config.lisp` | root | 42 | 44 | 0/6/38/0 | 0 | 0 | 1 |
+| `books/owner-config.lisp` | root | 43 | 44 | 0/6/38/0 | 0 | 0 | 1 |
 | `books/owner-fault.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/owner-feed-port.lisp` | root | 11 | 1 | 0/0/1/0 | 0 | 0 | 4 |
 | `books/owner-feed.lisp` | root | 84 | 77 | 0/0/77/0 | 0 | 0 | 0 |
 | `books/owner-invariants.lisp` | root | 147 | 8 | 0/0/6/2 | 0 | 0 | 1 |
 | `books/owner-log.lisp` | root | 11 | 16 | 0/0/16/0 | 0 | 0 | 0 |
-| `books/owner-prepare-correspondence.lisp` | root | 18 | 3 | 1/0/2/0 | 0 | 0 | 0 |
+| `books/owner-prepare-correspondence.lisp` | root | 19 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/owner-tls-prefix.lisp` | root | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner.lisp` | root | 81 | 145 | 0/5/140/0 | 0 | 0 | 0 |
 | `books/path-update.lisp` | root | 77 | 29 | 2/0/26/1 | 0 | 0 | 0 |
