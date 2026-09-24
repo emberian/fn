@@ -1727,8 +1727,8 @@
         "tools/fn_web.py",
         "tests/test_fn_web.py"
       ],
-      "implementation_note": "The separate loopback client persists an exact in-flight POST intent before opening NNTP, restores in-flight records as uncertain, retains three distinct replies and read-only ARTICLE observations, and never automatically retries an identifier. Private locked bounded spool writes use atomic replacement and file/directory fsync.",
-      "note": "Real local HTTP and fake NNTP socket tests cover restart, lost reply, duplicate/concurrent handlers, full spool, target mismatch, and persistence failures before and after network. This is client behavior, not native-node qualification, a physical power-loss proof, server acceptance, or an fn retention record."
+      "implementation_note": "The separate loopback client persists editable drafts without NNTP, then exact in-flight POST intent before opening NNTP; it restores in-flight records as uncertain, retains three distinct replies and read-only ARTICLE observations, and never automatically retries an identifier. Private locked bounded spool writes use atomic replacement and file/directory fsync, including an outbox-parent startup barrier.",
+      "note": "Real local HTTP and fake NNTP socket tests cover draft save/restart/edit, POST restart, lost reply, duplicate/concurrent handlers, full spool, target mismatch, parent-barrier failure and persistence failures before and after network. This is client behavior, not native-node qualification, a physical power-loss proof, server acceptance, or an fn retention record."
     }
   ]
 }

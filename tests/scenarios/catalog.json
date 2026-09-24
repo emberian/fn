@@ -1168,13 +1168,15 @@
       ],
       "steps": [
         "Compose one article with a persistent outbox, race two HTTP POST handlers, restart the web client, and submit the same identifier again.",
+        "Save an incomplete editable draft, restart, edit and save it again, then Post the final source once.",
         "Lose the NNTP reply after article bytes, restart with both a recorded uncertain reply and a bare in-flight intent, and make a read-only ARTICLE settlement observation.",
-        "Inject local file and directory fsync failures before and after the NNTP attempt, then fill the bounded spool."
+        "Inject outbox-parent, draft, file and directory fsync failures before and after the NNTP attempt, then fill the bounded spool."
       ],
       "expected": [
         "The exact source, Message-ID and target are frozen before the sole NNTP attempt; duplicate handlers and restart do not repost.",
+        "A saved draft survives restart without a Message-ID or network attempt; Post freezes only the final submitted fields.",
         "In-flight and lost-reply outcomes remain uncertain; an ARTICLE lookup records only what is currently served.",
-        "An intent write failure sends no article; a reply-record write failure retains the known node answer in the running process and fences new submissions; a full spool preserves all prior records."
+        "A parent or intent write failure sends no article; a reply-record write failure retains the known node answer in the running process and fences new submissions; a full spool preserves all prior records."
       ],
       "evidence": [
         "tests/test_fn_web.py",

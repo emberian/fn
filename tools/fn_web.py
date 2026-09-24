@@ -263,13 +263,21 @@ class DurableSubmissionBook(SubmissionBook):
         self.fenced = None
         self.lock_fd = None
         self.dir_fd = None
+        self.parent_fd = None
         self.target = self._target()
         try:
-            self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+            if not self.directory.parent.is_dir():
+                raise OutboxError("outbox parent must already exist and be durable")
+            self.directory.mkdir(mode=0o700, parents=False, exist_ok=True)
             info = self.directory.lstat()
             if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or \
                     stat.S_IMODE(info.st_mode) != 0o700:
                 raise OutboxError("outbox directory must be owned by this user with mode 0700")
+            self.parent_fd = os.open(self.directory.parent,
+                                     os.O_RDONLY | os.O_DIRECTORY)
+            # The leaf's directory entry must precede every network attempt.
+            # Repeat the barrier on startup to reconcile a prior failed one.
+            os.fsync(self.parent_fd)
             self.dir_fd = os.open(self.directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
             self.lock_fd = os.open(self.directory / ".lock",
                                    os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
@@ -321,6 +329,9 @@ class DurableSubmissionBook(SubmissionBook):
         if self.dir_fd is not None:
             os.close(self.dir_fd)
             self.dir_fd = None
+        if self.parent_fd is not None:
+            os.close(self.parent_fd)
+            self.parent_fd = None
 
     def _read(self, path):
         fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
@@ -341,14 +352,30 @@ class DurableSubmissionBook(SubmissionBook):
             saved = json.loads(raw)
             if saved["version"] != 1 or saved["target"] != self.target:
                 raise OutboxError("outbox record has another version or target")
-            if saved["token"] != path.stem or not group_token(saved["group"]) or \
-                    not isinstance(saved["lines"], list) or not saved["lines"] or \
+            if saved["token"] != path.stem or not group_token(saved["group"]):
+                raise OutboxError("outbox record is malformed")
+            draft = saved.get("draft")
+            if draft is not None:
+                if (not isinstance(draft, dict) or
+                        any(not isinstance(draft.get(name), str) for name in
+                            ("subject", "sender", "references", "body")) or
+                        len(draft["subject"]) > 240 or len(draft["sender"]) > 240 or
+                        len(draft["references"]) > 800 or
+                        len(draft["body"].encode()) > MAX_BODY or
+                        saved["lines"] is not None or saved["message_id"] != "" or
+                        saved["result"] is not None or saved.get("settlement") is not None):
+                    raise OutboxError("outbox draft is malformed")
+                return {"group": saved["group"], "lines": None,
+                        "message_id": "", "result": None, "settlement": None,
+                        "draft": draft, "original_recorded": False,
+                        "record_error": None}
+            if not isinstance(saved["lines"], list) or not saved["lines"] or \
                     not all(isinstance(line, str) for line in saved["lines"]) or \
                     len("\r\n".join(saved["lines"]).encode()) > MAX_BODY + 4096 or \
                     not isinstance(saved["message_id"], str) or \
                     not saved["message_id"].startswith("<") or \
                     not saved["message_id"].endswith(">"):
-                raise OutboxError("outbox record is malformed")
+                raise OutboxError("outbox submission is malformed")
             original = saved["result"]
             if original is None:
                 result = fn_client.Result(fn_client.UNCERTAIN,
@@ -372,15 +399,17 @@ class DurableSubmissionBook(SubmissionBook):
                     "message_id": saved["message_id"], "result": result,
                     "settlement": (fn_client.Result(observation["word"],
                                    observation["detail"], {}, "") if observation else None),
-                    "original_recorded": original is not None, "record_error": None}
+                    "draft": None, "original_recorded": original is not None,
+                    "record_error": None}
         except (KeyError, TypeError, UnicodeError, ValueError, AttributeError) as exc:
             raise OutboxError("outbox record is malformed") from exc
 
     def _write(self, token, entry, original, settlement):
         saved = {"version": 1, "token": token, "target": self.target,
-                 "group": entry["group"], "lines": list(entry["lines"]),
+                 "group": entry["group"],
+                 "lines": list(entry["lines"]) if entry["lines"] is not None else None,
                  "message_id": entry["message_id"], "result": original,
-                 "settlement": settlement}
+                 "settlement": settlement, "draft": entry.get("draft")}
         data = json.dumps(saved, ensure_ascii=True, separators=(",", ":")).encode()
         if len(data) > 32768:
             raise OutboxError("outbox record exceeds 32 KiB")
@@ -406,15 +435,33 @@ class DurableSubmissionBook(SubmissionBook):
                 raise OutboxError(self.fenced)
             if len(self.entries) >= MAX_SUBMISSIONS:
                 stale = next((token for token, entry in self.entries.items()
-                              if entry["lines"] is None), None)
+                              if entry["lines"] is None and entry["draft"] is None), None)
                 if stale is None:
                     raise OutboxFull("outbox is full; archive records while the client is stopped")
                 del self.entries[stale]
             token = secrets.token_urlsafe(24)
             self.entries[token] = {"group": group, "lines": None, "message_id": "",
-                                   "result": None, "settlement": None,
+                                   "result": None, "settlement": None, "draft": None,
                                    "original_recorded": False, "record_error": None}
             return token
+
+    def save_draft(self, token, group, subject, sender, references, body):
+        with self.lock:
+            entry = self.entries.get(token)
+            if entry is None:
+                return None
+            if group != entry["group"] or entry["result"] is not None:
+                raise ValueError("this submission identifier cannot save a draft")
+            if self.fenced:
+                raise OutboxError(self.fenced)
+            entry["draft"] = {"subject": subject, "sender": sender,
+                              "references": references, "body": body}
+            try:
+                self._write(token, entry, None, None)
+            except (OSError, OutboxError) as exc:
+                entry["record_error"] = self._fence(exc)
+                raise OutboxError(entry["record_error"]) from exc
+            return entry
 
     def submit(self, token, group, subject, sender, references, body):
         with self.lock:
@@ -429,12 +476,14 @@ class DurableSubmissionBook(SubmissionBook):
                 raise OutboxError(self.fenced)
             lines, msgid = self.backend.prepare(group, subject, sender, references, body)
             entry["lines"], entry["message_id"] = tuple(lines), msgid
+            entry["draft"] = None
             if sum(one["lines"] is not None for one in self.entries.values()) > MAX_SUBMISSIONS:
                 raise OutboxFull("outbox is full")
             try:
                 self._write(token, entry, None, None)
             except (OSError, OutboxError) as exc:
-                raise OutboxError(self._fence(exc)) from exc
+                entry["record_error"] = self._fence(exc)
+                raise OutboxError(entry["record_error"]) from exc
             # The durable in-flight marker also prevents a second send if a
             # later local exception occurs before the response is recorded.
             entry["result"] = fn_client.Result(fn_client.UNCERTAIN,
@@ -631,6 +680,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         result = entry["result"]
         if result is None:
+            if entry.get("record_error"):
+                self.page("Outbox write uncertain", "<p class='hint'>" +
+                          e(entry["record_error"]) + ". No NNTP POST was made by this "
+                          "attempt. The local record may have changed; new submissions "
+                          "are fenced until restart and inspection.</p>", 503)
+                return
             self.page("Draft", "<p>This form has not been submitted.</p>", 200)
             return
         word, msgid = result.word, entry["message_id"]
@@ -670,6 +725,24 @@ class Handler(BaseHTTPRequestHandler):
                      "this process runs and the form remains in its bounded memory.") + "</p>"
                   "</article>")
 
+    def compose_form(self, token, group, subject="", sender="", references="", body=""):
+        save = ("<button name='action' value='save' type='submit' formnovalidate>"
+                "Save draft</button> "
+                if getattr(self.server.submissions, "durable", False) else "")
+        return ("<form method='post' action='/post'>"
+                "<input type='hidden' name='csrf' value='" + e(self.server.token) + "'>"
+                "<input type='hidden' name='group' value='" + e(group) + "'>"
+                "<input type='hidden' name='submission_id' value='" + e(token) + "'>"
+                "<input type='hidden' name='references' value='" + e(references) + "'>"
+                "<label>Subject<input name='subject' maxlength='240' required value='" +
+                e(subject[:240]) + "'></label>"
+                "<label>From (optional)<input name='sender' maxlength='240' value='" +
+                e(sender) + "'></label>"
+                "<label>Message<textarea name='body' maxlength='16384' required>" +
+                e(body) + "</textarea></label>" + save +
+                "<button name='action' value='post' type='submit'>Post to " + e(group) +
+                "</button></form>")
+
     def redirect(self, location: str):
         self.send_response(303)
         self.send_header("Location", location)
@@ -706,14 +779,22 @@ class Handler(BaseHTTPRequestHandler):
                 self.page("Groups", "<h2>Groups</h2>" + (cards or "<p>No groups are served.</p>"))
             elif path == "/outbox" and getattr(self.server.submissions, "durable", False):
                 with self.server.submissions.lock:
-                    rows = [(token, entry["message_id"], entry["result"].word)
+                    rows = [(token, entry["message_id"],
+                             entry["result"].word if entry["result"] else
+                             ("local write uncertain" if entry.get("record_error") else "draft"),
+                             entry.get("draft"), entry.get("record_error"))
                             for token, entry in self.server.submissions.entries.items()
-                            if entry["message_id"]]
-                cards = "".join("<article><a href='" + e(href("/result", id=token)) +
-                                "'>" + e(msgid) + "</a> · " + e(word) + "</article>"
-                                for token, msgid, word in rows)
+                            if entry["message_id"] or entry.get("draft") is not None]
+                cards = "".join(
+                    ("<article><a href='" + e(href("/draft", id=token)) + "'>Draft: " +
+                     e(draft["subject"] or "(untitled)") + "</a>" +
+                     (" · local write uncertain" if error else "") + "</article>"
+                     if draft is not None
+                     else "<article><a href='" + e(href("/result", id=token)) +
+                     "'>" + e(msgid) + "</a> · " + e(word) + "</article>")
+                    for token, msgid, word, draft, error in rows)
                 self.page("Outbox", "<nav><a href='/'>Groups</a></nav><h2>Local outbox</h2>" +
-                          (cards or "<p>No submitted records.</p>"))
+                          (cards or "<p>No saved drafts or submitted records.</p>"))
             elif path == "/g":
                 group = values.get("name", "")
                 if not group_token(group):
@@ -827,18 +908,32 @@ class Handler(BaseHTTPRequestHandler):
                     if len(references) > 800:
                         references = msgid
                 submission_id = self.server.submissions.new(group)
-                form = ("<form method='post' action='/post'><input type='hidden' name='csrf' value='" +
-                        e(self.server.token) + "'><input type='hidden' name='group' value='" + e(group) +
-                        "'><input type='hidden' name='submission_id' value='" + e(submission_id) +
-                        "'><input type='hidden' name='references' value='" + e(references) +
-                        "'><label>Subject<input name='subject' maxlength='240' required value='" +
-                        e(subject[:240]) + "'></label><label>From (optional)<input name='sender' maxlength='240' value='" +
-                        e(self.server.backend.user) + "'></label><label>Message<textarea name='body' maxlength='16384' required></textarea></label>"
-                        "<button>Post to " + e(group) + "</button></form>")
+                form = self.compose_form(submission_id, group, subject,
+                                         self.server.backend.user, references)
                 self.page("Compose", "<nav><a href='" + e(href("/g", name=group)) +
                           "'>" + e(group) + "</a></nav><h2>Write a post</h2>"
                           "<p class='muted'>One form sends one exact article. If the reply "
                           "is uncertain, keep its Message-ID and check it before trying again.</p>" + form)
+            elif path == "/draft" and getattr(self.server.submissions, "durable", False):
+                token = values.get("id", "")
+                if not token or len(token) > 64:
+                    raise ValueError("invalid submission identifier")
+                with self.server.submissions.lock:
+                    entry = self.server.submissions.entries.get(token)
+                    draft = dict(entry["draft"]) if entry and entry.get("draft") else None
+                    group = entry["group"] if entry else ""
+                    record_error = entry.get("record_error") if entry else None
+                if draft is None:
+                    self.page("Draft unavailable", "<p>No saved draft has this identifier.</p>", 410)
+                    return
+                self.page("Saved draft", "<nav><a href='/outbox'>Outbox</a></nav>"
+                          "<h2>Saved draft</h2><p class='muted'>Editing does not contact the node. "
+                          "Posting freezes one exact article and sends it once.</p>" +
+                          ("<p class='hint'>" + e(record_error) +
+                           ". This draft's latest local save is uncertain.</p>"
+                           if record_error else "") +
+                          self.compose_form(token, group, draft["subject"], draft["sender"],
+                                            draft["references"], draft["body"]))
             elif path in ("/result", "/settle"):
                 token = values.get("id", "")
                 if not token or len(token) > 64:
@@ -888,19 +983,30 @@ class Handler(BaseHTTPRequestHandler):
             group, subject = values.get("group", ""), values.get("subject", "")
             sender, references, body = (values.get("sender", ""),
                                         values.get("references", ""), values.get("body", ""))
-            if (not group_token(group) or not subject or len(subject) > 240 or
+            action = values.get("action", "post")
+            if action not in ("post", "save") or \
+                    (action == "save" and not getattr(self.server.submissions,
+                                                       "durable", False)):
+                raise ValueError("invalid submission action")
+            if (not group_token(group) or len(subject) > 240 or
                     len(sender) > 240 or len(references) > 800 or len(body.encode()) > MAX_BODY or
-                    not body.strip() or any("\r" in x or "\n" in x
+                    (action == "post" and (not subject or not body.strip())) or
+                    any("\r" in x or "\n" in x
                                             for x in (subject, sender, references)) or
                     any(len(line.encode()) > 998 for line in body.splitlines())):
                 raise ValueError("post fields are invalid or too large")
-            entry = self.server.submissions.submit(
-                submission_id, group, subject, sender, references, body)
+            if action == "save":
+                entry = self.server.submissions.save_draft(
+                    submission_id, group, subject, sender, references, body)
+            else:
+                entry = self.server.submissions.submit(
+                    submission_id, group, subject, sender, references, body)
             if entry is None:
                 self.page("Submission unavailable", "<p>This form's local record "
                           "expired or the web client restarted. No POST was sent.</p>", 410)
                 return
-            self.redirect(href("/result", id=submission_id))
+            self.redirect(href("/draft" if action == "save"
+                               else "/result", id=submission_id))
         except (ValueError, UnicodeDecodeError) as exc:
             self.page("Invalid post", "<p>" + e(exc) + "</p>", 400)
         except OutboxFull as exc:

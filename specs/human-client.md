@@ -11,3 +11,10 @@ Any ambiguous local persistence failure fences new attempts. The default
 in-memory mode remains available. This is a client evidence contract, not a
 server acceptance or retention guarantee. The operator behavior and current
 filesystem assumptions are in [the client guide](../docs/human-web-client.md).
+
+In durable mode a user may also save incomplete editable draft fields under the
+same local identifier. Saving and restoring a draft never opens NNTP or creates
+a Message-ID. The first later valid Post replaces the draft with immutable
+in-flight intent before network. Drafts share the outbox capacity and are not
+silently evicted. A new outbox leaf directory requires an existing durable
+parent; startup synchronizes that parent before posting.

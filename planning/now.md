@@ -422,7 +422,8 @@ through native NNTP and a browser. Repeated form submissions preserve exact
 source and Message-ID in bounded process memory by default. The optional
 client-owned durable outbox now records exact in-flight
 POST intent before NNTP, restores uncertain attempts without repost, and keeps
-the original three-way answer separate from later ARTICLE observations. Its
+the original three-way answer separate from later ARTICLE observations. It also
+keeps editable local drafts across restart without opening NNTP. Its
 local HTTP/fake-NNTP restart and write-fault fixture passed; source-matched
 native-node and physical power-loss qualification remain open. See
 [the client contract](../docs/human-web-client.md) and WEB-001/SCN-036.
