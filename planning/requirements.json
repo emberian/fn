@@ -1361,7 +1361,7 @@
         "fn-native-admin-plan-refuses-a-reserved-group-create",
         "fn-native-operator-run-refuses-a-reserved-init-group"
       ],
-      "note": "Covers syntax and the two MUST NOT reservations of section 3.1.4. The names section 3.1.4 sets aside for specific purposes (to.*, control.*, all, ctl, junk) MAY be used by local agreement and are not refused; the SHOULD NOTs on uppercase, all-digit and leading _ + - components restrict generation, and a server MUST accept such names, so they are admitted. fn-cfg-host-initial-octets is a program-mode host wrapper: its refusal is witnessed by tests, not a theorem. No image carries the reserved-name refusal yet; the native witnesses skip without build/fn-host."
+      "note": "Covers syntax and the two MUST NOT reservations of section 3.1.4. The names section 3.1.4 sets aside for specific purposes are patterns (a first or only component to or control, any component all or ctl, exactly junk; fn-native-admin-group-name-special-purposep) that MAY be used for their purpose or by local agreement; fn admits them as an explicit local-agreement profile that confers no authority (fn-native-admin-plan-create-ignores-special-purpose, docs/operator.md); the SHOULD NOTs on uppercase, all-digit and leading _ + - components restrict generation, and a server MUST accept such names, so they are admitted. fn-cfg-host-initial-octets is a program-mode host wrapper: its refusal is witnessed by tests, not a theorem. No image carries the reserved-name refusal yet; the native witnesses skip without build/fn-host."
     },
     {
       "id": "HST-001",
