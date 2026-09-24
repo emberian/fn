@@ -73,6 +73,7 @@
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
+(include-book "books/bp-node-progress-guards")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
 (include-book "books/bp-app-handoff")

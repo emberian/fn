@@ -296,6 +296,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-report-author \
 	tests/acl2/bp-report-author-tests \
 	books/bp-node-progress \
+	books/bp-node-progress-invariants \
+	books/bp-node-progress-guards \
 	books/bp-report-observe \
 	tests/acl2/bp-report-observe-tests \
 	books/bp-report-guards \

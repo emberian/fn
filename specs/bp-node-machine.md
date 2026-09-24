@@ -986,9 +986,27 @@ the decision.
 
 ### 4.2 The progress boundary: `fn-bpn-progress-step st obs` (`:clock`)
 
-**Current A3 native subset.** The shared `bp-node` service does not yet run
-this full progress scheduler for received held rows. Its application caller
-uses `fn-bpah-pending-decision-at` before Store: a current observation must
+**Current A3 native subset and first progress slice.** The shared `bp-node`
+service calls `fn-bpnp-step` on the same FNBS state. Its `:progress` event
+selects the least-arrival live, whole, pending held carrier across local and
+transit destinations. A route-less transit carrier records a volatile wait
+keyed by its admitted-principal bundle key and route generation, emits
+`:progress-wait`, and leaves a younger eligible local carrier selectable on
+the next event. Cold recovery clears these waits; a changed generation
+reconsiders the carrier. The host passes the bounded ACL2 route snapshot and
+uses the existing kind-7 Store/FNRJ delivery path for a selected local row.
+The served scan uses fixed-slot projections from admission/replay-validated
+held rows, with correspondence to the A3 expiry selector under the held-row
+invariant; it does not re-encode retained wire or decode every retained ADU
+on each tick. Only a selected local carrier is ADU-classified; an unsupported
+class gets a volatile per-key class wait, leaving younger work selectable.
+
+This is the route-wait part of N03, not the four-class scheduler below.
+Routeable transit is marked `:session` waiting until the forwarding/session
+slice exists. Session availability does not yet independently wake that wait;
+durable unsupported-ADU disposition, N04 MRU, and N05 journal debt remain
+open. The first native profile passes an
+empty route snapshot and generation zero. A current observation must
 decide the selected persisted held carrier `:live`; `:expired` is skipped and
 `:uncertain` is reported when no live carrier is selectable. New kind-5 rows
 persist the receive-time Bundle Age
@@ -998,17 +1016,18 @@ This narrows A3 delivery eligibility beyond the target's `not :expired`
 condition until the full progress transition and reclamation records land.
 Already committed application and return-carrier obligations are independent
 of that held-carrier eligibility.
-The host-called A3 selector `fn-bpah-pending-decision-at` gives an eligible
+The progress selector gives an eligible
 local `:live` carrier priority over an older carrier whose *clock* expiry is
 `:uncertain`. If no local live carrier exists, it reports the oldest uncertain
 carrier explicitly, so the owner refuses application dispatch pending clock
 evidence. The older carrier remains held in either case. This per-carrier
 clock decision does not relax the separate global fence after an ambiguous
 FNBS or Store publication; `fnn-bpnode-dispatch-one` checks the service's
-uncertain outcome before calling `:deliver`, and `fn-bpnf-step` refuses to
+uncertain outcome before calling `:progress`, and `fn-bpnf-step` refuses to
 issue a delivery marker while an uncertain publication is issued. This A3
-selection only covers local whole application requests/receipts; N03's route
-wait, N04's session MRU, and N05's journal debt remain open in A1.
+selection only covers local whole application requests/receipts and the
+route-less transit wait; N03's full class fairness, N04's session MRU, and
+N05's journal debt remain open in A1.
 
 One action per event. This is the only place delivery and dispatch are
 started, so expiry is decided before either (F-L). Selection is among
