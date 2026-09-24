@@ -656,7 +656,8 @@
         "fn-record-decode-exact",
         "fn-sn-extended-history-equals-live-completion",
         "fn-spc-prepare-equals-specification-under-relation",
-        "fn-opc-prepare-equals-owner-event-under-relation"
+        "fn-opc-prepare-equals-owner-event-under-relation",
+        "fn-ocfg-step-observe-is-fn-ocfg-observe"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -2459,7 +2460,9 @@
         "fn-gidx-bucket-of-build",
         "fn-gidx-listgroup-command-of-build",
         "fn-own-run-preserves-relation",
-        "fn-own-read-is-served-step-on-pinned-prefix"
+        "fn-own-read-is-served-step-on-pinned-prefix",
+        "fn-midx-lookup-of-build-is-find-article-for-nonempty",
+        "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan"
       ],
       "progress_note": "Scoped ACL2 certification and called-owner sparse/historical LISTGROUP witnesses are recorded in the group-bucket evidence. Indexed OVER/XOVER resolve selected-group bucket entries through the pinned trie; the called pinned dispatcher equality has direct reachable and malformed-state premise teeth, with redundant range, tag, bound and session assumptions removed. HDR remains on the archive fold. The native OVER/XOVER socket driver is prepared but has not run on a source-matched image; combined-image qualification and full dependent closure at integrated source remain open."
     },
