@@ -496,7 +496,7 @@
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d (fn-hsig-article-event-carried-bindsp)
                                   (fn-stxa-bindsp fn-stxa-p
-                                   fn-stxe-decode-exact fn-record-decode-exact
+                                   fn-stxe-decode-exact
                                    fn-hc-received-plan
                                    fn-hsig-carried-record-metadatap
                                    fn-hsig-authored-source-id)))))

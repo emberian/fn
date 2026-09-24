@@ -510,7 +510,8 @@ def command_peer(settings, args):
         inbound_max_inflight=args.inbound_max_inflight,
         outbound_groups=args.outbound_groups, streaming=args.streaming,
         max_queue=args.max_queue, backoff_ms=args.backoff_ms,
-        source_address=args.source_address, principal=args.principal)
+        source_address=args.source_address, principal=args.principal,
+        carries=getattr(args, "carries", None))
     return delegate(run_store.command_peer, namespace,
                     "peer {} {}".format(args.action, args.name or ""))
 
@@ -905,6 +906,9 @@ def build_parser():
     peer.add_argument("--backoff-ms", type=int, default=1000)
     peer.add_argument("--source-address", help="the address this peer connects from")
     peer.add_argument("--principal", help="reserved: a keyring principal id")
+    peer.add_argument("--carries", action="append", metavar="HEX",
+                      help="D23: a principal (64 lowercase hex) whose signed articles "
+                           "this peer may carry to us; repeatable")
 
     status = sub.add_parser("status", help="generation, articles, anchor, owner liveness")
     status.add_argument("--control", help="control socket path")

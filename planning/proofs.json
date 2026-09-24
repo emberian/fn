@@ -1107,7 +1107,7 @@
     {
       "id": "PRF-026",
       "title": "The reader's verdict is the recorded verdict, three-valued (S6-1)",
-      "statement": "A durable kind-4 (hybrid acceptance) completion through fn-sn-finish records that event's verdict under its Message-ID; a reader opened after the owner's (:complete) pins that verdict list; and one fn-own-read of HDR :fn-verified <msgid> on an ungated reader connection, framed at its last octet, answers exactly the pinned verdict for the retrieved article, with no keyring consulted. A served NNTP POST (and a local control post or BP application submission) carrying an FN-Authorship carrier takes the transit classification: when ACL2 builds its kind-4 event under the node's current enrollment and that event is the completion record, the owner's (:complete) records its verdict at the POST's Message-ID and a later reader reports it; a present carrier the plan refuses renders its reason as its own 441 line and is never the unsigned arm. fn-stx-reader-verdict-is-the-recorded-verdict (books/stx-reader) is the definition restated and is not a proof event; it is no longer cited.",
+      "statement": "A durable kind-4 (hybrid acceptance) completion through fn-sn-finish records that event's verdict under its Message-ID; a reader opened after the owner's (:complete) pins that verdict list; and one fn-own-read of HDR :fn-verified <msgid> on an ungated reader connection, framed at its last octet, answers exactly the pinned verdict for the retrieved article, with no keyring consulted. A served NNTP POST (and a local control post or BP application submission) carrying an FN-Authorship carrier takes the transit classification: when ACL2 builds its kind-4 event under the node's current enrollment and that event is the completion record, the owner's (:complete) records its verdict at the POST's Message-ID and a later reader reports it; a present carrier the plan refuses renders its reason as its own 441 line and is never the unsigned arm. fn-stx-reader-verdict-is-the-recorded-verdict (books/stx-reader) is the definition restated and is not a proof event; it is no longer cited. D23: on NNTP transit the same fn-pa-current-plan takes the delivering boundary's carried-source list; it plans :carried only when this node has no keyring snapshot of the carrier's principal and the list names it, and off that arm it is the D02 plan (fn-pa-current-plan-off-the-carried-arm-is-the-d02-plan); the carried kind-4 event binds the received octets and the carrier and records token :carried at keyring generation 0, which replay records without a snapshot and the reader renders `carried HEX`, never `verified`.",
       "milestone": "M4",
       "requirements": [
         "SUB-006"
@@ -1128,7 +1128,16 @@
         "fn-osp-signed-post-finish-records-its-verdict",
         "fn-osp-reader-after-signed-post-reports-its-verdict",
         "fn-osp-served-refusal-renders-its-reason",
-        "fn-osp-plan-refusal-is-a-served-reason"
+        "fn-osp-plan-refusal-is-a-served-reason",
+        "fn-pa-current-plan-outcomes",
+        "fn-pa-carried-arm-needs-the-list-and-no-local-snapshot",
+        "fn-pa-current-plan-off-the-carried-arm-is-the-d02-plan",
+        "fn-pa-current-plan-without-carried-list-never-carries",
+        "fn-pa-carried-event-is-a-carried-record",
+        "fn-osp-carried-event-stores-the-relayed-octets",
+        "fn-osp-replay-records-a-carried-composite",
+        "fn-osp-carried-record-reads-carried",
+        "fn-stx-verdict-is-never-carried"
       ]
     },
     {

@@ -1054,6 +1054,9 @@ that does not know its key must post without the carrier. Whether an
 unenrolled signature should instead be accepted as unverified is ember's
 question, listed with the other P8 decisions on the scoreboard. Evidence:
 [p8-signed-post](evidence/p8-signed-post-2026-09-24.md).
+*Superseded for transit by D23 below: an allowlisted, unenrolled author's
+article is carried with a `:carried` verdict
+([d23-nntp-relay](evidence/d23-nntp-relay-2026-09-24.md)).*
 
 ### 2026-09-24: ember's answers to the day's open questions (~22:30 UTC)
 
