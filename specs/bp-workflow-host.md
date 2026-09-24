@@ -51,6 +51,27 @@ recorded resolution; the host discards replay effects in any case. A live
 recovery outcome is refused unless the image is already fenced, which after a
 process restart is what the trailing `:restart` establishes for a lone intent.
 
+Since the ION overlay landed, `host/workflow-host.lisp` opens and
+history-preflights through `fn-bpiw-replay-journal` and applies through
+`fn-bpiw-apply`; the paragraph above describes the original `fn-bp-*`
+interpreter those wrap. The overlay's replay (`fn-bpiw-replay-records`) applies
+each record with live semantics, so it must reconstruct the same crash-implied
+fence: `fn-bpiw-replay-fence` completes a matching unfenced pending
+`:indeterminate` immediately before a recovery outcome, and is the identity
+elsewhere. Without it a recovery outcome was a no-op mid-history, which live
+semantics counts as refusal: the history gate refused every recovery outcome
+and a journal holding one could not be reopened (M4 finding 4, 2026-09-24).
+`fn-bpiw-reopen-after-live-recovery-is-the-live-image-restarted`
+(`books/bp-ion-workflow-replay.lisp`) says that if a journal opens and the
+opened image accepts a recovery outcome live, the journal with that outcome
+appended replays, its installed image is the live image after one restart, and
+its ION state is the live one. It covers one recovery outcome right after an
+open; it does not claim the same correspondence for every later live record.
+A new attempt on a `:restart-observed` attempt is the counterexample for
+ordinary records: the live image accepts it, the history (whose attempt is
+still in flight) refuses it, and the host's history gate is what requires a
+journaled retry request first.
+
 A reopen keeps the works its history enqueued.
 `fn-bp-replay-preserves-works` says no step of the interpreter
 `fn-bp-replay-journal` calls (`fn-bp-replay-records`) drops a work id it was

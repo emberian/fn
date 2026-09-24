@@ -120,13 +120,35 @@
    (t (let ((answer (fn-bprl-apply-journal-record bp record)))
         (list (car answer) (nth 1 answer) (nth 2 answer) ion)))))
 
+; A recovery outcome is written only after a reopen, whose :restart fenced
+; the pending intent.  The journal does not record that restart, so disk
+; replay reconstructs the fence (an :indeterminate completion of the matching
+; pending) immediately before the recovery outcome, exactly as
+; fn-bp-replay-records does.  On any other record, and on a pending that does
+; not match or is already fenced, this is the identity, and the recovery
+; outcome itself still decides acceptance through fn-bpiw-apply.
+(defun fn-bpiw-recovery-outcomep (record)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (equal (fn-bp-journal-nth 0 record) :outcome)
+       (equal (fn-bp-journal-nth 3 record) :recovery)))
+
+(defun fn-bpiw-replay-fence (bp record)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (fn-bpiw-recovery-outcomep record)
+      (fn-bp-result-state
+       (fn-bp-step bp (fn-bp-storage-complete-event
+                       (fn-bp-journal-nth 1 record)
+                       (fn-bp-journal-nth 2 record) :indeterminate)))
+    bp))
+
 (defun fn-bpiw-replay-records (bp ion records effects)
   (declare (xargs :guard t :verify-guards nil :measure (acl2-count records)))
   (if (endp records)
       (let ((restarted (fn-bp-step bp (fn-bp-restart-event))))
         (list t (fn-bp-result-state restarted)
               (append effects (fn-bp-result-effects restarted)) ion))
-    (let ((answer (fn-bpiw-apply bp ion (car records))))
+    (let ((answer (fn-bpiw-apply (fn-bpiw-replay-fence bp (car records))
+                                 ion (car records))))
       (if (not (car answer))
           (list nil bp effects ion)
         (fn-bpiw-replay-records
