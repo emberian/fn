@@ -1181,6 +1181,7 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (fn-th-topic-eventp event)
+           (not (fn-th-topic-v1-anchorp event))
            (eq (fn-th-at 0 (fn-th-prefix-step (fn-sn-topic s) event)) :ok)
            (consp (fn-replay-apply-record (fn-sn-node s) event)))
       (let ((files (fn-sf-prepare-record (fn-sn-files s) event
@@ -1190,6 +1191,11 @@
           s))
     s))
 (verify-guards fn-sn-prepare-topic)
+
+(defthm fn-sn-prepare-topic-refuses-fresh-v1-anchor
+  (implies (fn-th-topic-v1-anchorp event)
+           (equal (fn-sn-prepare-topic s event) s))
+  :hints (("Goal" :in-theory (enable fn-sn-prepare-topic))))
 
 (defun fn-sn-find-record (pair records)
   (declare (xargs :guard t :verify-guards nil))

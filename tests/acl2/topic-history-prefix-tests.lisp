@@ -16,6 +16,25 @@
                ',(fn-th-prefix-step *thpx-before*
                                     (fn-stmt-value *thla-anchor*))))
 (assert-event (equal (fn-th-at 0 *thpx-anchor*) :ok))
+(assert-event
+ (equal (fn-th-at 0
+         (fn-th-prefix-step
+          (fn-th-prefix-state :ok 8 (list *tha-snapshot*)
+                              (list *tha-event*) nil
+                              (list :topic-admin-install 7 8 11 501
+                                    *thla-id*) nil)
+          (fn-stmt-value *thla-anchor*)))
+        :fault))
+; A historical v1 anchor still has its original ID-only replay meaning.
+(assert-event
+ (equal (fn-th-at 0
+         (fn-th-prefix-step
+          (fn-th-prefix-state :ok 8 (list *tha-snapshot*)
+                              (list *tha-event*) nil
+                              (list :topic-admin-install 7 8 11 501
+                                    *thla-id*) nil)
+          (fn-th-anchor-v1-fields (fn-stmt-value *thla-anchor*))))
+        :ok))
 (assert-event (equal (fn-th-at 8
                       (fn-th-find-anchor *thad-topic*
                                          (fn-th-at 4 *thpx-anchor*)))

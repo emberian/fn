@@ -45,14 +45,67 @@
       (fn-th-at 5 installed)
     nil))
 
+; A new anchor carries the generation of the particular earlier immutable
+; administrator installation, separately from its own Store generation.
+; The first eight fields remain the historical v1 anchor shape.
+(defun fn-th-anchor-with-install-generation (anchor installed)
+  (declare (xargs :guard t))
+  (list (fn-th-at 0 anchor) (fn-th-at 1 anchor)
+        (fn-th-at 2 anchor) (fn-th-at 3 anchor)
+        (fn-th-at 4 anchor) (fn-th-at 5 anchor)
+        (fn-th-at 6 anchor) (fn-th-at 7 anchor)
+        (fn-th-at 3 installed)))
+
+(defun fn-th-anchor-v1-fields (anchor)
+  (declare (xargs :guard t))
+  (list (fn-th-at 0 anchor) (fn-th-at 1 anchor)
+        (fn-th-at 2 anchor) (fn-th-at 3 anchor)
+        (fn-th-at 4 anchor) (fn-th-at 5 anchor)
+        (fn-th-at 6 anchor) (fn-th-at 7 anchor)))
+
 (defun fn-th-prepare-anchor-local
     (sequence txid generation accepted snapshot observed-uid quota
               installed anchors)
   (declare (xargs :guard t))
   (let ((caller-id (fn-th-local-admin-current-id installed observed-uid)))
     (if (not caller-id) (fn-stmt-error :administrator)
-      (fn-th-prepare-anchor sequence txid generation accepted snapshot
-                            caller-id (fn-th-at 5 installed) quota anchors))))
+      (let ((prepared
+             (fn-th-prepare-anchor sequence txid generation accepted snapshot
+                                   caller-id (fn-th-at 5 installed)
+                                   quota anchors)))
+        (if (fn-stmt-okp prepared)
+            (fn-stmt-ok
+             (fn-th-anchor-with-install-generation
+              (fn-th-anchor-event sequence txid generation accepted
+                                  quota caller-id)
+              installed))
+          prepared)))))
+
+; Recovery of a v2 anchor compares both the administrator ID and the exact
+; earlier installation generation. It does not reauthorize history against
+; the current process UID. V1 history continues to use fn-th-commit-anchor.
+(defun fn-th-commit-anchor-installed-v2
+    (topic-event accepted snapshot installed anchors)
+  (declare (xargs :guard t))
+  (if (and (true-listp topic-event)
+           (equal (len topic-event) 9)
+           (eq (fn-th-at 0 topic-event) :topic-anchor)
+           (fn-th-local-admin-eventp installed)
+           (equal (fn-th-at 7 topic-event) (fn-th-at 5 installed))
+           (equal (fn-th-at 8 topic-event) (fn-th-at 3 installed)))
+      (fn-th-commit-anchor (fn-th-anchor-v1-fields topic-event)
+                           accepted snapshot (fn-th-at 5 installed) anchors)
+    (fn-stmt-error :administrator-generation)))
+
+(defthm fn-th-commit-anchor-installed-v2-binds-installation
+  (implies (fn-stmt-okp
+            (fn-th-commit-anchor-installed-v2
+             topic-event accepted snapshot installed anchors))
+           (and (fn-th-local-admin-eventp installed)
+                (equal (fn-th-at 7 topic-event) (fn-th-at 5 installed))
+                (equal (fn-th-at 8 topic-event) (fn-th-at 3 installed))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-th-commit-anchor-installed-v2))))
 
 (defthm fn-th-prepare-anchor-local-requires-installed-uid
   (implies (fn-stmt-okp
@@ -64,4 +117,37 @@
   :rule-classes nil
   :hints (("Goal" :in-theory
            (e/d (fn-th-prepare-anchor-local fn-th-local-admin-current-id)
+                (fn-th-prepare-anchor fn-th-local-admin-eventp)))))
+
+(defthm fn-th-prepare-anchor-local-binds-installation
+  (implies (fn-stmt-okp
+            (fn-th-prepare-anchor-local
+             sequence txid generation accepted snapshot observed-uid
+             quota installed anchors))
+           (and (fn-th-local-admin-eventp installed)
+                (equal (len
+                        (fn-stmt-value
+                         (fn-th-prepare-anchor-local
+                          sequence txid generation accepted snapshot
+                          observed-uid quota installed anchors)))
+                       9)
+                (equal (fn-th-at
+                        7 (fn-stmt-value
+                           (fn-th-prepare-anchor-local
+                            sequence txid generation accepted snapshot
+                            observed-uid quota installed anchors)))
+                       (fn-th-at 5 installed))
+                (equal (fn-th-at
+                        8 (fn-stmt-value
+                           (fn-th-prepare-anchor-local
+                            sequence txid generation accepted snapshot
+                            observed-uid quota installed anchors)))
+                       (fn-th-at 3 installed))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-th-prepare-anchor-local
+                 fn-th-anchor-event
+                 fn-th-local-admin-current-id
+                 fn-th-anchor-with-install-generation
+                 fn-stmt-ok fn-stmt-okp fn-stmt-value fn-th-at)
                 (fn-th-prepare-anchor fn-th-local-admin-eventp)))))

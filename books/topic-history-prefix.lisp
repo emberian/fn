@@ -55,8 +55,11 @@
              (updated
               (if (and source snapshot)
                   (if (eq (fn-th-at 0 event) :topic-anchor)
-                      (fn-th-commit-anchor event source snapshot
-                                           (fn-th-at 5 installed) anchors)
+                      (if (fn-th-topic-v1-anchorp event)
+                          (fn-th-commit-anchor event source snapshot
+                                               (fn-th-at 5 installed) anchors)
+                        (fn-th-commit-anchor-installed-v2
+                         event source snapshot installed anchors))
                     (fn-th-commit-report event source snapshot anchors))
                 (fn-stmt-error :missing-historical-authorship))))
         (if (fn-stmt-okp updated)
@@ -111,5 +114,52 @@
                  fn-th-commit-anchor fn-th-commit-report
                  fn-th-prefix-find-ref
                  fn-th-prepare-anchor fn-th-prepare-report)))))
+
+; The recovery/Store completion step checks v2 against the earlier installed
+; event carried by this prefix. The old v1 arm intentionally has no such
+; generation claim and remains available only for historical replay.
+(defthm fn-th-prefix-step-v2-anchor-binds-install-generation
+  (implies (and (equal (fn-th-at 0 projection) :ok)
+                (fn-store-event-p event)
+                (fn-th-topic-eventp event)
+                (not (fn-stxk-p event))
+                (not (fn-stxa-p event))
+                (not (fn-th-local-admin-eventp event))
+                (eq (fn-th-at 0 event) :topic-anchor)
+                (equal (len event) 9)
+                (equal (fn-store-event-sequence event)
+                       (fn-th-at 1 projection))
+                (equal (fn-th-at 0 (fn-th-prefix-step projection event))
+                       :ok))
+           (and (fn-th-local-admin-eventp (fn-th-at 5 projection))
+                (equal (fn-th-at 7 event)
+                       (fn-th-at 5 (fn-th-at 5 projection)))
+                (equal (fn-th-at 8 event)
+                       (fn-th-at 3 (fn-th-at 5 projection)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-th-commit-anchor-installed-v2-binds-installation
+                            (topic-event event)
+                            (accepted (fn-th-prefix-find-ref
+                                       (fn-th-at 5 event)
+                                       (fn-th-at 3 projection)))
+                            (snapshot
+                             (and (fn-th-prefix-find-ref
+                                   (fn-th-at 5 event)
+                                   (fn-th-at 3 projection))
+                                  (fn-stxk-find
+                                   (fn-stxa-keyring-generation
+                                    (fn-th-prefix-find-ref
+                                     (fn-th-at 5 event)
+                                     (fn-th-at 3 projection)))
+                                   (fn-th-at 2 projection))))
+                            (installed (fn-th-at 5 projection))
+                            (anchors (fn-th-at 4 projection))))
+           :in-theory
+           (e/d (fn-th-prefix-step fn-th-topic-v1-anchorp)
+                (fn-store-event-p fn-th-topic-eventp fn-stxk-p fn-stxa-p
+                 fn-th-local-admin-eventp fn-th-commit-anchor
+                 fn-th-commit-anchor-installed-v2 fn-th-commit-report
+                 fn-th-prefix-find-ref fn-stxk-find)))))
 
 (in-theory (disable (:d fn-th-prefix-step) (:d fn-th-prefix-loop)))

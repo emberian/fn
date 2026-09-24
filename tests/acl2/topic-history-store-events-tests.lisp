@@ -7,10 +7,13 @@
 (assert-event (fn-th-topic-eventp *thad-anchor-event*))
 (assert-event (fn-th-topic-eventp *thad-report-event*))
 (assert-event (fn-th-topic-eventp *thla-install*))
+(assert-event (fn-th-topic-eventp (fn-stmt-value *thla-anchor*)))
 (make-event `(defconst *thae-admin-octets*
                ',(fn-th-topic-event-encode *thla-install*)))
 (make-event `(defconst *thae-anchor-octets*
                ',(fn-th-topic-event-encode *thad-anchor-event*)))
+(make-event `(defconst *thae-anchor-v2-octets*
+               ',(fn-th-topic-event-encode (fn-stmt-value *thla-anchor*))))
 (make-event `(defconst *thae-report-octets*
                ',(fn-th-topic-event-encode *thad-report-event*)))
 (assert-event (and *thae-anchor-octets* *thae-report-octets*))
@@ -24,6 +27,39 @@
 (assert-event
  (equal (fn-th-topic-event-decode-exact *thae-anchor-octets*)
         (fn-stmt-ok *thad-anchor-event*)))
+(assert-event
+ (equal (fn-th-topic-event-decode-exact *thae-anchor-v2-octets*)
+        *thla-anchor*))
+(assert-event
+ (equal (fn-th-at 1 (fn-th-topic-event-items *thad-anchor-event*))
+        (cons :uint *fn-th-topic-version*)))
+(assert-event
+ (equal (fn-th-at 1
+                  (fn-th-topic-event-items (fn-stmt-value *thla-anchor*)))
+        (cons :uint *fn-th-topic-anchor-v2-version*)))
+(assert-event
+ (equal (fn-th-topic-event-from-items
+         (update-nth 1 (cons :uint 3)
+                     (fn-th-topic-event-items (fn-stmt-value *thla-anchor*))))
+        (fn-stmt-error :version)))
+(assert-event
+ (not (fn-stmt-okp
+       (fn-th-topic-event-decode-exact
+        (fn-stxe-encode-items
+         (update-nth 1 (cons :uint *fn-th-topic-version*)
+                     (fn-th-topic-event-items
+                      (fn-stmt-value *thla-anchor*))))))))
+(assert-event
+ (not (fn-stmt-okp
+       (fn-th-topic-event-decode-exact
+        (fn-stxe-encode-items
+         (update-nth 1 (cons :uint *fn-th-topic-anchor-v2-version*)
+                     (fn-th-topic-event-items *thad-anchor-event*)))))))
+(assert-event
+ (not (fn-stmt-okp
+       (fn-th-topic-event-from-items
+        (update-nth 1 (cons :uint *fn-th-topic-anchor-v2-version*)
+                    (fn-th-topic-event-items *thad-report-event*))))))
 (assert-event
  (equal (fn-th-topic-event-decode-exact *thae-report-octets*)
         (fn-stmt-ok *thad-report-event*)))

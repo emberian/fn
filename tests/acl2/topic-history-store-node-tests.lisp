@@ -64,6 +64,12 @@
                   *thsn-install* nil)))
 (assert-event (fn-stmt-okp *thsn-anchor-result*))
 (defconst *thsn-anchor* (fn-stmt-value *thsn-anchor-result*))
+(assert-event (equal (fn-th-at 8 *thsn-anchor*) 2))
+(assert-event
+ (equal (fn-sn-prepare-topic
+         (thsn-reserve *thsn-installed*)
+         (fn-th-anchor-v1-fields *thsn-anchor*))
+        (thsn-reserve *thsn-installed*)))
 (make-event `(defconst *thsn-anchored*
                ',(thsn-topic-commit *thsn-installed* *thsn-anchor*)))
 (assert-event (equal (fn-th-at 0 (fn-sn-topic *thsn-anchored*)) :ok))
