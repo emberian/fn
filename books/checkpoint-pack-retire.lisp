@@ -67,13 +67,14 @@
 (defun fn-cprt-retire-program (generations selected)
   (declare (xargs :guard t))
   (let ((plan (fn-cprt-retire-plan generations selected)))
-    (if (equal plan :invalid) nil
+    (if (or (equal plan :invalid) (null plan)) nil
       (fn-cprt-retire-steps plan))))
 
-; ISSUED is the prefix of the plan whose unlink calls have returned.  RETAINED
-; chooses which issued names survive a crash before the closing directory
-; barrier.  This represents the same per-entry uncertainty as the byte store's
-; :del-entry transition without weakening the selected authority.
+; ISSUED is a prefix of unlink attempts, including the most recent attempt if
+; it returned an ambiguous OS error.  RETAINED chooses which issued names
+; survive a crash before the closing directory barrier.  This represents the
+; same per-entry uncertainty as the byte store's :del-entry transition without
+; weakening the selected authority.
 (defun fn-cprt-crash-survivors (generations issued retained)
   (declare (xargs :guard (and (true-listp issued) (true-listp retained))))
   (if (consp generations)
@@ -108,6 +109,21 @@
                 (not (member-equal generation issued)))
            (member-equal generation
                          (fn-cprt-crash-survivors generations issued retained)))
+  :hints (("Goal" :induct (fn-cprt-crash-survivors generations issued retained)
+           :in-theory (enable fn-cprt-crash-survivors))))
+
+(defthm fn-cprt-retirement-never-increases-namespace-count
+  (<= (len (fn-cprt-crash-survivors generations issued retained))
+      (len generations))
+  :hints (("Goal" :induct (fn-cprt-crash-survivors generations issued retained)
+           :in-theory (enable fn-cprt-crash-survivors))))
+
+(defthm fn-cprt-issued-unretained-name-frees-one-slot
+  (implies (and (member-equal generation generations)
+                (member-equal generation issued)
+                (not (member-equal generation retained)))
+           (< (len (fn-cprt-crash-survivors generations issued retained))
+              (len generations)))
   :hints (("Goal" :induct (fn-cprt-crash-survivors generations issued retained)
            :in-theory (enable fn-cprt-crash-survivors))))
 

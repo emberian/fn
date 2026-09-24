@@ -11,10 +11,44 @@
                        (:cut "pack-retire-unlink")
                        (:fsync-dir :packs)
                        (:cut "pack-retire-directory"))))
+; The native caller returns before a directory barrier when the plan is empty.
+(assert-event (equal (fn-cprt-retire-plan '(1 2) 1) nil))
+(assert-event (equal (fn-cprt-retire-program '(1 2) 1) nil))
 (assert-event (equal (fn-cprt-crash-survivors '(0 1 2) '(0) nil)
                      '(1 2)))
 (assert-event (equal (fn-cprt-crash-survivors '(0 1 2) '(0) '(0))
                      '(0 1 2)))
+(assert-event
+ (and (< (len (fn-cprt-crash-survivors '(0 1 2) '(0 1) nil))
+         (len '(0 1 2)))
+      (equal (fn-cprt-crash-survivors '(0 1 2) '(0 1) nil) '(2))))
+; No slot is freed if the named generation was absent, never attempted, or
+; survived an interrupted directory publication.
+(assert-event
+ (and (equal (len (fn-cprt-crash-survivors '(0 1) '(2) nil)) 2)
+      (equal (len (fn-cprt-crash-survivors '(0 1) nil nil)) 2)
+      (equal (len (fn-cprt-crash-survivors '(0 1) '(0) '(0))) 2)))
+(local
+ (must-fail
+  (defthm fn-cprt-slot-without-generation-membership
+    (implies (and (member-equal generation issued)
+                  (not (member-equal generation retained)))
+             (< (len (fn-cprt-crash-survivors generations issued retained))
+                (len generations))))))
+(local
+ (must-fail
+  (defthm fn-cprt-slot-without-issued-attempt
+    (implies (and (member-equal generation generations)
+                  (not (member-equal generation retained)))
+             (< (len (fn-cprt-crash-survivors generations issued retained))
+                (len generations))))))
+(local
+ (must-fail
+  (defthm fn-cprt-slot-without-unretained-image
+    (implies (and (member-equal generation generations)
+                  (member-equal generation issued))
+             (< (len (fn-cprt-crash-survivors generations issued retained))
+                (len generations))))))
 (assert-event (equal (fn-cprt-next-generation '(1 2)) 3))
 (assert-event (equal (fn-cprt-next-generation nil) 0))
 (assert-event (equal (fn-cprt-next-generation '(0 2 2)) :invalid))
