@@ -312,6 +312,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-fnbs-dispatch-codec \
 	books/bp-fnbs-dispatch-invariants \
+	books/bp-node-dispatch \
+	books/bp-fnbs-dispatch-publication \
 	tests/acl2/bp-fnbs-dispatch-codec-tests \
 	books/bp-report-observe \
 	tests/acl2/bp-report-observe-tests \

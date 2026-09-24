@@ -301,6 +301,33 @@
       (fnn-immutable-publish-effect
        publisher stage final dir frame :cleanup-directory dir))))
 
+(defun fnn-bps-persist-dispatch (service epoch operation-id record)
+  (let* ((dir (fnn-bps-lifecycle service))
+         (name (fnn-core 'fn-bpnf-stored-record-name epoch operation-id))
+         (final (fnn-join dir name))
+         (final-absent (if (fnn-lstat final) nil t))
+         (operation
+           (fnn-core 'fn-bpnp-dispatch-publication-authorize
+                     (fnn-bps-state service) epoch operation-id record
+                     (if (fnn-bps-lock-fd service) t nil) final-absent)))
+    (when (equal operation '(:fault :dispatch-codec))
+      (return-from fnn-bps-persist-dispatch :refused))
+    (unless (eq (fnn-core 'fn-bpnp-dispatch-publication-operationp operation) t)
+      (fnn-indeterminate
+       "bp-service: dispatch publication authority refused pending echo"))
+    (let* ((authorized-name
+             (fnn-core 'fn-bpnp-dispatch-publication-name operation))
+           (stage (fnn-join dir (format nil ".record-~d-~a"
+                                         (sb-posix:getpid) (fnn-random-hex 12))))
+           (frame (fnn-octets
+                   (fnn-core 'fn-bpnp-dispatch-publication-frame operation)))
+           (publisher
+             (fnn-core 'fn-bpnp-dispatch-publication-publisher operation)))
+      (unless (equal authorized-name name)
+        (fnn-fault "bp-service: dispatch name changed after authorization"))
+      (fnn-immutable-publish-effect
+       publisher stage final dir frame :cleanup-directory dir))))
+
 (defun fnn-bps-persist-kind-ten (service epoch operation-id record)
   (let* ((dir (fnn-bps-lifecycle service))
          (name (fnn-core 'fn-bpnf-stored-record-name epoch operation-id))
@@ -375,6 +402,31 @@
 (defun fnn-bps-drive-effects (service effects)
   (dolist (effect effects)
     (case (first effect)
+      (:persist-dispatch
+       (unless (= (length effect) 4)
+         (fnn-indeterminate "bp-service: malformed dispatch publication effect"))
+       (let* ((epoch (second effect))
+              (operation-id (third effect))
+              (record (fourth effect))
+              (outcome
+                (fnn-bps-persist-dispatch
+                 service epoch operation-id record)))
+         (when (eq outcome :uncertain)
+           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-drive-effects
+          service (fnn-bps-foundation-step
+                   service (list :persist-result epoch operation-id outcome)))))
+      (:dispatch-ready
+       (fnn-out "BP received carrier dispatch durable"))
+      (:dispatch-answer
+       (case (second effect)
+         (:refused
+          (unless (eq (fnn-bps-outcome service) :uncertain)
+            (setf (fnn-bps-outcome service) :refused))
+          (fnn-out "BP received carrier dispatch refused"))
+         (otherwise
+          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-indeterminate "bp-service: dispatch publication uncertain"))))
       (:persist-delete
        (unless (= (length effect) 4)
          (fnn-indeterminate "bp-service: malformed kind-10 publication effect"))

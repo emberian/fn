@@ -25,7 +25,9 @@
 (verify-guards fn-bpnp-oldest-eligible)
 (verify-guards fn-bpnp-oldest-uncertain-local)
 (verify-guards fn-bpnp-delivery-view)
+(verify-guards fn-bpnp-transit-dispatch-step)
 (verify-guards fn-bpnp-progress-step)
+(verify-guards fn-bpnp-dispatch-persist-step)
 (verify-guards fn-bpnp-host-eventp)
 (local
  (defthm fn-bpnp-delegate-event-guard

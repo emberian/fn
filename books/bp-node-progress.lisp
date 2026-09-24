@@ -9,6 +9,9 @@
 (set-verify-guards-eagerness 0)
 
 (defconst *fn-bpnp-max-routes* 64)
+; This deployed profile keeps one received-FNBS control record above exact
+; cleanup debt.  The policy slot in spec §2.1 is not yet a host input.
+(defconst *fn-bpnp-control-margin* 1)
 
 (defun fn-bpnp-routep (route)
   (declare (xargs :guard t))
@@ -210,6 +213,41 @@
             (fn-bpaj-eid-text (fn-bpp-source primary))
             (fn-bpaj-eid-text (fn-bpp-destination primary))))))
 
+(defun fn-bpnp-transit-dispatch-step (st h peer node)
+  (declare (xargs :guard t))
+  (let* ((record (fn-bpnp-dispatch-record
+                  (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                  (fn-bpn-nth 3 h) (fn-bpah-held-primary-identity h) peer))
+         (applied (fn-bpnp-dispatch-apply record (fn-bpnf-held-list st)))
+         (delta (if (equal (car applied) :ready)
+                    (fn-bpnd-held-delta h (fn-bpn-nth 2 applied) node)
+                  0)))
+    (if (not (and (fn-frame-natp (fn-bpnf-epoch st))
+                  (fn-frame-natp (fn-bpnf-next-op st))
+                  (< (fn-bpnf-next-op st) *fn-frame-max-nat*)
+                  (equal (car applied) :ready)
+                  (fn-bpnp-dispatch-recordp record)
+                  (not (equal (fn-bpnp-dispatch-frame record) :bad))))
+        (fn-bpnf-answer st nil)
+      (if (not (fn-bpnd-admitp
+                (fn-bpnp-used st) (fn-bpnp-debt st)
+                *fn-bpnp-control-margin* delta
+                (if (< delta 0) :pay :spend)))
+          (fn-bpnf-answer
+           st (list (list :progress-wait (fn-bpnp-wait-key h)
+                          :credit (fn-bpnp-used st))))
+        (fn-bpnf-answer
+         (fn-bpnf-state-with-arrival
+          (fn-bpnf-base st) (fn-bpnf-held-list st)
+          (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+          (fn-bpnf-correlation st)
+          (fn-bpnf-operation (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                             :dispatch record :pending)
+          (fn-bpnf-waits st) (fn-bpnf-epoch st)
+          (1+ (fn-bpnf-next-op st)) (fn-bpnf-next-arrival st))
+         (list (list :persist-dispatch (fn-bpnf-epoch st)
+                     (fn-bpnf-next-op st) record)))))))
+
 (defun fn-bpnp-progress-step (st node observation routes generation)
   (declare (xargs :guard t))
   (if (or (fn-bpnf-issued st) (fn-bpnf-waits st)
@@ -261,14 +299,67 @@
                   (fn-bpnf-answer
                    (fn-bpnp-with-waits st new-waits)
                    (list (list :progress-unsupported key)))))
-            (let* ((reason (if (fn-bpnp-route-peer destination routes)
-                               :session :route))
-                   (new-waits
-                    (cons (list :bpnp-wait key reason generation)
-                          (fn-bpnp-remove-wait key waits))))
-              (fn-bpnf-answer
-               (fn-bpnp-with-waits st new-waits)
-               (list (list :progress-wait key reason generation))))))))))
+            (let ((peer (fn-bpnp-route-peer destination routes)))
+              (if peer
+                  (fn-bpnp-transit-dispatch-step st h peer node)
+                (let ((new-waits
+                       (cons (list :bpnp-wait key :route generation)
+                             (fn-bpnp-remove-wait key waits))))
+                  (fn-bpnf-answer
+                   (fn-bpnp-with-waits st new-waits)
+                   (list (list :progress-wait key :route generation))))))))))))
+
+(defun fn-bpnp-dispatch-persist-step (st epoch op result)
+  (declare (xargs :guard t))
+  (let* ((issued (fn-bpnf-issued st))
+         (record (fn-bpn-nth 4 issued))
+         (arrival (fn-bpn-nth 3 record))
+         (before (fn-bpnf-find-arrival arrival (fn-bpnf-held-list st))))
+    (if (not (and (fn-bpnf-operation-matchp issued epoch op)
+                  (equal (fn-bpn-nth 3 issued) :dispatch)
+                  (equal (fn-bpn-nth 5 issued) :pending)))
+        (fn-bpnf-answer st nil)
+      (if (equal result :durable)
+          (let ((applied (fn-bpnp-dispatch-apply
+                          record (fn-bpnf-held-list st))))
+            (if (not (equal (car applied) :ready))
+                (fn-bpnf-answer
+                 (fn-bpnp-with-credit
+                  (fn-bpnf-with-issued
+                   st (fn-bpnf-operation epoch op :dispatch record :uncertain))
+                  (fn-bpnp-used st) (fn-bpnp-debt st))
+                 (list (list :dispatch-answer :uncertain)))
+              (let* ((node
+                      (fn-bpn-config-node-id
+                       (fn-bpn-machine-state-config (fn-bpnf-base st))))
+                     (delta (fn-bpnd-held-delta
+                             before (fn-bpn-nth 2 applied) node))
+                     (settled
+                      (fn-bpnf-state-with-arrival
+                       (fn-bpnf-base st) (fn-bpn-nth 1 applied)
+                       (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+                       (fn-bpnf-correlation st) nil (fn-bpnf-waits st)
+                       (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                       (fn-bpnf-next-arrival st))))
+                (fn-bpnf-answer
+                 (fn-bpnp-with-credit
+                  settled (1+ (nfix (fn-bpnp-used st)))
+                  (+ (nfix (fn-bpnp-debt st)) delta))
+                 (list (list :dispatch-ready
+                             (fn-bpnp-wait-key (fn-bpn-nth 2 applied))
+                             (fn-bpn-nth 5 record)))))))
+        (if (equal result :refused)
+            (fn-bpnf-answer
+             (fn-bpnp-with-credit
+              (fn-bpnf-with-issued st nil)
+              (fn-bpnp-used st) (fn-bpnp-debt st))
+             (list (list :dispatch-answer :refused)))
+          (fn-bpnf-answer
+           (fn-bpnp-with-credit
+            (fn-bpnf-with-issued
+             st (fn-bpnf-operation epoch op :dispatch record :uncertain))
+            (fn-bpnp-used st) (fn-bpnp-debt st))
+           (list (list :dispatch-answer :uncertain))))))))
 
 (defun fn-bpnp-host-eventp (event)
   (declare (xargs :guard t))
@@ -286,9 +377,20 @@
                               (fn-bpnp-host-eventp event))
                   :verify-guards nil))
   (if (equal (fn-cbor-ag-car event) :progress)
-      (fn-bpnp-progress-step
-       st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
-       (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))
+      (let ((answer
+             (fn-bpnp-progress-step
+              st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+              (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
+        (fn-bpnf-answer
+         (fn-bpnp-with-credit
+          (fn-bpnf-answer-state answer)
+          (fn-bpnp-used st) (fn-bpnp-debt st))
+         (fn-bpnf-answer-effects answer)))
+    (if (and (equal (fn-cbor-ag-car event) :persist-result)
+             (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :dispatch))
+        (fn-bpnp-dispatch-persist-step
+         st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+         (fn-bpn-nth 3 event))
     (let* ((answer (fn-bpn-report-author-step st event))
            (ready (and (equal (fn-cbor-ag-car event) :recover-fnbs)
                        (equal (fn-bpn-nth 0
@@ -306,4 +408,4 @@
              (fn-bpn-config-node-id
               (fn-bpn-machine-state-config (fn-bpnf-base next)))))
          (fn-bpnp-with-credit next (fn-bpnp-used st) (fn-bpnp-debt st)))
-       (fn-bpnf-answer-effects answer)))))
+       (fn-bpnf-answer-effects answer))))))

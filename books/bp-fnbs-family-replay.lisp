@@ -5,6 +5,7 @@
 (include-book "bp-node-fragment-replacement")
 (include-book "bp-fnbs-delivery-replay")
 (include-book "bp-fnbs-deletion-codec")
+(include-book "bp-node-dispatch")
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnf-family-replay-row-record (row)
@@ -16,7 +17,9 @@
           (if delivered delivered
             (let ((family (fn-bpnf-family-replay-unframe (cadr row))))
               (if family family
-                (fn-bpnf-delete-unframe (cadr row))))))))))
+                (let ((deleted (fn-bpnf-delete-unframe (cadr row))))
+                  (if deleted deleted
+                    (fn-bpnp-dispatch-unframe (cadr row))))))))))))
 
 (defun fn-bpnf-family-replay-rows-aux
   (rows base held handoffs prior next-arrival)
@@ -71,6 +74,13 @@
             (if (not ok) (list :fault :kind-ten-row)
               (fn-bpnf-family-replay-rows-aux
                (cdr rows) base updated handoffs next next-arrival))))
+         ((equal (car record) :bpnf-dispatched)
+          (let ((applied (fn-bpnp-dispatch-apply record held)))
+            (if (not (equal (car applied) :ready))
+                (list :fault :kind-six-row)
+              (fn-bpnf-family-replay-rows-aux
+               (cdr rows) base (fn-bpn-nth 1 applied)
+               handoffs next next-arrival))))
          (t (list :fault :received-kind)))))))
 
 (defun fn-bpnf-family-replay-rows (rows base)
@@ -95,5 +105,8 @@
           5 (fn-bpnf-family-recover-auto-event
              st base-records sequence-ready rows))
          (len rows))
-  :hints (("Goal" :in-theory (enable fn-bpnf-family-recover-auto-event)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bpnf-family-recover-auto-event)
+                           (fn-bpnf-family-replay-rows
+                            fn-bpnf-family-replay-rows-aux))))
   :rule-classes nil)
