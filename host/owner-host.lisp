@@ -28,6 +28,8 @@
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
+; D25: the duplicate-versus-conflict decision keys on the poster's bytes.
+(include-book "../books/poster-bytes")
 (include-book "../books/config-owner-live")
 (include-book "../books/config-owner-publish")
 (include-book "../books/owner-tls-prefix")
@@ -359,7 +361,7 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-sn-existing-action msgid payload groups s)))
+             (existing (fn-pb-existing-action msgid payload groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -1283,7 +1285,7 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-sn-existing-action
+      (let ((action (fn-pb-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))

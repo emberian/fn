@@ -709,7 +709,8 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; The Store refusal kinds relayed to fn-own-outcome, each named by the ACL2
 ;; step that refused (books/owner.lisp fn-own-refusal-wordp).  fn-owner-prepare
 ;; answers :invalid for inputs outside its domain; its other non-prepared
-;; answers are fn-sn-existing-action's :duplicate / :conflict, :clock-unusable,
+;; answers are fn-pb-existing-action's :duplicate / :conflict (books/poster-bytes.lisp,
+;; keyed on the poster's bytes, D25), :clock-unusable,
 ;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), or
 ;; :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
