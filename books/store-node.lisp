@@ -284,6 +284,44 @@
                            fn-sn-with-configuration-preserves-unselected-slot
                            (k 13))))))
 
+(local
+ (defthm fn-sn-caddr-is-nth-two
+   (equal (caddr x) (nth 2 x))
+   :hints (("Goal" :in-theory (enable nth)))))
+
+(defthm fn-sn-files-of-fn-sn-with-configuration
+  (equal (fn-sn-files
+          (fn-sn-with-configuration s groups capacity node config-history))
+         (fn-sn-files s))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-files)
+                (fn-sn-with-configuration)))))
+
+(defthm fn-sn-groups-of-fn-sn-with-configuration
+  (equal (fn-sn-groups
+          (fn-sn-with-configuration s groups capacity node config-history))
+         groups)
+  :hints (("Goal" :in-theory
+           (enable fn-sn-groups fn-sn-with-configuration))))
+(defthm fn-sn-capacity-of-fn-sn-with-configuration
+  (equal (fn-sn-capacity
+          (fn-sn-with-configuration s groups capacity node config-history))
+         capacity)
+  :hints (("Goal" :in-theory
+           (enable fn-sn-capacity fn-sn-with-configuration))))
+(defthm fn-sn-node-of-fn-sn-with-configuration
+  (equal (fn-sn-node
+          (fn-sn-with-configuration s groups capacity node config-history))
+         node)
+  :hints (("Goal" :in-theory
+           (enable fn-sn-node fn-sn-with-configuration))))
+(defthm fn-sn-config-history-of-fn-sn-with-configuration
+  (equal (fn-sn-config-history
+          (fn-sn-with-configuration s groups capacity node config-history))
+         config-history)
+  :hints (("Goal" :in-theory
+           (enable fn-sn-config-history fn-sn-with-configuration nth))))
+
 (defthm fn-sn-consumer-of-fn-sn-make-v2
   (equal (fn-sn-consumer
           (fn-sn-make-v2 groups capacity files node keyring index

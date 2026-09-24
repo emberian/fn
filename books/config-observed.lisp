@@ -48,7 +48,7 @@
                             topic)))
               (if (and (equal (fn-stxk-context-kind identity) :ok)
                        (eq (car consumer) :ok)
-                       (eq (car topic) :ok)
+                       (eq (fn-th-at 0 topic) :ok)
                        (fn-sn-statep opened))
                   (fn-sn-open-ok opened)
                 (fn-sn-open-error :identity)))))))))
@@ -134,14 +134,14 @@
 (defthm fn-cpo-configure-durable-keeps-observed-events
   (equal (fn-sf-records (fn-sn-files (fn-cpo-configure-durable st record)))
          (fn-sf-records (fn-sn-files st)))
-  :hints (("Goal" :in-theory (enable fn-cpo-configure-durable
-                                      fn-cpo-install))))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable fn-cpo-install)
+                                   (fn-sn-with-configuration)))))
 
 (defthm fn-cpo-configure-durable-keeps-frontier
   (equal (fn-sf-frontier (fn-sn-files (fn-cpo-configure-durable st record)))
          (fn-sf-frontier (fn-sn-files st)))
-  :hints (("Goal" :in-theory (enable fn-cpo-configure-durable
-                                      fn-cpo-install))))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable fn-cpo-install)
+                                   (fn-sn-with-configuration)))))
 
 (defthm fn-cpo-configure-durable-preserves-history-relation
   (implies (fn-cpo-history-relation st)
@@ -150,7 +150,8 @@
   :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable
                                    fn-cpo-history-relation fn-cpo-install)
                                   (fn-cpr-replay fn-cpr-loop
-                                   fn-sn-statep fn-cnode-statep)))))
+                                   fn-sn-statep fn-cnode-statep
+                                   fn-sn-with-configuration)))))
 
 ; The caller sees the complete observed journal and the parameters from the
 ; final *ordered* configuration. No barrier has been reported at open.
@@ -176,15 +177,16 @@
                 (fn-cpr-replay fn-cpr-loop fn-replay-identity
                  fn-replay-identity-loop fn-stx-index-of-store
                  fn-sn-statep fn-cnode-statep fn-sn-observed-seed
-                 fn-replay-advance-txid)))))
+                 fn-replay-advance-txid fn-sn-with-configuration)))))
 
 (defthm fn-cpo-open-success-has-historical-relation
   (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier events))
            (fn-cpo-history-relation
             (fn-sn-open-state
              (fn-cpo-open-observed configs frontier events))))
-  :hints (("Goal" :in-theory (enable fn-cpo-history-relation
-                                      fn-cpo-open-observed fn-sn-open-okp))))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-history-relation
+                                   fn-cpo-open-observed fn-sn-open-okp)
+                                  (fn-sn-with-configuration)))))
 
 (deftheory fn-cpo-vocabulary '(fn-cpo-install fn-cpo-open-observed
                              fn-cpo-history-relation fn-cpo-configure-durable))
