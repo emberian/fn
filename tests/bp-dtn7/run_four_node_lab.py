@@ -18,8 +18,11 @@ emits no relay receipt *kind*, so this lab asserts the archival behaviour and
 records the forwarding undertaking of `books/relay.lisp` as a proposal only --
 never as a passed assertion.
 
-With `DTN7_REPO` unset the transport is `mock_bpa.py`: a laboratory scheduler,
+With `--dtn7-repo` unset the transport is `mock_bpa.py`: a laboratory scheduler,
 not BPv7.  Results are about fn's behaviour across contacts, not interoperation.
+With `--dtn7-repo` (and `--image`, the DTN developer image) home and
+destination are native fn nodes and relay-a/relay-b are dtn7-rs daemons: see
+`run_dtn7` and run_fn_dtn7_app_receipt.py.
 """
 
 from __future__ import annotations
@@ -445,7 +448,59 @@ def lab_revision(named: str | None = None) -> str:
             "not write \"unknown\".".format(ROOT)) from error
 
 
-def run_lab(run: Path, *, dtn7_repo=None, revision=None) -> dict:
+def run_dtn7(lab: Lab, run: Path, started: float, dtn7_repo: Path, image: Path) -> dict:
+    """The pinned-BPA mode: home and destination are native fn nodes
+    (`bp-node serve` on the DTN image), relay-a and relay-b are dtn7-rs 0.21.0
+    daemons on sled stores.  relay-a is SIGKILLed by PID mid-transfer and
+    restarted; relay-b's window opens only after that.  The steps and their
+    three-outcome rows are run_fn_dtn7_app_receipt.py's, with two relays."""
+    import contextlib
+    import io
+    import run_fn_dtn7_app_receipt as exchange
+    report = lab.report
+    report["topology"] = "home (fn) -> relay-a (dtn7) -> relay-b (dtn7) -> destination (fn)"
+    report["image"] = str(image)
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            exchange.main(["--image", str(image), "--dtn7-repo", str(dtn7_repo),
+                           "--relays", "2", "--work", str(run / "dtn7")])
+        inner = json.loads((run / "dtn7" / "report.json").read_text())
+        report["exchange"] = inner
+        steps = {row["step"][0]: row for row in inner["steps"]}
+        lab.check("relay-a cut mid-transfer leaves home uncertain",
+                  steps["1"]["outcome"] == "uncertain")
+        lab.check("home's durable job is accepted by relay-a after its restart",
+                  steps["2"]["outcome"] == "accepted")
+        lab.check("destination takes custody of the request exactly once",
+                  steps["3"]["transport_accepted"] == 1)
+        lab.check("destination's application decides exactly once",
+                  len(steps["3"]["application"]) == 1)
+        accepted = steps["3"]["outcome"] == "request-accepted"
+        lab.check("no receipt is inferred from transport delivery",
+                  accepted or (steps["4"]["outcome"] == "no-receipt"
+                               and "pinned=yes" in inner["a_pinned_after"]))
+        report["observed"] = {
+            "application": steps["3"]["outcome"],
+            "receipt_at_home": steps["4"]["outcome"],
+            "home_obligation": inner["a_pinned_after"]}
+        report["status"] = "passed"
+    except Exception as error:  # the evidence says what failed
+        report.update(status="failed", error=repr(error))
+    finally:
+        report["seconds"] = round(time.monotonic() - started, 1)
+        report["limitations"] = [
+            "relay-a and relay-b are dtn7-rs (epidemic routing, static peers); "
+            "home and destination are native fn nodes. No relay receipt kind.",
+            "The request ADU is ACL2's fn-bpa-make-request evaluated through "
+            "the lab's ACL2 bridge; no native verb authors it from the workflow.",
+            "Real local process death (SIGKILL by PID); no power-loss claim.",
+        ]
+        (run / "evidence.json").write_text(
+            json.dumps(report, indent=1, sort_keys=True) + "\n")
+    return report
+
+
+def run_lab(run: Path, *, dtn7_repo=None, revision=None, image=None) -> dict:
     started = time.monotonic()
     lab = Lab(run, "mock_bpa" if dtn7_repo is None else "pinned dtn7-rs")
     report = lab.report
@@ -459,9 +514,11 @@ def run_lab(run: Path, *, dtn7_repo=None, revision=None) -> dict:
         "source_sha256": source_snapshot(), "assertions": {}, "events": [],
     })
     if dtn7_repo is not None:
-        raise NotImplementedError(
-            "the pinned-BPA run of this lab is optional and not yet wired; "
-            "run without --dtn7-repo to use the mock BPA")
+        if image is None:
+            raise SystemExit("--dtn7-repo needs --image (or FN_NATIVE_BP_NODE_HOST): "
+                             "home and destination are native fn nodes")
+        return run_dtn7(lab, run, started, Path(dtn7_repo).resolve(),
+                        Path(image).resolve())
 
     network = MockNetwork(run / "net")
     nodes = {}
@@ -730,10 +787,14 @@ def main(argv=None) -> int:
                              "tree has no git repository to ask, and the lab "
                              "refuses rather than writing \"unknown\". "
                              "FN_GATE_REVISION does the same thing.")
+    parser.add_argument("--image", type=Path,
+                        default=os.environ.get("FN_NATIVE_BP_NODE_HOST"),
+                        help="the DTN developer image for --dtn7-repo mode")
     args = parser.parse_args(argv)
     args.run_base.mkdir(parents=True, exist_ok=True)
     run = Path(tempfile.mkdtemp(prefix="four-node-", dir=args.run_base)).resolve()
-    report = run_lab(run, dtn7_repo=args.dtn7_repo, revision=args.revision)
+    report = run_lab(run, dtn7_repo=args.dtn7_repo, revision=args.revision,
+                     image=args.image)
     print(json.dumps({"status": report["status"], "seconds": report["seconds"],
                       "evidence": str(run / "evidence.json")}))
     return 0 if report["status"] == "passed" else 1
