@@ -33,6 +33,11 @@ shared cache, at most two jobs, 120-second per-book limit, no `--closure`:
 - ACL2-produced second-root field vector, with a distinct signed source for
   mixed v1/v2 history, passed `run-20260924T053935Z-438f`, manifest
   `certify-20260924T053944Z-748903.json`.
+- The owner book and actual local-control test passed together on the merged
+  v2 source in `run-20260924T054443Z-4fca`, manifest
+  `certify-20260924T054456Z-800480.json` (SHA-256
+  `3ee21ef165abd5496e3aae6f0dde2cac9a7264c62266fe7573ee3e49449f6dca`).
+  All 22 selected books certified with 113 matching dependencies installed.
 
 The disposable dual-image test in `tests/test_native_topic_local.py` is
 prepared, not run. It uses the qualified pre-v2 b074 developer image retained
