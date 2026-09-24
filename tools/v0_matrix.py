@@ -171,6 +171,8 @@ BACKENDS = (DEVELOPMENT_BACKEND, NATIVE_BACKEND)
 # two ways a row can fail to be an outcome at all.
 ACCEPTED, REFUSED, UNCERTAIN = "accepted", "refused", "uncertain"
 NOT_EXERCISED, NOT_BUILT = "not-exercised", "not-built"
+# The blocker prefix of a row the run never reached because the driver stopped.
+STOPPED_EARLY = "not exercised: the driver stopped early"
 VERDICTS = (ACCEPTED, REFUSED, UNCERTAIN, NOT_EXERCISED, NOT_BUILT)
 OUTCOMES = (ACCEPTED, REFUSED, UNCERTAIN)
 
@@ -689,8 +691,11 @@ PLAN_BY_KEY = {spec.key: spec for spec in PLAN}
 
 # The INN rows, each read from the tools/inn_lab.py findings named here
 # (`key[instance]`).  A row whose findings all held carries its expected
-# verdict; one with a violated finding carries the opposite outcome, which
-# `derive` then reads as a disagreement; anything else is not-exercised.
+# verdict.  A violated finding is a disagreement, never an acceptance: a row
+# expecting acceptance reads refused, and a row expecting refusal reads
+# uncertain -- the lab saw the refusal fail to hold (on 6c0626c5 because fn's
+# service had stopped and every reply was absent), which is not an observation
+# that fn took the article.  Anything else is not-exercised.
 INN_ROWS = (
     ("V0-INN-FEED-OUT", ("fn-post-240", "fn-feeds-inn", "inn-serves-fn-article")),
     ("V0-INN-FEED-IN", ("innfeed-feeds-fn", "fn-serves-inn-article")),
@@ -740,8 +745,9 @@ def inn_rows(findings: dict) -> list:
         if verdicts <= {"held"}:
             out.append((key, expected, observed, None))
         elif "violated" in verdicts and verdicts <= {"held", "violated"}:
-            out.append((key, REFUSED if expected == ACCEPTED else ACCEPTED,
-                        observed, None))
+            out.append((key, REFUSED if expected == ACCEPTED else UNCERTAIN,
+                        "violated, which is not an acceptance: " + observed
+                        if expected != ACCEPTED else observed, None))
         else:
             out.append((key, NOT_EXERCISED, observed,
                         "the lab did not decide every finding this row reads: "
@@ -1859,8 +1865,18 @@ class V0Matrix(twonode_gate.TwoNodeGate):
                 self.emit(key, verdict, invocation, "(not run)",
                           blocker=blocker, owner=owner)
 
-    def backfill(self):
-        """Every planned row the run never reached is a row, not a silence."""
+    def backfill(self, stopped=None):
+        """Every planned row the run never reached is a row, not a silence.
+
+        `stopped` is the gate error that ended the run early.  Its rows then
+        carry STOPPED_EARLY in their blocker, so the document itself says the
+        driver stopped and `publish_current` can refuse it.
+        """
+        blocker = ("the run reached its end without this row; the phase "
+                   "that owns it raised or was skipped, and the gap list "
+                   "above says which")
+        if stopped is not None:
+            blocker = "{}: {}".format(STOPPED_EARLY, stopped)
         for spec in PLAN:
             for rid in spec.ids():
                 if rid in self.emitted:
@@ -1868,10 +1884,7 @@ class V0Matrix(twonode_gate.TwoNodeGate):
                 node = rid.rsplit("-", 1)[-1].lower() if spec.scope == "node" else None
                 direction = rid.rsplit("-", 1)[-1].lower() if spec.scope == "direction" else None
                 self.emit(spec.key, NOT_EXERCISED, "(none)", "(not run)",
-                          node=node, direction=direction,
-                          blocker="the run reached its end without this row; the phase "
-                                  "that owns it raised or was skipped, and the gap list "
-                                  "above says which")
+                          node=node, direction=direction, blocker=blocker)
 
     # -- plumbing ---------------------------------------------------------
     @property
@@ -3006,6 +3019,19 @@ else echo NONE; fi
                 offer or "no answer", result.get("ihave_advertised"))
         uncert = self.uncertified("peer-inbound", "served", "owner", "peer-config")
         if not offer or unsupported(offer):
+            down = [n for n in (source, target) if not self.alive(n)]
+            if down:
+                # A peer whose server died is not a missing feature: the 22
+                # rows are not exercised against the death (6c0626c5 run).
+                self.blocked(self.TRANSIT_KEYS,
+                             "not exercised: peer down: `IHAVE {}` from {} to {} drew "
+                             "'{}' because {}".format(
+                                 msgid, source.upper, target.upper, offer or "no answer",
+                                 "; ".join("node {}'s server died during this run: {}"
+                                           .format(n.upper, self.dead.get(n.name, "no log"))
+                                           for n in down)),
+                             directions=(way,), invocation=probe.command)
+                return
             self.blocked(self.TRANSIT_KEYS,
                          "node {} answered `IHAVE {}` with '{}'. Transit is on the "
                          "served path, the server that started is `{}`, and {}"
@@ -6161,8 +6187,14 @@ def witness_records(output: str, marker: str) -> list:
     return records
 
 
+def stopped_early(doc: dict) -> list:
+    """The ids of rows left unexercised because the driver stopped early."""
+    return [row["id"] for row in doc.get("rows", [])
+            if str(row.get("blocker") or "").startswith(STOPPED_EARLY)]
+
+
 def publish_current(repo: Path, doc: dict, *, overlay: bool = False,
-                    simulated: bool = False) -> None:
+                    simulated: bool = False, stopped: bool = False) -> None:
     """Advance the dashboard only for an explicit, current-source measurement.
 
     The immutable run is already written. Publication is not a passing verdict:
@@ -6176,6 +6208,9 @@ def publish_current(repo: Path, doc: dict, *, overlay: bool = False,
         raise GateError("overlaid measurements cannot replace the current matrix")
     if simulated:
         raise GateError("dry-run measurements cannot replace the current matrix")
+    if stopped or stopped_early(doc):
+        raise GateError("a run the driver stopped early cannot replace the current "
+                        "matrix; the immutable report remains available")
     target = repo / MATRIX_JSON
     target.parent.mkdir(parents=True, exist_ok=True)
     # Keep the advisory lock out of the tracked planning tree.
@@ -6364,7 +6399,7 @@ def main(argv=None) -> int:
         failure = str(error)
         gate.limitation(None, "the gate stopped early: {}".format(error))
         try:
-            gate.backfill()
+            gate.backfill(stopped=error)
         except Exception as inner:                        # noqa: BLE001
             gate.limitation(None, "the backfill did not finish: {}".format(inner))
     finally:
@@ -6386,7 +6421,8 @@ def main(argv=None) -> int:
               file=sys.stderr)
     if args.publish_current and not problems:
         try:
-            publish_current(repo, doc, overlay=bool(overlays), simulated=args.dry_run)
+            publish_current(repo, doc, overlay=bool(overlays), simulated=args.dry_run,
+                            stopped=failure is not None)
         except GateError as error:
             problems.append(str(error))
             print("ERROR: matrix publication: {}".format(error), file=sys.stderr)
