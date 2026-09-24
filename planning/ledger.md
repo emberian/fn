@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 616 |
 | Certification roots in the Makefile | 606 |
 | Books inside the root closure | 614 |
-| `defthm` and `defthmd` events | 8617 |
-| `defun` events | 6358 |
+| `defthm` and `defthmd` events | 8619 |
+| `defun` events | 6359 |
 | Functions with verified guards | 2036 |
 | Functions declared `:verify-guards nil` and never verified | 378 |
-| Functions left at the default with an explicit guard | 3133 |
+| Functions left at the default with an explicit guard | 3134 |
 | Functions left at the default with no guard | 811 |
-| `assert-event` checks | 9376 |
-| `must-fail` checks | 525 |
+| `assert-event` checks | 9385 |
+| `must-fail` checks | 526 |
 | `encapsulate` events | 27 |
 | Theorems flagged SUSPECT by shape | 81 |
 | Export-hygiene warnings | 103 |
@@ -415,12 +415,12 @@ that `make certify` requests.
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
 | `books/tcpcl-session.lisp` | root | 98 | 57 | 9/0/48/0 | 0 | 0 | 0 |
 | `books/tcpcl-spool.lisp` | root | 2 | 18 | 0/0/18/0 | 0 | 0 | 0 |
-| `books/topic-history-admission.lisp` | root | 4 | 17 | 0/0/17/0 | 0 | 0 | 0 |
+| `books/topic-history-admission.lisp` | root | 5 | 17 | 0/0/17/0 | 0 | 0 | 0 |
 | `books/topic-history-authorship.lisp` | root | 5 | 4 | 0/0/4/0 | 0 | 0 | 1 |
 | `books/topic-history-identity-disjoint.lisp` | closure | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/topic-history-local-admin.lisp` | closure | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
-| `books/topic-history-local-control.lisp` | root | 0 | 10 | 2/0/8/0 | 0 | 0 | 0 |
-| `books/topic-history-local-proposals.lisp` | root | 4 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/topic-history-local-control.lisp` | root | 0 | 11 | 2/0/9/0 | 0 | 0 | 0 |
+| `books/topic-history-local-proposals.lisp` | root | 5 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/topic-history-metadata-invariants.lisp` | root | 34 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/topic-history-metadata.lisp` | root | 6 | 26 | 0/0/26/0 | 0 | 0 | 1 |
 | `books/topic-history-prefix.lisp` | closure | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
@@ -606,7 +606,7 @@ that `make certify` requests.
 | `tests/acl2/native-auth-profile-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |
 | `tests/acl2/native-config-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/native-config-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 57 | 0 | 0 |
-| `tests/acl2/native-control-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
+| `tests/acl2/native-control-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 46 | 0 | 0 |
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
@@ -686,8 +686,8 @@ that `make certify` requests.
 | `tests/acl2/topic-history-authorship-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 13 | 3 | 0 |
 | `tests/acl2/topic-history-identity-disjoint-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 1 | 1 | 0 |
 | `tests/acl2/topic-history-local-admin-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 1 | 0 |
-| `tests/acl2/topic-history-local-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 1 | 0 |
-| `tests/acl2/topic-history-local-proposals-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
+| `tests/acl2/topic-history-local-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 1 | 0 |
+| `tests/acl2/topic-history-local-proposals-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 2 | 0 |
 | `tests/acl2/topic-history-metadata-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 27 | 3 | 0 |
 | `tests/acl2/topic-history-native-vector-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/topic-history-prefix-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 1 | 0 |
