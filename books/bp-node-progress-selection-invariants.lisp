@@ -74,7 +74,9 @@
                 (fn-bpnp-with-waits fn-bpah-deliver-step
                  fn-bpnf-answer-state fn-bpnf-answer
                  fn-bpnf-held-list fn-bpnf-issued
-                 fn-bpnp-oldest-eligible fn-bpnp-live-pendingp
-                 fn-bpnp-blockedp fn-bpnp-prune-waits
+                 fn-bpnp-oldest-eligible fn-bpnp-oldest-uncertain-local
+                 fn-bpnp-live-pendingp fn-bpnp-blockedp fn-bpnp-prune-waits
+                 fn-bpnp-local-class fn-bpnp-primary fn-bpnp-payload
+                 fn-bpnp-remove-wait fn-bpnp-route-peer
                  fn-bpah-pending-decision-at fn-bpnp-routesp
                  fn-bpp-eidp fn-bpb-bundlep fn-bpnf-heldp)))))
