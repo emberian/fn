@@ -27,6 +27,14 @@ SELECTORS = tuple(re.findall(r'"(FN_[A-Z_]+)"', re.search(
     r"\(defparameter \+fnn-developer-selectors\+\s+'\((.*?)\)\)",
     (ROOT / "host/native/io.lisp").read_text(encoding="ascii"), re.S).group(1)))
 EXIT_USAGE = 5
+# The structured local-control replies, as ACL2 defines them: each tagged
+# reply the control books construct, `(list :<kind>-reply status ...)'.
+STRUCTURED_REPLY_KINDS = {
+    kind
+    for book in ("books/consumer-local-control.lisp",
+                 "books/topic-history-local-control.lisp")
+    for kind in re.findall(r"\(list\s+(:[a-z-]+-reply)\b",
+                           (ROOT / book).read_text(encoding="ascii"))}
 
 
 def executable(path):
@@ -103,7 +111,15 @@ class NativeControlCutGateTests(unittest.TestCase):
         source = (ROOT / "host/native/control.lisp").read_text(encoding="ascii")
         body = source[source.index("(defun fnn-control-handle-client"):
                       source.index("(defun fnn-control-client-done")]
-        self.assertIn("(member (first status) '(:consumer-reply :consumer-poll-reply))", body)
+        # Every structured reply the ACL2 control books construct carries the
+        # owner's status second; the after-submit hook must see that status
+        # for each of them, so the host's list is exactly the ACL2 set.
+        member = re.search(r"\(member \(first status\)\s+'\(([^()]*)\)\)", body)
+        self.assertIsNotNone(member, "after-submit reply-kind test not found")
+        self.assertEqual(set(member.group(1).split()), STRUCTURED_REPLY_KINDS)
+        boundary = (ROOT / "host/native-control-host.lisp").read_text(encoding="ascii")
+        for kind in STRUCTURED_REPLY_KINDS:
+            self.assertIn(f"(defun fn-native-control-host-{kind[1:]}-encode", boundary)
         self.assertIn("(second status) status))", body)
         self.assertIn("(fnn-control-send-reply socket status)", body)
         self.assertLess(body.index("(fnn-control-test-after-submit"),

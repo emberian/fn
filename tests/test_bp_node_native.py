@@ -4,6 +4,7 @@ The relay copies bytes only.  It does not manufacture TCPCL acknowledgement,
 BP acceptance, Store commitment, or an application receipt.
 """
 
+import collections
 import os
 from pathlib import Path
 import select
@@ -364,9 +365,17 @@ class NativeBpNodeTests(unittest.TestCase):
             )
             self.assertEqual(sent.returncode, 0, sent.stderr)
         self.stop_process(receiver)
-        before_forward = len(tuple(
-            (self.receiver_journal / "lifecycle").glob("*.fnb")))
-        self.assertGreaterEqual(before_forward, 2)
+        # The serving node's progress step may already dispatch a routed
+        # transit carrier (kind 6 `:forward', specs/bp-node-machine.md §4.2,
+        # "the routed transit arm may install a :pending :dispatch"), so the
+        # receive phase leaves both kind-5 receives and zero to two kind-6
+        # dispatches, and nothing else, depending on how many progress
+        # events ran before the stop.
+        before_forward = self.acl2_lifecycle_kinds(self.receiver_journal)
+        self.assertEqual(before_forward[5], 2, before_forward)
+        self.assertLessEqual(before_forward[6], 2, before_forward)
+        self.assertEqual(sum(before_forward.values()),
+                         before_forward[5] + before_forward[6], before_forward)
 
         peer, peer_port = self.start_node(False, once=False)
         self.relay.route(peer_port)
@@ -379,10 +388,13 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(dispatched.returncode, 0, dispatched.stderr)
         self.assertIn(b"BP forwarding attempt durable", dispatched.stdout)
         self.assertIn(b"BP forwarding result durable", dispatched.stdout)
-        self.assertEqual(
-            len(tuple((self.receiver_journal / "lifecycle").glob("*.fnb"))),
-            before_forward + 4,  # Two kind-6, then kind-8 and kind-9.
-        )
+        # Both carriers dispatched (two kind-6 in all), and the younger one
+        # alone attempted (kind 8) and settled (kind 9): the older one's image
+        # exceeds the 32 KiB session MRU and waits (N04).
+        after_forward = self.acl2_lifecycle_kinds(self.receiver_journal)
+        self.assertEqual(after_forward, collections.Counter({5: 2, 6: 2, 8: 1, 9: 1}))
+        forwarded_names = sorted(
+            p.name for p in (self.receiver_journal / "lifecycle").glob("*.fnb"))
 
         self.stop_process(peer)
         self.relay.route(None)
@@ -394,9 +406,34 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP FNBS recovered held=2", replayed.stdout)
         self.assertNotIn(b"BP forwarding attempt durable", replayed.stdout)
         self.assertEqual(
-            len(tuple((self.receiver_journal / "lifecycle").glob("*.fnb"))),
-            before_forward + 4,
-        )
+            sorted(p.name for p in (self.receiver_journal / "lifecycle").glob("*.fnb")),
+            forwarded_names)
+        self.assertEqual(self.acl2_lifecycle_kinds(self.receiver_journal), after_forward)
+
+    @staticmethod
+    def acl2_lifecycle_kinds(journal):
+        """Count the journal's lifecycle frames by the ACL2 decoder that opens each.
+
+        Each kind's own unframe function accepts only its frame version and
+        kind, so a frame counts as kind 6 only when it is a dispatch record.
+        A frame no decoder here opens counts as 0.
+        """
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            for book in ("bp-fnbs-codec", "bp-fnbs-dispatch-codec",
+                         "bp-fnbs-forward-codec"):
+                bridge.call(f'(include-book "books/{book}")')
+            kinds = collections.Counter()
+            for frame in sorted((journal / "lifecycle").glob("*.fnb")):
+                octets = "'" + bridge.literal(frame.read_bytes())
+                kinds[run_store.acl2_nat(bridge.call(
+                    f"(cond ((fn-bpnf-stored-record-unframe {octets}) 5) "
+                    f"((fn-bpnp-dispatch-unframe {octets}) 6) "
+                    f"((fn-bpnp-attempt-unframe {octets}) 8) "
+                    f"((fn-bpnp-result-unframe {octets}) 9) (t 0))"))] += 1
+            return kinds
+        finally:
+            bridge.close()
 
     @staticmethod
     def acl2_lifecycle_payloads(journal, kind):
