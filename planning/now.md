@@ -36,9 +36,10 @@ log that lived here is [archive/now-2026-09-24.md](archive/now-2026-09-24.md).
    against a baseline instead of warning.
 4. Planning consolidated onto this page (this change).
 
-Measure 3 with the tool, not prose: at `46f2660d`, `tools/proof_cost.py`
-prints 45 over-10 s warning rows across 37 distinct roots, grouped per host
-and toolchain. The check-ratchet lane fixes which figure the baseline counts.
+Measure 3 with the tool, not prose: the ratchet baseline counts 37 books
+over 10 s at `46f2660d` (slowest measurement per book, any host); the
+night's target in those terms is 27 or fewer, and a book leaves the
+baseline only by a passing measurement under 10 s.
 
 ## Active lanes (batch 1)
 
@@ -50,9 +51,9 @@ coordinate is on the [swarm board](swarm-board.md).
 | --- | --- | --- |
 | plan-consolidate | done: this page, the archive moves, links repaired | merged, `make check` exit 0 |
 | bp-progress-guards | guard closure of `books/bp-node-progress-guards` without whole-state revalidation on the served path | farm run id and manifest; theorem statements; `green_check` line |
-| bp-selection-invariant | `fn-bpnp-step-progress-preserves-held-and-issued` certified, then the machine teeth book | farm run id and manifest; the subgoal repaired; teeth book result |
+| bp-selection-invariant | done: the old theorem was false after forwarding landed; split into `-preserves-held` and `-issued-unchanged-or-pending-dispatch` with routed witness and teeth | merged; hbox run-20260924T085624Z-626a |
 | proof-cost-regressions | `store-node-invariants`, `consumer-store-invariants`, `store-identity-sequence-invariants`, `store-node-traces`, `replay` under 10 s, statements unchanged | before/after per-book times from certify logs, same host and toolchain |
-| check-ratchet | `proof_cost` and `certified_claims` fail `make check` against a committed baseline | the baseline file and the failing/passing `make check` runs |
+| check-ratchet | done: both lints exit 1 on regression; baseline `planning/proof-cost-baseline.json` (37 books, slowest measurement per book) only shrinks | merged; `make check` exit 0 |
 | worktree-retire | done: 60 of 83 landed worktrees retired, 6 archive refs, [record](evidence/worktree-retirement-2026-09-24-claude.md) | merged `ec498722` |
 | bp-codec-cost | `checkpoint-compaction`, `records-canonicality`, `bp-node-fragment-plan`, `bp-fnbs-codec-invariants`, `tcpcl-session`, `bp-fnbs-byte-invariants` under 10 s, statements unchanged | before/after per-book times, same host and toolchain |
 
