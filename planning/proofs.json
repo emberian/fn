@@ -2310,7 +2310,7 @@
     {
       "id": "PRF-066",
       "title": "Experimental root-only topic admission is grounded in historical authorship and finite local policy",
-      "statement": "The experimental root-only ACL2 Store path selects prior T10-bound exact source and snapshot, checks the installed local administrator, roster, same-topic parents and finite quota, and completes only a matching proposed topic event. Successful topic completion advances exact Store sequence/transaction and carried slot-12 projection while preserving article acceptance; observed reopen reconstructs and validates that topic history separately from article, identity and consumer replay. Authenticated native publication and a combined saved-image witness remain open.",
+      "statement": "The experimental root-only ACL2 Store path selects prior T10-bound exact source and snapshot, checks the installed local administrator, roster, same-topic parents and finite quota, and completes only a matching proposed topic event. The owner-called report selector returns :replayed-historical only for the selected earlier exact source and its retained admission; the local control success carries no admission data and stages no new event. Successful topic completion advances exact Store sequence/transaction and carried slot-12 projection while preserving article acceptance; observed reopen reconstructs and validates that topic history separately from article, identity and consumer replay. Authenticated native publication and a combined saved-image witness remain open.",
       "milestone": "M3",
       "requirements": [
         "TOP-002"
@@ -2362,7 +2362,9 @@
         "planning/evidence/manifests/certify-20260924T022329Z-3173943.json",
         "planning/evidence/manifests/certify-20260924T030421Z-3524851.json",
         "planning/evidence/manifests/certify-20260924T031621Z-3631800.json",
-        "planning/evidence/manifests/certify-20260924T031835Z-3652118.json"
+        "planning/evidence/manifests/certify-20260924T031835Z-3652118.json",
+        "planning/evidence/topic-history-historical-retry-p3-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T042906Z-890015.json"
       ],
       "progress_note": "The merged slot-12 topic and slot-13 consumer index passed 21 explicit Store, topic, native-control and indexed-poll ACL2 roots at d4b48fda. After consumer status added FNCT kind 9, seven affected status/index/native-control roots passed; the historical-list reference now calls the same scope selector as the live indexed poll and its exact stale-index tooth re-certified in 3.536 seconds. The native owner calls one ACL2 proposal dispatcher after connected same-euid observation. A source-matched native install/root/report/reopen image and broad reverse closure remain open, so this is not yet a served admission claim."
     },

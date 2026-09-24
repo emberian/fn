@@ -96,6 +96,10 @@ class NativeTopicLocalTest(unittest.TestCase):
                          (result.stdout + result.stderr).decode("utf-8", "replace"))
         return result
 
+    def transactions(self):
+        return tuple(sorted((path.name, hashlib.sha256(path.read_bytes()).hexdigest())
+                            for path in (self.store / "transactions").glob("*.txn")))
+
     def author(self, source, name):
         signed = self.invoke("hybrid-sign", self.principal, self.ed_public,
                              self.ed_secret, self.ml_public, self.ml_private,
@@ -138,16 +142,24 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
         self.author(FIXTURES / "matched-root.source", "root")
         self.topic("install", expected=0)
-        self.assertIn(b"topic accepted", self.topic("anchor", "1", "2",
+        self.assertIn(b"topic accepted", self.topic("anchor", "1", "1",
                                                     expected=0).stdout)
         self.author(FIXTURES / "matched-report.source", "report")
         self.assertIn(b"topic accepted", self.topic("report", "4",
                                                     expected=0).stdout)
+        admitted_files = self.transactions()
+        self.assertIn(b"topic accepted, replayed-historical",
+                      self.topic("report", "4", expected=0).stdout)
+        self.assertEqual(self.transactions(), admitted_files)
         self.stop_owner(owner)
         reopened = self.start_owner()
         self.topic("install", expected=1)
-        self.topic("anchor", "1", "2", expected=1)
-        self.topic("report", "4", expected=1)
+        self.topic("anchor", "1", "1", expected=1)
+        self.assertIn(b"topic accepted, replayed-historical",
+                      self.topic("report", "4", expected=0).stdout)
+        self.assertEqual(self.transactions(), admitted_files)
+        self.topic("report", "99", expected=1)
+        self.assertEqual(self.transactions(), admitted_files)
         self.stop_owner(reopened)
 
 

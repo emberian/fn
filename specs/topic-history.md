@@ -119,7 +119,11 @@ A report proposal resolves the retained T10 event/snapshot again. It requires
 the selected root policy to be active, the verified author reference in the
 root roster, all declared parents to have earlier admissions in that same
 topic, and a remaining quota. Exact historical retry returns the old admission
-before current policy checks and consumes no quota. A conflicting T10 source
+before current policy checks and consumes no quota. The owner-called local
+proposal selects that same earlier accepted source and key snapshot; the
+connected control command returns a distinct successful `replayed-historical`
+status without staging another Store event or sending the admission record
+over the control socket. A conflicting T10 source
 reference under a prior report identity is refused. Preparation returns a
 proposed topic event; the projection changes only through `fn-th-commit-anchor`
 or `fn-th-commit-report`, which recompute and compare the proposal against the
@@ -153,6 +157,12 @@ shared Store updater proved to preserve the file, consumer and topic slots.
 This is a certified logical Store completion and recovery path. The native
 owner/control source now calls the ACL2 proposal dispatcher and Store
 publication gate, but its saved-image execution is not yet qualified.
+The version-1 anchor event carries its own Store generation and the installed
+administrator ID, but not the separate generation of the earlier administrator
+installation. Replay binds the ID to historical installation; the stronger
+install-generation equality promised above needs a versioned event migration
+and remains open. This gap does not alter historical retry's exact T10 source
+and admission matching.
 Historical administrator installation
 and T10 authorship are taken from the completed prefix, not current UID or
 unverified metadata. It is root-only.
