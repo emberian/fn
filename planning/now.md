@@ -1,4 +1,27 @@
-# Current work — 2026-09-23
+# Current work — 2026-09-24
+
+The [workstream review and proposed next cycle](workstream-review-2026-09-24.md)
+reconstruct the last 300 first-parent landings, distinguish integrated work
+from the substantive branch backlog, and propose the next complete agent and
+BP exchanges. The proposal changes no release requirements or deployment.
+
+Current integrated source `e657b1cf` passes its repaired combined incremental
+ACL2 qualification: 575 certificates reused and ten newly certified, with
+14.452 seconds of certification at four jobs. The
+[record](evidence/bp-repaired-e657-2026-09-24.md) preserves the original
+manifest and its scope. This supersedes the BP source failures below; a
+source-matched native campaign is still owed. The earlier `1d26e01f` native
+consumer/reader/clone evidence remains valid for that image. The live node
+remains `da5fd8cb`.
+
+Active joins are Mini's final observed-poll/transaction/ACK/reply path, native
+BP fragment custody with expiry-safe reassembly, topic Store admission, and
+the maintained consumer index. Qualified ADVANCE, OVER and allocator proof
+packets await coherent integration. The review lists their exact branches;
+old worktree counts are not a feature backlog.
+
+The dated checkpoints below are historical observations, not competing
+descriptions of current source.
 
 ## Native consumer/reader/clone qualification — 23:35 UTC
 
