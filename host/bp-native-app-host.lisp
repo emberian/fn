@@ -120,10 +120,24 @@
          (oldp (equal (fn-bpaj-nth 0 existing) :request-intent)))
     (cond
      ((member-equal status '(:committed :context :pending-receipt))
+      ; A bound request never plans again: fn-bpaj-dispatch-fast answers
+      ; these statuses with :return-receipt, :prepare-receipt or
+      ; :resolve-absent.  Its planning fields are still the durable ones from
+      ; the intent recovered at open, never a value left in this process by
+      ; an earlier request or absent after a restart.  A historical context
+      ; admitted before any intent has none, and the adapter never asks.
       (let* ((state (f-put-global 'fn-owner-app-transitp nil state))
             (state (f-put-global 'fn-owner-app-request request-octets state))
             (state (f-put-global 'fn-owner-app-generation
                                  (fn-cfg-generation (fn-owner-config state))
+                                 state))
+            (state (f-put-global 'fn-owner-app-txid
+                                 (fn-bpaj-request-planned-txid
+                                  joined request-octets)
+                                 state))
+            (state (f-put-global 'fn-owner-app-planned-result
+                                 (fn-bpaj-request-planned-result
+                                  joined request-octets)
                                  state)))
         (value :ready)))
      (oldp
