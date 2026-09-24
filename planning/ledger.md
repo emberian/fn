@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 745 |
-| Certification roots in the Makefile | 734 |
-| Books inside the root closure | 743 |
-| `defthm` and `defthmd` events | 9903 |
-| `defun` events | 6988 |
+| Books read | 747 |
+| Certification roots in the Makefile | 736 |
+| Books inside the root closure | 745 |
+| `defthm` and `defthmd` events | 9911 |
+| `defun` events | 7001 |
 | Functions with verified guards | 2067 |
-| Functions declared `:verify-guards nil` and never verified | 461 |
-| Functions left at the default with an explicit guard | 3477 |
+| Functions declared `:verify-guards nil` and never verified | 467 |
+| Functions left at the default with an explicit guard | 3484 |
 | Functions left at the default with no guard | 983 |
-| `assert-event` checks | 10895 |
-| `must-fail` checks | 926 |
+| `assert-event` checks | 10924 |
+| `must-fail` checks | 928 |
 | `encapsulate` events | 30 |
-| Theorems flagged SUSPECT by shape | 86 |
+| Theorems flagged SUSPECT by shape | 87 |
 | Export-hygiene warnings | 116 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 61 |
-| Include-hygiene warnings | 728 |
-| Host-names warnings | 830 |
+| Include-hygiene warnings | 733 |
+| Host-names warnings | 850 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -208,6 +208,7 @@ that `make certify` requests.
 | `books/bp-report-guards.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-report-observe.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-report-outbox.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 1 |
+| `books/bp-request-plan.lisp` | root | 7 | 13 | 0/6/7/0 | 0 | 0 | 0 |
 | `books/bp-sequence-fidelity.lisp` | root | 24 | 31 | 2/0/29/0 | 0 | 0 | 3 |
 | `books/bp-sequence-persistence.lisp` | root | 10 | 20 | 1/0/19/0 | 0 | 0 | 0 |
 | `books/bp-session-admission.lisp` | root | 16 | 16 | 15/0/1/0 | 0 | 0 | 0 |
@@ -603,6 +604,7 @@ that `make certify` requests.
 | `tests/acl2/bp-report-deletion-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
 | `tests/acl2/bp-report-observe-tests.lisp` | root | 0 | 7 | 0/7/0/0 | 8 | 1 | 0 |
 | `tests/acl2/bp-report-outbox-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 10 | 1 | 0 |
+| `tests/acl2/bp-request-plan-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 29 | 2 | 1 |
 | `tests/acl2/bp-sequence-fidelity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 1 | 0 |
 | `tests/acl2/bp-sequence-persistence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/bp-session-admission-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 22 | 7 | 0 |
@@ -853,6 +855,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpf-cell-of-uncovered-is-gap` | `books/bp-fragment-invariants.lisp` | 129 | branch-of-definition: the hypothesis negates a branch test of fn-bpf-cell-of and the conclusion is that branch's value |
 | `fn-bpf-out-of-bounds-input-allocates-nothing` | `books/bp-fragment-invariants.lisp` | 435 | branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value |
 | `fn-bpf-whole-parent-fragments-restore-parent` | `books/bp-fragment-invariants.lisp` | 671 | instance-corollary: the statement is fn-bpf-whole-fragment-primaries-restore-parent instantiated, discharging nothing |
+| `fn-bpiw-attempt-record-is-the-generic-attempt` | `tests/acl2/bp-request-plan-tests.lisp` | 122 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-apply-inapplicable-record-is-noop` | `books/bp-node-machine-invariants.lisp` | 740 | branch-of-definition: the hypothesis is a branch test of fn-bpn-apply-record and the conclusion is that branch's value |
 | `fn-bpn-machine-invariant-components` | `books/bp-node-machine-invariants.lisp` | 574 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bpn-machine-invariantp |
 | `fn-bpn-report-author-step-delegates-ordinary-events` | `books/bp-report-author.lisp` | 130 | branch-of-definition: the hypothesis negates a branch test of fn-bpn-report-author-step and the conclusion is that branch's value |

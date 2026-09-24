@@ -1,0 +1,4 @@
+$ fn app-journal workflow-enqueue /tank/fn/scratch/m4-native-request/final/dtn7-carried-1/a-store /tank/fn/scratch/m4-native-request/final/dtn7-carried-1/a-fnwf 4 0 work-cut-attempt <m4-native-cut-attempt@example.invalid> forward-work-cut-attempt dtn://receiver/ native-policy terms-native
+workflow durable work=work-cut-attempt status=outstanding
+
+# rc=0

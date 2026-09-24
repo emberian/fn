@@ -357,7 +357,7 @@ administration and the control socket. Its verbs:
 | --- | --- |
 | `bp-node serve PORT JOURNAL STORE RECEIPTS WORKFLOW NODE PEER DEST POLICY ISSUER CONTACT-HOST CONTACT-PORT ...` | **the node**: one FNBS machine (`fn-bpnp-step`), the kind-8 retry policy, the owner Store with FNRJ/FNWF, admission of each TCPCL session from its observed channel against the enrolled boundaries |
 | `bp-node dispatch ...` | the same node without a listener |
-| `bp-obligation status\|undertake\|receipt` | the owner-mode forwarding obligation journal |
+| `bp-obligation status\|undertake\|request\|receipt` | the owner-mode forwarding obligation journal; `request` publishes ACL2's attempt for one work and hands its request ADU to the FNBS carrier |
 | `bp-app receive` | the application receiver over the owner |
 | `operator CONFIG init\|status\|recover\|help` and the administrative plans (`policy set path-identity`, `bp-boundary add`, groups) | node configuration through the one ACL2 operator plan; `run`, `post` and `principal` exit 5 (their surfaces are not in this image) |
 | `store ROOT init\|recover\|status\|retention\|config\|inspect\|probe` | Store diagnostics, as in the default image |

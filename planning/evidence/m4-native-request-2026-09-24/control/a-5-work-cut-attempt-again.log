@@ -1,0 +1,4 @@
+$ fn bp-obligation request /tank/fn/scratch/m4-native-request/final/control/a-store /tank/fn/scratch/m4-native-request/final/control/a-fnwf work-cut-attempt work-cut-attempt-a2 /tank/fn/scratch/m4-native-request/final/control/a-fnbs dtn://sender/ 127.0.0.1 52253 3600000 2 32 1048576 843606629393 60000
+store: ACL2 refused a request for work work-cut-attempt attempt work-cut-attempt-a2
+
+# rc=1

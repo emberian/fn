@@ -1,0 +1,6 @@
+profile=dtn image=build/fn-host-dtn roots=109 result=loaded
+built build/fn-host-dtn-developer profile=developer (122M core)
+undefined lines: 0
+7d86ee6a4382c79bd7331cbcab5564c7f75421fdc64720dbb37fbf077a903c41  build/fn-host-dtn-developer
+e291d542c2c0242295854104d898b882c050f1143ee25db988fc3eb33af6df25  build/fn-host-dtn-developer.core
+BUILD-DONE

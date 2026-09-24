@@ -1,0 +1,5 @@
+$ fn operator /tank/fn/scratch/m4-native-request/final/control/b.toml bp-boundary add ingress-boundary sender.bp.gate.invalid dtn://sender/ 35287 fn.test 32768 16
+configured generation=3 record=00000003.cfg verification=VERIFIED
+accepted operator bp-boundary
+
+# rc=0

@@ -1,0 +1,4 @@
+$ fn app-journal workflow-enqueue /tank/fn/scratch/m4-native-request/final/control/a-store /tank/fn/scratch/m4-native-request/final/control/a-fnwf 2 0 work-control <m4-native-control@example.invalid> forward-work-control dtn://receiver/ native-policy terms-native
+workflow durable work=work-control status=outstanding
+
+# rc=0

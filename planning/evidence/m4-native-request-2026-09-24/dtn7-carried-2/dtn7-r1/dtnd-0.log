@@ -1,0 +1,31 @@
+ 2026-09-24T23:11:45.842Z INFO  dtnd > starting dtnd
+ 2026-09-24T23:11:45.842Z INFO  dtn7::dtnd::daemon > Local Node ID: dtn://dtn7-r1/
+ 2026-09-24T23:11:45.842Z INFO  dtn7::dtnd::daemon > Work Dir: "/tank/fn/scratch/m4-native-request/final/dtn7-carried-2/dtn7-r1"
+ 2026-09-24T23:11:45.842Z INFO  dtn7::dtnd::daemon > DB Backend: sled
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Announcement Interval: 0s
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Janitor Interval: 10s
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Peer Timeout: 20s
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Web Port: 52565
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Discovery Port: 3003
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > IPv4: true
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > IPv6: false
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Generate Status Reports: false
+ 2026-09-24T23:11:45.843Z DEBUG dtn7::routing      > Creating routing agent epidemic
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > RoutingAgent: epidemic
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > RoutingOptions: {}
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Adding CLA: TcpConvergenceLayer
+ 2026-09-24T23:11:45.843Z DEBUG dtn7::cla::tcp     > Extension settings: {}
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Adding static peer: tcp://127.0.0.1/dtn7-r2
+ 2026-09-24T23:11:45.843Z DEBUG dtn7               > Adding peer eid=dtn7-r2
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Adding static peer: tcp://127.0.0.1/sender
+ 2026-09-24T23:11:45.843Z DEBUG dtn7               > Adding peer eid=sender
+ 2026-09-24T23:11:45.843Z INFO  dtn7::core         > Registered new application agent for EID: dtn://dtn7-r1/
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Starting convergency layers
+ 2026-09-24T23:11:45.843Z INFO  dtn7::dtnd::daemon > Setup TcpConvergenceLayer(TcpConvergenceLayer { local_addr: "0.0.0.0", local_port: 60417, refuse_existing_bundles: false, tx: Sender { chan: Tx { inner: Chan { tx: Tx { block_tail: 0x5d9ad14e0510, tail_position: 0 }, semaphore: Semaphore { semaphore: Semaphore { permits: 200 }, bound: 200 }, rx_waker: AtomicWaker, tx_count: 1, rx_fields: "..." } } } })
+ 2026-09-24T23:11:45.844Z DEBUG dtn7::dtnd::janitor > running janitor
+ 2026-09-24T23:11:49.421Z INFO  dtn7::cla::tcp      > Incoming connection from: 127.0.0.1:43498
+ 2026-09-24T23:11:49.421Z DEBUG dtn7::cla::tcp      > Exchanging contact header, 127.0.0.1:43498
+ 2026-09-24T23:11:49.421Z DEBUG dtn7::cla::tcp      > Negotiating session parameters, 127.0.0.1:43498
+ 2026-09-24T23:11:49.421Z DEBUG dtn7::cla::tcp      > Received session parameters
+ 2026-09-24T23:11:49.421Z INFO  dtn7::cla::tcp      > Started TCP session for dtn://sender/ @ 127.0.0.1:43498 | refuse existing bundles: false
+ 2026-09-24T23:11:49.462Z DEBUG dtn7::cla::tcp::net > Reading xfer segment with len 6419

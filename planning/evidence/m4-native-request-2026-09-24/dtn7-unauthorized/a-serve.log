@@ -1,0 +1,4 @@
+$ fn bp-node serve 43193 /tank/fn/scratch/m4-native-request/final/dtn7-unauthorized/a-fnbs /tank/fn/scratch/m4-native-request/final/dtn7-unauthorized/a-store /tank/fn/scratch/m4-native-request/final/dtn7-unauthorized/a-fnrj /tank/fn/scratch/m4-native-request/final/dtn7-unauthorized/a-fnwf dtn://sender/ dtn://receiver/ dtn://sender/ native-policy dtn://sender/ 127.0.0.1 42995 0 3600000 2 32 1048576 843606755563 60000
+BP FNBS recovered held=0
+BP queue recovered jobs=1
+BP NODE LISTENING 43193
