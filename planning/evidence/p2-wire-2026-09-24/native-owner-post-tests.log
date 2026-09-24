@@ -1,0 +1,130 @@
+test_condition_handlers_and_cleanup_enclose_the_served_body (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_condition_handlers_and_cleanup_enclose_the_served_body) ... ok
+test_developer_selectors_gate_arm_the_owner_and_stop_synchronously (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_developer_selectors_gate_arm_the_owner_and_stop_synchronously) ... FAIL
+test_no_os_error_after_publication_is_classified_as_a_refusal (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_no_os_error_after_publication_is_classified_as_a_refusal) ... ok
+test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step) ... FAIL
+test_the_served_listener_passes_a_documented_accept_queue (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_served_listener_passes_a_documented_accept_queue) ... ok
+test_transit_take_uses_transfer_decision_and_store_outcome (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_transit_take_uses_transfer_decision_and_store_outcome) ... ok
+test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation) ... ok
+test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart (tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart) ... FAIL
+test_post_is_committed_and_readable_after_owner_exit (tests.test_native_owner.NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit) ... ok
+
+======================================================================
+FAIL: test_developer_selectors_gate_arm_the_owner_and_stop_synchronously (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_developer_selectors_gate_arm_the_owner_and_stop_synchronously)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/p2-wire/tree/tests/test_native_owner.py", line 146, in test_developer_selectors_gate_arm_the_owner_and_stop_synchronously
+    self.assertEqual(result.returncode, 0, output)
+AssertionError: 1 != 0 : Unhandled SB-INT:SIMPLE-READER-PACKAGE-ERROR in thread #<SB-THREAD:THREAD "main thread" RUNNING
+                                                          {1001348003}>:
+  Symbol "SOCKOPT-ERROR" not found in the SB-BSD-SOCKETS package.
+
+    Line: 2271, Column: 65, File-Position: 115423
+
+    Stream: #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}>
+
+Backtrace for: #<SB-THREAD:THREAD "main thread" RUNNING {1001348003}>
+0: (SB-DEBUG::DEBUGGER-DISABLED-HOOK #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {100224AFB3}> #<unused argument> :QUIT T)
+1: (SB-DEBUG::RUN-HOOK SB-EXT:*INVOKE-DEBUGGER-HOOK* #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {100224AFB3}>)
+2: (INVOKE-DEBUGGER #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {100224AFB3}>)
+3: (ERROR #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {100224AFB3}>)
+4: (SB-KERNEL:WITH-SIMPLE-CONDITION-RESTARTS ERROR NIL SB-INT:SIMPLE-READER-PACKAGE-ERROR :PACKAGE #<PACKAGE "SB-BSD-SOCKETS"> :STREAM #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> :FORMAT-ARGUMENTS ("SOCKOPT-ERROR" "SB-BSD-SOCKETS") :FORMAT-CONTROL "Symbol ~S not found in the ~A package.")
+5: (SB-IMPL::READ-TOKEN #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> #\s)
+6: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> #\s)
+7: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> T (NIL) T)
+8: (READ #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> T NIL T)
+9: (SB-IMPL::SHARP-QUOTE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> #\' NIL)
+10: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> #\#)
+11: (SB-IMPL::READ-LIST #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> #<unused argument>)
+12: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> #\()
+13: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> NIL (NIL) T)
+14: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> NIL (NIL) NIL)
+15: (READ #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001B42CA3}> NIL :EOF NIL)
+16: (LOAD-NAMED "host/native/io.lisp" (+FNN-EXIT-OK+ +FNN-EXIT-REFUSED+ +FNN-EXIT-UNCERTAIN+ +FNN-EXIT-FAULT+ +FNN-EXIT-USAGE+ FNN-STORE-ERROR FNN-STORE-FAULT FNN-STORE-INDETERMINATE FNN-USAGE-ERROR FNN-REFUSE FNN-FAULT FNN-INDETERMINATE ...))
+17: (SB-INT:SIMPLE-EVAL-IN-LEXENV (LOAD-NAMED "host/native/io.lisp" (QUOTE (+FNN-EXIT-OK+ +FNN-EXIT-REFUSED+ +FNN-EXIT-UNCERTAIN+ +FNN-EXIT-FAULT+ +FNN-EXIT-USAGE+ FNN-STORE-ERROR FNN-STORE-FAULT FNN-STORE-INDETERMINATE FNN-USAGE-ERROR FNN-REFUSE FNN-FAULT FNN-INDETERMINATE ...))) #<NULL-LEXENV>)
+18: (SB-EXT:EVAL-TLF (LOAD-NAMED "host/native/io.lisp" (QUOTE (+FNN-EXIT-OK+ +FNN-EXIT-REFUSED+ +FNN-EXIT-UNCERTAIN+ +FNN-EXIT-FAULT+ +FNN-EXIT-USAGE+ FNN-STORE-ERROR FNN-STORE-FAULT FNN-STORE-INDETERMINATE FNN-USAGE-ERROR FNN-REFUSE FNN-FAULT FNN-INDETERMINATE ...))) 22 NIL)
+19: ((LABELS SB-FASL::EVAL-FORM :IN SB-INT:LOAD-AS-SOURCE) (LOAD-NAMED "host/native/io.lisp" (QUOTE (+FNN-EXIT-OK+ +FNN-EXIT-REFUSED+ +FNN-EXIT-UNCERTAIN+ +FNN-EXIT-FAULT+ +FNN-EXIT-USAGE+ FNN-STORE-ERROR FNN-STORE-FAULT FNN-STORE-INDETERMINATE FNN-USAGE-ERROR FNN-REFUSE FNN-FAULT FNN-INDETERMINATE ...))) 22)
+20: ((LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) (LOAD-NAMED "host/native/io.lisp" (QUOTE (+FNN-EXIT-OK+ +FNN-EXIT-REFUSED+ +FNN-EXIT-UNCERTAIN+ +FNN-EXIT-FAULT+ +FNN-EXIT-USAGE+ FNN-STORE-ERROR FNN-STORE-FAULT FNN-STORE-INDETERMINATE FNN-USAGE-ERROR FNN-REFUSE FNN-FAULT FNN-INDETERMINATE ...))) :CURRENT-INDEX 22)
+21: (SB-C::%DO-FORMS-FROM-INFO #<FUNCTION (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) {1001360B5B}> #<SB-C::SOURCE-INFO {1001360B23}> SB-C::INPUT-ERROR-IN-LOAD)
+22: (SB-INT:LOAD-AS-SOURCE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_developer_selectors_raw.lisp" {1001337473}> :VERBOSE NIL :PRINT NIL :CONTEXT "loading")
+23: ((LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_developer_selectors_raw.lisp" {1001337473}> NIL)
+24: (SB-FASL::CALL-WITH-LOAD-BINDINGS #<FUNCTION (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) {7E9EB347F82B}> #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_developer_selectors_raw.lisp" {1001337473}> NIL #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_developer_selectors_raw.lisp" {1001337473}>)
+25: (LOAD #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_developer_selectors_raw.lisp" {1001337473}> :VERBOSE NIL :PRINT NIL :IF-DOES-NOT-EXIST :ERROR :EXTERNAL-FORMAT :DEFAULT)
+26: ((FLET SB-IMPL::LOAD-SCRIPT :IN SB-IMPL::PROCESS-SCRIPT) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_developer_selectors_raw.lisp" {1001337473}>)
+27: ((FLET SB-UNIX::BODY :IN SB-IMPL::PROCESS-SCRIPT))
+28: ((FLET "WITHOUT-INTERRUPTS-BODY-11" :IN SB-IMPL::PROCESS-SCRIPT))
+29: (SB-IMPL::PROCESS-SCRIPT "tests/native_developer_selectors_raw.lisp")
+30: (SB-IMPL::TOPLEVEL-INIT)
+31: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))
+32: ((FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP))
+33: (SB-IMPL::%START-LISP)
+
+unhandled condition in --disable-debugger mode, quitting
+
+
+======================================================================
+FAIL: test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/p2-wire/tree/tests/test_native_owner.py", line 127, in test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step
+    self.assertEqual(result.returncode, 0,
+AssertionError: 1 != 0 : Unhandled SB-INT:SIMPLE-READER-PACKAGE-ERROR in thread #<SB-THREAD:THREAD "main thread" RUNNING
+                                                          {1001348003}>:
+  Symbol "SOCKOPT-ERROR" not found in the SB-BSD-SOCKETS package.
+
+    Line: 2271, Column: 65, File-Position: 115423
+
+    Stream: #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}>
+
+Backtrace for: #<SB-THREAD:THREAD "main thread" RUNNING {1001348003}>
+0: (SB-DEBUG::DEBUGGER-DISABLED-HOOK #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {1002052DE3}> #<unused argument> :QUIT T)
+1: (SB-DEBUG::RUN-HOOK SB-EXT:*INVOKE-DEBUGGER-HOOK* #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {1002052DE3}>)
+2: (INVOKE-DEBUGGER #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {1002052DE3}>)
+3: (ERROR #<SB-INT:SIMPLE-READER-PACKAGE-ERROR "Symbol ~S not found in the ~A package." {1002052DE3}>)
+4: (SB-KERNEL:WITH-SIMPLE-CONDITION-RESTARTS ERROR NIL SB-INT:SIMPLE-READER-PACKAGE-ERROR :PACKAGE #<PACKAGE "SB-BSD-SOCKETS"> :STREAM #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> :FORMAT-ARGUMENTS ("SOCKOPT-ERROR" "SB-BSD-SOCKETS") :FORMAT-CONTROL "Symbol ~S not found in the ~A package.")
+5: (SB-IMPL::READ-TOKEN #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> #\s)
+6: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> #\s)
+7: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> T (NIL) T)
+8: (READ #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> T NIL T)
+9: (SB-IMPL::SHARP-QUOTE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> #\' NIL)
+10: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> #\#)
+11: (SB-IMPL::READ-LIST #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> #<unused argument>)
+12: (SB-IMPL::READ-MAYBE-NOTHING #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> #\()
+13: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> NIL (NIL) T)
+14: (SB-IMPL::%READ-PRESERVING-WHITESPACE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> NIL (NIL) NIL)
+15: (READ #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/host/native/io.lisp" {1001ED0AD3}> NIL :EOF NIL)
+16: ((LAMBDA NIL :IN "/tank/fn/scratch/p2-wire/tree/tests/native_owner_chunk_loop_raw.lisp"))
+17: (SB-INT:SIMPLE-EVAL-IN-LEXENV (DOLIST (SOURCE-AND-NAMES (QUOTE (("host/native/io.lisp" +FNN-OWNER-WALL-ERROR-MS+ +FNN-OWNER-UNIX-DTN-OFFSET-SECONDS+ FNN-OWNER-WALL-MILLISECONDS) ("host/native/owner.lisp" FNN-OWNER-ADVANCE-CLOCK FNN-OWNER-HANDLE-CHUNK FNN-OWNER-SERVE-CLIENT)))) (DESTRUCTURING-BIND (SOURCE . WANTED) SOURCE-AND-NAMES (LET ((FOUND NIL)) (WITH-OPEN-FILE (STREAM SOURCE) (LOOP FOR FORM = # UNTIL # WHEN # DO # #)) (LET (#) (WHEN MISSING #))))) #<NULL-LEXENV>)
+18: (SB-EXT:EVAL-TLF (DOLIST (SOURCE-AND-NAMES (QUOTE (("host/native/io.lisp" +FNN-OWNER-WALL-ERROR-MS+ +FNN-OWNER-UNIX-DTN-OFFSET-SECONDS+ FNN-OWNER-WALL-MILLISECONDS) ("host/native/owner.lisp" FNN-OWNER-ADVANCE-CLOCK FNN-OWNER-HANDLE-CHUNK FNN-OWNER-SERVE-CLIENT)))) (DESTRUCTURING-BIND (SOURCE . WANTED) SOURCE-AND-NAMES (LET ((FOUND NIL)) (WITH-OPEN-FILE (STREAM SOURCE) (LOOP FOR FORM = # UNTIL # WHEN # DO # #)) (LET (#) (WHEN MISSING #))))) 56 NIL)
+19: ((LABELS SB-FASL::EVAL-FORM :IN SB-INT:LOAD-AS-SOURCE) (DOLIST (SOURCE-AND-NAMES (QUOTE (("host/native/io.lisp" +FNN-OWNER-WALL-ERROR-MS+ +FNN-OWNER-UNIX-DTN-OFFSET-SECONDS+ FNN-OWNER-WALL-MILLISECONDS) ("host/native/owner.lisp" FNN-OWNER-ADVANCE-CLOCK FNN-OWNER-HANDLE-CHUNK FNN-OWNER-SERVE-CLIENT)))) (DESTRUCTURING-BIND (SOURCE . WANTED) SOURCE-AND-NAMES (LET ((FOUND NIL)) (WITH-OPEN-FILE (STREAM SOURCE) (LOOP FOR FORM = # UNTIL # WHEN # DO # #)) (LET (#) (WHEN MISSING #))))) 56)
+20: ((LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) (DOLIST (SOURCE-AND-NAMES (QUOTE (("host/native/io.lisp" +FNN-OWNER-WALL-ERROR-MS+ +FNN-OWNER-UNIX-DTN-OFFSET-SECONDS+ FNN-OWNER-WALL-MILLISECONDS) ("host/native/owner.lisp" FNN-OWNER-ADVANCE-CLOCK FNN-OWNER-HANDLE-CHUNK FNN-OWNER-SERVE-CLIENT)))) (DESTRUCTURING-BIND (SOURCE . WANTED) SOURCE-AND-NAMES (LET ((FOUND NIL)) (WITH-OPEN-FILE (STREAM SOURCE) (LOOP FOR FORM = # UNTIL # WHEN # DO # #)) (LET (#) (WHEN MISSING #))))) :CURRENT-INDEX 56)
+21: (SB-C::%DO-FORMS-FROM-INFO #<FUNCTION (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) {1001360A1B}> #<SB-C::SOURCE-INFO {10013609E3}> SB-C::INPUT-ERROR-IN-LOAD)
+22: (SB-INT:LOAD-AS-SOURCE #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337433}> :VERBOSE NIL :PRINT NIL :CONTEXT "loading")
+23: ((LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337433}> NIL)
+24: (SB-FASL::CALL-WITH-LOAD-BINDINGS #<FUNCTION (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) {7CDD9737F82B}> #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337433}> NIL #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337433}>)
+25: (LOAD #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337433}> :VERBOSE NIL :PRINT NIL :IF-DOES-NOT-EXIST :ERROR :EXTERNAL-FORMAT :DEFAULT)
+26: ((FLET SB-IMPL::LOAD-SCRIPT :IN SB-IMPL::PROCESS-SCRIPT) #<SB-SYS:FD-STREAM for "file /tank/fn/scratch/p2-wire/tree/tests/native_owner_chunk_loop_raw.lisp" {1001337433}>)
+27: ((FLET SB-UNIX::BODY :IN SB-IMPL::PROCESS-SCRIPT))
+28: ((FLET "WITHOUT-INTERRUPTS-BODY-11" :IN SB-IMPL::PROCESS-SCRIPT))
+29: (SB-IMPL::PROCESS-SCRIPT "tests/native_owner_chunk_loop_raw.lisp")
+30: (SB-IMPL::TOPLEVEL-INIT)
+31: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))
+32: ((FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP))
+33: (SB-IMPL::%START-LISP)
+
+unhandled condition in --disable-debugger mode, quitting
+
+
+======================================================================
+FAIL: test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart (tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/p2-wire/tree/tests/test_native_owner.py", line 439, in test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart
+    self.assertEqual(configured.returncode, 0, configured.stderr.decode())
+AssertionError: 4 != 0 : store: [Errno 2] No such file or directory: 'acl2'
+
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.776s
+
+FAILED (failures=3)
+rc=1
