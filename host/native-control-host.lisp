@@ -20,6 +20,10 @@
   (declare (xargs :mode :program))
   (fn-thlc-reply-decode octets))
 
+(defun fn-native-control-host-topic-status-exit-code (status)
+  (declare (xargs :mode :program))
+  (fn-thlc-status-exit-code status))
+
 (defun fn-native-control-host-topic-cli-plan (command argv)
   (declare (xargs :mode :program))
   (fn-thlc-cli-plan command argv))

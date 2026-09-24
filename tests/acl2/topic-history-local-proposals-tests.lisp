@@ -28,6 +28,20 @@
                              5 4 nil nil nil)
         (fn-stmt-ok *thsn-admit*)))
 (assert-event
+ (let* ((projection (fn-sn-topic *thsn-admitted*))
+        (anchor (fn-th-find-anchor *thad-topic* (fn-th-at 4 projection)))
+        (prior (car (fn-th-anchor-reports anchor))))
+   (and (equal (fn-th-local-propose :report projection 6 4 nil nil nil)
+               (list :replayed-historical prior))
+        (equal (fn-th-at 8 anchor) 1)
+        (equal (fn-th-at 1 projection) 6))))
+(must-fail
+ (assert-event
+  (equal (car (fn-th-local-propose
+               :report (fn-sn-topic *thsn-report-accepted*)
+               5 4 nil nil nil))
+         :replayed-historical)))
+(assert-event
  (equal (fn-th-local-propose-anchor
          (fn-sn-topic *thsn-installed*) 3 1 502 2)
         (fn-stmt-error :administrator)))

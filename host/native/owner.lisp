@@ -841,14 +841,18 @@ the current connection."
               (fnn-owner-core 'fn-owner-topic-propose
                               operation source-sequence observed-uid
                               entropy-id quota)))
-       (if (not (and (consp proposal) (eq (first proposal) :ok)
-                     (consp (cdr proposal))))
-           :refused
-         (progn
-           (unless (eq (fnn-owner-topic-commit service (second proposal))
-                       :durable)
-             (fnn-fault "topic publication lacked durable completion"))
-           :accepted))))))
+       (cond
+         ((and (consp proposal) (eq (first proposal) :replayed-historical)
+               (consp (cdr proposal)))
+          :replayed-historical)
+         ((not (and (consp proposal) (eq (first proposal) :ok)
+                    (consp (cdr proposal))))
+          :refused)
+         (t
+          (unless (eq (fnn-owner-topic-commit service (second proposal))
+                      :durable)
+            (fnn-fault "topic publication lacked durable completion"))
+          :accepted))))))
 
 (defun fnn-owner-consumer-entropy-observation ()
   "Observe 64 OS entropy octets; ACL2 validates and owns the identities."

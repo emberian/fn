@@ -39,12 +39,19 @@
 
 (defun fn-thlc-status-code (status)
   (case status (:accepted 0) (:refused 1) (:uncertain 2)
-        (:fault 3) (otherwise nil)))
+        (:fault 3) (:replayed-historical 4) (otherwise nil)))
 (defun fn-thlc-code-status (code)
   (case code (0 :accepted) (1 :refused) (2 :uncertain)
-        (3 :fault) (otherwise nil)))
+        (3 :fault) (4 :replayed-historical) (otherwise nil)))
 (verify-guards fn-thlc-status-code)
 (verify-guards fn-thlc-code-status)
+
+; A retry names a durable prior admission, so its control command succeeds
+; without publishing a second event. Keep this outcome distinct on the wire.
+(defun fn-thlc-status-exit-code (status)
+  (declare (xargs :guard t))
+  (if (equal status :replayed-historical) 0
+    (fn-native-control-status-exit-code status)))
 
 (defun fn-thlc-reply-encode (status)
   (declare (xargs :guard t))

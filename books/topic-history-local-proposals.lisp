@@ -115,3 +115,53 @@
            (e/d (fn-th-local-propose-report)
                 (fn-th-prepare-report
                  fn-th-prefix-find-accepted-sequence)))))
+
+; This is the dispatcher called by fn-owner-topic-propose. A replayed status
+; can only arise after selecting the earlier exact T10 accepted source and
+; its pinned keyring snapshot; it carries the retained admission, not a new
+; Store event or caller-supplied report identity.
+(defthm fn-th-local-propose-report-retry-is-historical
+  (implies
+   (and (equal operation :report)
+        (equal (car (fn-th-local-propose
+                     operation projection txid source-sequence
+                     observed-uid entropy-id quota))
+               :replayed-historical))
+   (let* ((accepted
+           (fn-th-prefix-find-accepted-sequence
+            source-sequence (fn-th-at 3 projection)))
+          (snapshot
+           (and accepted
+                (fn-stxk-find (fn-stxa-keyring-generation accepted)
+                              (fn-th-at 2 projection))))
+          (selected (fn-th-select-accepted-event accepted snapshot))
+          (report (fn-th-at 0 (fn-stmt-value selected)))
+          (anchor (fn-th-find-anchor (fn-th-at 1 report)
+                                     (fn-th-at 4 projection)))
+          (prior (fn-th-find-admission
+                  (fn-stxa-authored-id accepted)
+                  (fn-th-anchor-reports anchor))))
+     (and accepted snapshot (fn-stmt-okp selected) prior
+          (equal (fn-th-local-propose
+                  operation projection txid source-sequence
+                  observed-uid entropy-id quota)
+                 (list :replayed-historical prior)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-th-report-retry-returns-retained-admission
+                            (sequence (fn-th-at 1 projection))
+                            (generation txid)
+                            (accepted (fn-th-prefix-find-accepted-sequence
+                                       source-sequence (fn-th-at 3 projection)))
+                            (snapshot
+                             (fn-stxk-find
+                              (fn-stxa-keyring-generation
+                               (fn-th-prefix-find-accepted-sequence
+                                source-sequence (fn-th-at 3 projection))))
+                              (fn-th-at 2 projection)))
+                            (anchors (fn-th-at 4 projection))))
+           :in-theory
+           (e/d (fn-th-local-propose fn-th-local-propose-report)
+                (fn-th-prepare-report fn-th-select-accepted-event
+                 fn-th-prefix-find-accepted-sequence fn-stxk-find
+                 fn-th-find-anchor fn-th-find-admission))))

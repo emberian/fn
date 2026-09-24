@@ -21,9 +21,12 @@
       (declare (ignore ignored))
       (let ((status (fnn-control-topic-local
                      (fnn-octets control) operation sequence quota)))
-        (unless (member status '(:accepted :refused :uncertain :fault))
+        (unless (member status '(:accepted :replayed-historical
+                                 :refused :uncertain :fault))
           (fnn-fault "topic control returned malformed status"))
-        (fnn-out "topic ~(~a~)" status)
-        (fnn-core 'fn-native-control-host-status-exit-code status)))))
+        (if (eq status :replayed-historical)
+            (fnn-out "topic accepted, replayed-historical")
+          (fnn-out "topic ~(~a~)" status))
+        (fnn-core 'fn-native-control-host-topic-status-exit-code status)))))
 
 (fnn-register-verb "topic" #'fnn-command-topic-local)
