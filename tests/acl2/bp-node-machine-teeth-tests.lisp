@@ -227,14 +227,19 @@
 
 ; A failed cold-recovery attempt cannot consume the volatile wait or any
 ; held work.  A successful model replay changes epoch and clears the wait;
-; it must present its own recovered held rows from the durable journal.
+; it must present its own recovered held rows from the durable journal.  These
+; direct six-field events exercise the host boundary shape; the replay result
+; here is a model fixture, not an observed name/byte scan.
 (defconst *bpnmt-n03-fault-recovery*
   (fn-bpnp-step
    *bpnmt-n03-waited*
    (list :recover-fnbs 0 nil :ready
-         (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil))))
+         (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil) 2)))
 (assert-event
- (and (equal (fn-bpnf-answer-effects *bpnmt-n03-fault-recovery*)
+ (and (fn-bpnp-host-eventp
+       (list :recover-fnbs 0 nil :ready
+             (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil) 2))
+      (equal (fn-bpnf-answer-effects *bpnmt-n03-fault-recovery*)
              '((:restart-fault :fnbs-or-base)))
       (equal (fn-bpnf-answer-state *bpnmt-n03-fault-recovery*)
              *bpnmt-n03-waited*)
@@ -251,13 +256,17 @@
   (fn-bpnp-step
    *bpnmt-n03-waited*
    (list :recover-fnbs 1 nil :ready
-         (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil))))
+         (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil) 2)))
 (assert-event
- (and (equal (car (car (fn-bpnf-answer-effects *bpnmt-n03-recovered*)))
+ (and (fn-bpnp-host-eventp
+       (list :recover-fnbs 1 nil :ready
+             (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil) 2))
+      (equal (car (car (fn-bpnf-answer-effects *bpnmt-n03-recovered*)))
              :restart-ready)
       (not (fn-bpnp-waits (fn-bpnf-answer-state *bpnmt-n03-recovered*)))
       (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpnmt-n03-recovered*))
-             (fn-bpnf-held-list *bpnmt-n03-s2*))))
+             (fn-bpnf-held-list *bpnmt-n03-s2*))
+      (equal (fn-bpnp-used (fn-bpnf-answer-state *bpnmt-n03-recovered*)) 2)))
 
 ; PENDING N03 general two-tick theorem and its remaining hypothesis teeth.
 ; PENDING N04: two *received* valid no-fragment bundles with 48 KiB and 8 KiB
