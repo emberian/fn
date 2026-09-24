@@ -223,11 +223,11 @@
                (fn-sn-topic s))
         (equal (fn-sn-identity-next (fn-sn-set-keyring s keyring))
                (fn-sn-identity-next s)))
-   :hints (("Goal" :in-theory (enable fn-sn-set-keyring
-                                      fn-sn-groups fn-sn-capacity
-                                      fn-sn-files fn-sn-node
-                                      fn-sn-consumer fn-sn-topic
-                                      fn-sn-identity-next)))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-set-keyring)
+                 (fn-sn-make-v6 fn-sn-groups fn-sn-capacity
+                  fn-sn-files fn-sn-node fn-sn-consumer fn-sn-topic
+                  fn-sn-identity-next))))))
 
 (local
  (defthm fn-spc-set-keyring-keeps-completion-record
