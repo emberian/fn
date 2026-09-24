@@ -4,17 +4,16 @@
 (in-package "ACL2")
 (include-book "config-physical-replay")
 (include-book "store-observed")
+; The Store's derived event index is rebuilt at open.  Keep its wide
+; constructor closed while proving configuration/history selectors.
+(local (in-theory (disable fn-sn-make-v6)))
 
 (defun fn-cpo-install (st cn configs)
-  (declare (xargs :guard t))
-  (fn-sn-make-v4
-   (fn-cnode-domain-of (fn-cnode-config cn))
+  (declare (xargs :guard (true-listp st)))
+  (fn-sn-with-configuration
+   st (fn-cnode-domain-of (fn-cnode-config cn))
    (fn-cfg-capacity (fn-cfg-value (fn-cnode-config cn)))
-   (fn-sn-files st) (fn-cnode-node cn)
-   (fn-sn-keyring st) (fn-sn-index st)
-   (fn-sn-keyring-generation st) (fn-sn-verdicts st)
-   (fn-sn-keyring-snapshots st) (fn-sn-identity-next st)
-   configs (fn-sn-consumer st)))
+   (fn-cnode-node cn) configs))
 
 (defun fn-cpo-open-observed (configs frontier events)
   (declare (xargs :guard t :verify-guards nil))
@@ -33,22 +32,26 @@
                    (config (fn-cnode-config cn))
                    (identity (fn-replay-identity events))
                    (consumer (fn-cpe-projection-replay nil events 0))
+                   (topic (fn-th-prefix-project events))
                    (files (fn-sf-make :recovering frontier nil events
                                       nil nil nil 0))
                    (seed (fn-sn-observed-seed
                           (fn-cnode-domain-of config)
                           (fn-cfg-capacity (fn-cfg-value config))
                           frontier events))
-                   (opened (fn-sn-with-consumer
-                            (fn-cpo-install
-                             (fn-sn-update-replayed
-                              seed files advanced
-                              (fn-stx-index-of-store (fn-stx-store advanced) nil)
-                              identity)
-                             (fn-cnode-make advanced config) configs)
-                            (fn-cp-nth 1 consumer))))
+                   (opened (fn-sn-with-topic
+                            (fn-sn-with-consumer
+                             (fn-cpo-install
+                              (fn-sn-update-replayed
+                               seed files advanced
+                               (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                               identity)
+                              (fn-cnode-make advanced config) configs)
+                             (fn-cp-nth 1 consumer))
+                            topic)))
               (if (and (equal (fn-stxk-context-kind identity) :ok)
                        (eq (car consumer) :ok)
+                       (eq (fn-th-at 0 topic) :ok)
                        (fn-sn-statep opened))
                   (fn-sn-open-ok opened)
                 (fn-sn-open-error :identity)))))))))
@@ -134,14 +137,14 @@
 (defthm fn-cpo-configure-durable-keeps-observed-events
   (equal (fn-sf-records (fn-sn-files (fn-cpo-configure-durable st record)))
          (fn-sf-records (fn-sn-files st)))
-  :hints (("Goal" :in-theory (enable fn-cpo-configure-durable
-                                      fn-cpo-install))))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable fn-cpo-install)
+                                   (fn-sn-with-configuration)))))
 
 (defthm fn-cpo-configure-durable-keeps-frontier
   (equal (fn-sf-frontier (fn-sn-files (fn-cpo-configure-durable st record)))
          (fn-sf-frontier (fn-sn-files st)))
-  :hints (("Goal" :in-theory (enable fn-cpo-configure-durable
-                                      fn-cpo-install))))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable fn-cpo-install)
+                                   (fn-sn-with-configuration)))))
 
 (defthm fn-cpo-configure-durable-preserves-history-relation
   (implies (fn-cpo-history-relation st)
@@ -150,7 +153,8 @@
   :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable
                                    fn-cpo-history-relation fn-cpo-install)
                                   (fn-cpr-replay fn-cpr-loop
-                                   fn-sn-statep fn-cnode-statep)))))
+                                   fn-sn-statep fn-cnode-statep
+                                   fn-sn-with-configuration)))))
 
 ; The caller sees the complete observed journal and the parameters from the
 ; final *ordered* configuration. No barrier has been reported at open.
@@ -176,15 +180,16 @@
                 (fn-cpr-replay fn-cpr-loop fn-replay-identity
                  fn-replay-identity-loop fn-stx-index-of-store
                  fn-sn-statep fn-cnode-statep fn-sn-observed-seed
-                 fn-replay-advance-txid)))))
+                 fn-replay-advance-txid fn-sn-with-configuration)))))
 
 (defthm fn-cpo-open-success-has-historical-relation
   (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier events))
            (fn-cpo-history-relation
             (fn-sn-open-state
              (fn-cpo-open-observed configs frontier events))))
-  :hints (("Goal" :in-theory (enable fn-cpo-history-relation
-                                      fn-cpo-open-observed fn-sn-open-okp))))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-history-relation
+                                   fn-cpo-open-observed fn-sn-open-okp)
+                                  (fn-sn-with-configuration)))))
 
 (deftheory fn-cpo-vocabulary '(fn-cpo-install fn-cpo-open-observed
                              fn-cpo-history-relation fn-cpo-configure-durable))

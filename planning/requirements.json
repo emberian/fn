@@ -1661,9 +1661,46 @@
         "planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md",
         "tests/test_native_consumer_project_bounds.py",
         "planning/evidence/consumer-project-envelope-2026-09-23.md",
-        "planning/evidence/manifests/certify-20260923T234427Z-1749031.json"
+        "planning/evidence/manifests/certify-20260923T234427Z-1749031.json",
+        "planning/evidence/native-luna-e160-selected-2026-09-24.md",
+        "planning/evidence/consumer-index-owner-wip-2026-09-24.md"
       ],
-      "note": "Selected v1 experiment, not a v0 gate. The cursor/event kernel and Store completed-prefix model are certified in scope. Native image 1d26e01f passed local-owner signed poll, repeat without ACK mutation, advancing ACK with killed reply and recovered position, selected-pack/fenced-clone recovery and old-incarnation refusal. The source-ready local consumer status diagnostic reports the scoped committed ACK, journal frontier and their event-distance; it is experimental v1 diagnostic behavior and changes no release gate. The current poll walks the preceding history before its bounded 16-event window. General remote authenticated multi-group poll/ack/rebase, native physical crash refinement, the consumer-owned transaction/ACK/reply join and executed two-store exchange remain open; the full adversarial E2 trace set is not qualified. The subsequent consumer-project exact-file overlimit refusal repair has a scoped ACL2 envelope regression and old-image fault counterexample; its native regression awaits the next source-matched image."
+      "note": "Selected v1 experiment, not a v0 gate. Native 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with lost reply/recovery and clone-incarnation refusal; the separate Mini join established a durable application transaction before ACK. Native e160442f additionally passed local consumer status and exact-file projection bounds. The current source retrieves its at-most-16-event poll window through a maintained derived sequence index; scoped correspondence is certified, while the new topic/index composition still needs broad qualification and native cost/recovery evidence. Remote authenticated multi-group poll/ack/rebase, complete native physical crash refinement, durable reply publication and the full adversarial E2 trace set remain open. Journal-event distance is not article unreadness or application processing."
+    },
+    {
+      "id": "TOP-002",
+      "title": "Experimental root-only local topic anchor and report admission",
+      "specification": "specs/topic-history.md#experimental-root-only-admission-component",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-066"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/topic-history-admission.lisp",
+        "tests/acl2/topic-history-admission-tests.lisp",
+        "planning/evidence/topic-history-admission-component-p3-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T214858Z-589315.json",
+        "planning/evidence/manifests/certify-20260923T215046Z-608772.json",
+        "books/topic-history-store-events.lisp",
+        "tests/acl2/topic-history-store-events-tests.lisp",
+        "planning/evidence/manifests/certify-20260923T215838Z-688900.json",
+        "books/topic-history-local-proposals.lisp",
+        "books/store-node-invariants.lisp",
+        "books/store-node-traces.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_topic_local.py",
+        "planning/evidence/topic-history-native-source-p3-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T030421Z-3524851.json",
+        "planning/evidence/manifests/certify-20260924T031621Z-3631800.json",
+        "planning/evidence/manifests/certify-20260924T031835Z-3652118.json"
+      ],
+      "implementation_note": "The bounded experimental fixed-controller ACL2 model now carries administrator installation, root anchor and report admission in Store slot 12, checks earlier T10 exact source and historical key context, finite quota, roster and same-topic parents, and replays topic history separately on reopen. The native owner/control source calls the ACL2 proposal dispatcher and publication gate; the joined Store/topic/index and status-scope roots have scoped persvati certification.",
+      "note": "This local experiment is not a universal governance contract. A source-matched native install/root/report/reopen image, broad reverse closure and physical publication qualification remain open before served durable-admission status; succession, fork healing and automatic policy adoption are not inferred."
     }
   ]
 }

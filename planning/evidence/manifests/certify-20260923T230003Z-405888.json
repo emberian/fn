@@ -1,0 +1,205 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+    "launcher_chain_sha256": [
+      "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g",
+  "acl2_executable_sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+  "acl2_exit_codes": {
+    "books/consumer-event-index": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "launcher_chain_sha256": [
+        "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+      "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "size": 233686912
+    },
+    "launchers": [
+      {
+        "path": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+        "size": 279
+      }
+    ],
+    "runtime": {
+      "path": "/tank/fn/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "book_failures": {},
+  "book_provenance": {
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/consumer-event-index": "certified",
+    "books/consumer-position": "installed"
+  },
+  "book_results": {
+    "books/consumer-event-index": "passed"
+  },
+  "book_wall_seconds": {
+    "books/consumer-event-index": 0.965
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 300,
+  "cache_install": {
+    "directory": "/tank/fn/certcache",
+    "installed": 0,
+    "kept": 3,
+    "origins": {
+      "/tank/fn/gates/authorship-image-295bbe35": 2,
+      "/tank/fn/lanes/preservation-contract-e2": 1
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0"
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/consumer-event-index",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/consumer-event-index": "b1fd41d07da672b8b68ea4d8d10c744055230516f31048364eea57e89c40f21e"
+  },
+  "certify_wall_seconds": 0.974,
+  "closure": false,
+  "command": [
+    "/tank/fn/toolchains/w28/acl2-literal-4g"
+  ],
+  "driver_digests_sha256": {
+    "books/consumer-event-index": "3ae448d5b3ebcac0a7209d18288865e4d84b0222ab98e50fb672b3d204c26181"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 8b4a271d3fcd6d052338330a453b0d3a 5d13ab9dbe73"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T23:00:05+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "incremental": true,
+  "installed_books": {
+    "books/cbor": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/cbor-invariants": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/consumer-position": "/tank/fn/lanes/preservation-contract-e2"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 8b4a271d3fcd6d052338330a453b0d3a 5d13ab9dbe73"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/consumer-event-index"
+  ],
+  "requested_books": [
+    "books/consumer-event-index"
+  ],
+  "roots": [
+    "books/consumer-event-index"
+  ],
+  "run_id": "certify-20260923T230003Z-405888",
+  "runner_sha256": "1416c9205de19d717c67f7a8429e9b40264814aadfa896487148788340836cbd",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "books/consumer-event-index": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/consumer-event-index.lisp": "6f2fb86b78e0ca4b421a644ac28127ac193519e8dbcbd93cffda8ea3f671751b",
+    "books/consumer-position.lisp": "88f2d835200c913a203446e720236b5ffe69d36de5c743f005c881f266129858"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/consumer-event-index.lisp": "6f2fb86b78e0ca4b421a644ac28127ac193519e8dbcbd93cffda8ea3f671751b",
+    "books/consumer-position.lisp": "88f2d835200c913a203446e720236b5ffe69d36de5c743f005c881f266129858"
+  },
+  "start_order": [
+    "books/consumer-event-index"
+  ],
+  "started_utc": "2026-09-23T23:00:03+00:00",
+  "status": "passed",
+  "timeout_seconds": 300,
+  "tree": "/Users/ember/dev/fn/build/lanes/consumer-poll-index"
+}

@@ -116,9 +116,8 @@
              (position (fn-cp-nth 7 entry))
              (frontier (fn-cp-nth 3 s))
              (scan (fn-col-poll-scan
-                    (fn-col-poll-window
-                     (fn-col-poll-drop (fn-sf-records (fn-sn-files store))
-                                       position)
+                    (fn-col-poll-index-window
+                     (fn-sn-event-index store) position frontier
                      *fn-col-poll-max-scan*)
                     (fn-cp-nth 3 entry) position frontier
                     *fn-col-poll-max-scan*)))

@@ -1995,6 +1995,36 @@
           "note": "Relates the actual host-called owner read to the served step over its retained archive and group bucket."
         }
       ]
+    },
+    {
+      "id": "PRF-066",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-th-local-anchor-proposal-requires-earlier-accepted-source",
+          "note": "The anchor proposal helper selects an earlier T10 accepted exact source from the carried prefix; the host-called fn-th-local-propose dispatches to this helper for :anchor."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-th-local-report-proposal-requires-earlier-accepted-source",
+          "note": "The report proposal helper selects an earlier T10 accepted exact source from the carried prefix; the host-called fn-th-local-propose dispatches to this helper for :report."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-topic-completion",
+          "note": "A successful topic completion advances the exact Store pair and carried topic projection while preserving article acceptance and its index."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snt-prepare-topic-preserves-relation",
+          "note": "The actual Store topic prepare transition preserves the mixed trace relation, including the deferred publication arm."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-recover-of-recoverable-replaying-is-recovering",
+          "note": "The recovery theorem requires an explicit topic-replay-ok premise alongside identity and consumer checks; the duplicate administrator-install image is a refusing observed-open witness."
+        }
+      ]
     }
   ]
 }

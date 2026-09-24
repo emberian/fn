@@ -521,6 +521,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-prepare-correspondence \
 	books/owner-agent \
 	books/owner-log \
+	books/consumer-event-index \
+	tests/acl2/consumer-event-index-tests \
+	books/consumer-poll-index \
+	tests/acl2/consumer-poll-index-tests \
+	books/consumer-event-index-store-invariants \
+	tests/acl2/consumer-event-index-store-invariants-tests \
+	books/consumer-owner-local \
+	tests/acl2/consumer-owner-local-tests \
+	books/consumer-owner-index-invariants \
+	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
 	tests/acl2/owner-verdict-tests \
 	tests/acl2/owner-operator-tests \
@@ -541,8 +551,21 @@ ACL2_BOOKS ?= books/defrecord \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \
+	books/topic-history-admission \
+	books/topic-history-store-events \
+	books/topic-history-local-proposals \
+	books/topic-history-local-control \
 	tests/acl2/topic-history-metadata-tests \
 	tests/acl2/topic-history-authorship-tests \
+	tests/acl2/topic-history-admission-tests \
+	tests/acl2/topic-history-store-events-tests \
+	tests/acl2/topic-history-store-union-tests \
+	tests/acl2/topic-history-prefix-tests \
+	tests/acl2/topic-history-local-admin-tests \
+	tests/acl2/topic-history-store-node-tests \
+	tests/acl2/topic-history-local-proposals-tests \
+	tests/acl2/topic-history-local-control-tests \
+	tests/acl2/topic-history-native-vector-tests \
 	tests/acl2/hybrid-store-tests \
 	books/crypto-attach \
 	books/auth-secret \

@@ -1,0 +1,73 @@
+# Experimental P3 local caller source checkpoint, 2026-09-24
+
+This is source qualification, not a saved-image or served-admission claim.
+`host/native/control.lisp` decodes the bounded FNCT topic request and calls
+the existing `fnn-control-peer-is-owner-p` connected-socket credential gate.
+Its second return value is the observed UID; the host does not derive the
+topic administrator ID from it. `host/native/owner.lisp` serializes the
+request, obtains a fresh 32-octet ID only for installation, and invokes
+`fn-owner-topic-propose` in `host/owner-host.lisp`.
+
+The owner wrapper calls the single logical `fn-th-local-propose` dispatcher
+with the carried Store topic projection and current transaction coordinate.
+The dispatcher selects an earlier exact T10 accepted event and pinned snapshot
+from that projection for anchor/report proposals. Its anchor and report
+theorems require the earlier accepted event on the successful branch; the
+test book exercises install, valid root/report selection, wrong UID and
+missing historical source. The publication path stages the ACL2-built event
+through the existing owner Store durability gate and reports accepted only
+after completion. No caller-supplied Boolean or relay field supplies topic
+authority.
+
+The ACL2 local proposal book and test passed on persvati in
+[`certify-20260924T020813Z-3039371.json`](manifests/certify-20260924T020813Z-3039371.json).
+The bounded FNCT local control book and test passed after using the total
+`fn-th-at` accessor for malformed external arguments in
+[`certify-20260924T020336Z-2999170.json`](manifests/certify-20260924T020336Z-2999170.json).
+Both runs used ACL2 8.7/SBCL 2.6.8 on persvati, two jobs, 150-second
+per-book timeout, explicit roots and no closure. `make check` passed after
+ledger generation. `tests/test_native_topic_local.py` is staged for a
+source-matched image but has not run. It carries fixed ACL2-emitted root and
+report fields with signed exact sources and disposable test keys; an earlier
+signed-carrier image verified the root controller/keyset match and report
+field, but did not publish either topic event. The test will cover
+administrator install/reopen, root/report admission and missing-source
+refusal. Combined native image, reverse owner closure and physical
+source-matched publication evidence remain open. No succession, fork healing,
+automatic policy adoption or Mini application operation is inferred.
+
+The field values themselves are checked against `fn-th-field-encode` by
+`tests/acl2/topic-history-native-vector-tests.lisp`, which passed on persvati
+in [`certify-20260924T022329Z-3173943.json`](manifests/certify-20260924T022329Z-3173943.json).
+
+The combined topic/consumer-index source was merged once with dev
+`eb4e63c0` at `d4b48fda`. Its 21 explicit Store, topic, native-control and
+indexed-poll roots passed in persvati run `run-20260924T030411Z-ade4`:
+[`certify-20260924T030421Z-3524851.json`](manifests/certify-20260924T030421Z-3524851.json).
+The incremental run used ACL2 8.7/SBCL 2.6.8, two jobs, the shared cache,
+150-second per-book timeout and no closure; 92 dependencies installed at
+matching closure keys and 68 books certified. This qualifies those logical
+roots at the merged source, not the broader reverse closure or a native image.
+The new native install/root/report/reopen test has not run on that source.
+
+Proof cost remains visible: `VERIFY-GUARDS FN-SN-COMPLETION-CORE-ENABLEDP`
+took 21.20 seconds after opening the completion record and topic recognizers;
+`FN-SN-FINISH-PRESERVES-STATE` took 18.51 seconds,
+`FN-SNT-IO-RECORDS-PREFIX` 22.46 seconds, and the derived consumer index's
+identity-prepare relation 46.56 seconds. These are passed events, not a
+claim that the proof-cost target is met.
+
+The later local-consumer status packet reserves FNCT reply kind 9, leaving
+topic request/reply kinds 7/8 distinct. It strengthens the shared local
+scope lookup to refuse a malformed consumer ID or ACK beyond the committed
+frontier. The actual indexed `fn-col-poll` and its proof-only historical-list
+reference now call that same ACL2 selector; an out-of-frontier ACK witness
+checks both refusals. On source `567a8db2`, seven focused status/index and
+native-control roots passed in persvati run `run-20260924T031608Z-1b31`,
+[`certify-20260924T031621Z-3631800.json`](manifests/certify-20260924T031621Z-3631800.json),
+with 139 dependencies installed and eight certified, two jobs and no closure.
+The test's first `must-fail` searched an unconstrained false theorem for
+17.23 seconds. Commit `6ef58b79` keeps the exact counterexample as a bounded
+`must-fail` assertion; its one-root rerun passed in 3.536 seconds at
+[`certify-20260924T031835Z-3652118.json`](manifests/certify-20260924T031835Z-3652118.json).
+No topic native saved-image run has followed these source changes yet.

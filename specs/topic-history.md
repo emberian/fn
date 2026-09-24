@@ -71,8 +71,96 @@ bytes, and no external data is passed to a Lisp reader.
 
 The source and host-called projection are covered by PRF-062 and SCN-030;
 the verified and historical authorship binding is PRF-065 and SCN-032.
-Store topic events, durable admission and current-policy status remain the
-next P3 composition steps and need their own host-called theorems and physical
-evidence. RFC 5536 header syntax comes from the article parser. The one-field,
+
+## Experimental root-only admission component
+
+TOP-002: A local root-only topic admission proposal must use a previously
+accepted T10-bound exact source, finite topic budget and historical author
+context. Only a completed, validated topic event may change the local anchor
+or report-admission projection.
+
+`books/topic-history-admission.lisp` now defines the first bounded local
+transition for the proposed fixed-controller profile. It prepares an anchor
+only from a T10-bound retained root whose declared controller and exact keyset
+identity match the historical verifier context, an installed 32-octet local
+administrator ID equal to the authenticated caller ID, a fresh root source
+identity, and a finite quota of 1 through 64 report admissions. At most 16
+anchors fit the local projection. The administrator ID travels in the proposed
+anchor event so recovery can compare it with historical local configuration.
+
+The selected local-operator profile will install one immutable administrator
+binding through the connected Unix control socket after the existing
+same-effective-UID peer-credential gate. The OS-observed UID is input, not a
+topic authority decision: ACL2 checks its unsigned 32-bit range and a fresh
+32-octet entropy-observed administrator ID. The ID is locally installed and
+independent of UID, so equal UIDs in separate stores or a reused OS account
+do not imply equal administrator identities. The binding's Store event records that ID, UID, configuration
+generation and install sequence. A fresh anchor must name this installed ID
+and generation and come from the same authenticated UID. Recovery checks an
+anchor against the earlier install record, never against the process's current
+UID; changing the owner UID cannot rewrite historical admissions or silently
+inherit the old binding. The first root-only profile has no replacement or
+succession operation. Reuse of the same OS account remains inside the local
+operator trust boundary; a later replacement or revocation must be explicit.
+The event and Store replay join are now executable; authenticated native
+installation and publication remain open.
+
+`books/topic-history-local-admin.lisp` now defines the logical immutable
+install event and the caller-facing root proposal wrapper. Installation
+requires a finite OS-observed UID and an independent exact 32-octet entropy
+observation; an existing installation refuses replacement. The wrapper
+derives the caller ID only when the current authenticated UID matches the
+installed UID, then passes the installed ID to root preparation. Its theorem
+proves that successful root preparation requires that historical binding and
+UID match. The install event has a canonical Store encoding and historical
+replay; the native owner caller is not yet qualified.
+
+A report proposal resolves the retained T10 event/snapshot again. It requires
+the selected root policy to be active, the verified author reference in the
+root roster, all declared parents to have earlier admissions in that same
+topic, and a remaining quota. Exact historical retry returns the old admission
+before current policy checks and consumes no quota. A conflicting T10 source
+reference under a prior report identity is refused. Preparation returns a
+proposed topic event; the projection changes only through `fn-th-commit-anchor`
+or `fn-th-commit-report`, which recompute and compare the proposal against the
+bound source/context before changing bounded state. The report record retains
+its topic, policy, T10 source reference, parent list and committed sequence.
+
+`books/topic-history-store-events.lisp` assigns this experimental component a
+distinct `fnto` version-1 Store payload grammar for `:topic-anchor` and
+`:topic-admit` proposals. Coordinates share the Store's unsigned 32-bit
+sequence/transaction/generation shape. An event refers to a strictly earlier
+T10 accepted source, records its local source/authorship reference, and carries
+the root administrator/quota or report topic/policy/parent metadata. The codec
+prechecks 1,024 octets, uses at most 24 canonical CBOR items, and re-encodes
+decoded values exactly before accepting them. The Store event union now
+recognizes this distinct grammar and assigns its sequence, transaction,
+generation and publication-size fields. Store completion checks the carried
+historical projection before admitting the event, then advances the exact
+sequence and transaction with article acceptance contents unchanged.
+
+`books/topic-history-prefix.lisp` is the recovery-side ordered projector. It
+collects preceding T10 accepted events and keyring snapshots and resolves
+each topic event's exact authorship reference only from that earlier prefix.
+It then invokes the same `fn-th-commit-anchor` or `fn-th-commit-report`
+transition and faults on a missing source, snapshot, mismatched administrator
+or invalid report. Store carries this projection in slot 12 and reconstructs
+it from the completed journal at observed reopen. Article, identity and
+consumer replay success alone cannot authorize a topic history: observed
+reopen separately requires topic replay success. Configuration updates use a
+shared Store updater proved to preserve the file, consumer and topic slots.
+
+This is a certified logical Store completion and recovery path. The native
+owner/control source now calls the ACL2 proposal dispatcher and Store
+publication gate, but its saved-image execution is not yet qualified.
+Historical administrator installation
+and T10 authorship are taken from the completed prefix, not current UID or
+unverified metadata. It is root-only.
+No control successor, fork healing, automatic policy
+adoption, alias rewrite or Mini application operation is inferred. PRF-066 and
+SCN-034 track the Store path and remaining native boundary. Physical
+publication, owner recovery and current-policy status require source-matched
+native evidence before a served-admission claim. RFC 5536 header syntax comes
+from the article parser. The one-field,
 canonical metadata and size choices are stronger local fn experimental rules,
 not RFC requirements.
