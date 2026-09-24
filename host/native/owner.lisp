@@ -1163,7 +1163,9 @@ in-flight submission.  An uncertain result must retain its unresolved intent;
 core/Store faults and unclassified OS errors propagate to the serialized
 owner's recovery fence."
   (let ((word (handler-case (funcall commit-callback)
-                (fnn-store-indeterminate () :uncertain)
+                (fnn-store-indeterminate (e)
+                  (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
+                  :uncertain)
                 (fnn-store-fault (condition) (error condition))
                 (fnn-store-error () :refused))))
     (unless (member word '(:durable :duplicate :conflict :malformed :unaffordable
