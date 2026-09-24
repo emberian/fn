@@ -1,0 +1,202 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+    "launcher_chain_sha256": [
+      "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g",
+  "acl2_executable_sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+  "acl2_exit_codes": {
+    "books/tcpcl-octets": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "launcher_chain_sha256": [
+        "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+      "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "size": 233686912
+    },
+    "launchers": [
+      {
+        "path": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+        "size": 279
+      }
+    ],
+    "runtime": {
+      "path": "/tank/fn/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/tank/fn/gates/cost-4-7e133028/build/acl2/certify-20260924T144912Z-1426151",
+  "book_failures": {},
+  "book_provenance": {
+    "books/cbor": "installed",
+    "books/tcpcl-octets": "certified",
+    "books/tcpcl-records": "installed"
+  },
+  "book_results": {
+    "books/tcpcl-octets": "passed"
+  },
+  "book_wall_seconds": {
+    "books/tcpcl-octets": 5.228
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 300,
+  "cache_install": {
+    "directory": "/tank/fn/certcache",
+    "installed": 0,
+    "kept": 2,
+    "origins": {
+      "/tank/fn/gates/authorship-image-295bbe35": 1,
+      "/tank/fn/gates/takeover-v0-image-329a51a2": 1
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0"
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/tcpcl-octets",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/tcpcl-octets": "60a3fc91261386bb439c862bb058fea493a42a9ec12bc8a8a4e3b881d858cbc7"
+  },
+  "certify_wall_seconds": 5.236,
+  "closure": false,
+  "command": [
+    "/tank/fn/toolchains/w28/acl2-literal-4g"
+  ],
+  "driver_digests_sha256": {
+    "books/tcpcl-octets": "c64c8f07c9756057c30c55066c0661259dea9966ad8fb583db81ad74e7e0cc9a"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 19c294a85640d79bb4221d88cbc494b9 973abeca0a74"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-24T14:49:17+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "incremental": true,
+  "installed_books": {
+    "books/cbor": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/tcpcl-records": "/tank/fn/gates/takeover-v0-image-329a51a2"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 19c294a85640d79bb4221d88cbc494b9 973abeca0a74"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/tcpcl-octets"
+  ],
+  "requested_books": [
+    "books/tcpcl-octets"
+  ],
+  "roots": [
+    "books/tcpcl-octets"
+  ],
+  "run_id": "certify-20260924T144912Z-1426151",
+  "runner_sha256": "b6f65954d9cc10199cbbf44b04f3130697a8365ac2b2f2656ef33b1e1c1c5f0a",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "books/tcpcl-octets": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/tcpcl-octets.lisp": "e853538adf27b6dd9a277e4f11ce28e20e34926e5bf3a9418607fea1881c58ba",
+    "books/tcpcl-records.lisp": "b2cdde11d1269f63e334525b61393ef30cc4157377b16a6b10b00864c064a215"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/tcpcl-octets.lisp": "e853538adf27b6dd9a277e4f11ce28e20e34926e5bf3a9418607fea1881c58ba",
+    "books/tcpcl-records.lisp": "b2cdde11d1269f63e334525b61393ef30cc4157377b16a6b10b00864c064a215"
+  },
+  "start_order": [
+    "books/tcpcl-octets"
+  ],
+  "started_utc": "2026-09-24T14:49:12+00:00",
+  "status": "passed",
+  "timeout_seconds": 300,
+  "tree": "/tank/fn/gates/cost-4-7e133028"
+}
