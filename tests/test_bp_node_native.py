@@ -22,7 +22,12 @@ from tools import run_bp_ingress, run_store
 
 ROOT = Path(os.environ.get(
     "FN_NATIVE_SOURCE_ROOT", Path(__file__).resolve().parent.parent))
-IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+# The node runs on either developer image: FN_NATIVE_BP_NODE_HOST names the one
+# under test (the DTN developer image, whose profile ships the node), and it
+# falls back to the default developer image.
+IMAGE = Path(os.environ.get(
+    "FN_NATIVE_BP_NODE_HOST",
+    os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer")))
 
 
 def environment():

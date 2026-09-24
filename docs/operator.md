@@ -290,6 +290,29 @@ test selectors. The DTN build selects and serializes the same profile, with a
 separate `build/fn-host-dtn-developer` output when
 `FN_NATIVE_PROFILE=developer` is supplied during construction.
 
+### The DTN image: a BP node without the NNTP service
+
+`host/native/build-dtn.lisp` builds `build/fn-host-dtn` (and
+`build/fn-host-dtn-developer`). It is a BP node, not only a convergence
+layer: it carries the node service, the Store owner and the operator's
+configuration path, and leaves out the NNTP reader, the NNTP service
+(TLS listener, authentication, the outbound feed service), credential
+administration and the control socket. Its verbs:
+
+| verb | what it is in this image |
+| --- | --- |
+| `bp-node serve PORT JOURNAL STORE RECEIPTS WORKFLOW NODE PEER DEST POLICY ISSUER CONTACT-HOST CONTACT-PORT ...` | **the node**: one FNBS machine (`fn-bpnp-step`), the kind-8 retry policy, the owner Store with FNRJ/FNWF, admission of each TCPCL session from its observed channel against the enrolled boundaries |
+| `bp-node dispatch ...` | the same node without a listener |
+| `bp-obligation status\|undertake\|receipt` | the owner-mode forwarding obligation journal |
+| `bp-app receive` | the application receiver over the owner |
+| `operator CONFIG init\|status\|recover\|help` and the administrative plans (`policy set path-identity`, `bp-boundary add`, groups) | node configuration through the one ACL2 operator plan; `run`, `post` and `principal` exit 5 (their surfaces are not in this image) |
+| `store ROOT init\|recover\|status\|retention\|config\|inspect\|probe` | Store diagnostics, as in the default image |
+| `app-journal`, `bp-service`, `bp-contact`, `tcpcl` | journals, the queue service, contact windows, the convergence layer |
+| `bp send`, `bp receive`, `bp decode` | the lab's transport tools, not the node: `bp send` reports a severed contact as uncertain (exit 3) and its RETRY argument re-offers a named durable `authored-N.wire` with its original identity; `bp receive`'s STORE argument admits sessions against that Store's enrolled boundaries, and without it every inbound bundle is refused at the receive boundary |
+
+`reader` is refused and `model` faults, as the build header says, and the
+developer-only `owner` verb is not registered in either DTN image.
+
 ## Install
 
 The development service needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified
