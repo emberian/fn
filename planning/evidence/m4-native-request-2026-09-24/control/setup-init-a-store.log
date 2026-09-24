@@ -1,0 +1,4 @@
+$ fn store /tank/fn/scratch/m4-native-request/final/control/a-store init fn.test
+initialized /tank/fn/scratch/m4-native-request/final/control/a-store
+
+# rc=0

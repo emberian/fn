@@ -1,0 +1,4 @@
+$ fn bp-obligation undertake /tank/fn/scratch/m4-native-request/final/control/a-store /tank/fn/scratch/m4-native-request/final/control/a-fnwf work-bp-node 3
+BP obligation owner durable undertaking work=work-bp-node charge=3
+
+# rc=0

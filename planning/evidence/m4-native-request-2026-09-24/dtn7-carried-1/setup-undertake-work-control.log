@@ -1,0 +1,4 @@
+$ fn bp-obligation undertake /tank/fn/scratch/m4-native-request/final/dtn7-carried-1/a-store /tank/fn/scratch/m4-native-request/final/dtn7-carried-1/a-fnwf work-control 3
+BP obligation owner durable undertaking work=work-control charge=3
+
+# rc=0

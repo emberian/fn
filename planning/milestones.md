@@ -219,7 +219,31 @@ evolution, and an interrupted relay/contact-plan experiment with expiry and
 staging exhaustion. The [composition assurance batch](../tests/evidence/2026-09-18-bp-composition-assurance.md)
 certifies joint pending/durable work binding and fixed-Store receiver replay,
 with five actual receiver process-death cuts; it leaves those wider seams open.
-On dev `1b734868` the native N08 case (death after a durable kind 8, one retried delivery, one copy held, no third attempt) passes on the default developer image but cannot run on the DTN image, and against dtn7-rs an fn-authored bundle survives a severed contact and a SIGKILLed carrier to be delivered once while the DTN image refuses every return bundle at its receive boundary ([record](evidence/m4-dtn-n08-2026-09-24.md)). Through dtn7-rs (one and two relays, the carrier SIGKILLed mid-transfer and restarted) the request reaches `bp-node serve` once as custody and its application decides once, `request-refused`, because ACL2 trusts a request only when its source EID is the TCPCL neighbour's, so no receipt returns and the sender stays pinned, while the same lab direct runs request, receipt and release end to end ([record](evidence/m4-app-receipt-2026-09-24.md)).
+On dev `1b734868` the native N08 case (death after a durable kind 8, one retried delivery, one copy held, no third attempt) passes on the default developer image but cannot run on the DTN image, and against dtn7-rs an fn-authored bundle survives a severed contact and a SIGKILLed carrier to be delivered once while the DTN image refuses every return bundle at its receive boundary ([record](evidence/m4-dtn-n08-2026-09-24.md)). Through dtn7-rs (one and two relays, the carrier SIGKILLed mid-transfer and restarted) the request reaches `bp-node serve` once as custody and its application decides once, `request-refused`, because ACL2 trusts a request only when its source EID is the TCPCL neighbour's, so no receipt returns and the sender stays pinned, while the same lab direct runs request, receipt and release end to end ([record](evidence/m4-app-receipt-2026-09-24.md)). A now authors the request from its own workflow. `bp-obligation request`
+publishes ACL2's attempt (`fn-bprq-plan`, keystone
+`fn-bprq-plan-is-the-works-request`), takes the `:submit`, and hands
+`fn-bpo-request-adu`'s ADU to its FNBS carrier; ION is an adapter of the same
+attempt. On a scratch DTN developer image, through dtn7-rs with one and two
+relays:
+
+- The first hop is SIGKILLed mid-transfer and restarted.
+- B admits the request under the author's enrollment and commits it to its
+  Store.
+- The receipt returns and releases exactly the requested obligation.
+- A never-requested obligation keeps `pinned=yes`.
+- A relay whose boundary carries nothing is refused `source-not-carried`.
+- A SIGKILL inside either request publication leaves the work outstanding
+  and pinned ([record](evidence/m4-native-request-2026-09-24.md)).
+
+The exit clause still lacks:
+
+- An issuer-authority check on the release, which still rests on D23's
+  carriage trust.
+- A native recovery of an attempt fenced between its record and its outcome.
+- An ACL2 outbound-neighbour/routing decision; `bp-node serve` no longer
+  demands the application peer as neighbour.
+- Receipts sent by the node itself rather than `bp-contact tick`.
+- Frozen images.
 
 Durable scheduling is `implemented` (`REP-005`): all three scheduler roots
 pass the farm gate of `dev` `bdd59d2`. Two cautions travel with that status —

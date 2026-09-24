@@ -1,0 +1,60 @@
+ 2026-09-24T23:12:47.433Z INFO  dtnd > starting dtnd
+ 2026-09-24T23:12:47.433Z INFO  dtn7::dtnd::daemon > Local Node ID: dtn://dtn7-r1/
+ 2026-09-24T23:12:47.433Z INFO  dtn7::dtnd::daemon > Work Dir: "/tank/fn/scratch/m4-native-request/final/dtn7-unauthorized/dtn7-r1"
+ 2026-09-24T23:12:47.433Z INFO  dtn7::dtnd::daemon > DB Backend: sled
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Announcement Interval: 0s
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Janitor Interval: 10s
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Peer Timeout: 20s
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Web Port: 38667
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Discovery Port: 3003
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > IPv4: true
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > IPv6: false
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Generate Status Reports: false
+ 2026-09-24T23:12:47.498Z DEBUG dtn7::routing      > Creating routing agent epidemic
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > RoutingAgent: epidemic
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > RoutingOptions: {}
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Adding CLA: TcpConvergenceLayer
+ 2026-09-24T23:12:47.498Z DEBUG dtn7::cla::tcp     > Extension settings: {}
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Adding static peer: tcp://127.0.0.1/receiver
+ 2026-09-24T23:12:47.498Z DEBUG dtn7               > Adding peer eid=receiver
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Adding static peer: tcp://127.0.0.1/sender
+ 2026-09-24T23:12:47.498Z DEBUG dtn7               > Adding peer eid=sender
+ 2026-09-24T23:12:47.498Z INFO  dtn7::core         > Registered new application agent for EID: dtn://dtn7-r1/
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Starting convergency layers
+ 2026-09-24T23:12:47.498Z INFO  dtn7::dtnd::daemon > Setup TcpConvergenceLayer(TcpConvergenceLayer { local_addr: "0.0.0.0", local_port: 42995, refuse_existing_bundles: false, tx: Sender { chan: Tx { inner: Chan { tx: Tx { block_tail: 0x643bf5f59710, tail_position: 0 }, semaphore: Semaphore { semaphore: Semaphore { permits: 200 }, bound: 200 }, rx_waker: AtomicWaker, tx_count: 1, rx_fields: "..." } } } })
+ 2026-09-24T23:12:47.500Z DEBUG dtn7::dtnd::janitor > running janitor
+ 2026-09-24T23:12:54.368Z INFO  dtn7::cla::tcp      > Incoming connection from: 127.0.0.1:46840
+ 2026-09-24T23:12:54.368Z DEBUG dtn7::cla::tcp      > Exchanging contact header, 127.0.0.1:46840
+ 2026-09-24T23:12:54.368Z DEBUG dtn7::cla::tcp      > Negotiating session parameters, 127.0.0.1:46840
+ 2026-09-24T23:12:54.369Z DEBUG dtn7::cla::tcp      > Received session parameters
+ 2026-09-24T23:12:54.369Z INFO  dtn7::cla::tcp      > Started TCP session for dtn://sender/ @ 127.0.0.1:46840 | refuse existing bundles: false
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::cla::tcp::net > Reading xfer segment with len 6419
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::cla::tcp      > Received XferSeg: TID=0 LEN=6419 FLAGS=XferSegmentFlags(END | START)
+ 2026-09-24T23:12:54.409Z INFO  dtn7::core::processing > Received new bundle: dtn://sender/-843606755563-0
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::core::store::sled > Bundle dtn://sender/-843606755563-0 already in store, updating it!
+ 2026-09-24T23:12:54.409Z INFO  dtn7::core::processing  > Dispatching bundle: dtn://sender/-843606755563-0
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::routing::epidemic > checking PEERS due to SenderForBundle request (bp=dtn://sender/-843606755563-0 {ForwardPending})
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::routing::epidemic > Attempting direct delivery of bundle dtn://sender/-843606755563-0 to receiver
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::core::processing  > Attempting forwarding of dtn://sender/-843606755563-0 to nodes: [ClaSenderTask { tx: Sender { chan: Tx { inner: Chan { tx: Tx { block_tail: 0x643bf5f59710, tail_position: 0 }, semaphore: Semaphore { semaphore: Semaphore { permits: 200 }, bound: 200 }, rx_waker: AtomicWaker, tx_count: 2, rx_fields: "..." } } }, dest: "127.0.0.1:58171", cla_name: "tcp", next_hop: Dtn(1, DtnAddress("//receiver/")) }]
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::core::processing  > Attempting forwarding of dtn://sender/-843606755563-0 to nodes: [ClaSenderTask { tx: Sender { chan: Tx { inner: Chan { tx: Tx { block_tail: 0x643bf5f59710, tail_position: 0 }, semaphore: Semaphore { semaphore: Semaphore { permits: 200 }, bound: 200 }, rx_waker: AtomicWaker, tx_count: 2, rx_fields: "..." } } }, dest: "127.0.0.1:58171", cla_name: "tcp", next_hop: Dtn(1, DtnAddress("//receiver/")) }]
+ 2026-09-24T23:12:54.409Z INFO  dtn7::cla::tcp          > Session terminated for dtn://sender/ (127.0.0.1:46840)
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::core::processing  > Bundle contains an hop count block: dtn://sender/-843606755563-0 32 1
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::core::processing  > Sending bundle to a CLA: dtn://sender/-843606755563-0 127.0.0.1:58171 tcp
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::cla::tcp          > TcpConvergenceLayer: received transfer command for 127.0.0.1:58171
+ 2026-09-24T23:12:54.409Z DEBUG dtn7::cla::tcp          > Locking connection for 127.0.0.1:58171
+ 2026-09-24T23:12:54.410Z DEBUG dtn7::cla::tcp          > Connecting to 127.0.0.1:58171
+ 2026-09-24T23:12:54.410Z DEBUG dtn7::cla::tcp          > Sending bundle to 127.0.0.1:58171
+ 2026-09-24T23:12:54.410Z DEBUG dtn7::cla::tcp          > Exchanging contact header, 127.0.0.1:58171
+ 2026-09-24T23:12:54.413Z DEBUG dtn7::cla::tcp          > Negotiating session parameters, 127.0.0.1:58171
+ 2026-09-24T23:12:54.413Z DEBUG dtn7::cla::tcp          > Received session parameters
+ 2026-09-24T23:12:54.413Z INFO  dtn7::cla::tcp          > Started TCP session for dtn://receiver/ @ 127.0.0.1:58171 | refuse existing bundles: false
+ 2026-09-24T23:12:54.413Z INFO  dtn7::cla::tcp          > Transmission time: 33.21µs for 1 bundles in 6438 bytes to 127.0.0.1:58171
+ 2026-09-24T23:12:55.965Z INFO  dtn7::core::processing  > Bundle send success: id=dtn://sender/-843606755563-0 dest=127.0.0.1:58171 cla=tcp in 1.555602051s
+ 2026-09-24T23:12:55.965Z INFO  dtn7                    > Removing bundle dtn://sender/-843606755563-0
+ 2026-09-24T23:12:57.500Z DEBUG dtn7::dtnd::janitor     > running janitor
+ 2026-09-24T23:13:05.966Z INFO  dtn7::cla::tcp          > Session terminated for dtn://receiver/ (127.0.0.1:58171)
+ 2026-09-24T23:13:07.500Z DEBUG dtn7::dtnd::janitor     > running janitor
+ 2026-09-24T23:13:17.500Z DEBUG dtn7::dtnd::janitor     > running janitor
+ 2026-09-24T23:13:27.499Z DEBUG dtn7::dtnd::janitor     > running janitor
+ 2026-09-24T23:13:37.500Z DEBUG dtn7::dtnd::janitor     > running janitor
+ 2026-09-24T23:13:47.500Z DEBUG dtn7::dtnd::janitor     > running janitor

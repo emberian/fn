@@ -1,0 +1,2 @@
+$ FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT=1 fn bp-obligation request /tank/fn/scratch/m4-native-request/final/dtn7-carried-1/a-store /tank/fn/scratch/m4-native-request/final/dtn7-carried-1/a-fnwf work-cut-attempt work-cut-attempt-a1 /tank/fn/scratch/m4-native-request/final/dtn7-carried-1/a-fnbs dtn://sender/ 127.0.0.1 57229 3600000 2 32 1048576 843606657050 60000
+BP OBLIGATION ATTEMPT DURABLE

@@ -1,0 +1,4 @@
+$ fn store /tank/fn/scratch/m4-native-request/final/control/a-store post <m4-native-control@example.invalid> /tank/fn/scratch/m4-native-request/final/control/work-control.article - - fn.test
+committed sequence=2 charge=3
+
+# rc=0

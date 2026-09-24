@@ -1,0 +1,5 @@
+$ fn operator /tank/fn/scratch/m4-native-request/final/dtn7-carried-1/b.toml bp-boundary add ingress-boundary rn.bp.gate.invalid dtn://dtn7-r1/ 38695 carries dtn://sender/
+configured generation=3 record=00000003.cfg verification=VERIFIED
+accepted operator bp-boundary
+
+# rc=0

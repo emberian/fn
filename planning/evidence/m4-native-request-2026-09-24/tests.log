@@ -1,0 +1,9 @@
+profile=default image=build/fn-host roots=124 result=loaded
+built build/fn-host-developer profile=developer (123M core)
+default undefined lines: 0
+346ef43e71d0c96e85771af94e951a71dba39b34bd6490257bd96f36fea7e7ff  build/fn-host-developer
+38d4400980ea1413e01a5e1a818068eadf2cf1b555bd6fdc90eccecf764aa69a  build/fn-host-developer.core
+test_bp_obligation_native rc=0 2s OK 6a144a1065938d3d
+test_native_image_profiles rc=0 1s OK (skipped=4) 72c7e66feae1d224
+test_bp_node_native rc=0 431s OK d3cb6d99aa7a4609
+TESTS-DONE
