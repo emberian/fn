@@ -1,0 +1,15 @@
+{
+  "backing": "/tmp/fn-t16-block-19qg2ijw/backing.img",
+  "driver_sha256": "4de00248ab17078989a6a874badf0e14b38408b1ad1faa245365db323b14dc05",
+  "error_table": "0 262144 flakey 7:12 0 0 600 1 error_writes",
+  "linear_table": "0 262144 linear 7:12 0",
+  "loop": "/dev/loop12",
+  "mapping": "fn-t16-6dc0f4652ddf",
+  "mount": "/dev/mapper/fn-t16-6dc0f4652ddf ext4 rw,nosuid,nodev,noexec,relatime",
+  "result": "observed-error",
+  "schema": "fn-t16-private-block-probe-v1",
+  "write_error": {
+    "errno": 5,
+    "message": "[Errno 5] Input/output error"
+  }
+}

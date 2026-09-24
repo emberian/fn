@@ -1,0 +1,46 @@
+{
+  "attempted_frontier_sha256": "4a379f2d6067995a0cc08df4ee109fb1d9a6f06baf24d9fd7e21a43f79792ae2",
+  "backing": "/tmp/fn-t16-block-_5pldl1l/backing.img",
+  "core_sha256": "e743ae19ea5ccbbb842acc6c60ecc1309fcf9ed9a018bdbe622a15f9a489e7c0",
+  "driver_sha256": "4de00248ab17078989a6a874badf0e14b38408b1ad1faa245365db323b14dc05",
+  "image": "/tank/fn/gates/capability-863c2141-20260924/build/fn-host-developer",
+  "launcher_sha256": "c70fdd71c79d6c5379478f9f37d557a8d418902c1814d66dc59ad1776ecbf49e",
+  "link_syscall_success": true,
+  "linked_transaction": {
+    "00000000000000000001.txn": "1be24cda9e1a81dd9d0f2c44afa3acbb7c248f6708f3af8d87a058a2d7b7e996"
+  },
+  "loop": "/dev/loop12",
+  "mapping": "fn-t16-22189f4c16c7",
+  "model_cut": "record-attempted",
+  "model_program": "fn-bs-record-program",
+  "mount": "/dev/mapper/fn-t16-22189f4c16c7 ext4 rw,nosuid,nodev,noexec,relatime",
+  "post_exit": -9,
+  "post_stderr": "",
+  "post_stdout": "",
+  "post_transactions_reopened": {
+    "00000000000000000000.txn": "3fc70391176fc0624e43cd9a10a6449d325c391071828a28b9c33ee8f39c4466",
+    "00000000000000000001.txn": "1be24cda9e1a81dd9d0f2c44afa3acbb7c248f6708f3af8d87a058a2d7b7e996"
+  },
+  "post_transactions_same_mount": {
+    "00000000000000000000.txn": "3fc70391176fc0624e43cd9a10a6449d325c391071828a28b9c33ee8f39c4466",
+    "00000000000000000001.txn": "1be24cda9e1a81dd9d0f2c44afa3acbb7c248f6708f3af8d87a058a2d7b7e996"
+  },
+  "prior_frontier_sha256": "1a2a887ffec1c05e14b37497899ea7bc33a0b06fa4d6fa931ac9b218d0798e84",
+  "prior_transactions": {
+    "00000000000000000000.txn": "3fc70391176fc0624e43cd9a10a6449d325c391071828a28b9c33ee8f39c4466"
+  },
+  "recover": {
+    "stderr": "",
+    "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n"
+  },
+  "recover_exit": 0,
+  "reopened_mount": "/dev/mapper/fn-t16-22189f4c16c7 ext4 rw,nosuid,nodev,noexec,relatime",
+  "reopened_outcome": "exact-candidate",
+  "result": "observed-process-death",
+  "scenario": "record-dir-sigkill",
+  "schema": "fn-t16-private-block-profile-v2",
+  "sectors": 262144,
+  "stopped_pid": 1020540,
+  "stopped_start_time": 607786777,
+  "strace_sha256": "09356d690dacea72f9b7a17375b76605eee61a4e46754d934de63198ec93e602"
+}

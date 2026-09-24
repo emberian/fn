@@ -1,0 +1,48 @@
+{
+  "attempted_frontier_sha256": "4a379f2d6067995a0cc08df4ee109fb1d9a6f06baf24d9fd7e21a43f79792ae2",
+  "backing": "/tmp/fn-t16-block-qjns559m/backing.img",
+  "core_sha256": "e743ae19ea5ccbbb842acc6c60ecc1309fcf9ed9a018bdbe622a15f9a489e7c0",
+  "directory_fsync_eio": true,
+  "driver_sha256": "4de00248ab17078989a6a874badf0e14b38408b1ad1faa245365db323b14dc05",
+  "error_table": "0 262144 flakey 7:12 0 0 600 1 error_writes",
+  "image": "/tank/fn/gates/capability-863c2141-20260924/build/fn-host-developer",
+  "launcher_sha256": "c70fdd71c79d6c5379478f9f37d557a8d418902c1814d66dc59ad1776ecbf49e",
+  "linear_table": "0 262144 linear 7:12 0",
+  "link_syscall_success": true,
+  "linked_transaction": {
+    "00000000000000000001.txn": "832b5c50f08d4ece6a77aefe5d461e68826a930d4471193f2d68089f7d7e0bd2"
+  },
+  "loop": "/dev/loop12",
+  "mapping": "fn-t16-2ac2f73d419d",
+  "model_cut": "record-attempted",
+  "model_program": "fn-bs-record-program",
+  "mount": "/dev/mapper/fn-t16-2ac2f73d419d ext4 rw,nosuid,nodev,noexec,relatime",
+  "post_exit": 3,
+  "post_stderr": "store: transaction publication outcome is indeterminate\n",
+  "post_stdout": "",
+  "post_transactions_reopened": {
+    "00000000000000000000.txn": "69bdadeb1a4b08ef569aadcda4c558d95e367be44edf866ef2eab9bce709702b"
+  },
+  "post_transactions_same_mount": {
+    "00000000000000000000.txn": "69bdadeb1a4b08ef569aadcda4c558d95e367be44edf866ef2eab9bce709702b",
+    "00000000000000000001.txn": "832b5c50f08d4ece6a77aefe5d461e68826a930d4471193f2d68089f7d7e0bd2"
+  },
+  "prior_frontier_sha256": "1a2a887ffec1c05e14b37497899ea7bc33a0b06fa4d6fa931ac9b218d0798e84",
+  "prior_transactions": {
+    "00000000000000000000.txn": "69bdadeb1a4b08ef569aadcda4c558d95e367be44edf866ef2eab9bce709702b"
+  },
+  "recover": {
+    "stderr": "",
+    "stdout": "recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none\n"
+  },
+  "recover_exit": 0,
+  "reopened_mount": "/dev/mapper/fn-t16-2ac2f73d419d ext4 rw,nosuid,nodev,noexec,relatime",
+  "reopened_outcome": "older-prefix",
+  "result": "observed-eio",
+  "scenario": "record-dir-eio",
+  "schema": "fn-t16-private-block-profile-v2",
+  "sectors": 262144,
+  "stopped_pid": 1019877,
+  "stopped_start_time": 607785618,
+  "strace_sha256": "8d4fb7b7e40e4118e59262aee0e28c8d588e2c01d3aa3998b2c0e31b992eb503"
+}

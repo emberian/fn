@@ -1,0 +1,16 @@
+--- stopped by SIGSTOP ---
++++ killed by SIGKILL +++
+
+fsync(4</tmp/fn-t16-block-zkniz_vk/mnt/store/config.json>) = 0
+fsync(4</tmp/fn-t16-block-zkniz_vk/mnt/store/allocation-frontier.json>) = 0
+fsync(4</tmp/fn-t16-block-zkniz_vk/mnt/store/transactions>) = 0
+fsync(4</tmp/fn-t16-block-zkniz_vk/mnt/store>) = 0
+fsync(4</tmp/fn-t16-block-zkniz_vk/mnt>) = 0
+fsync(4</tmp/fn-t16-block-zkniz_vk/mnt/store/staging/.allocation-1021179-830228a8015a2055a6bb1d04>) = 0
+rename("/tmp/fn-t16-block-zkniz_vk/mnt/store/staging/.allocation-1021179-830228a8015a2055a6bb1d04", "/tmp/fn-t16-block-zkniz_vk/mnt/store/allocation-frontier.json") = 0
+fsync(4</tmp/fn-t16-block-zkniz_vk/mnt/store>) = 0
+fsync(4</tmp/fn-t16-block-zkniz_vk/mnt/store/staging/.stage-1021179-f86e092a9b37dfe39e8f4dec>) = 0
+link("/tmp/fn-t16-block-zkniz_vk/mnt/store/staging/.stage-1021179-f86e092a9b37dfe39e8f4dec", "/tmp/fn-t16-block-zkniz_vk/mnt/store/transactions/00000000000000000001.txn") = 0
+--- SIGSTOP {si_signo=SIGSTOP, si_code=SI_USER, si_pid=1021179, si_uid=1000} ---
+--- stopped by SIGSTOP ---
++++ killed by SIGKILL +++

@@ -1,6 +1,6 @@
-# T16 private publication fault profile, source-ready
+# T16 private publication fault profile, partial hbox observation
 
-This is an execution plan and source map, not a completed platform
+This is a bounded ext4-on-tmpfs-loop observation, not a completed platform
 qualification.  A read-only facility check on 2026-09-24 found that hbox has
 a separate tmpfs `/tmp`, a free loop device, `strace`, and `dm-flakey` 1.5.0.
 Persvati has disk-backed ext4 `/tmp` and no `flakey` target, so this harness
@@ -15,8 +15,15 @@ fault, signal, or cleanup.  It never targets an existing device or service.
 | `record-dir-sigkill` | Same `record-attempted` pair 10 | Kill only the stopped, identity-checked tracee. A remount may expose old prefix or exact candidate. This is process death, not I/O error. |
 | `record-cut-snapshot` | Same `record-attempted` pair 10 | Suspend only the private mapper without flushing, copy its tmpfs backing bytes, kill the stopped tracee, close the original mount, and reopen the copied image on a separately checked loop. This deliberately drops later volatile writes; it is a simulated write-loss image, not physical power loss. |
 
-After the shared source-matched `863c2141` developer image qualifies, run the
-four cases one at a time on hbox with distinct new output directories:
+The shared exact `863c2141` developer image ran the three record-cut cases
+one at a time on hbox.  Its launcher SHA-256 was
+`c70fdd71c79d6c5379478f9f37d557a8d418902c1814d66dc59ad1776ecbf49e`
+and core SHA-256 was
+`e743ae19ea5ccbbb842acc6c60ecc1309fcf9ed9a018bdbe622a15f9a489e7c0`.
+The source-overlay driver committed in `e5f089f0` had SHA-256
+`4de00248ab17078989a6a874badf0e14b38408b1ad1faa245365db323b14dc05`.
+These commands use the same image for all Store operations, with
+`FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8` set in the environment:
 
 ```sh
 python3 tests/campaign/native_block_fault.py --image "$DEV_IMAGE" \
@@ -29,9 +36,31 @@ python3 tests/campaign/native_block_fault.py --image "$DEV_IMAGE" \
   --scenario record-cut-snapshot --out "$GATE_OUT/record-cut-snapshot"
 ```
 
-For each actual run, retain `result.json`, `strace.txt`, driver/image/core
-SHA-256, platform and filesystem versions, mapper table, exact exit code,
-namespace hashes, recovered outcome, and cleanup result.  A successful
+The exact result and syscall traces are in
+[`t16-private-publication-profile/`](t16-private-publication-profile/):
+
+| Case | Host result | Reopened image | Result JSON SHA-256 |
+| --- | --- | --- | --- |
+| [private mapper probe](t16-private-publication-profile/probe.json) | `EIO` observed on file fsync | no native Store | probe in linked file |
+| [record directory EIO](t16-private-publication-profile/record-dir-eio.json) | native exit 3, indeterminate; `link=0`, transactions `fsync=-1 EIO` | older prefix, exact prior transaction hash, recovery 1/1 | `e7fd5e69eec67d439c9e59596cfb0dbf1440dd7e7c1a151ac2ed02b4abd46d68` |
+| [record SIGKILL](t16-private-publication-profile/record-dir-sigkill.json) | stopped tracee killed, exit -9 | exact candidate, prior hash unchanged, recovery 2/2 | `efabf144ba766c64a728005b5a92a2df8cd20e63c495b52d6b4e762d0ea1ffb2` |
+| [cut backing snapshot](t16-private-publication-profile/record-cut-snapshot.json) | stopped tracee killed, exit -9; mapper suspended during private backing copy | older prefix on copied bytes, prior hash unchanged, recovery 1/1 | `65c6c5f29464362fcc15a325615977c6ba5da91efe588f546fc8c8713fa93713` |
+
+All three native recoveries exited 0.  The [EIO trace](t16-private-publication-profile/record-dir-eio-strace.txt),
+[SIGKILL trace](t16-private-publication-profile/record-dir-sigkill-strace.txt),
+and [snapshot trace](t16-private-publication-profile/record-cut-snapshot-strace.txt)
+have SHA-256 values recorded in their respective JSON and checked after copy.
+The actual host was Linux
+`6.11.0-29-generic`, mke2fs `1.47.1`, device-mapper library `1.02.196` and
+driver `4.48.0`, with OpenSSL `3.5.8` loaded for the native image.  Each
+private run restored the mapper, unmounted ext4, detached its owned loop, and
+removed its `/tmp/fn-t16-block-*` backing.  Read-only final checks found no
+`fn-t16` mapper, mount, or temporary directory.  The remote gate retains only
+the copied result/trace evidence, not any mounted device.
+
+The `frontier-dir-eio` case is **source-ready but unrun**: immutable 863 lacks
+the new developer-only `frontier-attempted:stop` hook.  It requires a later
+source-matched image; no second image was built for this packet.  A successful
 old/new observation is one behavior of that filesystem and run.  No case
 simulates a physical loss of power, proves a completed hardware barrier,
 tests hbox ZFS, or discharges A-DURABILITY/A-WRITE-ISOLATION generally.
