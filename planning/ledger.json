@@ -297,6 +297,9 @@
     "books/bp-node-progress-guards",
     "books/bp-node-progress-selection-invariants",
     "tests/acl2/bp-node-machine-teeth-tests",
+    "books/bp-fnbs-dispatch-codec",
+    "books/bp-fnbs-dispatch-invariants",
+    "tests/acl2/bp-fnbs-dispatch-codec-tests",
     "books/bp-report-observe",
     "tests/acl2/bp-report-observe-tests",
     "books/bp-report-guards",
@@ -318,6 +321,8 @@
     "tests/acl2/bp-fnbs-replay-tests",
     "books/bp-fnbs-namespace",
     "tests/acl2/bp-fnbs-namespace-tests",
+    "books/bp-node-debt",
+    "tests/acl2/bp-node-debt-tests",
     "books/bp-fnbs-publication",
     "tests/acl2/bp-fnbs-publication-tests",
     "books/bp-clock-domain",
@@ -616,25 +621,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 622,
-    "books_in_root_closure": 620,
-    "roots": 612,
-    "theorems": 8681,
-    "functions": 6384,
-    "assert_events": 9416,
-    "must_fails": 533,
+    "books": 627,
+    "books_in_root_closure": 625,
+    "roots": 617,
+    "theorems": 8686,
+    "functions": 6408,
+    "assert_events": 9426,
+    "must_fails": 537,
     "encapsulates": 27,
     "guards": {
       "verified": 2036,
-      "declared-off": 381,
-      "default-guarded": 3154,
+      "declared-off": 382,
+      "default-guarded": 3177,
       "default-unguarded": 813
     },
     "suspect_theorems": 82,
     "export_hygiene_warnings": 103,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 41,
-    "include_hygiene_warnings": 561,
+    "include_hygiene_warnings": 571,
     "host_names_warnings": 801,
     "hand_written_record_warnings": 18
   },
@@ -1724,6 +1729,58 @@
       "read_error": null
     },
     {
+      "book": "books/bp-fnbs-dispatch-codec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-fnbs-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-fnbs-dispatch-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-fnbs-dispatch-codec",
+        "frame-invariants",
+        "frame-trailer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-fnbs-family-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1842,7 +1899,7 @@
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 0,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -2140,6 +2197,32 @@
         "identity",
         "owner",
         "provenance-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-node-debt.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 17,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 17,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-app-handoff",
+        "bp-fnbs-namespace"
       ],
       "system_includes": [],
       "suspects": [],
@@ -11046,6 +11129,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-fnbs-dispatch-codec-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-clock-domain",
+        "../../books/bp-fnbs-dispatch-codec",
+        "../../books/bp-fnbs-dispatch-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-fnbs-family-codec-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11451,6 +11561,35 @@
         "bp-receipt-records-tests"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-node-debt-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 4,
+      "defconsts": 41,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-node-debt",
+        "../../books/bp-node-fragment-replacement",
+        "../../books/bp-node-receive-boundary"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -19429,6 +19568,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-fnbs-dispatch-codec.lisp",
+        "line": 5,
+        "include": "bp-fnbs-codec",
+        "included": "books/bp-fnbs-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-fnbs-dispatch-invariants.lisp",
+        "line": 4,
+        "include": "bp-fnbs-dispatch-codec",
+        "included": "books/bp-fnbs-dispatch-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-fnbs-family-codec.lisp",
         "line": 5,
         "include": "bp-node-fragment-expiry",
@@ -19552,6 +19705,20 @@
         "line": 11,
         "include": "bp-node-machine-codec",
         "included": "books/bp-node-machine-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-debt.lisp",
+        "line": 5,
+        "include": "bp-fnbs-namespace",
+        "included": "books/bp-fnbs-namespace.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-debt.lisp",
+        "line": 6,
+        "include": "bp-app-handoff",
+        "included": "books/bp-app-handoff.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -21053,6 +21220,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bp-fnbs-dispatch-codec-tests.lisp",
+        "line": 4,
+        "include": "../../books/bp-fnbs-dispatch-codec",
+        "included": "books/bp-fnbs-dispatch-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-fnbs-dispatch-codec-tests.lisp",
+        "line": 5,
+        "include": "../../books/bp-fnbs-dispatch-invariants",
+        "included": "books/bp-fnbs-dispatch-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-fnbs-dispatch-codec-tests.lisp",
+        "line": 6,
+        "include": "../../books/bp-clock-domain",
+        "included": "books/bp-clock-domain.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bp-fnbs-family-codec-tests.lisp",
         "line": 2,
         "include": "../../books/bp-fnbs-family-codec",
@@ -21239,6 +21427,27 @@
         "line": 4,
         "include": "bp-receipt-records-tests",
         "included": "tests/acl2/bp-receipt-records-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-debt-tests.lisp",
+        "line": 5,
+        "include": "../../books/bp-node-debt",
+        "included": "books/bp-node-debt.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-debt-tests.lisp",
+        "line": 6,
+        "include": "../../books/bp-node-receive-boundary",
+        "included": "books/bp-node-receive-boundary.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-debt-tests.lisp",
+        "line": 7,
+        "include": "../../books/bp-node-fragment-replacement",
+        "included": "books/bp-node-fragment-replacement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

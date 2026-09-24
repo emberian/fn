@@ -25,6 +25,40 @@ revision and theorem hypotheses when sharing a proof so its scope is clear.
 
 ## Current coordination — 2026-09-24
 
+### Recovery repair, BP prerequisites and complete exchanges — 05:28 UTC
+
+Root integrated pure BP debt and dispatch codec prerequisites through
+`a2357594`; generated ledger/static convergence follows. These do not activate
+forwarding. `native_qualification` owns the next one ordinary combined run
+at four jobs with a 300-second discovery bound after the finite byte-store
+conditional repair lands, then one shared image pair. The stronger topic
+bridge continues alongside native qualification; its missing proof is stated
+explicitly rather than assumed away.
+
+- `storage_kernel_completion`: finish the conditional byte reopen theorem and
+  exact physical counterexample, then resume served storage correspondence.
+- `topic_metadata` with `consumer_contract`: maintain topic validity through
+  actual Store transitions/crash/replay, reusing the qualified candidate-sequence
+  helper. Versioned topic migration stays separate.
+- `bp_foundation` with `bp_counterexample_completion`: complete codec guards and
+  typed inverse, and implement/prove cached used/debt updates of the actual
+  outer progress machine. Coordinate shared slots and durable callback deltas;
+  no per-command full-history reconstruction or sibling semantic reducer.
+- `mini_reply_join`: extend the separate qualified E2/B3 legs to two Stores
+  with explicit durable application/ACK/reply cuts. Mini remains isolated;
+  share existing images and scratch ports with the qualifier.
+- `review_branch_inventory`: opt-in durable local web-client submission outbox,
+  exact frozen source before network, no automatic repost after ambiguity,
+  restart/read-only settlement tests; no proof farm or native server changes.
+- `assurance_review_followup`: delivered the current pinned assurance snapshot.
+- `status_codec_proof`: available for concrete combined-gate findings.
+
+The Mini candidate's same-fixture clean read-only reopen median is 26.65 seconds
+versus 29.72 baseline across three interleaved pairs; full native B3 evidence
+still belongs to the original binary. Neither measurement establishes general
+replay throughput. The earlier active-reader reclaim fixture remains in the
+next shared-image campaign. No live service change is authorized by this board.
+
 ### Converging consumer/topic, BP progress and Store interface — 04:52 UTC
 
 Root integrated source through `2b3a8d31`; ledger regeneration and static check
