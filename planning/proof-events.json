@@ -2801,6 +2801,26 @@
         {
           "kind": "theorem",
           "name": "fn-bs-selected-reclaim-crash-preserves-suffix-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cverb-pack-fits-the-profile-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cverb-capture-within-pack-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cverb-pack-decision-capture-succeeds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-store-compact-is-the-compact-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-compact-action-is-only-store-compact"
         }
       ]
     },

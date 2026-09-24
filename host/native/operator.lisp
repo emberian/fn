@@ -273,6 +273,10 @@ observation into the outcome and this function only carries it out."
                                     command condition)
           code)))))
 
+; host/native/checkpoint.lisp installs `fnn-command-compact' here after it
+; loads.  An image built without it (the DTN image) has no compaction.
+(defvar *fnn-compact-callback* nil)
+
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
     (handler-case
@@ -286,13 +290,15 @@ observation into the outcome and this function only carries it out."
                          (unless (member profile '(:development :scale))
                            (fnn-fault "ACL2 accepted a store plan with no profile"))
                          (fnn-command-upgrade-profile root profile)))
+                      (:compact (funcall *fnn-compact-callback* root))
                       (t +fnn-exit-fault+))))
-          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) action)
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    (string-downcase (symbol-name action)))
           code)
       (error (condition)
         (let ((code (fnn-exit-code-for condition)))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
-                                    action condition)
+                                    (string-downcase (symbol-name action)) condition)
           code)))))
 
 (defun fnn-operator-execute-principal (result)
@@ -327,6 +333,10 @@ configuration usage result."
         (let ((omitted (case action
                          ((:run :post) :nntp-service)
                          (:principal :credentials))))
+          (when (and (eq action :compact) (null *fnn-compact-callback*))
+            (fnn-operator-emit-status
+             :usage "action" "compact needs the checkpoint surface, which this image omits")
+            (return-from fnn-operator-dispatch-plan +fnn-exit-usage+))
           (when (and omitted (fnn-image-omits-p omitted))
             (fnn-operator-emit-status
              :usage "action"
@@ -338,7 +348,7 @@ configuration usage result."
           (:init (fnn-operator-execute-init result))
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
-          ((:status :recover :upgrade-profile)
+          ((:status :recover :upgrade-profile :compact)
            (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
           (:principal (fnn-operator-execute-principal result))

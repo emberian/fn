@@ -2874,16 +2874,31 @@
         "tests/campaign/native_cuts.py",
         "planning/evidence/manifests/certify-20260924T213534Z-827010.json",
         "planning/evidence/m5-compaction-2026-09-24.md",
-        "planning/evidence/m5-compaction/native-modules.log"
+        "planning/evidence/m5-compaction/native-modules.log",
+        "books/store-compact-verb.lisp",
+        "tests/acl2/store-compact-verb-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/campaign/native_operator_campaign.py",
+        "planning/evidence/manifests/certify-20260924T222342Z-1269313.json",
+        "planning/evidence/manifests/certify-20260924T222809Z-1310195.json",
+        "planning/evidence/m5-compact-verb-2026-09-24.md",
+        "planning/evidence/m5-compact-verb/campaign-checkpoint.json",
+        "planning/evidence/m5-compact-verb/native-modules-2.log"
       ],
-      "progress_note": "Lane m5-compaction (2026-09-24). Certified on persvati (run-20260924T213519Z-7956, manifest certify-20260924T213534Z-827010, ACL2 8.7, every book under 4 s) and on hbox with the w28 toolchain. Teeth: a reachable five-event store (record, undertaking, release, identity, enrollment) whose open before, after losing covered names 1 and 3, and after the whole plan reconstructs the same five records; concrete counterexamples and a must-fail for each composition hypothesis (a suffix gap; losing the newest suffix name, which the gate accepts and which silently drops record 4; a plan computed above the pack boundary, same loss; a conflicting surviving covered file, refused before and accepted after). Native, developer image of this branch on hbox: six operator POSTs around a selected pack, then reclaim and every reclaim cut (each covered unlink occurrence and the directory barrier); GROUP, ARTICLE by number and by Message-ID, HDR Subject and store retention are identical, the suffix files byte-identical, and the next POST gets high+1. Open: the byte model states survival for the uncovered suffix only, not old-or-absent for a covered name; guards of the framed observe stay unverified (the Store-event decoder chain); one pack holds at most 4096 events and 4 MiB, so the exact-history pack cannot compact an arbitrarily large store; no operator entry reaches reclaim (developer `checkpoint` verb only).",
+      "progress_note": "Lane m5-compaction (2026-09-24). Certified on persvati (run-20260924T213519Z-7956, manifest certify-20260924T213534Z-827010, ACL2 8.7, every book under 4 s) and on hbox with the w28 toolchain. Teeth: a reachable five-event store (record, undertaking, release, identity, enrollment) whose open before, after losing covered names 1 and 3, and after the whole plan reconstructs the same five records; concrete counterexamples and a must-fail for each composition hypothesis (a suffix gap; losing the newest suffix name, which the gate accepts and which silently drops record 4; a plan computed above the pack boundary, same loss; a conflicting surviving covered file, refused before and accepted after). Native, developer image of this branch on hbox: six operator POSTs around a selected pack, then reclaim and every reclaim cut (each covered unlink occurrence and the directory barrier); GROUP, ARTICLE by number and by Message-ID, HDR Subject and store retention are identical, the suffix files byte-identical, and the next POST gets high+1. Open: the byte model states survival for the uncovered suffix only, not old-or-absent for a covered name; guards of the framed observe stay unverified (the Store-event decoder chain); one pack holds at most 4096 events and 4 MiB, so the exact-history pack cannot compact an arbitrarily large store; no operator entry reaches reclaim (developer `checkpoint` verb only). Lane m5-compact-verb (2026-09-24): the operator entry `operator CONFIG store compact` (fn-cverb-decide decides pack+select+reclaim+retire, resume, or a named refusal; the host carries out exactly those steps). fn-cverb-pack-fits-the-profile-budget: when the decision packs, every file present plus the pack the host seals from the same records fits the profile's aggregate bound (field 3); fn-cverb-pack-decision-capture-succeeds: a pack decision on an exact event history below a uint32 frontier is never refused by the capture; the operator argv reaches :compact exactly for `store compact` (two native-operator theorems). The 4 MiB pack is kept as the compaction unit (refused by name above it; the 4096-event limit never binds, fn-cverb-profile-count-within-pack-events). Native on images of 5181e0ea: the ten CHECKPOINT_CUTS (now including the two retire cuts) pass through the developer checkpoint verbs and the operator verb, 20/20; the production image compacts, rereads every article identically and posts at high+1. Finding 3 of m5-compaction is not detectable from the open's observation: the frontier is reserved before the record, so a lost newest file equals an abandoned reservation (fn-cverb-open-history-gate-admits-a-lost-suffix); a post-commit witness is a decision for ember.",
       "events": [
         "fn-ccp-reclaim-keeps-namespace-observation",
         "fn-ccp-covered-deletion-keeps-reconstruction",
         "fn-ccp-complete-observation-reconstructs-its-records",
         "fn-ccp-reclaim-preserves-reconstructed-history",
         "fn-ccp-profile-upgrade-keeps-reclaim-plan",
-        "fn-bs-selected-reclaim-crash-preserves-suffix-payload"
+        "fn-bs-selected-reclaim-crash-preserves-suffix-payload",
+        "fn-cverb-pack-fits-the-profile-budget",
+        "fn-cverb-capture-within-pack-octets",
+        "fn-cverb-pack-decision-capture-succeeds",
+        "fn-native-operator-run-store-compact-is-the-compact-action",
+        "fn-native-operator-run-compact-action-is-only-store-compact"
       ]
     },
     {
