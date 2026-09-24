@@ -34,7 +34,8 @@
   (let* ((held (fn-bpnf-held-list st))
          (anchor-arrival (fn-bpn-nth 3 record))
          (anchor (fn-bpnf-find-arrival anchor-arrival held)))
-    (if (not (and (fn-bpnf-family-recordp record)
+    (if (not (and (or (fn-bpnf-family-recordp record)
+                      (fn-bpnf-family-record-atp record))
                   (fn-frame-natp expected-arrival)
                   (equal (fn-bpn-nth 4 record) expected-arrival)
                   (equal (fn-bpnf-arrival-count anchor-arrival held) 1)
@@ -67,6 +68,23 @@
               (list :ready
                     (cons row (fn-bpnf-family-retain-other-rows held consumed))
                     row consumed))))))))
+
+; New kind-18 decisions carry their proposal observation.  Replay calls the
+; same eligibility rule over the exact durable kind-5 rows; it never reads a
+; new clock.  Legacy unversioned records remain decodable but cannot install
+; a family because their expiry decision was never persisted.
+(defun fn-bpnf-family-apply-at (st record expected-arrival)
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
+  (if (not (fn-bpnf-family-record-atp record))
+      (list :fault :legacy-family-expiry)
+    (let* ((observation (fn-bpn-nth 7 record))
+           (anchor (fn-bpnf-find-arrival
+                    (fn-bpn-nth 3 record) (fn-bpnf-held-list st)))
+           (plan (fn-bpnf-family-plan-at st anchor observation)))
+      (if (not (equal (car plan) :ready))
+          (list :fault :family-expiry)
+        (fn-bpnf-family-apply st record expected-arrival)))))
 
 (defthm fn-bpnf-family-apply-ready-has-held-whole
   (implies (equal (car (fn-bpnf-family-apply st record expected-arrival))

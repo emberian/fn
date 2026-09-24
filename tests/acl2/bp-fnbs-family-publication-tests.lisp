@@ -18,7 +18,7 @@
         (fn-bpnf-stored-record-name 3 0)))
 (assert-event
  (equal (fn-bpnf-family-publication-frame (bpnfpub-authorized))
-        (fn-bpnf-family-frame (bpnfpub-record))))
+        (fn-bpnf-family-v1-frame (bpnfpub-record))))
 (assert-event
  (equal (fn-bpnf-family-publication-authorize
          (bpnfs-pending) 3 1 (bpnfpub-record) t t)
