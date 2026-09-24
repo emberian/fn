@@ -140,6 +140,42 @@
                                         (second (second *bpaht-two-decision*))
                                         *bpah-local*)))))
         :deliver))
+(defconst *bpaht-new-key* (second (second *bpaht-two-decision*)))
+(defconst *bpaht-delivery-start*
+  (fn-bpnf-step *bpaht-two-held*
+                 (list :deliver *bpaht-new-key* *bpah-local*)))
+(defconst *bpaht-delivery-result*
+  (fn-bpnf-step
+   (fn-bpnf-answer-state *bpaht-delivery-start*)
+   (list :deliver-result 1 2 *bpaht-new-key*
+         :request-accepted '(114 105 100))))
+(defconst *bpaht-delivery-durable*
+  (fn-bpnf-step
+   (fn-bpnf-answer-state *bpaht-delivery-result*)
+   '(:persist-result 1 3 :durable)))
+(defconst *bpaht-delivered-state*
+  (fn-bpnf-answer-state *bpaht-delivery-durable*))
+(assert-event (equal (car (car (fn-bpnf-answer-effects
+                                *bpaht-delivery-result*)))
+                     :persist-delivery))
+(assert-event
+ (equal (car (car (fn-bpnf-answer-effects *bpaht-delivery-durable*)))
+        :delivery-answer))
+(assert-event
+ (equal (second (car (fn-bpnf-answer-effects *bpaht-delivery-durable*)))
+        :durable))
+(assert-event
+ (equal (fn-bpnf-find-held
+         (fn-bpnf-held-key (fn-bpnf-held-principal *bpaht-old-held*)
+                            (fn-bpnf-held-id *bpaht-old-held*))
+         (fn-bpnf-held-list *bpaht-delivered-state*))
+        *bpaht-old-held*))
+(assert-event
+ (equal (fn-bpn-nth 12
+         (fn-bpnf-find-held *bpaht-new-key*
+                            (fn-bpnf-held-list *bpaht-delivered-state*)))
+        '(:dispatch-done)))
+(assert-event (equal (len (fn-bpnf-handoffs *bpaht-delivered-state*)) 1))
 
 ; If every eligible local carrier has only clock uncertainty, the selector
 ; still reports uncertainty.  A publication uncertainty fences even if the
