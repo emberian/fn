@@ -253,7 +253,11 @@
                         bp (fnn-bps-foundation-step
                             bp (list :forward-result
                                      (fourth sent) (fifth sent) session-id
-                                     result (fnn-bp-observation wall wall-error))))))))
+                                     result (fnn-bp-observation wall wall-error))))))
+                   (fnn-bps-drive-effects
+                    bp (fnn-bps-foundation-step
+                        bp (list :session peer session-id nil 1
+                                 (fnn-bp-observation wall wall-error))))))
             (when socket (fnn-socket-shut socket)))
         ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
           (if sent
