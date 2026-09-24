@@ -1,5 +1,23 @@
 # Current work — 2026-09-24
 
+## User-requested consolidation and wind-down — 06:23 UTC
+
+The user requests all current work consolidated into dev and the swarm
+quiesced naturally over approximately the next hour (target 07:23 UTC).
+No new feature wave. Each lane finishes its nearest coherent deliverable,
+commits unfinished work with explicit limits, sends root its source/evidence
+and resource inventory, and releases its proof sessions and scratch processes.
+Root integrates the current packets, records remaining gaps and exact qualified
+revisions, and leaves a clean checkout and restart handoff. Mini work remains
+committed in its isolated evidence branch; no live service deployment.
+
+Frozen `863c2141` passed its combined ACL2 run and production/developer image
+builds. Its repaired consumer E2 lost-ACK/reopen tests now pass on the matching
+developer image; the finite BP/topic/lifecycle/preservation cases are running
+or delegated. Later source continues to land without borrowing that image's
+qualification. The full goal is not complete; it is to be paused once the
+requested wind-down is actually finished.
+
 ## Shared qualification and continued implementation — 06:17 UTC
 
 Frozen `863c2141` passed `make check`. Its ordinary incremental combined ACL2
