@@ -44,6 +44,68 @@
                   (take n records)))
   :hints (("Goal" :induct (take n records))))
 
+; Completion also updates the separate topic projection.  Keep the two
+; selector facts closed so the consumer proof never opens the fourteen-field
+; Store constructor, the accepted-article codec, or the topic prefix step.
+(defthm fn-csi-consumer-of-with-topic
+  (equal (fn-sn-consumer (fn-sn-with-topic s topic))
+         (fn-sn-consumer s))
+  :hints (("Goal" :in-theory (enable fn-sn-with-topic fn-sn-make-v6
+                                     fn-sn-consumer fn-store-event-nth))))
+
+(defthm fn-csi-consumer-of-with-consumer
+  (equal (fn-sn-consumer (fn-sn-with-consumer s consumer))
+         consumer)
+  :hints (("Goal" :in-theory (enable fn-sn-with-consumer fn-sn-make-v6
+                                     fn-sn-consumer fn-store-event-nth))))
+
+(defthm fn-csi-consumer-of-with-event-index
+  (equal (fn-sn-consumer (fn-sn-with-event-index s index))
+         (fn-sn-consumer s))
+  :hints (("Goal" :in-theory (enable fn-sn-with-event-index fn-sn-make-v6
+                                     fn-sn-consumer fn-store-event-nth))))
+
+(defthm fn-csi-files-of-with-topic
+  (equal (fn-sn-files (fn-sn-with-topic s topic))
+         (fn-sn-files s))
+  :hints (("Goal" :in-theory (enable fn-sn-with-topic fn-sn-make-v6
+                                     fn-sn-files))))
+
+(defthm fn-csi-files-of-with-consumer
+  (equal (fn-sn-files (fn-sn-with-consumer s consumer))
+         (fn-sn-files s))
+  :hints (("Goal" :in-theory (enable fn-sn-with-consumer fn-sn-make-v6
+                                     fn-sn-files))))
+
+(defthm fn-csi-files-of-update-replayed
+  (equal (fn-sn-files (fn-sn-update-replayed s files node index context))
+         files)
+  :hints (("Goal" :in-theory (enable fn-sn-update-replayed fn-sn-make-v6
+                                     fn-sn-files))))
+
+(defthm fn-csi-identity-next-of-with-event-index
+  (equal (fn-sn-identity-next (fn-sn-with-event-index s index))
+         (fn-sn-identity-next s))
+  :hints (("Goal" :in-theory (enable fn-sn-with-event-index fn-sn-make-v6
+                                     fn-sn-identity-next))))
+
+(defthm fn-csi-identity-next-of-update
+  (equal (fn-sn-identity-next (fn-sn-update s files node))
+         (fn-sn-identity-next s))
+  :hints (("Goal" :in-theory (enable fn-sn-update fn-sn-make-v6
+                                     fn-sn-identity-next))))
+
+(defthm fn-csi-consumer-of-update
+  (equal (fn-sn-consumer (fn-sn-update s files node))
+         (fn-sn-consumer s))
+  :hints (("Goal" :in-theory (enable fn-sn-update fn-sn-make-v6
+                                     fn-sn-consumer fn-store-event-nth))))
+
+; The Store's v6 tuple is representation, not the consumer proof vocabulary.
+; Subsequent transition proofs use the exported selector facts above.  A
+; theorem that truly needs constructor internals can enable it in its hint.
+(local (in-theory (disable fn-sn-make-v6)))
+
 (defthm fn-csi-finish-advances-projection-by-definition
   (implies (fn-sn-completion-enabledp s)
            (equal (fn-sn-consumer (fn-sn-finish s))
@@ -54,7 +116,8 @@
                     (fn-sn-identity-next s)))))
   :hints (("Goal" :in-theory
            (e/d (fn-sn-finish)
-                (fn-sn-completion-enabledp fn-sn-completion-record
+                (fn-sn-with-topic fn-sn-with-consumer fn-sn-make-v6
+                 fn-sn-completion-enabledp fn-sn-completion-record
                  fn-store-retention-event-p fn-cpe-eventp
                  fn-stxe-p fn-stxk-p fn-stxa-p
                  fn-replay-apply-record fn-replay-apply-retention-event
@@ -83,7 +146,13 @@
                   (fn-cp-nth 1
                    (fn-cpe-projection-replay
                     nil (fn-sf-records (fn-sn-files (fn-sn-recover s))) 0))))
-  :hints (("Goal" :in-theory (enable fn-sn-recover))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-recover)
+                (fn-sn-with-topic fn-sn-with-event-index
+                 fn-sn-with-consumer fn-sn-update-replayed fn-sn-update
+                 fn-sn-make-v6 fn-sf-recover fn-sf-replay-node
+                 fn-replay-identity fn-cpe-projection-replay
+                 fn-th-prefix-project)))))
 
 (defthm fn-csi-one-more-prefix
   (implies (and (natp n)
@@ -188,7 +257,8 @@
            :in-theory (e/d (fn-sn-io fn-sn-file-step fn-sn-update
                             fn-sf-record-dir-result fn-sn-completion-record
                             fn-sn-identity-sequencep fn-sf-completion-phasep)
-                           (fn-sn-statep fn-sf-statep
+                           (fn-sn-make-v6 fn-sn-with-event-index fn-cei-put
+                            fn-sn-statep fn-sf-statep
                             fn-sf-candidatep fn-sf-record-listp
                             fn-snt-find-published-candidate
                             fn-snt-typed-record-phase)))))
@@ -205,7 +275,7 @@
                     (records (fn-sf-records (fn-sn-files s)))
                     (suffix (list (fn-sf-record-candidate (fn-sn-files s))))))
            :in-theory (e/d (fn-csi-completed-prefixp fn-sn-io fn-sn-file-step
-                            fn-sn-update fn-sf-start-frontier
+                            fn-sf-start-frontier
                             fn-sf-frontier-file-result
                             fn-sf-frontier-replace-result
                             fn-sf-frontier-dir-result
@@ -213,7 +283,8 @@
                             fn-sf-record-link-result
                             fn-sf-record-dir-result
                             fn-sf-recovery-barrier)
-                           (fn-cpe-projection-replay fn-sn-statep
+                           (fn-sn-update fn-sn-with-event-index fn-sn-make-v6
+                            fn-cei-put fn-cpe-projection-replay fn-sn-statep
                             fn-sf-statep fn-csi-take-append-after-prefix)))))
 
 (defthm fn-csi-prepare-consumer-preserves-completed-prefix
@@ -514,6 +585,56 @@
                            (fn-sn-statep fn-sf-statep
                             fn-replay-advance-txid fn-node-complete)))))
 
+; The topic record stages through the same file publication path, but does
+; not consume the consumer replay prefix or the next Store journal sequence.
+; These facts close the actual :prepare-topic dispatcher arm rather than
+; excluding it from the mixed Store trace.
+(defthm fn-csi-prepare-topic-preserves-completed-prefix
+  (implies (fn-csi-completed-prefixp s)
+           (fn-csi-completed-prefixp (fn-sn-prepare-topic s event)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-csi-completed-prefixp
+                            fn-sn-prepare-topic fn-sf-prepare-record)
+                           (fn-cpe-projection-replay fn-sn-statep
+                            fn-sf-statep fn-th-topic-eventp
+                            fn-th-prefix-step fn-replay-apply-record)))))
+
+(defthm fn-csi-prepare-topic-preserves-completion-last
+  (implies (fn-csi-completion-lastp s)
+           (fn-csi-completion-lastp (fn-sn-prepare-topic s event)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-csi-completion-lastp
+                            fn-sn-prepare-topic fn-sn-update
+                            fn-sf-prepare-record)
+                           (fn-sn-statep fn-sf-statep
+                            fn-th-topic-eventp fn-th-prefix-step
+                            fn-replay-apply-record)))))
+
+(defthm fn-csi-prepare-topic-preserves-identity-sequence
+  (implies (fn-sn-identity-sequencep s)
+           (fn-sn-identity-sequencep (fn-sn-prepare-topic s event)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sn-identity-sequencep
+                            fn-sn-prepare-topic fn-sn-update
+                            fn-sf-prepare-record fn-sf-completion-phasep)
+                           (fn-replay-apply-record fn-th-prefix-step
+                            fn-th-topic-eventp fn-record-shape-vocabulary
+                            fn-record-record-vocabulary)))))
+
+(defthm fn-csi-prepare-topic-preserves-live
+  (implies (fn-csi-livep s)
+           (fn-csi-livep (fn-sn-prepare-topic s event)))
+  :hints (("Goal"
+           :use (fn-sn-prepare-topic-preserves-state
+                 fn-csi-prepare-topic-preserves-identity-sequence
+                 fn-csi-prepare-topic-preserves-completed-prefix
+                 fn-csi-prepare-topic-preserves-completion-last)
+           :in-theory (e/d (fn-csi-livep)
+                           (fn-sn-prepare-topic fn-sn-statep
+                            fn-sn-identity-sequencep
+                            fn-csi-completed-prefixp
+                            fn-csi-completion-lastp)))))
+
 ; This is the actual decoded Store dispatcher used by the owner.  Process
 ; death and recovery deliberately have a separate image/replay relation;
 ; every live publication event is covered here.
@@ -525,6 +646,8 @@
            :in-theory (e/d (fn-csi-livep fn-snrt-step fn-snt-step)
                            (fn-sn-prepare fn-sn-prepare-retention
                             fn-sn-prepare-identity fn-sn-prepare-consumer
+                            fn-sn-prepare-topic fn-th-topic-eventp
+                            fn-th-prefix-step
                             fn-sn-io fn-sn-finish
                             fn-sn-refuse-reservation fn-sn-known-abort
                             fn-sn-statep fn-sn-identity-sequencep
@@ -990,6 +1113,103 @@
                             fn-cpe-projection-replay
                             fn-cpe-projection-step)))))
 
+; A topic event is a neutral consumer event, but its dense sequence still
+; advances the consumer frontier.  The Store candidate and reserved txid
+; provide the finite bound needed by fn-cpe-projection-step.
+(defthm fn-csi-topic-event-is-not-consumer-event
+  (implies (fn-th-topic-eventp event)
+           (not (fn-cpe-eventp event)))
+  :hints (("Goal" :in-theory (e/d (fn-th-topic-eventp fn-cpe-eventp
+                                   fn-th-local-admin-eventp fn-th-at)
+                                  (fn-th-source-id-p fn-th-auth-ref-p
+                                   fn-th-exact-octets-p)))))
+
+(defthm fn-csi-step-frontier-after-nonnull-success
+  (implies (and (natp expected)
+                (or (null s) (equal (fn-cp-nth 3 s) expected))
+                (eq (car (fn-cpe-projection-step s event expected)) :ok)
+                (not (null (fn-cp-nth 1
+                            (fn-cpe-projection-step s event expected)))))
+           (equal (fn-cp-nth 3 (fn-cp-nth 1
+                                 (fn-cpe-projection-step s event expected)))
+                  (1+ expected)))
+  :hints (("Goal" :in-theory (enable fn-cpe-projection-step
+                                      fn-cpe-projection-advance))))
+
+(defthm fn-csi-second-of-ok-by-definition
+  (equal (fn-cp-nth 1 (list :ok x)) x)
+  :hints (("Goal" :in-theory (enable fn-cp-nth))))
+
+(defthm fn-csi-replay-keeps-frontier-aligned
+  (implies (and (natp expected)
+                (or (null s) (equal (fn-cp-nth 3 s) expected))
+                (eq (car (fn-cpe-projection-replay s records expected)) :ok))
+           (or (null (fn-cp-nth 1
+                       (fn-cpe-projection-replay s records expected)))
+               (equal (fn-cp-nth 3
+                        (fn-cp-nth 1
+                         (fn-cpe-projection-replay s records expected)))
+                      (+ expected (len records)))))
+  :hints (("Goal" :induct (fn-cpe-projection-replay s records expected)
+           :in-theory (e/d (fn-cpe-projection-replay)
+                           (fn-cpe-projection-step fn-cp-nth null)))))
+
+(defthm fn-csi-record-count-below-next-lower
+  (implies (and (fn-sf-record-listp records sequence lower frontier)
+                (natp sequence)
+                (<= sequence lower))
+           (<= (+ sequence (len records))
+               (fn-sf-next-lower records lower)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-sf-record-listp records sequence lower frontier)
+           :in-theory (enable fn-sf-record-listp fn-sf-next-lower))))
+
+(defthm fn-csi-candidate-sequence-below-max
+  (implies (and (fn-sf-record-listp records 0 0 frontier)
+                (fn-record-uint32p frontier)
+                (fn-sf-candidatep event records frontier))
+           (< (len records) *fn-cbor-max-uint*))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-csi-record-count-below-next-lower
+                                      (sequence 0) (lower 0)))
+           :in-theory (e/d (fn-sf-candidatep fn-record-uint32p)
+                           (fn-sf-record-listp fn-sf-next-lower)))))
+
+(defthm fn-csi-topic-candidate-preserves-consumer-frontier
+  (implies (and (fn-sf-record-listp records 0 0 frontier)
+                (fn-record-uint32p frontier)
+                (fn-sf-candidatep event records frontier)
+                (fn-th-topic-eventp event)
+                (or (null consumer)
+                    (equal (fn-cp-nth 3 consumer) (len records))))
+           (eq (car (fn-cpe-projection-step consumer event (len records))) :ok))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-csi-candidate-sequence-below-max))
+           :in-theory (e/d (fn-cpe-projection-step fn-sf-candidatep)
+                           (fn-sf-record-listp fn-sf-next-lower
+                            fn-th-topic-eventp fn-cpe-eventp)))))
+
+(defthm fn-csi-prepare-topic-preserves-consumer-relation
+  (implies (and (fn-sn-statep s)
+                (natp (fn-sn-identity-next s))
+                (fn-sn-identity-sequencep s)
+                (fn-snt-consumerp s))
+           (fn-snt-consumerp (fn-sn-prepare-topic s event)))
+  :hints (("Goal"
+           :use ((:instance fn-csi-replay-keeps-frontier-aligned
+                    (s nil) (records (fn-sf-records (fn-sn-files s)))
+                    (expected 0))
+                 (:instance fn-csi-topic-candidate-preserves-consumer-frontier
+                    (records (fn-sf-records (fn-sn-files s)))
+                    (frontier (fn-sf-frontier (fn-sn-files s)))
+                    (consumer (fn-sn-consumer s))))
+           :in-theory (e/d (fn-snt-consumerp fn-sn-prepare-topic
+                            fn-sn-identity-sequencep fn-sf-prepare-record
+                            fn-sn-update fn-sf-statep fn-sf-phase-shapep)
+                           (fn-sn-statep fn-cpe-projection-replay
+                            fn-cpe-projection-step fn-sn-make-v6
+                            fn-th-topic-eventp fn-sf-record-listp)))))
+
 (defthm fn-csi-normal-step-preserves-consumer-relation
   (implies (and (fn-sn-statep s)
                 (natp (fn-sn-identity-next s))
@@ -1002,6 +1222,7 @@
                            (fn-sn-statep fn-snt-consumerp
                             fn-sn-prepare fn-sn-prepare-retention
                             fn-sn-prepare-identity fn-sn-prepare-consumer
+                            fn-sn-prepare-topic
                             fn-sn-io fn-sn-finish
                             fn-sn-refuse-reservation fn-sn-known-abort)))))
 
@@ -1058,6 +1279,7 @@
                            (fn-sn-identity-sequencep
                             fn-sn-prepare fn-sn-prepare-retention
                             fn-sn-prepare-identity fn-sn-prepare-consumer
+                            fn-sn-prepare-topic
                             fn-sn-io fn-sn-finish
                             fn-sn-refuse-reservation fn-sn-known-abort)))))
 
