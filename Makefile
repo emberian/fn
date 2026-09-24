@@ -515,6 +515,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-carried \
 	books/owner-served-carried \
 	books/owner-commit-carried \
+	books/owner-prepare-carried \
+	books/owner-advance-carried \
+	books/owner-commit-ocl \
 	tests/acl2/owner-tls-pin-tests \
 	tests/acl2/served-tls-prefix-tests \
 	books/nntp-auth-invariants \
@@ -541,6 +544,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-config-observe-tests \
 	tests/acl2/owner-served-carried-tests \
 	tests/acl2/owner-commit-carried-tests \
+	tests/acl2/owner-prepare-carried-tests \
+	tests/acl2/owner-advance-carried-tests \
 	books/config-owner-publish \
 	tests/acl2/config-owner-publish-tests \
 	books/config-crash-replay \
