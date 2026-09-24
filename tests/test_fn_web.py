@@ -102,6 +102,111 @@ class WebClientTests(unittest.TestCase):
         self.assertIn("Path: peer!other", page)
         self.assertIn("Viewing does not acknowledge application processing", page)
 
+    def test_recent_window_and_older_newer_boundaries_are_number_based(self):
+        for number in range(1, 96):
+            self.node.seed("fn.agents", "slot-%03d" % number, "body")
+
+        status, _, recent = self.request("GET", "/g?name=fn.agents")
+        self.assertEqual(status, 200)
+        self.assertIn("Local article numbers 56–95", recent)
+        self.assertIn("slot-095", recent)
+        self.assertNotIn("slot-055", recent)
+        self.assertIn("start=16&amp;end=55", recent)
+        self.assertNotIn("rel='next'", recent)
+        self.assertIn("OVER 56-95", self.node.seen)
+
+        status, _, oldest = self.request(
+            "GET", "/g?name=fn.agents&start=1&end=40")
+        self.assertEqual(status, 200)
+        self.assertIn("Local article numbers 1–40", oldest)
+        self.assertNotIn("rel='prev'", oldest)
+        self.assertIn("start=41&amp;end=80", oldest)
+        self.assertIn("OVER 1-40", self.node.seen)
+
+        # Current low is the terminal older boundary even if an explicit
+        # request names historical number slots below it.
+        for number in range(1, 31):
+            self.node.numbers["fn.agents"].pop(number)
+        status, _, at_low = self.request(
+            "GET", "/g?name=fn.agents&start=31&end=70")
+        self.assertEqual(status, 200)
+        self.assertIn("group currently spans 31–95", at_low)
+        self.assertNotIn("rel='prev'", at_low)
+
+    def test_empty_group_has_no_window_or_overview_request(self):
+        self.node.numbers["fn.empty"] = {}
+        status, _, page = self.request("GET", "/g?name=fn.empty")
+        self.assertEqual(status, 200)
+        self.assertIn("No local article numbers", page)
+        self.assertIn("No articles in this number window", page)
+        self.assertNotIn("rel='prev'", page)
+        self.assertNotIn("rel='next'", page)
+        self.assertNotIn("OVER", self.node.seen)
+
+    def test_sparse_and_empty_windows_keep_the_requested_slots_navigable(self):
+        for number in range(1, 101):
+            self.node.seed("fn.agents", "slot-%03d" % number, "body")
+        table = self.node.numbers["fn.agents"]
+        keep = {42, 55, 80, 100}
+        for number in list(table):
+            if number not in keep and number >= 41:
+                del table[number]
+
+        status, _, sparse = self.request(
+            "GET", "/g?name=fn.agents&start=41&end=80")
+        self.assertEqual(status, 200)
+        self.assertIn("slot-042", sparse)
+        self.assertIn("slot-055", sparse)
+        self.assertIn("slot-080", sparse)
+        self.assertNotIn("slot-041", sparse)
+        self.assertIn("OVER 41-80", self.node.seen)
+
+        # Slots 81–99 are real holes, while article 100 keeps the group
+        # frontier there. The empty window still offers both directions.
+        status, _, empty = self.request(
+            "GET", "/g?name=fn.agents&start=81&end=99")
+        self.assertEqual(status, 200)
+        self.assertIn("No articles in this number window", empty)
+        self.assertIn("start=41&amp;end=80", empty)
+        self.assertIn("start=100&amp;end=139", empty)
+        self.assertIn("OVER 81-99", self.node.seen)
+
+    def test_explicit_window_does_not_slide_when_new_articles_arrive(self):
+        for number in range(1, 101):
+            self.node.seed("fn.agents", "slot-%03d" % number, "body")
+        path = "/g?name=fn.agents&start=61&end=100"
+        status, _, before = self.request("GET", path)
+        self.assertEqual(status, 200)
+        self.assertIn("Local article numbers 61–100", before)
+        self.assertIn("slot-100", before)
+        self.assertNotIn("slot-060", before)
+
+        self.node.seed("fn.agents", "arrived-after-request", "body")
+        status, _, after = self.request("GET", path)
+        self.assertEqual(status, 200)
+        self.assertIn("Local article numbers 61–100", after)
+        self.assertNotIn("arrived-after-request", after)
+        self.assertIn("group currently spans 1–101", after)
+        self.assertIn("start=101&amp;end=140", after)
+        self.assertEqual(self.node.seen.count("OVER 61-100"), 2)
+
+    def test_invalid_window_is_refused_before_any_nntp_command(self):
+        invalid = (
+            "start=-1&end=20",
+            "start=1&end=10000000000",
+            "start=1&end=41",
+            "start=20&end=19",
+            "start=1",
+            "start=1&start=2&end=3",
+        )
+        for query in invalid:
+            with self.subTest(query=query):
+                status, _, page = self.request(
+                    "GET", "/g?name=fn.agents&" + query)
+                self.assertEqual(status, 400)
+                self.assertIn("window", page)
+        self.assertEqual(self.node.seen, [])
+
     def test_historical_server_report_is_bound_to_article_and_never_inferred(self):
         verified = "<reported@example.invalid>"
         legacy = "<legacy@example.invalid>"
