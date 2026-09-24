@@ -219,6 +219,7 @@ evolution, and an interrupted relay/contact-plan experiment with expiry and
 staging exhaustion. The [composition assurance batch](../tests/evidence/2026-09-18-bp-composition-assurance.md)
 certifies joint pending/durable work binding and fixed-Store receiver replay,
 with five actual receiver process-death cuts; it leaves those wider seams open.
+On dev `1b734868` the native N08 case (death after a durable kind 8, one retried delivery, one copy held, no third attempt) passes on the default developer image but cannot run on the DTN image, and against dtn7-rs an fn-authored bundle survives a severed contact and a SIGKILLed carrier to be delivered once while the DTN image refuses every return bundle at its receive boundary ([record](evidence/m4-dtn-n08-2026-09-24.md)).
 
 Durable scheduling is `implemented` (`REP-005`): all three scheduler roots
 pass the farm gate of `dev` `bdd59d2`. Two cautions travel with that status —

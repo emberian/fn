@@ -111,6 +111,19 @@ class NativeBpContactRelayTests(unittest.TestCase):
         if not all(os.access(path, os.X_OK)
                    for path in (cls.sender_image, cls.receiver_image)):
             raise unittest.SkipTest("two native DTN image paths are required")
+        # The receiver is the one verb that consults boundary trust:
+        # `bp-node serve` admits a TCPCL principal from the store's
+        # observed-channel profile (`operator bp-boundary add`) under the
+        # store's path identity.  The DTN image carries neither verb, and its
+        # `bp receive` passes no owner (host/native/bp.lisp, the
+        # `fnn-bp-deliver-node ... nil nil` call), so every inbound bundle
+        # there is refused at the receive boundary; the trusted receiver is
+        # therefore the developer image named by FN_NATIVE_DEVELOPER_HOST.
+        cls.trusted_image = Path(os.environ.get(
+            "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+        if not os.access(cls.trusted_image, os.X_OK):
+            raise unittest.SkipTest(
+                "a receiver with boundary trust needs FN_NATIVE_DEVELOPER_HOST")
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="fn-contact-relay-"))
@@ -132,15 +145,42 @@ class NativeBpContactRelayTests(unittest.TestCase):
             check=False,
         )
 
+    def trust_receiver(self):
+        """Store, path identity and the sender's boundary, before any contact."""
+        self.receiver_store = self.tmp / "receiver-store"
+        self.receiver_config = self.tmp / "receiver-fn.toml"
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            self.receiver_port = reservation.getsockname()[1]
+        steps = (
+            ("store", self.receiver_store, "init", "fn.test"),
+            ("operator", self.receiver_config, "policy", "set",
+             "path-identity", "receiver.bp.gate.invalid"),
+            ("operator", self.receiver_config, "bp-boundary", "add",
+             "sender-boundary", "sender.bp.gate.invalid", "dtn://sender/",
+             self.receiver_port, "fn.test", "32768", "16"),
+        )
+        self.receiver_config.write_text(
+            f'[store]\npath = "{self.receiver_store}"\n', encoding="ascii")
+        for step in steps:
+            done = self.invoke(self.trusted_image, *step)
+            self.assertEqual(done.returncode, 0, (step, done.stdout, done.stderr))
+
     def receive_once(self):
+        if not hasattr(self, "receiver_port"):
+            self.trust_receiver()
         process = subprocess.Popen(
-            [str(self.receiver_image), "--fn", "bp", "receive", "0", "1",
-             str(self.receiver_journal), "dtn://receiver/", "dtn://sender/",
-             "3600000", "2", "32", "1048576", "-", "-", "0", "0"],
+            [str(self.trusted_image), "--fn", "bp-node", "serve",
+             str(self.receiver_port), str(self.receiver_journal),
+             str(self.receiver_store), str(self.tmp / "receiver-fnrj"),
+             str(self.tmp / "receiver-fnwf"), "dtn://receiver/",
+             "dtn://sender/", "dtn://receiver/", "native-policy",
+             "dtn://receiver/", "127.0.0.1", str(self.relay.port), "1",
+             "3600000", "2", "32", "1048576", "0", "0"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, bufsize=0,
         )
-        line = wait_for_announcement(process, b"BP LISTENING ", timeout=45)
+        line = wait_for_announcement(process, b"BP NODE LISTENING ", timeout=45)
         return process, int(line.rsplit(b" ", 1)[1])
 
     def service_run(self, work):
