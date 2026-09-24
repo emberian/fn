@@ -1054,3 +1054,44 @@ that does not know its key must post without the carrier. Whether an
 unenrolled signature should instead be accepted as unverified is ember's
 question, listed with the other P8 decisions on the scoreboard. Evidence:
 [p8-signed-post](evidence/p8-signed-post-2026-09-24.md).
+
+### 2026-09-24: ember's answers to the day's open questions (~22:30 UTC)
+
+Asked by the coordinator with the recommended option first; ember chose the
+recommended option in each case. Recorded as decisions; the lanes that act
+on them are named in `planning/now.md`.
+
+- **D23, relay trust: a boundary trusts what a neighbour carries only by
+  allowlist, and the receiver verifies against the author's own enrollment,
+  never the carrier's.** Today (`bp-app-handoff.lisp:104-136` with
+  `bp-session-admission.lisp:62-113`; `fn-pa-current-plan`'s
+  `:local-enrollment` refusal) a request or a signed article is trusted only
+  when its source identity equals the delivering neighbour's, so nothing
+  relays through dtn7-rs and a signed article cannot pass an fn node that
+  has not enrolled its author. Now each enrolled boundary carries a list of
+  source identities the neighbour may carry; a carried item is admitted on
+  that list and its acceptance rests on the author's enrollment at the
+  receiver; a node that carries but cannot verify holds and forwards the item
+  with a verdict that says so, never `verified`. fn's disconnected pillar
+  means a store-and-forward network, not only pairs of mutually trusting
+  nodes. (Overrides the "consequence recorded" of the 2026-09-24 D02 entry.)
+- **D24, the peer arms' per-event node check is carried, not memoized.**
+  The host calls a guard-verified carried copy of the peer step whose
+  premise is proved at open and preserved by every step, as the reader path
+  already does; no trusted facility enters the trust boundary.
+- **D25, duplicate versus conflict keys on the poster's bytes.** The
+  comparison drops the fields the node injects (Path, Xref, Injection-Date,
+  Injection-Info; the authored-source projection `fn-hc-authored-source`
+  already names them) and compares what the poster sent. A resend of the
+  same bytes is "already stored here"; different poster bytes under one
+  Message-ID is "a different article with this Message-ID is stored here".
+  The stored record keeps the injected headers.
+- **D26, the ten-second rule's number is the 2-job scoped measurement.**
+  Combined closures at higher job counts are recorded but do not ratchet.
+
+Adopted defaults ember did not overrule, standing until said otherwise:
+P5's sentence (a fault inside a shared owner action stops the service with
+exit 4, by design); D02's scope covering a served POST (the 2026-09-24 entry
+above); the kind-8 retry default with a duplicate re-offer acknowledged
+rather than refused; the five specific-purpose group names (`to.*`,
+`control.*`, `all`, `ctl`, `junk`) left allowed at init and create.
