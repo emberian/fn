@@ -78,7 +78,10 @@ class NativeCommandTests(unittest.TestCase):
         self.assertEqual(v0_matrix.validate(doc), [])
 
     def test_historical_schema_one_matrix_remains_valid(self):
-        legacy = json.loads((ROOT / "planning/v0-matrix.json").read_text())
+        # The 3f68944 dashboard, kept byte-identical when the first native
+        # run replaced it as planning/v0-matrix.json.
+        legacy = json.loads((ROOT / "planning/evidence/"
+                             "v0-matrix-3f68944-2026-09-21.json").read_text())
         self.assertEqual(legacy["schema_version"], 1)
         self.assertEqual(v0_matrix.validate(legacy), [])
 
@@ -1015,6 +1018,19 @@ class ProtectedTransitTests(unittest.TestCase):
         self.assertIn("test_reciprocal_starttls_authinfo_transfer_and_reconnect",
                       rows["V0-TRANSIT-TLS-AB"].invocation)
 
+    def test_witnesses_after_a_unittest_verbose_prefix_are_read(self):
+        # `unittest -v` prints `test_x (...) ... ` and no newline before the
+        # body runs; the 1a9dd747 run lost both refusals and FEED-ONCE to it.
+        lines = self.witness_lines().splitlines()
+        prefixed = "\n".join(
+            line if not line.startswith("NATIVE-PROTECTED-WITNESS ") or index == 2
+            else "test_case_{} (tests.x.Y.test_case_{}) ... {}".format(index, index, line)
+            for index, line in enumerate(lines))
+        self.assertNotEqual(prefixed, "\n".join(lines))
+        rows = self.rows(prefixed)
+        for rid in self.IDS[4:]:
+            self.assertEqual(rows[rid].verdict, v0_matrix.REFUSED, rid)
+
     def test_owners_that_are_not_this_image_are_not_evidence(self):
         def alter(feed, password, anchor):
             for one in (feed, password, anchor):
@@ -1400,6 +1416,11 @@ class InnRowTests(unittest.TestCase):
                              "/opt/fn/fn-host")
             self.assertEqual(command[command.index("--host") + 1], gate.host.label)
             self.assertEqual(command[-1], "/tmp/x/inn-lab.md")
+            self.assertNotIn("--native-openssl-prefix", command)
+            gate.native_openssl_prefix = "/tank/fn/OpenSSL 3.5.8"
+            command = gate.inn_command(Path("/tmp/x/inn-lab.md"))
+            self.assertEqual(command[command.index("--native-openssl-prefix") + 1],
+                             "/tank/fn/OpenSSL 3.5.8")
 
 
 class FromMailboxTests(unittest.TestCase):
