@@ -97,10 +97,187 @@
   (and (fn-cbor-octet-listp octets)
        (<= (len octets) *fn-record-max-payload*)))
 
+;; A newsgroup name (RFC 5536 s3.1.4, the RFC requirement):
+;;   newsgroup-name = component *( "." component )
+;;   component      = 1*component-char
+;;   component-char = ALPHA / DIGIT / "+" / "-" / "_"
+;; so no space, no leading, trailing or doubled dot, and no other octet.
+;; The RFC's SHOULD NOTs (uppercase, all-digit components, a leading "_",
+;; "+" or "-") restrict generation only; a server MUST accept such names,
+;; so this recognizer admits them.  The reserved names of s3.1.4 ("example.*",
+;; "poster", "to.*", "control.*", "junk", "all", "ctl") are a creation
+;; policy, not syntax, and are not decided here.  The octet bound
+;; `*fn-record-max-group-name*' is a local fn policy: the RFC sets none.
+(defun fn-record-group-component-octetp (x)
+  (declare (xargs :guard t))
+  (and (integerp x)
+       (or (and (<= 65 x) (<= x 90))     ; A-Z
+           (and (<= 97 x) (<= x 122))    ; a-z
+           (and (<= 48 x) (<= x 57))     ; 0-9
+           (equal x 43)                  ; +
+           (equal x 45)                  ; -
+           (equal x 95))))               ; _
+
+;; NEED is true where a component-char must come next: at the start and
+;; after a dot.  Linear in the octets, one pass.
+(defun fn-record-group-name-octets-aux (xs need)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (if (equal (car xs) 46)
+          (and (not need)
+               (fn-record-group-name-octets-aux (cdr xs) t))
+        (and (fn-record-group-component-octetp (car xs))
+             (fn-record-group-name-octets-aux (cdr xs) nil)))
+    (not need)))
+
+(defun fn-record-group-name-octetsp (xs)
+  (declare (xargs :guard t))
+  (fn-record-group-name-octets-aux xs t))
+
 (defun fn-record-group-namep (text)
   (and (fn-record-ascii-stringp text)
        (fn-record-nonempty-at-mostp (fn-record-string-octets text)
-                                    *fn-record-max-group-name*)))
+                                    *fn-record-max-group-name*)
+       (fn-record-group-name-octetsp (fn-record-string-octets text))))
+
+;; The RFC 5536 s3.1.4 grammar written as its ABNF reads, one component at a
+;; time: a nonempty run of component-chars up to the first dot, then, if
+;; there is a dot, another newsgroup-name.  It is a specification only; the
+;; one-pass recognizer above is what runs, and the keystone below equates
+;; them.
+(defun fn-record-group-component-listp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (fn-record-group-component-octetp (car xs))
+           (fn-record-group-component-listp (cdr xs)))
+    t))
+
+(defun fn-record-group-first-component (xs)
+  (declare (xargs :guard t))
+  (if (and (consp xs) (not (equal (car xs) 46)))
+      (cons (car xs) (fn-record-group-first-component (cdr xs)))
+    nil))
+
+(local (defthm fn-record-len-of-cdr-member-equal
+  (implies (member-equal a xs)
+           (< (len (cdr (member-equal a xs))) (len xs)))
+  :rule-classes :linear))
+
+(local (defthm fn-record-true-listp-of-cdr-member-equal
+  (implies (true-listp xs)
+           (true-listp (cdr (member-equal a xs))))))
+
+(defun fn-record-group-name-grammarp (xs)
+  (declare (xargs :guard (true-listp xs) :measure (len xs)))
+  (and (consp (fn-record-group-first-component xs))
+       (fn-record-group-component-listp (fn-record-group-first-component xs))
+       (if (member-equal 46 xs)
+           (fn-record-group-name-grammarp (cdr (member-equal 46 xs)))
+         t)))
+
+;; Violation classes, over the recognizer's octets (local; the statements
+;; over `fn-record-group-namep' follow the keystone).
+(local (defthm fn-record-group-name-octets-aux-rejects-a-forbidden-octet
+  (implies (and (member-equal x xs)
+                (not (equal x 46))
+                (not (fn-record-group-component-octetp x)))
+           (not (fn-record-group-name-octets-aux xs need)))))
+
+(local (defthm fn-record-group-name-octets-aux-rejects-a-doubled-dot
+  (not (fn-record-group-name-octets-aux (append xs (cons 46 (cons 46 ys)))
+                                        need))
+  :hints (("Goal" :induct (fn-record-group-name-octets-aux xs need)))))
+
+(local (defthm fn-record-group-name-octets-aux-rejects-a-trailing-dot
+  (not (fn-record-group-name-octets-aux (append xs (list 46)) need))
+  :hints (("Goal" :induct (fn-record-group-name-octets-aux xs need)))))
+
+(defthm fn-record-group-name-octets-aux-when-need
+  (equal (fn-record-group-name-octets-aux xs t)
+         (and (consp xs)
+              (not (equal (car xs) 46))
+              (fn-record-group-name-octets-aux xs nil)))
+  :hints (("Goal" :expand ((fn-record-group-name-octets-aux xs t)
+                           (fn-record-group-name-octets-aux xs nil)))))
+
+(local (defthm fn-record-consp-of-group-first-component
+  (equal (consp (fn-record-group-first-component xs))
+         (and (consp xs) (not (equal (car xs) 46))))))
+
+(defthm fn-record-group-name-octets-aux-after-component
+  (equal (fn-record-group-name-octets-aux xs nil)
+         (and (fn-record-group-component-listp
+               (fn-record-group-first-component xs))
+              (if (member-equal 46 xs)
+                  (fn-record-group-name-grammarp (cdr (member-equal 46 xs)))
+                t)))
+  :hints (("Goal" :induct (fn-record-group-name-octets-aux xs nil)
+           :expand ((fn-record-group-name-grammarp (cdr xs))))))
+
+;; Keystone: the recognizer the host calls admits a string exactly when it
+;; is ASCII, 1 to *fn-record-max-group-name* octets long (local policy), and
+;; its octets are an RFC 5536 s3.1.4 <newsgroup-name>.
+(defthm fn-record-group-namep-is-the-rfc-5536-grammar
+  (equal (fn-record-group-namep text)
+         (and (fn-record-ascii-stringp text)
+              (fn-record-nonempty-at-mostp (fn-record-string-octets text)
+                                           *fn-record-max-group-name*)
+              (fn-record-group-name-grammarp (fn-record-string-octets text))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-record-ascii-stringp
+                                      fn-record-nonempty-at-mostp)
+           :expand ((fn-record-group-name-grammarp
+                     (fn-record-string-octets text))
+                    (fn-record-group-name-octets-aux
+                     (fn-record-string-octets text) t)))))
+
+;; Each violation class, stated of the recognizer the host calls.
+(defthm fn-record-group-namep-rejects-a-forbidden-octet
+  (implies (and (member-equal x (fn-record-string-octets text))
+                (not (equal x 46))
+                (not (fn-record-group-component-octetp x)))
+           (not (fn-record-group-namep text)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-record-ascii-stringp
+                                      fn-record-nonempty-at-mostp
+                                      fn-record-group-name-octets-aux-when-need
+                                      fn-record-group-name-octets-aux-after-component))))
+
+(defthm fn-record-group-namep-rejects-a-leading-dot
+  (implies (equal (car (fn-record-string-octets text)) 46)
+           (not (fn-record-group-namep text)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-record-ascii-stringp
+                                      fn-record-nonempty-at-mostp))))
+
+(defthm fn-record-group-namep-rejects-an-empty-component
+  (implies (equal (fn-record-string-octets text)
+                  (append xs (cons 46 (cons 46 ys))))
+           (not (fn-record-group-namep text)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-record-ascii-stringp
+                                      fn-record-nonempty-at-mostp
+                                      fn-record-group-name-octets-aux-when-need
+                                      fn-record-group-name-octets-aux-after-component))))
+
+(defthm fn-record-group-namep-rejects-a-trailing-dot
+  (implies (equal (fn-record-string-octets text) (append xs (list 46)))
+           (not (fn-record-group-namep text)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-record-ascii-stringp
+                                      fn-record-nonempty-at-mostp
+                                      fn-record-group-name-octets-aux-when-need
+                                      fn-record-group-name-octets-aux-after-component))))
+
+;; The local octet bound, by definition (no RFC bound exists).
+(defthm fn-record-group-namep-bounds-length-by-definition
+  (implies (< *fn-record-max-group-name* (len (fn-record-string-octets text)))
+           (not (fn-record-group-namep text)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-record-ascii-stringp))))
+
+(in-theory (disable fn-record-group-name-octets-aux-when-need
+                    fn-record-group-name-octets-aux-after-component))
 
 (defun fn-record-no-duplicatesp (xs)
   (declare (xargs :guard (true-listp xs)))
@@ -405,6 +582,8 @@
                     (:d fn-record-ascii-stringp) (:d fn-record-octet-stringp)
                     (:d fn-record-nonempty-at-mostp)
                     (:d fn-record-schema-octet) (:d fn-record-stampp)
+                    (:d fn-record-group-name-octetsp)
+                    (:d fn-record-group-name-grammarp)
                     fn-record-cbor-octet-list-true-listp
                     fn-record-cbor-octet-listp-of-nthcdr
                     fn-record-cbor-octet-listp-of-take
