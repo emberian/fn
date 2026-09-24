@@ -124,6 +124,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/hybrid-lifecycle \
 	tests/acl2/hybrid-lifecycle-tests \
 	books/hybrid-lifecycle-store-invariants \
+	books/owner-verdict-read \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
 	tests/acl2/native-control-tests \
@@ -158,6 +159,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-traces-tests \
 	books/store-prepare-correspondence \
 	tests/acl2/store-prepare-correspondence-tests \
+	books/store-node-retention \
+	tests/acl2/store-node-retention-tests \
 	books/store-node-resolution \
 	books/store-identity-sequence-invariants \
 	tests/acl2/store-identity-sequence-invariants-tests \
@@ -319,6 +322,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-progress-guards \
 	books/bp-node-progress-premises \
 	tests/acl2/bp-node-progress-premises-tests \
+	books/bp-node-progress-bridge \
+	tests/acl2/bp-node-counterexamples-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-fnbs-dispatch-codec \
@@ -483,6 +488,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-post-tests \
 	books/path \
 	books/path-update \
+	books/path-update-tail \
 	books/peer-config \
 	books/peer-inbound \
 	books/peer-inbound-invariants \
@@ -515,6 +521,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-owner-read-invariants \
 	tests/acl2/config-owner-read-invariants-tests \
 	tests/acl2/config-owner-live-tests \
+	books/config-owner-publish \
+	tests/acl2/config-owner-publish-tests \
 	books/owner-config \
 	books/ideal \
 	books/nntp-index \
@@ -556,7 +564,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner \
 	books/owner-invariants \
 	books/owner-fault \
+	books/owner-feed-subject \
 	books/owner-prepare-correspondence \
+	books/owner-served-invariants \
 	books/owner-retention-preparation \
 	books/owner-agent \
 	books/owner-log \
@@ -571,7 +581,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
+	tests/acl2/owner-served-invariants-tests \
 	tests/acl2/owner-verdict-tests \
+	tests/acl2/owner-verdict-read-tests \
 	tests/acl2/owner-operator-tests \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
@@ -664,7 +676,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 
-.PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test labs labs-quick
+.PHONY: check check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -742,6 +754,16 @@ check:
 # skip keyed on a failure that carries no `waiver-ok:` declaration.  All three
 # are static, need no ACL2 and take about a second.
 	$(PYTHON) tools/harness_check.py
+# The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
+# image build refused host/owner-host.lisp because an error triple,
+# `(fn-owner-clock-observation state)', was passed as an argument; `make
+# check' was green because nothing here translates a host file, and hbox saw
+# it hours later.  This infers every book and host `defun''s value count and
+# fails where a single-value position, an `mv-let', `er-progn' or `er-let*'
+# gets the wrong one, or where conditional arms disagree.  Static, no ACL2,
+# about two seconds; forms it does not model are counted as undecidable.
+# `make check-host-translate' is the dynamic check, when an ACL2 is local.
+	$(PYTHON) tools/host_shape_check.py
 # Every repository path this tree cites and no file answers.  On 2026-09-21
 # `books/stx-lace.lisp` was found citing a book and a test book that have
 # never existed, for the observation four keystones hypothesise.  The counts
@@ -813,6 +835,14 @@ acl2-ld:
 # certified some other way.  FN_CERT_REMOTE=hbox also mirrors to that box.
 certs-install:
 	$(PYTHON) tools/certs.py install
+
+# The dynamic half of tools/host_shape_check.py: the ACL2-mode prefix of
+# host/native/build.lisp (every include-book and host `ld`), translated the
+# way the image build does it, without saving an image.  Exit 2 is NOT RUN
+# (no ACL2, or certificates missing or not composing), 1 is an ACL2 error.
+check-host-translate:
+	$(PYTHON) tools/certs.py install
+	$(PYTHON) tools/host_translate_check.py
 
 certs-publish:
 	$(PYTHON) tools/certs.py publish $(if $(FN_CERT_REMOTE),--remote $(FN_CERT_REMOTE))

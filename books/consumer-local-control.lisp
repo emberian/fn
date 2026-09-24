@@ -149,7 +149,10 @@
         (fn-frame-error :kind)))))
 
 (defun fn-ncl-status-reply-decode (octets)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-cp-nth
+                                                            fn-cp-read-fields
+                                                            fn-ncl-status-open)))))
   (let ((opened (fn-ncl-status-open octets)))
     (if (not (fn-frame-result-okp opened)) (list :refused :frame)
       (let* ((payload (fn-frame-result-payload opened))

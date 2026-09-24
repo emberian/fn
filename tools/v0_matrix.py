@@ -2811,9 +2811,17 @@ else echo NONE; fi
         count = result.get("group_count", 0)
         self.group_counts[node.name] = count
         served_by = "served by `{}` on port {}".format(node.kind, node.port)
+        # Two rows whose feature IS a 500/501 answer: the unknown verb, and a
+        # malformed NEWNEWS once NEWNEWS itself is dispatched (RFC 3977 3.2.1:
+        # 501 is a syntax error in a command the server has).  Only when the
+        # well-formed NEWNEWS is also 5xx-unsupported is the malformed one's
+        # 501 the verb's absence.
+        answers_by_row = {"V0-READ-UNKNOWN"}
+        if result.get("NEWNEWS") and not unsupported(result.get("NEWNEWS", "")):
+            answers_by_row.add("V0-READ-NEWNEWS-SYNTAX")
         for key, command in self.READ_COMMANDS:
             status = result.get(command, "")
-            if key != "V0-READ-UNKNOWN" and unsupported(status):
+            if key not in answers_by_row and unsupported(status):
                 self.emit(key, NOT_BUILT, step.command, status, node=node.name,
                           blocker="`{}` answered '{}' on this commit; the entry point "
                                   "that started is `{}`".format(command, status, node.kind),
@@ -3597,13 +3605,19 @@ else echo NONE; fi
         tree with `git archive`, which needs a repository, and the deployed
         tree is an archive.  It drives the host over ssh exactly as this
         gate does."""
+        # The lab's fn store init needs the image's OpenSSL as much as the
+        # matrix's own nodes do (ML-DSA at init since 1a9dd747).
+        openssl = (["--native-openssl-prefix", self.native_openssl_prefix]
+                   if self.native_openssl_prefix else [])
         return [sys.executable, str(self.repo / "tools/inn_lab.py"), self.commit,
                 "--host", self.host.label, "--native-image", self.native_image,
-                "--evidence", str(evidence)]
+                *openssl, "--evidence", str(evidence)]
 
     def inn(self):
-        invocation = "python3 tools/inn_lab.py {} --host {} --native-image {}".format(
-            self.rev, self.host.label, self.native_image or "IMAGE")
+        invocation = "python3 tools/inn_lab.py {} --host {} --native-image {}{}".format(
+            self.rev, self.host.label, self.native_image or "IMAGE",
+            " --native-openssl-prefix {}".format(self.native_openssl_prefix)
+            if self.native_openssl_prefix else "")
         if not self.want_inn:
             self.inn_not_run(invocation, "(not run: --inn was not given)",
                              "the INN install is a lab that lives on hbox at "
@@ -4014,13 +4028,7 @@ exit "$rc"
 """.format(image=image, source=source,
              runtime=shlex.quote(self.native_runtime or ""),
              openssl=self.native_openssl_env())), timeout=900, expect=None)
-        witnesses = []
-        for line in step.output.splitlines():
-            if line.startswith("NATIVE-PEERING-WITNESS "):
-                try:
-                    witnesses.append(json.loads(line.split(" ", 1)[1]))
-                except json.JSONDecodeError:
-                    pass
+        witnesses = witness_records(step.output, "NATIVE-PEERING-WITNESS")
         transit = next((one for one in witnesses if one.get("kind") == "transit-and-feed"), None)
         restart = next((one for one in witnesses if one.get("kind") == "requeue-restart"), None)
         expected = {}
@@ -4169,7 +4177,8 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
              developer=shlex.quote(self.native_developer_image or ""),
              openssl=self.native_openssl_env(),
              tests=" ".join(self.PROTECTED_TESTS))), timeout=900, expect=None)
-        expected, witnesses = {}, []
+        expected = {}
+        witnesses = witness_records(step.output, "NATIVE-PROTECTED-WITNESS")
         for line in step.output.splitlines():
             if line.startswith("NATIVE-PROTECTED-EXPECTED-") and " " in line:
                 key, value = line.split(" ", 1)
@@ -4177,11 +4186,6 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
                     expected["developer_core"] = value.strip()
                 else:
                     expected[key.rsplit("-", 1)[-1].lower()] = value.strip()
-            elif line.startswith("NATIVE-PROTECTED-WITNESS "):
-                try:
-                    witnesses.append(json.loads(line.split(" ", 1)[1]))
-                except json.JSONDecodeError:
-                    pass
         digest = re.compile(r"[0-9A-Fa-f]{64}\Z")
         runtime, core = expected.get("runtime"), expected.get("core")
 
@@ -6133,6 +6137,28 @@ def write_report_once(path: Path, content: str) -> None:
     finally:
         if name is not None:
             os.unlink(name)
+
+
+def witness_records(output: str, marker: str) -> list:
+    """Every `<marker> <json>` record in a witness suite's output.
+
+    The suites run under `unittest -v`, which writes `test_name (...) ... `
+    without a newline before the test body runs, so a witness a test prints
+    lands on the same line after that prefix.  Only the first test's record
+    starts a line (setUpClass's own print ends the prefix there).  The record
+    is the marker to the end of its line, wherever the marker starts."""
+    records = []
+    for line in output.splitlines():
+        at = line.find(marker + " ")
+        if at < 0:
+            continue
+        try:
+            record = json.loads(line[at + len(marker) + 1:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(record, dict):
+            records.append(record)
+    return records
 
 
 def publish_current(repo: Path, doc: dict, *, overlay: bool = False,
