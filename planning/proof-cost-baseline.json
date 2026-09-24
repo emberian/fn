@@ -3,15 +3,27 @@
   "threshold_seconds": 10.0,
   "tolerance": 0.25,
   "books": {
+    "books/byte-store-k0": {
+      "seconds": 10.538,
+      "run": "certify-20260924T153301Z-1495651",
+      "host": "hbox",
+      "verdict": "passed"
+    },
     "books/byte-store-record-provenance": {
-      "seconds": 13.184,
-      "run": "certify-20260924T105922Z-3604838",
-      "host": "persvati",
+      "seconds": 19.46,
+      "run": "certify-20260924T153301Z-1495651",
+      "host": "hbox",
       "verdict": "passed"
     },
     "books/byte-store-scan": {
       "seconds": 13.399,
       "run": "certify-20260924T151024Z-1459891",
+      "host": "hbox",
+      "verdict": "passed"
+    },
+    "books/consumer-store-invariants": {
+      "seconds": 10.041,
+      "run": "certify-20260924T153301Z-1495651",
       "host": "hbox",
       "verdict": "passed"
     },
@@ -24,6 +36,12 @@
     "books/store-node-traces": {
       "seconds": 10.541,
       "run": "certify-20260924T150908Z-1457985",
+      "host": "hbox",
+      "verdict": "passed"
+    },
+    "books/topic-history-store-invariants": {
+      "seconds": 10.236,
+      "run": "certify-20260924T153301Z-1495651",
       "host": "hbox",
       "verdict": "passed"
     }
