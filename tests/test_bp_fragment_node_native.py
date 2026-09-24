@@ -7,6 +7,7 @@ Python only writes those bytes and drives real native processes.
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import tempfile
 import unittest
@@ -40,6 +41,20 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.workflow = self.tmp / "fnwf"
         initialized = self.invoke("store", self.store, "init", "fn.test")
         self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            self.port = reservation.getsockname()[1]
+        self.config = self.tmp / "receiver-fn.toml"
+        self.config.write_text(f'[store]\npath = "{self.store}"\n',
+                               encoding="ascii")
+        policy = self.invoke("operator", self.config, "policy", "set",
+                             "path-identity", "receiver.bp.gate.invalid")
+        self.assertEqual(policy.returncode, 0, policy.stderr)
+        trusted = self.invoke(
+            "operator", self.config, "bp-boundary", "add", "sender-boundary",
+            "sender.bp.gate.invalid", "dtn://sender/", self.port,
+            "fn.test", 32768, 16)
+        self.assertEqual(trusted.returncode, 0, trusted.stderr)
         self.fragments = self.author_fragments()
 
     def invoke(self, *args, timeout=120):
@@ -87,7 +102,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 "(cons :dtn '(47 47 114 101 99 101 105 118 101 114 47)) "
                 "(cons :dtn '(47 47 115 101 110 100 101 114 47)) "
                 "(cons :dtn '(47 47 115 101 110 100 101 114 47)) "
-                "0 2 3600000 nil nil)"
+                "1000 2 3600000 nil nil)"
             )
             paths = []
             for index in (0, 1):
@@ -111,12 +126,12 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
 
     def start_receiver(self):
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "bp-node", "serve", "0",
+            [str(IMAGE), "--fn", "bp-node", "serve", str(self.port),
              str(self.journal), str(self.store), str(self.receipts),
              str(self.workflow), "dtn://receiver/", "dtn://sender/",
              "dtn://receiver/", "native-policy", "dtn://receiver/",
              "127.0.0.1", "9", "1", "3600000", "2", "32", "1048576",
-             "0", "0"],
+             "1000", "0"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, bufsize=0,
         )
@@ -124,7 +139,9 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         line = wait_for_announcement(process, b"BP NODE LISTENING ", timeout=45)
         if not line.startswith(b"BP NODE LISTENING "):
             self.fail(f"receiver failed: {line!r} {stop_and_diagnostics(process)}")
-        return process, int(line.rsplit(b" ", 1)[1])
+        actual_port = int(line.rsplit(b" ", 1)[1])
+        self.assertEqual(actual_port, self.port)
+        return process, actual_port
 
     @staticmethod
     def stop_process(process):
@@ -176,7 +193,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             "bp-node", "dispatch", self.journal, self.store,
             self.receipts, self.workflow, "dtn://receiver/", "dtn://sender/",
             "dtn://receiver/", "native-policy", "dtn://receiver/",
-            "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 0, 0,
+            "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 1000, 0,
         )
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertEqual(self.article_count(), 1)
