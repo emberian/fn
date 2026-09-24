@@ -58,8 +58,15 @@ def article(i):
 
 
 class Conn:
+    # TCP_NODELAY on the client: without it a small command write can wait
+    # for the delayed ACK of the previous reply (Nagle), and the wall time
+    # then carries a timer instead of the server's work.
+    nodelay = False
+
     def __init__(self, port):
         self.sock = socket.create_connection(("127.0.0.1", port), timeout=600)
+        if Conn.nodelay:
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.stream = self.sock.makefile("rwb", buffering=0)
         self.greeting = self.stream.readline()
 
@@ -103,7 +110,10 @@ def main():
     p.add_argument("--articles", type=int, required=True)
     p.add_argument("--samples", type=int, default=50)
     p.add_argument("--json", required=True)
+    p.add_argument("--nodelay", action="store_true",
+                   help="set TCP_NODELAY on every client socket")
     a = p.parse_args()
+    Conn.nodelay = a.nodelay
     image = Path(a.image).resolve()
     work = Path(a.work)
     work.mkdir(parents=True, exist_ok=False)
@@ -122,7 +132,7 @@ def main():
                             env=env, stdout=subprocess.PIPE, stderr=stderr)
     out = {"image": str(image), "launcher_sha256": digest(image),
            "core_sha256": digest(str(image) + ".core"), "articles": a.articles,
-           "samples": a.samples, "port": port}
+           "samples": a.samples, "port": port, "nodelay": a.nodelay}
     try:
         wait_for_announcement(proc, b"LISTENING ")
         # Load.
