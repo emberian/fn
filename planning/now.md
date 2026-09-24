@@ -122,8 +122,15 @@ all four images built and its closure green; it is NOT yet qualified
 (matrix, campaign, native modules) nor deployed, and it predates the last
 four merges.
 
-**In flight:** p11-machine-gaps (N07 clock boot domain, N11 kind-14 conflict
-record). The context window rotates after it lands; the next window starts
+**Not merged, kept for a follow-up:** `lane/p11-machine-gaps` at `8b273f87`
+(worktree `build/lanes/p11-machine-gaps`): N07 as a recovery-event boot-domain
+gate and N11 as a kind-14 conflict record with its codec (certified), but the
+keystone book `books/bp-node-machine-gaps.lisp` times out at the local lemma
+`bpgap-conflict-held-under-hypotheses`, and the host must drive the new
+`:persist-conflict` effect (bp-service.lisp `fnn-bps-drive-effects`, the
+TCPCL receive callback, and the N07 gate at :75-114 / :752) before any image
+carries the branch. Its LANEDUMP has the exact list. No lane is in flight;
+the context window rotates here; the next window starts
 by qualifying `834124b1` (three lanes as for 47bdb9a4), deploying it in
 place, and running the profile upgrade on the node store (decision 9).
 
