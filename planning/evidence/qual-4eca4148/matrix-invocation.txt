@@ -1,0 +1,11 @@
+# laptop, worktree build/lanes/qual-4eca4148 at be2b815b (dev; host/ tests/ tools/ books/ packaging/ Makefile identical to 4eca4148)
+# stores provisioned on hbox as tools/runbooks/hbox-matrix-provision.sh does, under /tank/fn/scratch/qual-4eca4148/matrix/stores/{a,b}
+#   <image>/fn-host --fn store <root>/store init fn.letters ; fn.toml: 127.0.0.1:11190 / 11191, control socket
+I=/tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148
+S=/tank/fn/scratch/qual-4eca4148/matrix/stores
+python3 tools/v0_matrix.py HEAD --host hbox --tree native-4eca4148 --backend native-operator \
+  --native-image $I/fn-host --native-developer-image $I/fn-host-developer \
+  --native-config-a $S/a/fn.toml --native-config-b $S/b/fn.toml --native-group fn.letters \
+  --native-image-source 4eca4148c59df75af916aa9c4be51647e7dc21b6 \
+  --native-runtime $I/runtime/sbcl --native-openssl-prefix $I/openssl \
+  --inn --keep --publish-current
