@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 616 |
 | Certification roots in the Makefile | 608 |
 | Books inside the root closure | 614 |
-| `defthm` and `defthmd` events | 8557 |
+| `defthm` and `defthmd` events | 8558 |
 | `defun` events | 6339 |
 | Functions with verified guards | 2034 |
 | Functions declared `:verify-guards nil` and never verified | 374 |
 | Functions left at the default with an explicit guard | 3124 |
 | Functions left at the default with no guard | 807 |
-| `assert-event` checks | 9298 |
-| `must-fail` checks | 504 |
+| `assert-event` checks | 9303 |
+| `must-fail` checks | 505 |
 | `encapsulate` events | 27 |
 | Theorems flagged SUSPECT by shape | 77 |
 | Export-hygiene warnings | 103 |
@@ -87,7 +87,7 @@ that `make certify` requests.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `books/acceptance-alloc.lisp` | root | 2 | 21 | 16/0/5/0 | 0 | 0 | 1 |
 | `books/acceptance-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/acceptance-stamp-invariants.lisp` | root | 23 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/acceptance-stamp-invariants.lisp` | root | 24 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/acceptance.lisp` | root | 52 | 47 | 38/0/9/0 | 0 | 0 | 0 |
 | `books/anchor-invariants.lisp` | root | 31 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-record.lisp` | root | 5 | 4 | 4/0/0/0 | 0 | 0 | 0 |
@@ -443,7 +443,7 @@ that `make certify` requests.
 | `books/wire-invariants.lisp` | root | 53 | 5 | 1/1/1/2 | 0 | 0 | 0 |
 | `books/wire-outbound-invariants.lisp` | root | 66 | 6 | 0/2/4/0 | 0 | 0 | 0 |
 | `books/wire.lisp` | root | 50 | 69 | 49/0/20/0 | 0 | 0 | 1 |
-| `tests/acl2/acceptance-stamp-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 55 | 14 | 0 |
+| `tests/acl2/acceptance-stamp-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 61 | 15 | 0 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 246 | 0 | 0 |
 | `tests/acl2/anchor-replace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-server-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -652,7 +652,7 @@ that `make certify` requests.
 | `tests/acl2/sha256-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 21 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
-| `tests/acl2/store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
+| `tests/acl2/store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 58 | 0 | 0 |
 | `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 72 | 2 | 0 |
 | `tests/acl2/store-files-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 88 | 0 | 0 |
