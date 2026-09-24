@@ -2875,6 +2875,30 @@
         {
           "kind": "theorem",
           "name": "fn-bpaj-carried-unenrolled-request-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-source-decision-ignores-release-rows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-unauthorized-issuer-releases-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-carrier-without-release-row-releases-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-released-receipt-names-exactly-its-obligation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-receipt-naming-other-terms-releases-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-request-trust-ignores-release-rows"
         }
       ]
     }
