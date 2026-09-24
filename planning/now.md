@@ -93,15 +93,18 @@ identity is stored but answered 436 uncertain and the service exits
 payload with the offered octets). The DTN images cannot `store init`
 (build-dtn.lisp never lds checkpoint-host.lisp).
 
+Landed after that: transit-436 (the completion names the submission by the
+stored octets; 235 with a Path identity), dtn-build-checkpoint (DTN images
+`store init`; build-list check), m5-capacity (the transaction budget in ACL2,
+headroom in `operator status`, `init --profile scale`; the deployed store's
+budget is 128 with 7 used). Third cut `60862103` submitted with every fix.
+
 **In flight:**
 
 | Lane | Intended result |
 | --- | --- |
-| transit-436 | the completion-names-submission relation over the transit-transformed octets; 235 and the service up with a Path identity |
-| dtn-build-checkpoint | build-dtn.lisp lds every host file the DTN image needs; a check that the two build lists agree |
 | bp-kind8-retry | M4: retry after a durable attempt with the original identity, receiver dedup, bounded, stranded reportable (default pending ember) |
 | served-path-cost | the per-command whole-state checks carried in state (`fn-auth-sessionp`'s `fn-node-statep`), re-measured |
-| m5-capacity | the 128-transaction cap decided in ACL2 from the store profile, headroom in the status verb, a larger profile |
 | probe-tables | the probe's expectation table for the four new cuts and the swallowed unlink; the differential reads the article's octets |
 | stale-native-tests | the five (c)-class native tests brought up to date with the machine |
 
