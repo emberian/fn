@@ -2759,6 +2759,27 @@
           "name": "fn-bs-selected-reclaim-crash-preserves-suffix-payload"
         }
       ]
+    },
+    {
+      "id": "PRF-074",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-carried-decision-is-the-authors-direct-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-carried-request-is-judged-as-the-authors-direct-request"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-unlisted-carried-request-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-carried-unenrolled-request-is-refused"
+        }
+      ]
     }
   ]
 }

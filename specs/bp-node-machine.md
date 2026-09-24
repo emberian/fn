@@ -2150,6 +2150,85 @@ admitted under the announced identity.
 `books/bp-native-app` is red at its digest and opens the record codec
 book-wide; the K6 edit waits for T1's BP-receiver cluster (slice A3's gate).
 
+### 6.1 D23: a neighbour carries named sources; the author's enrollment decides
+
+Decision D23 ([decisions](../planning/decisions.md), 2026-09-24). Session
+admission is unchanged: `fn-bpaj-session-principal` names the delivering
+TCPCL neighbour from the observed channel and the announced EID, and the
+ingress carries that principal and the configuration generation. What
+changes is the per-bundle source check that the application and the Store
+plan make, which used to require the bundle's source EID to equal the
+neighbour's own enrolled EID. Through any relaying BPA the two differ, so
+every relayed request and receipt was refused
+([m4-app-receipt](../planning/evidence/m4-app-receipt-2026-09-24.md),
+finding 1).
+
+**Enrollment.** A BP boundary may list the source EIDs its neighbour may
+carry: `operator CONFIG bp-boundary add NAME PATH BP-EID PORT
+[INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...]`
+(`fn-native-admin-bp-boundary-plan`). Each listed EID is a
+`(NAME "bp-boundary-carries" EID 0)` row in the boundary's `:set-peer`
+delta, so the durable configuration record carries it and configuration
+replay recovers it; nothing received can create one. A carried word must be
+a `dtn:` or `ipn:` EID, is listed once, and the list is non-empty.
+
+**The decision** is one ACL2 function the host does not reimplement,
+`fn-bpaj-carried-source-decision cfg principal generation source`
+(`books/bp-session-admission.lisp`):
+
+- `(:direct P)` when SOURCE is P's own enrolled EID (the old rule,
+  `fn-bpaj-current-peer-eidp`, unchanged);
+- `(:refused :generation)` when the configuration is not current;
+- `(:refused :source-not-carried)` when P is not a current BP boundary
+  listing SOURCE as carried;
+- `(:carried P A)` when P carries SOURCE and exactly one boundary here is
+  directly enrolled with SOURCE as its `transport-bp` EID (its own trust
+  profile, a unique `bp-trust network` row); A is that boundary, the
+  **author's** enrollment;
+- `(:refused :carried-source-unenrolled)` when P carries SOURCE and no
+  boundary (or more than one) is enrolled for it.
+
+The application principal is P for a direct bundle and A for a carried one
+(`fn-bpaj-source-decision-principal`). `fn-bpah-request-trustedp` and
+`fn-bpah-receipt-trustedp` (the host's `fn-owner-bp-request-trustedp` and
+`fn-owner-bp-receipt-trustedp`) admit exactly the direct and carried
+decisions; `fn-bpaj-ingress-peer` names the application principal, so the
+transit plan's peer, inbound scope and transfer decision for a carried
+request are the author's and never the carrier's. The host prints ACL2's
+line for every dispatched request and receipt (`fn-bpah-source-decision-line`,
+`BP node source direct principal=...`, `... carried carrier=... author=...`
+or `... refused reason=...`).
+
+**Theorems** (the subjects are the functions the host calls):
+
+- `fn-bpaj-carried-decision-is-the-authors-direct-decision`: a carried
+  decision names an author whose own delivery of the same source at the same
+  generation is decided `:direct` under that author.
+- `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request`
+  (`books/bp-transit-join.lisp`): for a carried delivery and a direct one
+  from the author at the same generation, both trust checks answer the same
+  and `fn-bpaj-transit-plan` returns the same plan.
+- `fn-bpaj-unlisted-carried-request-is-refused`: when the neighbour's
+  boundary has neither a `transport-bp` nor a `bp-boundary-carries` row for
+  the source, neither trust check admits it and the plan is
+  `(:refused :no-principal)`; the host answers `request-refused` before
+  opening FNRJ or Store.
+- `fn-bpaj-carried-unenrolled-request-is-refused`: a current carrier of a
+  source that no boundary here is enrolled with is decided
+  `(:refused :carried-source-unenrolled)`, trusted by neither check, and the
+  plan is refused.
+
+Teeth, one per hypothesis, and reachable witnesses are in
+`tests/acl2/bp-transit-join-tests.lisp`, `bp-session-admission-tests.lisp`
+and `bp-app-handoff-tests.lisp`.
+
+**Not decided here.** The carried list admits sources, not destinations:
+`bp-node serve`'s own forwarding still expects the application peer as its
+TCPCL neighbour (`fnn-bpnode-forward-contact`, finding 3), which is a
+routing choice (which neighbour a job is handed to), not this trust rule.
+A signed article's verification against the author's enrollment
+(D23's second half, the `:fn-verified` verdict) is the posting path's.
+
 ## 7. Limits, reassembly, fragmentation, routes, reports
 
 ### 7.1 Limits that compose (§12, D-9)
