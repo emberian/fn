@@ -21,9 +21,10 @@
             :present))))))
 
 ; Syntax and exact-source projection before any current local key policy.
-; This allows a byte-identical already-accepted event to report its historic
-; duplicate outcome after a later key rotation or tombstone.  A present but
-; malformed field has no such path.
+; This allows byte-identical already-stored bytes to report the Store's
+; historical duplicate outcome after a later key rotation or tombstone.
+; If the old record was legacy fn-r, this does not upgrade it or create a
+; historical verdict.  A present but malformed field has no such path.
 (defun fn-pa-carrier-form (received)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory

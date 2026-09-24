@@ -66,6 +66,22 @@
      "hybrid Ed25519 observation accepts the maximum profile preimage"))
   (fnn-hsig-check (fnn-hsig-ml-dsa-65-verify public message ml-signature)
                   "OpenSSL ML-DSA-65 sign/verify")
+  (multiple-value-bind (verified observed)
+      (fnn-hsig-ml-dsa-65-verify-raw ml-public message ml-signature)
+    (fnn-hsig-check (and verified (equalp observed ml-public))
+                    "receiver imports exact enrolled raw ML public key"))
+  (multiple-value-bind (verified observed)
+      (fnn-hsig-ml-dsa-65-verify-raw
+       (fnn-hsig-ml-dsa-65-public-key public-b) message ml-signature)
+    (fnn-hsig-check (and (not verified) (not (equalp observed ml-public)))
+                    "receiver refuses signature under substituted raw key"))
+  (let ((observations (fnn-hsig-observe-raw
+                       ed-public ml-public message signatures)))
+    (fnn-hsig-check
+     (and (eq (first observations) :verified)
+          (eq (first (second observations)) :verified)
+          (equalp (second (second observations)) ml-public))
+     "receiver keeps both independent raw-key observations"))
   (fnn-hsig-check
    (let ((observations (fnn-hsig-observe ed-public public message signatures)))
      (and (eq (first observations) :verified)

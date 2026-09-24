@@ -177,6 +177,22 @@ Store admission, historical keyring enrollment, group membership, or cursor
 progress. A source identity in a report without this check and a Store event
 reference remains a claim.
 
+At a configured protected peer or BP transit ingress, the receiver classifies
+the received `FN-Authorship` field in ACL2. An absent field follows the legacy
+article path; a present malformed field refuses without downgrading. For a new
+carrier, the receiver selects its own current enrolled snapshot for the exact
+carrier principal and ordered Ed25519/ML-DSA-65 keys, observes both signatures
+over the exact authored source with native primitives, and asks ACL2 to make
+the existing schema-1 kind-4 event. The ordinary Store identity publication
+then persists the receiver's relayed article, exact source, local snapshot and
+historical verdict together. The configured peer establishes transport
+provenance only. A later local rotation or tombstone refuses a new event under
+the old key but cannot change an already stored verdict. A byte-identical
+duplicate of a previously stored legacy `fn-r` article remains legacy and has
+no historical verdict; duplicate suppression never upgrades old acceptance.
+These are the selected first-deployment local rules, not portable succession
+or a claim that a remote verifier can authorize Store acceptance.
+
 The remaining Store join needs a versioned accepted-article binding with two
 distinct subjects: the received article octets used for storage and content
 identity, and the exact authored source recovered by the ACL2 carrier
