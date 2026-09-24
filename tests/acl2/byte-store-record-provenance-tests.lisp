@@ -1130,3 +1130,76 @@
         (fn-bs-pending-matches-phase file (cdr pair))
         (equal (fn-bs-ops-for-dir (fn-bs-pending file) :root) nil)
         (equal (fn-bs-ops-for-dir (fn-bs-pending file) :transactions) nil))))
+
+; The native host calls fn-sn-io four times during a successful allocator
+; advance.  The same first allocation is interpreted by fn-bs-run, including
+; its physical root fence before the last callback.  The callback changes
+; the file phase and leaves the exact byte/kernel relation at the call return.
+(defun bsk0-native-frontier-returnp (bs s stage octets)
+  (let* ((s1 (fn-sn-io s :start-frontier :ok))
+         (s2 (fn-sn-io s1 :frontier-file :ok))
+         (s3 (fn-sn-io s2 :frontier-replace :ok))
+         (s4 (fn-sn-io s3 :frontier-directory :ok))
+         (run (fn-bs-run bs (fn-sn-files s)
+                         (fn-bs-frontier-program stage octets)
+                         nil (fn-sn-groups s) (fn-sn-capacity s)))
+         (file-pair (nth 12 run))
+         (return-pair (nth 14 run)))
+    (and (equal (cdr file-pair) (fn-sn-files s3))
+         (equal (car return-pair) (car file-pair))
+         (equal (cdr return-pair) (fn-sn-files s4))
+         (fn-bs-store-relation (car return-pair) (fn-sn-files s4))
+         (equal (fn-sf-phase (fn-sn-files s4)) :reserved))))
+
+(defun bsk0-native-frontier-entry ()
+  (fn-sn-initial *bsk5-groups* *bsk5-capacity*))
+
+(assert-event
+ (let* ((bs (bsk5-initial))
+        (s (bsk0-native-frontier-entry))
+        (stage ".allocation-native-k0")
+        (octets (fn-bs-frontier-encode 1)))
+   (and (fn-sn-statep s)
+        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
+        (not (fn-bs-lookup bs :staging stage))
+        (bsk0-native-frontier-returnp bs s stage octets))))
+
+; Without a valid composed state, fn-sn-io's guarded logic leaves the host
+; state alone while the physical program advances.
+(must-fail
+ (assert-event
+  (let* ((bs (bsk5-initial))
+         (s0 (bsk0-native-frontier-entry))
+         (s (fn-sn-update s0 (fn-sn-files s0) :bad)))
+    (bsk0-native-frontier-returnp bs s ".allocation-native-k0"
+                                 (fn-bs-frontier-encode 1)))))
+
+; A malformed durable configuration survives the allocator run unchanged.
+(must-fail
+ (assert-event
+  (let* ((bs (bsk5-initial))
+         (bad (fn-bs-make (fn-bs-unit bs)
+                          (fn-bs-put-assoc 0 '(65) (fn-bs-inodes bs))
+                          (fn-bs-dirs bs) (fn-bs-pending bs)
+                          (fn-bs-next-ino bs))))
+    (bsk0-native-frontier-returnp bad (bsk0-native-frontier-entry)
+                                 ".allocation-native-k0"
+                                 (fn-bs-frontier-encode 1)))))
+
+; A well-formed old frontier frame installs the wrong value even though the
+; host callback reports a successful reservation of the successor.
+(must-fail
+ (assert-event
+  (bsk0-native-frontier-returnp
+   (bsk5-initial) (bsk0-native-frontier-entry)
+   ".allocation-native-k0" (fn-bs-frontier-encode 0))))
+
+; An occupied staging path makes O_EXCL stop before the file/root fences.
+(must-fail
+ (assert-event
+  (bsk0-native-frontier-returnp
+   (mv-nth 1 (fn-bs-create (bsk5-initial) :staging
+                           ".allocation-native-k0" :ok))
+   (bsk0-native-frontier-entry)
+   ".allocation-native-k0" (fn-bs-frontier-encode 1))))
