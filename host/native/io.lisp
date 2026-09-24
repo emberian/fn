@@ -559,6 +559,26 @@ label; it does not select a policy."
 
 (defun fnn-err (control &rest args)
   (fnn-emit *fnn-stderr* (fnn-concat (apply #'format nil control args) (string #\Newline))))
+;;; The service log.  `fn operator CONFIG run' opens `[log] path' append-only
+;;; before the store (host/native/operator.lisp) and leaves its descriptor
+;;; here; NIL means stderr.  Every line is ACL2's (books/owner-log.lisp); this
+;;; writes its octets and one LF and decides nothing.  A failed write is
+;;; reported on stderr and stops nothing: the log is an operator's record,
+;;; never evidence of durable acceptance.
+(defvar *fnn-owner-log-fd* nil)
+
+(defun fnn-log-line (line)
+  "Write the ACL2-rendered octet list LINE and one LF to the service log."
+  (unless (fnn-octet-list-p line)
+    (fnn-fault "ACL2 returned a malformed log line"))
+  (let ((octets (concatenate 'fnn-octets (fnn-octets line) (fnn-octets (list 10)))))
+    (if *fnn-owner-log-fd*
+        (handler-case (fnn-write-all *fnn-owner-log-fd* octets)
+          (error (condition)
+            (fnn-err "service log write failed: ~a" condition)))
+      (when *fnn-stderr*
+        (write-sequence octets *fnn-stderr*)
+        (finish-output *fnn-stderr*)))))
 
 (defun fnn-exit (code)
   (when *fnn-stdout* (finish-output *fnn-stdout*))
@@ -1581,6 +1601,27 @@ recovery sweep owns."
         (fnn-observe store :frontier-file :known-fail)
         (fnn-refuse-io "known pre-publication allocator failure: ~a" e)))))
 
+(defun fnn-log-staging-cleanup (step stage sequence condition)
+  "Log the swallowed error CONDITION of fnn-publish's staging cleanup STEP.
+
+The line is ACL2's (books/owner-log.lisp fn-olog-staging-cleanup-line): the
+step, the sequence of the durable record, the stage path, the errno when the
+condition is an OS error, and the condition's report as SBCL gives it.  If
+rendering or writing the line fails, stderr says so and names both errors;
+the record is durable either way and the caller's outcome does not change."
+  (handler-case
+      (fnn-log-line
+       (fnn-core 'fn-olog-staging-cleanup-line
+                 step
+                 (fnn-octet-list (fnn-string-octets stage))
+                 sequence
+                 (and (typep condition 'fnn-os-error) (fnn-os-errno condition))
+                 (fnn-octet-list (fnn-string-octets (princ-to-string condition)))))
+    (error (failure)
+      (ignore-errors
+       (fnn-err "service log line for a swallowed staging cleanup error failed: ~a; the swallowed error: ~a"
+                failure condition)))))
+
 (defun fnn-publish (store sequence record)
   (fnn-require-writer store)
   (when (fnn-store-fenced store) (fnn-indeterminate "store is fenced pending recovery"))
@@ -1626,9 +1667,16 @@ recovery sweep owns."
           ;; Best-effort cleanup: an error here is swallowed, as the model's
           ;; P-RECORD says, and that includes an EIO selected at the
           ;; `record-stage-unlinked' cut between the unlink and its barrier.
-          (ignore-errors (fnn-unlink stage)
-                         (fnn-at store :record-stage-unlinked)
-                         (fnn-fsync-dir (fnn-staging store)))
+          ;; Swallowed, not silent: each such error leaves one service-log
+          ;; line (fnn-log-staging-cleanup), and nothing that line does can
+          ;; change the outcome, since the `ignore-errors' holds it too.
+          (let ((step :unlink))
+            (ignore-errors
+             (handler-case (progn (fnn-unlink stage)
+                                  (setq step :directory-barrier)
+                                  (fnn-at store :record-stage-unlinked)
+                                  (fnn-fsync-dir (fnn-staging store)))
+               (error (e) (fnn-log-staging-cleanup step stage sequence e)))))
           (fnn-at store :record-staging-cleaned)
           :durable)
       (fnn-os-error (e)

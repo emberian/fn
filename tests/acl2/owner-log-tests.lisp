@@ -182,12 +182,19 @@
 (defconst *olt-transit-unconsumed* (olt-owner 0 nil *olt-transit-decision*))
 
 ; The failure-8 line: the receiver's ingress refused a signed carrier for want
-; of its own enrollment, and the peer was sent 439.  The ingress refuses
-; before the Store is handed anything, so no completion has been consumed
-; after the take: the owner is *olt-transit-unconsumed*.
+; of its own enrollment, and the peer was sent 439.  The ingress refused
+; before the Store, so no completion was consumed: the owner is the
+; unconsumed one.  Over a consumed completion fn-own-outcome-completion reads
+; a refusal word as uncertain and the line says `uncertain ... code=436',
+; which is what this witness evaluated to over *olt-transit*.
 (defconst *olt-refused-transit-line*
   (fn-olog-transit-line *olt-transit-unconsumed* 7 :want nil :refused
                         :local-enrollment))
+(assert-event
+ (equal (fn-olog-line-word
+         (fn-olog-transit-line *olt-transit* 7 :want nil :refused
+                               :local-enrollment))
+        (olt-text "uncertain")))
 (assert-event
  (equal *olt-refused-transit-line*
         (olt-text "refused transit connection=7 message-id=<relay@example.invalid> code=439 decision=want reason=none detail=local-enrollment time=2026-09-18T00:00:00Z")))
@@ -291,3 +298,34 @@
           (fn-olog-code-class-word (fn-feed-response-code response)))
    :hints (("Goal" :in-theory (e/d (fn-olog-code-class-word fn-olog-text)
                                    (fn-olog-field fn-olog-decimal fn-olog-time))))))
+
+; The store's swallowed staging cleanup (host/native/io.lisp fnn-publish,
+; fnn-log-staging-cleanup).  The witness is the line the probe's
+; `record-stage-unlinked' EIO row reads: the unlink returned, the injected
+; EIO came before the staging barrier, and the condition's report is
+; SBCL's text for fnn-os-error.
+(defconst *olt-stage-name*
+  (olt-text "/w/store/staging/.stage-4242-0123456789ab"))
+(defconst *olt-cleanup-line*
+  (fn-olog-staging-cleanup-line :directory-barrier *olt-stage-name* 2 5
+                                (olt-text "[Errno 5] Input/output error")))
+(assert-event
+ (equal *olt-cleanup-line*
+        (olt-text "failed staging cleanup step=directory-barrier sequence=2 name=/w/store/staging/.stage-4242-0123456789ab errno=5 error=[Errno?5]?Input/output?error")))
+; A condition with no errno reads `none', never errno=0.
+(assert-event
+ (equal (fn-olog-staging-cleanup-line :unlink *olt-stage-name* 3 nil
+                                      (olt-text "fault"))
+        (olt-text "failed staging cleanup step=unlink sequence=3 name=/w/store/staging/.stage-4242-0123456789ab errno=none error=fault")))
+; The error text is the host's and may hold a line break; the line does not.
+(defconst *olt-broken-text*
+  (append (olt-text "[Errno 5]") '(13 10) (olt-text "accepted post")))
+(assert-event
+ (fn-olog-no-breakp
+  (fn-olog-staging-cleanup-line :unlink *olt-stage-name* 3 5 *olt-broken-text*)))
+; Teeth: the visible filter is what makes the line one line.  The field
+; built from the raw text, as a host `format' would build it, has a break.
+(assert-event (not (fn-olog-no-breakp *olt-broken-text*)))
+(must-fail
+ (defthm olt-cleanup-raw-error-field-is-one-line
+   (fn-olog-no-breakp (append (fn-olog-text "error=") text))))
