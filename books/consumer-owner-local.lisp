@@ -57,14 +57,48 @@
          o (fn-cp-ack s *fn-col-principal* *fn-col-query-version*
                       *fn-col-view-version* (fn-cp-nth 1 decoded)))))))
 
+(defun fn-col-scope-entry (s consumer)
+  "Look up one bounded consumer entry in this local owner's fixed scope."
+  (let ((entry (and s (fn-cp-idp consumer)
+                    (fn-cp-find consumer (fn-cp-nth 5 s)))))
+    (if (and entry
+             (equal (fn-cp-nth 2 entry) *fn-col-principal*)
+             (equal (fn-cp-nth 4 entry) *fn-col-query-version*)
+             (equal (fn-cp-nth 5 entry) *fn-col-view-version*)
+             (fn-cp-idp (fn-cp-nth 3 entry))
+             (natp (fn-cp-nth 7 entry))
+             (natp (fn-cp-nth 3 s))
+             (<= (fn-cp-nth 7 entry) (fn-cp-nth 3 s)))
+        (list :scope entry)
+      (list :refused :scope))))
+
 (defun fn-col-position (o consumer)
   (let* ((s (fn-sn-consumer (fn-own-store o)))
-         (entry (and s (fn-cp-find consumer (fn-cp-nth 5 s)))))
-    (if (and entry (equal (fn-cp-nth 2 entry) *fn-col-principal*)
-             (equal (fn-cp-nth 4 entry) *fn-col-query-version*)
-             (equal (fn-cp-nth 5 entry) *fn-col-view-version*))
-        (list :position (fn-cp-cursor-encode (fn-cp-scope-cursor s entry)))
-      (list :refused :scope))))
+         (scoped (fn-col-scope-entry s consumer)))
+    (if (eq (car scoped) :scope)
+        (list :position
+              (fn-cp-cursor-encode
+               (fn-cp-scope-cursor s (fn-cp-nth 1 scoped))))
+      scoped)))
+
+(defun fn-col-status (o consumer)
+  "Return the committed ACK, journal frontier, and event-distance gap."
+  (let* ((s (fn-sn-consumer (fn-own-store o)))
+         (scoped (fn-col-scope-entry s consumer)))
+    (if (eq (car scoped) :scope)
+        (let ((ack (fn-cp-nth 7 (fn-cp-nth 1 scoped)))
+              (frontier (fn-cp-nth 3 s)))
+          (list :status ack frontier (- frontier ack)))
+      scoped)))
+
+(defthm fn-col-status-event-distance
+  (implies (eq (car (fn-col-status o consumer)) :status)
+           (and (<= (fn-cp-nth 1 (fn-col-status o consumer))
+                    (fn-cp-nth 2 (fn-col-status o consumer)))
+                (equal (fn-cp-nth 3 (fn-col-status o consumer))
+                       (- (fn-cp-nth 2 (fn-col-status o consumer))
+                          (fn-cp-nth 1 (fn-col-status o consumer))))))
+  :rule-classes nil)
 
 (defun fn-col-unregister (o consumer)
   (let ((s (fn-sn-consumer (fn-own-store o))))
@@ -75,16 +109,11 @@
 (defun fn-col-poll (o consumer)
   (let* ((store (fn-own-store o))
          (s (fn-sn-consumer store))
-         (entry (and s (fn-cp-find consumer (fn-cp-nth 5 s)))))
-    (if (or (not entry)
-            (not (equal (fn-cp-nth 2 entry) *fn-col-principal*))
-            (not (equal (fn-cp-nth 4 entry) *fn-col-query-version*))
-            (not (equal (fn-cp-nth 5 entry) *fn-col-view-version*))
-            (not (fn-cp-idp (fn-cp-nth 3 entry)))
-            (not (natp (fn-cp-nth 7 entry)))
-            (not (natp (fn-cp-nth 3 s))))
-        (list :refused :scope)
-      (let* ((position (fn-cp-nth 7 entry))
+         (scoped (fn-col-scope-entry s consumer)))
+    (if (not (eq (car scoped) :scope))
+        scoped
+      (let* ((entry (fn-cp-nth 1 scoped))
+             (position (fn-cp-nth 7 entry))
              (frontier (fn-cp-nth 3 s))
              (scan (fn-col-poll-scan
                     (fn-col-poll-index-window
@@ -102,6 +131,8 @@
 (verify-guards fn-col-bootstrap)
 (verify-guards fn-col-register)
 (verify-guards fn-col-ack)
+(verify-guards fn-col-scope-entry)
 (verify-guards fn-col-position)
+(verify-guards fn-col-status)
 (verify-guards fn-col-unregister)
 (verify-guards fn-col-poll)

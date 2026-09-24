@@ -9,15 +9,19 @@
 (defconst *fn-ncl-request-kind* 4)
 (defconst *fn-ncl-reply-kind* 5)
 (defconst *fn-ncl-poll-reply-kind* 6)
+(defconst *fn-ncl-status-reply-kind* 9)
 (defconst *fn-ncl-max-payload* 513)
 (defconst *fn-ncl-poll-max-payload* (+ 9 346 *fn-stxa-max-octets*))
+(defconst *fn-ncl-status-max-payload* 13)
 
 (defun fn-ncl-command-code (kind)
   (case kind (:register 0) (:ack 1) (:position 2)
-        (:unregister 3) (:bootstrap 4) (:poll 5) (otherwise nil)))
+        (:unregister 3) (:bootstrap 4) (:poll 5) (:status 6)
+        (otherwise nil)))
 (defun fn-ncl-code-command (code)
   (case code (0 :register) (1 :ack) (2 :position)
-        (3 :unregister) (4 :bootstrap) (5 :poll) (otherwise nil)))
+        (3 :unregister) (4 :bootstrap) (5 :poll) (6 :status)
+        (otherwise nil)))
 (verify-guards fn-ncl-command-code)
 (verify-guards fn-ncl-code-command)
 
@@ -32,7 +36,7 @@
             (:ack (and (null second)
                        (eq (fn-cp-nth 0 (fn-cp-cursor-decode first)) :ok)
                        (cons code first)))
-            ((:position :unregister :poll)
+            ((:position :unregister :poll :status)
              (and (fn-cp-idp first) (null second)
                   (cons code (fn-cp-id-bytes first))))
             (otherwise nil))))
@@ -69,7 +73,7 @@
              (if (eq (fn-cp-nth 0 (fn-cp-cursor-decode body)) :ok)
                  (list :consumer :ack body nil)
                (list :refused :cursor)))
-            ((:position :unregister :poll)
+            ((:position :unregister :poll :status)
              (let ((one (fn-cp-read-id body)))
                (if (and (eq (fn-cp-nth 0 one) :ok)
                         (null (fn-cp-nth 2 one)))
@@ -109,6 +113,87 @@
             (list :consumer-reply (fn-ncl-code-status (car payload))
                   (cdr payload))
           (list :refused :reply))))))
+
+; Status has its own FNCT kind and fixed scalar grammar.  It cannot be
+; mistaken for a cursor reply: accepted carries exactly three uint32 fields
+; (committed ACK, journal frontier, event-distance), refusal carries none.
+(defun fn-ncl-status-reply-encode (status ack frontier gap)
+  (let ((code (fn-ncl-status-code status)))
+    (if (if (eq status :accepted)
+            (and (fn-cp-uintp ack) (fn-cp-uintp frontier)
+                 (fn-cp-uintp gap) (<= ack frontier)
+                 (equal gap (- frontier ack)))
+          (and code (null ack) (null frontier) (null gap)))
+        (let ((payload
+               (if (eq status :accepted)
+                   (append (list code) (fn-cbor-u32-bytes ack)
+                           (fn-cbor-u32-bytes frontier)
+                           (fn-cbor-u32-bytes gap))
+                 (list code))))
+          (if (<= (len payload) *fn-ncl-status-max-payload*)
+              (let ((protected
+                     (fn-frame-protected *fn-nctrl-magic* *fn-nctrl-version*
+                                         *fn-ncl-status-reply-kind* payload)))
+                (append protected (fn-frame-trailer protected)))
+            :bad))
+      :bad)))
+
+(defun fn-ncl-status-open (octets)
+  (if (not (fn-cbor-octet-listp octets)) (fn-frame-error :malformed)
+    (let ((opened
+           (fn-frame-decode
+            octets (fn-frame-trailer (fn-frame-protected-prefix octets))
+            *fn-ncl-status-max-payload*)))
+      (if (and (fn-frame-result-okp opened)
+               (equal (fn-frame-result-magic opened) *fn-nctrl-magic*)
+               (equal (fn-frame-result-version opened) *fn-nctrl-version*)
+               (equal (fn-frame-result-kind opened)
+                      *fn-ncl-status-reply-kind*))
+          opened
+        (fn-frame-error :kind)))))
+
+(defun fn-ncl-status-reply-decode (octets)
+  (let ((opened (fn-ncl-status-open octets)))
+    (if (not (fn-frame-result-okp opened)) (list :refused :frame)
+      (let* ((payload (fn-frame-result-payload opened))
+             (status (and (consp payload)
+                          (fn-ncl-code-status (car payload))))
+             (fields (and (eq status :accepted)
+                          (fn-cp-read-fields (cdr payload)
+                                             '(:uint :uint :uint)))))
+        (cond
+         ((or (not status) (not (fn-cbor-octet-listp payload)))
+          (list :refused :reply))
+         ((eq status :accepted)
+          (if (and (eq (car fields) :ok) (null (fn-cp-nth 2 fields)))
+              (let ((vals (fn-cp-nth 1 fields)))
+                (if (and (<= (fn-cp-nth 0 vals) (fn-cp-nth 1 vals))
+                         (equal (fn-cp-nth 2 vals)
+                                (- (fn-cp-nth 1 vals)
+                                   (fn-cp-nth 0 vals))))
+                    (list :consumer-status-reply :accepted
+                          (fn-cp-nth 0 vals) (fn-cp-nth 1 vals)
+                          (fn-cp-nth 2 vals))
+                  (list :refused :reply)))
+            (list :refused :reply)))
+         ((null (cdr payload))
+          (list :consumer-status-reply status nil nil nil))
+         (t (list :refused :reply)))))))
+
+(defthm fn-ncl-status-reply-roundtrip
+  (implies (and (fn-cp-uintp ack)
+                (fn-cp-uintp frontier)
+                (fn-cp-uintp gap)
+                (equal gap (- frontier ack)))
+           (equal (fn-ncl-status-reply-decode
+                   (fn-ncl-status-reply-encode
+                    :accepted ack frontier gap))
+                  (list :consumer-status-reply :accepted
+                        ack frontier gap)))
+  :hints (("Goal"
+           :in-theory (enable fn-ncl-status-reply-encode
+                              fn-ncl-status-open
+                              fn-ncl-status-reply-decode))))
 
 ; Poll carries one exact accepted Store event at most.  The two lengths make
 ; the cursor and report unambiguous without asking raw Lisp to parse either.
@@ -229,6 +314,11 @@
                (not (equal third fourth)))
           (list :run :poll control id third fourth)
         (list :usage :poll)))
+     ((equal command '(115 116 97 116 117 115)) ; status
+      (if (and (equal (len argv) 2)
+               (fn-cp-idp id) (fn-ncfg-printablep id))
+          (list :run :status control id nil nil)
+        (list :usage :status)))
      ((equal command '(97 99 107)) ; ack
       (if (and (equal (len argv) 2) (fn-ncl-absolute-pathp id))
           (list :run :ack control id nil nil)
@@ -244,6 +334,9 @@
 (verify-guards fn-ncl-request-decode)
 (verify-guards fn-ncl-reply-encode)
 (verify-guards fn-ncl-reply-decode)
+(verify-guards fn-ncl-status-reply-encode)
+(verify-guards fn-ncl-status-open)
+(verify-guards fn-ncl-status-reply-decode)
 (verify-guards fn-ncl-poll-event-bytesp)
 (verify-guards fn-ncl-poll-seal)
 (verify-guards fn-ncl-poll-open)

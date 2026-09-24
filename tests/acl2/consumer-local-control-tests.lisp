@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/consumer-local-control")
 
 (defconst *ncl-id* '(7))
@@ -33,9 +34,87 @@
          (fn-ncl-request-encode :position *ncl-id* nil))
         (list :consumer :position *ncl-id* nil)))
 (assert-event
+ (equal (fn-ncl-request-decode
+         (fn-ncl-request-encode :status *ncl-id* nil))
+        (list :consumer :status *ncl-id* nil)))
+(assert-event
+ (equal (fn-ncl-cli-plan '(115 116 97 116 117 115)
+                         (list '(47 116 109 112 47 99) *ncl-cli-id*))
+        '(:run :status (47 116 109 112 47 99) (99) nil nil)))
+(assert-event
+ (equal (fn-ncl-cli-plan '(115 116 97 116 117 115)
+                         (list '(47 116 109 112 47 99) '(32)))
+        '(:usage :status)))
+(assert-event
  (equal (fn-ncl-reply-decode
          (fn-ncl-reply-encode :accepted *ncl-token*))
         (list :consumer-reply :accepted *ncl-token*)))
+(assert-event
+ (equal (fn-ncl-status-reply-decode
+         (fn-ncl-status-reply-encode :accepted 7 7 0))
+        '(:consumer-status-reply :accepted 7 7 0)))
+(assert-event
+ (equal (fn-ncl-status-reply-decode
+         (fn-ncl-status-reply-encode :accepted 3 11 8))
+        '(:consumer-status-reply :accepted 3 11 8)))
+(assert-event
+ (equal (fn-ncl-status-reply-decode
+         (fn-ncl-status-reply-encode :refused nil nil nil))
+        '(:consumer-status-reply :refused nil nil nil)))
+(assert-event
+ (equal (fn-ncl-status-reply-decode
+         (fn-ncl-status-reply-encode :accepted 3 11 8))
+        '(:consumer-status-reply :accepted 3 11 8)))
+(must-fail
+ (assert-event
+  (equal (fn-ncl-status-reply-decode
+          (fn-ncl-status-reply-encode :accepted -1 11 12))
+         '(:consumer-status-reply :accepted -1 11 12))))
+(must-fail
+ (assert-event
+  (equal (fn-ncl-status-reply-decode
+          (fn-ncl-status-reply-encode
+           :accepted 3 (1+ *fn-cbor-max-uint*)
+           (- (1+ *fn-cbor-max-uint*) 3)))
+         (list :consumer-status-reply :accepted
+               3 (1+ *fn-cbor-max-uint*)
+               (- (1+ *fn-cbor-max-uint*) 3)))))
+(must-fail
+ (assert-event
+  (equal (fn-ncl-status-reply-decode
+          (fn-ncl-status-reply-encode
+           :accepted 11 3 (- 3 11)))
+         (list :consumer-status-reply :accepted
+               11 3 (- 3 11)))))
+(must-fail
+ (assert-event
+  (equal (fn-ncl-status-reply-decode
+          (fn-ncl-status-reply-encode :accepted 3 11 7))
+         '(:consumer-status-reply :accepted 3 11 7))))
+(assert-event (eq (fn-ncl-status-reply-encode :accepted 3 11 7) :bad))
+(defconst *ncl-status-overbound-payload* (make-list 14 :initial-element 0))
+(defconst *ncl-status-overbound-protected*
+  (fn-frame-protected *fn-nctrl-magic* *fn-nctrl-version*
+                      *fn-ncl-status-reply-kind*
+                      *ncl-status-overbound-payload*))
+(defconst *ncl-status-overbound-frame*
+  (append *ncl-status-overbound-protected*
+          (fn-frame-trailer *ncl-status-overbound-protected*)))
+(assert-event
+ (equal (fn-ncl-status-reply-decode *ncl-status-overbound-frame*)
+        '(:refused :frame)))
+(defconst *ncl-status-malformed-gap-payload*
+  (append '(0) (fn-cbor-u32-bytes 3) (fn-cbor-u32-bytes 11)
+          (fn-cbor-u32-bytes 7)))
+(defconst *ncl-status-malformed-gap-protected*
+  (fn-frame-protected *fn-nctrl-magic* *fn-nctrl-version*
+                      *fn-ncl-status-reply-kind*
+                      *ncl-status-malformed-gap-payload*))
+(assert-event
+ (equal (fn-ncl-status-reply-decode
+         (append *ncl-status-malformed-gap-protected*
+                 (fn-frame-trailer *ncl-status-malformed-gap-protected*)))
+        '(:refused :reply)))
 (defconst *ncl-report*
   (fn-record-encode-impl
    (fn-record-make 0 0 0 "<poll@fn.test>" '(65) '("fn.test")
