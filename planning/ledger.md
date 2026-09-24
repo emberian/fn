@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 673 |
-| Certification roots in the Makefile | 662 |
-| Books inside the root closure | 671 |
-| `defthm` and `defthmd` events | 9004 |
-| `defun` events | 6586 |
+| Books read | 675 |
+| Certification roots in the Makefile | 664 |
+| Books inside the root closure | 673 |
+| `defthm` and `defthmd` events | 9018 |
+| `defun` events | 6599 |
 | Functions with verified guards | 2036 |
 | Functions declared `:verify-guards nil` and never verified | 408 |
-| Functions left at the default with an explicit guard | 3296 |
-| Functions left at the default with no guard | 846 |
-| `assert-event` checks | 9764 |
-| `must-fail` checks | 590 |
+| Functions left at the default with an explicit guard | 3300 |
+| Functions left at the default with no guard | 855 |
+| `assert-event` checks | 9821 |
+| `must-fail` checks | 598 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
 | Export-hygiene warnings | 108 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 48 |
-| Include-hygiene warnings | 647 |
+| Include-hygiene warnings | 648 |
 | Host-names warnings | 816 |
 | Hand-written-record warnings | 18 |
 
@@ -363,6 +363,7 @@ that `make certify` requests.
 | `books/owner-log.lisp` | root | 11 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/owner-prepare-correspondence.lisp` | root | 19 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/owner-retention-preparation.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/owner-served-invariants.lisp` | root | 14 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/owner-tls-prefix.lisp` | root | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner.lisp` | root | 81 | 145 | 0/5/140/0 | 0 | 0 | 0 |
 | `books/path-update.lisp` | root | 77 | 29 | 2/0/26/1 | 0 | 0 | 0 |
@@ -682,6 +683,7 @@ that `make certify` requests.
 | `tests/acl2/owner-operator-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 34 | 8 | 0 |
 | `tests/acl2/owner-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 26 | 1 | 0 |
 | `tests/acl2/owner-retention-preparation-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 5 | 1 | 0 |
+| `tests/acl2/owner-served-invariants-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 57 | 8 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 15 | 0/0/1/14 | 309 | 2 | 0 |
 | `tests/acl2/owner-tls-pin-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |

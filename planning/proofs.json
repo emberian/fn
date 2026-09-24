@@ -94,7 +94,8 @@
         "fn-watermark-does-not-conflict",
         "fn-allocate-at-watermark",
         "fn-state-has-fresh-local-numbers",
-        "fn-durable-completion-installs-exact-pending-article"
+        "fn-durable-completion-installs-exact-pending-article",
+        "fn-own-pinned-view-survives-other-post"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -729,7 +730,8 @@
         "fn-served-step-preserves-connp",
         "fn-served-run-preserves-connp",
         "fn-served-step-effects-are-typed",
-        "fn-served-run-effects-are-typed"
+        "fn-served-run-effects-are-typed",
+        "fn-own-240-follows-consumed-completion"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -1428,7 +1430,10 @@
         "fn-own-fault-clears-the-faulted-submission",
         "fn-own-fault-keeps-another-connections-submission",
         "fn-own-fault-releases-the-faulted-transaction",
-        "fn-own-fault-is-not-a-store-event"
+        "fn-own-fault-is-not-a-store-event",
+        "fn-own-fault-reply-is-not-a-post-outcome",
+        "fn-ocfg-fault-keeps-every-other-connection",
+        "fn-ocfg-open-at-the-bound-refuses"
       ]
     },
     {
