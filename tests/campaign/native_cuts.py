@@ -275,6 +275,24 @@ def verify_checkpoint_cut_map() -> None:
     for name in ("pack-reclaim-unlink", "pack-reclaim-directory"):
         if name not in reclaim:
             raise AssertionError("{} absent from reclaim model".format(name))
+    # The theorem subjects of books/checkpoint-compaction-preservation are
+    # the functions the reclaim and the next open call.
+    reclaim_host = host_function(native, "fnn-pack-prefix-reclaim")
+    if "(fnn-core 'fn-bs-pack-reclaim-plan observed limit lower)" not in reclaim_host:
+        raise AssertionError("pack-reclaim no longer calls fn-bs-pack-reclaim-plan")
+    order = [reclaim_host.index("(fnn-unlink "),
+             reclaim_host.index('(fnn-checkpoint-test-stop "pack-reclaim-unlink")'),
+             reclaim_host.index("(fnn-fsync-dir (fnn-transactions store))"),
+             reclaim_host.index('(fnn-checkpoint-test-stop "pack-reclaim-directory")')]
+    if order != sorted(order):
+        raise AssertionError("fnn-pack-prefix-reclaim is out of fn-bs-pack-reclaim-steps order")
+    bridge = (ROOT / "host/checkpoint-host.lisp").read_text()
+    for wrapper, subject in (
+            ("fn-store-checkpoint-compaction-observe", "fn-ccp-observe-framed"),
+            ("fn-store-checkpoint-compaction-coverage", "fn-ccp-coverage-framed")):
+        body = host_function(bridge, wrapper)
+        if "({} ".format(subject) not in body:
+            raise AssertionError("{} does not call {}".format(wrapper, subject))
 
 
 # The post cut whose EIO the host swallows: a cut between two best-effort
