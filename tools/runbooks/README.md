@@ -23,6 +23,13 @@ session. None of them is a gate or a claim; each says what it does at the top.
 - `two-host-protected-gate.md`: stage one source-pinned frozen image in
   separate hbox and persvati scratch paths and run the protected NNTP gate
   after its image hashes are supplied. It never uses the live node store.
+- `two_store_join.py run --image-dir DIR --mini-bin BIN --scratch
+  /tank/fn/scratch/... --local-out DIR [--cut FAMILY]`: from the Mini host,
+  the one-exchange two-Store join (R at A, protected A→B peering, B's
+  receiver verdict, Mini's poll/transaction/ACK at B, Mini's signed reply at
+  B, B→A, restart both, Mini reads at A), with per-step logs and
+  ACCEPTED/REFUSED/UNCERTAIN verdicts. See
+  `planning/evidence/two-store-join-harness-2026-09-24.md`.
 
 After `hbox-node-deploy.sh`, the check from the laptop is `tools/node_probe.py`
 (see docs/operator.md, "Reaching it from a laptop"): STARTTLS, the 483 before
