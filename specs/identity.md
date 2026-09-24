@@ -81,6 +81,10 @@ selector to the identity replay step and proves that earlier carried verdicts
 are unchanged. Its trace checks the node/file and journal-sequence relations
 through A/B enrollment, A rotation, A tombstone and observed reopen. A general
 crash-phase relation for all possible lifecycle traces remains an obligation.
+On successful `fn-sn-recover`, the carried per-principal selector and accepted
+verdict list are projections of the recovered durable records' identity
+replay; before- and after-publication crash witnesses distinguish whether B's
+enrollment exists after recovery.
 
 `fn-hsig-subject-body-injective` proves that equality of two valid authored
 subject bodies implies equality of their principal, ordered Ed25519 and

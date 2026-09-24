@@ -63,6 +63,24 @@ completed-snapshot footprint plus a reachable Store trace. It is not an
 inductive relation equating the per-principal view to every possible durable
 history at every crash phase.
 
+The subsequent recovery extension proves the actual `fn-sn-recover` success
+branch: if a well-formed Store enters in `:replaying` and recovery reaches
+`:recovering`, `fn-hls-successful-recover-current-enrollment` selects from
+the kind-3 snapshots obtained by `fn-replay-identity` over the recovered
+durable records, while
+`fn-hls-successful-recover-historical-verdicts` equates the carried verdict
+list to the kind-4 verdict pairs from that same replay. The test cuts B2
+before publication (`:old/:absent`, B remains unenrolled) and after the
+record-directory success but before live finish (`:old/:present`, B is
+recovered), retaining A1's prior verdict in both. It also keeps the full
+A/B/rotation/tombstone observed-reopen trace above. Persvati passed the two
+changed roots in
+[`certify-20260924T062045Z-1140805.json`](manifests/certify-20260924T062045Z-1140805.json):
+2.48 seconds for the proof book, 2.627 seconds for the test book, 5.123
+seconds overall with 79 matching cached dependencies. This is a theorem
+about successful recovery and selected crash cuts; it does not assert every
+physical crash boundary or a global trace induction for the local selector.
+
 `python3 tools/harness_check.py --quiet` reported zero ACL2 arity/signature
 findings, `python3 -m py_compile tests/test_native_hybrid_author.py` passed,
 and an SBCL reader pass read the edited host files. The opt-in native fixture

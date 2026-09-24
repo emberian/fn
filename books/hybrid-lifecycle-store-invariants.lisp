@@ -138,3 +138,64 @@
                 (fn-sn-completion-enabledp fn-stxk-p fn-stxe-p fn-stxa-p
                  fn-store-retention-event-p fn-cpe-eventp
                  fn-th-topic-eventp fn-sn-finish-identity)))))
+
+; The derived event index is unrelated to author authority. Recovery installs
+; the exact identity replay context through fn-sn-update-replayed before the
+; topic, event-index and consumer projections are layered around it.
+(defthm fn-hls-current-enrollment-of-with-event-index
+  (equal (fn-hls-current-enrollment
+          (fn-sn-with-event-index s event-index) requested)
+         (fn-hls-current-enrollment s requested))
+  :hints (("Goal" :in-theory (enable fn-hls-current-enrollment))))
+
+(defthm fn-hls-current-enrollment-of-update-replayed
+  (equal (fn-hls-current-enrollment
+          (fn-sn-update-replayed s files node index identity-context)
+          requested)
+         (fn-hl-current-enrollment
+          requested (fn-stxk-context-snapshots identity-context)))
+  :hints (("Goal" :in-theory (enable fn-hls-current-enrollment))))
+
+; A successful recovery recomputes the local author view from durable Store
+; records. The phase premises identify the actual crash/replay branch; a
+; pre-publication candidate is absent from those records, while a published
+; kind-3 event is replayed even if live finish never ran.
+(defthm fn-hls-successful-recover-current-enrollment
+  (implies
+   (and (fn-sn-statep s)
+        (equal (fn-sf-phase (fn-sn-files s)) :replaying)
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-recover s))) :recovering))
+   (equal
+    (fn-hls-current-enrollment (fn-sn-recover s) requested)
+    (fn-hl-current-enrollment
+     requested
+     (fn-stxk-context-snapshots
+      (fn-replay-identity
+       (fn-sf-records
+        (fn-sf-recover (fn-sn-files s)
+                       (fn-sn-groups s) (fn-sn-capacity s))))))))
+  :hints (("Goal"
+           :in-theory
+           (e/d (fn-sn-recover)
+                (fn-sn-statep fn-sf-recover fn-replay-identity
+                 fn-hls-current-enrollment fn-hl-current-enrollment
+                 fn-cpe-projection-replay fn-th-prefix-project)))))
+
+(defthm fn-hls-successful-recover-historical-verdicts
+  (implies
+   (and (fn-sn-statep s)
+        (equal (fn-sf-phase (fn-sn-files s)) :replaying)
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-recover s))) :recovering))
+   (equal
+    (fn-sn-verdicts (fn-sn-recover s))
+    (fn-replay-verdict-pairs
+     (fn-stxk-context-verdicts
+      (fn-replay-identity
+       (fn-sf-records
+        (fn-sf-recover (fn-sn-files s)
+                       (fn-sn-groups s) (fn-sn-capacity s))))))))
+  :hints (("Goal"
+           :in-theory
+           (e/d (fn-sn-recover)
+                (fn-sn-statep fn-sf-recover fn-replay-identity
+                 fn-cpe-projection-replay fn-th-prefix-project)))))
