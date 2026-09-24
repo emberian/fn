@@ -23,6 +23,18 @@ image does not qualify them.
 
 ## Integrated capabilities and their limits
 
+- [BP forwarding](evidence/bp-forwarding-2026-09-24.md) now connects the
+  host-called progress machine to negotiated TCPCL sessions, exact ACL2 wire
+  construction, durable kind-8 attempts and kind-9 results, and replay through
+  shared row updates. Reached ACL2 tests distinguish an older bundle blocked
+  by the negotiated MRU from a younger sendable bundle and compare cached
+  cleanup debt with cold replay. **Death after kind 8 remains a liveness gap:**
+  replay retains the active attempt but loses the session, and selection
+  skips the stranded row. A recovery settlement/retry policy needs its own
+  duplicate-control argument. No complete interrupted-send recovery claim
+  follows from the successful ordinary trace. The full outer cache invariant
+  remains unadmitted; guard repair and matching native qualification are
+  recorded with the final cut below.
 - [Receiver-local signed ingress](evidence/peer-authored-ingress-2026-09-24.md)
   joins NNTP and BP through one acceptance helper. Present-invalid carriers
   cannot fall through to unsigned acceptance; fresh native acceptance binds
