@@ -483,6 +483,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-post-tests \
 	books/path \
 	books/path-update \
+	books/path-update-tail \
 	books/peer-config \
 	books/peer-inbound \
 	books/peer-inbound-invariants \
@@ -556,6 +557,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner \
 	books/owner-invariants \
 	books/owner-fault \
+	books/owner-feed-subject \
 	books/owner-prepare-correspondence \
 	books/owner-retention-preparation \
 	books/owner-agent \

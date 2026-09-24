@@ -1097,7 +1097,11 @@
       "progress_note": "books/owner-feed and tests/acl2/owner-feed-tests are CERTIFIED as of 2026-09-20, lane w6/peering-feed-4 (laptop ACL2 8.7, evidence build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T212559Z-13370; the persvati closure run-20260920T211802Z-ba78 reached them for the first time). What unblocked them was books/peer-feed-invariants, which now certifies with no open form. books/owner certifies too. The owner-side statement over fn-own-step is still open, and the reason has moved: books/owner-invariants is open at the :open-peer arm of fn-own-step-preserves-relation, not at the feed. The earlier non-admission explanation above is historical; later frozen owner books certified. W22 integrates the actual host tick/reply/loss/restart projections through owner-feed-port, including an all-or-nothing logical restart fold. Its owned closure and combined source gate are tracked separately; no new theorem over fn-own-step or native outbound socket/timer behavior is claimed from this adoption. Native feed component now carries a connection-table invariant from recovery through put/remove, validates only selected bounded input, and distinguishes handshake rejection from delivery refusal. Owned certification and raw boundary tests are separate from activation/real two-native-node evidence. The shell host-wrapper witness is withheld pending repair of its unconditional success marker.",
       "events": [
         "fn-own-feed-target-is-offerable",
-        "fn-own-feed-targets-omit-no-offerable-peer"
+        "fn-own-feed-targets-omit-no-offerable-peer",
+        "fn-own-feed-never-offers-a-loop",
+        "fn-own-submission-targets-are-feed-targets",
+        "fn-own-submission-never-targets-a-loop",
+        "fn-own-transit-outcome-never-enqueues-on-the-origin"
       ]
     },
     {
@@ -2045,7 +2049,9 @@
         "fn-pu-relay-article-changes-only-path-and-xref",
         "fn-pu-relay-article-is-idempotent",
         "fn-pu-relay-article-leaves-no-xref",
-        "fn-pu-relay-article-names-the-agent-in-every-path"
+        "fn-pu-relay-article-names-the-agent-in-every-path",
+        "fn-peer-relayed-octets-keep-the-received-path-tail",
+        "fn-pu-relay-article-keeps-the-received-path-tail"
       ]
     },
     {
