@@ -1,0 +1,32 @@
+# target tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_eight_retries_once_and_peer_holds_one_copy  start 2026-09-24T17:44:26Z  cwd /tank/fn/scratch/m4-dtn-n08/tree
+# cmd: python3 -m unittest -v tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_eight_retries_once_and_peer_holds_one_copy
+# sbcl on PATH: /tank/fn/scratch/m4-dtn-n08/bin/sbcl (SBCL 2.6.8)
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/fn-host-dtn-developer
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=9d80e3df1b9634cba61951a5f4580e362999df06e8f24cf45de224119322b307
+# env FN_NATIVE_CRASH_HOST=/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=b9758bfd0a2590478070c3a8324d22fd1a167301a6a592d4ca03438614743922
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=1b73486898d9b49fc1907690a406a7a422dabcc4
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/m4-dtn-n08/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/m4-dtn-n08/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/scratch/m4-dtn-n08/tree/build/images/1b73486898d9b49fc1907690a406a7a422dabcc4/runtime/sbcl-home/
+test_death_after_kind_eight_retries_once_and_peer_holds_one_copy (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_eight_retries_once_and_peer_holds_one_copy)
+N08 on the image: death after a durable kind 8 whose transfer ran. ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 29.298s
+
+OK
+# rc=0 wall=29.4 end 2026-09-24T17:44:56Z
