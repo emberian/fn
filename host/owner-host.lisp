@@ -1183,6 +1183,10 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-carrier-form received)))
 
+(defun fn-owner-served-carried-word (word detail state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pa-served-word word detail)))
+
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge
                  observed-ml-key ed-observation ml-observation state)

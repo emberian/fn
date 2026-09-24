@@ -126,6 +126,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-lifecycle-tests \
 	books/hybrid-lifecycle-store-invariants \
 	books/owner-verdict-read \
+	books/owner-signed-post \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
 	tests/acl2/native-control-tests \
@@ -604,6 +605,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-fault-tests \
 	tests/acl2/owner-verdict-tests \
 	tests/acl2/owner-verdict-read-tests \
+	tests/acl2/owner-signed-post-tests \
 	tests/acl2/owner-operator-tests \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
