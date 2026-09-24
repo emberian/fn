@@ -33,6 +33,8 @@
 (assert-event (equal (guard 'fn-sn-prepare-node nil (w state)) '(if (fn-node-statep node) (true-listp record) 'nil)))
 (assert-event (equal (symbol-class 'fn-sn-prepare (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-prepare nil (w state)) '(fn-sn-statep s)))
+(assert-event (equal (symbol-class 'fn-sn-prepare-retention (w state)) :common-lisp-compliant))
+(assert-event (equal (guard 'fn-sn-prepare-retention nil (w state)) '(fn-sn-statep s)))
 (assert-event (equal (symbol-class 'fn-sn-find-record (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-find-record nil (w state)) ''t))
 (assert-event (equal (symbol-class 'fn-sn-completion-record (w state)) :common-lisp-compliant))
@@ -100,6 +102,29 @@
 (assert-event (with-guard-checking :none (not (fn-sn-statep '(a b c . 7)))))
 (assert-event (with-guard-checking :none (not (fn-sn-record-bindsp 7 7))))
 (assert-event (with-guard-checking :none (equal (fn-sn-prepare 7 '(bad . record)) 7)))
+(assert-event (with-guard-checking :none (equal (fn-sn-prepare-retention 7 '(bad . event)) 7)))
+; Reachable reservation: a valid undertaking stages a record while keeping
+; the live node unchanged until the publication directory barrier.
+(defconst *sng-retention-initial* (fn-sn-initial '("fn.test") 10))
+(defconst *sng-retention-reserved*
+  (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io *sng-retention-initial*
+                                       :start-frontier nil)
+                             :frontier-file :ok)
+                   :frontier-replace :ok)
+         :frontier-directory :ok))
+(defconst *sng-retention-event*
+  (fn-store-retention-event-make :undertake 0 0 0
+                                 "guard-obligation" "subject" "evidence" 1))
+(assert-event (and (fn-sn-statep *sng-retention-reserved*)
+                   (equal (fn-sf-phase (fn-sn-files *sng-retention-reserved*))
+                          :reserved)))
+(assert-event
+ (let ((staged (fn-sn-prepare-retention *sng-retention-reserved*
+                                        *sng-retention-event*)))
+   (and (equal (fn-sf-phase (fn-sn-files staged)) :record-staged)
+        (equal (fn-sn-node staged) (fn-sn-node *sng-retention-reserved*))
+        (equal (fn-sf-record-candidate (fn-sn-files staged))
+               *sng-retention-event*))))
 (assert-event (with-guard-checking :none (equal (fn-sn-find-record '(nil . nil) '(7 other)) 7)))
 (assert-event (with-guard-checking :none (equal (fn-sn-completion-record 7) nil)))
 (assert-event (with-guard-checking :none (not (fn-sn-completion-enabledp 7))))
