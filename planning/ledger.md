@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 740 |
-| Certification roots in the Makefile | 729 |
-| Books inside the root closure | 738 |
-| `defthm` and `defthmd` events | 9813 |
-| `defun` events | 6928 |
-| Functions with verified guards | 2059 |
+| Books read | 743 |
+| Certification roots in the Makefile | 732 |
+| Books inside the root closure | 741 |
+| `defthm` and `defthmd` events | 9839 |
+| `defun` events | 6947 |
+| Functions with verified guards | 2060 |
 | Functions declared `:verify-guards nil` and never verified | 459 |
-| Functions left at the default with an explicit guard | 3445 |
-| Functions left at the default with no guard | 965 |
-| `assert-event` checks | 10733 |
-| `must-fail` checks | 874 |
+| Functions left at the default with an explicit guard | 3457 |
+| Functions left at the default with no guard | 971 |
+| `assert-event` checks | 10768 |
+| `must-fail` checks | 890 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 85 |
 | Export-hygiene warnings | 116 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 61 |
-| Include-hygiene warnings | 723 |
+| Include-hygiene warnings | 726 |
 | Host-names warnings | 826 |
 | Hand-written-record warnings | 18 |
 
@@ -411,6 +411,8 @@ that `make certify` requests.
 | `books/peer-offer-indexed.lisp` | root | 13 | 4 | 3/0/1/0 | 0 | 0 | 1 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 14 | 29 | 1/0/28/0 | 0 | 0 | 0 |
+| `books/poster-bytes-invariants.lisp` | root | 24 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/poster-bytes.lisp` | root | 2 | 11 | 1/0/10/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/principal.lisp` | root | 6 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/provenance-codec.lisp` | root | 27 | 25 | 1/0/24/0 | 0 | 0 | 1 |
@@ -752,6 +754,7 @@ that `make certify` requests.
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 214 | 5 | 0 |
 | `tests/acl2/peer-offer-indexed-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 33 | 4 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
+| `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 35 | 16 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
 | `tests/acl2/records-shape-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 25 | 7 | 0 |
