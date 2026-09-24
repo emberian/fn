@@ -1,20 +1,20 @@
 # How we work now
 
-The user's [broad capability wave](capability-wave-2026-09-24.md) authorizes
-larger concurrent implementation steps and explicit intermediate integration
-failures. It supersedes sequencing that held dependent implementation until
-every prerequisite proof had landed. The loop below remains the standard for
-claiming a packet qualified; unqualified checkpoints are allowed and must name
-the missing proof/build/runtime work. A qualification freeze pins its own
-isolated checkout or immutable export; it does not freeze development.
-
-One page. A lane is briefed from this and from its step in
-[the trajectory plan](plan-2026-09-22-trajectory.md) (§3 the steps, §3.3 the
-phase schedule). The rules below are the five findings of
+One page. A lane is briefed from this page, from [now.md](now.md) (where dev
+is, the goal, the active lanes) and from the
+[wind-down handoff](handoff-2026-09-24-winddown.md) (the restart record).
+Release scope is [the trajectory plan](plan-2026-09-22-trajectory.md) §0 to §2.
+The rules below are the five findings of
 [the proof-engineering review](review-2026-09-22-proof-engineering.md) turned
 into practice, plus the assurance rules of [AGENTS.md](../AGENTS.md), which
-still apply in full. ember's 2026-09-23 correction below supersedes the old
-five-lane limit and exclusive-file ownership; batched convergence remains.
+still apply in full.
+
+Larger concurrent steps with explicitly recorded intermediate failures are
+allowed (the user's broad-wave request of 2026-09-24,
+[decisions](decisions.md)). The loop below remains the standard for claiming
+a packet qualified; an unqualified checkpoint names its missing
+proof/build/runtime work. A qualification freeze pins its own isolated
+checkout or immutable export; it does not freeze development.
 
 ## The loop
 
@@ -55,27 +55,27 @@ five-lane limit and exclusive-file ownership; batched convergence remains.
    closure and its actual runtime qualification. The node page names the
    tested image and the properties demonstrated on it.
 
-## Width and coordination (revised by ember, 2026-09-23)
+## Width and coordination
 
-Start around **ten useful implementation agents**, mostly GPT-6-Sol, and
-expand when another agent has substantive work to advance. Agent count and
-ACL2 process count are separate budgets. We are not increasing machine slot
-pools just because we increase the number of agents.
+Start around **ten useful lanes** and add one only when it has substantive
+work to advance (ember, 2026-09-23). Agent count and ACL2 process count are
+separate budgets: more lanes do not enlarge the machine slot pools.
 
 **Work claims announce intent; they do not reserve territory.** Shared files
-and shared proof targets are allowed. Agents coordinate directly about the
-interface, source revision, planned edit and evidence they can reuse. They
-may pair on a theorem, split a definition from its consumers, exchange a
-small commit, or jointly integrate a change. Only an actual dependency needs
-sequencing. Root is available for disputes and design questions, not required
-as the relay for every conversation.
+and shared proof targets are allowed. Lanes that overlap agree on the
+interface, source revision, planned edit and reusable evidence; they may pair
+on a theorem, split a definition from its consumers, or jointly integrate a
+change. Only an actual dependency needs sequencing.
 
-At dispatch give agents the teammate roster and overlapping goals. In Codex,
-`collaboration.list_agents` discovers peers and `collaboration.send_message`
-lets them talk directly. Announce a changed signature, shared edit, useful
-lemma, failed approach or certification run to affected peers promptly.
-[The swarm board](swarm-board.md) preserves intentions, decisions, run IDs and
-next actions across compaction; it is a summary, not a lock or approval gate.
+Coordination is harness-neutral. Each lane keeps `LANEDUMP.md` in its
+worktree (changes, commits, submitted runs, findings for peers, what it
+could not resolve) and ends with a report; those are the messages. The
+[swarm board](swarm-board.md) lists intentions and runs to reuse; it is a
+summary, not a lock or approval gate. The coordinator merges coherent
+batches, relays a need between lanes when one cannot read the other in
+time, and settles disputes and design questions. Announce a changed
+signature, shared edit, useful lemma, failed approach or certification run
+where affected peers will read it.
 
 Use worktrees/checkpoints to reconcile overlapping patches deliberately;
 don't overwrite a peer's in-progress text in a shared checkout. Contributors
@@ -85,21 +85,18 @@ anyone permanent ownership of the file. Reusing a proof result means reusing
 matching content/toolchain evidence, not borrowing another branch's green
 label after changing its definitions.
 
-## Luna implementation with Sol proof ownership (2026-09-24 trial)
+## Who implements and who proves
 
-The user's trial correction is to keep proof development with Sol. Luna can
-implement bounded features, client/UI work and fixtures against an explicit
-contract, and run prescribed checks. When certification fails, hand the exact
-source, failed event and log to Sol; do not send Luna through theorem search,
-hint experiments or repeated farm retries. Sol owns proof obligations and
-repairs alongside the implementation, with Astra reviewing coherent batches
-and consequential design questions.
-
-Measure the completed team's work, including review, repair, integration and
-remaining assurance debt. Fast source commits alone do not establish an
-accepted feature or a cost saving. Record coordination mistakes separately
-from implementation defects, and count parent interventions. This is the
-working division for fn, not a general model benchmark.
+Which model runs a lane is the coordinator's choice and is written in the
+lane's brief: Claude-coordinated nights run lanes on Claude Opus 5.5;
+Codex-coordinated ones used GPT-6 roles (Sol, Luna, Astra). One trial rule
+from 2026-09-24 carries over regardless of model ([decisions](decisions.md)):
+a lane briefed only to implement a bounded feature against an explicit
+contract does not go theorem-searching when certification fails. It hands
+the exact source, failed event and log to the lane that owns the proof
+obligation. Measure the completed work, including review, repair,
+integration and remaining assurance debt; fast source commits alone do not
+establish an accepted feature or a cost saving.
 
 ## Useful parallelism and proof cost
 
@@ -241,3 +238,20 @@ published a certification of `dev`'s head since. The rules that follow:
   three minutes from a book edit to a certified verdict, measured by the
   three rows of `tools/iteration_bench.py` (leaf edit, deep edit, freeze)
   and recorded with each change that claims to help.
+
+## Convergence obligations
+
+Carried from the [2026-09-24 capability wave](archive/capability-wave-2026-09-24.md):
+
+- A checkpoint names behavior present, source revisions, known failures and
+  missing assurance. Runtime activation in development can precede full proof;
+  deployment and release claims still require their evidence.
+- Preserve the exact-source hybrid profile, indefinite accepted retention until
+  authorized release, and separate uncertain/refused/accepted outcomes.
+- Keep semantic ownership in executable ACL2 and prove the called paths or their
+  named correspondences. Intermediate red books remain visible work, not excuses
+  to weaken statements or introduce host twins.
+- Qualify a pinned source while development continues. At convergence, combine
+  current packets, classify actual failures once, and fix them cooperatively.
+- Live `/tank/fn/node` remains protected. New tests use isolated stores, images,
+  ports and failure fixtures; the next deployment is a separate action.
