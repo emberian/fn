@@ -10,9 +10,9 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 719 |
-| Certification roots in the Makefile | 708 |
-| Books inside the root closure | 717 |
+| Books read | 722 |
+| Certification roots in the Makefile | 711 |
+| Books inside the root closure | 720 |
 | `defthm` and `defthmd` events | 9583 |
 | `defun` events | 6838 |
 | Functions with verified guards | 2046 |
@@ -26,7 +26,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 116 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 59 |
-| Include-hygiene warnings | 691 |
+| Include-hygiene warnings | 692 |
 | Host-names warnings | 826 |
 | Hand-written-record warnings | 18 |
 
@@ -234,7 +234,10 @@ that `make certify` requests.
 | `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/byte-store-programs.lisp` | root | 1 | 31 | 0/31/0/0 | 33 | 0 | 0 |
 | `books/byte-store-record-fence.lisp` | root | 41 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/byte-store-record-provenance.lisp` | root | 255 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `books/byte-store-record-provenance-bytes.lisp` | root | 132 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/byte-store-record-provenance-node.lisp` | root | 93 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/byte-store-record-provenance-owner.lisp` | root | 30 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `books/byte-store-record-provenance.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-relation.lisp` | root | 12 | 8 | 0/5/0/3 | 0 | 0 | 0 |
 | `books/byte-store-retention-publication.lisp` | root | 15 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/byte-store-scan.lisp` | root | 134 | 35 | 1/29/0/5 | 0 | 0 | 1 |
