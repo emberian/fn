@@ -740,7 +740,8 @@ class Acl2Store:
         """
         form = ("(fn-store-cfg-set-peer '{name} '{path} '{host} {port} "
                 "'{ing} {inmax} {inflight} '{outg} {stream} {maxq} {backoff} "
-                ":{authkind} '{auth} {monotonic} {wall} state)").format(
+                ":{authkind} '{auth} '{carries} {monotonic} {wall} state)").format(
+            carries="(" + " ".join(self.literal(c) for c in peer.get("carries", ())) + ")",
             name=self.literal(peer["name"]), path=self.literal(peer["path_identity"]),
             host=self.literal(peer["endpoint"]), port=int(peer["port"]),
             ing=self.literal(peer["inbound_groups"]),
@@ -1789,6 +1790,8 @@ def peer_arguments(args):
         "backoff_ms": args.backoff_ms,
         "auth_kind": "principal" if args.principal else "source-address",
         "auth_value": (args.principal or args.source_address or "").encode("utf-8"),
+        # D23: principals this peer may carry to us, unverified here.
+        "carries": [c.encode("utf-8") for c in (getattr(args, "carries", None) or ())],
     }
 
 
@@ -2259,6 +2262,9 @@ def main(argv=None):
     peer.add_argument("--backoff-ms", type=int, default=1000)
     peer.add_argument("--source-address")
     peer.add_argument("--principal")
+    peer.add_argument("--carries", action="append", metavar="HEX",
+                      help="D23: a principal (64 lowercase hex) whose signed "
+                           "articles this peer may carry to us; repeatable")
     policy = sub.add_parser("policy")
     policy.add_argument("action", choices=("set", "get"))
     policy.add_argument("slot",

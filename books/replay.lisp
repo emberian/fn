@@ -353,6 +353,24 @@
 
 (verify-guards fn-replay-identity-advance)
 
+;; D23: fn-stxk-apply-verdict without the keyring-snapshot lookup, for the
+;; verdict of a composite fn-hsig-article-event-carried-bindsp admits.  The
+;; verdict is recorded; no generation or profile of this node is named.
+(defun fn-replay-apply-carried-verdict (ctx e)
+  (declare (xargs :guard t))
+  (cond
+   ((not (equal (fn-stxk-context-kind ctx) :ok)) ctx)
+   ((not (fn-stxe-p e)) (fn-stxk-fault ctx :malformed-verdict))
+   ((not (equal (fn-stxe-sequence e) (fn-stxk-context-next ctx)))
+    (fn-stxk-fault ctx :sequence))
+   ((not (equal (fn-stxe-token e) :carried))
+    (fn-stxk-fault ctx :composite-verdict))
+   (t
+    (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
+                     (fn-stxk-context-snapshots ctx)
+                     (cons e (fn-stxk-context-verdicts ctx))
+                     (fn-stxk-context-current-generation ctx) nil))))
+
 (defun fn-replay-identity-step (ctx event)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (equal (fn-stxk-context-kind ctx) :ok)) ctx
@@ -368,6 +386,12 @@
                              (fn-stxk-context-snapshots checked)
                              (fn-stxk-context-verdicts ctx)
                              (fn-stxk-context-current-generation checked) nil))))
+       ;; D23: a carried composite names no local enrollment; its verdict
+       ;; (token :carried) is recorded without a snapshot lookup.
+       ((fn-hsig-article-event-carried-bindsp event)
+        (fn-replay-apply-carried-verdict
+         ctx (fn-stmt-value (fn-stxe-decode-exact
+                             (fn-stxa-verdict-event event)))))
        ((fn-stxa-p event)
         (let ((snapshot
                (fn-stxk-find (fn-stxa-keyring-generation event)

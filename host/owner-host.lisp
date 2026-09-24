@@ -916,6 +916,13 @@
                                       (fn-record-string-octets
                                        (fn-peer-evidence peer cfg))
                                       state))
+                 ; D23: the delivering boundary's carried-source list, the
+                 ; one fn-owner-peer-carrier-plan hands fn-pa-current-plan
+                 ; for this transit attempt (books/peer-authored-accept).
+                 (state (f-put-global 'fn-owner-transit-carried
+                                      (fn-pa-peer-carried-sources
+                                       peer (fn-cfg-peers (fn-cfg-value cfg)))
+                                      state))
                  ; (nth 2 args) is the payload fn-node-prepare is given:
                  ; fn-peer-relayed-octets of the received octets
                  ; (fn-peer-injection-arguments-stages-the-relayed-octets).
@@ -1221,10 +1228,21 @@
   (value (fn-hl-current-enrollment
           generation (fn-sn-keyring-snapshots (fn-owner-store state)))))
 
-(defun fn-owner-peer-carrier-plan (received state)
+; TRANSITP is the host's path: t only for the NNTP transit attempt, whose
+; delivering boundary fn-owner-transit-decide just read; served POST, bound
+; submissions and BP transit pass nil, the D02 decision unchanged
+; (fn-pa-current-plan-without-carried-list-never-carries).
+(defun fn-owner-transit-carried-list (transitp state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (and transitp (boundp-global 'fn-owner-transit-carried state))
+      (f-get-global 'fn-owner-transit-carried state)
+    nil))
+
+(defun fn-owner-peer-carrier-plan (received transitp state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-current-plan
-          received (fn-sn-keyring-snapshots (fn-owner-store state)))))
+          received (fn-sn-keyring-snapshots (fn-owner-store state))
+          (fn-owner-transit-carried-list transitp state))))
 
 (defun fn-owner-peer-carrier-form (received state)
   (declare (xargs :stobjs state :mode :program))
@@ -1233,6 +1251,28 @@
 (defun fn-owner-served-carried-word (word detail state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-served-word word detail)))
+
+; D23: the carried arm's kind-4 event (fn-pa-carried-event), for the NNTP
+; transit attempt only.  No primitive observation is taken or claimed.
+(defun fn-owner-peer-carried-relay-event
+    (coordinates msgid received group-codes obligation subject evidence charge
+                 state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes
+                  (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
+    (value
+     (if (equal groups :bad) nil
+       (fn-pa-carried-event
+        (first coordinates) (second coordinates) (third coordinates)
+        (fn-store-octets->string msgid) received groups
+        (fn-store-octets->string obligation)
+        (fn-store-octets->string subject)
+        (fn-store-octets->string evidence) charge
+        (fn-sn-keyring-snapshots s)
+        (fn-owner-transit-carried-list t state)
+        (fn-own-clock (fn-owner-core state)))))))
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge

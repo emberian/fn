@@ -25,6 +25,7 @@
   (cond ((equal x :verified) 1)
         ((equal x :unverified) 2)
         ((equal x :absent) 3)
+        ((equal x :carried) 4)
         (t 0)))
 
 (defun fn-stxe-code-token (x)
@@ -32,6 +33,7 @@
   (cond ((equal x 1) :verified)
         ((equal x 2) :unverified)
         ((equal x 3) :absent)
+        ((equal x 4) :carried)
         (t nil)))
 
 (defun fn-stxe-bounded-octetsp (x bound)

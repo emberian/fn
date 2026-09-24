@@ -56,7 +56,7 @@
 (assert-event (not (equal *ospt-staged* *tha-received*)))
 (defconst *ospt-snapshots* (fn-sn-keyring-snapshots (fn-own-store *ospt-taken*)))
 (assert-event
- (equal (fn-pa-current-plan *ospt-staged* *ospt-snapshots*)
+ (equal (fn-pa-current-plan *ospt-staged* *ospt-snapshots* nil)
         (list :ok *tha-root-source* *tha-principal* *tha-keys*
               *tha-signatures* *ospt-enrollment* 1)))
 
@@ -99,7 +99,7 @@
     (equal (fn-sn-verdict-lookup (fn-own-store (fn-own-step o '(:complete)))
                                  *ospt-msgid*)
            (fn-stx-make-verdict (fn-stxe-token v) (fn-stxe-detail v)
-                                (nth 6 (fn-pa-current-plan received snapshots))))))
+                                (nth 6 (fn-pa-current-plan received snapshots nil))))))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *ospt-completing*)))
 (assert-event (equal (fn-sn-completion-record (fn-own-store *ospt-completing*))
                      *ospt-event*))
@@ -209,20 +209,20 @@
 ; ---------------------------------------------------------------------------
 ; The refused arm.  fn-osp-plan-refusal-is-a-served-reason and
 ; fn-osp-served-refusal-renders-its-reason, on a POST in flight.
-(assert-event (equal (fn-pa-current-plan *ospt-staged* nil)
+(assert-event (equal (fn-pa-current-plan *ospt-staged* nil nil)
                      '(:refused :local-enrollment)))
 (defconst *ospt-malformed*
   (append (tha-line "FN-Authorship: !!!") *tha-root-source*))
-(assert-event (equal (fn-pa-current-plan *ospt-malformed* *ospt-snapshots*)
+(assert-event (equal (fn-pa-current-plan *ospt-malformed* *ospt-snapshots* nil)
                      '(:refused :carrier)))
 (assert-event (not (equal (fn-pa-carrier-form *ospt-malformed*) :absent)))
 ; Without the refused plan, the plan's second element is not a reason.
 (must-fail
  (assert-event
-  (member-equal (cadr (fn-pa-current-plan *ospt-staged* *ospt-snapshots*))
+  (member-equal (cadr (fn-pa-current-plan *ospt-staged* *ospt-snapshots* nil))
                 '(:article :carrier :carrier-shape :local-enrollment))))
 ; An absent carrier is the unsigned arm with its word unchanged.
-(assert-event (equal (fn-pa-current-plan *tha-root-source* *ospt-snapshots*)
+(assert-event (equal (fn-pa-current-plan *tha-root-source* *ospt-snapshots* nil)
                      :absent))
 (assert-event (equal (fn-pa-served-word :durable nil) :durable))
 (assert-event (equal (fn-pa-served-word :refused nil) :refused))
@@ -278,3 +278,87 @@
                 (fn-own-config *ospt-taken*) (fn-own-queue *ospt-taken*)
                 (fn-own-inflight *ospt-taken*) (fn-own-feeds *ospt-taken*))
    *ospt-poster* :signature)))
+
+; ---------------------------------------------------------------------------
+; D23, the carried arm on a Store with no enrollment of the author.  The
+; owner, Store prepare, (:complete) and a reader opened afterwards are the
+; host-called functions; the delivering boundary's list is *pat-carries*.
+(make-event
+ `(defconst *ospt-bare-open*
+    ',(let* ((o (fn-own-run (fn-own-start (fn-sn-initial *ospt-groups* 32) 4)
+                            (list (list :configure *ospt-config*)
+                                  (list :observe *ospt-obs*))))
+             (o (cdr (fn-own-open o nil))))
+        (cdr (fn-own-open o nil)))))
+(make-event
+ `(defconst *ospt-bare-taken*
+    ',(fn-own-step (ospt-submit *ospt-bare-open* *tha-received*) '(:take))))
+(defconst *ospt-bare-staged*
+  (fn-inj-decision-octets
+   (fn-own-sub-decision (fn-own-inflight *ospt-bare-taken*))))
+(assert-event (null (fn-sn-keyring-snapshots (fn-own-store *ospt-bare-taken*))))
+(assert-event (equal (fn-pa-current-plan *ospt-bare-staged* nil nil)
+                     '(:refused :local-enrollment)))
+(assert-event (equal (car (fn-pa-current-plan *ospt-bare-staged* nil
+                                              *pat-carries*))
+                     :carried))
+(defun ospt-carried-event (received carried)
+  (let ((s (fn-own-store *ospt-bare-taken*)))
+    (fn-pa-carried-event
+     (fn-sn-identity-next s)
+     (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))
+     (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))
+     *ospt-msgid* received *ospt-groups*
+     (fn-record-octets-string
+      (fn-id-text (fn-id-obligation-of (fn-record-string-octets *ospt-msgid*)
+                                       (fn-id-subject-of-payload received))))
+     (fn-record-octets-string (fn-id-text (fn-id-subject-of-payload received)))
+     "transit-evidence" (fn-charge-for-payload (len received))
+     (fn-sn-keyring-snapshots s) carried *ospt-obs*)))
+(make-event `(defconst *ospt-carried*
+               ',(ospt-carried-event *ospt-bare-staged* *pat-carries*)))
+(assert-event (fn-hsig-article-event-carried-bindsp *ospt-carried*))
+(assert-event (null (ospt-carried-event *ospt-bare-staged* nil)))
+; Replay's step records it (fn-osp-replay-records-a-carried-composite).
+(defconst *ospt-bare-ctx* (fn-sn-identity-context (fn-own-store *ospt-bare-taken*)))
+(assert-event (equal (fn-stxk-context-kind *ospt-bare-ctx*) :ok))
+(assert-event
+ (equal (fn-replay-identity-step *ospt-bare-ctx* *ospt-carried*)
+        (fn-replay-apply-carried-verdict
+         *ospt-bare-ctx* (fn-hls-kind4-verdict-event *ospt-carried*))))
+(assert-event (equal (fn-stxk-context-kind
+                      (fn-replay-identity-step *ospt-bare-ctx* *ospt-carried*))
+                     :ok))
+; Tooth (the sequence): the same event one identity sequence late faults.
+(must-fail
+ (assert-event
+  (equal (fn-stxk-context-kind
+          (fn-replay-identity-step
+           (fn-stxk-context :ok (1+ (fn-stxk-context-next *ospt-bare-ctx*))
+                            nil nil
+                            (fn-stxk-context-current-generation *ospt-bare-ctx*)
+                            nil)
+           *ospt-carried*))
+         :ok)))
+; Tooth (the carried binding): the forged :verified composite at generation
+; 0 is refused by replay for want of a snapshot.
+(assert-event (not (fn-hsig-article-event-carried-bindsp *pat-forged-verified*)))
+
+; The Store publishes it; a reader opened after (:complete) answers
+; HDR :fn-verified `carried <principal>' (fn-osp-carried-record-reads-carried).
+(make-event
+ `(defconst *ospt-carried-completing*
+    ',(fn-own-run *ospt-bare-taken* (ospt-store-events *ospt-carried*))))
+(assert-event (fn-sn-completion-enabledp (fn-own-store *ospt-carried-completing*)))
+(assert-event (equal (fn-sn-completion-record
+                      (fn-own-store *ospt-carried-completing*))
+                     *ospt-carried*))
+(assert-event
+ (equal (ospt-reader-verdict *ospt-carried-completing*)
+        (append (fn-nntp-string-octets "carried ")
+                (fn-stx-hex-octets *tha-principal*))))
+(must-fail
+ (assert-event
+  (equal (ospt-reader-verdict *ospt-carried-completing*)
+         (fn-stx-reader-item
+          (fn-stx-make-verdict :verified *tha-principal* 0)))))
