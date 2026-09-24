@@ -645,8 +645,11 @@ its outcome, which is the refusal to the offering ingress."
                 (fifth effect)))
       (:restart-fault
        (setf (fnn-bps-outcome service) :uncertain)
-       (fnn-indeterminate "bp-service: restart fenced: ~(~{~a~^ ~}~)"
-                          (rest effect)))
+       (if (eq (second effect) :clock-domain)
+           (fnn-indeterminate "bp-service: restart fenced: clock domain ~(~a~)"
+                              (third effect))
+         (fnn-indeterminate "bp-service: restart fenced: ~(~a~)"
+                            (second effect))))
       (:restart-ready
        (fnn-out "BP FNBS recovered held=~d" (second effect)))
       (t nil)))
