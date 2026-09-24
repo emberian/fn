@@ -476,6 +476,12 @@ completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
                          max-connections)))
             (unless (eq result :recovering)
               (fnn-fault "owner rejected committed history"))
+            ;; The persisted profile ACL2 decoded at open, handed back once:
+            ;; the owner's transaction budget is derived from it there.
+            (unless (eq (fnn-owner-core 'fn-owner-install-profile
+                                        (fnn-store-config store))
+                        :installed)
+              (fnn-fault "owner refused the store profile"))
             ;; Five fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
               (dolist (barrier
@@ -694,28 +700,27 @@ the current connection."
     (incf (fnn-owner-service-records service))
     :durable))
 
-(defun fnn-owner-publication-verdict (service kind)
-  "ACL2's verdict on whether this persisted profile admits the kind's worst case."
-  (let* ((store (fnn-owner-service-store service))
-         (ceiling (fnn-core 'fn-store-publication-kind-ceiling kind)))
-    (fnn-core 'fn-store-publication-admissibility
-              (fnn-store-config store)
-              (fnn-owner-service-records service) ceiling)))
-
 (defun fnn-owner-preflight-publication (service kind)
-  "Ask ACL2 whether this persisted profile admits the kind's worst case."
-  (unless (eq (fnn-owner-publication-verdict service kind) :admissible)
-    (fnn-refuse "Store profile refuses ~(~a~) transaction" kind))
+  "Ask the owner whether one more record of KIND fits the Store's budget.
+
+ACL2 decides it from the profile it was handed at open and the count of the
+Store it carries (host/owner-host.lisp fn-owner-publication-verdict); the
+host holds no count and no bound of its own here.  An article is not asked
+here: its budget is part of its prepare (fn-owner-prepare)."
+  (declare (ignore service))
+  (unless (eq (fnn-owner-core 'fn-owner-publication-verdict kind) :admissible)
+    (fnn-refuse "Store transaction budget refuses ~(~a~) transaction" kind))
   :admissible)
 
 ;; The Store refusal kinds relayed to fn-own-outcome, each named by the ACL2
 ;; step that refused (books/owner.lisp fn-own-refusal-wordp).  fn-owner-prepare
 ;; answers :invalid for inputs outside its domain; its other non-prepared
 ;; answers are fn-sn-existing-action's :duplicate / :conflict, :clock-unusable,
-;; or :refused.
+;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), or
+;; :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
   (case prepared
-    ((:duplicate :conflict :clock-unusable :refused) prepared)
+    ((:duplicate :conflict :clock-unusable :refused :unaffordable) prepared)
     (:invalid :malformed)
     (t (fnn-fault "owner prepare returned ~a" prepared))))
 
@@ -757,12 +762,6 @@ recovery."
                                   (fnn-octet-list payload) codes)
             (:duplicate (return-from fnn-owner-attempt :duplicate))
             (:conflict (return-from fnn-owner-attempt :conflict)))
-          (when (>= (fnn-owner-service-records service)
-                    (fnn-config-max-transactions store))
-            (return-from fnn-owner-attempt :unaffordable))
-          (unless (eq (fnn-owner-publication-verdict service :article)
-                      :admissible)
-            (return-from fnn-owner-attempt :unaffordable))
           (let ((*fnn-observe-callback* #'fnn-owner-observe)
                 (*fnn-finish-callback* #'fnn-owner-finish-submission))
             (fnn-advance-frontier store
@@ -864,9 +863,6 @@ event. A carrier-absent article keeps the established legacy Store path."
                (stringp (fourth event)) (integerp (fifth event)))
     (fnn-fault "ACL2 returned malformed Store retention event"))
   (let ((store (fnn-owner-service-store service)))
-    (when (>= (fnn-owner-service-records service)
-              (fnn-config-max-transactions store))
-      (fnn-refuse "Store transaction capacity exhausted"))
     (fnn-owner-preflight-publication service (first event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
           (*fnn-finish-callback* #'fnn-owner-finish))
@@ -888,9 +884,6 @@ event. A carrier-absent article keeps the established legacy Store path."
 (defun fnn-owner-identity-commit (service event)
   "Publish one ACL2-constructed keyring snapshot or atomic acceptance event."
   (let ((store (fnn-owner-service-store service)))
-    (when (>= (fnn-owner-service-records service)
-              (fnn-config-max-transactions store))
-      (fnn-refuse "Store transaction capacity exhausted"))
     (fnn-owner-preflight-publication
      service (fnn-core 'fn-store-event-kind event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
@@ -907,9 +900,6 @@ event. A carrier-absent article keeps the established legacy Store path."
 (defun fnn-owner-consumer-commit (service event)
   "Publish one ACL2-constructed consumer event through the durable Store gate."
   (let ((store (fnn-owner-service-store service)))
-    (when (>= (fnn-owner-service-records service)
-              (fnn-config-max-transactions store))
-      (fnn-refuse "Store transaction capacity exhausted"))
     (fnn-owner-preflight-publication service :consumer)
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
           (*fnn-finish-callback* #'fnn-owner-finish))
@@ -925,9 +915,6 @@ event. A carrier-absent article keeps the established legacy Store path."
 (defun fnn-owner-topic-commit (service event)
   "Publish one ACL2-constructed topic event through the Store durability gate."
   (let ((store (fnn-owner-service-store service)))
-    (when (>= (fnn-owner-service-records service)
-              (fnn-config-max-transactions store))
-      (fnn-refuse "Store transaction capacity exhausted"))
     (fnn-owner-preflight-publication service
                                      (fnn-core 'fn-store-event-kind event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)

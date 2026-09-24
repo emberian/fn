@@ -198,7 +198,7 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
         helped = self.operator("help", "init")
         self.assertEqual(helped.returncode, EXIT_OK, helped.stderr.decode())
         self.assertEqual(helped.stdout.decode(),
-                         "usage: fn operator CONFIG init GROUP [GROUP...]\n")
+                         "usage: fn operator CONFIG init [--profile development|scale] GROUP [GROUP...]\n")
 
 
 @unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
@@ -372,3 +372,110 @@ class NativeOperatorUncertainOutcomeTests(NativeOperatorVerbFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
+class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
+    """M5: the Store's transaction budget, reported and enforced by ACL2.
+
+    `operator status` prints ACL2's headroom (books/store-budget.lisp
+    `fn-sbud-headroom'); the served POST at the budget is refused by the
+    prepare the owner installs (books/owner-store-budget.lisp
+    `fn-sbud-prepare') and the refusal names its reason on the wire.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.control = self.root / "control.sock"
+        self.port = free_port()
+        self.config.write_text(
+            '[store]\npath = "{}"\n'
+            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
+            encoding="ascii")
+
+    start_owner = NativeOperatorUncertainOutcomeTests.start_owner
+    reap = NativeOperatorUncertainOutcomeTests.reap
+
+    def headroom(self):
+        status = self.operator("status")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
+        fields = {}
+        count = None
+        for line in status.stdout.decode("ascii").splitlines():
+            if line.startswith("headroom "):
+                fields = dict(word.split("=", 1) for word in line.split()[1:])
+            elif line.startswith("transactions="):
+                count = int(line.split()[0].split("=", 1)[1])
+        self.assertTrue(fields, status.stdout.decode())
+        # The host's enumeration of transaction files and ACL2's count agree.
+        self.assertEqual(int(fields["transactions-used"]), count)
+        return {key: int(value) for key, value in fields.items()}
+
+    def post_many(self, message_ids):
+        replies = []
+        with socket.create_connection(("127.0.0.1", self.port), timeout=120) as conn:
+            stream = conn.makefile("rwb")
+            self.assertTrue(stream.readline().startswith(b"200"))
+            for message_id in message_ids:
+                stream.write(b"POST\r\n")
+                stream.flush()
+                self.assertTrue(stream.readline().startswith(b"340"))
+                stream.write(b"From: author@example.invalid\r\n"
+                             b"Newsgroups: fn.test\r\n"
+                             b"Subject: capacity\r\n"
+                             b"Message-ID: " + message_id.encode("ascii") +
+                             b"\r\n\r\nbody\r\n.\r\n")
+                stream.flush()
+                replies.append(stream.readline().rstrip(b"\r\n").decode("ascii"))
+            stream.write(b"QUIT\r\n")
+            stream.flush()
+        return replies
+
+    def stop(self, owner):
+        owner.send_signal(signal.SIGTERM)
+        self.assertEqual(owner.wait(timeout=60), EXIT_OK,
+                         owner.stderr.read().decode("utf-8", "replace"))
+
+    def test_the_default_profile_budget_is_reported_and_refused_by_name(self):
+        self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
+        before = self.headroom()
+        self.assertEqual(before["transactions-used"], 0)
+        self.assertEqual(before["transactions-budget"], 128)
+        self.assertEqual(before["charge-reserved"], 0)
+
+        owner = self.start_owner(IMAGE)
+        ids = ["<cap-{}@example.invalid>".format(n) for n in range(130)]
+        self.assertEqual(self.post_many(ids[:1]), ["240 article received OK"])
+        self.stop(owner)
+        after = self.headroom()
+        self.assertEqual(after["transactions-used"], 1)
+        self.assertEqual(after["transactions-budget"], 128)
+        self.assertGreater(after["charge-reserved"], 0)
+
+        owner = self.start_owner(IMAGE)
+        # budget-2 .. budget-1 used: every POST is accepted, the last one at
+        # used = 127 = budget-1.
+        replies = self.post_many(ids[1:128])
+        self.assertEqual(replies, ["240 article received OK"] * 127)
+        # used = budget and used stays = budget: refused by name, twice, and
+        # an already stored article is still answered as a duplicate.
+        refused = self.post_many(ids[128:130] + ids[:1])
+        self.assertEqual(
+            refused[:2],
+            ["441 posting failed; the store has no capacity for this article"] * 2)
+        self.assertEqual(refused[2],
+                         "441 posting failed; this article is already stored here")
+        self.stop(owner)
+        full = self.headroom()
+        self.assertEqual(full["transactions-used"], 128)
+        self.assertEqual(full["transactions-budget"], 128)
+
+    def test_the_scale_profile_is_reachable_from_init(self):
+        created = self.operator("init", "--profile", "scale", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        room = self.headroom()
+        self.assertEqual(room["transactions-used"], 0)
+        self.assertEqual(room["transactions-budget"], 4096)
+        huge = self.operator("init", "--profile", "huge", "fn.other")
+        self.assertEqual(huge.returncode, EXIT_USAGE, huge.stderr.decode())

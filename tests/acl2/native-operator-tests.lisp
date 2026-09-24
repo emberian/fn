@@ -357,6 +357,43 @@
                                               (fn-nop-test-argv '("init"))))
                      nil))
 
+; The store profile: 128 transactions unless the operator names the
+; 4096-transaction scale profile.  An unnamed profile word is a usage error,
+; not the default; `--profile` without a group is a usage error as before.
+(assert-event (equal (fn-native-operator-result-init-profile *fn-nop-init*)
+                     :development))
+(defconst *fn-nop-init-scale*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv
+                           '("init" "--profile" "scale" "fn.letters"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-init-scale*)
+                     :accepted))
+(assert-event (equal (fn-native-operator-result-init-profile *fn-nop-init-scale*)
+                     :scale))
+(assert-event (equal (fn-native-operator-result-init-group-octets *fn-nop-init-scale*)
+                     (list (fn-record-string-octets "fn.letters"))))
+(assert-event (equal (fn-native-operator-result-init-profile
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv
+                        '("init" "--profile" "development" "fn.letters"))))
+                     :development))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv
+                        '("init" "--profile" "huge" "fn.letters"))))
+                     :usage))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("init" "--profile" "scale"))))
+                     :usage))
+(assert-event (equal (fn-native-operator-result-init-profile
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("init"))))
+                     nil))
+
 ; The physical observation and what ACL2 makes of it.  `writer.lock` is one
 ; of the names, so a store a live owner holds is refused on its presence and
 ; no lock is attempted to find that out.
@@ -440,10 +477,10 @@
 ; Help names both new subjects, and only from the ACL2 subject table.
 (assert-event (fn-nop-help-subjectp "init"))
 (assert-event (equal (fn-nop-help-text "init")
-                     "usage: fn operator CONFIG init GROUP [GROUP...]"))
+                     "usage: fn operator CONFIG init [--profile development|scale] GROUP [GROUP...]"))
 (assert-event (equal (fn-native-operator-result-arguments
                       (fn-native-operator-run nil (fn-nop-test-argv '("help" "init"))))
-                     '(:help "init" "usage: fn operator CONFIG init GROUP [GROUP...]")))
+                     '(:help "init" "usage: fn operator CONFIG init [--profile development|scale] GROUP [GROUP...]")))
 (assert-event (not (fn-nop-help-subjectp "initialise")))
 
 ; The run refusal names the key, and an admitted log path reaches the run

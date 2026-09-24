@@ -62,7 +62,7 @@ DTN_EPOCH_NS = 946684800 * 1_000_000_000  # 2000-01-01T00:00:00Z
 OWNER_WORDS = {b":OBSERVED", b":REFUSED", b":INVALID", b":DECLARED", b":BEGUN",
                b":CLOSED", b":OK", b":UNKNOWN", b":FED", b":TAKEN", b":IDLE",
                b":TAKEN-CONTROL", b":SUBMITTED", b":BUSY", b":ACCEPTED",
-               b":DUPLICATE", b":UNCERTAIN", b":ABSENT",
+               b":DUPLICATE", b":UNCERTAIN", b":ABSENT", b":INSTALLED",
                # The fourth outcome (books/owner-fault.lisp): a host fault,
                # answered distinctly from accepted, refused and uncertain.
                b":FAULTED"}
@@ -134,6 +134,16 @@ class Acl2Owner(Acl2Store):
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
         return self._symbol(form, timeout=timeout)
+
+    def install_profile(self, config):
+        # The store's persisted profile, handed back as the values ACL2
+        # decoded at open; ACL2 derives the transaction budget from it.
+        values = "({} {} {} {} {} {})".format(
+            self.literal(config["format"].encode("ascii")), config["capacity"],
+            config["max_payload_bytes"], config["max_recovery_record_bytes"],
+            config["max_transactions"],
+            self.literal(config["allocation_frontier_format"].encode("ascii")))
+        return self._symbol("(fn-owner-install-profile '{} state)".format(values))
 
     def io(self, operation, result="ok"):
         return self._symbol("(fn-owner-io :{} :{} state)".format(operation, result))
@@ -1887,6 +1897,8 @@ def main(argv=None):
         store.acquire()
         bridge = Acl2Owner(args.max_connections)
         records = store.recover(bridge)
+        if bridge.install_profile(store.config) != "installed":
+            raise StoreFault("owner refused the store profile")
         clock = Clock(args.clock_error_ms)
         if clock.observe(bridge) != "observed":
             raise StoreFault("owner refused the first clock observation")
