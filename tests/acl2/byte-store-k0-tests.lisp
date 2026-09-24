@@ -3,7 +3,7 @@
 ; K5 fixture, so the Store already retains one acknowledged record: the
 ; related state is not the empty initial image.
 (in-package "ACL2")
-(include-book "../../books/byte-store-k0")
+(include-book "../../books/byte-store-k0-staging")
 (include-book "byte-store-stable-prefix-tests")
 (include-book "std/testing/must-fail" :dir :system)
 

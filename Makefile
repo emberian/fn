@@ -185,6 +185,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-record-provenance \
 	tests/acl2/byte-store-record-provenance-tests \
 	books/byte-store-k0 \
+	books/byte-store-k0-staging \
 	tests/acl2/byte-store-k0-tests \
 	books/byte-store-retention-publication \
 	tests/acl2/byte-store-retention-publication-tests \

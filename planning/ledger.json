@@ -182,6 +182,7 @@
     "books/byte-store-record-provenance",
     "tests/acl2/byte-store-record-provenance-tests",
     "books/byte-store-k0",
+    "books/byte-store-k0-staging",
     "tests/acl2/byte-store-k0-tests",
     "books/byte-store-retention-publication",
     "tests/acl2/byte-store-retention-publication-tests",
@@ -676,25 +677,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 683,
-    "books_in_root_closure": 681,
-    "roots": 672,
-    "theorems": 9199,
-    "functions": 6646,
-    "assert_events": 10020,
-    "must_fails": 681,
+    "books": 684,
+    "books_in_root_closure": 682,
+    "roots": 673,
+    "theorems": 9272,
+    "functions": 6661,
+    "assert_events": 10023,
+    "must_fails": 687,
     "encapsulates": 30,
     "guards": {
       "verified": 2036,
-      "declared-off": 417,
+      "declared-off": 418,
       "default-guarded": 3306,
-      "default-unguarded": 887
+      "default-unguarded": 901
     },
     "suspect_theorems": 83,
     "export_hygiene_warnings": 109,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 48,
-    "include_hygiene_warnings": 659,
+    "include_hygiene_warnings": 660,
     "host_names_warnings": 816,
     "hand_written_record_warnings": 18
   },
@@ -4305,6 +4306,31 @@
         "arithmetic-5/top",
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-k0-staging.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 73,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-k0"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -13871,21 +13897,21 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 10,
+      "functions": 22,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 10
+        "default-unguarded": 22
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
-      "must_fails": 8,
+      "assert_events": 11,
+      "must_fails": 14,
       "defconsts": 0,
-      "defmacros": 0,
+      "defmacros": 1,
       "encapsulates": 0,
       "includes": [
-        "../../books/byte-store-k0",
+        "../../books/byte-store-k0-staging",
         "byte-store-stable-prefix-tests"
       ],
       "system_includes": [
@@ -21997,14 +22023,14 @@
       },
       {
         "book": "books/byte-store-k0.lisp",
-        "line": 29,
+        "line": 27,
         "include": "byte-store-record-provenance",
         "included": "books/byte-store-record-provenance.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/byte-store-k0.lisp",
-        "line": 30,
+        "line": 28,
         "include": "byte-store-record-fence",
         "included": "books/byte-store-record-fence.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -24100,6 +24126,13 @@
         "line": 6,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-k0-tests.lisp",
+        "line": 6,
+        "include": "../../books/byte-store-k0-staging",
+        "included": "books/byte-store-k0-staging.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
