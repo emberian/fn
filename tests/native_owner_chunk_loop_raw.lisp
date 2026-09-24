@@ -1,11 +1,11 @@
 ;;; The deployed owner chunk loop, driven without an image.
 ;;;
 ;;; `fnn-owner-serve-client', `fnn-owner-handle-chunk' and
-;;; `fnn-owner-advance-clock' are read out of host/native/owner.lisp and
-;;; evaluated here, so this exercises the shipped functions and not a copy of
-;;; them.  Everything they call that touches a socket, the owner mutex or ACL2
-;;; is stubbed, and the stubs record what the loop did and what the owner was
-;;; handed.
+;;; `fnn-owner-advance-clock' are read out of host/native/owner.lisp; the
+;;; shared wall-clock helper is read out of host/native/io.lisp.  This
+;;; exercises the shipped functions and not copies of them.  Everything they
+;;; call that touches a socket, the owner mutex or ACL2 is stubbed, and the
+;;; stubs record what the loop did and what the owner was handed.
 ;;;
 ;;; Three properties, each a defect found against the native 915 node on
 ;;; 2026-09-22 (planning/evidence/owner-defects-2026-09-22.md):
@@ -97,6 +97,7 @@
   (declare (ignore service socket)) (values :inet (list 127 0 0 1)))
 (defun fnn-owner-drain-one (service) (declare (ignore service)) (values nil nil nil))
 (defun fnn-owner-fence-service (service) (declare (ignore service)) nil)
+(defun fnn-owner-log () nil)
 (defun fnn-owner-fault-service (service cid condition)
   (declare (ignore service cid))
   (push (princ-to-string condition) *faults*))
@@ -150,19 +151,23 @@
 ;;; ---------------------------------------------------------------------------
 ;;; The functions under test, read out of the file that ships them.
 
-(let ((wanted '(+fnn-owner-wall-error-ms+ +fnn-owner-unix-dtn-offset-seconds+
-                fnn-owner-wall-milliseconds fnn-owner-advance-clock
-                fnn-owner-handle-chunk fnn-owner-serve-client))
-      (found nil))
-  (with-open-file (stream "host/native/owner.lisp")
-    (loop for form = (read stream nil :eof)
-          until (eq form :eof)
-          when (and (consp form) (member (car form) '(defun defconstant))
-                    (member (cadr form) wanted))
-            do (eval form) (push (cadr form) found)))
-  (let ((missing (set-difference wanted found)))
-    (when missing
-      (error "host/native/owner.lisp does not define ~{~a~^, ~}" missing))))
+(dolist (source-and-names
+         '(("host/native/io.lisp"
+            +fnn-owner-wall-error-ms+ +fnn-owner-unix-dtn-offset-seconds+
+            fnn-owner-wall-milliseconds)
+           ("host/native/owner.lisp"
+            fnn-owner-advance-clock fnn-owner-handle-chunk fnn-owner-serve-client)))
+  (destructuring-bind (source . wanted) source-and-names
+    (let ((found nil))
+      (with-open-file (stream source)
+        (loop for form = (read stream nil :eof)
+              until (eq form :eof)
+              when (and (consp form) (member (car form) '(defun defconstant))
+                        (member (cadr form) wanted))
+                do (eval form) (push (cadr form) found)))
+      (let ((missing (set-difference wanted found)))
+        (when missing
+          (error "~a does not define ~{~a~^, ~}" source missing))))))
 
 (defun run-scenario (reads plans)
   (setq *reads* (mapcar #'fnn-ascii reads)

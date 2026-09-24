@@ -13,9 +13,11 @@ from collections import OrderedDict
 import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hmac
+import re
 import secrets
 import threading
 from types import SimpleNamespace
+from typing import Optional, Tuple
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 import fn_client
@@ -27,6 +29,7 @@ MAX_BLOCK_LINES = 2048
 MAX_FORM = 24576
 MAX_BODY = 16384
 MAX_RECENT = 40
+MAX_ARTICLE_NUMBER = 9_999_999_999
 MAX_SUBMISSIONS = 128
 
 
@@ -79,7 +82,18 @@ class Backend:
     def groups(self):
         return self.using(lambda client: client.groups())
 
-    def recent(self, group: str):
+    def recent(self, group: str, start: Optional[int] = None,
+               end: Optional[int] = None):
+        # Validate before opening a connection. Explicit bounds identify one
+        # stable local-number window; a newer GROUP high-water mark never
+        # silently slides that window.
+        if (start is None) != (end is None):
+            raise ValueError("both article-window bounds are required")
+        if start is not None and (start < 1 or end < start or
+                                  end > MAX_ARTICLE_NUMBER or
+                                  end - start + 1 > MAX_RECENT):
+            raise ValueError("article window must contain at most 40 valid number slots")
+
         def query(client):
             status, _ = client.cmd("GROUP " + group)
             if not status.startswith("211"):
@@ -89,17 +103,24 @@ class Backend:
             high = fn_client.number(fields[3]) if len(fields) > 3 else None
             if low is None or high is None or high < 0:
                 raise fn_client.Stop(fn_client.UNCERTAIN, "invalid GROUP range: " + status)
-            start = max(low, high - MAX_RECENT + 1)
-            if start > high:
+            window_start, window_end = start, end
+            if window_start is None:
+                if high < low:
+                    window_start, window_end = 1, 0
+                else:
+                    window_end = high
+                    window_start = max(low, window_end - MAX_RECENT + 1)
+            if window_start > window_end:
                 rows = []
             else:
-                overview, body = client.cmd("OVER %d-%d" % (start, high), multiline=True)
+                overview, body = client.cmd("OVER %d-%d" % (window_start, window_end),
+                                            multiline=True)
                 if overview.startswith("224"):
                     rows = []
                     for line in body:
                         parts = line.split("\t")
                         number = fn_client.number(parts[0]) if parts else None
-                        if number is None or not start <= number <= high:
+                        if number is None or not window_start <= number <= window_end:
                             continue
                         rows.append({"number": number,
                                      "subject": parts[1] if len(parts) > 1 else "(no subject)",
@@ -113,11 +134,31 @@ class Backend:
                     return fn_client.Result(fn_client.REFUSED, overview, {}, "")
             return fn_client.Result(fn_client.DONE, status,
                                     {"group": group, "rows": rows, "low": low,
-                                     "high": high}, "")
+                                     "high": high, "window_start": window_start,
+                                     "window_end": window_end}, "")
         return self.using(query)
 
     def article(self, group: str, number: int):
-        return self.using(lambda client: client.show(str(number), group))
+        def query(client):
+            result = client.show(str(number), group)
+            if result.word != fn_client.DONE:
+                return result
+            report = None
+            try:
+                # The ARTICLE header's Message-ID is article data and may not
+                # identify the server's selected slot. Query that slot on this
+                # same connection and accept only its exact numeric HDR row.
+                status, lines = client.cmd("HDR :fn-verified " + str(number),
+                                           multiline=True)
+                if status.startswith("225") and len(lines) == 1:
+                    report = parse_verdict_hdr(lines[0], number)
+            except fn_client.Stop:
+                # ARTICLE already succeeded; a failed optional metadata query
+                # only makes the server report unavailable.
+                pass
+            result.data["fn_verified_report"] = report
+            return result
+        return self.using(query)
 
     def prepare(self, group: str, subject: str, sender: str, references: str,
                 body: str):
@@ -201,6 +242,32 @@ def e(value) -> str:
     return html.escape(str(value if value is not None else ""), quote=True)
 
 
+def parse_verdict_hdr(line: str, expected_number: int):
+    """Accept only the bounded three-outcome HDR grammar; never infer a verdict."""
+    fields = line.split()
+    if len(fields) < 3 or fields[0] != str(expected_number):
+        return None
+    outcome = fields[1]
+    if outcome == "verified":
+        if len(fields) == 5 and re.fullmatch(r"[0-9a-fA-F]{64}", fields[2]) and \
+                fields[3] == "keyring" and fields[4].isascii() and fields[4].isdecimal():
+            return "verified by principal " + fields[2].lower() + \
+                   " under keyring generation " + fields[4]
+        if len(fields) == 5 and fields[2] == "legacy" and fields[3] == "keyring" and \
+                fields[4].isascii() and fields[4].isdecimal():
+            return "verified (legacy recorded detail) under keyring generation " + fields[4]
+        return None
+    if outcome == "unverified":
+        if len(fields) == 5 and fields[2] in {
+                "malformed", "ref-mismatch", "signature", "unknown"} and \
+                fields[3] == "keyring" and fields[4].isascii() and fields[4].isdecimal():
+            return "unverified: " + fields[2] + ", keyring generation " + fields[4]
+        return None
+    if outcome == "absent" and len(fields) == 3 and fields[2] in {"no-field", "no-record"}:
+        return "absent: " + fields[2]
+    return None
+
+
 def href(path: str, **parameters) -> str:
     return path + ("?" + urlencode(parameters) if parameters else "")
 
@@ -208,6 +275,24 @@ def href(path: str, **parameters) -> str:
 def group_token(value: str) -> bool:
     return bool(value) and len(value) <= 240 and all(
         c.isascii() and (c.isalnum() or c in ".-_+") for c in value)
+
+
+def article_window(values: dict) -> Optional[Tuple[int, int]]:
+    """Parse one bounded explicit window, or None for initial recent view."""
+    has_start, has_end = "start" in values, "end" in values
+    if not has_start and not has_end:
+        return None
+    if has_start != has_end:
+        raise ValueError("both article-window bounds are required")
+    start_text, end_text = values["start"], values["end"]
+    if (not start_text.isascii() or not start_text.isdecimal() or len(start_text) > 10 or
+            not end_text.isascii() or not end_text.isdecimal() or len(end_text) > 10):
+        raise ValueError("invalid article-window bounds")
+    start, end = int(start_text), int(end_text)
+    if (start < 1 or end < start or end > MAX_ARTICLE_NUMBER or
+            end - start + 1 > MAX_RECENT):
+        raise ValueError("article window must contain at most 40 valid number slots")
+    return start, end
 
 
 def group_summary(row: dict) -> str:
@@ -289,7 +374,10 @@ class Handler(BaseHTTPRequestHandler):
         if len(self.path) > 2048:
             raise ValueError("request URL is too long")
         parts = urlsplit(self.path)
-        return parts.path, {k: v[0] for k, v in parse_qs(parts.query).items()}
+        parsed = parse_qs(parts.query, keep_blank_values=True)
+        if any(key in parsed and len(parsed[key]) != 1 for key in ("start", "end")):
+            raise ValueError("article-window bounds may appear only once")
+        return parts.path, {k: v[0] for k, v in parsed.items()}
 
     def outcome(self, word: str, detail: str, msgid: str = ""):
         link = ("<p><a href='" + e(href("/find", id=msgid)) +
@@ -380,13 +468,19 @@ class Handler(BaseHTTPRequestHandler):
                 group = values.get("name", "")
                 if not group_token(group):
                     raise ValueError("invalid group name")
-                result = self.run_backend(lambda: self.server.backend.recent(group))
+                window = article_window(values)
+                result = self.run_backend(lambda: self.server.backend.recent(
+                    group, *(window or (None, None))))
                 if result is None:
                     return
                 if result.word != fn_client.DONE:
                     self.outcome(result.word, result.detail)
                     return
                 rows = result.data["rows"]
+                start = result.data["window_start"]
+                end = result.data["window_end"]
+                low, high = result.data["low"], result.data["high"]
+                has_group_numbers = high >= low
                 by_id = {row["message_id"]: row for row in rows if row["message_id"]}
                 cards = "".join("<article class='thread' style='margin-left:" +
                                 str(depth_of(row, by_id) * 18) + "px'><h2><a href='" +
@@ -396,10 +490,23 @@ class Handler(BaseHTTPRequestHandler):
                                                  "local #%s" % row["number"]) if x)) +
                                 "</p></article>"
                                 for row in rows)
+                older = ("<a rel='prev' href='" + e(href("/g", name=group,
+                          start=max(low, start - MAX_RECENT), end=start - 1)) +
+                         "'>Older</a>" if has_group_numbers and start > low else "")
+                newer = ("<a rel='next' href='" + e(href("/g", name=group,
+                          start=end + 1, end=min(MAX_ARTICLE_NUMBER, end + MAX_RECENT))) +
+                         "'>Newer</a>" if has_group_numbers and end < high and
+                         end < MAX_ARTICLE_NUMBER else "")
+                page_window = ("Local article numbers %s–%s" % (start, end)
+                               if end >= start else "No local article numbers")
+                frontier = (" · group currently spans %s–%s" % (low, high)
+                            if high >= low else " · group currently has no articles")
                 self.page(group, "<nav><a href='/'>Groups</a><a href='" +
                           e(href("/compose", group=group)) + "'>Write a post</a></nav>"
-                          "<h2>" + e(group) + "</h2><p class='muted'>Recent articles · local numbers</p>" +
-                          (cards or "<p>No articles in the recent window.</p>"))
+                          "<h2>" + e(group) + "</h2><p class='muted'>" +
+                          e(page_window + frontier) + " · viewing does not acknowledge processing</p>"
+                          "<nav aria-label='Article number windows'>" + older + " " + newer + "</nav>" +
+                          (cards or "<p>No articles in this number window.</p>"))
             elif path == "/a":
                 group, raw = values.get("group", ""), values.get("number", "")
                 if not group_token(group) or not raw.isascii() or not raw.isdecimal() or len(raw) > 10:
@@ -418,13 +525,21 @@ class Handler(BaseHTTPRequestHandler):
                 first = lambda name: fn_client.first(fields, name) or ""
                 statement = bool(first("fn-statement"))
                 carrier = bool(first("fn-authorship"))
+                verdict = result.data.get("fn_verified_report")
+                verdict_html = ("<p class='meta'>Server report of historical verification "
+                                "verdict: " + e(verdict) + ". This reports what this node "
+                                "recorded; it is not an independent cryptographic check or "
+                                "current authorization.</p>" if verdict else
+                                "<p class='meta'>Server report of historical verification "
+                                "verdict: unavailable.</p>")
                 provenance = ("<p class='hint'><strong>Who wrote this?</strong> The displayed "
                               "From name is a claim in the article. This reader has not "
                               "verified the writer's identity.</p><p class='meta'>"
                               + ("FN-Statement present; not verified here" if statement else
                                  "No FN-Statement recorded in this article") + "<br>" +
                               ("FN-Authorship carrier present; not verified here" if carrier else
-                               "No FN-Authorship carrier recorded in this article") + "</p>"
+                               "No FN-Authorship carrier recorded in this article") + "</p>" +
+                              verdict_html +
                               "<details><summary>Recorded handling details</summary>"
                               "<p class='meta'>From (claimed): " + e(first("from")) +
                               "<br>Path: " + e(first("path") or "not supplied") +

@@ -142,8 +142,14 @@
         "proof",
         "scenario"
       ],
-      "evidence": [],
-      "note": "PRF-017 has no events. Origin identity and incarnation are records the host writes; no theorem relates them to a non-wall-clock order."
+      "evidence": [
+        "books/checkpoint-auxiliary.lisp",
+        "tests/acl2/checkpoint-auxiliary-tests.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_checkpoint.py",
+        "planning/evidence/checkpoint-clone-source-2026-09-23.md"
+      ],
+      "note": "PRF-017 has no events. Origin identity and incarnation are records the host writes; no theorem relates them to a non-wall-clock order. The E2 clone source now requires a fresh caller-supplied incarnation and durably publishes the ACL2 rollover before releasing a fence, but this does not close PRF-017 for arbitrary origin issuance or time-independent fork authority; native qualification remains open."
     },
     {
       "id": "OBJ-007",
@@ -196,7 +202,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -301,7 +307,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-010"
+        "PRF-010",
+        "PRF-067"
       ],
       "verification": [
         "proof",
@@ -312,7 +319,7 @@
         "tests/evidence/2026-09-18-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Immutable local transaction files are replayed by ACL2 into complete node articles, memberships, and pins. Format-7 profiles derive a 196608-octet payload ceiling from persisted aggregate/count metadata; format-6 remains readable at 65538 and must refuse larger publication before mutation. The served Message-ID trie is in memory and corresponds to each connection's pinned accepted archive; no disk index is authoritative. The per-group number/range index is not yet served.",
+      "implementation_note": "Immutable local transaction files are replayed by ACL2 into complete node articles, memberships, and pins. Format-7 profiles derive a 196608-octet payload ceiling from persisted aggregate/count metadata; format-6 remains readable at 65538 and must refuse larger publication before mutation. In-memory Message-ID and LISTGROUP group-bucket indexes correspond to each connection's pinned accepted archive; no disk index is authoritative. GROUP, NEXT, LAST and NEWNEWS remain archive folds.",
       "keystones": [
         "fn-index-rebuild-correspondence",
         "fn-index-range-query-correct",
@@ -321,7 +328,7 @@
         "fn-own-run-preserves-relation",
         "fn-own-read-is-served-step-on-pinned-prefix"
       ],
-      "note": "The derived group/local-number index is sound and complete against committed memberships, but no host adopts it yet. T17's in-memory Message-ID trie is different: the actual owner/served ARTICLE, HEAD, BODY and STAT Message-ID call path uses it, with exact per-view/per-connection archive correspondence in fn-own-relation and a scan-refinement theorem. Lane w25 certification passed books/owner-invariants (run-20260923T194237Z-ac04) and tests/acl2/owner-tests (run-20260923T194435Z-da6e); integrated T10a closure and measured read cost remain pending."
+      "note": "The T17 in-memory Message-ID trie serves exact-ID ARTICLE, HEAD, BODY and STAT. The separate per-group bucket now serves LISTGROUP through the actual owner/served dispatcher under exact per-view/per-connection archive correspondence. Scoped ACL2 proof and historical owner-call tests are recorded in planning/evidence/t17-group-bucket-served-2026-09-23.md. The structural 24-group cost fixture is not elapsed-time qualification; integrated native image and combined closure remain pending."
     },
     {
       "id": "STO-002",
@@ -532,9 +539,13 @@
         "tests/test_native_checkpoint.py",
         "planning/evidence/native-checkpoint-w15-2026-09-21.md",
         "planning/evidence/native-checkpoint-namespace-w15-2026-09-21.md",
-        "tests/evidence/2026-09-23-t2-checkpoint-migration.md"
+        "tests/evidence/2026-09-23-t2-checkpoint-migration.md",
+        "books/checkpoint-auxiliary.lisp",
+        "tests/acl2/checkpoint-auxiliary-tests.lisp",
+        "planning/evidence/checkpoint-auxiliary-e2-t10-2026-09-23.md",
+        "planning/evidence/checkpoint-clone-source-2026-09-23.md"
       ],
-      "implementation_note": "Logical checkpoint equivalence and concrete codec/publication are implemented. Native capture/select/status validate selected checkpoints after authoritative full journal replay; private restored state is never installed as the live node. ACL2 owns canonical namespace and observation/allocation bounds. Mismatch is always corruption, and uncertain mutation leaves the Store fenced. Schema-0 pre-stamp selected checkpoints migrate five-field ready articles to :legacy in ACL2, then pass the current checkpoint recognizer; schema-1 captures keep the new shape. A pre-T2 physical checkpoint exposed a T2 decode failure before this repair; patched ACL2 decodes its exact frame with :legacy, while an exact-source repaired native image remains to be run. Source-pinned component tests do not establish suffix-only recovery, shared-owner/index integration, full physical correspondence or freshness qualification.",
+      "implementation_note": "Logical checkpoint equivalence and concrete codec/publication are implemented. Native capture/select/status validate selected checkpoints after authoritative full journal replay; private restored state is never installed as the live node. ACL2 owns canonical namespace and observation/allocation bounds. Mismatch is always corruption, and uncertain mutation leaves the Store fenced. Schema-0 pre-stamp selected checkpoints migrate five-field ready articles to :legacy in ACL2, then pass the current checkpoint recognizer; schema-1 captures keep the new shape. A pre-T2 physical checkpoint exposed a T2 decode failure before this repair; patched ACL2 decodes its exact frame with :legacy, while an exact-source repaired native image remains to be run. Source-pinned component tests do not establish suffix-only recovery, shared-owner/index integration, full physical correspondence or freshness qualification. Selected-pack exact-history reopen now has a version-one recovery-only ACL2 differential for E2 consumer state, completed dense sequence, historical verdicts and keyring snapshots; the source-pinned ACL2 witness covers a reclaimed E2 prefix and a bound hybrid composite. The native caller is wired but awaits a combined image witness. Cold writable clone activation remains unimplemented and must not be inferred from copying a store directory. The native source adds fenced cold clone/clone-resume with an ACL2-proposed durable E2 rollover event and no-replace directory publication. Its ACL2 phase tests certify; a combined saved-image crash/reopen run has not yet qualified this physical path.",
       "keystones": [
         "fn-checkpoint-plus-suffix-equals-full-replay",
         "fn-checkpoint-admissible-capture-is-exact",
@@ -1041,9 +1052,14 @@
         "tests/acl2/tcpcl-delivery-tests.lisp",
         "planning/evidence/tcpcl-late-disposition-2026-09-23.md",
         "planning/evidence/bp-effective-handoff-2026-09-23.md",
-        "planning/evidence/bp-fragment-dispatch-safety-2026-09-23.md"
+        "planning/evidence/bp-fragment-dispatch-safety-2026-09-23.md",
+        "planning/evidence/bp-fragment-family-plan-2026-09-23.md",
+        "books/bp-app-handoff-time.lisp",
+        "tests/acl2/bp-app-handoff-time-tests.lisp",
+        "planning/evidence/bp-a3-expired-held-checkpoint-2026-09-23.md",
+        "planning/evidence/bp-d1b-deletion-intent-2026-09-23.md"
       ],
-      "implementation_note": "Earlier pinned dtn7-rs and development workflow tests retain their recorded scope. Native carrier evidence covers durable allocation, queue/contact/restart/expiry, receive-loop fencing and cross-session evidence retention. The native BP application join now routes request intent through canonical owner Store acceptance, exact committed-record binding and durable receipt decision. Its crash-after-decision/before-receipt witness retries through a fresh process without a second article or retention pin. Full joined trace proof, all physical cuts, authenticated remote evidence, LTP, multi-relay and complete operator integration remain open. The native receipt-decision directory-barrier EIO test also distinguishes visible evidence from durability, fences without emitting a receipt, and replays after recovery barriers. Repeated fn-bpaj retained-state validation remains an active implementation defect; a maintained-invariant successor is assigned. D1a now provides a bounded canonical RFC 9171 status-report codec with whole/fragment and timed-assertion vectors; it does not generate, correlate or consume reports in the node machine. The TCPCL late-disposition planner now replaces a held final END ACK with XFER_REFUSE on definitive refusal and withholds it on uncertainty; its exact native caller and ACL2 proof are source-present, while the A2 FNBS callback and combined-image runtime are pending.",
+      "implementation_note": "Earlier pinned dtn7-rs and development workflow tests retain their recorded scope. Native carrier evidence covers durable allocation, queue/contact/restart/expiry, receive-loop fencing and cross-session evidence retention. The native BP application join now routes request intent through canonical owner Store acceptance, exact committed-record binding and durable receipt decision. Its crash-after-decision/before-receipt witness retries through a fresh process without a second article or retention pin. Full joined trace proof, all physical cuts, authenticated remote evidence, LTP, multi-relay and complete operator integration remain open. The native receipt-decision directory-barrier EIO test also distinguishes visible evidence from durability, fences without emitting a receipt, and replays after recovery barriers. Repeated fn-bpaj retained-state validation remains an active implementation defect; a maintained-invariant successor is assigned. D1a now provides a bounded canonical RFC 9171 status-report codec with whole/fragment and timed-assertion vectors; it does not generate, correlate or consume reports in the node machine. The TCPCL late-disposition planner now replaces a held final END ACK with XFER_REFUSE on definitive refusal and withholds it on uncertainty; its exact native caller and ACL2 proof are source-present, while the A2 FNBS callback and combined-image runtime are pending. The A3 expired-held source checkpoint persists a receive-time age anchor in versioned kind-5 and asks ACL2 for a current pre-Store eligibility decision; affected closure and native process-death validation remain pending. The D1b kind-10 component now has ACL2-certified exact deletion publication, ordered replay, persisted report payload intent, a recovery outbox selector, administrative outbound authoring and read-only received-report correlation. The native caller is source-present but its source-matched image and death/reopen scenario are still open.",
       "note": "Status remains specified for the full requirement. Implemented native application composition has focused runtime evidence; broader lifecycle/physical obligations remain PRF-045/046. An application receipt is distinct from carrier completion, and neither a scoped test nor an accepted-branch projection theorem establishes full transport independence."
     },
     {
@@ -1205,7 +1221,8 @@
         "PRF-002",
         "PRF-010",
         "PRF-015",
-        "PRF-028"
+        "PRF-028",
+        "PRF-067"
       ],
       "verification": [
         "proof",
@@ -1255,7 +1272,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1274,7 +1291,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -1628,9 +1645,18 @@
         "books/consumer-store-projection.lisp",
         "books/consumer-store-invariants.lisp",
         "tests/acl2/consumer-store-invariants-tests.lisp",
-        "planning/experiments/e1-e2-v1-traces.json"
+        "books/consumer-owner-local.lisp",
+        "tests/acl2/consumer-owner-local-tests.lisp",
+        "books/consumer-local-control.lisp",
+        "tests/acl2/consumer-local-control-tests.lisp",
+        "planning/evidence/manifests/certify-20260923T213301Z-209515.json",
+        "planning/experiments/e1-e2-v1-traces.json",
+        "planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md",
+        "tests/test_native_consumer_project_bounds.py",
+        "planning/evidence/consumer-project-envelope-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T234427Z-1749031.json"
       ],
-      "note": "Selected v1 experiment, not a v0 gate. The finite cursor/event kernel and Store completed-prefix model are certified. Authenticated native register/poll/ack/rebase and bounded metadata charge, checkpoint/clone integration, consumer-owned database, and the executed two-store exchange remain open; the adversarial E2 traces are specifications awaiting a runner."
+      "note": "Selected v1 experiment, not a v0 gate. The cursor/event kernel and Store completed-prefix model are certified in scope. Native image 1d26e01f passed local-owner signed poll, repeat without ACK mutation, advancing ACK with killed reply and recovered position, selected-pack/fenced-clone recovery and old-incarnation refusal. The current poll walks the preceding history before its bounded 16-event window. General remote authenticated multi-group poll/ack/rebase, native physical crash refinement, the consumer-owned transaction/ACK/reply join and executed two-store exchange remain open; the full adversarial E2 trace set is not qualified. The subsequent consumer-project exact-file overlimit refusal repair has a scoped ACL2 envelope regression and old-image fault counterexample; its native regression awaits the next source-matched image."
     },
     {
       "id": "TOP-002",

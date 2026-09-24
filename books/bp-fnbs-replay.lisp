@@ -48,7 +48,18 @@
 
 (defun fn-bpnf-replay-rows (rows max-held max-octets)
   (declare (xargs :guard t))
-  (fn-bpnf-replay-rows-aux rows nil nil max-held max-octets))
+  ; unreachable-in-composition under canonical kind-5 rows and ordered
+  ; arrivals: codec arrivals are u64 and the fold requires 0..(len held - 1).
+  ; This cold-call check is defense in depth; the direct recovery event can
+  ; receive a malformed logical replay value and must refuse it. A proof of
+  ; that byte-path unreachability is not claimed by this guard check.
+  (let ((result (fn-bpnf-replay-rows-aux
+                 rows nil nil max-held max-octets)))
+    (if (and (equal (car result) :ready)
+             (< (1+ *fn-frame-max-nat*)
+                (fn-bpnf-held-arrival-frontier (cadr result))))
+        (list :fault :arrival-frontier)
+      result)))
 
 ; The host passes this ACL2-built event to the sole state transition,
 ; fn-bpnf-step.  It does not assemble a replay-result from Lisp objects.

@@ -1329,6 +1329,27 @@ are still required before a live-service claim.
 The owner relation also ties the published configuration to physical replay
 at the current view's Store-event prefix, so a new connection's archive and
 configuration pin describe the same historical cut.
+The host-called `fn-ocfg-advance` moves a connection's configuration pin only
+when the ACL2 owner reports `:advanced`. If the requested advance is refused
+or its connection is absent, the configured owner and its pin remain unchanged.
+The historical relation requires unique open connection IDs, matching the
+owner's allocator: replacing one connection must not leave another connection
+with the same ID under the newly advanced pin.
+`fn-ocl-advance-preserves-historical-relation` proves the actual wrapper step
+preserves each surviving connection's physical-prefix archive relation, pin
+coverage, and current view under that invariant. Its live-created-group witness
+checks that an old connection can advance to the refreshed archive and then
+select the new group. This does not establish Store I/O or crash/reopen
+preservation.
+`fn-ocari-advance-preserves-historical-reader-relation` carries the connected
+reader's wire validity, recorded verdicts, and index correspondence with its
+newly pinned archive across the same called step. The owner starts with no
+open IDs; the full historical-relation preservation results for called open,
+read, close and durable completion retain unique IDs before advance.
+The host's `fn-owner-step` invokes `fn-ocfg-step` with `(list :advance id)`;
+`fn-ocari-called-advance-is-configured-advance` equates that dispatch with
+`fn-ocfg-advance`, and the composed called-step theorem retains the reader
+relation.
 The called reader-open function `fn-ocfg-open` has the focused theorem
 `fn-ocl-open-pins-current-physical-configuration`; a new connection pins
 the installed configuration even when existing connections retain older

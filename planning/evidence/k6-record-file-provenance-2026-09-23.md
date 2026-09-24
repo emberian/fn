@@ -140,3 +140,215 @@ retention fixtures; universal P-RECORD preservation of it is still K0.
 Selected hbox certification of the book and test root passed under
 `run-20260923T205309Z-9c0f`, original manifest
 `planning/evidence/manifests/certify-20260923T205311Z-99085.json`.
+
+The subsequent K0 trace packet proves
+`fn-bs-k0-record-attempted-cut-kernel-is-link-observation` in the same
+book. The actual P-RECORD pair 5 is the `:record-file :ok` callback; the
+actual pair 10 is the `:record-link :ok` callback after a successful immutable
+link. A five-step suffix theorem joins them. The relation at input derives
+final-name absence, and the file-fence cut supplies the fresh source inode;
+the theorem concludes exact equality of the pair-10 logical state with the
+two callbacks, without assuming output relation or scanner equality. Its
+test book exercises an article and a retention event after one durable
+article, and separates the relation, typed-input, and staging-freshness
+hypotheses with distinct stopped traces. Selected hbox certification passed
+under `run-20260923T210658Z-6956`, original manifest
+`planning/evidence/manifests/certify-20260923T210701Z-143870.json`.
+The byte-state clauses of the pair-10 output relation remain unproved,
+especially pending-link shape, framed candidate in the fenced target, and
+authority inode provenance under an arbitrary retained prefix. The served
+Store-node caller's preparation-to-`fn-bs-record-inputp` bridge remains
+separate. Thus the earlier conditional scanner theorem is still conditional.
+
+A second certified K0 slice,
+`fn-bs-k0-attempted-cut-has-one-issued-transaction-link`, derives the
+entire pair-10 pending transaction-directory list as the single
+`(:set-entry :transactions NAME NEXT-INO)` operation. This is a physical
+prefix fact over the actual `fn-bs-run`, not a scanner premise. It uses the
+input relation's absence of prior transaction operations, the staged file's
+fresh fenced inode, and the successful link; article and retention fixtures
+and all three premise counterexamples are in the same test book. Selected
+two-root hbox certification passed under `run-20260923T211220Z-bdef`,
+original manifest
+`planning/evidence/manifests/certify-20260923T211222Z-158686.json`.
+Full pair-10 relation preservation remains open as stated above.
+
+Local clause lemmas in the same book now prove the pair-10 pending shape and
+that the newly fenced target decodes to the candidate from the durable view.
+They use the input relation to exclude a simultaneous root operation and
+the exact physical link to identify the candidate target. These are
+components of the output relation, not a new general K0 keystone. The
+article and retention fixtures evaluate both. The book and test roots
+passed selected hbox certification under `run-20260923T211841Z-3e5c`,
+original manifest
+`planning/evidence/manifests/certify-20260923T211844Z-175171.json`.
+The then-outstanding byte-side proof was preservation of the old durable decoded
+record list through fresh inode allocation/write/fence for arbitrary
+retained history, then composition with state and authority-known/fenced
+invariants and the kernel crash-image clause. A source relation permits
+other durable authority inodes; the argument must use authority-known plus
+the next-inode allocation bound to exclude aliasing, rather than assuming
+old record bytes are unaffected.
+
+That old-prefix obligation is now proved in
+`fn-bs-k0-attempted-cut-keeps-old-durable-record-prefix`, over the actual
+P-RECORD pair-10 interpreter state and arbitrary retained history. The
+fresh-allocation theorem supplies non-aliasing of every old transaction
+target; the proof establishes pointwise exact durable octets, uses unchanged
+durable names, and applies the scanner's generic read-agreement theorem.
+The test book has article and retention witnesses after an acknowledged
+article, plus relation, typed-input and staging-freshness counterexamples.
+Dropping the relation allows `next-ino` to alias the old durable article
+inode and the new write changes that old record. Selected hbox certification
+of book and test roots passed under `run-20260923T212653Z-31d7`, original
+manifest `planning/evidence/manifests/certify-20260923T212655Z-195160.json`.
+Whole pair-10 relation composition still needs state and root authority
+provenance, plus the file-kernel crash-image and phase clauses.
+
+The next bounded source packet closes three of those clauses for the actual
+pair-10 P-RECORD interpreter cut, without asserting the whole relation.
+`fn-bs-k0-attempted-cut-statep` derives byte-state well-formedness from the
+real create/write/file-fence/link prefix. The fresh allocation cannot alias
+the durable frontier or config target, so their exact durable values survive
+the write and link. Together with the old decoded record-prefix theorem and
+the exact logical callbacks, `fn-bs-k0-attempted-cut-kernel-admits-durable-image`
+proves that the byte cut's durable frontier and records are a valid
+`fn-sf-crash-imagep` of the pair's logical file state. These are clauses of
+the output `fn-bs-store-relation`; they do not presuppose scanner equality.
+Selected hbox certification of the book and its existing K6/K0 test root
+passed under `run-20260923T220552Z-97a8`, original manifest
+`planning/evidence/manifests/certify-20260923T220600Z-285204.json`.
+Authority-known and authority-fenced over the *new* pending inode, plus
+composition of the pending phase and config/record clauses into the full
+pair-10 relation, remain open. The existing K0 input relation is still a
+proof premise rather than an established fact for every served call trace.
+
+The next local authority fact is now proved without fixing the file write
+list: `fn-bs-k0-apply-writes-preserves-known-inode` inducts over arbitrary
+pending operations, and `fn-bs-k0-new-inode-survives-write-fold` applies it
+to the fresh inode inserted by O_EXCL. The actual pair-5 file-fence theorem
+handles both zero and nonzero write-all branches, the generic pair-8 link
+join preserves that inode table entry, and
+`fn-bs-k0-attempted-cut-has-new-inode` carries it through the unchanged
+pair-10 byte state. The related-input join uses the separately proved
+name, true-list frame and absent-final-name facts; it never treats a
+fixed pending operation list as an input assumption. A second-article and
+retention-event witness checks the inode at pair 10. Selected hbox book
+certification passed under `run-20260923T222026Z-6cf4`, original manifest
+`planning/evidence/manifests/certify-20260923T222030Z-323574.json`; the
+affected test root passed under `run-20260923T222108Z-44aa`, original
+manifest `planning/evidence/manifests/certify-20260923T222110Z-325598.json`.
+The new inode's authority-known fact is only one member of the authority
+list. Preservation of every prior authority target and the fenced status
+of the entire list remain before the full relation can be claimed.
+
+The next K0 packet closes that successful `record-attempted` pair-10
+relation. `fn-bs-k0-attempted-cut-authority-targets-are-old-plus-new`
+derives the exact authority inode list from the actual interpreter trace.
+`fn-bs-k0-attempted-cut-keeps-other-inode-entry` proves every old table
+entry survives fresh allocation, write, file fence and link; list induction
+and the fresh inode theorem establish `fn-bs-authority-knownp` at the cut.
+The parallel filtered-write argument proves every old authority inode
+remains fenced, while the link's target is the new fenced inode. The
+`fn-bs-k0-staged-input-durable-records-match` lemma derives the old record
+list equality from the *input* relation's crash-image arm at
+`:record-staged`, rather than assuming the desired output scan. Finally,
+`fn-bs-k0-record-attempted-cut-establishes-relation` composes those facts
+with state, config, frontier, pending shape/candidate, and logical callback
+lemmas to prove `fn-bs-store-relation` of the actual pair-10
+`fn-bs-run`/`fn-bs-record-program` result. The stated premises are an
+already related input, ACL2's typed frame/name input and fresh staging.
+
+The test book executes a second article and a typed retention event after
+an acknowledged article, checking the full relation and old inode
+preservation. It also has `must-fail` runs when the input relation, typed
+final name, or staging freshness premise is removed. Two additional
+structural counterexamples separate authority existence (a dangling old
+entry) and fencing (a pending write to the old article inode); these
+remain byte-state-valid but are not related inputs. Selected hbox roots
+`books/byte-store-record-provenance` and
+`tests/acl2/byte-store-record-provenance-tests` passed under
+`run-20260923T223322Z-7fe8`, original manifest
+`planning/evidence/manifests/certify-20260923T223325Z-359941.json`.
+ACL2 8.7 at `/tank/fn/toolchains/w28/acl2-literal-4g` took 6.901 s
+for the book and 2.217 s for its test root; source, closure and core
+digests are in the manifest. A bounded live proof session first isolated
+the missing staged-input record equality, and the final relation theorem
+proved in 0.88 s of ACL2 prover time with byte and codec internals closed
+except the named relation/phase selectors.
+
+This is one successful P-RECORD cut with an input relation premise.
+Establishment of that premise at every served call, other P-RECORD cuts
+and outcomes, frontier/initialization/recovery programs, adapter-to-model
+syscall correspondence, and physical successful-barrier qualification
+remain open. The theorem does not convert the selected native SIGKILL or
+dm-flakey observations into a power-loss guarantee.
+
+The served article call supplies the P-RECORD frame and final name through
+ACL2 rather than through an independent host codec. Native
+`fnn-owner-publish-prepared` (`host/native/owner.lisp:656-664`) reads
+`fn-owner-pending-octets`; `fnn-publish` (`host/native/io.lisp:1518-1548`)
+calls `fnn-frame` and `fnn-transaction-name`. The former calls
+`fn-store-frame-store-protected` and `fn-frame-trailer`, then concatenates
+their octets; the latter calls `fn-store-txn-name`, whose natural-sequence
+arm is `fn-bs-txn-name`. The new
+`fn-bs-k0-article-host-arguments-are-typed-record-input` proves that
+ACL2's article event encoding and exact frame decoder return the staged
+candidate, with a bounded octet frame and the same logical filename.
+`fn-bs-k0-article-host-arguments-reach-related-attempted-cut` composes
+that input fact with the already proved pair-10 byte relation theorem.
+This composition remains conditional on the physical byte/kernel relation
+at call entry and a fresh staging key; it does not assert that an arbitrary
+live directory image is related.
+
+The test book executes the second served article after an acknowledged
+first article, using the exact ACL2 protected-prefix/trailer construction,
+and has distinct `must-fail` witnesses for a malformed event, wrong phase,
+different staged candidate, and malformed staging name. The previously
+certified relation/freshness counterexamples apply to the composed cut.
+Hbox selected book and test roots passed under `run-20260923T225001Z-22e7`;
+the original ACL2 8.7 result, toolchain/core/source digests and closure are
+in `planning/evidence/manifests/certify-20260923T225004Z-384441.json`.
+Book/test wall times were 6.948 s/2.154 s. This packet proves the article
+codec path only. Retention and identity event-union encode/decode
+round-trip theorems, physical call-entry relation establishment, and the
+remaining model cuts/outcomes remain open.
+
+The next call-entry packet proves the byte relation is preserved by the
+actual ACL2 preparation transition. `fn-bs-k0-record-prepare-preserves-relation`
+has only the source `fn-bs-store-relation` premise; it covers successful
+`:reserved`→`:record-staged` preparation and the no-op/refusal branches of
+`fn-sf-prepare-record` without changing the byte state.
+`fn-bs-k0-node-article-prepare-preserves-relation` lifts that theorem to
+`fn-sn-prepare`, which the served article path reaches through the owner
+step. A separate shape lemma shows that a successful preparation from
+`:reserved` binds precisely the supplied article candidate; another derives
+its `fn-record-p` condition, so neither is an unexplained premise.
+`fn-bs-k0-served-article-prepare-to-attempted-relation` then composes
+preparation, the ACL2 host frame/name bridge and actual P-RECORD pair 10.
+Its physical starting premise is a related byte/kernel state at the
+reserved call entry, with the source phase `:reserved`, a successful staged
+result, valid stage name and fresh staging slot.
+
+The test runs a real first-article reservation, node preparation and
+P-RECORD attempted cut. It separates the premises with an unfenced
+configuration inode (physical relation absent), an already staged source
+whose second preparation is a no-op, an invalid article that leaves the
+reservation unprepared, and an occupied staging key that stops O_EXCL.
+The malformed-stage tooth for the input-name clause is in the previous
+article frame packet. Hbox selected book and test roots passed under
+`run-20260923T225945Z-6335`, manifest
+`planning/evidence/manifests/certify-20260923T225948Z-405278.json`;
+the extra source-phase tooth passed selected test-root certification under
+`run-20260923T230023Z-de08`, manifest
+`planning/evidence/manifests/certify-20260923T230025Z-407050.json`.
+The ACL2 8.7 book and first test root took 7.358 s and 2.280 s; the
+additional test-only run took 2.325 s. Source/closure/toolchain and core
+digests are in the manifests.
+
+The theorem still assumes the physical relation at the reserved call
+entry. A whole served trace must connect initialization, the frontier
+program, prior record finishes, recovery, and real syscall observations
+to that premise. This packet does not prove every intermediate cut,
+retention/identity event codec round trips, or platform power-loss
+behavior.

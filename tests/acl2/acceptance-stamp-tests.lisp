@@ -62,6 +62,7 @@
 (assert-event (not (fn-stxe-p (fn-sn-completion-record *sn-completing*))))
 (assert-event (not (fn-stxk-p (fn-sn-completion-record *sn-completing*))))
 (assert-event (not (fn-stxa-p (fn-sn-completion-record *sn-completing*))))
+(assert-event (not (fn-cpe-eventp (fn-sn-completion-record *sn-completing*))))
 (assert-event (equal (fn-article-stamp
                       (fn-find-article "<sn@example>"
                                        (fn-state-articles
@@ -81,6 +82,19 @@
      (fn-state-articles
       (fn-node-acceptance (fn-sn-node (fn-sn-finish *sn-prepared*))))))
    :rule-classes nil))
+
+; A valid consumer bootstrap advances the Store journal but is not an
+; article-stamp observation.  The same article-only predicate still accepts
+; the ordinary stamped record above.
+(defconst *ast-consumer-bootstrap*
+  (fn-cpe-make 0 0 0 '(:bootstrap (1) (2))))
+(assert-event (fn-cpe-eventp *ast-consumer-bootstrap*))
+(assert-event (not (fn-replay-article-eventp *ast-consumer-bootstrap*)))
+(assert-event
+ (equal (fn-replay-journal-article-stamps
+         (list *ast-built* *ast-consumer-bootstrap*))
+        (list (cons (fn-record-msgid *ast-built*)
+                    (fn-record-stamp *ast-built*)))))
 
 ; The two exact grammars differ only in the schema octet and final stamp item.
 (defconst *ast-schema0* *fn-record-schema0-golden-octets*)

@@ -88,6 +88,54 @@
 (assert-event (fn-ocfg-statep *ocfg-t-3*))
 (assert-event (equal (fn-own-next-id (fn-ocfg-owner *ocfg-t-3*)) 2))
 
+; A read that keeps a connection keeps its pin.  The owner may also remove
+; an invalid connection while reading; the configured wrapper must remove
+; exactly that ID's pin in the same logical transition.
+(defconst *ocfg-t-idle-read* (cdr (fn-ocfg-read *ocfg-t-3* 0 nil)))
+(assert-event (fn-own-find-conn 0
+                            (fn-own-conns (fn-ocfg-owner *ocfg-t-idle-read*))))
+(assert-event (equal (fn-ocfg-pin-find 0 (fn-ocfg-pins *ocfg-t-idle-read*))
+                     (fn-ocfg-pin-find 0 (fn-ocfg-pins *ocfg-t-3*))))
+(defconst *ocfg-t-invalid-conn*
+  (let ((conn (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-t-3*)))))
+    (fn-own-conn-make (fn-own-conn-id conn)
+                      (fn-own-conn-version conn)
+                      (fn-own-conn-frontier conn)
+                      (fn-own-conn-wire conn)
+                      nil
+                      (fn-own-conn-archive conn)
+                      (fn-own-conn-config conn)
+                      (fn-own-conn-observation conn))))
+(defconst *ocfg-t-invalid-reader*
+  (fn-ocfg-make
+   (fn-own-set-conns
+    (fn-ocfg-owner *ocfg-t-3*)
+    (fn-own-replace-conn
+     *ocfg-t-invalid-conn*
+     (fn-own-conns (fn-ocfg-owner *ocfg-t-3*))))
+   (fn-ocfg-config *ocfg-t-3*) (fn-ocfg-pins *ocfg-t-3*) nil))
+; A failed owner rebuild leaves the old connection intact.  ADVANCE must not
+; publish a new configuration pin when that actual owner outcome is refused.
+(assert-event
+ (equal (car (fn-own-advance-result
+              (fn-ocfg-owner *ocfg-t-invalid-reader*) 0)) :refused))
+(assert-event
+ (equal (cdr (fn-own-advance-result
+              (fn-ocfg-owner *ocfg-t-invalid-reader*) 0))
+        (fn-ocfg-owner *ocfg-t-invalid-reader*)))
+(assert-event
+ (equal (fn-ocfg-pins (fn-ocfg-advance *ocfg-t-invalid-reader* 0))
+        (fn-ocfg-pins *ocfg-t-invalid-reader*)))
+(defconst *ocfg-t-closed-by-read*
+  (cdr (fn-ocfg-read *ocfg-t-invalid-reader* 0 nil)))
+(assert-event
+ (not (fn-own-find-conn
+       0 (fn-own-conns (fn-ocfg-owner *ocfg-t-closed-by-read*)))))
+(assert-event (null (fn-ocfg-pin-find 0 (fn-ocfg-pins *ocfg-t-closed-by-read*))))
+(assert-event
+ (equal (fn-ocfg-pin-find 1 (fn-ocfg-pins *ocfg-t-closed-by-read*))
+        (fn-ocfg-pin-find 1 (fn-ocfg-pins *ocfg-t-invalid-reader*))))
+
 ; -----------------------------------------------------------------------------
 ; fn-ocfg-open-pins-the-live-configuration.  Witness, then one violating
 ; value per hypothesis.

@@ -1,0 +1,17 @@
+{"type": "fn-portable-consumer-decision-v1",
+ "storeAdmission": "unestablished",
+ "sourceIdentity":
+ "666e2f7375626a6563742f7631000101c43cabcd3a87c4888c59d2fd528e3b71ad8ef6f840971425b5fdec9daaf0bd2e",
+ "portableAuthorship": "verified",
+ "operation": "6df49d3b28b9c17fdf4360aeee7d45b76327b7d9a4bc047f370356001eb54e1",
+ "miniOrigin":
+ {"type": "verified-mini-native-prefix-v1",
+  "transactionId":
+  "52874233208997382596394235333172568704532225823194388702225947175675283283795",
+  "imageBoundary":
+  "86057297170806681459462671113357045669769550226935147862994677614619795869413",
+  "eventId":
+  "84104444483867429400559321453081709087495253328555201006689531538298941845088",
+  "acceptedCount": "1"},
+ "decision": {"type": "proposed-conflict-evidence"},
+ "application": "mini-e1"}

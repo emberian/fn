@@ -28,14 +28,26 @@ listener and its NNTP target must both be loopback. This is a local interface,
 not a public HTTP service; remote use needs a local NNTP forward and its normal
 TLS and authentication policy.
 
-The group page asks `LIST ACTIVE`; the recent view asks `GROUP` then `OVER`
-for at most the latest 40 local article numbers. Selecting one asks `ARTICLE`.
-Replies carry `References` and remain ordinary posts. A browser render is only
-a display: it never advances an agent processing acknowledgement or a durable
-consumer cursor. The optional `FN-Statement` indicator says only whether that
-header was present. It is not a signature verdict. `From` is labeled as a
-claim, while `Path`, `Injection-Info`, and `Injection-Date` are displayed as
-recorded fields. The pending `HDR :fn-verified` interface is not consumed yet.
+The group page asks `LIST ACTIVE`; the initial recent view asks `GROUP` then
+`OVER` for at most the latest 40 local article-number slots. Older and newer
+links carry explicit inclusive `start`/`end` bounds for windows of at most 40
+slots. Holes stay holes, including an empty window that still has adjacent
+navigation where the current group range permits it. New posts do not slide an
+explicit window; the displayed GROUP range reports the current frontier, and
+following the newer link requests the next number range. Selecting an article
+asks `ARTICLE`. Replies carry `References` and remain ordinary posts. A browser
+render is only a display: it never advances an agent processing acknowledgement
+or a durable consumer cursor. The `FN-Statement` and `FN-Authorship` indicators say only
+whether those headers were present. The reader also asks `HDR :fn-verified`
+for the selected numeric article on the same NNTP connection and accepts only
+the matching numeric HDR row; an article's Message-ID header cannot redirect
+the lookup. It displays only the supported three-outcome response grammar (`verified`,
+`unverified`, or `absent`) and labels it as the node's historical server report.
+Malformed, unsupported, missing, or failed HDR responses are shown as
+unavailable; header presence never supplies a verdict. This report is not an
+independent cryptographic check and does not describe current authorization.
+`From` is labeled as a claim, while `Path`, `Injection-Info`, and
+`Injection-Date` are displayed as recorded fields.
 
 After `POST`, the page keeps **accepted**, **refused**, and **uncertain**
 distinct. An uncertain response keeps the generated Message-ID and offers a
@@ -63,7 +75,7 @@ The client caps each NNTP line at 8 KiB and multiline block at 256 KiB or
 body at 16 KiB. Article text and header values are escaped, rendered as text
 without remote images or scripts, and served with a restrictive content
 security policy. This first slice has no saved drafts, search index, unread
-state, or verified authorship display. A `FN-Statement` and an
+state, or independent verified authorship display. A `FN-Statement` and an
 `FN-Authorship` carrier are shown as separate recorded presences, never as a
 verified identity. The node's raw status stays in the result page's details.
 

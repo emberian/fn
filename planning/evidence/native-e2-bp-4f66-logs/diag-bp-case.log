@@ -1,0 +1,32 @@
+sender-exit 0
+receiver-exit 0
+receiver-stdout
+ TCPCL bp-node event (:SEND :CONTACT 6)
+TCPCL bp-node event (:SEND :SESS-INIT 40)
+TCPCL bp-node event (:SESSION-UP 10 1024 1048576 NIL)
+TCPCL bp-node event (:SEND :XFER-ACK 18)
+TCPCL bp-node event (:BUNDLE-RECEIVED 0 475)
+BP accepted xfer=0 adu=378 path=/tmp/fn-bp-node-a3-j6zxrkfh/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb
+TCPCL bp-node accepted xfer=0 path=/tmp/fn-bp-node-a3-j6zxrkfh/receiver-fnbs/lifecycle/00000000000000000001-00000000000000000000.fnb
+TCPCL bp-node event (:SEND :SESS-TERM 3)
+TCPCL bp-node event (:PEER-TERMINATING 0)
+TCPCL bp-node event (:CLOSE)
+TCPCL bp-node summary accepted=1 refused=0 uncertain=0 phase=closed
+BP application handoff durable
+BP node delivery request-refused
+
+receiver-stderr
+ BP-DIAG session channel=(:TCP4 (127 0 0 1) 45979 (127 0 0 1)) announced=(100
+                                                                         116
+                                                                         110 58
+                                                                         47 47
+                                                                         115
+                                                                         101
+                                                                         110
+                                                                         100
+                                                                         101
+                                                                         114 47) answer=(:REFUSED
+                                                                                         :CHANNEL)
+BP-DIAG request ingress=(:CL (1 . 1) 0 (:DTN 47 47 115 101 110 100 101 114 47)
+                         NIL 0) source="dtn://sender/" dest="dtn://receiver/" answer=NIL
+

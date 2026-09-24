@@ -167,3 +167,74 @@ A valid carrier does not establish topic anchoring or report admission."
 (fnn-register-verb "hybrid-verify-source"
                    (lambda (first rest)
                      (fnn-command-hybrid-verify-source (cons first rest))))
+
+(defun fnn-command-consumer-project (args)
+  "Project exact poll output with ACL2. Supplied files alone do not prove Store provenance."
+  (unless (= (length args) 2)
+    (error 'fnn-usage-error
+           :message "usage: fn consumer-project CURSOR.fncu ACCEPTED.fn-e"))
+  (let* ((cursor (handler-case
+                     (fnn-octet-list
+                      (fnn-read-regular-bounded
+                       (first args) (fnn-core 'fn-cpj-max-cursor-octets)))
+                   (fnn-input-overbound ()
+                     (fnn-out "fn-consumer-project-refused-v1 limit")
+                     (return-from fnn-command-consumer-project 1))))
+         (event (handler-case
+                    (fnn-octet-list
+                     (fnn-read-regular-bounded
+                      (second args) (fnn-core 'fn-cpj-max-event-octets)))
+                  (fnn-input-overbound ()
+                    (fnn-out "fn-consumer-project-refused-v1 limit")
+                    (return-from fnn-command-consumer-project 1))))
+         (projected (fnn-core 'fn-cpj-project cursor event)))
+    (unless (eq (first projected) :ok)
+      (fnn-out "fn-consumer-project-refused-v1 ~(~a~)" (second projected))
+      (return-from fnn-command-consumer-project 1))
+    (destructuring-bind (tag scope sequence txid source-id msgid source
+                         received verdict-principal verdict) projected
+      (declare (ignore tag))
+      (fnn-out "fn-consumer-project-v1 ~{~a~^ ~} ~d ~d ~a ~a ~a ~a ~a ~a"
+               (append (mapcar #'fnn-hex (subseq scope 0 5))
+                       (mapcar #'identity (subseq scope 5)))
+               sequence txid (fnn-hex source-id) (fnn-hex msgid)
+               (fnn-hex source) (fnn-hex received)
+               (fnn-hex verdict-principal) (fnn-hex verdict))
+      0)))
+
+(fnn-register-verb "consumer-project"
+                   (lambda (first rest)
+                     (fnn-command-consumer-project (cons first rest))))
+
+(defun fnn-command-consumer-inspect (args)
+  "Decode a bounded fncu cursor for diagnostics; it conveys no Store authority."
+  (unless (= (length args) 1)
+    (error 'fnn-usage-error
+           :message "usage: fn consumer-inspect CURSOR.fncu"))
+  (let* ((octets (handler-case
+                     (fnn-octet-list
+                      (fnn-read-regular-bounded
+                       (first args) (fnn-core 'fn-cpj-max-cursor-octets)))
+                   (fnn-input-overbound ()
+                     (fnn-out "fn-consumer-inspect-refused-v1 limit")
+                     (return-from fnn-command-consumer-inspect 1))))
+         (decoded (fnn-core 'fn-cp-cursor-decode octets)))
+    (unless (eq (first decoded) :ok)
+      (fnn-out "fn-consumer-inspect-refused-v1 ~(~a~)" (second decoded))
+      (return-from fnn-command-consumer-inspect 1))
+    (let ((cursor (second decoded)))
+      (fnn-out "fn-consumer-inspect-v1 history=~a incarnation=~a consumer=~a principal=~a query=~a query-version=~d view-version=~d registration-epoch=~d position=~d currentness=unverified acceptance=unverified processing=unverified"
+               (fnn-hex (fnn-core 'fn-cp-nth 1 cursor))
+               (fnn-hex (fnn-core 'fn-cp-nth 2 cursor))
+               (fnn-hex (fnn-core 'fn-cp-nth 3 cursor))
+               (fnn-hex (fnn-core 'fn-cp-nth 4 cursor))
+               (fnn-hex (fnn-core 'fn-cp-nth 5 cursor))
+               (fnn-core 'fn-cp-nth 6 cursor)
+               (fnn-core 'fn-cp-nth 7 cursor)
+               (fnn-core 'fn-cp-nth 8 cursor)
+               (fnn-core 'fn-cp-nth 9 cursor))
+      0)))
+
+(fnn-register-verb "consumer-inspect"
+                   (lambda (first rest)
+                     (fnn-command-consumer-inspect (cons first rest))))

@@ -1,0 +1,17 @@
+test_signed_composite_poll_and_lost_positive_ack_reply (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply) ... FAIL
+
+======================================================================
+FAIL: test_signed_composite_poll_and_lost_positive_ack_reply (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/reader-clone-poll-native-bc9-20260923/tests/test_native_consumer_e2.py", line 277, in test_signed_composite_poll_and_lost_positive_ack_reply
+    self.consumer("poll", node, "worker", poll_cursor, report_path)
+  File "/tank/fn/gates/reader-clone-poll-native-bc9-20260923/tests/test_native_consumer_e2.py", line 101, in consumer
+    self.assertEqual(result.returncode, expected,
+AssertionError: 4 != 0 : store: ACL2 refused local consumer request
+
+
+----------------------------------------------------------------------
+Ran 1 test in 2.926s
+
+FAILED (failures=1)

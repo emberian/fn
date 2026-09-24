@@ -70,6 +70,19 @@
 (defun fn-bpnf-held-bundle (h) (declare (xargs :guard t)) (fn-bpn-nth 7 h))
 (defun fn-bpnf-held-wire (h) (declare (xargs :guard t)) (fn-bpn-nth 8 h))
 
+; A nil anchor denotes an old kind-5 row whose arrival observation was not
+; persisted.  New receptions always record one of these tagged decisions.
+(defun fn-bpnf-received-anchor (bundle observation)
+  (declare (xargs :guard t))
+  (if (and (fn-bpb-bundlep bundle) (fn-clock-observationp observation))
+      (let ((age (fn-bpb-bundle-age bundle)))
+        (if (natp age)
+            (list :observed-age age (fn-clock-monotonic observation))
+          '(:wall)))
+    nil))
+
+(verify-guards fn-bpnf-received-anchor)
+
 (defun fn-bpnf-heldp (h)
   (declare (xargs :guard t))
   (and (true-listp h) (equal (len h) 16)
@@ -273,7 +286,7 @@
        (equal (car x) :bpnf-operation)
        (natp (fn-bpn-nth 1 x)) (natp (fn-bpn-nth 2 x))
        (member-equal (fn-bpn-nth 3 x)
-                     '(:store :deliver :attempt :discard :handoff :family))
+                     '(:store :deliver :attempt :discard :handoff :family :delete))
        (member-equal (fn-bpn-nth 5 x) '(:pending :uncertain))))
 
 (defun fn-bpnf-operation-matchp (issued epoch operation-id)
@@ -316,9 +329,26 @@
 ; slots.  Next-op is allocated here, never supplied by a caller.  The host is
 ; not yet a caller: A2 must prove the FNBS publisher and replay relation
 ; before replacing the outbound-only host path.
+(defun fn-bpnf-held-arrival-frontier (held)
+  (declare (xargs :guard t :measure (acl2-count held)))
+  (if (consp held)
+      (max (1+ (nfix (fn-bpn-nth 3 (car held))))
+           (fn-bpnf-held-arrival-frontier (cdr held)))
+    0))
+
+(defun fn-bpnf-state-with-arrival
+  (base held outcomes handoffs correlation issued waits epoch next-op next-arrival)
+  (declare (xargs :guard t))
+  (list :bpnf-state base held outcomes handoffs correlation issued waits epoch
+        next-op next-arrival))
+
+; Compatibility constructor for cold initial states and bounded tests. Served
+; transitions always carry the explicit frontier, including after retirement.
 (defun fn-bpnf-state (base held outcomes handoffs correlation issued waits epoch next-op)
   (declare (xargs :guard t))
-  (list :bpnf-state base held outcomes handoffs correlation issued waits epoch next-op))
+  (fn-bpnf-state-with-arrival
+   base held outcomes handoffs correlation issued waits epoch next-op
+   (fn-bpnf-held-arrival-frontier held)))
 
 (defun fn-bpnf-base (st) (declare (xargs :guard t)) (fn-bpn-nth 1 st))
 (defun fn-bpnf-held-list (st) (declare (xargs :guard t)) (fn-bpn-nth 2 st))
@@ -332,13 +362,24 @@
   (equal (fn-cbor-ag-car (fn-bpnf-waits st)) :delivery-uncertain))
 (defun fn-bpnf-epoch (st) (declare (xargs :guard t)) (fn-bpn-nth 8 st))
 (defun fn-bpnf-next-op (st) (declare (xargs :guard t)) (fn-bpn-nth 9 st))
+(defun fn-bpnf-next-arrival (st) (declare (xargs :guard t)) (fn-bpn-nth 10 st))
 
 (defun fn-bpnf-with-issued (st issued)
   (declare (xargs :guard t))
-  (fn-bpnf-state (fn-bpnf-base st) (fn-bpnf-held-list st)
+  (fn-bpnf-state-with-arrival (fn-bpnf-base st) (fn-bpnf-held-list st)
                  (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                  (fn-bpnf-correlation st) issued (fn-bpnf-waits st)
-                 (fn-bpnf-epoch st) (fn-bpnf-next-op st)))
+                 (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                 (fn-bpnf-next-arrival st)))
+
+(defun fn-bpnf-with-base (st new-base)
+  (declare (xargs :guard t))
+  (fn-bpnf-state-with-arrival
+   new-base (fn-bpnf-held-list st) (fn-bpnf-outcomes st)
+   (fn-bpnf-handoffs st) (fn-bpnf-correlation st)
+   (fn-bpnf-issued st) (fn-bpnf-waits st)
+   (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+   (fn-bpnf-next-arrival st)))
 
 (defun fn-bpnf-answer (st effects)
   (declare (xargs :guard t))
@@ -366,10 +407,11 @@
       (let ((marker (list :delivery (fn-bpnf-epoch st)
                           (fn-bpnf-next-op st) key)))
         (fn-bpnf-answer
-         (fn-bpnf-state (fn-bpnf-base st) (fn-bpnf-held-list st)
+         (fn-bpnf-state-with-arrival (fn-bpnf-base st) (fn-bpnf-held-list st)
                         (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                         (fn-bpnf-correlation st) nil marker
-                        (fn-bpnf-epoch st) (1+ (fn-bpnf-next-op st)))
+                        (fn-bpnf-epoch st) (1+ (fn-bpnf-next-op st))
+                        (fn-bpnf-next-arrival st))
          (list (list :deliver (fn-bpnf-epoch st)
                      (fn-bpnf-next-op st) key h)))))))
 
@@ -389,11 +431,12 @@
       (fn-bpnf-answer st (list (list :delivery-answer :refused))))
      ((equal status :uncertain)
       (fn-bpnf-answer
-       (fn-bpnf-state (fn-bpnf-base st) (fn-bpnf-held-list st)
+       (fn-bpnf-state-with-arrival (fn-bpnf-base st) (fn-bpnf-held-list st)
                       (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                       (fn-bpnf-correlation st) (fn-bpnf-issued st)
                       (list :delivery-uncertain epoch marker-id key)
-                      (fn-bpnf-epoch st) (fn-bpnf-next-op st))
+                      (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                      (fn-bpnf-next-arrival st))
        (list (list :delivery-answer :uncertain))))
      ((not (and (fn-frame-natp (fn-bpnf-next-op st))
                 (< (fn-bpnf-next-op st) *fn-frame-max-nat*)
@@ -401,14 +444,15 @@
       (fn-bpnf-answer st (list (list :delivery-answer :refused))))
      (t
       (fn-bpnf-answer
-       (fn-bpnf-state (fn-bpnf-base st) (fn-bpnf-held-list st)
+       (fn-bpnf-state-with-arrival (fn-bpnf-base st) (fn-bpnf-held-list st)
                       (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                       (fn-bpnf-correlation st)
                       (fn-bpnf-operation (fn-bpnf-epoch st)
                                          (fn-bpnf-next-op st)
                                          :deliver record :pending)
                       (fn-bpnf-waits st) (fn-bpnf-epoch st)
-                      (1+ (fn-bpnf-next-op st)))
+                      (1+ (fn-bpnf-next-op st))
+                      (fn-bpnf-next-arrival st))
        (list (list :persist-delivery (fn-bpnf-epoch st)
                    (fn-bpnf-next-op st) record)))))))
 
@@ -426,12 +470,13 @@
             (if (not ok)
                 (fn-bpnf-answer st (list (list :delivery-answer :uncertain)))
               (fn-bpnf-answer
-               (fn-bpnf-state
+               (fn-bpnf-state-with-arrival
                 (fn-bpnf-base st) updated (fn-bpnf-outcomes st)
                 (if handoff (cons handoff (fn-bpnf-handoffs st))
                   (fn-bpnf-handoffs st))
                 (fn-bpnf-correlation st) nil nil
-                (fn-bpnf-epoch st) (fn-bpnf-next-op st))
+                (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                (fn-bpnf-next-arrival st))
                (list (list :delivery-answer :durable)))))
         (fn-bpnf-answer
          (fn-bpnf-with-issued
@@ -459,12 +504,17 @@
                        (<= (len base-records) *fn-bpn-machine-max-records*))))
   (let ((base-answer
          (fn-bpn-restart-step (fn-bpnf-base st) base-records sequence-ready))
-        (prior (if (equal (len replay-result) 4)
+        (prior (if (>= (len replay-result) 4)
                    (fn-bpn-nth 3 replay-result)
-                 (fn-bpn-nth 2 replay-result))))
+                 (fn-bpn-nth 2 replay-result)))
+        (arrival-frontier
+         (if (equal (len replay-result) 5)
+             (fn-bpn-nth 4 replay-result)
+           (fn-bpnf-held-arrival-frontier (fn-bpn-nth 1 replay-result)))))
     (if (not (and (true-listp replay-result)
                   (or (equal (len replay-result) 3)
-                      (equal (len replay-result) 4))
+                      (equal (len replay-result) 4)
+                      (equal (len replay-result) 5))
                   (equal (car replay-result) :ready)
                   (or (null prior)
                       (and (consp prior) (natp (car prior))
@@ -473,6 +523,10 @@
                   (natp (fn-bpnf-epoch st))
                   (< (fn-bpnf-epoch st) new-epoch)
                   (or (null prior) (< (car prior) new-epoch))
+                  (natp arrival-frontier)
+                  (<= arrival-frontier (1+ *fn-frame-max-nat*))
+                  (<= (fn-bpnf-held-arrival-frontier
+                       (fn-bpn-nth 1 replay-result)) arrival-frontier)
                   (fn-bpnf-recovery-heldp
                    (fn-bpn-nth 1 replay-result)
                    (fn-bpn-machine-state-max-jobs
@@ -485,11 +539,11 @@
                                      (fn-bpn-answer-state base-answer)))))))
         (fn-bpnf-answer st (list (list :restart-fault :fnbs-or-base)))
       (fn-bpnf-answer
-       (fn-bpnf-state (fn-bpn-answer-state base-answer)
+       (fn-bpnf-state-with-arrival (fn-bpn-answer-state base-answer)
                       (fn-bpn-nth 1 replay-result)
-                      nil (if (equal (len replay-result) 4)
+                      nil (if (>= (len replay-result) 4)
                               (fn-bpn-nth 2 replay-result) nil)
-                      nil nil nil new-epoch 0)
+                      nil nil nil new-epoch 0 arrival-frontier)
        (list (list :restart-ready
                    (len (fn-bpn-nth 1 replay-result))))))))
 
@@ -521,11 +575,7 @@
           (fn-bpnf-answer st nil)
         (let ((ans (fn-bpn-step (fn-bpnf-base st) (fn-bpn-nth 1 event))))
         (fn-bpnf-answer
-         (fn-bpnf-state (fn-bpn-answer-state ans) (fn-bpnf-held-list st)
-                        (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
-                        (fn-bpnf-correlation st) (fn-bpnf-issued st)
-                        (fn-bpnf-waits st) (fn-bpnf-epoch st)
-                        (fn-bpnf-next-op st))
+         (fn-bpnf-with-base st (fn-bpn-answer-state ans))
          (fn-bpn-answer-effects ans))))
     (if (equal (fn-cbor-ag-car event) :persist-result)
         (let ((issued (fn-bpnf-issued st)))
@@ -540,12 +590,13 @@
                 (if (equal (fn-bpn-nth 5 issued) :pending)
                     (let ((h (fn-bpn-nth 4 issued)))
                       (fn-bpnf-answer
-                       (fn-bpnf-state (fn-bpnf-base st)
+                       (fn-bpnf-state-with-arrival (fn-bpnf-base st)
                                       (cons h (fn-bpnf-held-list st))
                                       (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                                       (fn-bpnf-correlation st) nil
                                       (fn-bpnf-waits st) (fn-bpnf-epoch st)
-                                      (fn-bpnf-next-op st))
+                                      (fn-bpnf-next-op st)
+                                      (fn-bpnf-next-arrival st))
                        (list (list :receive-answer (fn-bpn-nth 4 h) :stored))))
                   (fn-bpnf-answer st nil))
               (if (equal (fn-bpn-nth 3 event) :refused)
@@ -564,9 +615,16 @@
         (let* ((bundle (fn-bpn-nth 1 event))
                (wire (fn-bpn-nth 2 event))
                (ingress (fn-bpn-nth 3 event))
+               ; Four-field receive events remain a logical legacy arm for
+               ; old proof fixtures; fn-bpnf-host-eventp never admits them.
+               ; They are unreachable in native composition.
+               (legacy-event (equal (len event) 4))
+               (observation (fn-bpn-nth 4 event))
                (decision (and (fn-bpnf-cl-ingressp ingress)
                               (fn-bpb-bundlep bundle)
                               (fn-cbor-octet-listp wire)
+                              (or legacy-event
+                                  (fn-clock-observationp observation))
                               (equal wire (fn-bpb-encode bundle))
                               (fn-bpnf-receive-decision
                                (fn-bpnf-held-list st) ingress bundle))))
@@ -575,6 +633,7 @@
                                                 '(:refused :busy))))
             (if (or (not (fn-frame-natp (fn-bpnf-epoch st)))
                     (not (fn-frame-natp (fn-bpnf-next-op st)))
+                    (not (fn-frame-natp (fn-bpnf-next-arrival st)))
                     (equal (fn-bpnf-next-op st) *fn-frame-max-nat*))
               (fn-bpnf-answer st (list (list :receive-answer ingress
                                                 '(:refused :arguments))))
@@ -593,18 +652,20 @@
                                                     '(:refused :capacity))))
               (let* ((id (fn-bpb-bundle-id bundle))
                      (principal (fn-bpnf-ingress-principal ingress))
-                     (arrival (len (fn-bpnf-held-list st)))
+                     (arrival (fn-bpnf-next-arrival st))
                      (h (fn-bpnf-held principal id arrival ingress nil nil bundle wire
-                                      nil nil nil '(:dispatch-pending) nil nil arrival)))
+                                      (fn-bpnf-received-anchor bundle observation)
+                                      nil nil '(:dispatch-pending) nil nil arrival)))
                 (fn-bpnf-answer
-                 (fn-bpnf-state (fn-bpnf-base st)
+                 (fn-bpnf-state-with-arrival (fn-bpnf-base st)
                                 (fn-bpnf-held-list st)
                                 (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                                 (fn-bpnf-correlation st)
                                 (fn-bpnf-operation (fn-bpnf-epoch st)
                                                    (fn-bpnf-next-op st) :store h :pending)
                                 (fn-bpnf-waits st) (fn-bpnf-epoch st)
-                                (1+ (fn-bpnf-next-op st)))
+                                (1+ (fn-bpnf-next-op st))
+                                (1+ (fn-bpnf-next-arrival st)))
                  (list (list :persist (fn-bpnf-epoch st)
                              (fn-bpnf-next-op st) h))))))))))
         (fn-bpnf-answer st nil)))))))))
@@ -853,6 +914,8 @@
 (verify-guards fn-bpnf-waitp)
 (verify-guards fn-bpnf-version-of)
 (verify-guards fn-bpnf-wait-wakes-p)
+(verify-guards fn-bpnf-held-arrival-frontier)
+(verify-guards fn-bpnf-state-with-arrival)
 (verify-guards fn-bpnf-state)
 (verify-guards fn-bpnf-base)
 (verify-guards fn-bpnf-held-list)
@@ -864,7 +927,9 @@
 (verify-guards fn-bpah-delivery-uncertainp)
 (verify-guards fn-bpnf-epoch)
 (verify-guards fn-bpnf-next-op)
+(verify-guards fn-bpnf-next-arrival)
 (verify-guards fn-bpnf-with-issued)
+(verify-guards fn-bpnf-with-base)
 (verify-guards fn-bpnf-answer)
 (verify-guards fn-bpnf-answer-state)
 (verify-guards fn-bpnf-answer-effects)

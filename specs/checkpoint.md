@@ -218,6 +218,70 @@ This is diagnostic adoption only: suffix-only startup is not claimed because
 the physical assumptions needed to replace full replay have not been
 discharged.
 
+The version-one auxiliary diagnostic compares the authoritative exact-history
+replay with the reopened Store's historical authorship verdicts, keyring
+snapshots, completed dense sequence, and E2 consumer projection.  This is a
+recovery-time comparison only.  It reports `auxiliary=equal-v1` only when all
+four agree; disagreement is a corrupt selected checkpoint, not a repair that
+replaces the live Store.  The node checkpoint format remains version one and
+contains only the node.  A selected `fn-cc` pack remains format zero and
+retains the exact original event bytes from dense sequence zero; expansion
+before full Store reopen is what preserves the auxiliary history.  Reclaiming
+physical prefix names must not change issued dense Store positions.
+
+### Cold writable clone activation
+
+A byte copy is not an activated Store.  The native `checkpoint clone SOURCE
+DESTINATION` operation requires an offline, locked source and a destination
+that does not exist.  The host observes a fresh 32-octet incarnation ID from
+the OS CSPRNG; ACL2 validates its shape, rejects equality with the copied
+history or current incarnation, and constructs the durable rollover event.
+Distinct sibling clones rely on probabilistic entropy uniqueness, not a
+proved global uniqueness claim.  Source and destination CLI paths must be
+absolute, NUL-free and at most 512 UTF-8 octets, matching the ACL2 native
+configuration path bound.  Canonicalized aliases, the staging path, fence
+path and every joined copy path are checked against the same bound before
+traversal.  It first builds a private sibling directory containing the
+exact source bytes and a durable `clone-pending.fnce` fence.  The fence holds
+the canonical version-one `fnce` rollover event proposed by ACL2, not a
+second projection format.  Publication uses Linux `renameat2` with
+`RENAME_NOREPLACE`; another platform refuses this operation.  Publication of
+that directory may expose the destination name but
+must never make it serviceable while the fence exists.  Every normal writable
+or reader open at that destination refuses before Store initialization or
+recovery can serve it.  The clone executor alone reopens the destination under
+an exclusive lock, lets ACL2 propose `(:rollover fresh-id)` using the
+recovered dense sequence and allocator coordinates, and publishes it through
+the ordinary Store transaction.  ACL2 supplies the offline copy ceilings:
+depth 16, at most 1,000,000 directory entries, and at most 2^40 bytes of
+regular-file content; the host streams in 65,536-byte chunks and refuses
+before exceeding those limits.  The history ID remains the same; the new
+incarnation differs from the copied source.  A same-ID, history-ID, malformed, or
+unbootstrapped proposal is refused.  The fence is removed only after a second
+exact-history reopen confirms the durable rollover and new incarnation; the
+fence removal and its parent-directory barrier are themselves part of the
+activation operation.
+
+A death before directory publication leaves only an unservable private
+staging tree.  A death after publication but before a completed rollover
+leaves the destination fenced.  An ambiguous publication or rollover completion also
+leaves it fenced, requiring recovery to inspect the durable journal.  If the
+rollover completed but fence removal did not, retry verifies that same event
+and removes the fence without appending another rollover.  After independent
+reopen confirms the durable rollover, an unlink or directory-barrier error
+still reports uncertainty.  The marker may already be absent, but ordinary
+opens are safe because the new incarnation is durable.  A different
+incarnation or an existing nonempty destination is never overwritten.  The
+copied old cursor tokens are invalid after the new incarnation; registration
+state resets, while exact journal history, article and retention obligations,
+authorship verdicts, and keyring snapshots remain.  This paragraph is the
+activation contract.  The source contains the executor and pre-open fence;
+native saved-image qualification and a nonzero served consumer cursor witness remain
+open.  `checkpoint clone-resume DESTINATION` is the only operator path that
+may reopen a fenced destination; it verifies the same durable event rather
+than proposing a second incarnation.  Tests and operators use the production
+`consumer bootstrap CONTROL` owner command.
+
 The filename codec reuses the byte store's proved natural-decimal renderer.
 `fn-cpp-generation-name-decode-of-render` is its called-codec round trip;
 canonical re-rendering rejects leading-zero aliases, signs, overflow and

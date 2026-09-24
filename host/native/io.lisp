@@ -68,6 +68,7 @@
   ((message :initarg :message :reader fnn-message))
   (:report (lambda (c s) (write-string (fnn-message c) s))))
 (define-condition fnn-store-fault (fnn-store-error) ())
+(define-condition fnn-input-overbound (fnn-store-fault) ())
 (define-condition fnn-store-indeterminate (fnn-store-error) ())
 (define-condition fnn-usage-error (fnn-store-error) ())
 
@@ -84,6 +85,8 @@
   (error 'fnn-store-error :message (apply #'format nil control args)))
 (defun fnn-fault (control &rest args)
   (error 'fnn-store-fault :message (apply #'format nil control args)))
+(defun fnn-overbound (control &rest args)
+  (error 'fnn-input-overbound :message (apply #'format nil control args)))
 (defun fnn-indeterminate (control &rest args)
   (error 'fnn-store-indeterminate :message (apply #'format nil control args)))
 (defun fnn-os-fail (errno &optional path)
@@ -404,7 +407,7 @@ receive an OS error for every failed read."
                  (incf total count)
                  (decf remaining count)))
              (when (> total maximum)
-      (fnn-fault "file exceeds ACL2-owned bound"))
+      (fnn-overbound "file exceeds ACL2-owned bound"))
              (let ((data (fnn-make-octets total)) (at 0))
                (dolist (chunk (nreverse chunks))
                  (replace data chunk :start1 at)
@@ -419,7 +422,7 @@ receive an OS error for every failed read."
            (unless (fnn-regular-p info)
              (fnn-fault "refusing non-regular store file: ~a" path))
            (when (> (sb-posix:stat-size info) maximum)
-             (fnn-fault "store file exceeds bound: ~a" path))
+             (fnn-overbound "store file exceeds bound: ~a" path))
            (fnn-read-bounded-fd fd maximum))
       (fnn-close fd))))
 
@@ -854,10 +857,8 @@ round policy."
 (defun fnn-bridge-config-generation ()
   (fnn-nat (fnn-core-state 'fn-store-cfg-generation)))
 
-(defun fnn-bridge-config-names (wrapper)
-  "A replayed name table: the core joins the names with LF, which no group
-name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
-  (let ((octets (fnn-core-state wrapper)))
+(defun fnn-decode-joined-names (octets)
+  "Decode only the ACL2-owned LF join of a group-name table."
     (unless (fnn-octet-list-p octets) (fnn-fault "ACL2 returned a non-octet list"))
     (let ((names nil) (current nil))
       (dolist (octet octets)
@@ -866,7 +867,12 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
                    (setq current nil))
             (push octet current)))
       (when current (push (fnn-octets-string (fnn-octets (nreverse current))) names))
-      (nreverse names))))
+      (nreverse names)))
+
+(defun fnn-bridge-config-names (wrapper)
+  "A replayed name table: the core joins the names with LF, which no group
+name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
+  (fnn-decode-joined-names (fnn-core-state wrapper)))
 
 (defun fnn-bridge-config-initial (names)
   "Generation 1 of a fresh store, built and admitted by the core."
@@ -1044,6 +1050,18 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defun fnn-transactions (s) (fnn-join (fnn-store-root s) "transactions"))
 (defun fnn-staging (s) (fnn-join (fnn-store-root s) "staging"))
 (defun fnn-lock-path (s) (fnn-join (fnn-store-root s) "writer.lock"))
+(defvar *fnn-clone-activation* nil)
+
+(defun fnn-clone-fence-path (s)
+  (fnn-join (fnn-store-root s)
+            (fnn-checkpoint-name-result
+             (fnn-core 'fn-store-checkpoint-clone-fence-name)
+             "clone fence name")))
+
+(defun fnn-require-clone-activated (s)
+  (when (and (fnn-lstat (fnn-clone-fence-path s))
+             (not *fnn-clone-activation*))
+    (fnn-refuse "clone is fenced pending durable incarnation rollover")))
 (defun fnn-frontier-path (s) (fnn-join (fnn-store-root s) "allocation-frontier.json"))
 (defun fnn-config-dir (s) (fnn-join (fnn-store-root s) "config"))
 (defun fnn-config-record-name (generation)
@@ -1304,6 +1322,7 @@ after the syscall."
   ;; the core from the operator's group names.
   (fnn-safe-directory (fnn-store-root store) t store
                       "init-root-mkdir" "init-root-parent-fenced")
+  (fnn-require-clone-activated store)
   (let ((lock-fd (fnn-open-lock store t t)))
     (unwind-protect
          (progn
@@ -1359,6 +1378,7 @@ after the syscall."
 
 (defun fnn-acquire (store)
   (fnn-safe-directory (fnn-store-root store))
+  (fnn-require-clone-activated store)
   (fnn-safe-directory (fnn-transactions store))
   (fnn-safe-directory (fnn-staging store))
   (handler-case
@@ -1660,9 +1680,10 @@ from the live ACL2 configuration; the native host does not name a provenance."
   (let ((outcome (fnn-store-checkpoint-outcome store)))
     (case (first outcome)
       (:none "checkpoint=none")
-      (:ok (format nil "checkpoint=ok generation=~d suffix-from=~d differential=~a"
+      (:ok (format nil "checkpoint=ok generation=~d suffix-from=~d differential=~a auxiliary=~a"
                    (second outcome) (third outcome)
-                   (if (fourth outcome) "equal" "DIFFERENT")))
+                   (if (fourth outcome) "equal" "DIFFERENT")
+                   (if (eq (fifth outcome) :equal-v1) "equal-v1" "unknown")))
       (:corrupt (format nil "checkpoint=corrupt reason=~a" (second outcome)))
       (otherwise (fnn-fault "invalid checkpoint recovery outcome")))))
 
@@ -2466,7 +2487,10 @@ serialized profile when the saved image later starts."
     "FN_BP_CLOCK_DOMAIN_TEST_FAIL"
     "FN_BP_SERVICE_TEST_SEND_FAULT" "FN_BP_APP_TEST_PAUSE_AFTER_DECISION"
     "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_SEVEN"
+    "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE"
+    "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_TEN"
     "FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX"
+    "FN_BP_NODE_TEST_PAUSE_AFTER_REPORT_OUTBOX"
     "FN_TCPCL_TEST_FAIL_STAGING_UNLINK" "FN_TCPCL_TEST_FAIL_STAGING_BARRIER"
     "FN_TCPCL_TEST_PAUSE_AFTER_STAGE_DATA"
     "FN_CHECKPOINT_TEST_FAIL" "FN_CHECKPOINT_TEST_STOP_AFTER"

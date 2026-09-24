@@ -114,6 +114,31 @@ result as a refusal or uncertainty."
       (setf (fnn-store-fenced store) t)
       :unavailable)))
 
+(defun fnn-owner-refresh-config-cache (service expected-generation)
+  "Install one coherent native projection of the ACL2 owner's durable config.
+
+The Store bridge is a separate ACL2 global and does not follow live owner
+reconfiguration.  A failed observation after publication fences this writer;
+it cannot continue with its old group-code table."
+  (let ((store (fnn-owner-service-store service)))
+    (handler-case
+        (let* ((generation (fnn-owner-core 'fn-owner-config-generation))
+               (served (fnn-decode-joined-names
+                        (fnn-owner-core 'fn-owner-config-served)))
+               (domain (fnn-decode-joined-names
+                        (fnn-owner-core 'fn-owner-domain))))
+          (unless (and (integerp generation) (>= generation 0)
+                       (= generation expected-generation))
+            (fnn-fault "owner configuration generation changed after publication"))
+          (setf (fnn-store-config-generation store) generation
+                (fnn-store-config-served store) served
+                (fnn-store-config-domain store) domain)
+          :refreshed)
+      (error (e)
+        (setf (fnn-store-fenced store) t)
+        (fnn-indeterminate
+         "durable configuration needs owner cache recovery: ~a" e)))))
+
 (defun fnn-owner-live-admin-serialized (service argv)
   "Publish one ACL2-planned configuration mutation through the live owner."
   (fnn-owner-serialized
@@ -161,6 +186,7 @@ result as a refusal or uncertainty."
                        :durable)
              (fnn-indeterminate
               "owner rejected a durably published configuration"))
+           (fnn-owner-refresh-config-cache service published)
            (fnn-owner-feed-refresh-configuration service)
            :accepted))))))
 

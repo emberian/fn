@@ -83,6 +83,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-store-events-tests \
 	books/consumer-store-projection \
 	tests/acl2/consumer-store-projection-tests \
+	books/consumer-local-control \
+	tests/acl2/consumer-local-control-tests \
+	books/consumer-poll-projection \
+	tests/acl2/consumer-poll-projection-tests \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
 	books/provenance-codec \
@@ -153,6 +157,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-identity-sequence-invariants-tests \
 	books/consumer-store-invariants \
 	tests/acl2/consumer-store-invariants-tests \
+	books/consumer-owner-local \
+	tests/acl2/consumer-owner-local-tests \
 	tests/acl2/store-node-resolution-tests \
 	tests/acl2/store-node-resolution-traces-tests \
 	tests/acl2/store-identity-traces-tests \
@@ -208,6 +214,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-publish-tests \
 	books/checkpoint-compaction \
 	tests/acl2/checkpoint-compaction-tests \
+	books/checkpoint-auxiliary \
+	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
 	tests/acl2/hybrid-signature-invariants-tests \
 	books/index \
@@ -243,10 +251,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-contact-service-tests \
 	books/bp-app-handoff \
 	tests/acl2/bp-app-handoff-tests \
+	books/bp-app-handoff-time \
+	tests/acl2/bp-app-handoff-time-tests \
+	books/bp-report-deletion \
+	tests/acl2/bp-report-deletion-tests \
 	books/bp-handoff-status \
 	tests/acl2/bp-handoff-status-tests \
 	books/bp-session-admission \
 	tests/acl2/bp-session-admission-tests \
+	books/bp-channel-ingress \
+	tests/acl2/bp-channel-ingress-tests \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
@@ -262,6 +276,34 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-foundation-tests \
 	books/bp-node-fragment-family \
 	tests/acl2/bp-node-fragment-family-tests \
+	books/bp-node-fragment-plan \
+	tests/acl2/bp-node-fragment-plan-tests \
+	books/bp-node-fragment-expiry \
+	tests/acl2/bp-node-fragment-expiry-tests \
+	books/bp-fnbs-family-codec \
+	tests/acl2/bp-fnbs-family-codec-tests \
+	books/bp-fnbs-deletion-codec \
+	tests/acl2/bp-fnbs-deletion-codec-tests \
+	books/bp-node-fragment-replacement \
+	tests/acl2/bp-node-fragment-replacement-tests \
+	books/bp-fnbs-family-replay \
+	tests/acl2/bp-fnbs-family-replay-tests \
+	books/bp-node-fragment-step \
+	tests/acl2/bp-node-fragment-step-tests \
+	books/bp-node-fragment-guards \
+	books/bp-node-report-step \
+	tests/acl2/bp-node-report-step-tests \
+	books/bp-report-outbox \
+	tests/acl2/bp-report-outbox-tests \
+	books/bp-report-author \
+	tests/acl2/bp-report-author-tests \
+	books/bp-report-observe \
+	tests/acl2/bp-report-observe-tests \
+	books/bp-report-guards \
+	books/bp-fnbs-deletion-publication \
+	tests/acl2/bp-fnbs-deletion-publication-tests \
+	books/bp-fnbs-family-publication \
+	tests/acl2/bp-fnbs-family-publication-tests \
 	books/bp-node-receive-boundary \
 	tests/acl2/bp-node-receive-boundary-tests \
 	books/bp-fnbs-codec \
@@ -343,6 +385,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-native-app-tests \
 	books/bp-native-app-fast \
 	tests/acl2/bp-native-app-fast-tests \
+	books/bp-transit-join \
+	tests/acl2/bp-transit-join-tests \
 	books/bp-receiver-store-invariants \
 	books/bp-receiver-context-invariants \
 	books/bp-receiver-journal-invariants \
@@ -413,8 +457,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-tls-pin-tests \
 	tests/acl2/served-tls-prefix-tests \
 	books/nntp-auth-invariants \
+	books/nntp-auth-fold \
 	tests/acl2/served-tests \
 	tests/acl2/nntp-auth-teeth-tests \
+	tests/acl2/nntp-auth-fold-tests \
 	books/config-stream \
 	tests/acl2/config-stream-tests \
 	books/config-physical-replay \
@@ -424,11 +470,26 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-traces \
 	tests/acl2/config-store-traces-tests \
 	books/config-owner-live \
+	books/config-owner-advance-invariants \
+	tests/acl2/config-owner-advance-invariants-tests \
+	books/config-owner-advance-reader-invariants \
+	tests/acl2/config-owner-advance-reader-invariants-tests \
+	books/config-owner-read-invariants \
+	tests/acl2/config-owner-read-invariants-tests \
 	tests/acl2/config-owner-live-tests \
 	books/owner-config \
 	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
+	books/nntp-index-runtime \
+	books/group-bucket-index \
+	books/group-bucket-article \
+	books/group-bucket-article-invariants \
+	books/group-bucket-invariants \
+	books/nntp-range-indexed \
+	books/nntp-range-indexed-invariants \
+	tests/acl2/group-bucket-index-tests \
+	tests/acl2/nntp-range-indexed-tests \
 	tests/acl2/nntp-reader-profile-tests \
 	tests/acl2/nntp-legacy-tests \
 	tests/acl2/nntp-newnews-tests \

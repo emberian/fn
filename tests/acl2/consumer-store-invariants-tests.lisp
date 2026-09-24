@@ -89,3 +89,42 @@
 (assert-event (not (fn-csi-completed-prefixp *csnt-bad-completion*)))
 (assert-event (equal (fn-sn-finish *csnt-bad-completion*)
                      *csnt-bad-completion*))
+
+; K4's recovery-image bridge includes the linked record, the current prefix,
+; and the one-record rollback during recovery.  The old registration below
+; is structurally framed at sequence zero but has no bootstrap; the file
+; predicate alone therefore cannot establish the strict consumer replay.
+(assert-event
+ (fn-sn-observed-consumer-okp
+  (fn-sf-records (fn-sn-files *csnt-after-reg*))))
+(assert-event
+ (fn-sn-observed-consumer-okp
+  (fn-sf-but-last (fn-sf-records (fn-sn-files *csnt-after-reg*)))))
+(assert-event
+ (fn-sf-recovery-crash-imagep
+  (fn-sn-files *csit-linked-ack*)
+  (fn-sf-frontier (fn-sn-files *csit-linked-ack*))
+  (fn-sf-records (fn-sn-files *csit-linked-ack*))))
+(assert-event
+ (fn-sn-observed-consumer-okp
+  (fn-sf-records (fn-sn-files *csit-linked-ack*))))
+(defconst *csit-register-before-bootstrap*
+  (fn-cpe-make 0 0 0 '(:register (3) (4) (5) 1 1 1)))
+(defconst *csit-invalid-consumer-history*
+  (update-nth
+   2 (fn-sf-make :ready 1 nil
+                 (list *csit-register-before-bootstrap*)
+                 nil nil nil *fn-sf-recovery-barrier-count*)
+   *csnt-after-boot*))
+(assert-event
+ (fn-sf-recovery-crash-imagep
+  (fn-sn-files *csit-invalid-consumer-history*) 1
+  (list *csit-register-before-bootstrap*)))
+(assert-event (not (fn-csi-full-relationp *csit-invalid-consumer-history*)))
+(assert-event
+ (not (fn-sn-observed-consumer-okp
+       (list *csit-register-before-bootstrap*))))
+(must-fail
+ (assert-event
+  (fn-sn-observed-consumer-okp
+   (list *csit-register-before-bootstrap*))))

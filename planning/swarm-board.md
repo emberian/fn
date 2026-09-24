@@ -23,6 +23,45 @@ In the current Codex harness, use `collaboration.list_agents` and
 Share discoveries and failed attempts as well as successful commits. Name
 revision and theorem hypotheses when sharing a proof so its scope is clear.
 
+## Current coordination — 2026-09-24
+
+Root recovered the two accidental main-checkout operations; see
+[recovery](worktree-recovery-2026-09-24.md). ADVANCE, OVER, allocator frontier
+entry, consumer-index foundations, web paging and offline cursor inspection
+are integrated. Combined `a785ae03` source and its selected native gates are
+recorded in [the native evidence](evidence/native-a785-selected-gate-2026-09-24.md).
+The later D1b selector repair awaits the next shared image. The live
+`da5fd8cb` node is protected.
+
+- Three GPT-6-Luna feature lanes implement bounded web history windows,
+  native cursor inspection, and local consumer status. Web and cursor source
+  are on dev; status is under scoped ACL2 qualification. The Sol reviewer
+  assembles their candidate and owns one combined incremental qualification.
+  Review repairs and elapsed source-packet times are recorded in its
+  experiment note, with native results separate.
+- `native_qualification` builds one source-matched shared image after that
+  candidate certifies, then runs cursor/status and the corrected D1b cut.
+  No lane duplicates this build.
+- `consumer_contract` has scoped certificates for the topic/index Store
+  relation, observed reopen and actual indexed owner poll; it assembles a
+  finite source/evidence packet. `topic_metadata` joins its native topic tail
+  to that packet in an explicit isolated worktree. They coordinate the poll
+  scope helper with the Luna status lane. This next packet does not block
+  the smaller trial image.
+- BP fragment activation and persisted expiry-safe replacement are qualified
+  on `fix/bp-union-proof` at `3d1a461e`; native interrupted-contact execution
+  and the remaining recovery decoder guards are open. Root has the packet.
+- Allocator pair-12 and pair-14 relation proofs are qualified on
+  `implement/byte-store-k568` at `af679760`; they await integration. They do
+  not establish the entire physical recovery argument.
+- Mini's isolated `fn-evidence` branch has live poll/transaction/reopen/ACK
+  evidence and B3 durable reply preparation/signing source. B3 signed native
+  post/readback remains unrun and needs coordinated fixture startup.
+- `retire_old_worktrees` completed verified archival of 101 inactive or landed
+  trees. Active trees and branch tips remain available.
+
+The entries below are historical checkpoints.
+
 ## Wide implementation cycle — revised goal, 2026-09-23
 
 The user replaced the goal with concurrent v0/v1 development grounded in
@@ -30,21 +69,30 @@ The user replaced the goal with concurrent v0/v1 development grounded in
 identify reproducible experiments; they are not a project-wide implementation
 freeze. Preserve the live `da5fd8cb` node and existing shared compute pools.
 
+Current coordination snapshot: `bc9be7ec` passed full source qualification
+(run `run-20260923T230009Z-f41e`, original manifest
+`certify-20260923T230027Z-407330.json`) and both shared native builds at
+`/tank/fn/gates/reader-clone-poll-native-bc9-20260923`. INN and selected
+peering passed. Poll and live-created-group posting exposed host composition
+bugs; the source-matched image stays immutable while the fixes land. Live node unchanged.
+Root has integrated later K0 argument/preparation bridges, Mini read-only
+projection (current-source guard/dependency correction pending), poll CLI fix,
+peering harness/evidence, and owner proof-cost hints.
+
 | Agent | Current substantive result and coordination |
 | --- | --- |
-| `acceptance_stamp` | Historical configuration replay, phase-aware Store/owner relation and actual live adoption; coordinate Store shape with consumer and authored records, reader pins with reader lanes. |
-| `authorship_carrier` | T10a and native295 qualification landed; now preservation/restore, selected-pack and consumer incarnation contracts with consumer/reader lanes. |
-| `stamp_review` | Historical recorded-verdict pin threaded through served NNTP and HDR; coordinate carried reader shape with index lane. |
-| `store_invariants` | Actual served Message-ID index and maintained correspondence; share reader view shape with verdict lane rather than waiting for all reader work. |
-| `consumer_contract` | Durable consumer bootstrap/events/Store projection, registration/ack/recovery and restore fencing; coordinate shared Store constructors with historical config and authored records. |
-| `bp_foundation` | One native FNBS service authority, typed receive/publish/recovery and actual caller switch; native A2/contact/TCPCL packet integrated at `66bf9e55`; qualify one coherent saved image. |
-| `feed_replay` | TCPCL drive and clock-domain codec/gate certified; foundation qualifies native clock join. Now repairs missing authored NNTP injection projection found by actual carrier peering. |
-| `status_codec` | Native contact planning, interruption/expiry/backpressure and receipt progression through that same service; do not import the old scheduler's assumed durable completion. |
-| `crash_differential` | Corrected K8 model crash-scan theorem landed; K6 actual framed-write trace provenance and K0 establishment next. |
-| `fragment_refinement` | Device-EIO campaign landed. Now fixes cache composition using actual ACL2 certificate hash compatibility: same source/toolchain can carry different portcullis/expansion hashes. |
-| `store_semantics` | Reader/composer and exact retry handling integrated; browser and native POST/readback passed; bounded in-memory submission registry, no durable client spool. |
-| `mini_evidence_bridge` | P0 native export/verify and signed fixture complete; P1 durable operation binding, provenance/conflict evidence and immutable reply transaction in Mini. |
-| `topic_metadata` | P3 bounded canonical metadata codec, exact-authored-source field projection and native inspection; coordinate T10 binding without claiming topic admission or Mini action authority. |
+| `acceptance_stamp` | READ relation qualified on earlier source; investigates actual ADVANCE success/refusal and config-pin preservation on the E2/T17 port. |
+| `store_invariants` | Ports historical READ relation to current E2/T17, sharing source with acceptance lane. |
+| `consumer_contract` | Poll integrated; adds derived sequence index with carried correspondence to remove prefix traversal. Coordinates Store slot13 after topic slot12. |
+| `crash_differential` | Pair-10 full byte relation integrated; proves actual served framing/name call-argument bridge and names remaining physical entry invariant. |
+| `authorship_carrier` | Clone and auxiliary replay integrated; advancing-ACK four-cut driver ready; reviews actual clone recovery/outcomes. |
+| `feed_replay` | T17 and source-only native driver integrated; proof-cost repairs integrated. No redundant build. |
+| `bp_foundation` | Assembles fragments, observed-channel admission, K6 v3 and D1b into one source; closes actual fragment wrapper guards. |
+| `status_codec` | Durable kind10 deletion retains exact report intent across crash; joins actual native publisher and admin report queue. |
+| `fragment_refinement` | K6 v3 raw/projected intent and recovered Message-ID binding qualified; consolidates raw EID parsing/admission/FNBS ingress in one ACL2 called wrapper. |
+| `stamp_review` | Shared a8e4 developer/production image and reader/E2/clone qualification; exports exact public poll bytes for Mini. |
+| `mini_evidence_bridge` | Portable inbox and exact-sharing replay optimizations complete in isolated Mini worktree; implements Store-report/cursor durable join with consumer lane. |
+| `topic_metadata` | Actual Store topic slot12 projection scoped certified; reverse invariants and native anchor/admission caller underway. |
 
 Root integrates finite source commits, regenerates ledgers, checks concrete
 proof/runtime regressions and maintains evidence. No lane is a permanent file
@@ -52,7 +100,7 @@ owner. Announce interface changes and coordinate combined patches directly.
 The specialized Astra OS study is complete in
 [dregg-os-integration-2026-09-23.md](dregg-os-integration-2026-09-23.md).
 It grounds P0/P1/P2 in Mini's real resource receiver and distinguishes Bread's destructive mailbox and ambient owner authority from the selected E2 contract.
-The P0 implementation now occupies that free parallel slot.
+The Mini evidence implementation continues in its isolated integration worktree.
 
 ## Qualification underway alongside implementation
 
@@ -199,3 +247,66 @@ Current convergence checkpoint (root `b9bf596d`):
   `/tank/fn/gates/integrate-a3-scanner-20260923`, four jobs, existing pool/cache: passed, 493 cached, 28 newly
   certified, 27.353 seconds, manifest `certify-20260923T205938Z-120445`.
   Prior `2234c1f3` run passed (496 cached, 17 certified, 15.164 seconds).
+
+## Current cooperation checkpoint — 23:16 UTC
+
+- `stamp_review`: integrated poll CLI fix `e1b4eeb8` → root `59cfdc25`;
+  repairs live configuration observer caches and current-owner group-code
+  projection, with raw and saved-image regression. New-group post refusal
+  followed by BUSY is an observed defect, not dismissed as a fixture issue.
+- `fragment_refinement`: INN/peering evidence integrated (`d81ff4fb`,
+  `a5fdc44a`); now repairs shared completion handling when a commit callback
+  refuses after the owner took a control request. Coordinates owner.lisp
+  edits with stamp; preserves uncertain/fault fences.
+- `store_invariants` and `mini_evidence_bridge`: cursor decoder guards were
+  already verified; the Mini projection came from an older dependency and
+  calls removed `fn-cp-at-mostp`. Adapt it to current bounded primitive and
+  close actual projection guards. Mini getter packet `36869776` removes
+  duplicated host preflight constants. One final current-source run is owed.
+- `bp_foundation`: coherent root-based union in `build/lanes/bp-current-union`
+  includes fragment/expiry/K6 v3/D1b/composed admission, plus new actual BP
+  owner-event relation lemmas (`9a5b3898`) and owner cost hints (`cb21c4d6`).
+  Final selected owner/dependent run `run-20260923T231510Z-0e00` is active;
+  status lane closes actual report wrapper guards. No separate image build.
+- `topic_metadata` and `consumer_contract`: cooperate from full P3 ancestry
+  (c43aa989,66f81e7a,15f4fb19,6055b4a5,b8101d94,702d6ef1), not an isolated
+  last commit. Topic slot12 and derived sequence-index slot13 share an updater
+  that preserves untouched fields; physical config reopen must retain both.
+  Pure index `2c82adaf` is qualified, actual called poll join is in progress.
+- `acceptance_stamp`: actual ADVANCE outcome avoids repinning refused rebuilds;
+  a certified duplicate-ID counterexample shows historical relation needs
+  unique connection IDs. Carried uniqueness/ADVANCE preservation and dependent
+  reader union qualify together; no root landing yet.
+- `crash_differential`: continues actual P-FRONTIER successful reserved-entry
+  relation from prior related state. Root suggested public checked-attachment
+  frontier codec interfaces for host wrappers, rather than a new abstract/
+  concrete equality assumption. Hardware and general trace scope remain open.
+- `feed_replay`: efficient OVER range through existing group bucket and trie;
+  proves reachable number/ID/article correspondence instead of introducing
+  a disposable per-request full-archive projection.
+- `authorship_carrier`: owner proof-cost packet `c922852d` integrated as
+  `762c8ee2`; closed unrelated definitions in two theorem-local hints, no
+  theorem statement/runtime changes. Store/projection and BP lanes reuse it.
+
+The next small repaired poll/clone/Mini-projection image should not wait for
+all later P3 or BP work. Keep each source and test-driver identity explicit.
+
+
+### Root checkpoint — 2026-09-23 23:33 UTC
+
+- `1d26e01f` repair source full ACL2 PASS, 36.027 seconds; shared production
+  and developer images built. Signed poll, lost advancing-ACK reply/reopen,
+  historical live-group reader, clone rollover tests pass in the image lane;
+  original negative driver assertions and corrected test hashes are retained
+  separately. Mini is consuming the exact exported event and cursor.
+- BP source `48425e4e` full run `run-20260923T232555Z-a3c1` FAILED:
+  `bp-node-fragment-guards` timed out; `bp-report-guards` is its dependent;
+  `bp-fnbs-replay-invariants` and its test failed. Acceptance lane repairs the
+  fragment guard from its log, BP foundation repairs replay; status lane
+  maintains report campaign. No new unrelated behavior lands before these
+  batch regressions are repaired.
+- Ready subsequent packets: actual ADVANCE historical-reader relation
+  through `b8a1a02b`; allocator file-fence K0 through `f82213a3` with later
+  record-list proof in progress. Topic and consumer index lanes cooperate
+  on the shared Store configuration updater. Indexed OVER/XOVER closes its
+  affected owner proof set. The protected live service remains untouched.

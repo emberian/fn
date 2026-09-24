@@ -1,0 +1,14 @@
+test_ambiguous_fnrj_decision_fences_until_cold_replay (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_fnrj_decision_fences_until_cold_replay) ... ok
+test_ambiguous_outbox_publication_is_uncertain_not_refused (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_outbox_publication_is_uncertain_not_refused) ... ok
+test_conflicting_return_job_fences_after_request_commit (tests.test_bp_node_native.NativeBpNodeTests.test_conflicting_return_job_fences_after_request_commit) ... ok
+test_death_after_durable_outbox_does_not_allocate_second_sequence (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_durable_outbox_does_not_allocate_second_sequence) ... ok
+test_death_after_fnrj_receipt_decision_replays_one_article (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article) ... ok
+test_death_after_kind_seven_replays_owed_outbox (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_seven_replays_owed_outbox) ... ok
+test_exact_receipt_with_wrong_carrier_peer_fences (tests.test_bp_node_native.NativeBpNodeTests.test_exact_receipt_with_wrong_carrier_peer_fences) ... ok
+test_kind_five_ambiguous_publication_never_delivers_to_store (tests.test_bp_node_native.NativeBpNodeTests.test_kind_five_ambiguous_publication_never_delivers_to_store) ... ok
+test_request_retry_queues_distinct_receipt_carriers_and_releases_pin (tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 140.991s
+
+OK

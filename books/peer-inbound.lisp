@@ -1559,25 +1559,22 @@
 
 (local (defthm fn-peer-archive-command-pinned-preserves-consistent-session
   (implies (and (fn-nntp-session-consistentp session archive)
-                (fn-nntp-projectionp archive))
+                (fn-nntp-projectionp archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
              (fn-nntp-archive-command-pinned
               session archive index verdicts env keyword args)) archive))
   :hints (("Goal"
-           :use ((:instance fn-nntp-archive-command-preserves-consistent-session)
-                 (:instance fn-nntp-verdict-hdr-response-preserves-session
-                            (verdicts verdicts) (args args)))
-           :in-theory (e/d (fn-nntp-archive-command-pinned)
-                           (fn-nntp-archive-command
-                            fn-nntp-msgid-retrieval-indexed
-                            fn-nntp-verdict-hdr-response
-                            fn-nntp-result-session
-                            fn-nntp-session-consistentp
-                            fn-nntp-projectionp fn-nntp-keywordp))))))
+           :use ((:instance
+                  fn-nntp-archive-command-pinned-preserves-consistent-session))
+           :in-theory (disable
+                       fn-nntp-archive-command-pinned
+                       fn-nntp-archive-command-pinned-preserves-consistent-session)))))
 
 (local (defthm fn-peer-nntp-command-pinned-preserves-consistent-session
-  (implies (fn-nntp-session-consistentp session archive)
+  (implies (and (fn-nntp-session-consistentp session archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
              (fn-nntp-command-pinned session archive index verdicts env tokens))
@@ -1591,7 +1588,8 @@
            :expand ((fn-nntp-session-consistentp session archive))))))
 
 (local (defthm fn-peer-nntp-step-pinned-preserves-consistent-session
-  (implies (fn-nntp-session-consistentp session archive)
+  (implies (and (fn-nntp-session-consistentp session archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
              (fn-nntp-step-pinned session archive index verdicts env wire-event))
@@ -1606,7 +1604,8 @@
                  fn-nntp-session-consistentp))))))
 
 (local (defthm fn-peer-post-step-pinned-preserves-consistent-session
-  (implies (fn-post-session-consistentp ps archive)
+  (implies (and (fn-post-session-consistentp ps archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-post-session-consistentp
             (fn-post-result-session
              (fn-nntp-post-step-pinned ps archive index verdicts config
@@ -1635,7 +1634,8 @@
                             fn-inj-decide fn-inj-injectedp))))))
 
 (defthm fn-peer-delegate-pinned-preserves-consistent-session
-  (implies (fn-peer-session-consistentp ps archive)
+  (implies (and (fn-peer-session-consistentp ps archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-peer-session-consistentp
             (fn-post-result-session
              (fn-peer-delegate-pinned ps archive index verdicts config
@@ -1664,7 +1664,8 @@
                             fn-post-sessionp)))))
 
 (defthm fn-peer-step-pinned-preserves-consistent-session
-  (implies (fn-peer-session-consistentp ps archive)
+  (implies (and (fn-peer-session-consistentp ps archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-peer-session-consistentp
             (fn-post-result-session
              (fn-peer-step-pinned ps archive index verdicts config observation
@@ -1680,7 +1681,9 @@
 
 (defthm fn-peer-delegate-pinned-effects-well-formed
   (implies (and (fn-peer-session-consistentp ps archive)
-                (fn-midx-correspondencep index (fn-state-articles archive)))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index)
+                                         (fn-state-articles archive))
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-post-result-effects
              (fn-peer-delegate-pinned ps archive index verdicts config
@@ -1693,7 +1696,9 @@
 
 (defthm fn-peer-step-pinned-effects-well-formed
   (implies (and (fn-peer-session-consistentp ps archive)
-                (fn-midx-correspondencep index (fn-state-articles archive)))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index)
+                                         (fn-state-articles archive))
+                (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-post-result-effects
              (fn-peer-step-pinned ps archive index verdicts config observation

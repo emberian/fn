@@ -22,6 +22,7 @@
 (include-book "byte-store-programs")
 (include-book "store-observed")
 (include-book "store-sweep")
+(include-book "consumer-store-invariants")
 
 ; -----------------------------------------------------------------------------
 ; K3.  The constructor as a corollary: fn-sf-image-crash, applied to the
@@ -61,9 +62,29 @@
 ; fn-sn-observed-identity-okp beside the structural image predicate, and a
 ; history that fails it is reachable (tests/acl2/store-identity-traces-tests).
 ; This book stated K4 without it and went red at that commit; it carries the
-; same condition over the scanned records, no weaker and no stronger.
+; same condition over the scanned records, no weaker and no stronger.  E2's
+; consumer condition is different: it follows from the maintained completed
+; prefix relation and K2's exact crash-image scan, including the recovery
+; rollback arm.  The byte theorem must carry that reachable relation rather
+; than silently assuming that the observed record history will replay.
+(defthm fn-bs-crash-image-consumer-replay-ok
+  (implies (and (fn-csi-full-relationp s)
+                (fn-bs-store-relation bs (fn-sn-files s))
+                (fn-bs-crash-imagep bs image))
+           (fn-sn-observed-consumer-okp
+            (fn-bs-scan-records (fn-bs-scan-store image))))
+  :hints (("Goal"
+           :use ((:instance fn-bs-store-crash-image-is-kernel-admissible
+                            (ks (fn-sn-files s)))
+                 (:instance fn-csi-recovery-crash-image-strict-replay
+                            (frontier (fn-bs-scan-frontier
+                                       (fn-bs-scan-store image)))
+                            (records (fn-bs-scan-records
+                                      (fn-bs-scan-store image)))))
+           :in-theory (theory 'minimal-theory))))
+
 (defthm fn-bs-crash-image-reopens
-  (implies (and (fn-snt-relation s)
+  (implies (and (fn-csi-full-relationp s)
                 (fn-bs-store-relation bs (fn-sn-files s))
                 (fn-bs-crash-imagep bs image)
                 (fn-sn-observed-identity-okp
@@ -74,14 +95,16 @@
              (fn-bs-scan-frontier (fn-bs-scan-store image))
              (fn-bs-scan-records (fn-bs-scan-store image)))))
   :hints (("Goal"
-           :use ((:instance fn-bs-store-crash-image-is-kernel-admissible
+           :use (fn-bs-crash-image-consumer-replay-ok
+                 (:instance fn-bs-store-crash-image-is-kernel-admissible
                             (ks (fn-sn-files s)))
                  (:instance fn-sn-recovery-admissible-image-reopens
                             (frontier (fn-bs-scan-frontier
                                        (fn-bs-scan-store image)))
                             (records (fn-bs-scan-records
                                       (fn-bs-scan-store image)))))
-           :in-theory (theory 'minimal-theory))))
+           :in-theory (union-theories '(fn-csi-full-relationp)
+                                      (theory 'minimal-theory)))))
 
 ; K4.  Acknowledged retention across a BYTE crash: an outcome this store
 ; acknowledged before the crash names a record of the state the host reopens
@@ -103,7 +126,7 @@
 ; nothing left; here the premise is the byte relation and the publish window
 ; is a live, non-degenerate instance.
 (defthm fn-bs-acknowledged-record-survives-byte-crash
-  (implies (and (fn-snt-relation s)
+  (implies (and (fn-csi-full-relationp s)
                 (fn-bs-store-relation bs (fn-sn-files s))
                 (fn-bs-crash-imagep bs image)
                 (fn-sn-observed-identity-okp
@@ -132,7 +155,8 @@
                                        (fn-bs-scan-store image)))
                             (records (fn-bs-scan-records
                                       (fn-bs-scan-store image)))))
-           :in-theory (theory 'minimal-theory))))
+           :in-theory (union-theories '(fn-csi-full-relationp)
+                                      (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
 ; K-sweep.  The recovery sweep's unlinks are stutters of the byte relation.
@@ -409,7 +433,7 @@
 ; condition) reopens through the host's reopen entry, and the kernel state --
 ; hence the recoverable history and frontier -- is the one before the sweep.
 (defthm fn-bs-sweep-round-keeps-every-cut-reopenable
-  (implies (and (fn-snt-relation s)
+  (implies (and (fn-csi-full-relationp s)
                 (fn-bs-store-relation bs (fn-sn-files s))
                 (member-equal pair
                               (fn-bs-run bs (fn-sn-files s)

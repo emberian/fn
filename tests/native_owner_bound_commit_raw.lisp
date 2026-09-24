@@ -6,6 +6,11 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
+(define-condition fnn-store-error (error) ())
+(define-condition fnn-store-indeterminate (fnn-store-error) ())
+(define-condition fnn-store-fault (fnn-store-error) ())
+(define-condition fnn-os-error (error) ())
+
 (defparameter *bound-word* nil)
 (defparameter *bound-inflight* nil)
 (defparameter *bound-resolutions* nil)
@@ -17,7 +22,7 @@
 
 (defun fnn-fault (control &rest args) (error (apply #'format nil control args)))
 (defun fnn-indeterminate (control &rest args)
-  (error (apply #'format nil control args)))
+  (declare (ignore control args)) (error 'fnn-store-indeterminate))
 (defun fnn-octet-list (x) (coerce x 'list))
 (defun fnn-owner-octets-global (name)
   (ecase name
@@ -48,8 +53,10 @@
   (loop for form = (read stream nil :eof)
         until (eq form :eof)
         when (and (consp form) (eq (car form) 'defun)
-                  (eq (cadr form) 'fnn-owner-complete-bound-submission))
-          do (eval form) (return)))
+                  (member (cadr form)
+                          '(fnn-owner-bound-commit-word
+                            fnn-owner-complete-bound-submission)))
+          do (eval form)))
 
 (flet ((submit () :submitted)
        (commit () *bound-word*))
@@ -70,4 +77,36 @@
              (equal (reverse *bound-resolutions*) '(:refused :durable)))
   (error "bound submission cleanup/resolution mismatch"))
 
-(format t "native owner custom commit refusal cleanup passed~%")
+; A real callback preflight signals rather than returning :refused.  The
+; condition must be settled before another control request reaches :take.
+(flet ((submit () :submitted)
+       (refuse () (error 'fnn-store-error))
+       (commit () :durable))
+  (unless (eq (fnn-owner-complete-bound-submission
+               :service #'submit *bound-msgid* *bound-payload* *bound-groups*
+               #(9) 7 10 #'refuse)
+              :refused)
+    (error "signalled custom preflight refusal did not settle"))
+  (unless (eq (fnn-owner-complete-bound-submission
+               :service #'submit *bound-msgid* *bound-payload* *bound-groups*
+               #(9) 7 11 #'commit)
+              :accepted)
+    (error "next control request remained busy after preflight refusal")))
+(unless (and (not *bound-inflight*) (= *bound-flushes* 8) (= *bound-logs* 4)
+             (equal (reverse *bound-resolutions*)
+                    '(:refused :durable :refused :durable)))
+  (error "signalled preflight refusal left a bound submission unresolved"))
+
+; Only a known semantic refusal can be converted to a completion word.
+; Ambiguity retains its class, and fault/OS conditions reach the owner fence.
+(unless (eq (fnn-owner-bound-commit-word
+             (lambda () (error 'fnn-store-indeterminate))) :uncertain)
+  (error "ambiguous Store callback lost its uncertainty"))
+(dolist (condition '(fnn-store-fault fnn-os-error))
+  (unless (handler-case
+              (progn (fnn-owner-bound-commit-word
+                      (lambda () (error condition))) nil)
+            (error (caught) (typep caught condition)))
+    (error "bound callback changed the ~a fault class" condition)))
+
+(format t "native owner bound commit settlement passed~%")

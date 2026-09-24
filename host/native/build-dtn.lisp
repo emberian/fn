@@ -60,6 +60,7 @@
 (include-book "books/bp-node-machine-codec")
 ; Carry the verified step guards into this image as well as the default one.
 (include-book "books/bp-node-machine-guards")
+(include-book "books/bp-node-fragment-guards")
 (include-book "books/bp-node-receive-boundary")
 (include-book "books/bp-fnbs-replay")
 (include-book "books/bp-fnbs-inspect")
@@ -68,6 +69,11 @@
 (include-book "books/bp-clock-domain")
 (include-book "books/bp-fnbs-delivery-replay")
 (include-book "books/bp-fnbs-delivery-publication")
+(include-book "books/bp-fnbs-family-publication")
+(include-book "books/bp-fnbs-deletion-publication")
+(include-book "books/bp-report-author")
+(include-book "books/bp-report-observe")
+(include-book "books/bp-report-guards")
 (include-book "books/bp-app-handoff")
 (include-book "books/bp-receive-evidence")
 

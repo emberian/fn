@@ -1,0 +1,47 @@
+;;; Exercise the production peer-UID observation on a connected local
+;;; socket.  No Store process or live node is contacted.
+(require :sb-posix)
+(require :sb-bsd-sockets)
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(defun fnn-socket-fd (socket)
+  (sb-bsd-sockets:socket-file-descriptor socket))
+
+(let ((found nil))
+  (with-open-file (stream "host/native/control.lisp")
+    (loop for form = (read stream nil :eof)
+          until (eq form :eof)
+          when (and (consp form) (eq (car form) 'defun)
+                    (eq (cadr form) 'fnn-control-peer-is-owner-p))
+            do (eval form) (setf found t)))
+  (unless found (error "deployed peer credential check missing")))
+
+#+(or darwin linux)
+(let* ((path (format nil "/tmp/fn-consumer-peer-~d.sock" (sb-posix:getpid)))
+       (listener (make-instance 'sb-bsd-sockets:local-socket
+                                :type :stream :protocol 0))
+       (client nil) (peer nil))
+  (unwind-protect
+       (progn
+         (sb-bsd-sockets:socket-bind listener path)
+         (sb-bsd-sockets:socket-listen listener 1)
+         (setq client (make-instance 'sb-bsd-sockets:local-socket
+                                     :type :stream :protocol 0))
+         (sb-bsd-sockets:socket-connect client path)
+         (setq peer (sb-bsd-sockets:socket-accept listener))
+         (multiple-value-bind (same uid)
+             (fnn-control-peer-is-owner-p peer)
+           (unless (and same (eql uid (sb-posix:geteuid)))
+             (error "same-UID local peer lacks exact UID observation")))
+         (multiple-value-bind (same uid)
+             (fnn-control-peer-is-owner-p listener)
+           (when (or same uid)
+             (error "unconnected listener was authenticated"))))
+    (when peer (sb-bsd-sockets:socket-close peer))
+    (when client (sb-bsd-sockets:socket-close client))
+    (sb-bsd-sockets:socket-close listener)
+    (ignore-errors (sb-posix:unlink path))))
+#+(or darwin linux)
+(format t "native consumer peer credential boundary passed~%")
+#-(or darwin linux)
+(format t "native consumer peer credential boundary unsupported-port test passed~%")

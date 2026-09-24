@@ -1,3 +1,11 @@
+Current selected-v1 join: native fn poll now feeds Mini's signed durable
+transaction and immutable Q; after reopen Mini ACKs, and fn returns the durable
+position and no repeat article. The [live synthetic evidence](evidence/native-mini-live-join-2026-09-24.md)
+uses the earlier `1d26e01f` image. A posted stable fn reply from Q and the full
+two-store crash trace remain open. Poll still walks the earlier record prefix;
+the maintained event-index foundation is integrated, with its called Store/owner
+join in progress. CNS-001, PRF-064 and SCN-033 track this work; E2 is not a v0 gate.
+
 Current task (2026-09-23): concurrent v0/v1 development grounded in the actual
 Mini/Bread OS interfaces. [Current work](now.md) names integrated source,
 qualified image scope and remaining release obligations; the
@@ -21,15 +29,14 @@ the wider `884e4816` image passed indexed-reader, historical HDR, signed
 peering/restart, topic inspection, INN interoperability and live configuration.
 The P3 codec now has general constructor bounds/inverse and host-called
 authored-field binding proofs. Canonical folding and a bounded larger header
-envelope accommodate the maximum topic profile in ACL2; its native image
-witness and durable topic admission remain open. The new candidate selector
-compares a root's controller and keyset declaration against the verified
-principal and ordered keyset, while the historical selector first checks the
-schema-1 event/snapshot binding. It does not select governance or admission.
-An experimental root-only ACL2 component now prepares an administrator-installed
-anchor and roster/parent/quota-gated report admission from those bound T10
-events. Its physical Store event, replay and native owner publication are the
-next P3 join; no durable admission claim follows from the component alone.
+envelope accommodate the maximum topic profile in ACL2; the exact maximum
+profile passed native inspection on frozen `86323c89`. The historical
+candidate selector binds controller and keyset to the exact schema-1 T10
+source and enrollment snapshot. The experimental root-only Store projection
+now completes administrator installation, root anchors and roster/parent/quota
+gated report events and replays them separately on reopen. Its source-level
+native owner caller is present; a combined saved-image admission/reopen run
+and physical qualification remain open. No succession or fork policy follows.
 K6 now carries exact typed Store-event frames
 through the modeled surviving-link crash. The ordered whole-list scanner
 join now holds under the actual pair-10 byte/kernel relation; general K0 must
@@ -588,7 +595,7 @@ the whole-tree run behind these statuses is
 | --- | --- | --- |
 | Configuration is a replayed durable record | **done** | `books/config.lisp` ten delta kinds, `books/config-records.lisp`, `books/node-config.lisp` |
 | Live reconfiguration as an owner event | **open** | `fn group create|retire` refuses while a service is live ([BOARD](deputies/BOARD.md), w5-fn-cli) |
-| Crash model K1 to K11 | **partial** | STO-004, STO-005, FLR-001, FLR-002 `implemented`. **K1 to K4 of `specs/crash-model-v2.md` are proved** (PRF-041, lane `w11/k1-scan`, `books/byte-store-scan.lisp` and `books/byte-store-keystones.lisp`): the scan of every byte-level crash image of a related store succeeds and is an image the file kernel admits, the constructor reproduces it, and the host reopen succeeds on it. K5's scan formula retains the durable decoded prefix and bounds any extension to one record (`books/byte-store-stable-prefix.lisp`). The corrected K8 theorem proves that every model crash image after a transaction-directory fence scans the exact old records plus the candidate when a related `:record-attempted` state has an issued pending link (`books/byte-store-record-fence.lisp`); a counterexample shows that phase and relation alone do not force that link. K6 now proves raw-frame equality at the actual P-RECORD file-fence and immutable-link cuts (`books/byte-store-record-provenance.lisp`); a surviving final name now reads the exact frame through every modeled crash image, while the actual `record-attempted` cut has the same byte state as the linked cut, while a related-input K0 slice derives both no-prior-operation and final-name absence through the actual file-cut prefix, including typed non-article Store events; a conditional actual pair-10 whole-list scanner bridge is proved when its byte/kernel relation holds, while universal pair-10 relation preservation remains K0. General K0 and physical barrier qualification remain open; K0 must establish the issued-link/phase correspondence along the host program. K11 (truncation and resize never validate) is still a design |
+| Crash model K1 to K11 | **partial** | STO-004, STO-005, FLR-001, FLR-002 `implemented`. **K1 to K4 of `specs/crash-model-v2.md` are proved** (PRF-041, lane `w11/k1-scan`, `books/byte-store-scan.lisp` and `books/byte-store-keystones.lisp`): the scan of every byte-level crash image of a related store succeeds and is an image the file kernel admits, the constructor reproduces it, and the host reopen succeeds on it. K5's scan formula retains the durable decoded prefix and bounds any extension to one record (`books/byte-store-stable-prefix.lisp`). The corrected K8 theorem proves that every model crash image after a transaction-directory fence scans the exact old records plus the candidate when a related `:record-attempted` state has an issued pending link (`books/byte-store-record-fence.lisp`); a counterexample shows that phase and relation alone do not force that link. K6 now proves raw-frame equality at the actual P-RECORD file-fence and immutable-link cuts (`books/byte-store-record-provenance.lisp`); a surviving final name now reads the exact frame through every modeled crash image, while the actual `record-attempted` cut has the same byte state as the linked cut, while a related-input K0 slice derives both no-prior-operation and final-name absence through the actual file-cut prefix, including typed non-article Store events; a conditional actual pair-10 whole-list scanner bridge is proved when its byte/kernel relation holds, while a certified actual-trace K0 slice now derives the pair-10 logical file/link callback state from a related typed input with fresh staging; the actual pair-10 issued link, pending shape, and candidate decoding are derived, while actual pair-10 old durable-prefix preservation is now proved and full byte/kernel relation composition remains K0. General K0 and physical barrier qualification remain open; K0 must establish the issued-link/phase correspondence along the host program. K11 (truncation and resize never validate) is still a design |
 | Every cut-table crash point is a transition | **open** | the deploy gate exercises one kill point and says so; `tests/campaign/cuts.py` is the table |
 | Persisted checkpoints | **done** | STO-006 `implemented`, `books/checkpoint.lisp` |
 | Index adoption | **partial** | STO-001 `implemented`; `books/index` certifies |

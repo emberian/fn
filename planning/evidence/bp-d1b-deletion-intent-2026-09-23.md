@@ -1,0 +1,39 @@
+# D1b received-carrier deletion intent checkpoint
+
+Source chain: `ee1a9481` -> `f497bca0` -> `d2553bd6` -> `2f1aeab4` plus this checkpoint. ACL2 toolchain: `/home/ember/fn-gates/toolchains/w25/acl2-literal` on persvati, two certification jobs and a 90-second event bound. The focused changed-root run `run-20260923T223241Z-19ab` passed with manifest `planning/evidence/manifests/certify-20260923T223246Z-1046137.json`; the outbox selector and test passed in `run-20260923T223431Z-3e65` with manifest `planning/evidence/manifests/certify-20260923T223436Z-1066419.json`. Foundation recognizer and its test passed at these bytes in `run-20260923T222522Z-7098`, manifest `planning/evidence/manifests/certify-20260923T222526Z-968901.json`. These are selected ACL2 roots, not an integrated native image.
+
+The outer `fn-bpn-report-step` selects an unprocessed, definitely expired held carrier from the persisted receive-time anchor and current same-boot observation. Proposal leaves held unchanged and issues one state-owned kind-10 record. The immutable publisher requires its exact pending record, epoch/op, owned lock, and absent final name. Only the matching durable callback installs a held tombstone and emits a diagnostic report-due effect; a refused callback leaves the carrier, an uncertain callback fences further mutation. A stale callback has no effect. The single ordered FNBS 5/7/18/10 fold applies the same exact arrival and primary identity record or faults, and the tombstone retains duplicate evidence and all separate application handoffs.
+
+The kind-10 record contains either the exact ACL2-selected bounded report bytes or a one-octet suppression sentinel. The read-only `fn-bpn-report-outbox-next` can recover that intent after process death. Its test uses an actual inbound report-requesting bundle; negative witnesses change the primary identity, use an anchorless legacy held row, present a stale callback, and query a held row before deletion. The record carries no application release authority, and a report is a remote observation only.
+
+At the pure-book checkpoint, native service publication, administrative outbound authoring, and report observation were open. The kind-10 format is new in this source line; no deployed kind-10 backward-compatibility claim is made.
+
+Subsequent source join: `host/native/bp-service.lisp:163` calls the outer `fn-bpn-report-author-step`, `:persist-delete` at line 378 passes its exact pending record to `fn-bpnf-delete-publication-authorize`, and the same service drives the durable callback. `host/native/bp-node.lisp:245` issues the clocked deletion event before Store dispatch; line 264 queues an owed intent through the ACL2 administrative author transition and ordinary base journal; line 319 observes reports through the ACL2 read-only selector. The source includes an optional explicit report policy flag, default off, and a process-death native driver in `tests/test_bp_node_native.py`. The selected author and observer roots, their tests, and the host event gate passed `run-20260923T224718Z-4fdc` on persvati, manifest `planning/evidence/manifests/certify-20260923T224722Z-1190718.json`. This does not replace a source-matched native image or prove report delivery after every physical crash cut; those results remain open.
+
+Exact existing-job recognition additionally checks canonical job wire and agreement between the saved job sequence and its bundle primary sequence, so a same-key local record with mismatched bytes cannot suppress an owed report. The changed author/observer books and tests passed `run-20260923T225452Z-c49c`, manifest `planning/evidence/manifests/certify-20260923T225456Z-1269667.json`; the test contains positive exact-match and wrong-payload/wrong-sequence witnesses.
+
+The exact host-called `fn-bpn-report-author-step` and `fn-bpn-report-observe-next` now have verified guards in `books/bp-report-guards.lisp`, including the deletion proposal, durable callback, queue, and read-only correlation path. The proposal carries its selected report-to in volatile issued detail, avoiding a second held lookup after the durable tombstone; recovery still derives the owed report from the persisted kind-10 record and held row. The observer checks numeric arrival fields before ordering untrusted rows. The inherited base-state guard is the maintained service invariant, and no whole-held-list recognizer was added to a served path. Focused certification of the guard book and three affected test roots passed on persvati in `run-20260923T231619Z-df79`, manifest `planning/evidence/manifests/certify-20260923T231624Z-1484767.json`, with ACL2 `/home/ember/fn-gates/toolchains/w25/acl2-literal`, two jobs and a 90-second per-book bound. Native source-matched report evidence remains open.
+
+The pending native campaign is `tests.test_bp_node_native.NativeBpNodeTests.test_deletion_report_intent_recovers_and_observation_does_not_release` with `FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE=1` and `FN_BP_NODE_TEST_PAUSE_AFTER_KIND_TEN=1` at the named model cuts. It will require kind-5 custody, no Store article after expiration, one durable kind-10 report payload at most 4096 octets with ACL2 canonical decode/encode equality, one queued report job and unchanged exact lifecycle frames/sequence frontier on cold retry. A byte-only relay cuts the first return contact, which must be uncertain (exit 3); a later contact must deliver the same payload as a sender kind-5 administrative bundle while the target and unrelated local pins survive. The Python driver reads frames but delegates both frame decodes and report canonicality to ACL2. Its synthetic kind-10 and kind-5 decoder probes passed locally; `py_compile` and `make check` passed. This is a two-node local crash/contact witness, not a source-matched native verdict, power-loss test, exhaustive bound test, or external interoperability result.
+
+At the current BP union source, the report guard's selected expired-held
+shape theorem now derives held validity from the closed delete-pending
+predicate and performs induction with the held and expiry bodies closed. The
+[six-root hbox qualification](manifests/certify-20260923T234638Z-525382.json)
+passed `books/bp-report-guards` in 119.599 seconds with ACL2 8.7 w28, two
+jobs and a 180-second per-book bound, alongside the fragment guard and
+requested report/fragment test roots. This is current-source guard evidence;
+native source-matched report behavior remains separately open.
+
+The subsequent proof-only cost repair keeps every guard statement and
+executable function unchanged. In the proposal guard, the exact held-shape
+facts and a minimal theory prove the numeric next-op and primary-list
+obligations without expanding record constructors. The outbox guard uses a
+local deleted-match-to-held fact and the existing primary-list theorem, with
+the decoder closed. On the integrated BP replay source, the two guard events
+fell from 100.22 and 11.24 seconds to under 0.01 seconds each. The
+[current-source selected manifest](manifests/certify-20260923T235533Z-547391.json)
+passed `books/bp-report-guards` in 8.665 seconds and three requested report
+test roots, with six changed dependent books also recertified, on hbox ACL2
+8.7 w28 at two jobs under the unchanged 180-second per-book bound. Native
+source-matched report behavior remains separately open.

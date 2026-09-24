@@ -1,0 +1,252 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+    "launcher_chain_sha256": [
+      "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g",
+  "acl2_executable_sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+  "acl2_exit_codes": {
+    "books/group-bucket-index": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "launcher_chain_sha256": [
+        "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+      "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "size": 233686912
+    },
+    "launchers": [
+      {
+        "path": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+        "size": 279
+      }
+    ],
+    "runtime": {
+      "path": "/tank/fn/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/Users/ember/dev/fn/build/lanes/t17-listgroup-index/build/acl2/certify-20260923T211349Z-166035",
+  "book_failures": {},
+  "book_provenance": {
+    "books/acceptance": "installed",
+    "books/acceptance-alloc": "installed",
+    "books/acceptance-invariants": "installed",
+    "books/cbor": "installed",
+    "books/defrecord": "installed",
+    "books/group-bucket-index": "certified",
+    "books/index": "installed",
+    "books/msgid-index": "installed",
+    "books/nntp-index-runtime": "installed",
+    "books/nntp-projection": "installed",
+    "books/nntp-session": "installed",
+    "books/nntp-syntax": "installed",
+    "books/records-shape": "installed",
+    "books/wildmat": "installed",
+    "books/wire": "installed"
+  },
+  "book_results": {
+    "books/group-bucket-index": "passed"
+  },
+  "book_wall_seconds": {
+    "books/group-bucket-index": 0.49
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 150,
+  "cache_install": {
+    "directory": "/tank/fn/certcache",
+    "installed": 0,
+    "kept": 14,
+    "origins": {
+      "/Users/ember/dev/fn/build/lanes/t17-listgroup-index": 1,
+      "/tank/fn/gates/authorship-image-295bbe35": 5,
+      "/tank/fn/gates/integrate-reader-bp-topic-20260923": 1,
+      "/tank/fn/gates/takeover-v0-image-329a51a2": 7
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0"
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/group-bucket-index",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/group-bucket-index": "1374c6340b7547005f7abaf205159b8bef1c78c6680a6ba12d35342f8a716366"
+  },
+  "certify_wall_seconds": 0.501,
+  "closure": false,
+  "command": [
+    "/tank/fn/toolchains/w28/acl2-literal-4g"
+  ],
+  "driver_digests_sha256": {
+    "books/group-bucket-index": "919dba07097ec1f73b3d76c04a3189156410f0bb0cff65db8b664aa98c252360"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS eaaa1670b9124b0ed3961c42c04237b2 362e26fcfcb0"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T21:13:50+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "incremental": true,
+  "installed_books": {
+    "books/acceptance": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/acceptance-alloc": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/acceptance-invariants": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/cbor": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/defrecord": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/index": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/msgid-index": "/tank/fn/gates/integrate-reader-bp-topic-20260923",
+    "books/nntp-index-runtime": "/Users/ember/dev/fn/build/lanes/t17-listgroup-index",
+    "books/nntp-projection": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/nntp-session": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/nntp-syntax": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/records-shape": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/wildmat": "/tank/fn/gates/authorship-image-295bbe35",
+    "books/wire": "/tank/fn/gates/takeover-v0-image-329a51a2"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS eaaa1670b9124b0ed3961c42c04237b2 362e26fcfcb0"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/group-bucket-index"
+  ],
+  "requested_books": [
+    "books/group-bucket-index"
+  ],
+  "roots": [
+    "books/group-bucket-index"
+  ],
+  "run_id": "certify-20260923T211349Z-166035",
+  "runner_sha256": "1416c9205de19d717c67f7a8429e9b40264814aadfa896487148788340836cbd",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "books/group-bucket-index": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "8d580e364f1fae2d871d462d81756c631abefb0ac21b88dfc2901fb40372fb76",
+    "books/acceptance.lisp": "a50ce3b2883c2f28a58cee5758b95366a777ee2ad9326de23f12275748c02960",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/group-bucket-index.lisp": "42bf9dbeca5b6297f4b075354e6ee74277add05d3200eaf6cac0a157064f8c45",
+    "books/index.lisp": "de3c5485d79fc6887d7465653a8515dd742aea41bb0a7510c161f69c9bf64d6d",
+    "books/msgid-index.lisp": "c6ff5f4971bf27cbaf9dca6a0b0a134eadac2cab1ddbbf6998364ebd8a88f5f2",
+    "books/nntp-index-runtime.lisp": "f9b29b18055561257728b897ceccad25fad670b8363b1725085eca3fa493a098",
+    "books/nntp-projection.lisp": "0709955607510e4e8c4f4404a15af737cf8db91be21352a92403b1260861eb0b",
+    "books/nntp-session.lisp": "ed364496944b77118cdd826272802fafb961911fcc6ed85961d8b2f940c4ca51",
+    "books/nntp-syntax.lisp": "86abc0d9e4be8068cbdee6822fe316c75b5cb1907febd1a11bcb3d4d61864f95",
+    "books/records-shape.lisp": "56696b8e7f89971ffbe80ea26477a0808d9b19b37e41c1aedfffebf787b5ff86",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "books/wire.lisp": "cf2ea7328a4da41da33f7708f5e710d6327c43530d7bfd7fb29149bcea4ec90d"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "8d580e364f1fae2d871d462d81756c631abefb0ac21b88dfc2901fb40372fb76",
+    "books/acceptance.lisp": "a50ce3b2883c2f28a58cee5758b95366a777ee2ad9326de23f12275748c02960",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/group-bucket-index.lisp": "42bf9dbeca5b6297f4b075354e6ee74277add05d3200eaf6cac0a157064f8c45",
+    "books/index.lisp": "de3c5485d79fc6887d7465653a8515dd742aea41bb0a7510c161f69c9bf64d6d",
+    "books/msgid-index.lisp": "c6ff5f4971bf27cbaf9dca6a0b0a134eadac2cab1ddbbf6998364ebd8a88f5f2",
+    "books/nntp-index-runtime.lisp": "f9b29b18055561257728b897ceccad25fad670b8363b1725085eca3fa493a098",
+    "books/nntp-projection.lisp": "0709955607510e4e8c4f4404a15af737cf8db91be21352a92403b1260861eb0b",
+    "books/nntp-session.lisp": "ed364496944b77118cdd826272802fafb961911fcc6ed85961d8b2f940c4ca51",
+    "books/nntp-syntax.lisp": "86abc0d9e4be8068cbdee6822fe316c75b5cb1907febd1a11bcb3d4d61864f95",
+    "books/records-shape.lisp": "56696b8e7f89971ffbe80ea26477a0808d9b19b37e41c1aedfffebf787b5ff86",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "books/wire.lisp": "cf2ea7328a4da41da33f7708f5e710d6327c43530d7bfd7fb29149bcea4ec90d"
+  },
+  "start_order": [
+    "books/group-bucket-index"
+  ],
+  "started_utc": "2026-09-23T21:13:49+00:00",
+  "status": "passed",
+  "timeout_seconds": 150,
+  "tree": "/Users/ember/dev/fn/build/lanes/t17-listgroup-index"
+}

@@ -1,7 +1,9 @@
 # Experimental consumer position, version 1
 
-Status: **selected experiment contract; ACL2 decision kernel and phase-aware
-Store model certified in scope, no served consumer interface**, 2026-09-23. This
+Status: **selected experiment contract; ACL2 decision, durable Store projection,
+and bounded local-owner poll implemented; native signed poll, advancing ACK
+with reply loss/reopen and fenced clone recovery passed in the scoped
+`1d26e01f` campaign**, 2026-09-23. This
 specifies E2 of [the sleeping-agent exchange](../planning/experiments/e1-e2-agent-exchange.md).
 It is an fn design guarantee, not an NNTP or BP requirement and not a v0 release
 gate. The selected E1 payload remains opaque to fn. The executable traces to
@@ -27,17 +29,20 @@ an acceptance stamp can repeat or regress and cannot order a consumer scan.
 
 `position` is the committed Store-record prefix scanned, not a per-group
 number or the largest item returned. A valid position is at most the pinned
-committed frontier. The v1 query selects a configured finite set of groups;
-the ACL2 decision tests article membership and the caller's effective read
-authorization at the pinned view. `query-version` changes with selection
-semantics or group-set configuration. `view-version` changes whenever the
-effective authorization or article visibility for the principal and query
+committed frontier. The selected general v1 query selects a configured finite
+set of groups; its ACL2 decision must test article membership and the caller's
+effective read authorization at the pinned view. The implemented local-owner
+profile selects exact historical membership in one registered group under a
+fixed owner principal, query version 1 and view version 0. `query-version`
+changes with selection semantics or group-set configuration. `view-version`
+changes whenever the effective authorization or article visibility for the
+principal and query
 could change, including a newly visible old article. If the implementation
 cannot prove that a change preserves visibility, it changes the view version.
 These versions are durable identifiers, not process-local counters.
 
-The first trusted-peer, public-group profile uses `books/consumer-position.lisp`
-cursor bytes: `fncu` (four octets), version 1 (one octet), five nonempty
+The v1 cursor in `books/consumer-position.lisp` uses `fncu` (four octets),
+version 1 (one octet), five nonempty
 length-prefixed octet IDs (history, incarnation, consumer, principal, query;
 one through 64 octets each), then four big-endian unsigned 32-bit integers
 (query version, view version, registration epoch, scanned position). The
@@ -53,10 +58,19 @@ The page and errors still disclose no denied article source or identity.
 A later sealed-token profile could hide cursor fields and authenticate the
 encoding, with a selected primitive and key lifecycle stated as separate
 assumptions. No such cryptographic primitive is selected or required for v1.
-The kernel fixes this candidate v1 encoding. Its eventual served command
-framing and authenticated transport binding remain to be specified.
+The kernel fixes this v1 encoding. The local-owner `FNCT` kind-4/5 request and
+reply and kind-6 poll-reply framing are implemented over a mode-0600 Unix
+control socket with observed same-UID peer credentials. Remote authenticated
+framing and policy binding remain to be specified.
 
 ## Operations and their meanings
+
+The multi-item poll and unavailable-gap rules below are the selected general
+v1 contract. The implemented local-owner command is narrower: it takes a
+consumer ID and starts at that consumer's durable ack position, scans at most
+16 events, selects at most one article from one registered group, and returns
+that exact stored event rather than a multi-item page. Its native
+qualification is stated in the executable seam below.
 
 All requests have bounded lengths and an authenticated caller. `register`
 binds a consumer ID, principal and query under the current view, and durably
@@ -150,18 +164,19 @@ deduplication/conflict choice atomic.
 
 ## Executable seam and obligations
 
-This is not served by today's owner. The native read at
-`host/native/owner.lisp:1041` calls `fn-owner-chunk` at
-`host/owner-host.lisp:1051`, whose owner read enters `fn-served-step` at
-`books/owner.lisp:971`, then `fn-auth-step`/`fn-nntp-step` over a pinned
-archive. The publication helper is `fnn-owner-publish-prepared` at
-`host/native/owner.lisp:667`; `fn-own-complete` reaches `fn-sn-finish` at
-`books/owner.lisp:1114`. `books/owner.lisp` has a committed view/frontier and
-`books/store-node.lisp` has Store prepare/finish/reopen, but neither holds a
-store-history identity, consumer table, query decision or ack event.
-`tools/fn_client.py` advances a host/port-and-group watermark after output;
-that is not a consumer transaction. NEWNEWS and acceptance stamps cannot
-substitute for this prefix scan.
+The selected remote, multi-item E2 poll/fetch interface is not served. The
+implemented local-owner route is distinct from NNTP: the native control
+handler in `host/native/owner.lisp` calls
+`fn-owner-consumer-local-{bootstrap,register,ack,position,poll,unregister}`
+in `host/owner-host.lisp`, which calls the ACL2 `fn-col-*` decisions in
+`books/consumer-owner-local.lisp`. `fn-sn-consumer` in
+`books/store-node.lisp` carries the durable history/incarnation, registration
+table, epoch allocator and ack positions. Consumer write proposals pass
+through `fn-sn-prepare-consumer`, the ordinary publication barrier and
+`fn-sn-finish`; recovery reconstructs the projection from the committed Store
+stream. `fn-col-poll` is read-only over that committed event prefix. An NNTP
+watermark, NEWNEWS result or acceptance stamp cannot substitute for this
+consumer position or its declaration of processing.
 
 The executable `fn-cp-register`, `fn-cp-ack`, `fn-cp-rebase` and
 `fn-cp-unregister` return `:write` proposals, `:no-op` for an idempotent
@@ -169,9 +184,14 @@ durable state already known, or `:refused`. `fn-cp-apply` models the projection
 of a *committed* proposal; neither a proposal nor this in-memory application
 means Store acceptance. The kernel checks current scope, monotone ack,
 frontier, capacity and a scalar registration epoch without revalidating an
-entire Store on each request. `qver` and `view` must be computed by an ACL2
-owner policy projection, not accepted from client bytes. The poll/query
-selection and this policy projection are still unimplemented.
+entire Store on each request. The local-owner ACL2 wrapper fixes the
+authenticated owner principal, query version 1 and view version 0; register
+checks one configured group and poll selects exact historical membership in
+that group. Client bytes cannot choose principal, `qver` or `view`. The
+general remote multi-group selection and effective visibility-version
+projection remain unimplemented. `fn-cp-rebase` and its Store event are
+modelled, but no local `rebase` command or remote view-change workflow is
+served.
 
 The candidate v1 Store event envelope is the distinct `fnce` magic, version
 one, operation-kind octet, three unsigned 32-bit fields for dense Store
@@ -183,9 +203,28 @@ incarnation IDs before any consumer registration. Host-supplied entropy is an
 observation, not an endpoint, wall-clock or configuration-generation
 derivation. A duplicate bootstrap in one Store history is refused. A normal
 crash replay retains both IDs. Writable restore or clone must durably commit
-an explicit new-incarnation transition before consumer service. Until that
-path is integrated, writable restore/clone must refuse a consumer-enabled
-Store rather than make two writable futures under one cursor scope. The
+an explicit new-incarnation transition before consumer service. The native
+source now has a cold `checkpoint clone` and fenced `checkpoint clone-resume`
+path: it copies exact Store bytes under an exclusive source lock, installs a
+durable canonical rollover-event fence before exposing the destination, and
+refuses ordinary opens until owner publication and an independent reopen
+confirm the new incarnation. Production clone observes 32 new octets from
+the OS CSPRNG and ACL2 rejects equality with the current incarnation or
+history ID. Sibling uniqueness is probabilistic under the OS entropy trust
+boundary, not a theorem of globally unique IDs. Clone paths and their
+canonical aliases are bounded by the ACL2 512-octet native Store path policy.
+A same-ID or malformed proposal is refused without publication; an occupied
+destination is untouched. Uncertainty before durable rollover confirmation
+leaves the copied target fenced. If fence removal fails after the independent
+reopen confirmed the durable rollover, the command still reports uncertainty
+but an already-unlinked fence can permit safe ordinary opens. The original
+`bc9be7ec` saved image passed independent canonical-path refusal and
+historical authored-verdict clone/reopen tests, as recorded in
+[the frozen image evidence](../planning/evidence/native-reader-clone-bc9-2026-09-23.md).
+The subsequent `1d26e01f` image passed advancing-ack selected-pack and
+fenced-clone process-death/cursor checks; [its exact scope](../planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md)
+does not establish arbitrary physical power-loss safety. Arbitrary filesystem copying
+is not a supported writable clone. The
 selected exact-prefix pack retains every original event byte and reconstructs
 the entire dense Store stream before open; its prefix reclaim may preserve
 cursor positions only while this exact expansion remains the recovery path.
@@ -226,13 +265,89 @@ The native
 publication path must exercise refusal and ambiguity around its
 `record-linked`, `record-attempted`, `record-durable`, `record-completing`,
 `record-staging-cleaned`, `finish-consumed` and `finish-durable` process-death
-cuts, plus recovery cuts. The first proposed integration caller is an
-ACL2-backed `fn-owner-consumer-*` wrapper beside `fn-owner-chunk` in
-`host/owner-host.lisp`; `host/native/owner.lisp` must route its bounded bytes
-through that wrapper and the existing `fnn-owner-publish-prepared` completion
-gate. The host-called wrapper must be the theorem subject, or have a named
-equivalence to the kernel. None of those native caller or checkpoint joins
-exists yet. No seal/open primitive is required by this first public-group profile.
+cuts, plus recovery cuts. The first local owner command source now runs through
+`fn-owner-consumer-local-{bootstrap,register,ack,position,poll,unregister}` in
+`host/owner-host.lisp`, which calls `fn-col-*` over the live owner. The
+`FNCT` kind-4/5 codec and CLI plan in `books/consumer-local-control.lisp`
+carry bounded request/reply bytes over the existing mode-0600 Unix control
+socket. The host observes the connected peer's UID with Darwin `getpeereid`
+or Linux `SO_PEERCRED` after `getpeername`, refuses a failed observation or
+owner-UID mismatch, then pins the ACL2 local principal. Other ports refuse
+this profile until they supply an equivalent peer-credential observation. The native
+handler serializes each command with the owner, publishes
+the exact ACL2 event through `fnn-owner-consumer-commit` and the shared
+`fnn-owner-publish-prepared` gate, and returns a cursor only after durable
+completion. `consumer bootstrap CONTROL` reads two 32-octet OS entropy
+observations; ACL2 validates them, constructs the initial history/incarnation
+event, and refuses a duplicate or equal identity. The source of entropy and
+its uniqueness are host trust assumptions, not ACL2 theorems. A lost
+post-submission reply is uncertain and `position` recovers
+the recorded declaration. An earlier production image passed bootstrap,
+register, position, equal-position ack, epoch refusal, independent Store
+scope refusal, replay, and a killed-owner-after-durable-register case;
+[its exact scope](../planning/evidence/native-e2-bp-4f66-2026-09-23.md)
+does not include poll or advancing ack. The `1d26e01f` campaign subsequently passed signed poll, advancing ACK with
+a killed reply, and recovered position; the broader two-store application
+transaction crash trace remains open.
+
+The local `consumer poll CONTROL ID CURSOR_OUT REPORT_OUT` source selector
+examines at most 16 consecutive committed Store events and stops at the first
+article in the registered historical group query. It returns an exact fncu
+cursor at the scanned prefix and either empty report bytes or one exact
+ACL2-encoded `fn-r` legacy article / `fn-e` accepted-article event. The
+schema-1 composite event includes the received article, separate bound exact
+authored source and identity, and historical verdict; legacy events retain
+their explicit version and make no source-authorship claim. The FNCT kind-6
+reply has a separate 196,963-octet payload ceiling, within the 4,194,304-octet
+underlying frame payload ceiling; ordinary control requests retain their smaller cap.
+Its cursor and report lengths are checked independently. Poll leaves the
+durable consumer position unchanged; only a subsequent `ack` writes progress.
+The `consumer-project` exact-file reader uses the ACL2 cursor and event
+ceilings (346 and 196,608 octets). A file beyond either ceiling is a bounded
+`:limit` refusal of that CLI request; malformed files within the ceilings
+reach the ACL2 projector's codec refusal. Neither result advances an ack.
+The current list-backed selector copies a 16-event window after a positional
+walk of at most the configured Store transaction limit, so its pessimistic
+work is that limit plus 16 event steps per poll, not constant-time lookup.
+A derived event-index kernel has been certified in a separate lane but is not
+installed or called here; it does not reduce that served cost. The original
+`bc9be7ec` image's signed poll attempt failed before submission because the
+CLI supplied the cursor output path as an extra ACL2 request argument,
+as recorded in [the original failure](../planning/evidence/native-e2-poll-bc9-original.md).
+The repaired `1d26e01f` image passed signed poll and advancing-ack recovery,
+as recorded in [the native campaign](../planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md).
+The Mini durable inbox/outbox-to-ACK join remains an open evidence obligation.
+
+The read-only `consumer-project CURSOR.fncu ACCEPTED.fn-e` command calls
+`fn-cpj-project` to check a supplied v1 cursor against a schema-1 accepted
+event, its bound article and historical verified verdict. The current ACL2
+projection has a [verified guard and scoped witness](../planning/evidence/mini-e2-consumer-project-2026-09-23.md),
+but supplied files alone do not prove that a particular authenticated Store
+poll returned them. It does not perform Mini's source verification or durable
+inbox/outbox transaction. The `1d26e01f` native command projected the exact
+event and cursor exported by the signed poll campaign.
+
+The offline `fn consumer-inspect CURSOR.fncu` command reads a regular file
+through the ACL2-owned 346-octet maximum encoding bound, then calls
+`fn-cp-cursor-decode` and prints the exact five IDs as lowercase hex and the
+query version, view version, registration epoch and position as decimal
+fields in a `fn-consumer-inspect-v1` line. Malformed, truncated or trailing
+input is refused by the decoder; overbound input is refused before decoding.
+This is syntactic cursor inspection only. The token contents do not
+authenticate an fn Store, prove that the cursor was accepted, establish that
+the displayed epoch is current, or prove that any consumer processed an
+article. IDs are printed as hex so arbitrary octets cannot inject terminal
+control characters.
+
+That **local-owner profile** pins one OS owner principal inside ACL2; its
+query is exact historical membership in one group that is configured at
+registration, with fixed query version 1 and view version 0. The same local
+owner can inspect its historical membership even if the active group table
+later changes. This does not grant remote peers read authority and does not
+implement the selected public-group poll. A remote profile must pin its
+authenticated principal and effective visibility version from the current
+ACL2 policy, and prove its fetched article window matches the committed Store
+prefix. No seal/open primitive is required by this first trusted local profile.
 The consumer library owns its own crash-safe transaction and dregg verifier.
 The trace file names the required two-database observations; passing article
 arrival or a printed watermark cannot satisfy them.
@@ -244,6 +359,10 @@ committed prefix, and an acknowledgement declares consumer-owned processing
 without asserting it. Crash/reopen must reconstruct the same position, while
 an incarnation or view change fences the old cursor. The consumer must atomically
 bind source-inclusive inbox evidence, a separate unique application operation
-index, and a reply outbox before acknowledging. The logical Store model and
-cursor decision kernel are implemented; the authenticated native operations,
-consumer database and two-store trace remain to be executed.
+index, and a reply outbox before acknowledging. The logical Store model,
+cursor decision kernel, durable local declarations and bounded one-group poll
+source are implemented. Prior native declaration and independent clone checks
+passed in their stated scopes, followed by native signed poll, advancing
+ACK/reopen and fenced-clone cursor checks on `1d26e01f`. General authenticated
+multi-group selection, the consumer application transaction/ACK join, and the
+two-store trace remain open.

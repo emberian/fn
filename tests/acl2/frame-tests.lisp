@@ -273,6 +273,36 @@
           *fn-frame-test-digest*))
         (list '(98) '(1 2 3) '(4 5) 7 9 9 :authorized :duplicate)))
 
+; Transit records retain the authored request separately from its pinned
+; local relay projection, and their kinds remain after the legacy grammar.
+(assert-event
+ (equal (fn-frame-result-payload
+         (fn-frame-receipt-decode
+          (fn-frame-receipt-encode
+           :request-transit-intent
+           (list '(98) '(1 2 3) 7 9 :accepted
+                 '(112) '(108) '(101) '(4 5 6))
+           *fn-frame-test-digest*)
+          *fn-frame-test-digest*))
+        (list '(98) '(1 2 3) 7 9 :accepted
+              '(112) '(108) '(101) '(4 5 6))))
+(assert-event
+ (equal (fn-frame-result-payload
+         (fn-frame-receipt-decode
+          (fn-frame-receipt-encode
+           :request-transit-context
+           (list '(98) '(1 2 3) '(4 5 6) 7 9 10 :duplicate)
+           *fn-frame-test-digest*)
+          *fn-frame-test-digest*))
+        (list '(98) '(1 2 3) '(4 5 6) 7 9 10 :duplicate)))
+(assert-event
+ (equal (fn-frame-receipt-encode
+         :request-transit-intent
+         (list '(98) '(1 2 3) 7 9 :accepted
+               '(112) '(108) '(101))
+         *fn-frame-test-digest*)
+        :bad))
+
 ; An outcome whose phase and result do not belong together is refused by the
 ; encoder, so a journal cannot contain one.
 (assert-event

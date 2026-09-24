@@ -2685,7 +2685,8 @@
 (verify-guards fn-auth-step-pinned)
 
 (defthm fn-auth-delegate-pinned-preserves-consistentp
-  (implies (fn-auth-session-consistentp as archive)
+  (implies (and (fn-auth-session-consistentp as archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-auth-session-consistentp
             (fn-post-result-session
              (fn-auth-delegate-pinned as archive index verdicts config
@@ -2702,7 +2703,8 @@
                             (ps (fn-auth-session-base as)))))))
 
 (defthm fn-auth-step-pinned-preserves-consistent-session
-  (implies (fn-auth-session-consistentp as archive)
+  (implies (and (fn-auth-session-consistentp as archive)
+                (fn-gidx-pin-correspondencep index archive))
            (fn-auth-session-consistentp
             (fn-post-result-session
              (fn-auth-step-pinned as archive index verdicts config observation
@@ -2721,7 +2723,9 @@
 
 (defthm fn-auth-delegate-pinned-effects-well-formed
   (implies (and (fn-auth-session-consistentp as archive)
-                (fn-midx-correspondencep index (fn-state-articles archive)))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index)
+                                         (fn-state-articles archive))
+                (fn-gidx-pin-correspondencep index archive))
            (fn-auth-effectsp
             (fn-post-result-effects
              (fn-auth-delegate-pinned as archive index verdicts config
@@ -2734,7 +2738,9 @@
 
 (defthm fn-auth-step-pinned-effects-well-formed
   (implies (and (fn-auth-session-consistentp as archive)
-                (fn-midx-correspondencep index (fn-state-articles archive)))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index)
+                                         (fn-state-articles archive))
+                (fn-gidx-pin-correspondencep index archive))
            (fn-auth-effectsp
             (fn-post-result-effects
              (fn-auth-step-pinned as archive index verdicts config observation

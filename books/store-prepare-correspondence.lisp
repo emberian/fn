@@ -64,7 +64,9 @@
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
            (fn-record-p record)
-           (not (equal (fn-record-stamp record) :legacy)))
+           (not (equal (fn-record-stamp record) :legacy))
+           (eq (car (fn-cpe-projection-step
+                     (fn-sn-consumer s) record (fn-sn-identity-next s))) :ok))
       (let* ((node (fn-sn-prepare-node (fn-sn-node s) record))
              (files (fn-spc-stage-record (fn-sn-files s) record)))
         (if (and (fn-sn-record-bindsp node record)
@@ -210,7 +212,11 @@
         (equal (fn-sn-files (fn-sn-set-keyring s keyring))
                (fn-sn-files s))
         (equal (fn-sn-node (fn-sn-set-keyring s keyring))
-               (fn-sn-node s)))
+               (fn-sn-node s))
+        (equal (fn-sn-consumer (fn-sn-set-keyring s keyring))
+               (fn-sn-consumer s))
+        (equal (fn-sn-identity-next (fn-sn-set-keyring s keyring))
+               (fn-sn-identity-next s)))
    :hints (("Goal" :in-theory (enable fn-sn-set-keyring)))))
 
 (local

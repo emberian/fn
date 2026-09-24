@@ -16,8 +16,12 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-keystones")
 (include-book "../../books/byte-store-programs")
+(include-book "../../books/byte-store-relation")
 (include-book "../../books/byte-store-txn-name")
+(include-book "../../books/byte-store-frame")
 (include-book "../../books/codec-attach")
+(include-book "consumer-store-invariants-tests")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; The byte scanner consumes the shared Store-event dispatcher, so one
 ; immutable namespace may contain a legacy article followed by retention
@@ -84,6 +88,184 @@
 (assert-event (fn-bs-inop (fn-bs-lookup *fn-bs-initialized-store*
                                         :root *fn-bs-scan-frontier-name*)))
 (assert-event (fn-bs-dir-quietp *fn-bs-initialized-store* :root))
+
+; E2/K4: an initial byte image and its actual modeled death have a strict
+; consumer replay at the host reopen entry.  The bridge proves this from the
+; maintained completed-prefix relation and K2's scanned kernel image; no
+; host-side consumer predicate is assumed over the observed record list.
+(defun bsk-e2-initial-node () (fn-sn-initial nil 10))
+(defun bsk-e2-initial-store ()
+  (fn-bs-initial-image 4 (fn-bs-initial-config-octets)
+                        (fn-bs-initial-frontier-octets)))
+(defun bsk-e2-initial-crash ()
+  (fn-bs-crash (bsk-e2-initial-store) nil))
+(assert-event (fn-csi-full-relationp (bsk-e2-initial-node)))
+(assert-event
+ (fn-bs-store-relation (bsk-e2-initial-store)
+                       (fn-sn-files (bsk-e2-initial-node))))
+(defthm bsk-e2-initial-crash-admissible
+  (fn-bs-crash-imagep (bsk-e2-initial-store)
+                      (bsk-e2-initial-crash))
+  :hints (("Goal"
+           :use ((:instance fn-bs-lose-everything-is-an-admissible-image
+                            (s (bsk-e2-initial-store)))))))
+(assert-event
+ (fn-sn-observed-consumer-okp
+  (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-initial-crash)))))
+(assert-event
+ (fn-sn-open-okp
+  (fn-sn-open-observed
+   (fn-sn-groups (bsk-e2-initial-node))
+   (fn-sn-capacity (bsk-e2-initial-node))
+   (fn-bs-scan-frontier (fn-bs-scan-store (bsk-e2-initial-crash)))
+   (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-initial-crash))))))
+
+; A nonempty consumer image: the same bootstrap event goes through the
+; actual Store-node trace and the actual byte frontier/P-RECORD/finish
+; programs.  The final byte image contains its FNST frame and reopens with
+; a reconstructed consumer projection.
+(defun bsk-e2-bootstrap-frame ()
+  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+                 *fn-frame-store-kind* (fn-store-event-encode *csnt-boot*)))
+(defun bsk-e2-frontier-pair ()
+  (car (last (fn-bs-run (bsk-e2-initial-store)
+                        (fn-sn-files *csnt-initial*)
+                        (fn-bs-frontier-program ".allocation-e2"
+                                                (fn-bs-frontier-encode 1))
+                        nil '("g") 32))))
+(defun bsk-e2-bootstrap-record-pair ()
+  (let ((pair (bsk-e2-frontier-pair)))
+    (car (last
+          (fn-bs-run (car pair)
+                     (fn-sn-files
+                      (fn-sn-prepare-consumer (csnt-reserve *csnt-initial*)
+                                              *csnt-boot*))
+                     (fn-bs-record-program ".stage-e2" (fn-bs-txn-name 0)
+                                           (bsk-e2-bootstrap-frame))
+                     nil '("g") 32)))))
+(defun bsk-e2-bootstrap-finished-pair ()
+  (let ((pair (bsk-e2-bootstrap-record-pair)))
+    (car (last (fn-bs-run (car pair) (cdr pair)
+                            (fn-bs-finish-program 0 0) nil '("g") 32)))))
+(defun bsk-e2-bootstrap-image ()
+  (fn-bs-crash (car (bsk-e2-bootstrap-finished-pair)) nil))
+(assert-event
+ (let* ((pair (bsk-e2-bootstrap-finished-pair))
+        (s (fn-snrt-run *csnt-initial* *csit-boot-trace*))
+        (scan (fn-bs-scan-store (bsk-e2-bootstrap-image))))
+   (and (fn-csi-full-relationp s)
+        (equal s *csnt-after-boot*)
+        (equal (cdr pair) (fn-sn-files s))
+        (fn-bs-store-relation (car pair) (fn-sn-files s))
+        (fn-bs-crash-choicesp nil (fn-bs-pending (car pair))
+                              (fn-bs-unit (car pair)))
+        (equal (fn-bs-scan-records scan) (list *csnt-boot*))
+        (fn-sn-observed-consumer-okp (fn-bs-scan-records scan))
+        (fn-sn-open-okp
+         (fn-sn-open-observed '("g") 32
+                              (fn-bs-scan-frontier scan)
+                              (fn-bs-scan-records scan))))))
+
+; Removing the maintained consumer-prefix relation is unsound even when
+; the file kernel and byte store agree.  This old structurally framed
+; registration is accepted by the file program, but E2 refuses its replay
+; because no bootstrap precedes it.  The Store-node's checked prepare path
+; cannot reach this state; that is precisely the invariant the theorem uses.
+(defun bsk-e2-invalid-frame ()
+  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+                 *fn-frame-store-kind*
+                 (fn-store-event-encode *csit-register-before-bootstrap*)))
+(defun bsk-e2-invalid-record-pair ()
+  (let ((pair (bsk-e2-frontier-pair)))
+    (car (last
+          (fn-bs-run (car pair)
+                     (fn-sf-prepare-record
+                      (cdr pair) *csit-register-before-bootstrap* '("g") 32)
+                     (fn-bs-record-program ".stage-e2-invalid"
+                                           (fn-bs-txn-name 0)
+                                           (bsk-e2-invalid-frame))
+                     nil '("g") 32)))))
+(defun bsk-e2-invalid-finished-pair ()
+  (let ((pair (bsk-e2-invalid-record-pair)))
+    (car (last (fn-bs-run (car pair) (cdr pair)
+                            (fn-bs-finish-program 0 0) nil '("g") 32)))))
+(defun bsk-e2-invalid-image ()
+  (fn-bs-crash (car (bsk-e2-invalid-finished-pair)) nil))
+(defun bsk-e2-invalid-node ()
+  (fn-sn-update *csnt-initial* (cdr (bsk-e2-invalid-finished-pair))
+                (fn-sn-node *csnt-initial*)))
+(assert-event
+ (equal (cdr (bsk-e2-invalid-finished-pair))
+        (fn-sn-files (bsk-e2-invalid-node))))
+(assert-event
+ (fn-bs-store-relation (car (bsk-e2-invalid-finished-pair))
+                       (fn-sn-files (bsk-e2-invalid-node))))
+(assert-event
+ (fn-bs-crash-choicesp nil
+                       (fn-bs-pending (car (bsk-e2-invalid-finished-pair)))
+                       (fn-bs-unit (car (bsk-e2-invalid-finished-pair)))))
+(assert-event (not (fn-csi-full-relationp (bsk-e2-invalid-node))))
+(assert-event
+ (equal (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-invalid-image)))
+        (list *csit-register-before-bootstrap*)))
+(assert-event
+ (not (fn-sn-observed-consumer-okp
+       (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-invalid-image))))))
+(defthm bsk-e2-invalid-crash-admissible
+  (fn-bs-crash-imagep (car (bsk-e2-invalid-finished-pair))
+                      (bsk-e2-invalid-image))
+  :hints (("Goal"
+           :use ((:instance fn-bs-lose-everything-is-an-admissible-image
+                            (s (car (bsk-e2-invalid-finished-pair))))))))
+
+; Tooth for the maintained E2 relation.  The byte/kernel relation and
+; modeled crash premise are both true at this actual physical program cut;
+; only the node's checked consumer-prefix relation is absent.
+(must-fail
+ (assert-event
+  (implies (and (fn-bs-store-relation
+                 (car (bsk-e2-invalid-finished-pair))
+                 (fn-sn-files (bsk-e2-invalid-node)))
+                (fn-bs-crash-choicesp
+                 nil (fn-bs-pending (car (bsk-e2-invalid-finished-pair)))
+                 (fn-bs-unit (car (bsk-e2-invalid-finished-pair)))))
+           (fn-sn-observed-consumer-okp
+            (fn-bs-scan-records (fn-bs-scan-store
+                                 (bsk-e2-invalid-image)))))))
+
+; Tooth for the byte/kernel relation: a valid committed bootstrap node is
+; paired with the invalid registration byte image.  The image is a legal
+; crash of its own byte state but not related to that node's record history.
+(assert-event
+ (not (fn-bs-store-relation
+       (car (bsk-e2-invalid-finished-pair))
+       (fn-sn-files *csnt-after-boot*))))
+(must-fail
+ (assert-event
+  (implies (and (fn-csi-full-relationp *csnt-after-boot*)
+                (fn-bs-crash-choicesp
+                 nil (fn-bs-pending (car (bsk-e2-invalid-finished-pair)))
+                 (fn-bs-unit (car (bsk-e2-invalid-finished-pair)))))
+           (fn-sn-observed-consumer-okp
+            (fn-bs-scan-records (fn-bs-scan-store
+                                 (bsk-e2-invalid-image)))))))
+
+; Tooth for the modeled crash-image premise: the valid bootstrap byte state
+; is related to its node, but the independently produced registration image
+; has different framed content and fails consumer replay.
+(must-fail
+ (assert-event
+  (implies (and (fn-csi-full-relationp *csnt-after-boot*)
+                (fn-bs-store-relation
+                 (car (bsk-e2-bootstrap-finished-pair))
+                 (fn-sn-files *csnt-after-boot*)))
+           (fn-sn-observed-consumer-okp
+            (fn-bs-scan-records (fn-bs-scan-store
+                                 (bsk-e2-invalid-image)))))))
+(must-fail
+ (assert-event
+  (fn-sn-observed-consumer-okp
+   (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-invalid-image))))))
 
 ; -----------------------------------------------------------------------------
 ; Tooth 1: without (fn-bs-store-relation bs ks).

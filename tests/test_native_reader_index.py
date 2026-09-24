@@ -1,4 +1,4 @@
-"""Saved-image witness for pinned NNTP Message-ID retrieval.
+"""Saved-image witnesses for pinned NNTP Message-ID and LISTGROUP retrieval.
 
 The Python test drives only public operator and NNTP interfaces.  The index,
 archive and their correspondence are ACL2 decisions in the called owner path.
@@ -102,19 +102,200 @@ class NativeReaderIndexTest(unittest.TestCase):
                 self.assertLessEqual(len(rows), 256)
         return status, rows
 
-    def post(self, msgid, ordinal):
+    def post(self, msgid, ordinal, group="fn.test"):
+        groups = (group,) if isinstance(group, str) else tuple(group)
         source = (
             b"From: reader@example.invalid\r\n"
             b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
-            b"Newsgroups: fn.test\r\n"
+            b"Newsgroups: " + ",".join(groups).encode("ascii") + b"\r\n"
             b"Subject: pinned reader " + str(ordinal).encode("ascii") + b"\r\n"
             b"Message-ID: " + msgid.encode("ascii") +
             b"\r\n\r\nexact reader source\r\n")
         path = self.root / ("post-{}.eml".format(ordinal))
         path.write_bytes(source)
-        self.run_native("operator", self.config, "post", "--message-id", msgid,
-                        "--payload", path, "--group", "fn.test")
+        words = ["operator", self.config, "post", "--message-id", msgid,
+                 "--payload", path]
+        for name in groups:
+            words.extend(("--group", name))
+        self.run_native(*words)
         return source
+
+    def overview(self, reader, spelling, number_range):
+        self.assertIn(spelling, ("OVER", "XOVER"))
+        return self.command(reader, spelling + " " + number_range, True)
+
+    def test_over_xover_crosspost_sparse_range_historical_pin_and_restart(self):
+        self.run_native("operator", self.config, "group", "create", "fn.alt")
+        owner = self.start_owner()
+        old = self.reader()
+        self.assertTrue(self.command(old, "GROUP fn.test")[0].startswith(b"211 "))
+        self.assertEqual(self.overview(old, "OVER", "1-100"),
+                         (b"423 no articles in that range\r\n", []))
+        self.assertEqual(self.overview(old, "XOVER", "1-100"),
+                         (b"420 no article(s) selected\r\n", []))
+
+        cross = "<reader-over-cross@example.invalid>"
+        alt = "<reader-over-alt@example.invalid>"
+        second = "<reader-over-second@example.invalid>"
+        self.post(cross, 301, ("fn.test", "fn.alt"))
+        self.post(alt, 302, "fn.alt")
+        middle = self.reader()
+        self.assertTrue(self.command(middle, "GROUP fn.test")[0].startswith(b"211 "))
+        self.assertEqual(self.overview(old, "OVER", "1-100")[1], [])
+        first_status, first_rows = self.overview(middle, "OVER", "1-100")
+        self.assertEqual(first_status, b"224 overview information follows\r\n")
+        self.assertEqual(len(first_rows), 1)
+        self.assertTrue(first_rows[0].startswith(b"1\t"), first_rows)
+        self.assertIn(cross.encode(), first_rows[0])
+        self.assertEqual(self.overview(middle, "XOVER", "1-100")[1], first_rows)
+
+        self.post(second, 303, "fn.test")
+        fresh = self.reader()
+        self.assertTrue(self.command(fresh, "GROUP fn.test")[0].startswith(b"211 "))
+        status, rows = self.overview(fresh, "OVER", "1-100")
+        self.assertEqual(status, b"224 overview information follows\r\n")
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0], first_rows[0])
+        self.assertTrue(rows[1].startswith(b"2\t"), rows)
+        self.assertIn(second.encode(), rows[1])
+        self.assertEqual(self.overview(fresh, "XOVER", "2-2")[1], [rows[1]])
+        self.assertEqual(self.overview(middle, "OVER", "2-2"),
+                         (b"423 no articles in that range\r\n", []))
+        self.assertEqual(self.overview(fresh, "OVER", "3-100"),
+                         (b"423 no articles in that range\r\n", []))
+        # Public posting allocates contiguous local numbers.  A genuinely
+        # internal hole is covered by the ACL2 sparse-index witness; this
+        # socket case checks a sparse bounded selection beyond the watermark.
+        self.assertTrue(self.command(fresh, "GROUP fn.alt")[0].startswith(b"211 "))
+        alt_status, alt_rows = self.overview(fresh, "OVER", "1-2")
+        self.assertEqual(alt_status, b"224 overview information follows\r\n")
+        self.assertEqual(len(alt_rows), 2)
+        self.assertIn(cross.encode(), alt_rows[0])
+        self.assertIn(alt.encode(), alt_rows[1])
+
+        def read_pair(_):
+            reader = self.reader()
+            try:
+                self.assertTrue(self.command(reader, "GROUP fn.test")[0]
+                                .startswith(b"211 "))
+                return self.overview(reader, "OVER", "1-100"), self.overview(
+                    reader, "XOVER", "2-2")
+            finally:
+                reader[1].close()
+                reader[0].close()
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            for pair in pool.map(read_pair, range(4)):
+                self.assertEqual(pair[0], (status, rows))
+                self.assertEqual(pair[1][1], [rows[1]])
+        for reader in (old, middle, fresh):
+            reader[1].close()
+            reader[0].close()
+        self.stop_owner(owner)
+        restarted = self.start_owner()
+        recovered = self.reader()
+        self.assertTrue(self.command(recovered, "GROUP fn.test")[0]
+                        .startswith(b"211 "))
+        self.assertEqual(self.overview(recovered, "OVER", "1-100"),
+                         (status, rows))
+        recovered[1].close()
+        recovered[0].close()
+        self.stop_owner(restarted)
+
+    def listgroup(self, reader, group, number_range=None):
+        command = "LISTGROUP " + group
+        if number_range is not None:
+            command += " " + number_range
+        return self.command(reader, command, True)
+
+    def test_listgroup_historical_pin_live_group_and_restart(self):
+        owner = self.start_owner()
+        old = self.reader()
+        status, rows = self.listgroup(old, "fn.test")
+        self.assertTrue(status.startswith(b"211 0 "), status)
+        self.assertEqual(rows, [])
+        self.assertEqual(self.command(old, "GROUP fn.live")[0],
+                         b"411 no such newsgroup\r\n")
+
+        # Config publication updates the served owner without repinning old.
+        self.run_native("operator", self.config, "group", "create", "fn.live")
+        configured = self.reader()
+        self.assertEqual(self.command(old, "GROUP fn.live")[0],
+                         b"411 no such newsgroup\r\n")
+        self.assertTrue(self.command(configured, "GROUP fn.live")[0]
+                        .startswith(b"211 "))
+        status, rows = self.listgroup(configured, "fn.live")
+        self.assertTrue(status.startswith(b"211 0 "), status)
+        self.assertEqual(rows, [])
+
+        self.post("<reader-group-one@example.invalid>", 101)
+        middle = self.reader()
+        self.assertEqual(self.listgroup(old, "fn.test")[1], [])
+        self.assertEqual(self.listgroup(configured, "fn.test")[1], [])
+        self.assertEqual(self.listgroup(middle, "fn.test")[1], [b"1\r\n"])
+
+        self.post("<reader-group-two@example.invalid>", 102)
+        self.post("<reader-live-one@example.invalid>", 103, "fn.live")
+        fresh = self.reader()
+        self.assertEqual(self.listgroup(old, "fn.test")[1], [])
+        self.assertEqual(self.listgroup(middle, "fn.test")[1], [b"1\r\n"])
+        self.assertEqual(self.listgroup(fresh, "fn.test")[1],
+                         [b"1\r\n", b"2\r\n"])
+        self.assertEqual(self.listgroup(middle, "fn.test", "2-2")[1], [])
+        self.assertEqual(self.listgroup(fresh, "fn.test", "2-2")[1],
+                         [b"2\r\n"])
+        # An empty range above the high watermark remains empty.  The public
+        # operator API does not yet make an internal allocation hole.
+        self.assertEqual(self.listgroup(fresh, "fn.test", "3-5")[1], [])
+        self.assertEqual(self.listgroup(old, "fn.live"),
+                         (b"411 no such newsgroup\r\n", []))
+        self.assertEqual(self.listgroup(configured, "fn.live")[1], [])
+        self.assertEqual(self.listgroup(middle, "fn.live")[1], [])
+        self.assertEqual(self.listgroup(fresh, "fn.live")[1], [b"1\r\n"])
+
+        for reader in (old, configured, middle, fresh):
+            reader[1].close()
+            reader[0].close()
+        self.stop_owner(owner)
+        restarted = self.start_owner()
+        recovered = self.reader()
+        self.assertEqual(self.listgroup(recovered, "fn.test", "1-9")[1],
+                         [b"1\r\n", b"2\r\n"])
+        self.assertEqual(self.listgroup(recovered, "fn.live", "1-9")[1],
+                         [b"1\r\n"])
+        recovered[1].close()
+        recovered[0].close()
+        self.stop_owner(restarted)
+
+    def test_listgroup_many_unrelated_groups_measured_socket_workload(self):
+        groups = ["fn.work.{:02d}".format(i) for i in range(24)]
+        for group in groups:
+            self.run_native("operator", self.config, "group", "create", group)
+        owner = self.start_owner()
+        for ordinal, group in enumerate(groups):
+            self.post("<reader-work-{}@example.invalid>".format(ordinal),
+                      200 + ordinal, group)
+        reader = self.reader()
+
+        # 24 unrelated one-member groups, then 96 bounded socket reads on
+        # one pinned view.  The measured interval excludes group creation,
+        # Store publication, and process startup.  It is observational only.
+        for group in (groups[0], groups[-1]):
+            status, rows = self.listgroup(reader, group, "1-1")
+            self.assertTrue(status.startswith(b"211 1 "), status)
+            self.assertEqual(rows, [b"1\r\n"])
+        started = time.monotonic()
+        for _ in range(48):
+            for group in (groups[0], groups[-1]):
+                status, rows = self.listgroup(reader, group, "1-1")
+                self.assertTrue(status.startswith(b"211 1 "), status)
+                self.assertEqual(rows, [b"1\r\n"])
+        elapsed = time.monotonic() - started
+        print("native LISTGROUP workload: groups=24 articles=24 commands=96 "
+              "range=1-1 elapsed={:.3f}s".format(elapsed))
+        reader[1].close()
+        reader[0].close()
+        self.stop_owner(owner)
 
     def test_pinned_archive_and_index_through_public_reader(self):
         first = "<reader-index-first@example.invalid>"

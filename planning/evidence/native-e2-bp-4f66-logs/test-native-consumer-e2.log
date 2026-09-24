@@ -1,0 +1,8 @@
+test_different_local_uid_is_refused_by_owner (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_different_local_uid_is_refused_by_owner) ... skipped 'requires Linux root and setpriv to offer a distinct SO_PEERCRED uid to the real owner socket'
+test_durable_scope_ack_and_unrelated_article (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_durable_scope_ack_and_unrelated_article) ... ok
+test_lost_register_reply_resolves_by_reopened_position (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_lost_register_reply_resolves_by_reopened_position) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 2.271s
+
+OK (skipped=1)

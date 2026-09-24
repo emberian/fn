@@ -46,7 +46,7 @@
        ((and (fn-bpn-acceptedp decision)
                (fn-bpb-bundlep bundle)
                (equal wire (fn-bpb-encode bundle)))
-        (list :ready (list :receive-bundle bundle wire ingress)))
+        (list :ready (list :receive-bundle bundle wire ingress observation)))
        (t (list :refused :invalid-bundle))))))
 
 (defun fn-bpnf-receive-wire-readyp (answer)
@@ -65,11 +65,12 @@
     (and (true-listp event) (equal (len event) 2)
          (fn-bpn-machine-eventp (fn-bpn-nth 1 event))))
    ((equal (fn-cbor-ag-car event) :receive-bundle)
-    (and (true-listp event) (equal (len event) 4)
+    (and (true-listp event) (equal (len event) 5)
          (fn-bpb-bundlep (fn-bpn-nth 1 event))
          (fn-cbor-octet-listp (fn-bpn-nth 2 event))
          (fn-cbor-at-mostp (fn-bpn-nth 2 event) *fn-bpnf-max-held-image*)
-         (fn-bpnf-cl-ingressp (fn-bpn-nth 3 event))))
+         (fn-bpnf-cl-ingressp (fn-bpn-nth 3 event))
+         (fn-clock-observationp (fn-bpn-nth 4 event))))
    ((equal (fn-cbor-ag-car event) :persist-result)
     (and (true-listp event) (equal (len event) 4)
          (fn-frame-natp (fn-bpn-nth 1 event))
@@ -92,6 +93,20 @@
                  (fn-bpah-disposition-code (fn-bpn-nth 4 event))) t nil)
          (fn-cbor-octet-listp (fn-bpn-nth 5 event))
          (<= (len (fn-bpn-nth 5 event)) 256)))
+   ((equal (fn-cbor-ag-car event) :family)
+    (and (true-listp event) (equal (len event) 2)
+         (fn-frame-natp (fn-bpn-nth 1 event)) t))
+   ((equal (fn-cbor-ag-car event) :expire-held)
+    (and (true-listp event) (equal (len event) 3)
+         (fn-clock-observationp (fn-bpn-nth 1 event))
+         (if (equal (fn-bpn-nth 2 event) t) t
+           (equal (fn-bpn-nth 2 event) nil))))
+   ((equal (fn-cbor-ag-car event) :queue-report)
+    (and (true-listp event) (equal (len event) 5)
+         (fn-frame-natp (fn-bpn-nth 1 event))
+         (fn-bpp-timep (fn-bpn-nth 2 event))
+         (fn-bpn-routep (fn-bpn-nth 3 event))
+         (fn-clock-observationp (fn-bpn-nth 4 event))))
    ((equal (fn-cbor-ag-car event) :recover-fnbs)
     (and (true-listp event) (equal (len event) 5)
          (true-listp (fn-bpn-nth 2 event))
@@ -129,7 +144,12 @@
                         (fn-bpnf-receive-wire-event-value
                          (fn-bpnf-receive-wire-event
                           config wire observation ingress)))
-                       ingress)))
+                       ingress)
+                (equal (fn-bpn-nth 4
+                        (fn-bpnf-receive-wire-event-value
+                         (fn-bpnf-receive-wire-event
+                          config wire observation ingress)))
+                       observation)))
   :hints (("Goal" :in-theory (disable fn-bpn-receive fn-bpb-encode)))
   :rule-classes nil)
 

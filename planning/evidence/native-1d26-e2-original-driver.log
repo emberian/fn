@@ -1,0 +1,30 @@
+test_signed_composite_poll_and_lost_positive_ack_reply (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply) ... ERROR
+
+======================================================================
+ERROR: test_signed_composite_poll_and_lost_positive_ack_reply (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/poll-live-group-native-1d26-20260923/tests/test_native_consumer_e2.py", line 300, in test_signed_composite_poll_and_lost_positive_ack_reply
+    self.assertTrue(run_store.acl2_boolean(bridge.call(form)))
+                                           ^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/poll-live-group-native-1d26-20260923/tools/run_store.py", line 487, in call
+    raise StoreError(output.decode("utf-8", "replace"))
+tools.run_store.StoreError: 
+
+ACL2 Error [Translate] in TOP-LEVEL:  The proper form of a let is (let
+bindings dcl ... dcl body), where bindings has the form ((v1 term)
+... (vn term)) and the vi are distinct variables, not constants, and
+do not begin with an asterisk, but 
+(LET ((DECODED (FN-STXA-DECODE-EXACT '#))
+      (AND (FN-STMT-OKP DECODED)
+           (LET* (# #) (AND # # #))))
+)
+does not have this form.
+(See :DOC set-iprint to be able to see elided values in this message.)
+
+ACL2 !>
+
+----------------------------------------------------------------------
+Ran 1 test in 6.630s
+
+FAILED (errors=1)

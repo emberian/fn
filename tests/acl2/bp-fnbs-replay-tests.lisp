@@ -24,6 +24,12 @@
  (equal (fn-bpnf-replay-rows (bpnfr-rows) 4 1048576)
         (list :ready (list (nth 3 *bpnfr-second*) (nth 3 *bpnfc-record*))
               (cons 9 1))))
+; Two rows fill this fixture's exact max-held budget, and the byte replay
+; returns the next arrival frontier 2. A third row is capacity-refused.
+(assert-event
+ (equal (fn-bpnf-held-arrival-frontier
+         (cadr (fn-bpnf-replay-rows (bpnfr-rows) 2 1048576)))
+        2))
 ; A second process crash/replay with zero newly published rows is a fixed
 ; point on the authoritative byte observation.
 (assert-event
@@ -58,6 +64,31 @@
   (fn-bpnf-answer-state
    (fn-bpnf-step (fn-bpnf-answer-state *bpnfc-proposal*)
                  '(:persist-result 9 0 :uncertain))))
+; These two direct logical recovery values straddle the u64 frontier. They
+; exercise the recovery-only defensive check, not a claim that a canonical
+; byte replay can produce the overflow value.
+(defconst *bpnfr-max-arrival-held*
+  (update-nth 3 *fn-frame-max-nat* (nth 3 *bpnfc-record*)))
+(defconst *bpnfr-overflow-arrival-held*
+  (update-nth 3 (1+ *fn-frame-max-nat*) (nth 3 *bpnfc-record*)))
+(assert-event
+ (equal (fn-bpnf-held-arrival-frontier (list *bpnfr-max-arrival-held*))
+        (1+ *fn-frame-max-nat*)))
+(assert-event
+ (equal (fn-bpnf-held-list
+         (fn-bpnf-answer-state
+          (fn-bpnf-step
+           (bpnfr-uncertain-state)
+           (list :recover-fnbs 10 nil :ready
+                 (list :ready (list *bpnfr-max-arrival-held*) nil)))))
+        (list *bpnfr-max-arrival-held*)))
+(assert-event
+ (equal (fn-bpnf-answer-state
+         (fn-bpnf-step
+          (bpnfr-uncertain-state)
+          (list :recover-fnbs 10 nil :ready
+                (list :ready (list *bpnfr-overflow-arrival-held*) nil))))
+        (bpnfr-uncertain-state)))
 (assert-event (equal (nth 5 (fn-bpnf-issued (bpnfr-uncertain-state)))
                      :uncertain))
 (assert-event

@@ -53,11 +53,13 @@ class NativeBpNodeTests(unittest.TestCase):
         self.request_path = self.tmp / "request.adu"
         self.msgid = b"<bp-node-a3@example.invalid>"
         self.article = (
+            b"Path: sender.bp.gate.invalid!not-for-mail\r\n"
             b"From: sender@example.invalid\r\n"
             b"Newsgroups: fn.test\r\n"
             b"Subject: native BP node A3\r\n"
             b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
-            b"Message-ID: " + self.msgid + b"\r\n\r\nA3 body\r\n"
+            b"Message-ID: " + self.msgid + b"\r\n"
+            b"\r\nA3 body\r\n"
         )
         for store in (self.receiver_store, self.sender_store):
             initialized = self.invoke("store", store, "init", "fn.test")
@@ -136,7 +138,8 @@ class NativeBpNodeTests(unittest.TestCase):
             result = self.invoke(*args)
             self.assertEqual(result.returncode, 0, result.stderr)
 
-    def start_node(self, receiver, *, once=True, extra_env=None, trust=True):
+    def start_node(self, receiver, *, once=True, extra_env=None, trust=True,
+                   inbound=True):
         node = "dtn://receiver/" if receiver else "dtn://sender/"
         peer = "dtn://sender/" if receiver else "dtn://receiver/"
         journal = self.receiver_journal if receiver else self.sender_journal
@@ -148,9 +151,16 @@ class NativeBpNodeTests(unittest.TestCase):
         config.write_text(f'[store]\npath = "{store}"\n', encoding="ascii")
         admitted_name = "sender-boundary" if receiver else "receiver-boundary"
         if trust:
+            local_path = "receiver.bp.gate.invalid" if receiver else "sender.bp.gate.invalid"
+            remote_path = "sender.bp.gate.invalid" if receiver else "receiver.bp.gate.invalid"
+            policy = self.invoke(
+                "operator", config, "policy", "set", "path-identity", local_path,
+            )
+            self.assertEqual(policy.returncode, 0, policy.stderr)
             installed = self.invoke(
                 "operator", config, "bp-boundary", "add", admitted_name,
-                "bp.gate.invalid", peer, listen_port,
+                remote_path, peer, listen_port,
+                *(["fn.test", "32768", "16"] if inbound else []),
             )
             self.assertEqual(installed.returncode, 0, installed.stderr)
         receipts = self.receiver_receipts if receiver else self.tmp / "sender-fnrj"
@@ -186,12 +196,12 @@ class NativeBpNodeTests(unittest.TestCase):
         process.stdout.close()
         process.stderr.close()
 
-    def send_request(self, port, work):
+    def send_request(self, port, work, *, lifetime=3600000):
         return self.invoke(
             "bp-service", "run", "127.0.0.1", port,
             self.request_path, self.sender_journal,
             "dtn://sender/", "dtn://receiver/", work, work + "-attempt", 0,
-            3600000, 2, 32, 1048576, 0, 0,
+            lifetime, 2, 32, 1048576, 0, 0,
         )
 
     def tick_receiver(self):
@@ -201,15 +211,91 @@ class NativeBpNodeTests(unittest.TestCase):
             3600000, 2, 32, 1048576, 0, 0,
         )
 
-    def dispatch_receiver(self, *, env=None):
-        return self.invoke(
-            "bp-node", "dispatch", self.receiver_journal,
-            self.receiver_store, self.receiver_receipts,
-            self.tmp / "receiver-fnwf", "dtn://receiver/",
+    def dispatch_receiver_args(self, *, reports=False):
+        return [
+            str(IMAGE), "--fn",
+            "bp-node", "dispatch", str(self.receiver_journal),
+            str(self.receiver_store), str(self.receiver_receipts),
+            str(self.tmp / "receiver-fnwf"), "dtn://receiver/",
             "dtn://sender/", "dtn://receiver/", "native-policy",
-            "dtn://receiver/", "127.0.0.1", self.relay.port,
-            1, 3600000, 2, 32, 1048576, 0, 0, env=env,
+            "dtn://receiver/", "127.0.0.1", str(self.relay.port),
+            "1", "3600000", "2", "32", "1048576", "0", "0",
+            "1" if reports else "0",
+        ]
+
+    def dispatch_receiver(self, *, reports=False, env=None, extra_env=None):
+        env = dict(self.env if env is None else env)
+        if extra_env:
+            env.update(extra_env)
+        return subprocess.run(
+            self.dispatch_receiver_args(reports=reports),
+            cwd=ROOT, env=env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=120, check=False,
         )
+
+    def deletion_request_bundle(self):
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-node")')
+            bridge.call('(include-book "books/codec-attach")')
+            adu = bridge.literal(self.request_path.read_bytes())
+            sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
+            receiver = "(cons :dtn '(47 47 114 101 99 101 105 118 101 114 47))"
+            form = (
+                "(let* ((bundle (fn-bpn-send-bundle "
+                f"(fn-bpn-config {sender} 1500 2 32 1048576) "
+                f"{receiver} '{adu} 44 "
+                "(fn-clock-observation 1000 0 0 nil))) "
+                "(primary (fn-bpb-bundle-primary bundle)) "
+                "(requested (fn-bpb-make-bundle "
+                "(update-nth 1 *fn-bpp-flag-report-deletion* primary) "
+                "(fn-bpb-bundle-blocks bundle) "
+                "(fn-bpb-bundle-payload bundle)))) "
+                "(fn-bpb-encode requested))"
+            )
+            path = self.tmp / "deletion-request.bundle"
+            path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            return path
+        finally:
+            bridge.close()
+
+    def send_deletion_request(self, port):
+        return self.invoke(
+            "tcpcl", "send", "127.0.0.1", port,
+            self.deletion_request_bundle(), self.tmp / "deletion-sender-spool",
+            "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
+        )
+
+    @staticmethod
+    def acl2_lifecycle_payloads(journal, kind):
+        """Ask the ACL2 frame decoders for exact durable report payloads."""
+        decoder = {
+            5: "fn-bpnf-stored-record-unframe",
+            10: "fn-bpnf-delete-unframe",
+        }[kind]
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-fnbs-deletion-codec")')
+            payloads = []
+            for frame in sorted((journal / "lifecycle").glob("*.fnb")):
+                octets = bridge.literal(frame.read_bytes())
+                if kind == 10:
+                    form = (
+                        f"(let ((record ({decoder} '{octets}))) "
+                        "(and record (fn-bpn-nth 6 record)))"
+                    )
+                else:
+                    form = (
+                        f"(let ((record ({decoder} '{octets}))) "
+                        "(and record (fn-bpb-payload "
+                        "(fn-bpnf-held-bundle (fn-bpn-nth 3 record)))))"
+                    )
+                payload = run_store.acl2_octets(bridge.call(form))
+                if payload:
+                    payloads.append(payload)
+            return payloads
+        finally:
+            bridge.close()
 
     def sender_status(self):
         return self.invoke(
@@ -258,6 +344,16 @@ class NativeBpNodeTests(unittest.TestCase):
         )
         self.assertEqual(self.receiver_counts()[1], 1,
                          "the second carrier must not accept a second article")
+        store, bridge, _ = run_bp_ingress.open_live_bp_store(
+            self.receiver_store, False)
+        try:
+            relayed = bridge.lookup(self.msgid)
+            self.assertNotEqual(relayed, self.article)
+            self.assertIn(b"Path: receiver.bp.gate.invalid", relayed)
+            self.assertNotIn(b"Xref:", relayed)
+        finally:
+            bridge.close()
+            store.close()
 
         sender, port = self.start_node(False, once=False)
         self.relay.route(port)
@@ -277,6 +373,16 @@ class NativeBpNodeTests(unittest.TestCase):
     def test_absent_bp_trust_keeps_custody_but_refuses_request_application(self):
         receiver, port = self.start_node(True, trust=False)
         sent = self.send_request(port, "untrusted-request")
+        out, err = receiver.communicate(timeout=120)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(receiver.returncode, 0, err)
+        self.assertIn(b"BP node delivery request-refused", out)
+        self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+
+    def test_admitted_channel_without_inbound_scope_refuses_store_request(self):
+        receiver, port = self.start_node(True, inbound=False)
+        sent = self.send_request(port, "no-inbound-scope")
         out, err = receiver.communicate(timeout=120)
         self.assertEqual(sent.returncode, 0, sent.stderr)
         self.assertEqual(receiver.returncode, 0, err)
@@ -466,6 +572,110 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP application handoff durable", restarted.stdout)
         self.assertIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(self.receiver_counts()[1], 1)
+
+    def test_expired_recovered_kind_five_never_enters_store(self):
+        receiver, port = self.start_node(
+            True,
+            extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE": "1"},
+        )
+        sent = self.send_request(port, "short-lived", lifetime=1500)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.wait_for_output(receiver, b"BP NODE KIND5 DURABLE", timeout=120)
+        receiver.kill()
+        receiver.wait(timeout=15)
+        time.sleep(1.8)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertNotIn(b"BP application handoff durable", restarted.stdout)
+        self.assertNotIn(b"BP node receipt queued", restarted.stdout)
+        self.assertEqual(self.receiver_counts()[1], 0)
+
+    def test_deletion_report_intent_recovers_and_observation_does_not_release(self):
+        receiver, port = self.start_node(
+            True, extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE": "1"},
+        )
+        sent = self.send_deletion_request(port)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.wait_for_output(receiver, b"BP NODE KIND5 DURABLE", timeout=120)
+        receiver.kill()
+        receiver.wait(timeout=15)
+        time.sleep(1.8)
+
+        # The kind-10 record is durable before the outbound sequence/job cut.
+        env = dict(self.env)
+        env["FN_BP_NODE_TEST_PAUSE_AFTER_KIND_TEN"] = "1"
+        candidate = subprocess.Popen(
+            self.dispatch_receiver_args(reports=True), cwd=ROOT, env=env,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
+        )
+        self.addCleanup(self.stop_process, candidate)
+        self.wait_for_output(candidate, b"BP NODE KIND10 DURABLE", timeout=120)
+        candidate.kill()
+        candidate.wait(timeout=15)
+        self.assertEqual(self.receiver_counts()[1], 0)
+
+        report_payloads = self.acl2_lifecycle_payloads(
+            self.receiver_journal, 10)
+        self.assertEqual(len(report_payloads), 1)
+        report_payload = report_payloads[0]
+        self.assertLessEqual(len(report_payload), 4096)
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-status-report")')
+            literal = bridge.literal(report_payload)
+            self.assertEqual(
+                run_store.acl2_result(bridge.call(
+                    "(let ((parsed (fn-bpn-report-decode '" + literal + "))) "
+                    "(and (fn-cbor-result-okp parsed) "
+                    "(equal (fn-bpn-report-encode "
+                    "(fn-cbor-result-value parsed)) '" + literal + ")))"
+                )), b"T")
+        finally:
+            bridge.close()
+
+        restarted = self.dispatch_receiver(reports=True)
+        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertIn(b"BP queue accepted", restarted.stdout)
+        self.assertEqual(self.receiver_counts()[1], 0)
+        frontier = self.receiver_journal / "sequence" / "frontier.fnb"
+        frontier_bytes = frontier.read_bytes()
+        lifecycle = self.receiver_journal / "lifecycle"
+        durable_frames = {
+            frame.name: frame.read_bytes() for frame in lifecycle.glob("*.fnb")
+        }
+        repeated = self.dispatch_receiver(reports=True)
+        self.assertEqual(repeated.returncode, 0, repeated.stderr)
+        self.assertEqual(frontier.read_bytes(), frontier_bytes)
+        self.assertEqual(
+            {frame.name: frame.read_bytes() for frame in lifecycle.glob("*.fnb")},
+            durable_frames,
+        )
+        self.assertEqual(
+            self.acl2_lifecycle_payloads(self.receiver_journal, 10),
+            [report_payload],
+        )
+
+        sender, port = self.start_node(False, once=False)
+        self.relay.route(port, cut_next=True)
+        interrupted = self.tick_receiver()
+        self.assertEqual(interrupted.returncode, 3, interrupted.stderr)
+        self.assertIn(b"reason=uncertain", interrupted.stdout)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+        self.stop_process(sender)
+
+        sender, port = self.start_node(False, once=False)
+        self.relay.route(port)
+        delivered = self.tick_receiver()
+        self.assertEqual(delivered.returncode, 0, delivered.stderr)
+        self.wait_for_output(sender, b"BP status report observed", timeout=120)
+        self.assertIn(
+            report_payload,
+            self.acl2_lifecycle_payloads(self.sender_journal, 5),
+        )
+        self.stop_process(sender)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+        self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
+
 
 
 if __name__ == "__main__":

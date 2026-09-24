@@ -102,6 +102,198 @@ class WebClientTests(unittest.TestCase):
         self.assertIn("Path: peer!other", page)
         self.assertIn("Viewing does not acknowledge application processing", page)
 
+    def test_recent_window_and_older_newer_boundaries_are_number_based(self):
+        for number in range(1, 96):
+            self.node.seed("fn.agents", "slot-%03d" % number, "body")
+
+        status, _, recent = self.request("GET", "/g?name=fn.agents")
+        self.assertEqual(status, 200)
+        self.assertIn("Local article numbers 56–95", recent)
+        self.assertIn("slot-095", recent)
+        self.assertNotIn("slot-055", recent)
+        self.assertIn("start=16&amp;end=55", recent)
+        self.assertNotIn("rel='next'", recent)
+        self.assertIn("OVER 56-95", self.node.seen)
+
+        status, _, oldest = self.request(
+            "GET", "/g?name=fn.agents&start=1&end=40")
+        self.assertEqual(status, 200)
+        self.assertIn("Local article numbers 1–40", oldest)
+        self.assertNotIn("rel='prev'", oldest)
+        self.assertIn("start=41&amp;end=80", oldest)
+        self.assertIn("OVER 1-40", self.node.seen)
+
+        # Current low is the terminal older boundary even if an explicit
+        # request names historical number slots below it.
+        for number in range(1, 31):
+            self.node.numbers["fn.agents"].pop(number)
+        status, _, at_low = self.request(
+            "GET", "/g?name=fn.agents&start=31&end=70")
+        self.assertEqual(status, 200)
+        self.assertIn("group currently spans 31–95", at_low)
+        self.assertNotIn("rel='prev'", at_low)
+
+    def test_empty_group_has_no_window_or_overview_request(self):
+        self.node.numbers["fn.empty"] = {}
+        # A native group may retain a high local-number watermark after its
+        # articles are gone; GROUP then reports 0, watermark, watermark - 1.
+        self.node.summary_overrides["fn.empty"] = (0, 100, 99)
+        status, _, page = self.request("GET", "/g?name=fn.empty")
+        self.assertEqual(status, 200)
+        self.assertIn("No local article numbers", page)
+        self.assertIn("No articles in this number window", page)
+        self.assertIn("group currently has no articles", page)
+        self.assertNotIn("rel='prev'", page)
+        self.assertNotIn("rel='next'", page)
+        self.assertNotIn("OVER", self.node.seen)
+        self.assertIn("GROUP fn.empty", self.node.seen)
+
+        # An explicit requested window remains explicit, while the empty
+        # group has no older/newer frontier to navigate.
+        status, _, explicit = self.request(
+            "GET", "/g?name=fn.empty&start=5&end=10")
+        self.assertEqual(status, 200)
+        self.assertIn("Local article numbers 5–10", explicit)
+        self.assertNotIn("rel='prev'", explicit)
+        self.assertNotIn("rel='next'", explicit)
+        self.assertIn("OVER 5-10", self.node.seen)
+
+    def test_sparse_and_empty_windows_keep_the_requested_slots_navigable(self):
+        for number in range(1, 101):
+            self.node.seed("fn.agents", "slot-%03d" % number, "body")
+        table = self.node.numbers["fn.agents"]
+        keep = {42, 55, 80, 100}
+        for number in list(table):
+            if number not in keep and number >= 41:
+                del table[number]
+
+        status, _, sparse = self.request(
+            "GET", "/g?name=fn.agents&start=41&end=80")
+        self.assertEqual(status, 200)
+        self.assertIn("slot-042", sparse)
+        self.assertIn("slot-055", sparse)
+        self.assertIn("slot-080", sparse)
+        self.assertNotIn("slot-041", sparse)
+        self.assertIn("OVER 41-80", self.node.seen)
+
+        # Slots 81–99 are real holes, while article 100 keeps the group
+        # frontier there. The empty window still offers both directions.
+        status, _, empty = self.request(
+            "GET", "/g?name=fn.agents&start=81&end=99")
+        self.assertEqual(status, 200)
+        self.assertIn("No articles in this number window", empty)
+        self.assertIn("start=41&amp;end=80", empty)
+        self.assertIn("start=100&amp;end=139", empty)
+        self.assertIn("OVER 81-99", self.node.seen)
+
+    def test_explicit_window_does_not_slide_when_new_articles_arrive(self):
+        for number in range(1, 101):
+            self.node.seed("fn.agents", "slot-%03d" % number, "body")
+        path = "/g?name=fn.agents&start=61&end=100"
+        status, _, before = self.request("GET", path)
+        self.assertEqual(status, 200)
+        self.assertIn("Local article numbers 61–100", before)
+        self.assertIn("slot-100", before)
+        self.assertNotIn("slot-060", before)
+
+        self.node.seed("fn.agents", "arrived-after-request", "body")
+        status, _, after = self.request("GET", path)
+        self.assertEqual(status, 200)
+        self.assertIn("Local article numbers 61–100", after)
+        self.assertNotIn("arrived-after-request", after)
+        self.assertIn("group currently spans 1–101", after)
+        self.assertIn("start=101&amp;end=140", after)
+        self.assertEqual(self.node.seen.count("OVER 61-100"), 2)
+
+    def test_invalid_window_is_refused_before_any_nntp_command(self):
+        invalid = (
+            "start=-1&end=20",
+            "start=1&end=10000000000",
+            "start=1&end=41",
+            "start=20&end=19",
+            "start=1",
+            "start=1&start=2&end=3",
+        )
+        for query in invalid:
+            with self.subTest(query=query):
+                status, _, page = self.request(
+                    "GET", "/g?name=fn.agents&" + query)
+                self.assertEqual(status, 400)
+                self.assertIn("window", page)
+        self.assertEqual(self.node.seen, [])
+
+    def test_historical_server_report_is_bound_to_article_and_never_inferred(self):
+        verified = "<reported@example.invalid>"
+        legacy = "<legacy@example.invalid>"
+        unsupported = "<unsupported@example.invalid>"
+        malformed = "<malformed@example.invalid>"
+        unverified = "<unverified@example.invalid>"
+        absent = "<absent@example.invalid>"
+        for msgid, subject in ((verified, "verified"), (legacy, "legacy"),
+                               (unsupported, "unsupported"), (malformed, "malformed"),
+                               (unverified, "unverified"), (absent, "absent")):
+            self.node.inject("fn.agents", ["Newsgroups: fn.agents", "Subject: " + subject,
+                                            "Message-ID: " + msgid,
+                                            "FN-Statement: present", ""])
+        self.node.verdicts.update({
+            verified: "verified " + "ab" * 32 + " keyring 7",
+            legacy: "verified legacy keyring 6",
+            unsupported: "future-verdict opaque",
+            malformed: "verified " + "ab" * 31 + "zz keyring 7",
+            unverified: "unverified signature keyring 9",
+        })
+        status, _, page = self.request("GET", "/a?group=fn.agents&number=1")
+        self.assertEqual(status, 200)
+        self.assertIn("Server report of historical verification verdict: verified by principal " +
+                      "ab" * 32 + " under keyring generation 7", page)
+        self.assertIn("not an independent cryptographic check or current authorization", page)
+        self.assertIn("HDR :fn-verified 1", self.node.seen)
+
+        status, _, legacy_page = self.request("GET", "/a?group=fn.agents&number=2")
+        self.assertEqual(status, 200)
+        self.assertIn("verified (legacy recorded detail) under keyring generation 6", legacy_page)
+        for number in (3, 4):
+            status, _, unavailable = self.request(
+                "GET", "/a?group=fn.agents&number=%d" % number)
+            self.assertEqual(status, 200)
+            self.assertIn("Server report of historical verification verdict: unavailable.",
+                          unavailable)
+
+        status, _, rejected = self.request("GET", "/a?group=fn.agents&number=5")
+        self.assertEqual(status, 200)
+        self.assertIn("Server report of historical verification verdict: "
+                      "unverified: signature, keyring generation 9", rejected)
+
+        # Header presence alone never upgrades an absent server record.
+        status, _, absent = self.request("GET", "/a?group=fn.agents&number=6")
+        self.assertEqual(status, 200)
+        self.assertIn("Server report of historical verification verdict: absent: no-field", absent)
+
+    def test_verdict_parser_rejects_malformed_and_unbounded_values(self):
+        self.assertIsNone(fn_web.parse_verdict_hdr("4 verified " + "a" * 100000, 4))
+        self.assertIsNone(fn_web.parse_verdict_hdr("4 unverified signature", 4))
+        self.assertIsNone(fn_web.parse_verdict_hdr("1 verified " + "ab" * 32 +
+                                                   " keyring 1", 4))
+
+    def test_article_header_message_id_cannot_redirect_verdict_lookup(self):
+        actual = "<server-slot@example.invalid>"
+        header_claim = "<different-header-id@example.invalid>"
+        number = self.node.inject("fn.agents", ["Newsgroups: fn.agents",
+                                                  "Subject: slot identity",
+                                                  "Message-ID: " + actual,
+                                                  "FN-Statement: present", ""])
+        self.node.articles[actual] = ["Newsgroups: fn.agents", "Subject: slot identity",
+                                      "Message-ID: " + header_claim,
+                                      "FN-Statement: present", ""]
+        self.node.verdicts[actual] = "unverified signature keyring 3"
+        self.node.verdicts[header_claim] = "verified " + "cd" * 32 + " keyring 99"
+
+        status, _, page = self.request("GET", "/a?group=fn.agents&number=%d" % number)
+        self.assertEqual(status, 200)
+        self.assertIn("unverified: signature, keyring generation 3", page)
+        self.assertNotIn("keyring generation 99", page)
+        self.assertIn("HDR :fn-verified %d" % number, self.node.seen)
+
     def test_composer_posts_via_nntp_and_keeps_three_outcomes(self):
         accepted = self.post()
         self.assertEqual(accepted[0], 200)
