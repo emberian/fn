@@ -22,6 +22,13 @@
 (assert-event (equal (fn-native-control-host-status-class :busy) :refused))
 (assert-event (equal (fn-native-control-host-status-exit-code :uncertain) 3))
 (assert-event
+ (equal (fn-native-control-host-topic-reply-decode
+         (fn-native-control-host-topic-reply-encode :replayed-historical))
+        '(:topic-reply :replayed-historical)))
+(assert-event
+ (equal (fn-native-control-host-topic-status-exit-code
+         :replayed-historical) 0))
+(assert-event
  (equal (fn-native-control-host-transport-outcome :after-submission)
         :uncertain))
 (assert-event

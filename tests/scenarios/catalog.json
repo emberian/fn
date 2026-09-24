@@ -1122,13 +1122,13 @@
       ],
       "steps": [
         "From an already accepted schema-1 root and historical key snapshot, prepare and commit a finite local anchor under the installed administrator ID. Repeat with a different caller, changed snapshot and the same already anchored root.",
-        "Construct an accepted report signed by a roster author, propose and commit its admission, then retry the exact source after the finite quota is consumed.",
+        "Construct an accepted report signed by a roster author, propose and commit its admission, then retry the exact source after the finite quota is consumed and after native Store reopen; compare transaction filenames and bytes before and after each retry.",
         "Construct separate accepted reports under a non-roster signer, with an unadmitted same-topic parent and after quota exhaustion. Compare the projection before preparation and after completion.",
         "Complete a valid administrator install, anchor and report in Store; reopen the completed prefix, then try a structurally valid duplicate administrator install image."
       ],
       "expected": [
         "Only the matching administrator/root context yields a proposed anchor; the same root cannot be anchored twice.",
-        "The report receives one historical admission, exact retry returns that record without another charge, and proposal alone does not change state.",
+        "The report receives one historical admission. Exact retry returns a distinct successful replayed-historical status with no admission bytes over control, no second Store event and no additional charge, including after reopen; proposal alone does not change state.",
         "Non-roster author, missing parent and no remaining quota each refuse fresh admission; no ordinary article acceptance is undone.",
         "Completed topic events advance Store sequence/transaction and carried topic state while preserving article acceptance; observed reopen rejects the duplicate-install topic history with :replay."
       ],
@@ -1147,7 +1147,9 @@
         "planning/evidence/manifests/certify-20260924T022329Z-3173943.json",
         "planning/evidence/manifests/certify-20260924T030421Z-3524851.json",
         "planning/evidence/manifests/certify-20260924T031621Z-3631800.json",
-        "planning/evidence/manifests/certify-20260924T031835Z-3652118.json"
+        "planning/evidence/manifests/certify-20260924T031835Z-3652118.json",
+        "planning/evidence/topic-history-historical-retry-p3-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T042906Z-890015.json"
       ],
       "execution_scope": "The merged ACL2 topic/index Store, observed reopen, local proposal/control and native-control roots passed on persvati; after status kind 9 joined, its affected scope/index/native-control roots also passed. The source-matched native install/root/report/reopen scenario and whole reverse closure remain unqualified."
     }

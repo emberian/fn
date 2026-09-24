@@ -842,7 +842,8 @@ the current connection."
                               operation source-sequence observed-uid
                               entropy-id quota)))
        (cond
-         ((and (consp proposal) (eq (first proposal) :replayed-historical)
+         ((and (eq operation :report)
+               (consp proposal) (eq (first proposal) :replayed-historical)
                (consp (cdr proposal)))
           :replayed-historical)
          ((not (and (consp proposal) (eq (first proposal) :ok)

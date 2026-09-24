@@ -26,8 +26,15 @@
                       (fn-thlc-reply-encode :replayed-historical))
                      '(:topic-reply :replayed-historical)))
 (assert-event (equal (fn-thlc-status-exit-code :replayed-historical) 0))
+(assert-event (equal (len (fn-thlc-reply-encode :replayed-historical))
+                     (+ *fn-frame-overhead-octets* 1)))
+(assert-event (<= (len (fn-thlc-reply-encode :replayed-historical))
+                  *fn-nctrl-max-frame*))
 (assert-event (equal (fn-thlc-reply-decode
                       (fn-nctrl-seal *fn-thlc-reply-kind* '(5)))
+                     '(:refused :reply)))
+(assert-event (equal (fn-thlc-reply-decode
+                      (fn-nctrl-seal *fn-thlc-reply-kind* '(4 0)))
                      '(:refused :reply)))
 (must-fail
  (assert-event
