@@ -1,0 +1,8 @@
+{"image": "/tank/fn/scratch/t17-ihave/after-tree/build/fn-host-developer", "launcher_sha256": "01271407deb245ab3bdec7e4fa25be98db795867c37c88f4a35176bfe243787b", "core_sha256": "e539ae5603b059ba9cb5c55b216674831fa32433b2bd85ff125caa32b1dfcbb7", "articles": 50, "samples": 16, "port": 57773, "nodelay": true, "load_seconds": 2.116343474946916, "rss_after_load_kib": 408460, "rss_after_stat_kib": 411776, "peer_mode_stream": "203 streaming permitted", "rss_after_peer_kib": 630656}
+post_first_quarter median 41.812 ms  p95 43.242 ms  max 67.123 ms
+post_last_quarter median 41.777 ms  p95 41.905 ms  max 41.926 ms
+stat_present median 0.188 ms  p95 0.197 ms  max 0.198 ms
+stat_absent median 0.164 ms  p95 0.185 ms  max 0.217 ms
+ihave_duplicate median 0.404 ms  p95 0.463 ms  max 0.580 ms
+check_duplicate median 0.413 ms  p95 0.432 ms  max 0.438 ms
+check_absent median 0.420 ms  p95 0.449 ms  max 0.570 ms

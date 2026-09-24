@@ -1356,7 +1356,12 @@
 ; which equals fn-ocfg-read-tls-prefix under the configured owner's relation
 ; (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation): it takes the
 ; store node's fn-node-statep from that relation instead of re-evaluating it,
-; O(N^2) in the archive, four times per read.
+; O(N^2) in the archive, four times per read.  It also passes the owner
+; view's Message-ID trie to the peer step, so an IHAVE/CHECK duplicate test is
+; one trie lookup instead of a scan of the node's articles and bindings
+; (books/peer-offer-indexed.lisp, fn-pix-history-hasp-is-peer-history-hasp);
+; the trie premise fn-scar-view-indexedp is carried by every owner transition
+; (books/owner-offer-indexed.lisp).
 (defun fn-owner-chunk (id octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((owner (fn-owner-core state)))
