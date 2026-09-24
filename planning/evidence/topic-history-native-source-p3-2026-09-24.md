@@ -27,8 +27,11 @@ The bounded FNCT local control book and test passed after using the total
 Both runs used ACL2 8.7/SBCL 2.6.8 on persvati, two jobs, 150-second
 per-book timeout, explicit roots and no closure. `make check` passed after
 ledger generation. `tests/test_native_topic_local.py` is staged for a
-source-matched image but has not run; it currently covers administrator
-install/reopen and missing-source refusal, not a valid root/report native
-admission witness. Combined native image, reverse owner closure and physical
+source-matched image but has not run. It carries fixed ACL2-emitted root and
+report fields with signed exact sources and disposable test keys; an earlier
+signed-carrier image verified the root controller/keyset match and report
+field, but did not publish either topic event. The test will cover
+administrator install/reopen, root/report admission and missing-source
+refusal. Combined native image, reverse owner closure and physical
 source-matched publication evidence remain open. No succession, fork healing,
 automatic policy adoption or Mini application operation is inferred.
