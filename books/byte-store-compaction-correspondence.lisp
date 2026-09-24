@@ -3,6 +3,11 @@
 (include-book "byte-store-programs")
 (include-book "byte-store-txn-name")
 (include-book "checkpoint-compaction")
+(include-book "store-profile-upgrade")
+
+; The plan's gate is a four-conjunct wrapper; the proofs below reason about
+; the scan under it.
+(local (in-theory (enable fn-profile-txn-observation)))
 
 (defun fn-bs-pack-covered-names (pairs selected-lower)
   (declare (xargs :guard t))
@@ -16,14 +21,14 @@
 ; Logical subject called by the native reclaim path.  Only surviving covered
 ; names are removed; missing covered names are an interrupted prior attempt,
 ; and the selected observer separately requires an exact contiguous suffix.
+; The namespace bound and grammar are the open path's own gate,
+; `fn-profile-txn-observation' (books/store-profile-upgrade): the plan reads
+; the same observation the next open reads, with one owner of field 4.
 (defun fn-bs-pack-reclaim-plan (names maximum selected-lower)
   (declare (xargs :guard t))
-  (if (and (natp maximum) (natp selected-lower) (true-listp names)
-           (<= (len names) maximum))
-      (let ((selected (fn-bs-txn-observation-selected names selected-lower)))
-        (if (equal selected :invalid) :invalid
-          (fn-bs-pack-covered-names (third selected) selected-lower)))
-    :invalid))
+  (let ((selected (fn-profile-txn-observation names maximum selected-lower)))
+    (if (equal selected :invalid) :invalid
+      (fn-bs-pack-covered-names (third selected) selected-lower))))
 
 (defun fn-bs-pack-reclaim-steps (names)
   (declare (xargs :guard t))

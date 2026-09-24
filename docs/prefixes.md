@@ -31,6 +31,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-cpp-` | `checkpoint-publish` | Checkpoint generation machine: stage, barriers, link, marker selection, crash images with old/new and absent/present choices, recovery with distinct none/ok/corrupt/missing outcomes |
 | `fn-cprt-` | `checkpoint-pack-retire` | Bounded selected-pack generation retirement, gap-aware monotone pack allocation and process-death namespace images |
 | `fn-cc-` | `checkpoint-compaction` | Lossless canonical Store-event prefix packs, overlap validation, and prefix-plus-suffix reconstruction |
+| `fn-ccp-` | `checkpoint-compaction-preservation`, `tests/acl2/checkpoint-compaction-preservation-tests` | M5 compaction preservation: the framed pack observe/coverage the host calls (`fn-ccp-observe-framed`, `fn-ccp-coverage-framed`), what a reclaim cut leaves (`fn-ccp-remove-names`, `-remove-pairs`, `-read`), and the theorem that the next open reconstructs the same record list |
 | `fn-cpa-` | `checkpoint-auxiliary` | Versioned recovery-only comparison of replayed consumer and historical authorship projections with the Store opened from exact journal history |
 | `fn-index-` | `index` | Derived group/number index and range queries |
 | `fn-midx-` | `msgid-index` | Persistent Message-ID trie and canonical lookup correspondence |

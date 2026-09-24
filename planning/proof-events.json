@@ -2730,6 +2730,35 @@
           "name": "fn-bs-profile-program-crash-budget-is-old-or-new"
         }
       ]
+    },
+    {
+      "id": "PRF-073",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ccp-reclaim-keeps-namespace-observation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccp-covered-deletion-keeps-reconstruction"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccp-complete-observation-reconstructs-its-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccp-reclaim-preserves-reconstructed-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccp-profile-upgrade-keeps-reclaim-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-selected-reclaim-crash-preserves-suffix-payload"
+        }
+      ]
     }
   ]
 }
