@@ -116,12 +116,20 @@ file bytes and symlink targets before removing a worktree.
 
 ## Final cut
 
-All finite implementation packets are integrated. At 06:55 UTC the final
-image is blocked by the expanded BP guard closure: both
+All finite implementation packets are integrated. The final code checkpoint is
+`8a1b31f91206ce86f3e4ab234ae884d2ca8c5161`; its exact `make check` passed.
+Its ordinary combined hbox run is `run-20260924T070856Z-7ddd` at
+`/tank/fn/gates/final-cut-8a1b31f9-20260924` and is finishing at this writing.
+The image is blocked by the expanded BP guard closure: both
 `host/native/build.lisp` and `host/native/build-dtn.lisp` directly include
 `books/bp-node-progress-guards`. It is not an optional assurance book that can
-be omitted while claiming the normal image built. Two bounded repair lanes
-are closing lower helper and outer progress guards through 07:08 UTC.
+be omitted while claiming the normal image built. The bounded repair lanes
+closed the lower helper guards, then stopped. The composed persvati guard run
+timed out at `fn-bpnp-issued-debt-delta`, whose guard `t` does not imply the
+base-state premise required by `fn-bpnf-family-apply-at`. Strengthening that
+helper's guard also requires proving that `fn-bpn-report-author-step` preserves
+the premise for the proposal-state call in `fn-bpnp-delegate-with-credit`.
+Do not fix this by adding whole-state revalidation to the served path.
 
 Until this section is updated with the final result, `863c2141` is the latest
 completed shared image described here. Current dev passes structural checks

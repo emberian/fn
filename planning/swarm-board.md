@@ -25,6 +25,27 @@ revision and theorem hypotheses when sharing a proof so its scope is clear.
 
 ## Current coordination — 2026-09-24
 
+### Wind-down convergence — 07:16 UTC
+
+All current implementation packets are on dev; the
+[handoff](handoff-2026-09-24-winddown.md) supersedes the active assignments
+below. Both BP guard lanes stopped after the bounded repair: lower helper
+guards passed, while the outer debt helper needs a maintained-base invariant
+through its inner report step. No new feature or proof search is running.
+Only `native_qualification` remains active on exact `8a1b31f9`, hbox gate
+`/tank/fn/gates/final-cut-8a1b31f9-20260924`, ordinary run
+`run-20260924T070856Z-7ddd`, four jobs with a 300-second per-book bound.
+Its full result or explicit bounded partial stop is the last handoff packet.
+The exact source passed root's structural check; no image may be built around
+the known failed guard root.
+
+The [first](evidence/worktree-retirement-convergence-2026-09-24.md) and
+[final](evidence/worktree-retirement-final-handoffs-2026-09-24.md) retirement
+batches preserve and verify the completed lanes privately while retaining
+branch references. No remote evidence gate or live service was removed.
+The goal will be paused and the user-requested local `ALLDONE.marker` written
+only after all workers and owned scratch jobs are quiescent.
+
 ### Complete capability wave — 06:06 UTC
 
 The [capability plan](capability-wave-2026-09-24.md) supersedes earlier serial
