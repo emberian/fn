@@ -1055,7 +1055,6 @@ unenrolled signature should instead be accepted as unverified is ember's
 question, listed with the other P8 decisions on the scoreboard. Evidence:
 [p8-signed-post](evidence/p8-signed-post-2026-09-24.md).
 
-<<<<<<< HEAD
 ### 2026-09-24: ember's answers to the day's open questions (~22:30 UTC)
 
 Asked by the coordinator with the recommended option first; ember chose the
@@ -1096,7 +1095,7 @@ exit 4, by design); D02's scope covering a served POST (the 2026-09-24 entry
 above); the kind-8 retry default with a duplicate re-offer acknowledged
 rather than refused; the five specific-purpose group names (`to.*`,
 `control.*`, `all`, `ctl`, `junk`) left allowed at init and create.
-=======
+
 ### 2026-09-24: a store identity on the wire (candidate, not implemented; pending ember)
 
 The M6 web client keeps read marks and resume points per (node, group,
@@ -1134,4 +1133,3 @@ it), and an assumption that the observation is unpredictable (`A-*`, an
 `encapsulate` in `books/assumptions.lisp`). Alternative: rely on the
 Message-ID check above and add nothing. The lane's recommendation is the
 alternative until a client that keeps marks without a Message-ID exists.
->>>>>>> lane/m6-list-counts
