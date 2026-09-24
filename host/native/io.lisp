@@ -1683,7 +1683,10 @@ from the live ACL2 configuration; the native host does not name a provenance."
       (:ok (format nil "checkpoint=ok generation=~d suffix-from=~d differential=~a auxiliary=~a"
                    (second outcome) (third outcome)
                    (if (fourth outcome) "equal" "DIFFERENT")
-                   (if (eq (fifth outcome) :equal-v1) "equal-v1" "unknown")))
+                   (case (fifth outcome)
+                     (:equal-v2 "equal-v2")
+                     (:equal-v1 "equal-v1")
+                     (otherwise "unknown"))))
       (:corrupt (format nil "checkpoint=corrupt reason=~a" (second outcome)))
       (otherwise (fnn-fault "invalid checkpoint recovery outcome")))))
 
