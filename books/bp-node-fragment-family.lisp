@@ -162,8 +162,13 @@
                                   (total (fn-bpp-total-adu-length
                                           (fn-bpb-bundle-primary
                                            (fn-bpnf-held-bundle anchor))))))
-           :in-theory (disable fn-bpf-reassemble-fast-is-reassemble
-                               fn-bpf-reassemble-fast fn-bpf-reassemble))))
+           :in-theory (e/d (fn-bpnf-fragment-query fn-bpnf-family-member)
+                           (fn-bpf-reassemble-fast-is-reassemble
+                            fn-bpf-reassemble-fast fn-bpf-reassemble
+                            fn-bpnf-active-fragmentp fn-bpnf-active-set
+                            fn-bpnf-fragment-cells fn-bpnf-held-list
+                            fn-bpp-total-adu-length fn-bpnf-held-bundle
+                            fn-bpb-bundle-primary fn-bpf-fragment-listp)))))
 
 (defthm fn-bpnf-offset-zero-source-is-a-member
   (implies (fn-bpnf-offset-zero-source held)
@@ -239,6 +244,5 @@
           anchor)
          (fn-bpnf-fragment-query st anchor))
   :hints (("Goal"
-           :use ((:instance fn-bpnf-receive-proposal-does-not-install-held))
-           :in-theory (disable fn-bpnf-receive-proposal-does-not-install-held
-                               fn-bpnf-step fn-bpnf-fragment-query))))
+           :in-theory '(fn-bpnf-fragment-query fn-bpnf-active-set
+                        fn-bpnf-receive-proposal-does-not-install-held))))

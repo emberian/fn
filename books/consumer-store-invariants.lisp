@@ -1032,7 +1032,9 @@
                            (fn-sn-statep fn-sf-statep
                             fn-cpe-projection-step fn-cpe-projection-replay
                             fn-stxe-p fn-stxk-p fn-stxa-p
-                            fn-sn-completion-record)))))
+                            fn-sn-completion-record
+                            fn-csi-live-ready-exact-replay
+                            fn-csi-ready-full-replay)))))
 
 (defthm fn-csi-io-preserves-consumer-relation
   (implies (and (fn-sn-statep s)
@@ -1208,7 +1210,9 @@
                             fn-sn-update fn-sf-statep fn-sf-phase-shapep)
                            (fn-sn-statep fn-cpe-projection-replay
                             fn-cpe-projection-step fn-sn-make-v6
-                            fn-th-topic-eventp fn-sf-record-listp)))))
+                            fn-th-topic-eventp fn-sf-record-listp
+                            fn-csi-live-ready-exact-replay
+                            fn-csi-ready-full-replay)))))
 
 (defthm fn-csi-normal-step-preserves-consumer-relation
   (implies (and (fn-sn-statep s)

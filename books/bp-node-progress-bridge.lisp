@@ -22,19 +22,28 @@
        (equal (fn-bpnf-base (fn-bpnp-with-runtime st s p)) (fn-bpnf-base st))
        (equal (fn-bpnf-answer-state (fn-bpnf-answer x e)) x)
        (equal (fn-bpnf-answer-effects (fn-bpnf-answer x e)) e))
-  :hints (("Goal" :in-theory (enable fn-bpnp-with-waits fn-bpnp-with-credit
-                                     fn-bpnp-with-runtime fn-bpnf-base
-                                     fn-bpnf-answer fn-bpnf-answer-state
-                                     fn-bpnf-answer-effects
-                                     fn-bpn-nth-is-nth-on-true-lists)))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnp-with-waits fn-bpnp-with-credit
+                                fn-bpnp-with-runtime fn-bpnf-base
+                                fn-bpnf-answer fn-bpnf-answer-state
+                                fn-bpnf-answer-effects
+                                fn-bpn-nth-is-nth-on-true-lists
+                                nth-update-nth true-listp-update-nth
+                                nfix natp car-cons cdr-cons nth-0-cons nth-add1
+                                (:e equal) (:e natp) (:e nfix) (:e zp) (:e nth))
+                              (theory 'minimal-theory))))))
 
 (local
  (defthm bpnpb-with-base-fields
   (and (equal (fn-bpnf-base (fn-bpnf-with-base st b)) b)
        (equal (fn-bpnf-issued (fn-bpnf-with-base st b)) (fn-bpnf-issued st)))
-  :hints (("Goal" :in-theory (enable fn-bpnf-with-base fn-bpnf-state-with-arrival
-                                     fn-bpnf-base fn-bpnf-issued fn-bpn-nth
-                                     fn-cbor-ag-car)))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnf-with-base fn-bpnf-state-with-arrival
+                                fn-bpnf-base fn-bpnf-issued fn-bpn-nth
+                                fn-cbor-ag-car car-cons cdr-cons
+                                (:e equal) (:e natp) (:e zp) (:e binary-+)
+                                (:e not))
+                              (theory 'minimal-theory))))))
 
 (local
  (defthm bpnpb-base-event-shape
@@ -112,8 +121,14 @@
            (fn-bpnpb-effects-confinedp
             (fn-bpn-answer-effects
              (fn-bpn-propose st record success refusal uncertain))))
-  :hints (("Goal" :in-theory (enable fn-bpn-propose fn-bpn-answer
-                                     fn-bpn-answer-effects fn-cbor-ag-car)))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnpb-effects-confinedp fn-bpn-propose
+                                fn-bpn-answer fn-bpn-answer-effects
+                                fn-cbor-ag-car car-cons cdr-cons
+                                (:e member-equal)
+                                bpnpb-kind-memberp-cons
+                                bpnpb-kind-memberp-atom)
+                              (theory 'minimal-theory))))))
 
 (local
  (defthm bpnpb-bpn-step-confined
