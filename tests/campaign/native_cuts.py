@@ -107,6 +107,61 @@ def model_cut_names(program: str, book: str = "byte-store-programs.lisp") -> tup
     return tuple(re.findall(r'\(list :cut "([^"]+)"\)', body))
 
 
+# The byte-program step kinds (books/byte-store-programs.lisp, the step table
+# at its head).  `observe' and `cut' issue no syscall.
+STEP_KINDS = ("observe", "cut", "create", "write-all", "fsync-file", "fsync-dir",
+              "rename", "link", "unlink")
+SYSCALL_KINDS = frozenset(STEP_KINDS[2:])
+
+
+@dataclass(frozen=True)
+class ModelStep:
+    kind: str
+    args: tuple[str, ...]
+
+    @property
+    def directory(self) -> str | None:
+        """The directory the step acts in: the target of a rename or link."""
+        if self.kind in ("rename", "link"):
+            return self.args[2]
+        return self.args[0] if self.kind in SYSCALL_KINDS else None
+
+
+def model_steps(program: str, book: str = "byte-store-programs.lisp") -> tuple[ModelStep, ...]:
+    """The program's steps in order, read from its `(list :kind ...)' forms.
+
+    An inner `(list :core-completion ...)' is an observation's argument, not
+    a step; only the step kinds above are kept.
+    """
+    source = (ROOT / "books" / book).read_text()
+    start = source.index("(defun {} ".format(program))
+    next_def = source.find("\n(defun ", start + 1)
+    body = source[start:next_def if next_def >= 0 else len(source)]
+    steps = []
+    for kind, rest in re.findall(r"\(list :([a-z-]+)([^\n]*)", body):
+        if kind not in STEP_KINDS:
+            continue
+        if kind == "cut":
+            args = tuple(re.findall(r'"([^"]+)"', rest)[:1])
+        else:
+            args = tuple(re.findall(r'(:[a-z-]+|\*[a-z-]+\*|"[^"]*"|[a-z][a-z-]*)',
+                                    rest.split(";")[0]))
+        steps.append(ModelStep(kind, args))
+    return tuple(steps)
+
+
+def cut_step_index(cut: NativeCut) -> int:
+    """The index in model_steps(cut.program) of the cut's own `:cut' step."""
+    seen = 0
+    for index, step in enumerate(model_steps(cut.program)):
+        if step.kind == "cut" and step.args == (cut.model_name or cut.name,):
+            seen += 1
+            if seen == cut.occurrence:
+                return index
+    raise AssertionError("{} occurrence {} absent from {}".format(
+        cut.name, cut.occurrence, cut.program))
+
+
 def verify_native_cut_map() -> None:
     declared = tuple(c.name for c in POST_CUTS)
     actual = native_declared_cut_names("fnn-post-model-cuts")
@@ -122,6 +177,7 @@ def verify_native_cut_map() -> None:
             raise AssertionError("{} occurrence {} absent from {}".format(
                 cut.name, cut.occurrence, cut.program))
     verify_recovery_order()
+    verify_swallowed_cuts()
 
 
 def host_function(source: str, name: str) -> str:
@@ -166,3 +222,51 @@ def verify_checkpoint_cut_map() -> None:
     for name in ("pack-reclaim-unlink", "pack-reclaim-directory"):
         if name not in reclaim:
             raise AssertionError("{} absent from reclaim model".format(name))
+
+
+# The post cut whose EIO the host swallows: a cut between two best-effort
+# staging steps after the record's directory barrier (P-RECORD's `970 best
+# effort', `971 best effort').  `post_arm' in native_nntp_post_probe derives
+# the arm from the model coordinate; this checks the host agrees: the
+# `fnn-at' of every such cut, and of no other post cut, lies inside the
+# `ignore-errors' form of fnn-publish.
+def swallowed_cut(cut: NativeCut) -> bool:
+    steps = model_steps(cut.program)
+    index = cut_step_index(cut)
+    published = [j for j, s in enumerate(steps)
+                 if s.kind in ("rename", "link") and s.directory != ":staging"]
+    if not published:
+        return False
+    barrier = next((j for j, s in enumerate(steps)
+                    if j > published[0] and s.kind == "fsync-dir"
+                    and s.directory == steps[published[0]].directory), None)
+    before = [j for j, s in enumerate(steps[:index]) if s.kind in SYSCALL_KINDS]
+    after = [j for j, s in enumerate(steps) if j > index and s.kind in SYSCALL_KINDS]
+    return (barrier is not None and bool(before) and bool(after)
+            and before[-1] > barrier
+            and steps[before[-1]].directory == ":staging"
+            and steps[after[0]].directory == ":staging")
+
+
+def swallowed_post_cuts() -> tuple[str, ...]:
+    return tuple(cut.name for cut in POST_CUTS if swallowed_cut(cut))
+
+
+def verify_swallowed_cuts(source: str | None = None) -> None:
+    if source is None:
+        source = (ROOT / "host/native/io.lisp").read_text()
+    publish = host_function(source, "fnn-publish")
+    start = publish.index("(ignore-errors")
+    depth, end = 0, start
+    for end in range(start, len(publish)):
+        depth += {"(": 1, ")": -1}.get(publish[end], 0)
+        if depth == 0:
+            break
+    inside = publish[start:end + 1]
+    swallowed = set(swallowed_post_cuts())
+    for cut in POST_CUTS:
+        site = "(fnn-at store :{})".format(cut.name)
+        if (site in inside) != (cut.name in swallowed):
+            raise AssertionError("{}: model says swallowed={}, host ignore-errors "
+                                 "says {}".format(cut.name, cut.name in swallowed,
+                                                  site in inside))

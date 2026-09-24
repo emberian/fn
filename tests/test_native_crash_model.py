@@ -1,9 +1,11 @@
 """Actual native process death checked through byte scan/open and cut programs."""
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 from tests.campaign import model_images, native_cuts
@@ -64,15 +66,88 @@ class NativeCampaignMixin:
         return {p.name: p.read_bytes()
                 for p in sorted((store / "transactions").iterdir()) if p.is_file()}
 
+    @staticmethod
+    def octet_list(data: bytes) -> str:
+        return "'({})".format(" ".join(str(x) for x in data))
+
+    def intended_frame(self, bridge, form, observed: bytes) -> tuple[bool, bytes]:
+        """ACL2's octets for FORM, and whether OBSERVED is a prefix of them."""
+        text = bridge.value("(let* ((f {})) (cons (if (and (true-listp f)"
+                            " (fn-native-prefixp {} f)) 1 0) f))".format(
+                                form, self.octet_list(observed)))
+        values = [int(x) for x in re.findall(r"\d+", text)]
+        return values[0] == 1, bytes(values[1:])
+
+    def intended_frames(self, bridge, sent, before_frontier: bytes,
+                        prior_frame: bytes, observed_frontier: bytes,
+                        observed_record: bytes | None):
+        """The frontier frame and the candidate's FNST frame this post intends.
+
+        Campaign 6c0626c5 finding H2: the program's octets were read off the
+        store at the cut, so at frontier-created and record-created (an empty
+        staged file) the model ran a program writing zero octets, a check
+        parameterized by the observation it judged.  Here ACL2 derives both
+        frames from what the test sent: the next frontier from the frontier
+        the store held before the post; the record from the Message-ID,
+        payload and group the test posted, over the opened pre-post state,
+        by fn-sn-article-record, the constructor fn-store-sn-prepare calls,
+        framed by fn-frame-store-protected and sealed with fn-frame-trailer,
+        as fnn-frame does.  Two inputs are not the article: the record stamp
+        is the owner's wall-clock second on the DTN epoch, which the test
+        brackets (each POSIX second in [t0, t1] is shifted by ACL2's
+        fn-nntp-unix-dtn-ms, and the observed octets must be a prefix of the
+        frame for one of them); and the release evidence is
+        the local-post provenance of the store's configuration, taken from
+        the prior record the same configuration wrote before the post.
+        """
+        message_id, payload, groups, (t0, t1) = sent
+        frontier = ("(fn-bs-frontier-encode (fn-bs-frontier-next"
+                    " (fn-bs-frontier-decode {})))".format(self.octet_list(before_frontier)))
+        front_ok, front = self.intended_frame(bridge, frontier, observed_frontier)
+        self.assertTrue(front_ok, "observed frontier {!r} is not a prefix of the "
+                        "intended {!r}".format(observed_frontier, front))
+        msgid = self.octet_list(message_id.encode("ascii"))
+        record_frames = []
+        for stamp in range(int(t0), int(t1) + 1):
+            record = (
+                "(let* ((subject (fn-id-subject-of-payload {payload}))"
+                " (event (fn-sn-article-record (fn-sn-open-state opened-before)"
+                "  (fn-clock-observation 0 (fn-nntp-unix-dtn-ms {unix_ms}) 0 t)"
+                " \"{msgid_text}\" {payload}"
+                "  '({groups})"
+                "  (fn-record-octets-string (fn-id-text (fn-id-obligation-of {msgid} subject)))"
+                "  (fn-record-octets-string (fn-id-text subject))"
+                "  (fn-record-release-evidence (fn-bs-record-of-octets {prior}))"
+                "  (fn-charge-for-payload {length})))"
+                " (protected (fn-frame-store-protected (fn-store-event-encode event))))"
+                " (append protected (fn-frame-trailer protected)))").format(
+                    payload=self.octet_list(payload), unix_ms=1000 * stamp,
+                    msgid_text=message_id, msgid=msgid,
+                    groups=" ".join('"{}"'.format(g) for g in groups),
+                    prior=self.octet_list(prior_frame), length=len(payload))
+            record_frames.append((stamp,) + self.intended_frame(
+                bridge, "(let* ({}) {})".format(self.opened_before_bindings, record),
+                observed_record or b""))
+        matching = [(stamp, frame) for stamp, ok, frame in record_frames if ok]
+        self.assertTrue(matching, "observed record octets {} are a prefix of no "
+                        "intended frame: {}".format(
+                            (observed_record or b"").hex(),
+                            [(stamp, frame.hex()) for stamp, _, frame in record_frames]))
+        return front, matching[0][1]
+
     def assert_observed_scan_is_program_image(self, before_form, store, cut,
-                                              prior_names=()):
+                                              prior_names=(), sent=None,
+                                              before_frontier=None, prior_frame=None):
         """Compare exact scan values with the model's process-death image.
 
         SIGKILL does not simulate loss of dirty kernel state.  Therefore the
         model choice used here applies every issued entry operation and keeps
         every pending write new.  This checks that the observed namespace and
         decoded event sequence are an allowed model image without making a
-        power-loss claim.
+        power-loss claim.  The programs write the frames `intended_frames`
+        derives from the post the test sent, not octets read at the cut, and
+        every staged or published frame must be a prefix of its intended
+        frame, the whole of it once the cut is past the program's write.
         """
         bridge = model_images.ModelBridge()
         try:
@@ -81,6 +156,15 @@ class NativeCampaignMixin:
             bridge.call('(include-book "books/codec-attach")')
             bridge.call('(include-book "books/byte-store-frame")')
             bridge.call('(include-book "books/byte-store-txn-name")')
+            bridge.call('(include-book "books/identity")')
+            bridge.call('(include-book "books/crypto-attach")')
+            bridge.call('(include-book "books/frame")')
+            bridge.call('(include-book "books/frame-trailer")')
+            bridge.call('(include-book "books/store-events")')
+            bridge.call('(include-book "books/nntp-responses")')
+            bridge.call("(defun fn-native-prefixp (x y)"
+                        " (if (atom x) t (and (consp y) (equal (car x) (car y))"
+                        "  (fn-native-prefixp (cdr x) (cdr y)))))")
             bridge.call("(defun fn-native-visible-choices (ops unit)"
                         " (if (atom ops) nil"
                         "  (cons (if (equal (car (car ops)) :write)"
@@ -94,13 +178,29 @@ class NativeCampaignMixin:
                         " 10000000 (fn-bs-scan-frontier before-scan)"
                         " (fn-bs-scan-records before-scan)))",
                         "(ks (fn-sn-files (fn-sn-open-state opened-before)))"]
+            self.opened_before_bindings = " ".join(bindings[:3])
             frontier = (store / "allocation-frontier.json").read_bytes()
             stages = sorted((store / "staging").glob(".allocation-*"))
             next_frontier = stages[0].read_bytes() if stages else frontier
             frontier_stage = stages[0].name if stages else ".allocation-campaign"
-            # The program receives exact frontier octets observed at this cut.
-            frontier_program = "(fn-bs-frontier-program \"{}\" '({}))".format(
-                frontier_stage, " ".join(str(x) for x in next_frontier))
+            txns = self.transaction_bytes(store)
+            candidate_names = sorted(set(txns).difference(prior_names))
+            record_stages = sorted((store / "staging").glob(".stage-*"))
+            observed_record = (txns[candidate_names[0]] if candidate_names
+                               else record_stages[0].read_bytes() if record_stages
+                               else None)
+            intended_frontier, intended_record = self.intended_frames(
+                bridge, sent, before_frontier, prior_frame, next_frontier,
+                observed_record)
+            if self.past_write(cut, "fn-bs-frontier-program"):
+                self.assertEqual(next_frontier, intended_frontier, cut.name)
+            if observed_record is not None and self.past_write(cut, "fn-bs-record-program"):
+                self.assertEqual(observed_record, intended_record, cut.name)
+            if cut.program == "fn-bs-record-program" and cut.name == "record-created":
+                self.assertEqual(observed_record, b"", "record-created stage is not empty")
+            # The program writes the frontier octets derived from the post.
+            frontier_program = "(fn-bs-frontier-program \"{}\" {})".format(
+                frontier_stage, self.octet_list(intended_frontier))
             bindings.append("(frontier-run (fn-bs-run before ks {} nil"
                             " '(\"fn.letters\" \"fn.test\") 10000000))".format(
                                 frontier_program))
@@ -112,15 +212,12 @@ class NativeCampaignMixin:
             else:
                 bindings.extend(["(after-frontier (car (car (last frontier-run))))",
                                  "(reserved (cdr (car (last frontier-run))))"])
-                txns = self.transaction_bytes(store)
-                candidate_names = sorted(set(txns).difference(prior_names))
-                candidate_frame = txns[candidate_names[0]] if candidate_names else None
-                candidates = sorted((store / "staging").glob(".stage-*"))
-                if candidate_frame is None:
-                    self.assertTrue(candidates, "candidate frame absent from final and staging names")
-                    candidate_frame = candidates[0].read_bytes()
-                record_stage = candidates[0].name if candidates else ".stage-campaign"
-                octets = " ".join(str(x) for x in candidate_frame)
+                if observed_record is None:
+                    self.assertTrue(record_stages or candidate_names,
+                                    "candidate frame absent from final and staging names")
+                record_stage = record_stages[0].name if record_stages else ".stage-campaign"
+                # The program writes the frame derived from the article sent.
+                octets = " ".join(str(x) for x in intended_record)
                 bindings.append("(candidate-record (fn-bs-record-of-octets '({})))".format(octets))
                 bindings.append("(prepared (fn-sf-prepare-record reserved"
                                 " candidate-record '(\"fn.letters\" \"fn.test\") 10000000))")
@@ -177,7 +274,20 @@ class NativeCampaignMixin:
         finally:
             bridge.close()
 
-    def run_post_cut(self, cut):
+    @staticmethod
+    def past_write(cut, program):
+        """Whether the cut lies after PROGRAM's write-all step."""
+        order = ("fn-bs-frontier-program", "fn-bs-record-program",
+                 "fn-bs-finish-program")
+        if order.index(cut.program) != order.index(program):
+            return order.index(cut.program) > order.index(program)
+        steps = native_cuts.model_steps(program)
+        write = next(j for j, s in enumerate(steps) if s.kind == "write-all")
+        return native_cuts.cut_step_index(cut) > write
+
+    def run_post_cut(self, cut, claimed=None, skew=0):
+        """CLAIMED replaces the payload the differential is told was sent,
+        and SKEW shifts the bracketed clock window: the teeth below."""
         with tempfile.TemporaryDirectory(prefix="fn-native-cut-") as tmp:
             root = Path(tmp); store = root / "store"
             prior = root / "prior"; prior.write_bytes(b"prior accepted protected content")
@@ -187,14 +297,22 @@ class NativeCampaignMixin:
             before_form = model_images.import_image(store)
             prior_frames = self.transaction_bytes(store)
             self.assertEqual(len(prior_frames), 1)
+            before_frontier = (store / "allocation-frontier.json").read_bytes()
             env = dict(os.environ); env["FN_NATIVE_POST_FAULT"] = cut.name + ":kill"
+            t0 = time.time()
             killed = self.native_post(store, "<candidate@example.invalid>", candidate, env)
+            t1 = time.time()
             self.assertEqual(killed.returncode, -9, killed.stderr)
             killed_frames = self.transaction_bytes(store)
             self.assertEqual(killed_frames.get(next(iter(prior_frames))),
                              next(iter(prior_frames.values())))
-            self.assert_observed_scan_is_program_image(before_form, store, cut,
-                                                       prior_frames)
+            self.assert_observed_scan_is_program_image(
+                before_form, store, cut, prior_frames,
+                sent=("<candidate@example.invalid>",
+                      candidate.read_bytes() if claimed is None else claimed,
+                      ("fn.letters",), (t0 + skew, t1 + skew)),
+                before_frontier=before_frontier,
+                prior_frame=next(iter(prior_frames.values())))
             recovered = self.invoke(store, "recover")
             self.assertIn(b"articles=", recovered.stdout)
             self.assertEqual(self.transaction_bytes(store), killed_frames)
@@ -217,6 +335,17 @@ if IMAGE_AVAILABLE:
                     continue
                 with self.subTest(cut=cut.name):
                     self.run_post_cut(cut)
+
+        def test_the_frame_is_the_sent_articles_not_anothers(self):
+            # Teeth for the derivation: the frame on disk at record-written is
+            # a prefix of no frame of a different article, nor of this
+            # article stamped outside the bracketed window.
+            cut = next(c for c in native_cuts.POST_CUTS if c.name == "record-written")
+            for label, claimed, skew in (("other article", b"candidate protected contenT", 0),
+                                         ("other second", None, 100)):
+                with self.subTest(label), self.assertRaisesRegex(
+                        AssertionError, "prefix of no intended frame"):
+                    self.run_post_cut(cut, claimed=claimed, skew=skew)
 
         def test_recovery_stage_unlink_process_death_scans_and_reopens(self):
             with tempfile.TemporaryDirectory(prefix="fn-native-recovery-cut-") as tmp:
