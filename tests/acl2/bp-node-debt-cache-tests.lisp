@@ -105,10 +105,8 @@
 ; A damaged observed final still counts as an observed name, but its replay
 ; faults.  The failed recovery cannot replace the live cache or obligations.
 (defconst *bpndc-corrupt-rows*
-  (cons (list (fn-bpnf-stored-record-name 0 0)
-              (cons 255
-                    (cdr (cadar *bpndc-rows*))))
-        (cdr *bpndc-rows*)))
+  (list (list (fn-bpnf-stored-record-name 0 0)
+              (cons 255 (cdr (cadar *bpndc-rows*))))))
 (make-event
  `(defconst *bpndc-fault-event*
     ',(fn-bpnf-family-recover-auto-event
@@ -131,3 +129,11 @@
       (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpndc-fault*))
              (fn-bpnf-held-list
               (fn-bpnf-answer-state *bpndc-recovered*)))))
+
+; Dropping the :restart-ready premise would replace the physical count by
+; the one corrupt observed name even though the live cache remains at two.
+(assert-event (equal (fn-bpn-nth 5 *bpndc-fault-event*) 1))
+(must-fail
+ (assert-event
+  (equal (fn-bpnp-used (fn-bpnf-answer-state *bpndc-fault*))
+         (fn-bpn-nth 5 *bpndc-fault-event*))))
