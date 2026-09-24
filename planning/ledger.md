@@ -13,21 +13,21 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 669 |
 | Certification roots in the Makefile | 658 |
 | Books inside the root closure | 667 |
-| `defthm` and `defthmd` events | 8950 |
-| `defun` events | 6576 |
-| Functions with verified guards | 2036 |
+| `defthm` and `defthmd` events | 8953 |
+| `defun` events | 6581 |
+| Functions with verified guards | 2038 |
 | Functions declared `:verify-guards nil` and never verified | 407 |
-| Functions left at the default with an explicit guard | 3294 |
+| Functions left at the default with an explicit guard | 3297 |
 | Functions left at the default with no guard | 839 |
-| `assert-event` checks | 9684 |
-| `must-fail` checks | 574 |
+| `assert-event` checks | 9706 |
+| `must-fail` checks | 583 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
 | Export-hygiene warnings | 107 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 47 |
 | Include-hygiene warnings | 643 |
-| Host-names warnings | 816 |
+| Host-names warnings | 813 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -338,7 +338,7 @@ that `make certify` requests.
 | `books/nntp-newnews.lisp` | root | 12 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-overview.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
 | `books/nntp-pinned-effects.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/nntp-post.lisp` | root | 21 | 19 | 13/1/5/0 | 0 | 0 | 0 |
+| `books/nntp-post.lisp` | root | 23 | 21 | 15/1/5/0 | 0 | 0 | 0 |
 | `books/nntp-projection.lisp` | root | 23 | 22 | 22/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-range-indexed-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-range-indexed.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -358,12 +358,12 @@ that `make certify` requests.
 | `books/owner-fault.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/owner-feed-port.lisp` | root | 11 | 1 | 0/0/1/0 | 0 | 0 | 4 |
 | `books/owner-feed.lisp` | root | 84 | 77 | 0/0/77/0 | 0 | 0 | 0 |
-| `books/owner-invariants.lisp` | root | 147 | 8 | 0/0/6/2 | 0 | 0 | 1 |
+| `books/owner-invariants.lisp` | root | 148 | 8 | 0/0/6/2 | 0 | 0 | 1 |
 | `books/owner-log.lisp` | root | 11 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/owner-prepare-correspondence.lisp` | root | 19 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/owner-retention-preparation.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-tls-prefix.lisp` | root | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/owner.lisp` | root | 81 | 145 | 0/5/140/0 | 0 | 0 | 0 |
+| `books/owner.lisp` | root | 81 | 148 | 0/5/143/0 | 0 | 0 | 0 |
 | `books/path-update.lisp` | root | 77 | 29 | 2/0/26/1 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/peer-authored-accept.lisp` | root | 2 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -664,7 +664,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 92 | 0 | 0 |
 | `tests/acl2/nntp-newnews-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 71 | 9 | 0 |
 | `tests/acl2/nntp-pinned-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 2 | 1 | 0 |
-| `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 0 | 0 |
+| `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 71 | 5 | 0 |
 | `tests/acl2/nntp-range-indexed-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 13 | 5 | 0 |
 | `tests/acl2/nntp-reader-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 95 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 2 | 0 |
@@ -679,7 +679,7 @@ that `make certify` requests.
 | `tests/acl2/owner-operator-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 34 | 8 | 0 |
 | `tests/acl2/owner-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 26 | 1 | 0 |
 | `tests/acl2/owner-retention-preparation-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 5 | 1 | 0 |
-| `tests/acl2/owner-tests.lisp` | root | 0 | 15 | 0/0/1/14 | 309 | 2 | 0 |
+| `tests/acl2/owner-tests.lisp` | root | 0 | 15 | 0/0/1/14 | 323 | 6 | 0 |
 | `tests/acl2/owner-tls-pin-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 1 | 0 |
