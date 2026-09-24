@@ -80,6 +80,13 @@
   (if (not (true-listp st)) st
     (update-nth 15 pending-image (update-nth 14 sessions st))))
 
+(defun fn-bpnp-with-issued (st issued)
+  (declare (xargs :guard t))
+  (fn-bpnp-with-runtime
+   (fn-bpnp-with-credit (fn-bpnf-with-issued st issued)
+                        (fn-bpnp-used st) (fn-bpnp-debt st))
+   (fn-bpnp-sessions st) (fn-bpnp-pending-image st)))
+
 (defun fn-bpnp-session (peer session mru)
   (declare (xargs :guard t))
   (list :bpnp-session peer session mru))
@@ -721,7 +728,7 @@
                           (fn-cbor-octet-listp (fn-bpn-nth 2 pending))
                           (consp (fn-bpn-nth 2 pending))))
                 (fn-bpnf-answer
-                 (fn-bpnf-with-issued
+                 (fn-bpnp-with-issued
                   st (fn-bpnf-operation epoch op :attempt record :uncertain))
                  (list (list :forward-answer :uncertain)))
               (let* ((delta (fn-bpnd-held-delta
@@ -747,11 +754,11 @@
         (if (equal result :refused)
             (fn-bpnf-answer
              (fn-bpnp-with-runtime
-              (fn-bpnf-with-issued st nil) (fn-bpnp-sessions st) nil)
+              (fn-bpnp-with-issued st nil) (fn-bpnp-sessions st) nil)
              (list (list :forward-answer :refused)))
           (fn-bpnf-answer
            (fn-bpnp-with-runtime
-            (fn-bpnf-with-issued
+            (fn-bpnp-with-issued
              st (fn-bpnf-operation epoch op :attempt record :uncertain))
             (fn-bpnp-sessions st) nil)
            (list (list :forward-answer :uncertain))))))))
@@ -839,7 +846,7 @@
                         (fn-bpn-machine-state-config (fn-bpnf-base st)))))
             (if (not (equal (car applied) :ready))
                 (fn-bpnf-answer
-                 (fn-bpnf-with-issued
+                 (fn-bpnp-with-issued
                   st (fn-bpnf-operation
                       epoch op :forward-result record :uncertain))
                  (list (list :forward-answer :uncertain)))
@@ -864,10 +871,10 @@
                              (fn-bpn-nth 8 record)))))))
         (if (equal result :refused)
             (fn-bpnf-answer
-             (fn-bpnf-with-issued st nil)
+             (fn-bpnp-with-issued st nil)
              (list (list :forward-answer :refused)))
           (fn-bpnf-answer
-           (fn-bpnf-with-issued
+           (fn-bpnp-with-issued
             st (fn-bpnf-operation
                 epoch op :forward-result record :uncertain))
            (list (list :forward-answer :uncertain))))))))
