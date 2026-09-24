@@ -152,7 +152,7 @@ class NativeWebClientTests(unittest.TestCase):
             def start_owner(fault=False):
                 env = dict(environment)
                 if fault:
-                    env["FN_NATIVE_POST_FAULT"] = "postpublish:kill"
+                    env["FN_NATIVE_POST_FAULT"] = "record-attempted:kill"
                 process = subprocess.Popen(
                     [str(IMAGE), "--fn", "owner", "run", str(store),
                      str(port), "0", "8"], cwd=ROOT, env=env,
