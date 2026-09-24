@@ -3,6 +3,12 @@
   "threshold_seconds": 10.0,
   "tolerance": 0.25,
   "books": {
+    "books/bp-node-fragment-family": {
+      "seconds": 12.336,
+      "run": "certify-20260924T153508Z-1499013",
+      "host": "hbox",
+      "verdict": "passed"
+    },
     "books/byte-store-k0": {
       "seconds": 10.538,
       "run": "certify-20260924T153301Z-1495651",
@@ -16,14 +22,14 @@
       "verdict": "passed"
     },
     "books/byte-store-scan": {
-      "seconds": 13.399,
-      "run": "certify-20260924T151024Z-1459891",
+      "seconds": 16.147,
+      "run": "certify-20260924T153508Z-1499013",
       "host": "hbox",
       "verdict": "passed"
     },
     "books/consumer-store-invariants": {
-      "seconds": 10.041,
-      "run": "certify-20260924T153301Z-1495651",
+      "seconds": 17.296,
+      "run": "certify-20260924T153508Z-1499013",
       "host": "hbox",
       "verdict": "passed"
     },
@@ -33,15 +39,15 @@
       "host": "hbox",
       "verdict": "passed"
     },
-    "books/store-node-traces": {
-      "seconds": 10.541,
-      "run": "certify-20260924T150908Z-1457985",
+    "books/store-node-invariants": {
+      "seconds": 17.197,
+      "run": "certify-20260924T153508Z-1499013",
       "host": "hbox",
       "verdict": "passed"
     },
-    "books/topic-history-store-invariants": {
-      "seconds": 10.236,
-      "run": "certify-20260924T153301Z-1495651",
+    "books/store-node-traces": {
+      "seconds": 13.84,
+      "run": "certify-20260924T153508Z-1499013",
       "host": "hbox",
       "verdict": "passed"
     }
