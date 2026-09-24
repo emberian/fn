@@ -1748,7 +1748,8 @@
         "fn-bpn-step-preserves-lifecycle-invariant",
         "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record",
         "fn-bpn-step-queue-acceptance-is-durable-or-exact-duplicate",
-        "fn-bpnp-step-progress-preserves-held-and-issued"
+        "fn-bpnp-step-progress-preserves-held",
+        "fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch"
       ]
     },
     {
