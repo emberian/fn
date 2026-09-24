@@ -19,7 +19,8 @@ native-build prerequisite. Do not drop the guard include, add a whole-state
 scan to the served path, or borrow an old certificate to build around it.
 The final hbox record distinguishes the combined failures.
 
-The next useful sequence is that guard/preservation repair, a matching image
+The next useful sequence is the guard/preservation and selection-invariant
+repairs, a matching image
 run of the BP identity and pack-namespace fixes plus signed receiver restart,
 then the full Mini exchange and post-kind-8 recovery settlement. PRF-034 is
 also reopened for the new ION mixed-stream replay caller. Existing component
