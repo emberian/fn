@@ -623,6 +623,12 @@
 ; instead does not terminate in practice.
 (local (in-theory (disable fn-bpc-enc)))
 
+; The CRC guard needs only the CRC type out of `fn-bpp-blockp'; with its
+; field recognizers open, the guard proof splits on every field (4 s).
+; Closed from here to the last guard that opens the block.
+(local (in-theory (disable fn-bpp-eidp fn-bpp-timep fn-bpp-flag-setp
+                           fn-bpp-fragmentp)))
+
 (defun fn-bpp-block-crc (b)
   (declare (xargs :guard (fn-bpp-blockp b)))
   (fn-bpp-crc-octets (fn-bpp-crc-type b) (fn-bpp-zeroed-encoding b)))
@@ -634,6 +640,9 @@
 (verify-guards fn-bpp-zeroed-encoding)
 (verify-guards fn-bpp-block-crc)
 (verify-guards fn-bpp-encode)
+
+(local (in-theory (enable fn-bpp-eidp fn-bpp-timep fn-bpp-flag-setp
+                          fn-bpp-fragmentp)))
 
 ; -----------------------------------------------------------------------------
 ; Decoding
