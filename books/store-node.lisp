@@ -424,7 +424,8 @@
        (equal (fn-sn-identity-next (fn-sn-make-v6 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic event-index)) identity-next)
        (equal (fn-sn-config-history (fn-sn-make-v6 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic event-index)) config-history)
        (equal (fn-sn-consumer (fn-sn-make-v6 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic event-index)) consumer)
-       (equal (fn-sn-topic (fn-sn-make-v6 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic event-index)) topic))
+       (equal (fn-sn-topic (fn-sn-make-v6 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic event-index)) topic)
+       (equal (fn-sn-event-index (fn-sn-make-v6 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next config-history consumer topic event-index)) event-index))
   :hints (("Goal" :in-theory (enable fn-sn-shapep))))
 (defthm fn-sn-shapep-of-fn-sn-make-v4
   (fn-sn-shapep
@@ -718,6 +719,14 @@
   (equal (fn-sn-event-index (fn-sn-update s files node))
          (fn-sn-event-index s))
   :hints (("Goal" :in-theory (enable fn-sn-event-index fn-sn-make-v6))))
+(defthm fn-sn-identity-next-of-fn-sn-update
+  (equal (fn-sn-identity-next (fn-sn-update s files node))
+         (fn-sn-identity-next s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-update) (fn-sn-make-v6)))))
+(defthm fn-sn-consumer-of-fn-sn-update
+  (equal (fn-sn-consumer (fn-sn-update s files node))
+         (fn-sn-consumer s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-update) (fn-sn-make-v6)))))
 (defthm fn-sn-event-index-raw-of-fn-sn-update
   (equal (fn-store-event-nth 13 (fn-sn-update s files node))
          (fn-store-event-nth 13 s))
@@ -782,6 +791,67 @@
    (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
    (fn-sn-identity-next s) (fn-sn-config-history s)
    (fn-sn-consumer s) (fn-sn-topic s) event-index))
+
+; Field laws are the exported interface to the v6 updates.  Their proofs
+; read the constructor's selector law; includers need not open fourteen
+; positional slots just to carry a projection through a transition.
+(defthm fn-sn-consumer-of-fn-sn-with-consumer
+  (equal (fn-sn-consumer (fn-sn-with-consumer s consumer)) consumer)
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-consumer) (fn-sn-make-v6)))))
+(defthm fn-sn-topic-of-fn-sn-with-consumer
+  (equal (fn-sn-topic (fn-sn-with-consumer s consumer))
+         (fn-sn-topic s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-consumer) (fn-sn-make-v6)))))
+(defthm fn-sn-event-index-of-fn-sn-with-consumer
+  (equal (fn-sn-event-index (fn-sn-with-consumer s consumer))
+         (fn-sn-event-index s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-consumer)
+                                 (fn-sn-make-v6 fn-sn-event-index)))))
+(defthm fn-sn-topic-of-fn-sn-with-topic
+  (equal (fn-sn-topic (fn-sn-with-topic s topic)) topic)
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-topic) (fn-sn-make-v6)))))
+(defthm fn-sn-consumer-of-fn-sn-with-topic
+  (equal (fn-sn-consumer (fn-sn-with-topic s topic))
+         (fn-sn-consumer s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-topic) (fn-sn-make-v6)))))
+(defthm fn-sn-event-index-of-fn-sn-with-topic
+  (equal (fn-sn-event-index (fn-sn-with-topic s topic))
+         (fn-sn-event-index s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-topic)
+                                 (fn-sn-make-v6 fn-sn-event-index)))))
+(defthm fn-sn-consumer-of-fn-sn-with-event-index
+  (equal (fn-sn-consumer (fn-sn-with-event-index s event-index))
+         (fn-sn-consumer s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-event-index) (fn-sn-make-v6)))))
+(defthm fn-sn-topic-of-fn-sn-with-event-index
+  (equal (fn-sn-topic (fn-sn-with-event-index s event-index))
+         (fn-sn-topic s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-event-index) (fn-sn-make-v6)))))
+(defthm fn-sn-identity-next-of-fn-sn-with-event-index
+  (equal (fn-sn-identity-next (fn-sn-with-event-index s event-index))
+         (fn-sn-identity-next s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-event-index) (fn-sn-make-v6)))))
+(defthm fn-sn-files-of-fn-sn-update-replayed
+  (equal (fn-sn-files
+          (fn-sn-update-replayed s files node index identity-context))
+         files)
+  :hints (("Goal" :in-theory (e/d (fn-sn-update-replayed) (fn-sn-make-v6)))))
+(defthm fn-sn-consumer-of-fn-sn-update-replayed
+  (equal (fn-sn-consumer
+          (fn-sn-update-replayed s files node index identity-context))
+         (fn-sn-consumer s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-update-replayed) (fn-sn-make-v6)))))
+(defthm fn-sn-topic-of-fn-sn-update-replayed
+  (equal (fn-sn-topic
+          (fn-sn-update-replayed s files node index identity-context))
+         (fn-sn-topic s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-update-replayed) (fn-sn-make-v6)))))
+(defthm fn-sn-event-index-of-fn-sn-update-replayed
+  (equal (fn-sn-event-index
+          (fn-sn-update-replayed s files node index identity-context))
+         (fn-sn-event-index s))
+  :hints (("Goal" :in-theory (e/d (fn-sn-update-replayed)
+                                 (fn-sn-make-v6 fn-sn-event-index)))))
 
 (defthm fn-sn-event-index-of-fn-sn-with-event-index
   (equal (fn-sn-event-index (fn-sn-with-event-index s event-index))
@@ -1383,7 +1453,7 @@
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md s2).  Enabled on include: the record
-; lemmas, fn-sn-update and fn-sn-find-record (glue and induction vocabulary)
+; field laws, fn-sn-update and fn-sn-find-record (glue and induction vocabulary)
 ; and fn-sn-prepare-node-preserves-state.  Withdrawn: the recognizer, the
 ; initial state and every transition; store-node-invariants opens them
 ; locally.  The two deferred preparations and the identity context joined
@@ -1391,7 +1461,9 @@
 ; every goal that dispatched on a store event, carrying the replay steps and
 ; the record codec in with them (store-node-resolution-cost-2026-09-23.md,
 ; store-cluster-cost-2026-09-23.md).  A proof about one of them opens it in
-; its hint.
+; its hint.  The v6 constructor and projection updates are opaque to an
+; includer: their selector laws above carry fields without opening the full
+; fourteen-slot record.  fn-sn-update stays enabled as documented glue.
 (in-theory (disable fn-sn-statep fn-sn-initial fn-sn-pending-record
                     fn-sn-record-bindsp fn-sn-prepare-node fn-sn-prepare
                     fn-sn-prepare-retention fn-sn-prepare-identity
@@ -1402,4 +1474,7 @@
                     fn-sn-recover fn-sn-fence-node fn-sn-resolve-node
                     fn-sn-set-keyring fn-sn-indexedp
                     fn-sn-statement-lookup fn-sn-equivocatorp
-                    fn-sn-verdict-lookup-list fn-sn-verdict-lookup))
+                    fn-sn-verdict-lookup-list fn-sn-verdict-lookup
+                    (:d fn-sn-make-v6) (:d fn-sn-with-configuration)
+                    (:d fn-sn-with-consumer) (:d fn-sn-with-topic)
+                    (:d fn-sn-with-event-index) (:d fn-sn-update-replayed)))
