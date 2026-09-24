@@ -134,7 +134,7 @@
            :do-not-induct t
            :in-theory
            (e/d (fn-nntp-archive-command fn-post-offeredp
-                  fn-nntp-single fn-nntp-multi fn-nntp-reply-effect
+                  fn-nntp-reply-effect
                   fn-nntp-group-result fn-nntp-listgroup-command
                   fn-nntp-listgroup-result
                   fn-nntp-list-command fn-nntp-list-response
@@ -157,7 +157,8 @@
                   fn-nntp-xhdr-response fn-nntp-xpat-response
                   fn-nntp-xpat-range fn-nntp-xpat-msgid
                   fn-nntp-newgroups-response fn-nntp-newnews-response)
-                (fn-nntp-keywordp fn-nntp-stuff-lines
+                (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
+                 fn-nntp-keywordp fn-nntp-stuff-lines
                  fn-nntp-crlf fn-nntp-string-octets)))))
 
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
@@ -170,9 +171,9 @@
            (e/d (fn-nntp-archive-command-pinned
                   fn-nntp-msgid-retrieval-indexed
                   fn-nntp-verdict-hdr-response fn-post-offeredp
-                  fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
                   fn-nntp-reply-effect fn-nntp-article-response)
-                (fn-nntp-archive-command fn-nntp-keywordp
+                (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
+                 fn-nntp-archive-command fn-nntp-keywordp
                  fn-nntp-stuff-lines fn-nntp-crlf)))))
 
 (defthm fn-auth-fold-command-pinned-offers-only-post
