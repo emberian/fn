@@ -69,12 +69,30 @@
           0)
          (fn-sbud-name-pairs 0 (1+ (fn-sbud-used s)))))
 
+; fn-sbud-pending-sequence-is-used
 ; The witness is reached and not degenerate: one committed record, the second
-; staged, both hypotheses hold, and the name is the second file's.
+; staged, both hypotheses hold, and the staged sequence is 1.
 (assert-event (equal (fn-sf-phase (fn-sn-files *sbnt-staged*)) :record-staged))
 (assert-event (fn-sf-statep (fn-sn-files *sbnt-staged*)))
 (assert-event (equal (fn-sbud-used *sbnt-staged*) 1))
 (assert-event (equal (fn-sbud-pending-sequence *sbnt-staged*) 1))
+; Without the record phase: the reserved owner's kernel is well formed, has
+; one committed record and no candidate.
+(assert-event (not (equal (fn-sbud-pending-sequence *sbnt-reserved-store*)
+                          (fn-sbud-used *sbnt-reserved-store*))))
+(must-fail
+ (defthm sbnt-sequence-without-record-phase
+   (implies (fn-sf-statep (fn-sn-files s))
+            (equal (fn-sbud-pending-sequence s) (fn-sbud-used s)))))
+; Without the kernel invariant: the misnumbered candidate below (5 over no
+; committed record) is the other counterexample.
+(must-fail
+ (defthm sbnt-sequence-without-kernel-invariant
+   (implies (fn-sf-record-phasep (fn-sf-phase (fn-sn-files s)))
+            (equal (fn-sbud-pending-sequence s) (fn-sbud-used s)))))
+
+; fn-sbud-pending-name-is-the-scans-next-name
+; The same witness: the name is the second file's and the scan binds it.
 (assert-event (equal (fn-sbud-txn-name (fn-sbud-pending-sequence *sbnt-staged*))
                      "00000000000000000001.txn"))
 (assert-event (sbnt-name-conclusion *sbnt-staged*))
@@ -107,6 +125,8 @@
 (assert-event (fn-sf-record-phasep (fn-sf-phase (fn-sn-files *sbnt-misnumbered*))))
 (assert-event (not (fn-sf-statep (fn-sn-files *sbnt-misnumbered*))))
 (assert-event (equal (fn-sbud-pending-sequence *sbnt-misnumbered*) 5))
+(assert-event (not (equal (fn-sbud-pending-sequence *sbnt-misnumbered*)
+                          (fn-sbud-used *sbnt-misnumbered*))))
 (assert-event (not (sbnt-name-conclusion *sbnt-misnumbered*)))
 (must-fail
  (defthm sbnt-name-without-kernel-invariant
@@ -124,6 +144,7 @@
 (defconst *sbnt-scale* (fn-bs-config-for-profile :scale))
 
 (assert-event (fn-af-message-idp *sbnt-msgid*))
+; fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound
 ; bound-1, bound, bound+1 under both named profiles.
 (assert-event (equal (fn-sbud-post-boundary *sbnt-dev* *sbnt-msgid* 32767 1 9) :ok))
 (assert-event (equal (fn-sbud-post-boundary *sbnt-dev* *sbnt-msgid* 32768 1 9) :ok))
