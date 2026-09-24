@@ -1,0 +1,37 @@
+test_native_auth rc=0 OK
+test_native_profile rc=0 OK
+test_native_admin rc=0 OK
+test_native_starttls rc=0 OK
+test_native_auth_admin_fidelity rc=0 OK
+test_native_owner rc=0 OK
+test_native_raw_scripts rc=0 OK
+test_native_live_reconfiguration rc=0 OK
+test_native_control rc=0 OK
+test_native_operator_cli rc=0 OK
+test_native_operator_verbs rc=1 FAILED (failures=1)
+test_native_profile_upgrade rc=0 OK
+test_native_program_check rc=0 OK
+test_native_initializer_fidelity rc=0 OK
+test_native_recovery rc=0 OK
+test_native_storage_codec rc=0 OK
+test_native_served_differential rc=0 OK
+test_native_reader_index rc=0 OK
+test_native_newnews_migration rc=0 OK (skipped=1)
+test_native_stamp_migration rc=0 OK (skipped=1)
+test_native_hybrid_author rc=1 FAILED (failures=1)
+test_native_topic_local rc=0 OK (skipped=2)
+test_native_topic_metadata rc=0 OK
+test_native_consumer_inspect rc=0 OK
+test_native_consumer_project_bounds rc=0 OK
+test_native_consumer_e2 rc=1 FAILED (failures=1, skipped=1)
+test_fn_verify rc=0 OK (skipped=13)
+test_native_consumer_e2.NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply.dated-source rc=0 OK
+test_native_checkpoint rc=0 OK
+test_native_compaction_crash_map rc=0 OK
+test_native_cut_map rc=0 OK
+test_native_peering rc=0 
+test_native_protected_peering rc=0 OK
+test_native_served_crash_model rc=0 OK
+test_native_tls_transport rc=0 OK
+test_fn_web_native rc=0 OK
+test_checkpoint rc=0 OK
