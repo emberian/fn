@@ -181,6 +181,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-record-fence-tests \
 	books/byte-store-record-provenance \
 	tests/acl2/byte-store-record-provenance-tests \
+	books/byte-store-k0 \
+	tests/acl2/byte-store-k0-tests \
 	books/byte-store-retention-publication \
 	tests/acl2/byte-store-retention-publication-tests \
 	books/byte-store-keystones \
@@ -700,6 +702,13 @@ check:
 # fidelity defect; missing host cuts and syscall drift are reported and do not
 # fail (--strict fails on those too).
 	$(PYTHON) tools/transcribe_check.py
+# The same transcription check for the native host, which transcribe_check
+# does not read: for each program tests/campaign/native_cuts.py names, the
+# host function's success-path syscalls, file-kernel observations and fnn-at
+# cuts in source order equal the program's steps (kind and directory), and
+# every error-arm observation is one of the program's error constants.  A
+# source check; it states what it cannot decide.  Mechanical, no ACL2.
+	$(PYTHON) tools/native_program_check.py
 # The served command chain is four session records deep and every base
 # accessor is `car', so a call that stops one level short is answered with a
 # plausible value rather than an error: four such misses shipped on
