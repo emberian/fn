@@ -1880,14 +1880,19 @@
       ],
       "assumptions": [],
       "status": "certified",
-      "note": "T2b affected closure on persvati with ACL2 Version 8.7, toolchain identity 1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286: certify-20260923T170842Z-2026382, 55 dependent roots over 167 books, all passed in 94.682 seconds at two jobs. The manifest captures exact source digests; native served-reader validation awaits the T2b image.",
+      "note": "At this source, green_check finds books/nntp-newnews green at its exact include closure in certify-20260923T232942Z-484654, its test book green in certify-20260924T005919Z-653679, books/nntp-invariants green in certify-20260923T232820Z-480447, and books/nntp-effects green in certify-20260923T232942Z-484654; none has moved dependencies. These are archived certification records, not a current native image qualification. The earlier T2b affected-closure run is certify-20260923T170842Z-2026382; native served-reader validation remains separate.",
       "evidence": [
         "books/nntp-newnews.lisp",
         "tests/acl2/nntp-newnews-tests.lisp",
+        "books/nntp-invariants.lisp",
+        "books/nntp-effects.lisp",
         "planning/evidence/manifests/certify-20260922T143750Z-672012.json",
         "specs/nntp.md",
         "specs/nntp-audit.md",
-        "planning/evidence/manifests/certify-20260923T170842Z-2026382.json"
+        "planning/evidence/manifests/certify-20260923T170842Z-2026382.json",
+        "planning/evidence/manifests/certify-20260923T232820Z-480447.json",
+        "planning/evidence/manifests/certify-20260923T232942Z-484654.json",
+        "planning/evidence/manifests/certify-20260924T005919Z-653679.json"
       ],
       "events": [
         "fn-nntp-newnews-candidate-is-projectable",
