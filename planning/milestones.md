@@ -2,9 +2,11 @@ Current selected-v1 join: native fn poll now feeds Mini's signed durable
 transaction and immutable Q; after reopen Mini ACKs, and fn returns the durable
 position and no repeat article. The [live synthetic evidence](evidence/native-mini-live-join-2026-09-24.md)
 uses the earlier `1d26e01f` image. A posted stable fn reply from Q and the full
-two-store crash trace remain open. Poll still walks the earlier record prefix;
-the maintained event-index foundation is integrated, with its called Store/owner
-join in progress. CNS-001, PRF-064 and SCN-033 track this work; E2 is not a v0 gate.
+two-store crash trace remain open. The maintained event index and its actual
+Store/owner poll join are integrated at `8c61c098`; combined certification,
+source-matched runtime qualification and the outer correspondence's remaining
+premise witnesses are in progress. CNS-001, PRF-064 and SCN-033 track this work;
+E2 is not a v0 gate.
 
 Current task (2026-09-23): concurrent v0/v1 development grounded in the actual
 Mini/Bread OS interfaces. [Current work](now.md) names integrated source,
