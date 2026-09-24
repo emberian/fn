@@ -298,6 +298,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-progress \
 	books/bp-node-progress-invariants \
 	books/bp-node-progress-guards \
+	books/bp-node-progress-selection-invariants \
+	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-report-observe \
 	tests/acl2/bp-report-observe-tests \
 	books/bp-report-guards \

@@ -1,8 +1,8 @@
 ; A1 progress teeth start from the event admitted by the native BP boundary.
 ; These are reachable kind-5 receive/publication traces, not hand-built held
-; rows.  Pending checks below become executable when the progress event lands.
+; rows.  The progress trace uses fn-bpnp-step, the native host's outer call.
 (in-package "ACL2")
-(include-book "../../books/bp-report-author")
+(include-book "../../books/bp-node-progress-selection-invariants")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
@@ -33,7 +33,7 @@
   (let* ((prepared (fn-bpnf-receive-wire-event
                     *bpnmt-local-config* (fn-bpb-encode bundle)
                     observation ingress))
-         (proposal (fn-bpn-report-author-step
+         (proposal (fn-bpnp-step
                     st (fn-bpnf-receive-wire-event-value prepared)))
          (effect (car (fn-bpnf-answer-effects proposal)))
          (issued (fn-bpnf-answer-state proposal)))
@@ -41,7 +41,7 @@
              (equal (car effect) :persist)
              (equal (fn-bpn-nth 3 (fn-bpnf-issued issued)) :store))
         (fn-bpnf-answer-state
-         (fn-bpn-report-author-step
+         (fn-bpnp-step
           issued (list :persist-result (fn-bpn-nth 1 effect)
                        (fn-bpn-nth 2 effect) :durable)))
       st)))
@@ -69,12 +69,12 @@
        (fn-bpnf-receive-wire-event
         *bpnmt-local-config* (fn-bpb-encode *bpnmt-n03-new*)
         *bpnmt-observation* *bpnmt-ingress*))
-      (fn-bpnf-host-eventp
+      (fn-bpnp-host-eventp
        (fn-bpnf-receive-wire-event-value
         (fn-bpnf-receive-wire-event
          *bpnmt-local-config* (fn-bpb-encode *bpnmt-n03-old*)
          *bpnmt-observation* *bpnmt-ingress*)))
-      (fn-bpnf-host-eventp
+      (fn-bpnp-host-eventp
        (fn-bpnf-receive-wire-event-value
         (fn-bpnf-receive-wire-event
          *bpnmt-local-config* (fn-bpb-encode *bpnmt-n03-new*)
@@ -105,11 +105,127 @@
       (not (fn-bpn-machine-state-fenced (fn-bpnf-base *bpnmt-n03-s2*)))
       (not (fn-bpnf-issued *bpnmt-n03-s2*))))
 
-; PENDING N03 positive: under an empty routing observation, a progress event
-; first gives the old key a (:route rg) wait; at unchanged generation the
-; newer request emits the existing :deliver effect and later settles kind 7.
-; PENDING N03 negative: the least-arrival-regardless mutation repeatedly
-; selects the unrouted old entry; preserve all other eligibility premises.
+(defconst *bpnmt-n03-old-held*
+  (second (fn-bpnf-held-list *bpnmt-n03-s2*)))
+(defconst *bpnmt-n03-new-held*
+  (first (fn-bpnf-held-list *bpnmt-n03-s2*)))
+(defconst *bpnmt-n03-old-key* (fn-bpnp-wait-key *bpnmt-n03-old-held*))
+(defconst *bpnmt-n03-new-key* (fn-bpnp-wait-key *bpnmt-n03-new-held*))
+(defconst *bpnmt-n03-progress-event*
+  (list :progress *bpnmt-local* *bpnmt-observation* nil 0))
+(defconst *bpnmt-n03-first*
+  (fn-bpnp-step *bpnmt-n03-s2* *bpnmt-n03-progress-event*))
+(defconst *bpnmt-n03-waited* (fn-bpnf-answer-state *bpnmt-n03-first*))
+(defconst *bpnmt-n03-second*
+  (fn-bpnp-step *bpnmt-n03-waited* *bpnmt-n03-progress-event*))
+(defconst *bpnmt-n03-delivering* (fn-bpnf-answer-state *bpnmt-n03-second*))
+
+; N03 positive: a route-less old transit obligation remains held with its
+; own volatile wait.  The unchanged-generation tick skips that exact key
+; and starts delivery of the younger local request through the host-called
+; outer machine, in two progress events (within the specified four).
+(assert-event
+ (and (fn-bpnp-host-eventp *bpnmt-n03-progress-event*)
+      (equal (fn-bpnf-answer-effects *bpnmt-n03-first*)
+             (list (list :progress-wait *bpnmt-n03-old-key* :route 0)))
+      (equal (fn-bpnp-wait-for *bpnmt-n03-old-key*
+                                (fn-bpnp-waits *bpnmt-n03-waited*))
+             (list :bpnp-wait *bpnmt-n03-old-key* :route 0))
+      (equal (len (fn-bpnf-held-list *bpnmt-n03-waited*)) 2)
+      (not (fn-bpnf-issued *bpnmt-n03-waited*))
+      (equal (car (car (fn-bpnf-answer-effects *bpnmt-n03-second*)))
+             :deliver)
+      (equal (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *bpnmt-n03-second*)))
+             *bpnmt-n03-new-key*)
+      (equal (fn-bpnf-find-held *bpnmt-n03-old-key*
+                                 (fn-bpnf-held-list *bpnmt-n03-delivering*))
+             *bpnmt-n03-old-held*)
+      (not (fn-bpnf-issued *bpnmt-n03-delivering*))))
+
+; Tooth for the only hypothesis of the called-path invariant: remove the
+; :progress event-kind premise.  A real matched kind-5 durable callback then
+; changes the held list, so the theorem's conjunction is false.
+(defconst *bpnmt-n03-receive-event*
+  (fn-bpnf-receive-wire-event-value
+   (fn-bpnf-receive-wire-event
+    *bpnmt-local-config* (fn-bpb-encode *bpnmt-n03-old*)
+    *bpnmt-observation* *bpnmt-ingress*)))
+(defconst *bpnmt-n03-receive-proposal*
+  (fn-bpnp-step *bpnmt-n03-s0* *bpnmt-n03-receive-event*))
+(defconst *bpnmt-n03-receive-effect*
+  (car (fn-bpnf-answer-effects *bpnmt-n03-receive-proposal*)))
+(defconst *bpnmt-n03-kind5-durable-event*
+  (list :persist-result (fn-bpn-nth 1 *bpnmt-n03-receive-effect*)
+        (fn-bpn-nth 2 *bpnmt-n03-receive-effect*) :durable))
+(assert-event
+ (and (fn-bpnp-host-eventp *bpnmt-n03-kind5-durable-event*)
+      (equal (car *bpnmt-n03-receive-effect*) :persist)
+      (not (equal (fn-cbor-ag-car *bpnmt-n03-kind5-durable-event*) :progress))
+      (null (fn-bpnf-held-list
+             (fn-bpnf-answer-state *bpnmt-n03-receive-proposal*)))
+      (equal (len (fn-bpnf-held-list
+                   (fn-bpnf-answer-state
+                    (fn-bpnp-step
+                     (fn-bpnf-answer-state *bpnmt-n03-receive-proposal*)
+                     *bpnmt-n03-kind5-durable-event*)))) 1)))
+(must-fail
+ (assert-event
+  (equal
+   (fn-bpnf-held-list
+    (fn-bpnf-answer-state
+     (fn-bpnp-step
+      (fn-bpnf-answer-state *bpnmt-n03-receive-proposal*)
+      *bpnmt-n03-kind5-durable-event*)))
+   (fn-bpnf-held-list
+    (fn-bpnf-answer-state *bpnmt-n03-receive-proposal*)))))
+
+(defconst *bpnmt-n03-delivery-effect*
+  (car (fn-bpnf-answer-effects *bpnmt-n03-second*)))
+(defconst *bpnmt-n03-result*
+  (fn-bpnp-step
+   *bpnmt-n03-delivering*
+   (list :deliver-result (fn-bpn-nth 1 *bpnmt-n03-delivery-effect*)
+         (fn-bpn-nth 2 *bpnmt-n03-delivery-effect*)
+         *bpnmt-n03-new-key* :request-accepted '(114 105 100))))
+(defconst *bpnmt-n03-publication*
+  (car (fn-bpnf-answer-effects *bpnmt-n03-result*)))
+(defconst *bpnmt-n03-durable*
+  (fn-bpnp-step
+   (fn-bpnf-answer-state *bpnmt-n03-result*)
+   (list :persist-result (fn-bpn-nth 1 *bpnmt-n03-publication*)
+         (fn-bpn-nth 2 *bpnmt-n03-publication*) :durable)))
+
+(assert-event
+ (and (equal (car *bpnmt-n03-publication*) :persist-delivery)
+      (equal (fn-bpnf-answer-effects *bpnmt-n03-durable*)
+             '((:delivery-answer :durable)))
+      (equal (fn-bpnf-find-held
+              *bpnmt-n03-old-key*
+              (fn-bpnf-held-list (fn-bpnf-answer-state *bpnmt-n03-durable*)))
+             *bpnmt-n03-old-held*)
+      (equal (fn-bpn-nth 12
+              (fn-bpnf-find-held
+               *bpnmt-n03-new-key*
+               (fn-bpnf-held-list (fn-bpnf-answer-state *bpnmt-n03-durable*))))
+             '(:dispatch-done))))
+
+; Exact negative for unchanged route generation: a generation change
+; rechecks the older transit row, so the second progress effect is not a
+; delivery.  The old row is still live, held and unrouted in both traces.
+(defconst *bpnmt-n03-woken*
+  (fn-bpnp-step *bpnmt-n03-waited*
+                (list :progress *bpnmt-local* *bpnmt-observation* nil 1)))
+(assert-event
+ (and (equal (fn-bpnf-answer-effects *bpnmt-n03-woken*)
+             (list (list :progress-wait *bpnmt-n03-old-key* :route 1)))
+      (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpnmt-n03-woken*))
+             (fn-bpnf-held-list *bpnmt-n03-s2*))))
+(must-fail
+ (assert-event
+  (equal (car (car (fn-bpnf-answer-effects *bpnmt-n03-woken*)))
+         :deliver)))
+
+; PENDING N03 general two-tick theorem and its remaining hypothesis teeth.
 ; PENDING N04: two *received* valid no-fragment bundles with 48 KiB and 8 KiB
 ; payloads, both encoded below 131072, are checked against a 32768-byte MRU;
 ; only the older exceeds it and only the younger is attempted.
