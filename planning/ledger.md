@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 679 |
-| Certification roots in the Makefile | 668 |
-| Books inside the root closure | 677 |
-| `defthm` and `defthmd` events | 9122 |
-| `defun` events | 6618 |
+| Books read | 681 |
+| Certification roots in the Makefile | 670 |
+| Books inside the root closure | 679 |
+| `defthm` and `defthmd` events | 9163 |
+| `defun` events | 6631 |
 | Functions with verified guards | 2036 |
-| Functions declared `:verify-guards nil` and never verified | 408 |
+| Functions declared `:verify-guards nil` and never verified | 414 |
 | Functions left at the default with an explicit guard | 3306 |
-| Functions left at the default with no guard | 868 |
-| `assert-event` checks | 9900 |
-| `must-fail` checks | 615 |
+| Functions left at the default with no guard | 875 |
+| `assert-event` checks | 10012 |
+| `must-fail` checks | 673 |
 | `encapsulate` events | 30 |
 | Theorems flagged SUSPECT by shape | 83 |
 | Export-hygiene warnings | 109 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 48 |
-| Include-hygiene warnings | 650 |
+| Include-hygiene warnings | 656 |
 | Host-names warnings | 816 |
 | Hand-written-record warnings | 18 |
 
@@ -167,6 +167,7 @@ that `make certify` requests.
 | `books/bp-node-machine-guards.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-invariants.lisp` | root | 83 | 1 | 0/1/0/0 | 0 | 0 | 2 |
 | `books/bp-node-machine.lisp` | root | 70 | 95 | 47/3/45/0 | 0 | 0 | 1 |
+| `books/bp-node-progress-bridge.lisp` | root | 16 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-guards.lisp` | root | 29 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-node-progress-premises.lisp` | root | 34 | 5 | 0/3/0/2 | 0 | 0 | 1 |
@@ -329,7 +330,7 @@ that `make certify` requests.
 | `books/native-hybrid-control.lisp` | root | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/native-operator.lisp` | root | 0 | 58 | 0/0/58/0 | 0 | 0 | 0 |
 | `books/nntp-auth-fold.lisp` | root | 50 | 4 | 0/3/1/0 | 0 | 0 | 0 |
-| `books/nntp-auth-invariants.lisp` | root | 6 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/nntp-auth-invariants.lisp` | root | 31 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-auth.lisp` | root | 122 | 60 | 42/3/14/1 | 0 | 0 | 3 |
 | `books/nntp-effects.lisp` | root | 143 | 12 | 0/0/0/12 | 0 | 0 | 1 |
 | `books/nntp-index-runtime.lisp` | root | 2 | 16 | 16/0/0/0 | 0 | 0 | 0 |
@@ -529,6 +530,7 @@ that `make certify` requests.
 | `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
+| `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 14 | 14 | 0 |
 | `tests/acl2/bp-node-debt-cache-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 2 | 0 |
 | `tests/acl2/bp-node-debt-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 6 | 4 | 0 |
 | `tests/acl2/bp-node-forwarding-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 8 | 1 | 0 |
@@ -665,7 +667,7 @@ that `make certify` requests.
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
 | `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 98 | 0 | 0 |
 | `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
-| `tests/acl2/nntp-auth-teeth-tests.lisp` | root | 0 | 20 | 0/0/0/20 | 238 | 39 | 0 |
+| `tests/acl2/nntp-auth-teeth-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 336 | 83 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 145 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
 | `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 92 | 0 | 0 |
