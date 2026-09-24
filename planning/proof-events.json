@@ -1731,6 +1731,41 @@
           "name": "fn-bs-record-dir-error-preserves-relation",
           "note": "The host's (:record-dir :error) observation keeps the relation from any related state (the record-barrier EIO arm of P-RECORD).",
           "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-crash-image-relates-to-recovery-entry-kernel",
+          "note": "Recovery entry: for every related (bs ks) and every image fn-bs-crash-imagep admits of bs, the image is related to the :replaying kernel fn-sn-observed-seed installs over the image's scanned frontier and records; no further premise.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
+          "note": "A quiet byte store whose scan succeeds, whose authority inodes are known and whose scanned frontier and records form a kernel history is related to the recovered kernel (the scanned frontier and records, no successes) at every barrier count 0..5, :recovering below five and :ready at five.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-recover-program-run-from-a-quiet-image",
+          "note": "fn-bs-recover-program from a quiet byte state and any kernel whose (:recover) observation is the recovered kernel at zero barriers: all 17 pairs keep the byte state and the kernel counts one barrier per (:recovery-barrier :ok).",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-recover-program-keeps-relation-at-every-cut",
+          "note": "K0 at recover-replayed and the five recover-barrier cuts: from a crash image of any related state and any kernel whose (:recover) observation is the recovered kernel, every pair of the run is related, the last pair is the image with the :ready kernel at five barriers.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-host-reopened-kernel-is-the-recovered-kernel",
+          "note": "Host subject: when fn-cpo-open-observed succeeds (fn-store-sn-recover, host/store-node-host.lisp:156, reached through fnn-bridge-recover, host/native/io.lisp:713, called at :1478) its file kernel is exactly the recovered kernel at zero barriers over the frontier and records it was given; with fn-bs-recover-program-keeps-relation-at-every-cut this is fn-bs-host-recovery-keeps-relation-at-every-cut, and with the sweep keystone fn-bs-host-recovery-sweep-starts-related (every recovery-stage-unlinked cut)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-link-error-arm-relation",
+          "note": "Link error arm of P-RECORD: from a related staged input, for every outcome of link(2) at 941 -- refused before issue or issued and then reported as an errno -- the resulting byte state with the kernel's (:record-link :error) observation is related.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
         }
       ]
     },
