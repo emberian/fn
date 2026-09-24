@@ -1,0 +1,8 @@
+profile=dtn image=build/fn-host-dtn roots=98 result=loaded
+profile=default image=build/fn-host roots=113 result=loaded
+built build/fn-host-dtn profile=production (120M core)
+built build/fn-host-dtn-developer profile=developer (120M core)
+101d2cc819da8126aa51c194f9dd8a4b2564526774bc535944935f31202258f8  build/fn-host-dtn
+bd5cbe915370aa42766885cadb4fd7d77c786c96d80de87ab19311a0f8c564dd  build/fn-host-dtn.core
+c2c9e1b19074d1438c5390102bc3b31b7c26bf9b066e0dde0752313e198a40e7  build/fn-host-dtn-developer
+1461791c346b49a2d0bbbe2501809577672f2179d55618e2319c5e7f8157eeee  build/fn-host-dtn-developer.core

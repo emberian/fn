@@ -1,0 +1,7 @@
+BP FNBS recovered held=0
+BP queue recovered jobs=0
+BP authored creation=843589253855 sequence=0 lifetime=3600000 payload=44 octets=149
+BP wire authored path=/tank/fn/scratch/dtn-node-image/lab-ic1/fn-a-send/authored-0.wire
+TCPCL active aux (:SEND :CONTACT 6)
+BP send uncertain path=/tank/fn/scratch/dtn-node-image/lab-ic1/fn-a-send/authored-0.wire reason=contact: [Errno 104] Connection reset by peer
+BP summary accepted=0 refused=0 uncertain=0

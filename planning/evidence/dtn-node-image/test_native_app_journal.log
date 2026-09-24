@@ -1,0 +1,30 @@
+# target tests.test_native_app_journal  start 2026-09-24T18:20:57Z  cwd /tank/fn/scratch/dtn-node-image/tree
+# cmd: timeout 3600 python3 -m unittest -v tests.test_native_app_journal
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_NATIVE_BP_HOST=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn-developer
+# env FN_NATIVE_BP_NODE_HOST=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn-developer
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/scratch/dtn-node-image/tree/build/fn-host-dtn
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/dtn-node-image/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/dtn-node-image/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_bound_enqueue_survives_process_restart (tests.test_native_app_journal.NativeApplicationJournalTests.test_bound_enqueue_survives_process_restart) ... ok
+test_forwarding_capacity_exhaustion_refuses_without_durable_record (tests.test_native_app_journal.NativeApplicationJournalTests.test_forwarding_capacity_exhaustion_refuses_without_durable_record) ... ok
+test_locked_but_fenced_store_cannot_publish (tests.test_native_app_journal.NativeApplicationJournalTests.test_locked_but_fenced_store_cannot_publish) ... ok
+test_namespace_eio_is_uncertain_despite_visible_final (tests.test_native_app_journal.NativeApplicationJournalTests.test_namespace_eio_is_uncertain_despite_visible_final) ... ok
+test_publication_observer_sees_reported_acl2_state (tests.test_native_app_journal.NativeApplicationJournalTests.test_publication_observer_sees_reported_acl2_state) ... ok
+test_read_only_store_lock_cannot_publish (tests.test_native_app_journal.NativeApplicationJournalTests.test_read_only_store_lock_cannot_publish) ... ok
+test_receiver_request_receipt_intent_and_restart_regeneration (tests.test_native_app_journal.NativeApplicationJournalTests.test_receiver_request_receipt_intent_and_restart_regeneration) ... ok
+test_reinitialization_preserves_existing_work_and_bytes (tests.test_native_app_journal.NativeApplicationJournalTests.test_reinitialization_preserves_existing_work_and_bytes) ... ok
+test_stage_eio_is_refused_before_namespace_attempt (tests.test_native_app_journal.NativeApplicationJournalTests.test_stage_eio_is_refused_before_namespace_attempt) ... ok
+test_unsigned_receipt_profile_refuses_before_read_or_publication (tests.test_native_app_journal.NativeApplicationJournalTests.test_unsigned_receipt_profile_refuses_before_read_or_publication) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 7.559s
+
+OK
+# rc=0 wall=7.6 end 2026-09-24T18:21:04Z

@@ -1,0 +1,15 @@
+BP FNBS recovered held=0
+BP queue recovered jobs=0
+BP retry creation=843589253855 sequence=0 octets=149
+BP wire authored path=/tank/fn/scratch/dtn-node-image/lab-ic1/fn-a-send/authored-0.wire
+TCPCL active aux (:SEND :CONTACT 6)
+TCPCL active event (:SEND :SESS-INIT 36)
+TCPCL active event (:SESSION-UP 10 64000 64000 NIL)
+TCPCL active aux (:SEND :XFER-SEGMENT 171)
+TCPCL active event (:OUTBOUND-SENT 0 "active")
+TCPCL active accepted outbound xfer=0
+TCPCL active aux (:SEND :SESS-TERM 3)
+TCPCL active event (:PEER-TERMINATING 0)
+TCPCL active event (:CLOSE)
+TCPCL active summary accepted=1 refused=0 uncertain=0 phase=closed
+BP summary accepted=0 refused=0 uncertain=0

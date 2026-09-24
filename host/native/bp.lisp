@@ -469,9 +469,32 @@ dominates an acceptance: a run that saw one of each did not succeed."
 ;;; ---------------------------------------------------------------------------
 ;;; `bp send'
 
+(defun fnn-bp-authored-retry-wire (journal-root name config peer adu)
+  "The durable attempt NAME in JOURNAL-ROOT, re-offered with its own identity.
+ACL2 (`fn-bpn-host-authored-retry') decides that the file is this node's
+bundle for ADU to PEER and names its creation time and sequence; the host
+only refuses a name that is not a plain file name before it reads it."
+  (unless (and (stringp name) (> (length name) 0)
+               (null (position #\/ name))
+               (not (member name '("." "..") :test #'string=)))
+    (error 'fnn-usage-error :message "bp send: RETRY must name an authored wire"))
+  (let* ((path (fnn-join journal-root name))
+         (info (fnn-lstat path)))
+    (unless (and info (fnn-regular-p info) (not (fnn-symlink-p info)))
+      (fnn-refuse "bp send: no durable authored wire ~a in the journal" name))
+    (let* ((wire (fnn-octet-list
+                  (fnn-read-regular-bounded
+                   path (fnn-core 'fn-bpn-host-machine-max-octets))))
+           (identity (fnn-core 'fn-bpn-host-authored-retry
+                               config peer adu name wire)))
+      (unless (and (consp identity) (= (length identity) 2))
+        (fnn-refuse "bp send: ~a is not this node's bundle for this ADU and peer"
+                    name))
+      (values path wire (first identity) (second identity)))))
+
 (defun fnn-command-bp-send (host port adu-path journal node-id peer-eid
                             lifetime crc-type hop-limit transfer-mru
-                            expect wall wall-error)
+                            expect wall wall-error retry)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (peer (fnn-bp-eid peer-eid))
          (adu (fnn-octet-list (fnn-read-regular-bounded adu-path transfer-mru)))
@@ -482,45 +505,65 @@ dominates an acceptance: a run that saw one of each did not succeed."
          (journal-root (fnn-bps-root service)))
     (unwind-protect
          (let* ((tally (fnn-bp-evidence-open (fnn-bps-tally service)))
-                (socket nil))
-           (multiple-value-bind (sequence reservation)
-               (fnn-bp-reserve-sequence tally)
-             (multiple-value-bind (path bundle)
-                 (fnn-bp-authored-wire-publish
-                  tally config peer adu reservation obs)
-               (let ((summary
-                      (fnn-core 'fn-bpn-host-sent-summary
-                                config peer adu sequence obs)))
-                 (fnn-out
-                  "BP authored creation=~d sequence=~d lifetime=~d payload=~d octets=~d"
-                  (first summary) (second summary) (third summary) (fourth summary)
-                  (length bundle))
-                 ;; The exact ACL2-authored bytes become durable evidence before
-                 ;; the first socket operation.  A retry allocates a new sequence;
-                 ;; it never treats this immutable name as a retransmit slot.
-                 (fnn-out "BP wire authored path=~a" path)
-                 (unwind-protect
-                      (let ((*fnn-tcl-deliver*
-                              (lambda (conn xfer-id octets)
-                                (fnn-bp-deliver tally conn xfer-id octets))))
-                        (setq socket (fnn-tcl-connect host port))
-                        (let ((conn (fnn-tcl-session
-                                     (fnn-socket-fd socket) :active
-                                     ;; The convergence layer's expected peer is a
-                                     ;; SESSION identity (RFC 9174 section 4.2), not the
-                                     ;; bundle's destination: a bundle for
-                                     ;; dtn://x/demux may travel over a session with any
-                                     ;; node.  Passing the destination here would refuse
-                                     ;; every correct session whose peer is not also the
-                                     ;; final destination.
-                                     (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
-                                                     +fnn-tcl-segment-mru+ transfer-mru)
-                                     "active" journal-root
-                                     :bundle bundle :expect expect)))
-                          (fnn-tcl-summary conn)
-                          (fnn-bp-summary tally)
-                          (fnn-bp-exit-code tally conn)))
-                   (when socket (fnn-socket-shut socket)))))))
+                (socket nil)
+                (path nil)
+                (bundle nil))
+           (if retry
+               ;; A retry re-offers the durable attempt: the same source,
+               ;; creation time and sequence, the same bytes.  No sequence
+               ;; is reserved and nothing new is authored.
+               (multiple-value-bind (found wire creation sequence)
+                   (fnn-bp-authored-retry-wire journal-root retry config peer adu)
+                 (setq path found bundle wire)
+                 (fnn-out "BP retry creation=~d sequence=~d octets=~d"
+                          creation sequence (length wire)))
+             (multiple-value-bind (sequence reservation)
+                 (fnn-bp-reserve-sequence tally)
+               (multiple-value-bind (final wire)
+                   (fnn-bp-authored-wire-publish
+                    tally config peer adu reservation obs)
+                 (let ((summary
+                        (fnn-core 'fn-bpn-host-sent-summary
+                                  config peer adu sequence obs)))
+                   (setq path final bundle wire)
+                   (fnn-out
+                    "BP authored creation=~d sequence=~d lifetime=~d payload=~d octets=~d"
+                    (first summary) (second summary) (third summary)
+                    (fourth summary) (length wire))))))
+           ;; The exact ACL2-authored bytes are durable evidence before the
+           ;; first socket operation.  A retry names this file (RETRY) and
+           ;; re-offers it; it never allocates a second identity for it.
+           (fnn-out "BP wire authored path=~a" path)
+           (handler-case
+               (unwind-protect
+                    (let ((*fnn-tcl-deliver*
+                            (lambda (conn xfer-id octets)
+                              (fnn-bp-deliver tally conn xfer-id octets))))
+                      (setq socket (fnn-tcl-connect host port))
+                      (let ((conn (fnn-tcl-session
+                                   (fnn-socket-fd socket) :active
+                                   ;; The convergence layer's expected peer is a
+                                   ;; SESSION identity (RFC 9174 section 4.2), not the
+                                   ;; bundle's destination: a bundle for
+                                   ;; dtn://x/demux may travel over a session with any
+                                   ;; node.  Passing the destination here would refuse
+                                   ;; every correct session whose peer is not also the
+                                   ;; final destination.
+                                   (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
+                                                   +fnn-tcl-segment-mru+ transfer-mru)
+                                   "active" journal-root
+                                   :bundle bundle :expect expect)))
+                        (fnn-tcl-summary conn)
+                        (fnn-bp-summary tally)
+                        (fnn-bp-exit-code tally conn)))
+                 (when socket (fnn-socket-shut socket)))
+             ;; A severed contact leaves the durable attempt unresolved: the
+             ;; peer may or may not hold it.  That is uncertain, as `bp
+             ;; receive' and `bp-service run' report it, never a fault.
+             ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
+               (fnn-out "BP send uncertain path=~a reason=contact: ~a" path e)
+               (fnn-bp-summary tally)
+               +fnn-exit-uncertain+)))
       (fnn-bps-release service))))
 
 ;;; ---------------------------------------------------------------------------
@@ -528,12 +571,20 @@ dominates an acceptance: a run that saw one of each did not succeed."
 
 (defun fnn-command-bp-receive (port once journal node-id peer-eid lifetime
                                crc-type hop-limit transfer-mru reply-adu
-                               reply-peer wall wall-error)
+                               reply-peer wall wall-error store-root)
+  "STORE-ROOT, when given, is the node's Store: its enrolled BP boundaries are
+what ACL2 admits a TCPCL principal against (`fn-owner-bp-tcpcl-ingress'), from
+the channel the kernel observed for each connection.  Without it no ingress is
+admitted and ACL2 refuses every inbound bundle at the receive boundary."
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (journal-root (fnn-bp-journal-dir journal))
-         (service (fnn-bps-open journal config wall wall-error)))
+         (service (fnn-bps-open journal config wall wall-error))
+         (owner nil))
     (unwind-protect
-         (let* ((tally (fnn-bp-evidence-open (fnn-bps-tally service)))
+         (let* ((tally (progn
+                         (when store-root
+                           (setq owner (fnn-owner-install store-root 1)))
+                         (fnn-bp-evidence-open (fnn-bps-tally service))))
                 (reply (when reply-adu
                          (let* ((peer (fnn-bp-eid (or reply-peer node-id)))
                                 (adu (fnn-octet-list
@@ -557,11 +608,13 @@ dominates an acceptance: a run that saw one of each did not succeed."
                      (let* ((fd (fnn-socket-fd socket))
                             (session-counter
                               (incf (fnn-bps-next-session service)))
+                            (channel (and owner
+                                          (fnn-bpnode-observed-channel socket)))
                             (*fnn-tcl-deliver*
                               (lambda (conn xfer-id octets)
                                 (fnn-bp-deliver-node
                                  service conn session-counter xfer-id octets
-                                 nil nil))))
+                                 owner channel))))
                        (unwind-protect
                             (handler-case
                                 (let ((conn (fnn-tcl-session
@@ -591,6 +644,9 @@ dominates an acceptance: a run that saw one of each did not succeed."
                   (fnn-bp-summary tally)
                   code)
              (when listener (fnn-socket-shut listener))))
+      (when owner
+        (fnn-owner-feed-close-all owner)
+        (fnn-store-close (fnn-owner-service-store owner)))
       (fnn-bps-release service))))
 
 ;;; ---------------------------------------------------------------------------
@@ -621,10 +677,10 @@ dominates an acceptance: a run that saw one of each did not succeed."
 ;;;
 ;;;   bp send HOST PORT ADU-FILE [JOURNAL NODE-ID PEER-EID LIFETIME CRC-TYPE
 ;;;                               HOP-LIMIT TRANSFER-MRU EXPECT
-;;;                               WALL WALL-ERROR]
+;;;                               WALL WALL-ERROR RETRY]
 ;;;   bp receive PORT [ONCE JOURNAL NODE-ID PEER-EID LIFETIME CRC-TYPE
 ;;;                    HOP-LIMIT TRANSFER-MRU REPLY-ADU REPLY-PEER
-;;;                    WALL WALL-ERROR]
+;;;                    WALL WALL-ERROR STORE]
 ;;;   bp decode FILE [NODE-ID LIFETIME CRC-TYPE HOP-LIMIT TRANSFER-MRU
 ;;;                   WALL WALL-ERROR ADU-OUT]
 
@@ -651,7 +707,8 @@ dominates an acceptance: a run that saw one of each did not succeed."
         (number 9 +fnn-tcl-transfer-mru+)
         (number 10 0)
         (optional-number 11)
-        (number 12 0)))
+        (number 12 0)
+        (fnn-tcl-arg args 13)))
       ((string= command "receive")
        (need 1)
        (fnn-command-bp-receive
@@ -667,7 +724,8 @@ dominates an acceptance: a run that saw one of each did not succeed."
         (fnn-tcl-arg args 9)
         (fnn-tcl-arg args 10)
         (optional-number 11)
-        (number 12 0)))
+        (number 12 0)
+        (fnn-tcl-arg args 13)))
       ((string= command "decode")
        (need 1)
        (fnn-command-bp-decode

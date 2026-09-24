@@ -247,7 +247,11 @@ observation into the outcome and this function only carries it out."
                (control-path (and (not queryp)
                                   (fnn-octet-list-p control-path-list)
                                   (fnn-octets control-path-list)))
+               ;; An image without the control socket has no live owner
+               ;; to hand the plan to: the direct executor takes the
+               ;; exclusive lock, so a live owner of another image refuses it.
                (livep (and control-path
+                           (not (fnn-image-omits-p :control))
                            (fnn-control-socket-path-p
                             (fnn-lstat (fnn-octets-string control-path)))))
                (code
@@ -320,6 +324,15 @@ configuration usage result."
         (progn (fnn-operator-emit-result result)
                (fnn-core 'fn-native-operator-host-result-exit-code result))
       (let ((action (fnn-core 'fn-native-operator-host-result-native-action result)))
+        (let ((omitted (case action
+                         ((:run :post) :nntp-service)
+                         (:principal :credentials))))
+          (when (and omitted (fnn-image-omits-p omitted))
+            (fnn-operator-emit-status
+             :usage "action"
+             (format nil "~(~a~) needs the ~(~a~) surface, which this image omits"
+                     action omitted))
+            (return-from fnn-operator-dispatch-plan +fnn-exit-usage+)))
         (case action
           (:help (fnn-operator-execute-help result))
           (:init (fnn-operator-execute-init result))
