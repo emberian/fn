@@ -68,7 +68,8 @@
         (fnn-checkpoint-corrupt "pack selection marker does not decode"))
       (second answer))))
 
-(defun fnn-pack-publish (store records selectp)
+(defun fnn-pack-publish-generation (store records)
+  "Capture RECORDS into the next pack generation and publish it, unselected."
   (fnn-checkpoint-require-mutation-ready store)
   (let ((directory (fnn-pack-directory store)))
     (fnn-safe-directory directory t)
@@ -93,60 +94,38 @@
                        (= (second authorization) generation))
             (fnn-fault "ACL2 refused pack publication authority: ~s" authorization))
           (setf (fnn-store-fenced store) t)
+          ; The same fn-jpub publication as a checkpoint generation, so the
+          ; same candidate-* process-death cuts (fn-cpp-publication-step).
           (case (fnn-immutable-publish-effect
                  (third authorization) stage final directory frame
-                 :cleanup-directory (fnn-staging store))
+                 :cleanup-directory (fnn-staging store)
+                 :observer #'fnn-checkpoint-candidate-observer)
             (:durable (setf (fnn-store-fenced store) nil))
             (:refused (setf (fnn-store-fenced store) nil)
                       (fnn-refuse "pack generation publication refused"))
             (:uncertain (fnn-indeterminate "pack generation publication is uncertain"))
             (otherwise (fnn-fault "invalid pack publication outcome"))))
-        (when selectp
-          (let* ((marker-value (fnn-core 'fn-store-checkpoint-selection-protected generation))
-                 (marker (fnn-seal (fnn-octets marker-value)))
-                 (marker-stage (fnn-join (fnn-staging store)
-                                         (format nil ".pack-selection-~d-~a"
-                                                 (sb-posix:getpid) (fnn-random-hex 12))))
-                 (phase :marker-staged))
-            (unwind-protect
-                 (loop
-                   (case (fnn-core 'fn-store-checkpoint-marker-action phase)
-                     (:stage-and-file-barrier
-                      (setq phase
-                            (handler-case
-                                (progn (fnn-write-staged marker-stage marker)
-                                       (fnn-core 'fn-store-checkpoint-marker-step phase :ok))
-                              (fnn-os-error ()
-                                (fnn-core 'fn-store-checkpoint-marker-step
-                                          phase :known-fail)))))
-                     (:replace
-                      (setf (fnn-store-fenced store) t)
-                      (setq phase
-                            (handler-case
-                                (progn (fnn-replace marker-stage
-                                                   (fnn-pack-selection-path store))
-                                       (fnn-core 'fn-store-checkpoint-marker-step phase :ok))
-                              (fnn-os-error ()
-                                (fnn-core 'fn-store-checkpoint-marker-step phase :error)))))
-                     (:directory-barrier
-                      (setq phase
-                            (handler-case
-                                (progn (fnn-fsync-dir directory)
-                                       (fnn-core 'fn-store-checkpoint-marker-step phase :ok))
-                              (fnn-os-error ()
-                                (fnn-core 'fn-store-checkpoint-marker-step phase :error)))))
-                     (:done (return))
-                     (otherwise (fnn-fault "ACL2 returned invalid pack marker action"))))
-              (ignore-errors (fnn-unlink marker-stage)
-                             (fnn-fsync-dir (fnn-staging store))))
-            (case (fnn-core 'fn-store-checkpoint-marker-outcome phase)
-              (:durable (setf (fnn-store-fenced store) nil))
-              (:refused (setf (fnn-store-fenced store) nil)
-                        (fnn-refuse "pack selection refused"))
-              (:uncertain (fnn-indeterminate "pack selection is uncertain"))
-              (otherwise (fnn-fault "pack selection marker remained pending")))))
-        (setf (fnn-store-fenced store) nil)
         generation))))
+
+(defun fnn-pack-select (store generation)
+  "Replace the pack selection marker under the ACL2 marker driver."
+  (fnn-checkpoint-require-mutation-ready store)
+  (let* ((marker-value (fnn-core 'fn-store-checkpoint-selection-protected generation))
+         (marker (and (fnn-octet-list-p marker-value) (fnn-seal (fnn-octets marker-value)))))
+    (unless marker (fnn-refuse "ACL2 refused pack selection marker"))
+    (case (fnn-marker-replace store (fnn-pack-directory store)
+                              (fnn-pack-selection-path store) marker ".pack-selection")
+      (:durable (setf (fnn-store-fenced store) nil) :durable)
+      (:refused (setf (fnn-store-fenced store) nil)
+                (fnn-refuse "pack selection refused"))
+      (:uncertain (fnn-indeterminate "pack selection is uncertain"))
+      (otherwise (fnn-fault "pack selection marker remained pending")))))
+
+(defun fnn-pack-publish (store records selectp)
+  (let ((generation (fnn-pack-publish-generation store records)))
+    (when selectp (fnn-pack-select store generation))
+    (setf (fnn-store-fenced store) nil)
+    generation))
 
 (defun fnn-pack-prefix-reclaim (store)
   (fnn-checkpoint-require-mutation-ready store)
@@ -396,20 +375,15 @@
 (defun fnn-checkpoint-marker-step (phase result)
   (fnn-core 'fn-store-checkpoint-marker-step phase result))
 
-(defun fnn-checkpoint-select (store generation)
-  "Replace the authority marker under the ACL2 marker driver."
-  (fnn-checkpoint-require-mutation-ready store)
-  (unless (member generation (fnn-checkpoint-generations store))
-    (fnn-refuse "checkpoint generation ~d is not published" generation))
-  (let* ((protected (fnn-core 'fn-store-checkpoint-selection-protected generation))
-         (frame (and (fnn-octet-list-p protected) (fnn-seal (fnn-octets protected))))
-         (directory (fnn-checkpoints store))
-         (stage (fnn-join (fnn-staging store)
-                          (format nil ".selection-~d-~a"
-                                  (sb-posix:getpid) (fnn-random-hex 12))))
-         (final (fnn-checkpoint-selection-path store))
-         (phase :marker-staged))
-    (unless frame (fnn-refuse "ACL2 refused checkpoint selection marker"))
+(defun fnn-marker-replace (store directory final frame stage-prefix)
+  "Replace one selection marker under the ACL2 marker driver; the model outcome.
+
+The checkpoint and the pack selection share this loop and so share its
+selection-* process-death cuts (fn-cpp-marker-step)."
+  (let ((stage (fnn-join (fnn-staging store)
+                         (format nil "~a-~d-~a" stage-prefix
+                                 (sb-posix:getpid) (fnn-random-hex 12))))
+        (phase :marker-staged))
     (unwind-protect
          (loop
            (case (fnn-core 'fn-store-checkpoint-marker-action phase)
@@ -448,7 +422,18 @@
              (otherwise (fnn-fault "ACL2 returned invalid checkpoint marker action"))))
       ; Cleanup occurs after the model's terminal outcome and cannot change it.
       (ignore-errors (fnn-unlink stage) (fnn-fsync-dir (fnn-staging store))))
-    (case (fnn-core 'fn-store-checkpoint-marker-outcome phase)
+    (fnn-core 'fn-store-checkpoint-marker-outcome phase)))
+
+(defun fnn-checkpoint-select (store generation)
+  "Replace the authority marker under the ACL2 marker driver."
+  (fnn-checkpoint-require-mutation-ready store)
+  (unless (member generation (fnn-checkpoint-generations store))
+    (fnn-refuse "checkpoint generation ~d is not published" generation))
+  (let* ((protected (fnn-core 'fn-store-checkpoint-selection-protected generation))
+         (frame (and (fnn-octet-list-p protected) (fnn-seal (fnn-octets protected)))))
+    (unless frame (fnn-refuse "ACL2 refused checkpoint selection marker"))
+    (case (fnn-marker-replace store (fnn-checkpoints store)
+                              (fnn-checkpoint-selection-path store) frame ".selection")
       (:durable
        (setf (fnn-store-fenced store) nil)
        :durable)
@@ -586,6 +571,73 @@
            (fnn-out "retired pack-generations=~d" (length retired))
            +fnn-exit-ok+)
       (fnn-store-close store))))
+
+;;; `operator CONFIG store compact': one offline verb over the three steps
+;;; above.  ACL2 decides (books/store-compact-verb.lisp `fn-cverb-decide',
+;;; through host/checkpoint-host.lisp `fn-store-compact-decide'); this
+;;; function observes the store once, carries out exactly the steps ACL2
+;;; returned, in ACL2's order, and reports.  The exclusive open refuses the
+;;; verb while an owner runs.  Each step keeps its own outcome classes:
+;;; a refusal before any durable change exits 1, an uncertain publication,
+;;; selection, reclaim or retirement exits 3, a fault 4.
+
+(defun fnn-compact-footprint (store names generations)
+  "lstat sizes of every transaction file and pack generation present."
+  (flet ((size (path)
+           (let ((st (fnn-lstat path)))
+             (unless (and st (fnn-regular-p st) (not (fnn-symlink-p st)))
+               (fnn-fault "compaction footprint: ~a is not a regular file" path))
+             (sb-posix:stat-size st))))
+    (append (mapcar (lambda (name) (size (fnn-join (fnn-transactions store) name)))
+                    names)
+            (mapcar (lambda (generation)
+                      (size (fnn-pack-generation-path store generation)))
+                    generations))))
+
+(defun fnn-compact-steps (store records)
+  "Observe, ask ACL2, and carry out its steps.  Returns the report line."
+  (fnn-checkpoint-require-mutation-ready store)
+  (multiple-value-bind (raw coverage selected)
+      (fnn-pack-selected-raw-and-coverage store)
+    (declare (ignore raw))
+    (let* ((lower (if coverage (second coverage) 0))
+           (names (sort (fnn-list-directory-bounded
+                         (fnn-transactions store) (fnn-config-max-transactions store)
+                         "transaction namespace")
+                        #'string<))
+           (generations (fnn-pack-generations store))
+           (decision (fnn-core 'fn-store-compact-decide
+                               (fnn-store-config store)
+                               (mapcar #'fnn-octet-list records)
+                               lower names generations selected
+                               (fnn-compact-footprint store names generations))))
+      (unless (and (listp decision) (member (first decision) '(:compact :refused)))
+        (fnn-fault "ACL2 returned no compaction decision"))
+      (when (eq (first decision) :refused)
+        (fnn-refuse "compaction refused: ~(~a~)" (second decision)))
+      (let ((generation nil) (reclaimed nil) (retired nil))
+        (dolist (step (second decision))
+          (case step
+            (:pack (setq generation (fnn-pack-publish-generation store records)))
+            (:select
+             (unless generation (fnn-fault "ACL2 selected a pack it did not publish"))
+             (fnn-pack-select store generation))
+            (:reclaim (setq reclaimed (fnn-pack-prefix-reclaim store)))
+            (:retire (setq retired (fnn-pack-retire-older-generations store)))
+            (otherwise (fnn-fault "ACL2 returned an unknown compaction step ~s" step))))
+        (format nil "compacted steps=~{~(~a~)~^,~} records=~d generation=~a reclaimed=~d retired=~d"
+                (second decision) (length records)
+                (or generation (fnn-pack-selected-generation store))
+                (length reclaimed) (length retired))))))
+
+(defun fnn-command-compact (root)
+  (multiple-value-bind (store records) (fnn-open-live-store root t)
+    (unwind-protect
+         (progn (fnn-out "~a" (fnn-compact-steps store records))
+                +fnn-exit-ok+)
+      (fnn-store-close store))))
+
+(setq *fnn-compact-callback* #'fnn-command-compact)
 
 ;;; Cold copy activation.  The copied directory is fenced before publication;
 ;;; every ordinary Store open checks that marker in fnn-acquire.  The marker is

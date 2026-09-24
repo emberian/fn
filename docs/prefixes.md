@@ -32,6 +32,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-cprt-` | `checkpoint-pack-retire` | Bounded selected-pack generation retirement, gap-aware monotone pack allocation and process-death namespace images |
 | `fn-cc-` | `checkpoint-compaction` | Lossless canonical Store-event prefix packs, overlap validation, and prefix-plus-suffix reconstruction |
 | `fn-ccp-` | `checkpoint-compaction-preservation`, `tests/acl2/checkpoint-compaction-preservation-tests` | M5 compaction preservation: the framed pack observe/coverage the host calls (`fn-ccp-observe-framed`, `fn-ccp-coverage-framed`), what a reclaim cut leaves (`fn-ccp-remove-names`, `-remove-pairs`, `-read`), and the theorem that the next open reconstructs the same record list |
+| `fn-cverb-` | `store-compact-verb`, `tests/acl2/store-compact-verb-tests` | M5 `operator CONFIG store compact`: the verb's decision `fn-cverb-decide` (pack and reclaim, resume, or a named refusal), its temporary-space budget from the persisted profile, the compaction unit, and the open's inability to see a lost newest record (finding 3) |
 | `fn-cpa-` | `checkpoint-auxiliary` | Versioned recovery-only comparison of replayed consumer and historical authorship projections with the Store opened from exact journal history |
 | `fn-index-` | `index` | Derived group/number index and range queries |
 | `fn-midx-` | `msgid-index` | Persistent Message-ID trie and canonical lookup correspondence |
