@@ -685,3 +685,180 @@
                            (fn-sn-finish fn-sn-statep fn-sf-statep
                             fn-sti-completed-prefixp fn-th-prefix-step
                             fn-th-topic-eventp fn-sn-completion-enabledp)))))
+
+; The retention candidate is a different tagged Store event.  Its prepare
+; transition can stage it, but it cannot create a topic obligation before
+; the common directory barrier.
+(defthm fn-sti-retention-event-is-not-topic
+  (implies (fn-store-retention-event-p event)
+           (not (fn-th-topic-eventp event)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-store-retention-event-p fn-th-topic-eventp
+                            fn-th-local-admin-eventp fn-th-at
+                            fn-store-event-nth)
+                           (fn-th-source-id-p fn-th-auth-ref-p
+                            fn-th-exact-octets-p)))))
+
+(defthm fn-sti-prepare-retention-stages-nontopic
+  (implies (and (fn-sn-statep s)
+                (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                (fn-sf-record-phasep
+                 (fn-sf-phase (fn-sn-files
+                               (fn-sn-prepare-retention s event)))))
+           (not (fn-th-topic-eventp
+                 (fn-sf-record-candidate
+                  (fn-sn-files (fn-sn-prepare-retention s event))))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sn-prepare-retention fn-sf-prepare-record)
+                           (fn-sn-statep fn-sf-statep
+                            fn-store-retention-event-p
+                            fn-th-topic-eventp fn-cpe-projection-step
+                            fn-replay-apply-retention-event)))))
+
+(defthm fn-sti-prepare-retention-preserves-consumer-live
+  (implies (fn-csi-livep s)
+           (fn-csi-livep (fn-sn-prepare-retention s event)))
+  :hints (("Goal"
+           :use ((:instance fn-csi-live-store-step-preserves-projection
+                    (event (list :prepare-retention event))))
+           :in-theory (e/d (fn-snrt-step) (fn-sn-prepare-retention
+                                           fn-csi-livep)))))
+
+(defthm fn-sti-prepare-retention-preserves-live
+  (implies (fn-sti-livep s)
+           (fn-sti-livep (fn-sn-prepare-retention s event)))
+  :hints (("Goal"
+           :cases ((equal (fn-sf-phase (fn-sn-files s)) :reserved))
+           :use (fn-sti-prepare-retention-preserves-completed-prefix
+                 fn-sti-prepare-retention-stages-nontopic
+                 fn-sti-prepare-retention-preserves-consumer-live)
+           :in-theory (e/d (fn-sti-livep fn-sn-prepare-retention
+                            fn-sf-completion-phasep fn-sf-record-phasep)
+                           (fn-csi-livep fn-sti-completed-prefixp
+                            fn-th-topic-eventp fn-th-prefix-step
+                            fn-sn-statep fn-sf-statep)))))
+
+(defthm fn-sti-consumer-event-is-not-topic
+  (implies (fn-cpe-eventp event)
+           (not (fn-th-topic-eventp event)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-cpe-eventp fn-th-topic-eventp
+                            fn-th-local-admin-eventp fn-th-at fn-cp-nth)
+                           (fn-th-source-id-p fn-th-auth-ref-p
+                            fn-th-exact-octets-p)))))
+
+(defthm fn-sti-prepare-consumer-stages-nontopic
+  (implies (and (fn-sn-statep s)
+                (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                (fn-sf-record-phasep
+                 (fn-sf-phase (fn-sn-files
+                               (fn-sn-prepare-consumer s event)))))
+           (not (fn-th-topic-eventp
+                 (fn-sf-record-candidate
+                  (fn-sn-files (fn-sn-prepare-consumer s event))))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sn-prepare-consumer fn-sf-prepare-record)
+                           (fn-sn-statep fn-sf-statep
+                            fn-cpe-eventp fn-th-topic-eventp
+                            fn-cpe-projection-step
+                            fn-replay-apply-record)))))
+
+(defthm fn-sti-prepare-consumer-preserves-consumer-live
+  (implies (fn-csi-livep s)
+           (fn-csi-livep (fn-sn-prepare-consumer s event)))
+  :hints (("Goal"
+           :use ((:instance fn-csi-live-store-step-preserves-projection
+                    (event (list :prepare-consumer event))))
+           :in-theory (e/d (fn-snrt-step) (fn-sn-prepare-consumer
+                                           fn-csi-livep)))))
+
+(defthm fn-sti-prepare-consumer-preserves-live
+  (implies (fn-sti-livep s)
+           (fn-sti-livep (fn-sn-prepare-consumer s event)))
+  :hints (("Goal"
+           :cases ((equal (fn-sf-phase (fn-sn-files s)) :reserved))
+           :use (fn-sti-prepare-consumer-preserves-completed-prefix
+                 fn-sti-prepare-consumer-stages-nontopic
+                 fn-sti-prepare-consumer-preserves-consumer-live)
+           :in-theory (e/d (fn-sti-livep fn-sn-prepare-consumer
+                            fn-sf-completion-phasep fn-sf-record-phasep)
+                           (fn-csi-livep fn-sti-completed-prefixp
+                            fn-th-topic-eventp fn-th-prefix-step
+                            fn-sn-statep fn-sf-statep)))))
+
+(defthm fn-sti-prepare-identity-stages-nontopic
+  (implies (and (fn-sn-statep s)
+                (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                (fn-sf-record-phasep
+                 (fn-sf-phase (fn-sn-files
+                               (fn-sn-prepare-identity s event)))))
+           (not (fn-th-topic-eventp
+                 (fn-sf-record-candidate
+                  (fn-sn-files (fn-sn-prepare-identity s event))))))
+  :hints (("Goal"
+           :use ((:instance fn-th-topic-event-is-not-stxe)
+                 (:instance fn-th-topic-event-is-not-stxk)
+                 (:instance fn-th-topic-event-is-not-stxa))
+           :in-theory (e/d (fn-sn-prepare-identity fn-sf-prepare-record)
+                           (fn-sn-statep fn-sf-statep
+                            fn-th-topic-eventp fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-cpe-projection-step fn-replay-apply-record
+                            fn-replay-identity-step)))))
+
+(defthm fn-sti-prepare-identity-preserves-consumer-live
+  (implies (fn-csi-livep s)
+           (fn-csi-livep (fn-sn-prepare-identity s event)))
+  :hints (("Goal"
+           :use ((:instance fn-csi-live-store-step-preserves-projection
+                    (event (list :prepare-identity event))))
+           :in-theory (e/d (fn-snrt-step) (fn-sn-prepare-identity
+                                           fn-csi-livep)))))
+
+(defthm fn-sti-prepare-identity-preserves-live
+  (implies (fn-sti-livep s)
+           (fn-sti-livep (fn-sn-prepare-identity s event)))
+  :hints (("Goal"
+           :cases ((equal (fn-sf-phase (fn-sn-files s)) :reserved))
+           :use (fn-sti-prepare-identity-preserves-completed-prefix
+                 fn-sti-prepare-identity-stages-nontopic
+                 fn-sti-prepare-identity-preserves-consumer-live)
+           :in-theory (e/d (fn-sti-livep fn-sn-prepare-identity
+                            fn-sf-completion-phasep fn-sf-record-phasep)
+                           (fn-csi-livep fn-sti-completed-prefixp
+                            fn-th-topic-eventp fn-th-prefix-step
+                            fn-sn-statep fn-sf-statep
+                            fn-replay-identity-step fn-replay-apply-record
+                            fn-stxe-p fn-stxk-p fn-stxa-p)))))
+
+(defthm fn-sti-refuse-reservation-preserves-consumer-live
+  (implies (fn-csi-livep s)
+           (fn-csi-livep (fn-sn-refuse-reservation s txid)))
+  :hints (("Goal"
+           :use ((:instance fn-csi-live-store-step-preserves-projection
+                    (event (list :refuse-reservation txid))))
+           :in-theory (e/d (fn-snrt-step)
+                           (fn-sn-refuse-reservation fn-csi-livep)))))
+
+(defthm fn-sti-refuse-reservation-preserves-live
+  (implies (fn-sti-livep s)
+           (fn-sti-livep (fn-sn-refuse-reservation s txid)))
+  :hints (("Goal"
+           :use (fn-sti-refuse-reservation-preserves-completed-prefix
+                 fn-sti-refuse-reservation-preserves-consumer-live)
+           :in-theory (e/d (fn-sti-livep fn-sn-refuse-reservation
+                            fn-sf-refuse-reservation
+                            fn-sn-completion-record
+                            fn-sf-completion-phasep fn-sf-record-phasep)
+                           (fn-csi-livep fn-sti-completed-prefixp
+                            fn-sn-statep fn-sf-statep
+                            fn-sn-update fn-sn-make-v6
+                            fn-th-prefix-step fn-th-topic-eventp)))))
+
+(defthm fn-sti-known-abort-preserves-consumer-live
+  (implies (fn-csi-livep s)
+           (fn-csi-livep (fn-sn-known-abort s)))
+  :hints (("Goal"
+           :use ((:instance fn-csi-live-store-step-preserves-projection
+                    (event (list :known-abort))))
+           :in-theory (e/d (fn-snrt-step)
+                           (fn-sn-known-abort fn-csi-livep)))))
