@@ -99,6 +99,13 @@ class NativeCampaignMixin:
         frame for one of them); and the release evidence is
         the local-post provenance of the store's configuration, taken from
         the prior record the same configuration wrote before the post.
+
+        PAYLOAD is the stored article's octets, or, when the owner derives
+        them (a served post is injected under the owner's clock), an ACL2
+        form with a `{unix_ms}` hole that ACL2 evaluates per bracketed
+        second to the octets the owner stores; it may use the bindings of
+        `opened_before_bindings`.  The record's charge is ACL2's length of
+        those octets.
         """
         message_id, payload, groups, (t0, t1) = sent
         frontier = ("(fn-bs-frontier-encode (fn-bs-frontier-next"
@@ -109,22 +116,25 @@ class NativeCampaignMixin:
         msgid = self.octet_list(message_id.encode("ascii"))
         record_frames = []
         for stamp in range(int(t0), int(t1) + 1):
+            payload_form = (payload.format(unix_ms=1000 * stamp)
+                            if isinstance(payload, str) else self.octet_list(payload))
             record = (
-                "(let* ((subject (fn-id-subject-of-payload {payload}))"
+                "(let* ((payload {payload})"
+                " (subject (fn-id-subject-of-payload payload))"
                 " (event (fn-sn-article-record (fn-sn-open-state opened-before)"
                 "  (fn-clock-observation 0 (fn-nntp-unix-dtn-ms {unix_ms}) 0 t)"
-                " \"{msgid_text}\" {payload}"
+                " \"{msgid_text}\" payload"
                 "  '({groups})"
                 "  (fn-record-octets-string (fn-id-text (fn-id-obligation-of {msgid} subject)))"
                 "  (fn-record-octets-string (fn-id-text subject))"
                 "  (fn-record-release-evidence (fn-bs-record-of-octets {prior}))"
-                "  (fn-charge-for-payload {length})))"
+                "  (fn-charge-for-payload (len payload))))"
                 " (protected (fn-frame-store-protected (fn-store-event-encode event))))"
                 " (append protected (fn-frame-trailer protected)))").format(
-                    payload=self.octet_list(payload), unix_ms=1000 * stamp,
+                    payload=payload_form, unix_ms=1000 * stamp,
                     msgid_text=message_id, msgid=msgid,
                     groups=" ".join('"{}"'.format(g) for g in groups),
-                    prior=self.octet_list(prior_frame), length=len(payload))
+                    prior=self.octet_list(prior_frame))
             record_frames.append((stamp,) + self.intended_frame(
                 bridge, "(let* ({}) {})".format(self.opened_before_bindings, record),
                 observed_record or b""))
@@ -137,7 +147,8 @@ class NativeCampaignMixin:
 
     def assert_observed_scan_is_program_image(self, before_form, store, cut,
                                               prior_names=(), sent=None,
-                                              before_frontier=None, prior_frame=None):
+                                              before_frontier=None, prior_frame=None,
+                                              bridge_setup=()):
         """Compare exact scan values with the model's process-death image.
 
         SIGKILL does not simulate loss of dirty kernel state.  Therefore the
@@ -162,6 +173,8 @@ class NativeCampaignMixin:
             bridge.call('(include-book "books/frame-trailer")')
             bridge.call('(include-book "books/store-events")')
             bridge.call('(include-book "books/nntp-responses")')
+            for form in bridge_setup:
+                bridge.call(form, timeout=600)
             bridge.call("(defun fn-native-prefixp (x y)"
                         " (if (atom x) t (and (consp y) (equal (car x) (car y))"
                         "  (fn-native-prefixp (cdr x) (cdr y)))))")

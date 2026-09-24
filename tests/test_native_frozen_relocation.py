@@ -113,11 +113,37 @@ class FrozenRelocationTest(unittest.TestCase):
         (missing / "runtime").symlink_to(IMAGE.parent / "runtime", target_is_directory=True)
         (missing / "lib").symlink_to(IMAGE.parent / "lib", target_is_directory=True)
         (missing / "openssl" / "lib").mkdir(parents=True)
-        result = invoke(missing / IMAGE.name, "store", str(self.root / "bad-store"),
-                        "init", "fn.test")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertFalse((self.root / "bad-store").exists())
-        self.assertIn(b"OpenSSL", result.stderr)
+        # A refused start is exit 5 with its reason on stderr, whatever stdin
+        # is: closed, or a pipe held open as a supervisor or a shell holds it.
+        # Until the startup checks ran under a handler, it printed the ACL2
+        # prompt and waited on stdin (native-subsets 47bdb9a4, failure 5).
+        for label, stdin in (("stdin closed", subprocess.DEVNULL),
+                             ("stdin held open", subprocess.PIPE)):
+            with self.subTest(label):
+                store = self.root / "bad-store-{}".format(stdin)
+                out_path = self.root / "refused-{}.out".format(stdin)
+                err_path = self.root / "refused-{}.err".format(stdin)
+                with open(out_path, "wb") as out_file, open(err_path, "wb") as err_file:
+                    proc = subprocess.Popen(
+                        [str(missing / IMAGE.name), "--fn", "store", str(store),
+                         "init", "fn.test"],
+                        stdin=stdin, stdout=out_file, stderr=err_file)
+                    try:
+                        proc.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait()
+                        self.fail("refused start still running after 10 s ({}): {}".format(
+                            label, err_path.read_bytes()[-500:]))
+                    finally:
+                        if proc.stdin:
+                            proc.stdin.close()
+                out, err = out_path.read_bytes(), err_path.read_bytes()
+                self.assertEqual(proc.returncode, 5, (label, out, err))
+                self.assertEqual(out, b"", label)
+                self.assertIn(b"refused start", err)
+                self.assertIn(b"OpenSSL", err)
+                self.assertFalse(store.exists())
 
 
 if __name__ == "__main__":

@@ -2766,6 +2766,20 @@ serialized profile when the saved image later starts."
                +fnn-exit-fault+))))
     (fnn-exit code)))
 
+;; The saved image's facility checks (the crypto, TLS and ML-DSA OpenSSL pair
+;; revalidated per process, host/native/build.lisp fn-native-entry) run before
+;; fnn-main and so outside its handlers.  An error there used to reach SBCL's
+;; --disable-debugger hook, whose non-aborting exit ACL2's loop caught: the
+;; process printed the ACL2 prompt and waited on stdin (native-subsets
+;; 47bdb9a4, failure 5).  A start the image cannot make is a refusal of this
+;; invocation: its reason on stderr and exit 5, never a prompt.
+(defun fnn-native-startup (checks)
+  (handler-case (funcall checks)
+    (serious-condition (e)
+      (fnn-open-streams)
+      (fnn-err "fn-host: error: refused start: ~a" e)
+      (fnn-exit +fnn-exit-usage+))))
+
 ;; The ACL2-visible entry that host/native/build.lisp defines in :program
 ;; mode is redefined here in raw Lisp, so that save-exec's :return-from-lp
 ;; form (fn-native-entry state) reaches fnn-main.
