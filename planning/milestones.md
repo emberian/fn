@@ -266,10 +266,18 @@ no native image builds. See [the evidence](evidence/tcpcl-dtn-w9-2026-09-20.md),
 - Exercise corruption detection, repair policy, backup/restore, retained evidence,
   key/policy evolution, and format migration.
 
-Exit: bounded admission/refusal and operational headroom are explicit and tested;
-compaction does not weaken acceptance or replay guarantees. Retained history may
-grow until admission refuses. Finite history pruning requires D13 and its own
-duplicate/resurrection argument; indefinite acceptance is not promised.
+Exit (restated 2026-09-24 per the [direction review](review-2026-09-24-gpt6-direction.md)
+§M5): bounded execution and metadata behaviour under a stated workload and
+retention/release policy, with explicit refusal when a promise cannot be
+funded. Packing, history compaction and content reclamation are separate
+promises, each with its own obligation. Each class of durable history has the
+lifetime and the removing capabilities that
+[the class table](../specs/storage.md#history-classes-and-lifetimes) (STO-010) gives it.
+None of them weakens acceptance or replay guarantees, and every operation
+names the limit it relieves. Retained history may grow until admission
+refuses by name. History compaction and content reclamation require D13 and
+their own decision-preservation and anti-resurrection arguments. Unbounded
+distinct content on finite storage is not promised.
 
 Incremental evidence (2026-09-24, [m5-capacity](evidence/m5-capacity-2026-09-24.md)):
 the transaction budget is ACL2's. The served article prepare
@@ -311,6 +319,16 @@ reserved before the record, so the loss looks like an abandoned
 reservation; detecting it needs a post-commit witness (ember). Compaction
 removes files, not transactions, so it does not add admission headroom.
 Chained packs above 4 MiB and article-object closure are also open.
+
+Incremental evidence (2026-09-24, [m5-history-lifetimes](evidence/m5-history-lifetimes-2026-09-24.md)):
+the history-class contract (STO-010) and the committed-history boundary
+(STO-009, PRF-076). `committed-history.json` is written after each commit's
+directory barrier and before completion. Every open checks it once
+(`fn-hm-open-verdict`). A lost newest transaction file is refused by name
+(`history-short-of-marker`), and a burned reservation is admitted. Chained
+packs are specified, not implemented. Open: history compaction and content
+reclamation (D13), the headroom line's "relieves files" wording, and a
+byte-model program for the marker.
 
 ## M6: additional interfaces and mission profiles
 
