@@ -1138,9 +1138,11 @@
         "planning/evidence/manifests/certify-20260924T024533Z-763031.json",
         "tests/acl2/topic-history-native-vector-tests.lisp",
         "planning/evidence/manifests/certify-20260924T022329Z-3173943.json",
-        "planning/evidence/manifests/certify-20260924T030421Z-3524851.json"
+        "planning/evidence/manifests/certify-20260924T030421Z-3524851.json",
+        "planning/evidence/manifests/certify-20260924T031621Z-3631800.json",
+        "planning/evidence/manifests/certify-20260924T031835Z-3652118.json"
       ],
-      "execution_scope": "The merged ACL2 topic/index Store, observed reopen, local proposal/control and native-control host roots passed on persvati at d4b48fda. The authenticated native owner path has source-level caller binding, but no source-matched saved-image install/root/report/reopen run or whole reverse closure is qualified."
+      "execution_scope": "The merged ACL2 topic/index Store, observed reopen, local proposal/control and native-control roots passed on persvati; after status kind 9 joined, its affected scope/index/native-control roots also passed. The source-matched native install/root/report/reopen scenario and whole reverse closure remain unqualified."
     }
   ]
 }

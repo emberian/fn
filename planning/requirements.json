@@ -1686,10 +1686,19 @@
         "planning/evidence/manifests/certify-20260923T215046Z-608772.json",
         "books/topic-history-store-events.lisp",
         "tests/acl2/topic-history-store-events-tests.lisp",
-        "planning/evidence/manifests/certify-20260923T215838Z-688900.json"
+        "planning/evidence/manifests/certify-20260923T215838Z-688900.json",
+        "books/topic-history-local-proposals.lisp",
+        "books/store-node-invariants.lisp",
+        "books/store-node-traces.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_topic_local.py",
+        "planning/evidence/topic-history-native-source-p3-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T030421Z-3524851.json",
+        "planning/evidence/manifests/certify-20260924T031621Z-3631800.json",
+        "planning/evidence/manifests/certify-20260924T031835Z-3652118.json"
       ],
-      "implementation_note": "A bounded ACL2 root-only prepare/commit component uses historical T10 accepted sources, an explicit local administrator identity, selected active root policy, verified author roster, same-topic earlier parents and finite report quota. The component does not yet publish or replay physical topic events. A separate bounded canonical fnto version-1 payload codec now exists; it is not yet in the Store union.",
-      "note": "The experimental fixed-controller profile is not a universal governance contract. Store union/replay, owner publication, retention pins and native qualification remain open before any durable admission status."
+      "implementation_note": "The bounded experimental fixed-controller ACL2 model now carries administrator installation, root anchor and report admission in Store slot 12, checks earlier T10 exact source and historical key context, finite quota, roster and same-topic parents, and replays topic history separately on reopen. The native owner/control source calls the ACL2 proposal dispatcher and publication gate; the joined Store/topic/index and status-scope roots have scoped persvati certification.",
+      "note": "This local experiment is not a universal governance contract. A source-matched native install/root/report/reopen image, broad reverse closure and physical publication qualification remain open before served durable-admission status; succession, fork healing and automatic policy adoption are not inferred."
     }
   ]
 }

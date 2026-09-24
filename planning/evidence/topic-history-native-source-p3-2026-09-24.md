@@ -56,3 +56,18 @@ took 21.20 seconds after opening the completion record and topic recognizers;
 `FN-SNT-IO-RECORDS-PREFIX` 22.46 seconds, and the derived consumer index's
 identity-prepare relation 46.56 seconds. These are passed events, not a
 claim that the proof-cost target is met.
+
+The later local-consumer status packet reserves FNCT reply kind 9, leaving
+topic request/reply kinds 7/8 distinct. It strengthens the shared local
+scope lookup to refuse a malformed consumer ID or ACK beyond the committed
+frontier. The actual indexed `fn-col-poll` and its proof-only historical-list
+reference now call that same ACL2 selector; an out-of-frontier ACK witness
+checks both refusals. On source `567a8db2`, seven focused status/index and
+native-control roots passed in persvati run `run-20260924T031608Z-1b31`,
+[`certify-20260924T031621Z-3631800.json`](manifests/certify-20260924T031621Z-3631800.json),
+with 139 dependencies installed and eight certified, two jobs and no closure.
+The test's first `must-fail` searched an unconstrained false theorem for
+17.23 seconds. Commit `6ef58b79` keeps the exact counterexample as a bounded
+`must-fail` assertion; its one-root rerun passed in 3.536 seconds at
+[`certify-20260924T031835Z-3652118.json`](manifests/certify-20260924T031835Z-3652118.json).
+No topic native saved-image run has followed these source changes yet.
