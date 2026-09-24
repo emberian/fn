@@ -111,19 +111,11 @@ class NativeBpContactRelayTests(unittest.TestCase):
         if not all(os.access(path, os.X_OK)
                    for path in (cls.sender_image, cls.receiver_image)):
             raise unittest.SkipTest("two native DTN image paths are required")
-        # The receiver is the one verb that consults boundary trust:
-        # `bp-node serve` admits a TCPCL principal from the store's
-        # observed-channel profile (`operator bp-boundary add`) under the
-        # store's path identity.  The DTN image carries neither verb, and its
-        # `bp receive` passes no owner (host/native/bp.lisp, the
-        # `fnn-bp-deliver-node ... nil nil` call), so every inbound bundle
-        # there is refused at the receive boundary; the trusted receiver is
-        # therefore the developer image named by FN_NATIVE_DEVELOPER_HOST.
-        cls.trusted_image = Path(os.environ.get(
-            "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
-        if not os.access(cls.trusted_image, os.X_OK):
-            raise unittest.SkipTest(
-                "a receiver with boundary trust needs FN_NATIVE_DEVELOPER_HOST")
+        # The receiver is the node, `bp-node serve`, which admits a TCPCL
+        # principal from the store's observed-channel profile (`operator
+        # bp-boundary add`) under the store's path identity.  The DTN image
+        # carries the node and the operator; FN_NATIVE_CONTACT_RECEIVER is it.
+        cls.trusted_image = cls.receiver_image
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="fn-contact-relay-"))
@@ -183,19 +175,21 @@ class NativeBpContactRelayTests(unittest.TestCase):
         line = wait_for_announcement(process, b"BP NODE LISTENING ", timeout=45)
         return process, int(line.rsplit(b" ", 1)[1])
 
-    def service_run(self, work):
+    def service_run(self, work, journal=None, lifetime=3600000):
         return self.invoke(
             self.sender_image, "bp-service", "run", "127.0.0.1",
-            self.relay.port, self.adu, self.sender_journal, "dtn://sender/",
-            "dtn://receiver/", work, work + "-attempt", 0,
-            3600000, 2, 32, 1048576, 0, 0,
+            self.relay.port, self.adu, journal or self.sender_journal,
+            "dtn://sender/", "dtn://receiver/", work, work + "-attempt", 0,
+            lifetime, 2, 32, 1048576, 0, 0,
         )
 
-    def tick(self, start_delay, end_delay, wall=0):
+    def tick(self, start_delay, end_delay, wall=0, journal=None,
+             lifetime=3600000):
         return self.invoke(
-            self.sender_image, "bp-contact", "tick", self.sender_journal,
+            self.sender_image, "bp-contact", "tick",
+            journal or self.sender_journal,
             "dtn://sender/", "dtn://receiver/", start_delay, end_delay,
-            3600000, 2, 32, 1048576, wall, 0,
+            lifetime, 2, 32, 1048576, wall, 0,
         )
 
     def test_interrupted_contact_receiver_restart_then_expiry(self):
@@ -242,15 +236,24 @@ class NativeBpContactRelayTests(unittest.TestCase):
         held = tuple((self.receiver_journal / "lifecycle").glob("*.fnb"))
         self.assertTrue(held, "receiver custody must have a durable FNBS row")
 
+        # A queued job carries the age anchor of its Bundle Age block
+        # (`fn-bpn-anchor-of`: age 0 at the CLOCK_BOOTTIME reading of the
+        # enqueue), and `fn-clock-expiry-decision` ages an anchored bundle by
+        # that clock alone (RFC 9171 section 4.2.6, 4.4.2); no wall reading
+        # can expire it.  So expiry is observed by elapsed time: a separate
+        # sender journal whose bundles live 1000 ms, and a tick after 1500 ms.
         self.relay.route(None)
-        second = self.service_run("work-to-expire")
+        expiring = self.tmp / "sender-expiring"
+        second = self.service_run("work-to-expire", journal=expiring,
+                                  lifetime=1000)
         self.assertEqual(second.returncode, 3, second.stderr)
-        before = len(tuple((self.sender_journal / "lifecycle").glob("*.fnb")))
-        expired = self.tick(1, 60000, wall=3600001)
+        before = len(tuple((expiring / "lifecycle").glob("*.fnb")))
+        time.sleep(1.5)
+        expired = self.tick(1, 60000, journal=expiring, lifetime=1000)
         self.assertEqual(expired.returncode, 0, expired.stderr)
         self.assertIn(b"BP contact closed", expired.stdout)
         self.assertIn(b"status=expired", expired.stdout)
-        after = len(tuple((self.sender_journal / "lifecycle").glob("*.fnb")))
+        after = len(tuple((expiring / "lifecycle").glob("*.fnb")))
         self.assertGreater(after, before)
 
 
