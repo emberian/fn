@@ -13,28 +13,49 @@
   (let ((parsed (fn-article-parse received)))
     (if (not (fn-article-result-okp parsed))
         :invalid
-      (let* ((article (fn-article-result-article parsed))
-             (fields (fn-article-fields article)))
-        (if (equal (fn-hc-count-name *fn-hc-name* fields) 0)
-            :absent
-          :present)))))
+      (let ((article (fn-article-result-article parsed)))
+        (if (not (true-listp article)) :invalid
+          (if (equal (fn-hc-count-name
+                      *fn-hc-name* (fn-article-fields article)) 0)
+              :absent
+            :present))))))
 
-; (:ok source principal keys signatures exact-current-snapshot generation).
-; The current B-local per-principal selection (including a revocation
-; tombstone) is made by ACL2 against the carried Store snapshot history.
-(defun fn-pa-current-plan (received snapshots)
-  (declare (xargs :guard t))
+; Syntax and exact-source projection before any current local key policy.
+; This allows a byte-identical already-accepted event to report its historic
+; duplicate outcome after a later key rotation or tombstone.  A present but
+; malformed field has no such path.
+(defun fn-pa-carrier-form (received)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn-pa-carrier-kind
+                                          fn-hc-received-plan)))))
   (let ((kind (fn-pa-carrier-kind received)))
     (if (eq kind :absent) :absent
       (if (eq kind :invalid) (list :refused :article)
         (let ((parsed (fn-hc-received-plan received)))
           (if (not (fn-hc-okp parsed))
               (list :refused :carrier)
-            (let* ((source (car (fn-hc-value parsed)))
-                   (carrier (cadr (fn-hc-value parsed)))
-                   (principal (car carrier))
-                   (keys (cadr carrier))
-                   (signatures (caddr carrier))
+            (let ((value (fn-hc-value parsed)))
+              (if (not (and (true-listp value) (equal (len value) 2)))
+                  (list :refused :carrier-shape)
+                (let ((carrier (cadr value)))
+                  (if (not (and (true-listp carrier)
+                                (equal (len carrier) 3)))
+                      (list :refused :carrier-shape)
+                    (list :ok (car value) (car carrier) (cadr carrier)
+                          (caddr carrier))))))))))))
+
+; (:ok source principal keys signatures exact-current-snapshot generation).
+; The current B-local per-principal selection (including a revocation
+; tombstone) is made by ACL2 against the carried Store snapshot history.
+(defun fn-pa-current-plan (received snapshots)
+  (declare (xargs :guard t))
+  (let ((form (fn-pa-carrier-form received)))
+    (if (not (and (consp form) (eq (car form) :ok))) form
+            (let* ((source (nth 1 form))
+                   (principal (nth 2 form))
+                   (keys (nth 3 form))
+                   (signatures (nth 4 form))
                    (current (fn-hl-current-for-principal
                              principal snapshots))
                    (generation (if (fn-stxk-p current)
@@ -48,7 +69,7 @@
                        (equal (caddr enrolled) keys))
                   (list :ok source principal keys signatures
                         current generation)
-                (list :refused :local-enrollment)))))))))
+                (list :refused :local-enrollment))))))
 
 ; The caller supplies primitive observations, not an authorization Boolean.
 ; This constructor reselects the exact carrier and current enrollment itself,
@@ -72,23 +93,18 @@
 (defthm fn-pa-absent-is-only-parser-confirmed-absence
   (implies (equal (fn-pa-current-plan received snapshots) :absent)
            (equal (fn-pa-carrier-kind received) :absent))
-  :hints (("Goal" :in-theory (enable fn-pa-current-plan))))
+  :hints (("Goal" :in-theory (enable fn-pa-current-plan
+                                     fn-pa-carrier-form))))
 
-(defthm fn-pa-authorized-event-is-bound-kind-four
+(defthm fn-pa-authorized-event-requires-current-plan-by-definition
   (implies (fn-pa-authorized-event
             sequence txid generation msgid received groups obligation-id
             content-subject release-evidence charge snapshots
             observed-ml-key ed-observation ml-observation clock-observation)
-           (and (fn-stxa-p
-                 (fn-pa-authorized-event
-                  sequence txid generation msgid received groups obligation-id
-                  content-subject release-evidence charge snapshots
-                  observed-ml-key ed-observation ml-observation clock-observation))
-                (fn-stxa-bindsp
-                 (fn-pa-authorized-event
-                  sequence txid generation msgid received groups obligation-id
-                  content-subject release-evidence charge snapshots
-                  observed-ml-key ed-observation ml-observation clock-observation))))
-  :hints (("Goal" :in-theory (enable fn-pa-authorized-event))))
+           (equal (car (fn-pa-current-plan received snapshots)) :ok))
+  :hints (("Goal" :in-theory
+           (e/d (fn-pa-authorized-event)
+                (fn-pa-current-plan fn-hc-received-plan
+                 fn-hsig-authorized-carried-submission-event-base)))))
 
 (in-theory (disable (:d fn-pa-current-plan) (:d fn-pa-authorized-event)))

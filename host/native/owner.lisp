@@ -748,23 +748,19 @@ the current connection."
 durable intent. ACL2 distinguishes carrier absence from present-invalid,
 selects the B-local current enrollment, and constructs the exact kind-4
 event. A carrier-absent article keeps the established legacy Store path."
-  (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
+  (let ((form (fnn-owner-core 'fn-owner-peer-carrier-form
                               (fnn-octet-list payload))))
     (cond
-      ((eq plan :absent)
+      ((eq form :absent)
        (fnn-owner-attempt service msgid payload groups evidence))
-      ((not (and (consp plan) (eq (first plan) :ok))) :refused)
+      ((not (and (consp form) (eq (first form) :ok))) :refused)
       (t
        (handler-case
            (let* ((store (fnn-owner-service-store service))
                   (codes (fnn-owner-core
                           'fn-owner-group-codes
                           (mapcar #'fnn-octet-list groups)))
-                  (charge (fnn-charge (length payload)))
-                  (source (second plan))
-                  (principal (third plan))
-                  (keys (fourth plan))
-                  (signatures (fifth plan)))
+                  (charge (fnn-charge (length payload))))
              (when (or (keywordp codes) (not (listp codes))
                        (/= (length codes) (length groups)))
                (return-from fnn-owner-attempt-transit :refused))
@@ -774,9 +770,17 @@ event. A carrier-absent article keeps the established legacy Store path."
                                      (fnn-octet-list payload) codes)
                (:duplicate (return-from fnn-owner-attempt-transit :duplicate))
                (:conflict (return-from fnn-owner-attempt-transit :refused)))
+             (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
+                                         (fnn-octet-list payload))))
+               (unless (and (consp plan) (eq (first plan) :ok))
+                 (return-from fnn-owner-attempt-transit :refused))
              (unless (eq (fnn-owner-advance-clock) :observed)
                (return-from fnn-owner-attempt-transit :clock-unusable))
-             (let* ((preimage
+             (let* ((source (second plan))
+                    (principal (third plan))
+                    (keys (fourth plan))
+                    (signatures (fifth plan))
+                    (preimage
                       (fnn-core 'fn-hsig-host-preimage
                                 principal keys source))
                     (observations
@@ -807,7 +811,7 @@ event. A carrier-absent article keeps the established legacy Store path."
                            (first observations) (first ml-observation))))
                    (unless event
                      (return-from fnn-owner-attempt-transit :refused))
-                   (fnn-owner-identity-commit service event)))))
+                   (fnn-owner-identity-commit service event))))))
          (fnn-store-indeterminate () :uncertain)
          (fnn-store-fault (e)
            (setf (fnn-store-fenced (fnn-owner-service-store service)) t)
