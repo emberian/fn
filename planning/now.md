@@ -1,30 +1,41 @@
 # Current work — 2026-09-24
 
-## Wide Sol cycle — 03:31 UTC
+## Wide Sol cycle — convergence after the 8c61 gate
 
-Source `8c61c098` integrates the recovered topic admission/native-control
-packet and maintained consumer event index into dev. The actual owner poll
-now selects a bounded indexed window; its outer correspondence still owes
-separate negative witnesses for several non-index premises. The merged static
-check passed. One combined qualification is running on hbox as
-`run-20260924T033100Z-4833`, at
-`/tank/fn/gates/topic-index-8c61c098-20260924`, with four jobs and the shared
-w28 cache. Source-matched topic admission/reopen and consumer compatibility
-tests follow a successful closure. These are pending gates, not results.
+Source through `c7a722ed` integrates native topic admission, indexed owner
+polling, BP fragment custody and expiry-safe reassembly, live-first BP
+application selection, status reply codec proofs, and the allocator
+pair-12/pair-14 and inner native callback correspondence. Scoped certificates
+and exact limitations accompany each packet. The outer shared-owner
+publication correspondence and the complete physical durability argument remain
+open; these allocator results do not settle them.
 
-The three Luna features passed their shared `e160442f` native image tests;
-the [trial record](experiments/luna-feature-trial-2026-09-24.md) separates
-implementation, Sol repairs and root assistance. The general status reply
-roundtrip theorem remains open. The BP report-cut driver also passed on that
-unchanged image after correcting a test-only Store-lock ordering error.
+The first combined `8c61c098` run failed. Its [original evidence](evidence/topic-index-8c61-full-gate-red-2026-09-24.md)
+records five direct failures, two bounded proof-cost aborts and dependent
+failures. The integrated repairs separate topic events from article stamps,
+carry the new Store projections through their invariants, and keep irrelevant
+record/Store definitions closed in proofs. The [owner repair](evidence/owner-v6-proof-repair-2026-09-24.md)
+and [K6 repair](evidence/byte-store-k6-provenance-cost-2026-09-24.md) have scoped
+certification; the next full combined run and image remain required.
 
-The resumed swarm is primarily GPT-6-Sol. In parallel it is integrating native
-fragment activation and allocator relation proofs, completing Mini's durable
-signed reply/post/reopen exchange, supplying missing consumer and BP assurance,
-proving the status codec, and making stale certified claims observable in
-tooling. [The board](swarm-board.md) records collaborators and shared runs.
-Source development continues alongside frozen-image qualification. The live
-`da5fd8cb` service remains protected.
+The last shared qualified image is still `e160442f`. All three Luna feature
+runtime tests and the corrected BP deletion-report test passed on it; the
+[trial](experiments/luna-feature-trial-2026-09-24.md) records review cost and
+Sol repairs. The general status codec roundtrip now has [scoped ACL2 evidence](evidence/consumer-status-codec-prf068-2026-09-24.md);
+PRF-068 remains in progress for the joined native composition.
+
+Mini's actual poll → durable transaction/Q → reopen → ACK experiment has
+passed. The B3 reply-post attempt on `e160442f` refused before signing because
+the synthetic reply source lacked Date. Mini is rebuilding the explicitly
+experimental source profile with a deterministic Date and a new Message-ID
+profile version; no posted-reply success is claimed. The existing failed
+prepared record remains preserved.
+
+The mostly-Sol swarm continues native qualification, the actual owner/physical
+storage join, BP progress/debt design and implementation, consumer cost
+measurement, and proof-cost tooling. Live logs now identify each running
+proof's book and PID. See the [board](swarm-board.md) and [assurance snapshot](assurance-status-2026-09-24.md).
+The protected `da5fd8cb` service has not been upgraded.
 
 The earlier checkpoints below describe their named sources. Their pending
 work is superseded by this section where the same feature has since landed.
