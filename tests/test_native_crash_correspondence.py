@@ -103,7 +103,7 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
         body = function_body(self.io, "fnn-advance-frontier")
         self.assert_ordered(body, [
             "(fnn-observe store :start-frontier)",
-            "(fnn-write-staged stage contents)",
+            "(fnn-write-staged-at store stage contents :frontier-created :frontier-written)",
             "(fnn-observe store :frontier-file :ok)",
             "(fnn-at store :frontier-staged-durable)",
             "(fnn-replace stage (fnn-frontier-path store))",
@@ -119,7 +119,7 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
     def test_record_observations_and_cuts_follow_syscalls(self):
         body = function_body(self.io, "fnn-publish")
         self.assert_ordered(body, [
-            "(fnn-write-staged stage data)",
+            "(fnn-write-staged-at store stage data :record-created :record-written)",
             "(fnn-observe store :record-file :ok)",
             "(fnn-at store :record-staged-durable)",
             "(fnn-link stage final)",
@@ -130,6 +130,9 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
             "(fnn-at store :record-durable)",
             "(fnn-observe store :record-directory :ok)",
             "(fnn-at store :record-completing)",
+            "(fnn-unlink stage)",
+            "(fnn-at store :record-stage-unlinked)",
+            "(fnn-fsync-dir (fnn-staging store))",
             "(fnn-at store :record-staging-cleaned)",
         ])
 
