@@ -14,6 +14,12 @@ not a measured physical-disk saving. The two dirty retired trees contained only
 generated ledger changes, preserved as binary patches and complete archives.
 No remote gate, cache, Mini tree or live service was removed.
 
+After their source landed, four more clean worktrees were verified, archived
+and retired: `live-advance-union`, `t17-over-range`, `luna-reader-verdict`, and
+`consumer-index-foundation`. Their branch tips remain reachable. The archive
+report now covers 101 retired worktrees; the byte totals above describe the
+initial 97-tree checkpoint. Active storage and proof-cost lanes remain.
+
 At 00:48:15 UTC an external Claude review accidentally reset the main checkout
 from `92ad1b4d` to `origin/dev` (`6bfab467`). Root preserved
 `recovery/pre-unexpected-reset-20260924` before investigating. The user confirmed

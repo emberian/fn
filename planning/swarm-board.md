@@ -48,7 +48,7 @@ should duplicate its dependency build. The previous baseline is e657b1cf.
 - `luna_reader_verdict` landed the corrected historical server-verdict display;
   `luna_proof_cost` has a bounded hint experiment awaiting the shared current
   dependency cache. Failed attempts establish no speedup.
-- `retire_old_worktrees` completed verified archival of inactive worktrees;
+- `retire_old_worktrees` completed verified archival of 101 inactive or landed worktrees;
   active trees and all branch tips remain available.
 
 The entries below are historical checkpoints.
