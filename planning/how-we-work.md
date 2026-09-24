@@ -77,6 +77,22 @@ anyone permanent ownership of the file. Reusing a proof result means reusing
 matching content/toolchain evidence, not borrowing another branch's green
 label after changing its definitions.
 
+## Luna implementation with Sol proof ownership (2026-09-24 trial)
+
+The user's trial correction is to keep proof development with Sol. Luna can
+implement bounded features, client/UI work and fixtures against an explicit
+contract, and run prescribed checks. When certification fails, hand the exact
+source, failed event and log to Sol; do not send Luna through theorem search,
+hint experiments or repeated farm retries. Sol owns proof obligations and
+repairs alongside the implementation, with Astra reviewing coherent batches
+and consequential design questions.
+
+Measure the completed team's work, including review, repair, integration and
+remaining assurance debt. Fast source commits alone do not establish an
+accepted feature or a cost saving. Record coordination mistakes separately
+from implementation defects, and count parent interventions. This is the
+working division for fn, not a general model benchmark.
+
 ## Useful parallelism and proof cost
 
 Before starting a duplicate proof/build job, check peer announcements, current
