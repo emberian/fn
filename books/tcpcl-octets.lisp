@@ -1086,6 +1086,11 @@
 
 ; --- :sess-init through fn-tcl-decode-init.
 
+; The decode-init keystones below (append-error, consumes, append-ok) spent
+; most of their time backchaining FN-TCL-CONSP-BY-LEN and FN-TCL-TAKE-ALL
+; through the unrolled session-init fields; none of them needs either.
+(local (in-theory (disable fn-tcl-consp-by-len fn-tcl-take-all)))
+
 (defthm fn-tcl-decode-init-of-encode-body
   (implies (fn-tcl-messagep (fn-tcl-make-sess-init keepalive segment-mru transfer-mru node-id ext) mru)
            (equal (fn-tcl-decode-init (append (fn-tcl-encode-init-body (fn-tcl-make-sess-init keepalive segment-mru transfer-mru node-id ext)) rest))
