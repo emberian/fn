@@ -1955,7 +1955,14 @@
         "fn-bpnp-step-session-offer-is-the-scan-choice",
         "fn-bpnp-forward-scan-offers-the-only-candidate",
         "fn-bpnp-step-attempt-persist-preserves-the-retry-bound",
-        "fn-bpnp-attempt-apply-bounds-retries"
+        "fn-bpnp-attempt-apply-bounds-retries",
+        "fn-bpnp-step-different-boot-fences",
+        "fn-bpnp-step-domain-disagreement-fences",
+        "fn-bpnp-step-ready-recovery-is-same-boot",
+        "fn-bpnp-step-identity-conflict-is-refused-or-recorded",
+        "fn-bpnp-step-conflict-publication-answers-refusal",
+        "fn-bpnf-conflict-publication-success-binds-exact-echo",
+        "fn-bpnf-conflict-record-round-trip"
       ]
     },
     {

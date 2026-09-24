@@ -321,6 +321,134 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP FNBS recovered held=2", restarted.stdout)
         self.assertEqual(self.receiver_counts()[1], 1)
 
+    def conflicting_transit_bundle(self):
+        """The unrouted transit identity (creation 0, sequence 77) with another
+        payload: same bundle ID, different immutable projection.  ACL2 authors
+        the wire."""
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-node")')
+            bridge.call('(include-book "books/codec-attach")')
+            sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
+            unrouted = "(cons :dtn '(47 47 117 110 114 111 117 116 101 100 47))"
+            form = (
+                "(fn-bpb-encode (fn-bpn-send-bundle "
+                f"(fn-bpn-config {sender} 3600000 2 32 1048576) "
+                f"{unrouted} '(9 9 9 9) 77 "
+                "(fn-clock-observation 0 0 0 nil)))"
+            )
+            path = self.tmp / "conflicting-transit.bundle"
+            path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            return path
+        finally:
+            bridge.close()
+
+    @staticmethod
+    def conflict_records(journal):
+        """The lifecycle frames ACL2's kind-14 decoder opens, decoded."""
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-fnbs-conflict-codec")')
+            bridge.call('(include-book "books/codec-attach")')
+            rows = []
+            for frame in sorted((journal / "lifecycle").glob("*.fnb")):
+                octets = "'" + bridge.literal(frame.read_bytes())
+                row = bridge.call(f"(fn-bpnf-conflict-unframe {octets})")
+                if row.lstrip().upper().startswith(b"(:BPNF-CONFLICT "):
+                    rows.append((frame.name, row))
+            return rows
+        finally:
+            bridge.close()
+
+    def send_transit(self, port, path, spool):
+        return self.invoke(
+            "tcpcl", "send", "127.0.0.1", port, path, self.tmp / spool,
+            "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
+        )
+
+    def test_identity_conflict_is_refused_recorded_and_replayed(self):
+        """N11 on the image: a second reception whose identity names a held
+        bundle with another payload is refused :identity-conflict, a durable
+        kind-14 record names it, the node keeps answering, and replay
+        accepts the record."""
+        receiver, port = self.start_node(True, once=False)
+        first = self.send_transit(port, self.unrouted_transit_bundle(), "s1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.wait_for_output(
+            receiver, b"BP node progress waiting reason=route", timeout=120)
+
+        conflicting = self.conflicting_transit_bundle()
+        refused = self.send_transit(port, conflicting, "s2")
+        out = self.wait_for_output(receiver, b"reason=identity-conflict", timeout=60)
+        self.assertIn(b"BP refused xfer=", out)
+        self.assertEqual(refused.returncode, 1, (refused.stdout, refused.stderr, out))
+        # The same conflict again: refused again, never :busy.
+        again = self.send_transit(port, conflicting, "s3")
+        self.assertEqual(again.returncode, 1, again.stderr)
+        out = self.wait_for_output(receiver, b"reason=identity-conflict", timeout=60)
+        self.assertNotIn(b"reason=busy", out)
+
+        # The node keeps answering: a fresh request is delivered.
+        sent = self.send_request(port, "after-identity-conflict")
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        delivered = self.wait_for_output(
+            receiver, b"BP node delivery request-accepted", timeout=120)
+        self.assertIn(b"BP application handoff durable", delivered)
+        self.stop_process(receiver)
+
+        records = self.conflict_records(self.receiver_journal)
+        self.assertEqual(len(records), 2, records)
+        payloads = self.acl2_lifecycle_payloads(self.receiver_journal, 5)
+        self.assertIn(bytes((1, 2, 3, 4)), payloads)
+        self.assertNotIn(bytes((9, 9, 9, 9)), payloads)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertIn(b"BP FNBS recovered held=2", restarted.stdout)
+        self.assertEqual(self.conflict_records(self.receiver_journal), records)
+
+    def other_boot_domain_frame(self):
+        """ACL2's clock-domain frame for a boot ID that is not this boot's."""
+        boot = Path("/proc/sys/kernel/random/boot_id").read_text("ascii").strip()
+        other = boot[:-1] + ("0" if boot[-1] != "0" else "1")
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-clock-domain")')
+            bridge.call('(include-book "books/codec-attach")')
+            octets = " ".join(str(b) for b in other.encode("ascii"))
+            return run_store.acl2_octets(bridge.call(f"(fn-bpcd-frame '({octets}))"))
+        finally:
+            bridge.close()
+
+    def test_restart_in_another_boot_fences_and_keeps_rows(self):
+        """N07 on the image: the durable boot domain names another boot, so
+        recovery through fn-bpnp-step answers (:restart-fault :clock-domain
+        :different-boot) and no held row changes; the true domain restored,
+        the same journal recovers."""
+        receiver, port = self.start_node(True, once=False)
+        first = self.send_transit(port, self.unrouted_transit_bundle(), "s1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.wait_for_output(
+            receiver, b"BP node progress waiting reason=route", timeout=120)
+        self.stop_process(receiver)
+
+        domain = self.receiver_journal / "clock-domain.fnb"
+        saved = domain.read_bytes()
+        lifecycle = self.receiver_journal / "lifecycle"
+        before = tuple((p.name, p.read_bytes()) for p in sorted(lifecycle.iterdir()))
+        domain.write_bytes(self.other_boot_domain_frame())
+
+        fenced = self.dispatch_receiver()
+        self.assertEqual(fenced.returncode, 3, fenced.stderr)
+        self.assertIn(b"restart fenced: clock domain different-boot", fenced.stderr)
+        self.assertEqual(
+            tuple((p.name, p.read_bytes()) for p in sorted(lifecycle.iterdir())),
+            before)
+
+        domain.write_bytes(saved)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertIn(b"BP FNBS recovered held=1", restarted.stdout)
+
     def forward_mru_bundles(self):
         """ACL2 authors the two transit wires; Python only carries octets."""
         bridge = run_bp_ingress.Acl2BpIngress()

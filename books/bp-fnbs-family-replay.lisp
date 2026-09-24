@@ -7,7 +7,19 @@
 (include-book "bp-fnbs-deletion-codec")
 (include-book "bp-node-dispatch")
 (include-book "bp-fnbs-forward-codec")
+(include-book "bp-fnbs-conflict-codec")
 (set-verify-guards-eagerness 0)
+
+; A replayed kind-14 row changes no held row.  It must name a live held
+; arrival whose primary identity it records; anything else is a fault.
+(defun fn-bpnf-conflict-apply (record held)
+  (declare (xargs :guard t))
+  (let ((h (fn-bpnf-find-arrival (fn-bpn-nth 3 record) held)))
+    (if (and (fn-bpnf-conflict-recordp record)
+             h
+             (equal (fn-bpah-held-primary-identity h) (fn-bpn-nth 4 record)))
+        (list :ready held)
+      (list :fault :conflict-row))))
 
 (defun fn-bpnf-family-replay-row-record (row)
   (declare (xargs :guard t))
@@ -24,7 +36,10 @@
                       (if dispatch dispatch
                         (let ((attempt (fn-bpnp-attempt-unframe (cadr row))))
                           (if attempt attempt
-                            (fn-bpnp-result-unframe (cadr row))))))))))))))))
+                            (let ((result (fn-bpnp-result-unframe (cadr row))))
+                              (if result result
+                                (fn-bpnf-conflict-unframe
+                                 (cadr row))))))))))))))))))
 
 (defun fn-bpnf-family-replay-rows-aux
   (rows base held handoffs prior next-arrival)
@@ -100,6 +115,12 @@
               (fn-bpnf-family-replay-rows-aux
                (cdr rows) base (fn-bpn-nth 1 applied)
                handoffs next next-arrival))))
+         ((equal (car record) :bpnf-conflict)
+          (let ((applied (fn-bpnf-conflict-apply record held)))
+            (if (not (equal (car applied) :ready))
+                (list :fault :kind-fourteen-row)
+              (fn-bpnf-family-replay-rows-aux
+               (cdr rows) base held handoffs next next-arrival))))
          (t (list :fault :received-kind)))))))
 
 (defun fn-bpnf-family-replay-rows (rows base)

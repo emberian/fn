@@ -78,6 +78,7 @@
                          fn-bpnp-preserve-runtime-answer
                          fn-bpn-report-delete-issuedp fn-bpnf-family-issuedp
                          fn-bpnp-credit-proposal-kind
+                         fn-bpnp-domain-recover-eventp fn-bpnp-conflict-held
                          bpnpb-base-of-slot-writers bpnpb-with-base-fields bpnpb-base-event-shape
                          (:e fn-cbor-ag-car) (:e fn-bpn-nth)
                          car-cons cdr-cons natp zp (:e zp) (:e natp))
@@ -263,6 +264,21 @@
   (fn-bpnp-dispatch-persist-step st epoch op result)
   (fn-bpnp-dispatch-persist-step)))
 
+(local
+ (fn-bpnpb-defquiet bpnpb-clock-domain-fence
+  (fn-bpnp-clock-domain-fence st plan)
+  (fn-bpnp-clock-domain-fence)))
+
+(local
+ (fn-bpnpb-defquiet bpnpb-conflict-propose-step
+  (fn-bpnp-conflict-propose-step st event h)
+  (fn-bpnp-conflict-propose-step fn-bpnp-conflict-refusal)))
+
+(local
+ (fn-bpnpb-defquiet bpnpb-conflict-persist-step
+  (fn-bpnp-conflict-persist-step st epoch op result)
+  (fn-bpnp-conflict-persist-step fn-bpnp-conflict-refusal)))
+
 ;; The stranded report of the kind-8 retry policy is neither a release nor
 ;; a receipt preparation.
 (local
@@ -314,6 +330,8 @@
                          bpnpb-forward-result-propose-step bpnpb-progress-step
                          bpnpb-dispatch-persist-step bpnpb-attempt-persist-step
                          bpnpb-forward-result-persist-step
+                         bpnpb-clock-domain-fence bpnpb-conflict-propose-step
+                         bpnpb-conflict-persist-step
                          bpnpb-delegate-with-credit bpnpb-preserve-runtime-answer)
                        (theory 'bpnpb-theory))))
   :rule-classes nil))
