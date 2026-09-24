@@ -13,9 +13,9 @@ log that lived here is [archive/now-2026-09-24.md](archive/now-2026-09-24.md).
   (2026-09-24 06:10 EDT): closure green, image pair built, BP N03 and the
   interrupted-fragment case pass on it; every other native module ran later
   ([native subsets](evidence/native-subsets-1a9dd747-2026-09-24.md)). Before it, [`863c2141`](evidence/863-native-cut-2026-09-24.md).
-- **Live node:** hbox `/tank/fn/node` on `da5fd8cb`
-  ([node record](evidence/node-hbox-da5fd8cb-2026-09-23.md)). Nothing tonight
-  replaces it.
+- **Live node:** hbox `/tank/fn/node` on `47bdb9a4` since 17:30 UTC
+  ([node record](evidence/node-hbox-47bdb9a4-2026-09-24.md)), upgraded in
+  place with the store kept; `fn-da5fd8cb` stays beside it for rollback.
 - **Final cut:** source `8a1b31f9` failed combined certification on three
   roots, so no image was built ([final record](evidence/final-cut-8a1b31f9-2026-09-24.md);
   handoff, "Final cut"):
@@ -32,7 +32,7 @@ ember's correction: the v0 push had become an audit of the present state.
 The plan's forward work is what the lanes point at from here, with the
 [scoreboard](v0-scoreboard.md) as the check, not the goal:
 
-1. **T0, the deployed node.** Cut image `6c0626c5` (every fix of today:
+1. **T0, the deployed node: done with `47bdb9a4`.** (Earlier text:) Cut image `6c0626c5` (every fix of today:
    signed ingress, W1 to W3, reconfiguration in ACL2, retention, recovery),
    all four images (default and DTN, production and developer), run the
    matrix, the cut campaign, the production kill campaign and every native
