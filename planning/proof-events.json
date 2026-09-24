@@ -2172,6 +2172,31 @@
           "note": "The exact host-called kind-9 status encoder and decoder recover refused, uncertain and fault with empty fields; an unrecognized status is a separating tooth."
         }
       ]
+    },
+    {
+      "id": "PRF-026",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-of-a-kind-4-acceptance-records-its-verdict",
+          "note": "Keystone, store side. Subject fn-sn-finish (host/owner-host.lisp fn-owner-finish runs the owner (:complete) event, fn-own-complete; host/store-node-host.lisp fn-store-sn-finish calls it directly). Under fn-sn-completion-enabledp and fn-stxa-p of the completion record, fn-sn-verdict-lookup of the finished Store at the kind-4 verdict event's Message-ID is that event's (token detail keyring-generation) verdict. Teeth in tests/acl2/owner-verdict-read-tests.lisp: reachable T10a witness; must-fail without the gate (identity sequence advanced) and without fn-stxa-p (reachable kind-3 rotation completion). Book 2.9 s, persvati run-20260924T144834Z-7de2."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-of-a-kind-4-acceptance-keeps-other-verdicts",
+          "note": "Sibling of the keystone: every other Message-ID's lookup is unchanged by the kind-4 finish."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-reader-opened-after-completion-pins-the-finished-verdicts",
+          "note": "Keystone, owner side. A connection fn-own-open creates after fn-own-step (:complete) pins exactly (fn-sn-verdicts (fn-sn-finish s)). Must-fail: reader A, opened before the completion, pins a different list."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-hdr-fn-verified-is-the-pinned-verdict",
+          "note": "Keystone, reader side, over fn-own-read: host/native/owner.lisp (fnn-owner-action 'fn-owner-chunk ...) runs host/owner-host.lisp fn-owner-chunk, i.e. fn-ocfg-read-tls-prefix, equal to fn-ocfg-read by fn-ocfg-read-tls-prefix-is-full-read, whose reply is (car (fn-own-read ...)). One read whose octets frame nothing until the last, which frames HDR :fn-verified <msgid>, on an ungated reader (non-peer, not awaiting, projected) answers the 225 block whose field is (fn-stx-reader-item (fn-stx-reader-lookup msgid (fn-own-conn-verdicts conn))). Lemmas: fn-served-step-hdr-fn-verified-is-the-pinned-verdict, fn-served-step-of-one-framed-event, fn-served-dispatch-hdr-fn-verified-msgid, fn-nntp-verdict-hdr-msgid-is-recorded. Framing is a premise, not proved from the wire. Must-fail per hypothesis only for: article absent from the pin (reader A, 430), last octet not framing (read cut before LF), item not :fn-verified (HDR Subject). No teeth yet for the auth gate, peer, awaiting-article or wire-closed premises. Book 5.3 s, persvati run-20260924T144834Z-7de2."
+        }
+      ]
     }
   ]
 }
