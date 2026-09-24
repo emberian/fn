@@ -1098,6 +1098,24 @@
             (not (assoc-equal name alist)))
    :hints (("Goal" :induct (strip-cars alist)))))
 
+; The candidate exists already in :record-staged, before it is eligible for
+; crash-image visibility.  State just its sequence shape here; opening the
+; complete Store-event codec together with the byte relation makes the final
+; name proof expand for minutes without adding a needed fact.
+(local
+ (defthm fn-bs-k6-staged-candidate-is-next-sequence
+   (implies (and (fn-sf-statep ks)
+                 (equal (fn-sf-phase ks) :record-staged))
+            (equal (fn-store-event-sequence (fn-sf-record-candidate ks))
+                   (len (fn-sf-records ks))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory
+            (e/d (fn-sf-statep fn-sf-phase-shapep
+                  fn-sf-record-phasep fn-sf-candidatep)
+                 (fn-store-event-sequence fn-store-event-p
+                  fn-sf-record-listp fn-sf-success-listp
+                  fn-sf-shapep))))))
+
 (defthm fn-bs-k6-related-staged-durable-final-name-absent
   (implies (and (fn-bs-store-relation bs ks)
                 (fn-bs-record-inputp ks stage name frame))
@@ -1106,13 +1124,12 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k6-related-staged-durable-name-count-is-record-count)
                  (:instance fn-bs-store-relation-unfolds)
-                 (:instance fn-bs-kernel-candidates-are-typed)
+                 (:instance fn-bs-k6-staged-candidate-is-next-sequence)
                  (:instance fn-bs-txn-name-not-in-txn-names
                             (i (len (fn-bs-durable-names bs :transactions)))
                             (n (len (fn-bs-durable-names bs :transactions)))))
            :in-theory (e/d (fn-bs-record-inputp fn-bs-durable-entry
-                            fn-bs-durable-names fn-bs-contiguous-namesp
-                            fn-sf-record-present-visiblep)
+                            fn-bs-durable-names fn-bs-contiguous-namesp)
                            (fn-bs-store-relation fn-bs-statep fn-sf-statep
                             fn-sf-phase-shapep fn-sf-candidatep
                             fn-store-event-sequence fn-bs-txn-names
