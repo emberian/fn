@@ -1,0 +1,9 @@
+CONTROL /home/hbox/fn-deploy/native-47bdb9a4-4ba40cf/b/authgate/control.sock
+LISTENING 11293
+accepted reader connection=0 time=2026-09-24T16:54:54Z
+accepted reader connection=1 time=2026-09-24T16:54:54Z
+accepted reader connection=2 time=2026-09-24T16:54:54Z
+accepted reader connection=3 time=2026-09-24T16:54:54Z
+accepted post path=served connection=3 message-id=<auth-gate-b@example.invalid> agent=fn.example.invalid time=2026-09-24T16:54:54Z
+accepted reader connection=4 time=2026-09-24T16:54:54Z
+accepted operator run

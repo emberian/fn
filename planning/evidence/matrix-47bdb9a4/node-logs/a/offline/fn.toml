@@ -1,0 +1,4 @@
+[store]
+path = "/tank/fn/scratch/matrix-47bdb9a4/stores/a/store"
+[control]
+path = "/home/hbox/fn-deploy/native-47bdb9a4-4ba40cf/a/offline/never-bound.sock"

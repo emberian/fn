@@ -1,0 +1,4 @@
+[store]
+path = "/home/hbox/fn-deploy/native-47bdb9a4-4ba40cf/a/profile/store"
+[posting]
+agent = "fn@matrix.example.invalid"

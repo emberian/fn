@@ -1,0 +1,57 @@
+CONTROL /tank/fn/scratch/matrix-47bdb9a4/stores/b/control.sock
+LISTENING 11191
+accepted peer connection=0 peer=a time=2026-09-24T16:55:08Z
+accepted peer connection=1 peer=a time=2026-09-24T16:55:08Z
+accepted post path=served connection=1 message-id=<native-matrix-eded62cda592-b@example.invalid> agent=b.gate.example.invalid time=2026-09-24T16:55:08Z
+accepted peer connection=2 peer=a time=2026-09-24T16:55:09Z
+accepted peer connection=3 peer=a time=2026-09-24T16:55:09Z
+refused post path=served connection=3 message-id=<native-matrix-eded62cda592-b@example.invalid> agent=b.gate.example.invalid time=2026-09-24T16:55:09Z
+accepted peer connection=4 peer=a time=2026-09-24T16:55:09Z
+accepted peer connection=5 peer=a time=2026-09-24T16:55:09Z
+accepted peer connection=6 peer=a time=2026-09-24T16:55:09Z
+accepted peer connection=7 peer=a time=2026-09-24T16:55:09Z
+accepted peer connection=8 peer=a time=2026-09-24T16:55:09Z
+accepted peer connection=9 peer=a time=2026-09-24T16:55:10Z
+accepted peer connection=10 peer=a time=2026-09-24T16:55:10Z
+accepted peer connection=11 peer=a time=2026-09-24T16:55:10Z
+accepted peer connection=12 peer=a time=2026-09-24T16:55:10Z
+accepted post path=served connection=12 message-id=<auth-b@example.invalid> agent=b.gate.example.invalid time=2026-09-24T16:55:10Z
+accepted peer connection=13 peer=a time=2026-09-24T16:55:10Z
+accepted post path=control message-id=<beta@b.example.invalid> time=2026-09-24T16:55:11Z
+duplicate post path=control message-id=<beta@b.example.invalid> time=2026-09-24T16:55:11Z
+refused post path=control message-id=<beta@b.example.invalid> time=2026-09-24T16:55:12Z
+accepted post path=control message-id=<stream-b@example.invalid> time=2026-09-24T16:55:12Z
+accepted peer connection=14 peer=a time=2026-09-24T16:55:14Z
+accepted peer connection=15 peer=a time=2026-09-24T16:55:15Z
+accepted transit connection=15 message-id=<alpha@a.example.invalid> code=235 decision=want reason=none detail=none time=2026-09-24T16:55:15Z
+refused transit connection=15 message-id=<loop-ab@example.invalid> code=437 decision=refuse reason=loop detail=none time=2026-09-24T16:55:15Z
+refused transit connection=15 message-id=<alpha@a.example.invalid> code=439 decision=have reason=history detail=none time=2026-09-24T16:55:15Z
+accepted peer connection=16 peer=a time=2026-09-24T16:55:15Z
+accepted peer connection=17 peer=a time=2026-09-24T16:55:15Z
+accepted peer connection=18 peer=a time=2026-09-24T16:55:15Z
+accepted transit connection=18 message-id=<stream-a@example.invalid> code=239 decision=want reason=none detail=none time=2026-09-24T16:55:15Z
+refused transit connection=18 message-id=<stream-a@example.invalid> code=439 decision=have reason=history detail=none time=2026-09-24T16:55:15Z
+accepted peer connection=19 peer=a time=2026-09-24T16:55:15Z
+accepted peer connection=20 peer=a time=2026-09-24T16:55:16Z
+accepted peer connection=21 peer=a time=2026-09-24T16:55:16Z
+accepted peer connection=22 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=23 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=24 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=25 peer=a time=2026-09-24T16:55:18Z
+refused transit connection=25 message-id=<pin.probe@matrix.example.invalid> code=437 decision=refuse reason=proto-article detail=none time=2026-09-24T16:55:18Z
+accepted peer connection=26 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=27 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=28 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=29 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=30 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=31 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=32 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=33 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=34 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=35 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=36 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=37 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=38 peer=a time=2026-09-24T16:55:18Z
+accepted peer connection=39 peer=a time=2026-09-24T16:55:18Z
+refused transit connection=39 message-id=<pin.take@matrix.example.invalid> code=439 decision=refuse reason=proto-article detail=none time=2026-09-24T16:55:18Z
+accepted operator run

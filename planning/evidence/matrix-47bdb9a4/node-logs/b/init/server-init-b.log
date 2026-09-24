@@ -1,0 +1,6 @@
+CONTROL /home/hbox/fn-deploy/native-47bdb9a4-4ba40cf/b/init/control.sock
+LISTENING 11296
+Store outcome uncertain; the store needs recovery: indeterminate injected failure after final publication
+uncertain post path=control message-id=<init-b@example.invalid> time=2026-09-24T16:54:33Z
+control request uncertain; owner fenced: owner bound Store outcome is uncertain
+uncertain operator run
