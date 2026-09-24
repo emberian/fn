@@ -17,6 +17,7 @@
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/hybrid-store")
+(include-book "books/peer-authored-accept")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")

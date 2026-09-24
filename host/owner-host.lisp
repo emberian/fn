@@ -48,6 +48,7 @@
 (include-book "../books/feed-journal")
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
+(include-book "../books/peer-authored-accept")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -1101,6 +1102,31 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-hl-current-enrollment
           generation (fn-sn-keyring-snapshots (fn-owner-store state)))))
+
+(defun fn-owner-peer-carrier-plan (received state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pa-current-plan
+          received (fn-sn-keyring-snapshots (fn-owner-store state)))))
+
+(defun fn-owner-peer-carried-event
+    (coordinates msgid received group-codes obligation subject evidence charge
+                 observed-ml-key ed-observation ml-observation state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes
+                  (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
+    (value
+     (if (equal groups :bad) nil
+       (fn-pa-authorized-event
+        (first coordinates) (second coordinates) (third coordinates)
+        (fn-store-octets->string msgid) received groups
+        (fn-store-octets->string obligation)
+        (fn-store-octets->string subject)
+        (fn-store-octets->string evidence) charge
+        (fn-sn-keyring-snapshots s)
+        observed-ml-key ed-observation ml-observation
+        (fn-owner-clock-observation state))))))
 
 (defun fn-owner-article-count (state)
   (declare (xargs :stobjs state :mode :program))
