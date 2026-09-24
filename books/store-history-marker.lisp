@@ -198,7 +198,7 @@
 ; A crash at CUT leaves the marker the open reads as OLD before the rename,
 ; either OLD or NEW after the rename and before the root directory barrier
 ; (CHOICE picks), and NEW after the barrier.  This table is the rename
-; atomicity of the crash model (docs/failures.md) transcribed for this one
+; atomicity of the crash model (specs/crash-model-v2.md) transcribed for this one
 ; program; it is not yet derived from the fn-bs byte model, whose programs
 ; do not include this one (open, specs/storage.md).
 (defun fn-hm-crash-image (cut choice old new)
