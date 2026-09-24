@@ -1539,6 +1539,11 @@
         {
           "kind": "theorem",
           "name": "fn-bpn-step-queue-acceptance-is-durable-or-exact-duplicate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-progress-preserves-held-and-issued",
+          "note": "The native BP service calls this exact outer transition. For one :progress event it preserves held obligations and issued durable operation; the two-kind-5 N03 trace and dropped-event-kind tooth are in bp-node-machine-teeth-tests. Four-class fairness, forwarding/MRU and reserve debt remain open."
         }
       ]
     },
