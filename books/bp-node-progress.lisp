@@ -64,6 +64,62 @@
     (if (and (null waits) (< (len st) 12)) st
       (update-nth 11 waits st))))
 
+; Outbound sessions and the exact wire awaiting a kind-8 publication are
+; volatile fields of the same FNBS state.  Recovery clears both.  The wire is
+; never reconstructed by Lisp after ACL2 has made its forwarding decision.
+(defun fn-bpnp-sessions (st)
+  (declare (xargs :guard t))
+  (fn-bpn-nth 14 st))
+
+(defun fn-bpnp-pending-image (st)
+  (declare (xargs :guard t))
+  (fn-bpn-nth 15 st))
+
+(defun fn-bpnp-with-runtime (st sessions pending-image)
+  (declare (xargs :guard t))
+  (if (not (true-listp st)) st
+    (update-nth 15 pending-image (update-nth 14 sessions st))))
+
+(defun fn-bpnp-session (peer session mru)
+  (declare (xargs :guard t))
+  (list :bpnp-session peer session mru))
+
+(defun fn-bpnp-sessionp (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4)
+       (equal (car x) :bpnp-session)
+       (fn-bpp-eidp (fn-bpn-nth 1 x))
+       (fn-bpnp-session-idp (fn-bpn-nth 2 x))
+       (fn-frame-natp (fn-bpn-nth 3 x))
+       (< 0 (fn-bpn-nth 3 x))))
+
+(defun fn-bpnp-remove-peer-session (peer sessions)
+  (declare (xargs :guard t :measure (acl2-count sessions)))
+  (if (atom sessions) nil
+    (if (equal (fn-bpn-nth 1 (car sessions)) peer)
+        (fn-bpnp-remove-peer-session peer (cdr sessions))
+      (cons (car sessions)
+            (fn-bpnp-remove-peer-session peer (cdr sessions))))))
+
+(defun fn-bpnp-open-session (sessions peer session mru)
+  (declare (xargs :guard t))
+  (cons (fn-bpnp-session peer session mru)
+        (fn-bpnp-remove-peer-session peer sessions)))
+
+(defun fn-bpnp-session-currentp (sessions peer session mru)
+  (declare (xargs :guard t :measure (acl2-count sessions)))
+  (if (atom sessions) nil
+    (or (equal (car sessions) (fn-bpnp-session peer session mru))
+        (fn-bpnp-session-currentp (cdr sessions) peer session mru))))
+
+(defun fn-bpnp-find-session (sessions peer session)
+  (declare (xargs :guard t :measure (acl2-count sessions)))
+  (if (atom sessions) nil
+    (if (and (equal (fn-bpn-nth 1 (car sessions)) peer)
+             (equal (fn-bpn-nth 2 (car sessions)) session))
+        (car sessions)
+      (fn-bpnp-find-session (cdr sessions) peer session))))
+
 (defun fn-bpnp-wait-for (key waits)
   (declare (xargs :guard t :measure (acl2-count waits)))
   (if (atom waits) nil
@@ -512,16 +568,335 @@
             (fn-bpnp-used st) (fn-bpnp-debt st))
            (list (list :dispatch-answer :uncertain))))))))
 
+; Scan in arrival order.  A failed MRU comparison records a per-key volatile
+; wait and continues to younger rows in this same bounded event (N04).
+(defun fn-bpnp-forward-mru-waitp (h peer mru waits)
+  (declare (xargs :guard t))
+  (let ((wait (fn-bpnp-wait-for (fn-bpnp-wait-key h) waits)))
+    (and (equal (fn-bpn-nth 0 wait) :bpnp-wait)
+         (equal (fn-bpn-nth 2 wait) :mru)
+         (equal (fn-bpn-nth 3 wait) peer)
+         (equal (fn-bpn-nth 4 wait) mru))))
+
+(defun fn-bpnp-forward-candidatep (h peer observation)
+  (declare (xargs :guard t))
+  (and (equal (fn-bpn-nth 0 h) :bpnf-held)
+       (natp (fn-bpn-nth 3 h))
+       (equal (fn-bpn-nth 11 h) peer)
+       (equal (fn-bpn-nth 12 h) '(:forward-pending))
+       (null (fn-bpn-nth 13 h))
+       (null (fn-bpn-nth 14 h))
+       (equal (fn-bpnp-held-expiry h observation) :live)))
+
+(defun fn-bpnp-forward-scan (ordered peer mru node observation waits free)
+  (declare (xargs :guard t :measure (acl2-count ordered)))
+  (if (atom ordered) (list :none waits)
+    (let* ((h (car ordered))
+           (key (fn-bpnp-wait-key h)))
+      (if (or (not (fn-bpnp-forward-candidatep h peer observation))
+              (fn-bpnp-forward-mru-waitp h peer mru waits)
+              (fn-bpnp-credit-blockedp h waits free))
+          (fn-bpnp-forward-scan
+           (cdr ordered) peer mru node observation waits free)
+        (let ((image (fn-bpnp-forward-image h node observation)))
+          (if (not (equal (car image) :ready))
+              (fn-bpnp-forward-scan
+               (cdr ordered) peer mru node observation waits free)
+            (if (< mru (len (fn-bpn-nth 1 image)))
+                (fn-bpnp-forward-scan
+                 (cdr ordered) peer mru node observation
+                 (cons (list :bpnp-wait key :mru peer mru)
+                       (fn-bpnp-remove-wait key waits)) free)
+              (list :ready h (fn-bpn-nth 1 image)
+                    (fn-bpb-bundle-age (fn-bpn-nth 2 image))
+                    waits))))))))
+
+(defun fn-bpnp-start-one (st peer session mru observation)
+  (declare (xargs :guard t))
+  (if (not (and (fn-bpnp-session-currentp
+                (fn-bpnp-sessions st) peer session mru)
+                (null (fn-bpnf-issued st))
+                (null (fn-bpnf-waits st))
+                (not (fn-bpn-machine-state-fenced (fn-bpnf-base st)))))
+      (fn-bpnf-answer st nil)
+    (let* ((node (fn-bpn-config-node-id
+                  (fn-bpn-machine-state-config (fn-bpnf-base st))))
+           (free (fn-bpnd-free (fn-bpnp-used st) (fn-bpnp-debt st)
+                               *fn-bpnp-control-margin*))
+           (scan (fn-bpnp-forward-scan
+                  (reverse (fn-bpnf-held-list st)) peer mru node observation
+                  (fn-bpnp-waits st) free))
+           (waits (if (equal (car scan) :ready)
+                      (fn-bpn-nth 4 scan) (fn-bpn-nth 1 scan)))
+           (st (fn-bpnp-with-waits st waits)))
+      (if (not (equal (car scan) :ready))
+          (fn-bpnf-answer st nil)
+        (let* ((h (fn-bpn-nth 1 scan))
+               (wire (fn-bpn-nth 2 scan))
+               (age (fn-bpn-nth 3 scan))
+               (record (fn-bpnp-forward-attempt-record
+                        (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                        (fn-bpn-nth 3 h)
+                        (fn-bpah-held-primary-identity h)
+                        peer session age))
+               (applied (fn-bpnp-attempt-apply
+                         record (fn-bpnf-held-list st)))
+               (delta (if (equal (car applied) :ready)
+                          (fn-bpnd-held-delta
+                           h (fn-bpn-nth 2 applied) node) 0)))
+          (if (not (and (fn-frame-natp (fn-bpnf-epoch st))
+                        (fn-frame-natp (fn-bpnf-next-op st))
+                        (< (fn-bpnf-next-op st) *fn-frame-max-nat*)
+                        (equal (car applied) :ready)
+                        (fn-bpnp-forward-attempt-recordp record)
+                        (not (equal (fn-bpnp-attempt-frame record) :bad))))
+              (fn-bpnf-answer st nil)
+            (if (not (fn-bpnd-admitp
+                      (fn-bpnp-used st) (fn-bpnp-debt st)
+                      *fn-bpnp-control-margin* delta :spend))
+                (let* ((key (fn-bpnp-wait-key h))
+                       (new-waits
+                        (cons (list :bpnp-wait key :credit free)
+                              (fn-bpnp-remove-wait key waits))))
+                  (fn-bpnf-answer
+                   (fn-bpnp-with-waits st new-waits)
+                   (list (list :progress-wait key :credit free))))
+              (let ((issued
+                     (fn-bpnf-state-with-arrival
+                      (fn-bpnf-base st) (fn-bpnf-held-list st)
+                      (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+                      (fn-bpnf-correlation st)
+                      (fn-bpnf-operation
+                       (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                       :attempt record :pending)
+                      (fn-bpnf-waits st) (fn-bpnf-epoch st)
+                      (1+ (fn-bpnf-next-op st))
+                      (fn-bpnf-next-arrival st))))
+                (fn-bpnf-answer
+                 (fn-bpnp-with-runtime
+                  (fn-bpnp-with-credit
+                   (fn-bpnp-with-waits issued waits)
+                   (fn-bpnp-used st) (fn-bpnp-debt st))
+                  (fn-bpnp-sessions st)
+                  (list (fn-bpnf-epoch st) (fn-bpnf-next-op st) wire))
+                 (list (list :persist-attempt
+                             (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                             record)))))))))))
+
+(defun fn-bpnp-attempt-persist-step (st epoch op result)
+  (declare (xargs :guard t))
+  (let* ((issued (fn-bpnf-issued st))
+         (record (fn-bpn-nth 4 issued))
+         (pending (fn-bpnp-pending-image st)))
+    (if (not (and (fn-bpnf-operation-matchp issued epoch op)
+                  (equal (fn-bpn-nth 3 issued) :attempt)
+                  (equal (fn-bpn-nth 5 issued) :pending)))
+        (fn-bpnf-answer st nil)
+      (if (equal result :durable)
+          (let* ((before (fn-bpnf-find-arrival
+                          (fn-bpn-nth 3 record) (fn-bpnf-held-list st)))
+                 (applied (fn-bpnp-attempt-apply
+                           record (fn-bpnf-held-list st)))
+                 (node (fn-bpn-config-node-id
+                        (fn-bpn-machine-state-config (fn-bpnf-base st)))))
+            (if (not (and (equal (car applied) :ready)
+                          (equal (fn-bpn-nth 0 pending) epoch)
+                          (equal (fn-bpn-nth 1 pending) op)
+                          (fn-cbor-octet-listp (fn-bpn-nth 2 pending))
+                          (consp (fn-bpn-nth 2 pending))))
+                (fn-bpnf-answer
+                 (fn-bpnf-with-issued
+                  st (fn-bpnf-operation epoch op :attempt record :uncertain))
+                 (list (list :forward-answer :uncertain)))
+              (let* ((delta (fn-bpnd-held-delta
+                             before (fn-bpn-nth 2 applied) node))
+                     (settled
+                      (fn-bpnf-state-with-arrival
+                       (fn-bpnf-base st) (fn-bpn-nth 1 applied)
+                       (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+                       (fn-bpnf-correlation st) nil (fn-bpnf-waits st)
+                       (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                       (fn-bpnf-next-arrival st))))
+                (fn-bpnf-answer
+                 (fn-bpnp-with-runtime
+                  (fn-bpnp-with-credit
+                   (fn-bpnp-with-waits settled (fn-bpnp-waits st))
+                   (1+ (nfix (fn-bpnp-used st)))
+                   (+ (nfix (fn-bpnp-debt st)) delta))
+                  (fn-bpnp-sessions st) nil)
+                 (list (list :cl-send
+                             (fn-bpn-nth 5 record) (fn-bpn-nth 6 record)
+                             epoch op (fn-bpnp-wait-key (fn-bpn-nth 2 applied))
+                             (fn-bpn-nth 2 pending)))))))
+        (if (equal result :refused)
+            (fn-bpnf-answer
+             (fn-bpnp-with-runtime
+              (fn-bpnf-with-issued st nil) (fn-bpnp-sessions st) nil)
+             (list (list :forward-answer :refused)))
+          (fn-bpnf-answer
+           (fn-bpnp-with-runtime
+            (fn-bpnf-with-issued
+             st (fn-bpnf-operation epoch op :attempt record :uncertain))
+            (fn-bpnp-sessions st) nil)
+           (list (list :forward-answer :uncertain))))))))
+
+(defun fn-bpnp-find-attempt (held attempt-epoch attempt-op session)
+  (declare (xargs :guard t :measure (acl2-count held)))
+  (if (atom held) nil
+    (let ((attempt (fn-bpn-nth 13 (car held))))
+      (if (and (equal (fn-bpn-nth 0 attempt) :forwarding)
+               (equal (fn-bpn-nth 1 attempt) attempt-epoch)
+               (equal (fn-bpn-nth 2 attempt) attempt-op)
+               (equal (fn-bpn-nth 4 attempt) session))
+          (car held)
+        (fn-bpnp-find-attempt
+         (cdr held) attempt-epoch attempt-op session)))))
+
+(defun fn-bpnp-forward-result-propose-step
+  (st attempt-epoch attempt-op session outcome observation)
+  (declare (xargs :guard t) (ignore observation))
+  (let* ((h (fn-bpnp-find-attempt
+             (fn-bpnf-held-list st) attempt-epoch attempt-op session))
+         (record (and h
+                      (fn-bpnp-forward-result-record
+                       (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                       (fn-bpn-nth 3 h)
+                       (fn-bpah-held-primary-identity h)
+                       attempt-epoch attempt-op session outcome)))
+         (applied (and record
+                       (fn-bpnp-forward-result-apply
+                        record (fn-bpnf-held-list st)))))
+    (if (not h)
+        (fn-bpnf-answer st
+                         (list (list :forward-stale attempt-epoch
+                                     attempt-op session)))
+      (let* ((node (fn-bpn-config-node-id
+                    (fn-bpn-machine-state-config (fn-bpnf-base st))))
+             (delta (and (equal (car applied) :ready)
+                         (fn-bpnd-held-delta
+                          h (fn-bpn-nth 2 applied) node))))
+        (if (not (and (null (fn-bpnf-issued st))
+                      (null (fn-bpnf-waits st))
+                      (fn-bpnp-forward-outcomep outcome)
+                      (fn-frame-natp (fn-bpnf-epoch st))
+                      (fn-frame-natp (fn-bpnf-next-op st))
+                      (< (fn-bpnf-next-op st) *fn-frame-max-nat*)
+                      (equal (car applied) :ready)
+                      (integerp delta)
+                      (not (equal (fn-bpnp-result-frame record) :bad))
+                      (fn-bpnd-admitp
+                       (fn-bpnp-used st) (fn-bpnp-debt st)
+                       *fn-bpnp-control-margin* delta :pay)))
+            (fn-bpnf-answer st (list (list :forward-answer :uncertain)))
+          (fn-bpnf-answer
+           (fn-bpnp-with-runtime
+            (fn-bpnp-with-credit
+             (fn-bpnf-state-with-arrival
+              (fn-bpnf-base st) (fn-bpnf-held-list st)
+              (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+              (fn-bpnf-correlation st)
+              (fn-bpnf-operation
+               (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+               :forward-result record :pending)
+              (fn-bpnf-waits st) (fn-bpnf-epoch st)
+              (1+ (fn-bpnf-next-op st)) (fn-bpnf-next-arrival st))
+             (fn-bpnp-used st) (fn-bpnp-debt st))
+            (fn-bpnp-sessions st) nil)
+           (list (list :persist-forward-result
+                       (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                       record))))))))
+
+(defun fn-bpnp-forward-result-persist-step (st epoch op result)
+  (declare (xargs :guard t))
+  (let* ((issued (fn-bpnf-issued st))
+         (record (fn-bpn-nth 4 issued)))
+    (if (not (and (fn-bpnf-operation-matchp issued epoch op)
+                  (equal (fn-bpn-nth 3 issued) :forward-result)
+                  (equal (fn-bpn-nth 5 issued) :pending)))
+        (fn-bpnf-answer st nil)
+      (if (equal result :durable)
+          (let* ((before (fn-bpnf-find-arrival
+                          (fn-bpn-nth 3 record) (fn-bpnf-held-list st)))
+                 (applied (fn-bpnp-forward-result-apply
+                           record (fn-bpnf-held-list st)))
+                 (node (fn-bpn-config-node-id
+                        (fn-bpn-machine-state-config (fn-bpnf-base st)))))
+            (if (not (equal (car applied) :ready))
+                (fn-bpnf-answer
+                 (fn-bpnf-with-issued
+                  st (fn-bpnf-operation
+                      epoch op :forward-result record :uncertain))
+                 (list (list :forward-answer :uncertain)))
+              (let* ((delta (fn-bpnd-held-delta
+                             before (fn-bpn-nth 2 applied) node))
+                     (settled
+                      (fn-bpnf-state-with-arrival
+                       (fn-bpnf-base st) (fn-bpn-nth 1 applied)
+                       (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+                       (fn-bpnf-correlation st) nil (fn-bpnf-waits st)
+                       (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                       (fn-bpnf-next-arrival st))))
+                (fn-bpnf-answer
+                 (fn-bpnp-with-runtime
+                  (fn-bpnp-with-credit
+                   (fn-bpnp-with-waits settled (fn-bpnp-waits st))
+                   (1+ (nfix (fn-bpnp-used st)))
+                   (+ (nfix (fn-bpnp-debt st)) delta))
+                  (fn-bpnp-sessions st) nil)
+                 (list (list :forward-ready
+                             (fn-bpn-nth 3 record)
+                             (fn-bpn-nth 8 record)))))))
+        (if (equal result :refused)
+            (fn-bpnf-answer
+             (fn-bpnf-with-issued st nil)
+             (list (list :forward-answer :refused)))
+          (fn-bpnf-answer
+           (fn-bpnf-with-issued
+            st (fn-bpnf-operation
+                epoch op :forward-result record :uncertain))
+           (list (list :forward-answer :uncertain))))))))
+
 (defun fn-bpnp-host-eventp (event)
   (declare (xargs :guard t))
-  (if (equal (fn-cbor-ag-car event) :progress)
-      (and (true-listp event) (equal (len event) 5)
-           (fn-bpp-eidp (fn-bpn-nth 1 event))
-           (fn-clock-observationp (fn-bpn-nth 2 event))
-           (fn-bpnp-routesp (fn-bpn-nth 3 event))
-           (<= (len (fn-bpn-nth 3 event)) *fn-bpnp-max-routes*)
-           (fn-frame-natp (fn-bpn-nth 4 event)))
-    (fn-bpnf-host-eventp event)))
+  (case (fn-cbor-ag-car event)
+    (:progress
+     (and (true-listp event) (equal (len event) 5)
+          (fn-bpp-eidp (fn-bpn-nth 1 event))
+          (fn-clock-observationp (fn-bpn-nth 2 event))
+          (fn-bpnp-routesp (fn-bpn-nth 3 event))
+          (<= (len (fn-bpn-nth 3 event)) *fn-bpnp-max-routes*)
+          (fn-frame-natp (fn-bpn-nth 4 event))))
+    (:session
+     (and (true-listp event) (equal (len event) 6)
+          (fn-bpp-eidp (fn-bpn-nth 1 event))
+          (fn-bpnp-session-idp (fn-bpn-nth 2 event))
+          (or (equal (fn-bpn-nth 3 event) t)
+              (null (fn-bpn-nth 3 event)))
+          (fn-frame-natp (fn-bpn-nth 4 event))
+          (< 0 (fn-bpn-nth 4 event))
+          (fn-clock-observationp (fn-bpn-nth 5 event))))
+    (:resume
+     (and (true-listp event) (equal (len event) 4)
+          (fn-bpp-eidp (fn-bpn-nth 1 event))
+          (fn-bpnp-session-idp (fn-bpn-nth 2 event))
+          (fn-clock-observationp (fn-bpn-nth 3 event))))
+    (:forward-result
+     (and (true-listp event) (equal (len event) 6)
+          (fn-frame-natp (fn-bpn-nth 1 event))
+          (fn-frame-natp (fn-bpn-nth 2 event))
+          (fn-bpnp-session-idp (fn-bpn-nth 3 event))
+          (fn-bpnp-forward-outcomep (fn-bpn-nth 4 event))
+          (fn-clock-observationp (fn-bpn-nth 5 event))))
+    (otherwise (fn-bpnf-host-eventp event))))
+
+(defun fn-bpnp-preserve-runtime-answer (answer st recovery)
+  (declare (xargs :guard t))
+  (fn-bpnf-answer
+   (fn-bpnp-with-runtime
+    (fn-bpnf-answer-state answer)
+    (if recovery nil (fn-bpnp-sessions st))
+    (if recovery nil (fn-bpnp-pending-image st)))
+   (fn-bpnf-answer-effects answer)))
 
 (defun fn-bpnp-delegate-with-credit (st event)
   (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
@@ -605,19 +980,70 @@
   (if (and (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :uncertain)
            (not (equal (fn-cbor-ag-car event) :recover-fnbs)))
       (fn-bpnf-answer st nil)
-  (if (equal (fn-cbor-ag-car event) :progress)
+  (cond
+   ((equal (fn-cbor-ag-car event) :session)
+    (let* ((peer (fn-bpn-nth 1 event))
+           (session (fn-bpn-nth 2 event))
+           (open (fn-bpn-nth 3 event))
+           (mru (fn-bpn-nth 4 event))
+           (observation (fn-bpn-nth 5 event))
+           (sessions (if open
+                         (fn-bpnp-open-session
+                          (fn-bpnp-sessions st) peer session mru)
+                       (fn-bpnp-remove-peer-session
+                        peer (fn-bpnp-sessions st))))
+           (updated (fn-bpnp-with-runtime
+                     st sessions (fn-bpnp-pending-image st))))
+      (if open
+          (fn-bpnp-start-one updated peer session mru observation)
+        (fn-bpnf-answer updated nil))))
+   ((equal (fn-cbor-ag-car event) :resume)
+    (let ((peer (fn-bpn-nth 1 event))
+          (session (fn-bpn-nth 2 event))
+          (observation (fn-bpn-nth 3 event)))
+      (let ((current (fn-bpnp-find-session
+                      (fn-bpnp-sessions st) peer session)))
+        (if current
+            (fn-bpnp-start-one
+             st peer session (fn-bpn-nth 3 current) observation)
+          (fn-bpnf-answer st nil)))))
+   ((equal (fn-cbor-ag-car event) :forward-result)
+    (fn-bpnp-forward-result-propose-step
+     st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+     (fn-bpn-nth 3 event) (fn-bpn-nth 4 event)
+     (fn-bpn-nth 5 event)))
+   ((equal (fn-cbor-ag-car event) :progress)
       (let ((answer
              (fn-bpnp-progress-step
               st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
               (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
         (fn-bpnf-answer
-         (fn-bpnp-with-credit
-          (fn-bpnf-answer-state answer)
-          (fn-bpnp-used st) (fn-bpnp-debt st))
-         (fn-bpnf-answer-effects answer)))
-    (if (and (equal (fn-cbor-ag-car event) :persist-result)
-             (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :dispatch))
-        (fn-bpnp-dispatch-persist-step
-         st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
-         (fn-bpn-nth 3 event))
-      (fn-bpnp-delegate-with-credit st event)))))
+         (fn-bpnp-with-runtime
+          (fn-bpnp-with-credit
+           (fn-bpnf-answer-state answer)
+           (fn-bpnp-used st) (fn-bpnp-debt st))
+          (fn-bpnp-sessions st) (fn-bpnp-pending-image st))
+         (fn-bpnf-answer-effects answer))))
+   ((and (equal (fn-cbor-ag-car event) :persist-result)
+         (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :dispatch))
+    (fn-bpnp-preserve-runtime-answer
+     (fn-bpnp-dispatch-persist-step
+      st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+      (fn-bpn-nth 3 event)) st nil))
+   ((and (equal (fn-cbor-ag-car event) :persist-result)
+         (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :attempt))
+    (fn-bpnp-attempt-persist-step
+     st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+     (fn-bpn-nth 3 event)))
+   ((and (equal (fn-cbor-ag-car event) :persist-result)
+         (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :forward-result))
+    (fn-bpnp-forward-result-persist-step
+     st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+     (fn-bpn-nth 3 event)))
+   (t
+    (let ((answer (fn-bpnp-delegate-with-credit st event)))
+      (fn-bpnp-preserve-runtime-answer
+       answer st
+       (and (equal (fn-cbor-ag-car event) :recover-fnbs)
+            (equal (fn-bpn-nth 0 (fn-bpnf-answer-effects answer))
+                   :restart-ready))))))))
