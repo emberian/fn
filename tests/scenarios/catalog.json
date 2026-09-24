@@ -583,11 +583,13 @@
       "steps": [
         "Carry a real versioned batch through a selected BP implementation.",
         "Observe transport status before application acceptance.",
-        "Expire a bundle or interrupt its path and retry."
+        "Expire a bundle or interrupt its path and retry.",
+        "Receive a nonzero fragment, restart, then receive offset zero and reassemble only from a complete coherent live family."
       ],
       "expected": [
         "Transport status is not a retention undertaking.",
         "Only validated complete application inputs receive matching receipts.",
+        "No fragment enters Store before durable whole-bundle replacement; expired or unknown-age source rows cannot be silently omitted from that replacement.",
         "Adapter version, lifetime profile, and interoperability evidence are recorded."
       ],
       "evidence": [
@@ -595,9 +597,11 @@
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/evidence/native-bp-app-2026-09-21.md",
-        "tests/test_bp_app_native.py"
+        "tests/test_bp_app_native.py",
+        "tests/test_bp_fragment_node_native.py",
+        "planning/evidence/bp-fragment-expiry-activation-2026-09-24.md"
       ],
-      "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified. Native TCPCL request-to-owner-Store-to-receipt composition has a separate loopback restart witness; it is not external BPA interoperability or a complete contact-plan test."
+      "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified. Native TCPCL request-to-owner-Store-to-receipt composition has a separate loopback restart witness; it is not external BPA interoperability or a complete contact-plan test. The fragment-carrier and observation-bound kind-18 transitions have ACL2 evidence; the two-process interrupted-fragment native fixture awaits a source-matched saved image."
     },
     {
       "id": "SCN-018",

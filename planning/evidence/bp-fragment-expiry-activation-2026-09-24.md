@@ -41,3 +41,13 @@ verified by the fragment live-wrapper guard book. Clock observations assume
 the separately persisted boot-domain authority and do not prove peer clock
 honesty, full RFC lifetime semantics under unknown upstream age, kind-10
 conflict deletion, or proactive forwarding fragmentation.
+
+The activation was transplanted onto current `dev` base `8c61c098`, reusing
+its already-integrated arrival-frontier repair and pure expiry selector. The
+changed BP book/test roots certified on persvati jobs 2 in
+`run-20260924T033253Z-6f04`, manifest
+`planning/evidence/manifests/certify-20260924T033307Z-3777649.json`:
+142 matching dependencies installed and 40 current-source certificates
+completed. This result covers the edited roots, not yet their downstream BP
+dependents or a native saved image. The subsequent affected run is recorded
+separately when it finishes.

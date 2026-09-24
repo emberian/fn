@@ -615,22 +615,22 @@
     "books": 616,
     "books_in_root_closure": 614,
     "roots": 608,
-    "theorems": 8557,
-    "functions": 6339,
-    "assert_events": 9298,
-    "must_fails": 504,
+    "theorems": 8558,
+    "functions": 6353,
+    "assert_events": 9320,
+    "must_fails": 506,
     "encapsulates": 27,
     "guards": {
       "verified": 2034,
-      "declared-off": 374,
-      "default-guarded": 3124,
+      "declared-off": 379,
+      "default-guarded": 3133,
       "default-unguarded": 807
     },
     "suspect_theorems": 77,
     "export_hygiene_warnings": 103,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 41,
-    "include_hygiene_warnings": 544,
+    "include_hygiene_warnings": 547,
     "host_names_warnings": 801,
     "hand_written_record_warnings": 18
   },
@@ -1724,22 +1724,22 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 6,
+      "functions": 13,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 13,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "bp-fnbs-codec",
-        "bp-node-fragment-plan"
+        "bp-node-fragment-expiry"
       ],
       "system_includes": [],
       "suspects": [],
@@ -2232,7 +2232,7 @@
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 21,
+      "verify_guards_events": 30,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -2278,10 +2278,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 4,
+      "functions": 5,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
+        "declared-off": 2,
         "default-guarded": 3,
         "default-unguarded": 0
       },
@@ -2302,7 +2302,7 @@
       "book": "books/bp-node-fragment-step.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
+      "theorems": 3,
       "functions": 6,
       "guards": {
         "verified": 0,
@@ -2543,11 +2543,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 25,
-      "functions": 30,
+      "functions": 32,
       "guards": {
         "verified": 23,
         "declared-off": 0,
-        "default-guarded": 7,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
       "verify_guards_events": 23,
@@ -10939,9 +10939,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 5,
-      "must_fails": 1,
-      "defconsts": 1,
+      "assert_events": 10,
+      "must_fails": 2,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -10987,21 +10987,22 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 4,
+      "functions": 8,
       "guards": {
         "verified": 0,
-        "declared-off": 4,
+        "declared-off": 8,
         "default-guarded": 0,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 11,
+      "assert_events": 14,
       "must_fails": 1,
-      "defconsts": 6,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-fnbs-family-replay",
+        "../../books/bp-node-fragment-step",
         "bp-node-fragment-plan-tests",
         "bp-report-deletion-tests"
       ],
@@ -11485,13 +11486,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 6,
-      "must_fails": 1,
-      "defconsts": 0,
+      "assert_events": 19,
+      "must_fails": 2,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/bp-app-handoff-time",
         "../../books/bp-node-fragment-step",
+        "../../books/bp-node-receive-boundary",
         "bp-node-fragment-plan-tests"
       ],
       "system_includes": [
@@ -11594,7 +11597,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 27,
+      "assert_events": 28,
       "must_fails": 1,
       "defconsts": 2,
       "defmacros": 0,
@@ -17282,7 +17285,7 @@
     {
       "theorem": "fn-bpnfg-car-is-car",
       "book": "books/bp-node-fragment-guards.lisp",
-      "line": 138,
+      "line": 141,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-cbor-ag-car",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -19192,8 +19195,8 @@
       {
         "book": "books/bp-fnbs-family-codec.lisp",
         "line": 5,
-        "include": "bp-node-fragment-plan",
-        "included": "books/bp-node-fragment-plan.lisp",
+        "include": "bp-node-fragment-expiry",
+        "included": "books/bp-node-fragment-expiry.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -20795,13 +20798,20 @@
       {
         "book": "tests/acl2/bp-fnbs-family-replay-tests.lisp",
         "line": 3,
+        "include": "../../books/bp-node-fragment-step",
+        "included": "books/bp-node-fragment-step.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-fnbs-family-replay-tests.lisp",
+        "line": 4,
         "include": "bp-node-fragment-plan-tests",
         "included": "tests/acl2/bp-node-fragment-plan-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/bp-fnbs-family-replay-tests.lisp",
-        "line": 4,
+        "line": 5,
         "include": "bp-report-deletion-tests",
         "included": "tests/acl2/bp-report-deletion-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -21019,6 +21029,20 @@
       {
         "book": "tests/acl2/bp-node-fragment-step-tests.lisp",
         "line": 3,
+        "include": "../../books/bp-app-handoff-time",
+        "included": "books/bp-app-handoff-time.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-fragment-step-tests.lisp",
+        "line": 4,
+        "include": "../../books/bp-node-receive-boundary",
+        "included": "books/bp-node-receive-boundary.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-fragment-step-tests.lisp",
+        "line": 5,
         "include": "bp-node-fragment-plan-tests",
         "included": "tests/acl2/bp-node-fragment-plan-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -25234,126 +25258,126 @@
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 501,
+        "line": 489,
         "name": "fnn-bp-observation",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 501,
+        "line": 489,
         "name": "fnn-bp-tally-wall",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 501,
+        "line": 489,
         "name": "fnn-bp-tally-wall-error",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 501,
+        "line": 505,
         "name": "fnn-bp-tally-config",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 501,
+        "line": 505,
         "name": "caar",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 540,
+        "line": 544,
         "name": "fnn-tclc-session",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 540,
+        "line": 544,
         "name": "fnn-owner-core",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 558,
+        "line": 562,
         "name": "fnn-bp-journal-dir",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 558,
+        "line": 562,
         "name": "fnn-tcl-spool-acquire",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 558,
+        "line": 562,
         "name": "make-fnn-bp-tally",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 667,
+        "line": 671,
         "name": "fnn-bp-config",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 667,
+        "line": 671,
         "name": "fnn-bp-eid",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 667,
+        "line": 671,
         "name": "fnn-string-octets",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 667,
+        "line": 671,
         "name": "fnn-bp-reserve-sequence",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 707,
+        "line": 711,
         "name": "fnn-write-staged",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 720,
+        "line": 724,
         "name": "fnn-tcl-arg",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 720,
+        "line": 724,
         "name": "fnn-tcl-number",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 754,
+        "line": 758,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
