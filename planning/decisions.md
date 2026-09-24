@@ -1019,3 +1019,38 @@ Exactly one copy is held either way; sending XFER_REFUSE reason 1
 reason code to the sender (`fn-bpnp-tcpcl-outcome` maps every refusal to
 `:failed`), is left for ember. Machine: `books/bp-forward-attempt.lisp`,
 `books/bp-node-progress.lisp`; spec: [bp-node-machine §4.3.1](../specs/bp-node-machine.md).
+
+### 2026-09-24: D02's scope includes a served POST that carries a signature (candidate; adopted by the p8-signed-post lane, pending ember)
+
+D02 selected native author signatures alongside gateway provenance for
+ordinary unsigned clients; it did not say what a served NNTP POST that
+carries an `FN-Authorship` carrier gets. Until this entry it got the
+unsigned arm: stored as a legacy `fn-r` record, no kind-4 verdict, and
+`HDR :fn-verified` reported no record, while the same bytes over protected
+transit or the control socket's `hybrid-author` got a durable verdict. The
+[peer-authored ingress record](evidence/peer-authored-ingress-2026-09-24.md)
+names one acceptance helper for NNTP and BP; the served POST was the missing
+caller.
+
+The default: a served POST, a local control `post` and a BP application
+submission take exactly the classification transit takes, the one ACL2
+decision `fn-pa-current-plan` over the submitted octets and this Store's
+keyring snapshots.
+
+- **Absent carrier**: the unsigned arm, unchanged (gateway provenance).
+- **Present and valid under this node's current enrollment of the
+  principal**, both primitive observations verified: a durable kind-4
+  acceptance whose verdict `HDR :fn-verified` reports.
+- **Present and invalid**: refused, never the unsigned arm, with the reason
+  on the wire as its own 441 line (`:carrier`, `:carrier-shape`, `:article`,
+  `:local-enrollment`, `:signature`; `fn-pa-served-word`,
+  `fn-post-store-refusal-line`).
+
+A consequence recorded as a design decision, not changed here: a correctly
+signed article whose principal this node has not enrolled is refused with
+`local-enrollment` (441 on POST, 439 on transit, as the hybrid-feed-storm lane
+surfaced), not stored unsigned. An agent that wants to post through a node
+that does not know its key must post without the carrier. Whether an
+unenrolled signature should instead be accepted as unverified is ember's
+question, listed with the other P8 decisions on the scoreboard. Evidence:
+[p8-signed-post](evidence/p8-signed-post-2026-09-24.md).
