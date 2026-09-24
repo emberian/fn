@@ -427,4 +427,6 @@
 
 (in-theory (disable fn-acar-own-advance-result fn-acar-own-outcome
                     fn-acar-conn-sessionp fn-acar-view-statep
-                    fn-acar-nntp-projectionp fn-acar-open-session))
+                    fn-acar-nntp-projectionp fn-acar-open-session
+                    fn-acar-nntp-projectionp-is-nntp-projectionp
+                    fn-acar-open-session-is-open-session))
