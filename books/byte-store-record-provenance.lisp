@@ -2611,7 +2611,7 @@
                             fn-bs-fencedp fn-bs-pending-shape-okp)))))
 
 ; K0 served article call arguments: ACL2 codec, frame, and filename.
-(local (defthm fn-bs-k0-host-frame-decodes-event
+(defthm fn-bs-k0-host-frame-decodes-event
   (implies (and (fn-cbor-octet-listp payload)
                 (fn-cbor-at-mostp payload *fn-frame-max-store-payload*)
                 (equal (fn-store-event-decode-exact payload)
@@ -2650,7 +2650,7 @@
                             fn-frame-result-kind
                             fn-frame-ok fn-frame-inputp)
                            (fn-frame-seal fn-frame-protected-prefix
-                            fn-store-event-decode-exact fn-store-event-p))))))
+                            fn-store-event-decode-exact fn-store-event-p)))))
 
 (local (defthm fn-bs-k0-article-event-round-trip
   (implies (fn-record-p record)
@@ -2680,7 +2680,7 @@
            :in-theory (e/d (fn-store-event-encode)
                            (fn-record-p fn-cbor-at-mostp))))))
 
-(local (defthm fn-bs-k0-host-frame-is-octets
+(defthm fn-bs-k0-host-frame-is-octets
   (implies (and (fn-cbor-octet-listp payload)
                 (fn-cbor-at-mostp payload *fn-frame-max-store-payload*))
            (fn-cbor-octet-listp
@@ -2693,7 +2693,7 @@
                             (xs payload) (bound *fn-frame-max-store-payload*)))
            :in-theory (e/d (fn-frame-seal fn-frame-encode
                             fn-frame-protected fn-frame-header)
-                           (fn-frame-store-protected fn-frame-trailer))))))
+                           (fn-frame-store-protected fn-frame-trailer)))))
 
 (defthm fn-bs-k0-article-host-arguments-are-typed-record-input
   (implies (and (fn-record-p record)
