@@ -148,6 +148,11 @@
   (implies (fn-nntp-article-idp article) (consp article))
   :hints (("Goal" :in-theory (enable fn-nntp-article-idp fn-article-msgid))))
 
+; As a rewrite rule it is tried on every consp test and backchains by opening
+; fn-nntp-article-idp and the message-id token check; the proofs below reach
+; it through the shape facts they name.  Exported enabled, as before.
+(local (in-theory (disable fn-nntp-article-idp-is-consp)))
+
 (defthm fn-nntp-found-article-with-identifier-is-available
   (implies (and (posp number)
                 (<= number *fn-nntp-max-article-number*)
@@ -182,7 +187,8 @@
           (fn-nntp-result-session
            (fn-nntp-article-response session article number kind updatep group)))
          (fn-nntp-session-projected session))
-  :hints (("Goal" :in-theory (enable fn-nntp-article-response))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-article-response)
+                                  (fn-nntp-retrieval-initial)))))
 
 (defthm fn-nntp-group-result-keeps-projection
   (equal (fn-nntp-session-projected

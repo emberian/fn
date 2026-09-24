@@ -1138,6 +1138,12 @@
                                    (:d fn-ocfg-live-cnode)
                                    fn-cnode-record-acceptablep)
                                   (fn-cfg-record-acceptablep fn-cfg-apply-record
+                                   ;; the pins, the record's stamp and the
+                                   ;; response-text shape rules play no part
+                                   ;; in the configuration replay
+                                   fn-ocfg-pin-remove fn-ocfg-config-stamp
+                                   fn-nntp-response-text-true-listp
+                                   fn-cp-idp-true-listp fn-nntp-article-idp-is-consp
                                    fn-cnode-config-replay fn-own-complete fn-own-close
                                    fn-ocfg-reconfig-okp
                                    fn-ocfg-config-replay-of-one-more-record
