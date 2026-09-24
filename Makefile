@@ -317,6 +317,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-forward-replay-tests \
 	books/bp-node-progress-invariants \
 	books/bp-node-progress-guards \
+	books/bp-node-progress-premises \
+	tests/acl2/bp-node-progress-premises-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-fnbs-dispatch-codec \
