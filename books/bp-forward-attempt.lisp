@@ -1,0 +1,140 @@
+; One retained-row transition for durable kind-8 attempts and kind-9 results.
+; Live callbacks and ordered FNBS replay call these same functions.
+(in-package "ACL2")
+(include-book "bp-forward-image")
+(set-verify-guards-eagerness 0)
+
+(defun fn-bpnp-session-idp (session)
+  (declare (xargs :guard t))
+  (and (consp session)
+       (fn-frame-natp (car session))
+       (fn-frame-natp (cdr session))))
+
+(defun fn-bpnp-forward-attempt-record
+  (epoch op arrival identity peer session age)
+  (declare (xargs :guard t))
+  (list :bpnf-attempting epoch op arrival identity peer session age))
+
+(defun fn-bpnp-forward-attempt-recordp (record)
+  (declare (xargs :guard t))
+  (and (true-listp record) (equal (len record) 8)
+       (equal (car record) :bpnf-attempting)
+       (fn-frame-natp (fn-bpn-nth 1 record))
+       (fn-frame-natp (fn-bpn-nth 2 record))
+       (fn-frame-natp (fn-bpn-nth 3 record))
+       (fn-cbor-octet-listp (fn-bpn-nth 4 record))
+       (consp (fn-bpn-nth 4 record))
+       (<= (len (fn-bpn-nth 4 record)) 1024)
+       (fn-bpp-eidp (fn-bpn-nth 5 record))
+       (fn-bpnp-session-idp (fn-bpn-nth 6 record))
+       (or (null (fn-bpn-nth 7 record))
+           (fn-frame-natp (fn-bpn-nth 7 record)))))
+
+(defun fn-bpnp-attempted-held (h record)
+  (declare (xargs :guard t))
+  (update-nth 13
+              (list :forwarding (fn-bpn-nth 1 record) (fn-bpn-nth 2 record)
+                    (fn-bpn-nth 5 record) (fn-bpn-nth 6 record))
+              h))
+
+(defun fn-bpnp-attempt-matches-heldp (record h)
+  (declare (xargs :guard t))
+  (and (fn-bpnp-forward-attempt-recordp record)
+       (equal (fn-bpn-nth 0 h) :bpnf-held)
+       (equal (fn-bpn-nth 3 h) (fn-bpn-nth 3 record))
+       (equal (fn-bpah-held-primary-identity h) (fn-bpn-nth 4 record))
+       (equal (fn-bpn-nth 11 h) (fn-bpn-nth 5 record))
+       (equal (fn-bpn-nth 12 h) '(:forward-pending))
+       (null (fn-bpn-nth 13 h))
+       (null (fn-bpn-nth 14 h))))
+
+(defun fn-bpnp-attempt-replace (arrival record held)
+  (declare (xargs :guard t :measure (acl2-count held)))
+  (if (atom held) nil
+    (if (equal arrival (fn-bpn-nth 3 (car held)))
+        (cons (fn-bpnp-attempted-held (car held) record) (cdr held))
+      (cons (car held)
+            (fn-bpnp-attempt-replace arrival record (cdr held))))))
+
+(defun fn-bpnp-attempt-apply (record held)
+  (declare (xargs :guard t))
+  (let* ((arrival (fn-bpn-nth 3 record))
+         (h (fn-bpnf-find-arrival arrival held)))
+    (if (and (equal (fn-bpnf-arrival-count arrival held) 1)
+             (fn-bpnp-attempt-matches-heldp record h))
+        (list :ready
+              (fn-bpnp-attempt-replace arrival record held)
+              (fn-bpnp-attempted-held h record))
+      (list :fault :attempt-row))))
+
+(defun fn-bpnp-forward-outcomep (outcome)
+  (declare (xargs :guard t))
+  (or (and (member-equal outcome '(:sent :failed :uncertain)) t)
+      (and (true-listp outcome) (equal (len outcome) 2)
+           (equal (car outcome) :refused)
+           (fn-frame-natp (cadr outcome)))))
+
+(defun fn-bpnp-forward-terminalp (outcome)
+  (declare (xargs :guard t))
+  (or (equal outcome :sent) (equal outcome '(:refused 1))))
+
+(defun fn-bpnp-forward-result-record
+  (epoch op arrival identity attempt-epoch attempt-op session outcome)
+  (declare (xargs :guard t))
+  (list :bpnf-forwarded epoch op arrival identity
+        attempt-epoch attempt-op session outcome))
+
+(defun fn-bpnp-forward-result-recordp (record)
+  (declare (xargs :guard t))
+  (and (true-listp record) (equal (len record) 9)
+       (equal (car record) :bpnf-forwarded)
+       (fn-frame-natp (fn-bpn-nth 1 record))
+       (fn-frame-natp (fn-bpn-nth 2 record))
+       (fn-frame-natp (fn-bpn-nth 3 record))
+       (fn-cbor-octet-listp (fn-bpn-nth 4 record))
+       (consp (fn-bpn-nth 4 record))
+       (<= (len (fn-bpn-nth 4 record)) 1024)
+       (fn-frame-natp (fn-bpn-nth 5 record))
+       (fn-frame-natp (fn-bpn-nth 6 record))
+       (fn-bpnp-session-idp (fn-bpn-nth 7 record))
+       (fn-bpnp-forward-outcomep (fn-bpn-nth 8 record))))
+
+(defun fn-bpnp-forward-result-held (h outcome)
+  (declare (xargs :guard t))
+  (update-nth 13 nil
+              (if (fn-bpnp-forward-terminalp outcome)
+                  (update-nth 12 '(:dispatch-done) h)
+                h)))
+
+(defun fn-bpnp-forward-result-matches-heldp (record h)
+  (declare (xargs :guard t))
+  (and (fn-bpnp-forward-result-recordp record)
+       (equal (fn-bpn-nth 0 h) :bpnf-held)
+       (equal (fn-bpn-nth 3 h) (fn-bpn-nth 3 record))
+       (equal (fn-bpah-held-primary-identity h) (fn-bpn-nth 4 record))
+       (equal (fn-bpn-nth 12 h) '(:forward-pending))
+       (equal (fn-bpn-nth 13 h)
+              (list :forwarding
+                    (fn-bpn-nth 5 record) (fn-bpn-nth 6 record)
+                    (fn-bpn-nth 11 h) (fn-bpn-nth 7 record)))
+       (null (fn-bpn-nth 14 h))))
+
+(defun fn-bpnp-forward-result-replace (arrival outcome held)
+  (declare (xargs :guard t :measure (acl2-count held)))
+  (if (atom held) nil
+    (if (equal arrival (fn-bpn-nth 3 (car held)))
+        (cons (fn-bpnp-forward-result-held (car held) outcome) (cdr held))
+      (cons (car held)
+            (fn-bpnp-forward-result-replace arrival outcome (cdr held))))))
+
+(defun fn-bpnp-forward-result-apply (record held)
+  (declare (xargs :guard t))
+  (let* ((arrival (fn-bpn-nth 3 record))
+         (h (fn-bpnf-find-arrival arrival held))
+         (outcome (fn-bpn-nth 8 record)))
+    (if (and (equal (fn-bpnf-arrival-count arrival held) 1)
+             (fn-bpnp-forward-result-matches-heldp record h))
+        (list :ready
+              (fn-bpnp-forward-result-replace arrival outcome held)
+              (fn-bpnp-forward-result-held h outcome))
+      (list :fault :result-row))))
