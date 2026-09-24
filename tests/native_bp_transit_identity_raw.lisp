@@ -1,5 +1,6 @@
-;;; Exercise the shipped host boundary with ACL2-style identity lists and
-;;; native metadata octet vectors. This is a host regression, not a proof.
+;;; Exercise the shipped host boundary with the actual fn-bpaj-transit-plan
+;;; identity strings (slots 8/9) and native metadata octet vectors.
+;;; This is a host regression, not a proof.
 (require :sb-posix)
 (require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "CL"))
@@ -12,6 +13,8 @@
   (make-array (length x) :element-type '(unsigned-byte 8)
               :initial-contents x))
 (defun fnn-octet-list (x) (coerce x 'list))
+(defun fnn-string-octets (x)
+  (sb-ext:string-to-octets x :external-format :utf-8))
 (defun fnn-owner-octets-global (name)
   (case name
     (fn-owner-submit-msgid #(60 120 62))
@@ -56,13 +59,14 @@
   (fnn-owner-complete-bp-transit-submission
    :service (lambda () :submitted) #(60 120 62) #(82) #(65 66)
    (list #(103)) #(69) 1 2 id subject))
-(assert (eq (invoke-transit '(54 54 97) '(55 55 98)) :accepted))
+(assert (eq (invoke-transit "66a" "77b") :accepted))
 (assert (equal (reverse *calls*)
                '(fn-owner-take fn-owner-transit-decide
                  fn-owner-submission-intent :flush :attempt
                  fn-owner-submission-resolution :flush
                  fn-owner-bp-transit-outcome)))
-(dolist (bad '(((54 54 98) (55 55 98)) ((54 54 97) (55 55 97))))
+(dolist (bad '(("66b" "77b") ("66a" "77a")
+               ((54 54 97) "77b") ("66a" (55 55 98))))
   (setq *calls* nil)
   (assert (handler-case (progn (apply #'invoke-transit bad) nil)
             (boundary-fault () t)))

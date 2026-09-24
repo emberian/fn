@@ -1124,10 +1124,13 @@ Every other caller submits exact authored octets and names them."
       (multiple-value-bind (actual-id actual-subject ignored)
           (fnn-metadata msgid stored)
         (declare (ignore ignored))
-        ;; Metadata is ACL2-rendered identity text in octet vectors; the
-        ;; pinned plan carries the same octets as lists, not Lisp strings.
-        (unless (and (equalp actual-id (fnn-octets planned-id))
-                     (equalp actual-subject (fnn-octets planned-subject)))
+        ;; fnn-metadata returns rendered text as octet vectors. The actual
+        ;; fn-bpaj-transit-plan retains fn-record-octets-string results in
+        ;; slots 8/9, so its globals are Lisp strings, not octet lists.
+        (unless (and (stringp planned-id) (stringp planned-subject)
+                     (equalp actual-id (fnn-string-octets planned-id))
+                     (equalp actual-subject
+                             (fnn-string-octets planned-subject)))
           (fnn-fault "owner BP transit changed projected identity"))
         (let ((kind (fnn-owner-action 'fn-owner-transit-decide
                                       (fnn-octet-list actual-id)
