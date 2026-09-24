@@ -605,6 +605,107 @@
                                         fn-bpn-machine-invariantp)
                                       (theory 'minimal-theory)))))
 
+;; ---------------------------------------------------------------------
+;; Recovery clears the volatile runtime fields.  A recovery event reaches
+;; fn-bpnf-recover-fnbs-step through the four delegating layers; its answer
+;; is either a :restart-fault or a :restart-ready over a freshly built state.
+
+(local
+ (defthm fn-bpnpp-answer-effects-of-answer
+   (equal (fn-bpnf-answer-effects (fn-bpnf-answer s effects)) effects)
+   :hints (("Goal" :in-theory (enable fn-bpnf-answer fn-bpnf-answer-effects
+                                      fn-bpn-nth fn-cbor-ag-car)))))
+
+(local
+ (defthm fn-bpnpp-recover-fnbs-step-outcome
+   (let ((tag (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects
+                                           (fn-bpnf-recover-fnbs-step
+                                            st e r s rr))))))
+     (implies (not (equal tag :restart-fault))
+              (and (equal tag :restart-ready)
+                   (true-listp (fn-bpnf-answer-state
+                                (fn-bpnf-recover-fnbs-step st e r s rr))))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories
+                        '(fn-bpnf-recover-fnbs-step fn-bpnf-answer
+                          fn-bpnf-answer-state fn-bpnf-answer-effects
+                          fn-bpnf-state-with-arrival fn-bpn-nth fn-cbor-ag-car
+                          fn-bpnpp-true-listp-cons car-cons cdr-cons
+                          zp natp (:e zp) (:e natp) (:e true-listp)
+                          (:e binary-+) (:e unary--) (:e <) (:e equal))
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnpp-author-step-of-recovery
+   (implies (equal (fn-cbor-ag-car event) :recover-fnbs)
+            (equal (fn-bpn-report-author-step st event)
+                   (fn-bpnf-recover-fnbs-step
+                    st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+                    (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories
+                        '(fn-bpn-report-author-step fn-bpn-report-step
+                          fn-bpnf-fragment-step fn-bpnf-step (:e equal))
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnpp-slot-writers-true-listp
+   (implies (true-listp st)
+            (and (true-listp (fn-bpnp-with-waits st w))
+                 (true-listp (fn-bpnp-with-credit st u d))))
+   :hints (("Goal" :in-theory (enable fn-bpnp-with-waits fn-bpnp-with-credit)))))
+
+(local
+ (defthm fn-bpnpp-delegate-recovery-ready
+   (implies (and (equal (fn-cbor-ag-car event) :recover-fnbs)
+                 (equal (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects
+                                                     (fn-bpnp-delegate-with-credit
+                                                      st event))))
+                        :restart-ready))
+            (true-listp (fn-bpnf-answer-state
+                         (fn-bpnp-delegate-with-credit st event))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bpnpp-recover-fnbs-step-outcome
+                             (e (fn-bpn-nth 1 event)) (r (fn-bpn-nth 2 event))
+                             (s (fn-bpn-nth 3 event)) (rr (fn-bpn-nth 4 event))))
+            :in-theory (union-theories
+                        '(fn-bpnp-delegate-with-credit
+                          fn-bpnpp-author-step-of-recovery
+                          fn-bpnp-credit-proposal-kind
+                          fn-bpnpp-slot-writers-true-listp
+                          fn-bpnpp-answer-effects-of-answer
+                          fn-bpnpp-constructor-fields
+                          (:e equal))
+                        (theory 'minimal-theory))))))
+
+;; A recovery whose first effect is :restart-ready leaves no outbound
+;; session and no pending kind-8 wire.  The recovery-event hypothesis scopes
+;; the statement to the arm the proof opens; only fn-bpnf-recover-fnbs-step
+;; builds a :restart-ready effect, so it has no separating must-fail.
+(defthm fn-bpnp-recovery-success-clears-sessions-and-pending-image
+  (implies (and (equal (fn-cbor-ag-car event) :recover-fnbs)
+                (equal (fn-bpn-nth 0 (fn-bpn-nth 0 (fn-bpnf-answer-effects
+                                                    (fn-bpnp-step st event))))
+                       :restart-ready))
+           (and (null (fn-bpnp-sessions
+                       (fn-bpnf-answer-state (fn-bpnp-step st event))))
+                (null (fn-bpnp-pending-image
+                       (fn-bpnf-answer-state (fn-bpnp-step st event))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnpp-delegate-recovery-ready))
+           :in-theory (union-theories
+                       '(fn-bpnp-step fn-bpnp-preserve-runtime-answer
+                         fn-bpnp-with-runtime fn-bpnp-sessions
+                         fn-bpnp-pending-image
+                         fn-bpnpp-nth-of-update-nth
+                         fn-bpnpp-nth-of-update-nth-same
+                         fn-bpnpp-answer-effects-of-answer
+                         fn-bpnpp-constructor-fields
+                         natp (:e natp) (:e equal))
+                       (theory 'minimal-theory)))))
+
 ;; Open: the host builds fn-bpnf-initial-state and refuses to serve unless
 ;; its base satisfies fn-bpn-machine-invariantp (host/native/bp-service.lisp,
 ;; the two invariant checks in the open path).  That check is the whole
