@@ -39,22 +39,43 @@ obstruction there. Deploying an image to the hbox node happens only after the
 matrix and campaign pass on it, in place with the store kept and the previous
 release retained. Proof cost stays a failing check.
 
-## Active lanes
+## Lanes
 
-Lanes run on Claude Opus 5.5 in `build/lanes/<name>` on branch `lane/<name>`,
-created from dev `46f2660d`; Claude Fable coordinates and merges. How lanes
-coordinate is on the [swarm board](swarm-board.md).
+Lanes run on Claude Opus 5.5 in `build/lanes/<name>` on branch `lane/<name>`
+from a named dev revision; Claude Fable coordinates, reviews and merges. How
+lanes coordinate is on the [swarm board](swarm-board.md). The night lanes
+(image, join, cost, planning) are in the [restart record](handoff-2026-09-24-night.md).
 
-| Lane | Intended result | Must cite |
-| --- | --- | --- |
-| plan-consolidate | done: this page, the archive moves, links repaired | merged, `make check` exit 0 |
-| bp-progress-guards | guard closure of `books/bp-node-progress-guards` without whole-state revalidation on the served path | farm run id and manifest; theorem statements; `green_check` line |
-| bp-selection-invariant | done: the old theorem was false after forwarding landed; split into `-preserves-held` and `-issued-unchanged-or-pending-dispatch` with routed witness and teeth | merged; hbox run-20260924T085624Z-626a |
-| proof-cost-regressions | done: cause was `fn-th-topic-eventp` left enabled at export; withdrawn with a shape lemma plus four hint repairs. `replay` 58.1 to 2.5 s, `store-identity-sequence-invariants` 46.6 to 3.0, `consumer-store-invariants` 42.0 to 8.3, `store-node-invariants` 85.0 to 17.6, `store-node-traces` 50.5 to 20.3 (persvati, 2 jobs) | merged; [record](evidence/topic-recognizer-proof-cost-2026-09-24.md); persvati runs 084451Z, 090348Z, 090548Z |
-| check-ratchet | done: both lints exit 1 on regression; baseline `planning/proof-cost-baseline.json` (37 books, slowest measurement per book) only shrinks | merged; `make check` exit 0 |
-| worktree-retire | done: 60 of 83 landed worktrees retired, 6 archive refs, [record](evidence/worktree-retirement-2026-09-24-claude.md) | merged `ec498722` |
-| bp-codec-cost | done: five of six under 10 s (`checkpoint-compaction` 67.8 to 1.8, `records-canonicality` 37.6 to 5.1, `bp-node-fragment-plan` 28.8 to 1.3, `bp-fnbs-codec-invariants` 26.5 to 4.4, `bp-fnbs-byte-invariants` 22.8 to 3.4); `tcpcl-session` 24.2 to 12.8, still over | merged; hbox runs 090646Z-5502, 091446Z-52b2 |
-| two-store-join | done: harness `tools/runbooks/two_store_join.py`; dry run on 863c2141 stops at B's receiver verdict (REFUSED), which the ingress fix after 863 addresses; `a-accepted` cut held | merged; [record](evidence/two-store-join-harness-2026-09-24.md) |
+**v0 push, landed** (each row's evidence is in [the scoreboard](v0-scoreboard.md)
+and the merge message):
+
+| Lane | Result |
+| --- | --- |
+| audit-p1-p6, audit-p7-p9, audit-p10-p11 | every §2.1 cell re-verified; packets per P (`planning/v0-audit-*.md`) |
+| matrix-1a9dd747 | 188 rows reached, 0 disagreed, 0 faulted, INN 33/33; three matrix-tool defects fixed ([record](evidence/matrix-1a9dd747-2026-09-24.md)) |
+| campaign-1a9dd747 | 20/20 cuts pass on the developer twin; production refuses selectors; NNTP wire probe found W1, W2, W3 ([record](evidence/campaign-1a9dd747-2026-09-24.md)) |
+| bp-d1b-disposition | every commit already on dev; worktree retired ([record](evidence/bp-d1b-disposition-2026-09-24.md)) |
+| host-translate-check | `tools/host_shape_check.py` in `make check`; `make check-host-translate` |
+| cost-4 | five more books under 10 s; baseline 5 |
+| p9-retention | refusal and keep-until-release over the called prepare and finish; PRF-004 +6 |
+| p6-reconfig | half-change theorem over the called publication path; delta constructor moved into ACL2 |
+| p2-p3-p5-owner | 240 keystone over `fn-own-finish` (host must install it), T6 pinned view, open-at-bound and fault wrapper |
+| p7-peering | loop freedom over `fn-own-submission-targets`; Path tail kept; PRF-029 +4, PRF-058 +2 |
+| p8-verdict | kind-4 finish records its verdict; `HDR :fn-verified` over `fn-own-read`; PRF-026 has events |
+| p1-auth | 480/483/posting allowance over `fn-auth-step-pinned` and `fn-served-dispatch`; PRF-031 +6 |
+| p11-bridge | `fn-bpnp-step` refines `fn-bpn-step` on base events; no release without a receipt; counterexample suite started; recovery-clears-sessions bug found |
+
+**In flight:**
+
+| Lane | Intended result |
+| --- | --- |
+| p2-wire | W1, W2, W3 fixed in the host; `fn-owner-finish` installs `fn-own-finish`; probe rerun on a developer image |
+| p10-k0 | general K0 (or its cut-coordinate restriction), K5/K8 registered, native transcription check, five missing cut selectors |
+| campaign-production-kill | external SIGKILL campaign on the production image (P10's production evidence) |
+| native-subsets-1a9dd747 | every remaining native module on the image, per-P observation cells |
+| bp-recovery-sessions | the recovery arm clears sessions and the pending image; dependents re-certified |
+| p6-crash-replay | crash headline over `fn-cpr-replay` as the host calls it |
+| p3-p5-followups | local numbers never reused over the served path; owner-fault teeth |
 
 ## Where to read next
 
