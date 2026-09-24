@@ -10,6 +10,10 @@
 (in-theory (disable fn-own-conn-make-group-indexed
                     fn-own-view-make-group-indexed))
 
+; Configuration updates retain the file state through the exported selector
+; theorem.  Expanding the updater first hides that match inside UPDATE-NTH.
+(local (in-theory (disable fn-sn-with-configuration)))
+
 (defun fn-ocl-owner-with-store (o st)
   (declare (xargs :guard t))
   (fn-own-refresh
