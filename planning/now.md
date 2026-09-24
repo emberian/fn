@@ -78,17 +78,32 @@ and the merge message):
 | p1-auth | 480/483/posting allowance over `fn-auth-step-pinned` and `fn-served-dispatch`; PRF-031 +6 |
 | p11-bridge | `fn-bpnp-step` refines `fn-bpn-step` on base events; no release without a receipt; counterexample suite started; recovery-clears-sessions bug found |
 
+**Landed since (each with its record and merge message):** p10-k0 and
+p10-k0-b (K0 at 18 of 25 cuts, transcription check, four new cut selectors),
+p6-crash-replay, p3-p5-followups, bp-recovery-sessions, bp-app-txid,
+group-name-validity and group-names-2 (NNT-009, PRF-071), p2-wire (W1 to W3,
+`fn-own-finish` installed), campaign-production-kill (184 SIGKILLs, 0 torn),
+t17-msgid-index (a whole-store guard check removed from every read), m6-web,
+hybrid-feed-storm (an unenrolled author's 439, now logged), matrix-6c0626c5,
+campaign-6c0626c5, native-subsets-6c0626c5. Second image `6c0626c5`: closure
+green, all four images built, 25/25 cuts, probe 30/30 on the original rows,
+matrix 123/32/2 with ONE regression that blocks deploy: a transit with a Path
+identity is stored but answered 436 uncertain and the service exits
+(`fn-own-completion-names-submission-p` compares the Path-prepended stored
+payload with the offered octets). The DTN images cannot `store init`
+(build-dtn.lisp never lds checkpoint-host.lisp).
+
 **In flight:**
 
 | Lane | Intended result |
 | --- | --- |
-| p2-wire | W1, W2, W3 fixed in the host; `fn-owner-finish` installs `fn-own-finish`; probe rerun on a developer image |
-| p10-k0 | general K0 (or its cut-coordinate restriction), K5/K8 registered, native transcription check, five missing cut selectors |
-| campaign-production-kill | external SIGKILL campaign on the production image (P10's production evidence) |
-| native-subsets-1a9dd747 | every remaining native module on the image, per-P observation cells |
-| bp-recovery-sessions | the recovery arm clears sessions and the pending image; dependents re-certified |
-| p6-crash-replay | crash headline over `fn-cpr-replay` as the host calls it |
-| p3-p5-followups | local numbers never reused over the served path; owner-fault teeth |
+| transit-436 | the completion-names-submission relation over the transit-transformed octets; 235 and the service up with a Path identity |
+| dtn-build-checkpoint | build-dtn.lisp lds every host file the DTN image needs; a check that the two build lists agree |
+| bp-kind8-retry | M4: retry after a durable attempt with the original identity, receiver dedup, bounded, stranded reportable (default pending ember) |
+| served-path-cost | the per-command whole-state checks carried in state (`fn-auth-sessionp`'s `fn-node-statep`), re-measured |
+| m5-capacity | the 128-transaction cap decided in ACL2 from the store profile, headroom in the status verb, a larger profile |
+| probe-tables | the probe's expectation table for the four new cuts and the swallowed unlink; the differential reads the article's octets |
+| stale-native-tests | the five (c)-class native tests brought up to date with the machine |
 
 ## Where to read next
 
