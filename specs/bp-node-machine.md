@@ -817,8 +817,9 @@ final name. The already deployed `clock-domain.fnb` marker keeps `(FNBS,
 version 1, kind 6)` and its separate fixed final name. Specialized canonical
 decoders reject the opposite version, and the namespace planner never treats
 the marker name as a received lifecycle name. This version mapping preserves
-existing marker bytes; it does not make the current held-node dispatcher or
-forwarding attempt implementation complete. The first codec is
+existing marker bytes. The kind-6 dispatcher, kind-8/9 forwarding records,
+and ordered replay now have executable ACL2 source; their native session path
+has not yet passed a source-matched image test. The first codec is
 `books/bp-fnbs-dispatch-codec.lisp`.
 
 Slice A's codec defines kinds 5 to 14 and refuses 15 to 20 at recovery as
@@ -1052,9 +1053,12 @@ clock decision does not relax the separate global fence after an ambiguous
 FNBS or Store publication; `fnn-bpnode-dispatch-one` checks the service's
 uncertain outcome before calling `:progress`, and `fn-bpnf-step` refuses to
 issue a delivery marker while an uncertain publication is issued. This A3
-selection only covers local whole application requests/receipts and the
-route-less transit wait; N03's full class fairness, N04's session MRU, and
-N05's journal debt remain open in A1.
+selection covers local whole application requests/receipts and the
+route-less transit wait. A subsequent outer-step slice selects a later
+MRU-fitting transit row after an older oversized row, and carries cached
+journal debt through kind-8/9 callbacks. Reached ACL2 fixtures exercise those
+transitions; native forwarding/restart and the general carried-debt theorem
+remain open. N03's full class fairness remains open.
 
 One action per event. This is the only place delivery and dispatch are
 started, so expiry is decided before either (F-L). Selection is among
