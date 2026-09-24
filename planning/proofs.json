@@ -1754,7 +1754,9 @@
         "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record",
         "fn-bpn-step-queue-acceptance-is-durable-or-exact-duplicate",
         "fn-bpnp-step-progress-preserves-held",
-        "fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch"
+        "fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch",
+        "fn-bpnp-step-preserves-guard-premises",
+        "fn-bpnp-host-trace-preserves-guard-premises"
       ]
     },
     {
