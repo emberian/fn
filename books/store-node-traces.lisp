@@ -54,6 +54,18 @@
                          fn-state-next-txid
                           ))))
 
+; Measured 2026-09-24 on persvati (REPL, whole book 18.3 s to 11.9 s):
+; `fn-cp-idp-true-listp' is an unconditional-looking rewrite rule on
+; `true-listp' that backchains into the consumer id's octet recognizer, and
+; `fn-cp-id-length-bound' does the same on every `len' (40 759 tries of
+; `fn-cp-idp' across this book, none needed); `fn-replay-identity-step' and
+; the topic anchor recognizer split the preparation goals on arms they only
+; carry.  A proof that reads one of them enables it in its hint.
+(local (in-theory (disable fn-cp-idp-true-listp fn-cp-id-length-bound
+                           fn-replay-identity-step fn-th-topic-v1-anchorp
+                           fn-snt-history-recoverable-under-record-bound
+                           fn-sn-new-success-requires-actual-matching-durable-node-completion)))
+
 (defthm fn-snt-recoverable-prefix-facts
   (implies (fn-sf-history-recoverablep groups capacity history frontier)
            (and (fn-replay-okp (fn-replay groups capacity history))
@@ -338,6 +350,7 @@
   (implies (fn-snt-relation s) (fn-sn-statep s))
   :hints (("Goal" :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
                                       fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp fn-sn-completion-enabledp))))
+(local (in-theory (disable fn-snt-relation-implies-structural-state)))
 
 (defthm fn-snt-initial-relation
   (implies (and (fn-string-listp groups) (fn-no-duplicatesp groups) (natp capacity))

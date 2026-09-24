@@ -339,7 +339,19 @@
                             fn-replay-apply-retention-event
                             fn-node-complete
                             fn-sf-core-completion
-                            fn-sf-emit-success)))))
+                            fn-sf-emit-success
+                            ; `fn-sn-statep' reads no index, so the index
+                            ; arms stay closed; the completion record is
+                            ; read through its accessors, not found again;
+                            ; and the identity step's fields come from
+                            ; fn-sn-identity-fields-of-fn-replay-identity-step
+                            ; above.  Open, they took the goal from 1.6 s
+                            ; to 7.4 s (persvati REPL, 2026-09-24).
+                            fn-sn-completion-record fn-sn-find-record
+                            fn-sf-fencedp fn-sf-fenced-rejects-success
+                            fn-sn-composite-delta fn-replay-composite-record
+                            fn-stx-index-add fn-sn-accepted-delta
+                            fn-replay-identity-step fn-th-at)))))
 
 ; Keystone for the host-called acceptance subject.  host/store-node-host.lisp
 ; `fn-store-sn-finish' calls fn-sn-finish; on its enabled durable acceptance
@@ -540,14 +552,30 @@
                      (fn-record-content-subject record) :archive
                      (fn-record-release-evidence record) (fn-record-charge record))))))
 
+;; The node invariant's retention, binding and article-freshness
+;; consequences.  A proof that opens `fn-node-statep' only for the stage and
+;; acceptance shape keeps these closed.
+(local
+ (deftheory fn-sni-node-invariant-consequences
+   '(fn-nrt-node-statep-retention fn-nrt-statep-no-duplicate-pins
+     fn-replay-retain-pins-typed fn-node-state-has-committed-archive-pins
+     fn-nrt-node-statep-binding-ids-subset fn-article-listp
+     fn-node-articles-have-archive-bindingsp
+     fn-retain-accounting-within-capacity)))
+
 (defthm fn-sn-actual-durable-completion-installs-record
   (implies (fn-sn-record-bindsp node record)
            (fn-sn-committed-recordp
             (fn-node-complete node (fn-record-txid record)
                               (fn-record-generation record) :durable)
             record))
+  ; The node invariant is opened for the stage and acceptance shape; its
+  ; retention, binding and article-freshness consequences are not needed
+  ; and stay closed (4.3 s open, 1.5 s closed, persvati REPL 2026-09-24).
   :hints (("Goal" :use fn-sn-record-binds-pending-fields
-           :in-theory (enable fn-node-complete fn-node-statep fn-statep fn-snx-core-definitions))))
+           :in-theory (e/d (fn-node-complete fn-node-statep fn-statep
+                            fn-snx-core-definitions)
+                           (fn-sni-node-invariant-consequences)))))
 
 ; -by-definition: the else branch of fn-sn-finish with its test negated.
 (defthm fn-sn-finish-disabled-is-no-op
@@ -822,8 +850,10 @@
            (equal (fn-sn-resolve-node (fn-sn-fence-node node record) record t)
                   (fn-node-complete node (fn-record-txid record)
                                     (fn-record-generation record) :durable)))
-  :hints (("Goal" :in-theory (enable fn-node-complete fn-node-recover
-                                      fn-node-statep fn-statep fn-snx-core-definitions))))
+  :hints (("Goal" :in-theory (e/d (fn-node-complete fn-node-recover
+                                  fn-node-statep fn-statep
+                                  fn-snx-core-definitions)
+                                 (fn-sni-node-invariant-consequences)))))
 
 (defthm fn-sn-indeterminate-absent-resolution-equals-abort
   (implies (fn-node-pending-matchesp node (fn-record-txid record)
@@ -831,8 +861,10 @@
            (equal (fn-sn-resolve-node (fn-sn-fence-node node record) record nil)
                   (fn-node-complete node (fn-record-txid record)
                                     (fn-record-generation record) :aborted)))
-  :hints (("Goal" :in-theory (enable fn-node-complete fn-node-recover
-                                      fn-node-statep fn-statep fn-snx-core-definitions))))
+  :hints (("Goal" :in-theory (e/d (fn-node-complete fn-node-recover
+                                  fn-node-statep fn-statep
+                                  fn-snx-core-definitions)
+                                 (fn-sni-node-invariant-consequences)))))
 
 (defthm fn-sn-file-steps-cannot-acknowledge
   (equal (fn-sf-successes (fn-sn-file-step files operation result))
