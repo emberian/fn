@@ -69,3 +69,19 @@ mapper. It exercises a failed transaction-directory `fsync` after the final
 link. It is an error-handling profile only: it does not qualify hbox's ZFS,
 physical power loss, write-cache behavior, completed-barrier survival, torn
 writes, or A-DURABILITY/A-WRITE-ISOLATION for a deployed node.
+
+The opt-in `tests/campaign/native_block_fault.py` successor profile uses only
+new tmpfs backing files, positively identified loop devices, and a private
+ext4 mapper on hbox.  It has four distinct cases: `frontier-dir-eio` stops at
+the `fn-bs-frontier-program` pair-12 root replacement before its directory
+barrier; `record-dir-eio` stops at `fn-bs-record-program` pair 10 before the
+transaction-directory barrier and observes the pair-11 error; a
+`record-dir-sigkill` case kills that stopped process without injecting I/O
+failure; and `record-cut-snapshot` copies the private backing bytes while its
+mapper is suspended, then reopens only that copied image to simulate loss of
+volatile writes.  Each case checks prior durable transaction bytes, the
+allowed old/new namespace outcome, and a fresh native recovery.  An EIO is a
+failed syscall outcome, SIGKILL is process death, and the copied backing image
+is an explicit simulated write-loss experiment.  None represents an actual
+power cut or qualifies hbox's ZFS, hardware write cache, or a deployed node.
+No automatic release of retained history follows from this profile.

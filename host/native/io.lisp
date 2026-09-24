@@ -1032,8 +1032,8 @@ resolves the names against `domain' and the host carries that list verbatim."
            (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
            (fnn-fault "test SIGKILL did not terminate the process"))
           ;; Developer-only physical-fault harness handoff.  The process is
-          ;; stopped at the existing :record-attempted model cut, after the
-          ;; final link and before the transactions directory barrier.  Its
+          ;; stopped at :frontier-attempted or :record-attempted, after the
+          ;; authority rename/link and before its directory barrier.  Its
           ;; driver must resume or terminate the exact PID it started.
           ((eq (fnn-store-fault-class store) :fnn-test-stop)
            (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop))
@@ -1797,8 +1797,9 @@ in-process retry."
 (defun fnn-post-test-fault ()
   "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector.
 
-The record-attempted:stop variant parks the process for an isolated block
-fault test. It resumes at the same cut; it does not inject an ACL2 outcome.
+The frontier-attempted:stop and record-attempted:stop variants park the process
+for an isolated block fault test. They resume at the same cut and do not inject
+an ACL2 outcome.
 
 The point is one of fnn-advance-frontier/fnn-publish/fnn-finish's actual
 fnn-at boundaries.  SIGKILL cannot run unwind-protect, so the next command
@@ -1817,7 +1818,8 @@ observes a genuine new-process image."
                 (cond ((string= action "eio") 'fnn-os-error)
                       ((string= action "kill") :fnn-test-kill)
                       ((and (string= action "stop")
-                            (eq point :record-attempted)) :fnn-test-stop)
+                            (member point '(:frontier-attempted
+                                            :record-attempted))) :fnn-test-stop)
                       (t (fnn-fault
                           "invalid FN_NATIVE_POST_FAULT action: ~a" action)))
                 "developer-only native post fault"))))))
