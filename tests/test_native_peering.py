@@ -383,3 +383,51 @@ class NativePeeringTests(unittest.TestCase):
         self.assertIsNone(target["process"].poll(),
                           "connection-local reply failure stopped the owner")
         self.assertIn(b"IHAVE", self.capabilities(target))
+
+    def test_transit_into_a_node_with_a_path_identity_is_accepted_and_owner_stays(self):
+        # transit-436: on 6c0626c5, with a Path identity set, every transit
+        # was stored but answered 436 uncertain and stopped the service,
+        # because the completion was compared with the received octets
+        # rather than the Path-updated octets the owner stored.
+        source = self.initialize("path-source", free_port())
+        target = self.initialize("path-target", free_port())
+        self.configure_peer(target, source, outbound="-")
+        self.command([IMAGE, "--fn", "operator", target["config"], "policy",
+                      "set", "path-identity", "path-target.example.invalid"])
+        self.start(target)
+
+        replies = {}
+        message_id = "<native-path-identity-ihave@example.invalid>"
+        offered = (b"Path: path-source.example.invalid!not-for-mail\r\n"
+                   + self.article(message_id, "path-identity-ihave"))
+        with socket.create_connection(("127.0.0.1", target["port"]), timeout=30) as client:
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
+            self.assertTrue(stream.readline().startswith(b"335 "))
+            stream.write(offered + b".\r\n")
+            replies["ihave"] = stream.readline()
+            streamed = "<native-path-identity-takethis@example.invalid>"
+            stream.write(b"TAKETHIS " + streamed.encode("ascii") + b"\r\n"
+                         + b"Path: path-source.example.invalid!not-for-mail\r\n"
+                         + self.article(streamed, "path-identity-takethis") + b".\r\n")
+            replies["takethis"] = stream.readline()
+        self.assertTrue(replies["ihave"].startswith(b"235 "), replies)
+        self.assertTrue(replies["takethis"].startswith(b"239 "), replies)
+        self.assertIsNone(target["process"].poll(),
+                          "a durable transit stopped the owner for recovery")
+
+        served = self.await_article(target, message_id)
+        self.assertTrue(served.startswith(
+            b"Path: path-target.example.invalid!"), served[:80])
+        self.assertIn(b"path-source.example.invalid!not-for-mail", served)
+        self.assertTrue(self.duplicate_offer(target, message_id).startswith(b"435 "))
+        self.assertIsNone(target["process"].poll())
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "path-identity-transit",
+            "ihave": replies["ihave"][:3].decode(),
+            "takethis": replies["takethis"][:3].decode(),
+            "served_path": served.split(b"\r\n", 1)[0].decode("ascii", "replace"),
+            "owner_alive": target["process"].poll() is None,
+            "identity": self.verify_process_identity(target),
+        }, sort_keys=True))
