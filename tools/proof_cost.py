@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
 """Report measured ACL2 book cost at the current source and include closure.
 
-This is a read-only diagnostic, not a certification or cache-validity check.
-The default scans archived and local manifests, retaining the newest matching
-measurement for each book, host and toolchain. An installed certificate has no
-proof time in that run. `--manifest` keeps the one-run diagnostic.
+This is not a certification or cache-validity check. The default scans
+archived and local manifests, retaining the newest matching measurement for
+each book, host and toolchain. An installed certificate has no proof time in
+that run. `--manifest` keeps the one-run diagnostic and never fails.
+
+The ten-second rule is a ratchet. planning/proof-cost-baseline.json lists every
+book whose worst current measurement (over all hosts and toolchains) was above
+the threshold when the baseline was written, with that seconds figure, run id
+and host. The unfiltered history mode (what `make check` runs) exits 1 when a
+measured book is over the threshold and is absent from the baseline, or is
+more than 25% over its baseline seconds. A baseline book now under the
+threshold is reported "improved; remove from baseline". Unmeasured books stay
+warnings. `--write-baseline` rewrites the file from the current measurements:
+it drops improved books and lowers numbers, never raises a number, and refuses
+to write at all when a book would be added or would exceed its tolerance,
+unless `--allow-regression` is given. The baseline only shrinks.
 """
 
 from __future__ import annotations
@@ -19,6 +31,8 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parent.parent
+BASELINE = ROOT / "planning" / "proof-cost-baseline.json"
+TOLERANCE = 0.25
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs  # noqa: E402
 import green_check  # noqa: E402
@@ -216,10 +230,11 @@ def history(root: Path, books: set[str], *, toolchain: str | None = None,
 def history_report(root: Path, threshold: float, *, toolchain: str | None = None,
                    host: str | None = None,
                    books: set[str] | None = None,
-                   runs: list[tuple[green_check.Run, dict]] | None = None
+                   runs: list[tuple[green_check.Run, dict]] | None = None,
+                   computed: tuple[dict, set[str], int] | None = None
                    ) -> list[str]:
     books = current_books(root) if books is None else books
-    selected, installed, rows = history(
+    selected, installed, rows = computed or history(
         root, books, toolchain=toolchain, host=host, runs=runs)
     measured_books = {record.book for record in selected.values()}
     missing = books - measured_books
@@ -266,29 +281,180 @@ def history_report(root: Path, threshold: float, *, toolchain: str | None = None
     return lines
 
 
+def worst(selected: dict[tuple[str, str, str], Measurement]
+          ) -> dict[str, Measurement]:
+    """Each book's slowest current measurement over every host and toolchain."""
+    found: dict[str, Measurement] = {}
+    for record in selected.values():
+        prior = found.get(record.book)
+        if prior is None or record.seconds > prior.seconds:
+            found[record.book] = record
+    return found
+
+
+def load_baseline(path: Path) -> dict[str, dict]:
+    if not path.is_file():
+        return {}
+    value = json.loads(path.read_text(encoding="utf-8"))
+    books = value.get("books") if isinstance(value, dict) else None
+    if not isinstance(books, dict) or not all(
+            isinstance(entry, dict)
+            and isinstance(entry.get("seconds"), (int, float))
+            and not isinstance(entry.get("seconds"), bool)
+            for entry in books.values()):
+        raise ValueError(f"{path}: expected {{\"books\": {{book: {{\"seconds\": n, ...}}}}}}")
+    return books
+
+
+@dataclass
+class Ratchet:
+    failing: list[str]
+    improved: list[str]
+    kept: list[str]
+    proposed: dict[str, dict]
+
+
+def ratchet(selected: dict[tuple[str, str, str], Measurement], books: set[str],
+            baseline: dict[str, dict], threshold: float,
+            tolerance: float = TOLERANCE) -> Ratchet:
+    """Compare each book's worst current measurement with the baseline.
+
+    `proposed` is the baseline `--write-baseline` would write without
+    `--allow-regression`: improved books dropped, numbers lowered to the
+    current measurement, never raised, nothing added.
+    """
+    slowest = worst(selected)
+    failing: list[str] = []
+    improved: list[str] = []
+    kept: list[str] = []
+    proposed: dict[str, dict] = {}
+    for book, record in sorted(slowest.items()):
+        entry = {"seconds": round(record.seconds, 3), "run": record.run_id,
+                 "host": record.host, "verdict": record.verdict}
+        prior = baseline.get(book)
+        if record.seconds <= threshold:
+            if prior is not None:
+                improved.append(
+                    f"IMPROVED {book}: worst={record.seconds:.3f}s <= {threshold:g}s "
+                    f"(baseline {float(prior['seconds']):.3f}s) host={record.host} "
+                    f"run={record.run_id}; improved; remove from baseline")
+            continue
+        if prior is None:
+            failing.append(
+                f"FAIL {book}: worst={record.seconds:.3f}s > {threshold:g}s "
+                f"host={record.host} run={record.run_id}; not in baseline")
+            continue
+        limit = float(prior["seconds"]) * (1 + tolerance)
+        if record.seconds > limit:
+            failing.append(
+                f"FAIL {book}: worst={record.seconds:.3f}s > baseline "
+                f"{float(prior['seconds']):.3f}s +{tolerance:.0%} = {limit:.3f}s "
+                f"host={record.host} run={record.run_id} "
+                f"(baseline run={prior.get('run', 'unknown')})")
+            proposed[book] = dict(prior)
+        elif record.seconds > float(prior["seconds"]):
+            kept.append(f"KEPT {book}: worst={record.seconds:.3f}s is within "
+                        f"{tolerance:.0%} of baseline {float(prior['seconds']):.3f}s; "
+                        "baseline not raised")
+            proposed[book] = dict(prior)
+        else:
+            proposed[book] = entry
+    for book, prior in sorted(baseline.items()):
+        if book in slowest:
+            continue
+        if book not in books:
+            improved.append(f"IMPROVED {book}: no longer a current root-closure book; "
+                            "improved; remove from baseline")
+        else:
+            # Unmeasured at the current closure: no number to compare, keep it.
+            proposed[book] = dict(prior)
+    return Ratchet(failing, improved, kept, proposed)
+
+
+def regression_baseline(selected: dict[tuple[str, str, str], Measurement],
+                        threshold: float) -> dict[str, dict]:
+    return {book: {"seconds": round(record.seconds, 3), "run": record.run_id,
+                   "host": record.host, "verdict": record.verdict}
+            for book, record in sorted(worst(selected).items())
+            if record.seconds > threshold}
+
+
+def write_baseline(path: Path, entries: dict[str, dict], threshold: float) -> None:
+    value = {
+        "about": ("Books over the ten-second rule, with their worst current "
+                  "measurement over all hosts and toolchains. Generated by "
+                  "python3 tools/proof_cost.py --write-baseline; only shrinks "
+                  "without --allow-regression. See docs/proofs.md."),
+        "threshold_seconds": threshold,
+        "tolerance": TOLERANCE,
+        "books": dict(sorted(entries.items())),
+    }
+    path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--manifest", type=Path, help="one certification manifest")
     parser.add_argument("--toolchain", help="exact toolchain identity filter for history mode")
     parser.add_argument("--host", help="host filter for history mode")
     parser.add_argument("--threshold", type=float, default=10.0,
                         help="warn above this per-book process wall, seconds")
+    parser.add_argument("--baseline", type=Path, default=BASELINE,
+                        help="ratchet baseline (default planning/proof-cost-baseline.json)")
+    parser.add_argument("--write-baseline", action="store_true",
+                        help="rewrite the baseline: drop improved books, lower numbers; "
+                             "refuses to add or raise without --allow-regression")
+    parser.add_argument("--allow-regression", action="store_true",
+                        help="with --write-baseline: record every current book over the "
+                             "threshold at its current worst measurement")
     args = parser.parse_args(argv)
     if args.threshold < 0:
         parser.error("--threshold must be nonnegative")
+    if args.allow_regression and not args.write_baseline:
+        parser.error("--allow-regression applies only with --write-baseline")
+    if args.write_baseline and (args.manifest or args.toolchain or args.host):
+        parser.error("--write-baseline reads the whole unfiltered history")
     try:
         if args.manifest:
             if args.toolchain or args.host:
                 parser.error("--host/--toolchain apply only to history mode")
-            lines = report(args.manifest, args.threshold)
-        else:
-            lines = history_report(ROOT, args.threshold,
-                                   toolchain=args.toolchain, host=args.host)
+            print("\n".join(report(args.manifest, args.threshold)))
+            return 0
+        books = current_books(ROOT)
+        computed = history(ROOT, books, toolchain=args.toolchain, host=args.host)
+        lines = history_report(ROOT, args.threshold, toolchain=args.toolchain,
+                               host=args.host, books=books, computed=computed)
         print("\n".join(lines))
+        if args.toolchain or args.host:
+            print("ratchet: not applied to a filtered view")
+            return 0
+        baseline = load_baseline(args.baseline)
+        verdict = ratchet(computed[0], books, baseline, args.threshold)
+        unmeasured = len(books - {record.book for record in computed[0].values()})
+        for line in verdict.kept + verdict.improved + verdict.failing:
+            print(line)
+        if args.write_baseline:
+            if args.allow_regression:
+                entries = regression_baseline(computed[0], args.threshold)
+            elif verdict.failing:
+                print(f"proof_cost: refusing to write {args.baseline}: "
+                      f"{len(verdict.failing)} book(s) above would be added or "
+                      "raised; rerun with --allow-regression to record them")
+                return 1
+            else:
+                entries = verdict.proposed
+            write_baseline(args.baseline, entries, args.threshold)
+            print(f"proof_cost: wrote {args.baseline} with {len(entries)} book(s) "
+                  f"(was {len(baseline)})")
+            return 0
+        print(f"ratchet: baseline={len(baseline)} books; failing={len(verdict.failing)}; "
+              f"improved={len(verdict.improved)}; within-tolerance={len(verdict.kept)}; "
+              f"unmeasured={unmeasured} (warning only); tolerance={TOLERANCE:.0%}")
+        return 1 if verdict.failing else 0
     except (OSError, ValueError, KeyError, certs.UnreadableBook) as error:
         print(f"proof_cost: {error}")
         return 2
-    return 0
 
 
 if __name__ == "__main__":

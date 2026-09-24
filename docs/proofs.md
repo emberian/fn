@@ -110,13 +110,32 @@ cited theorem that no book defines, a cited theorem the detector flags, a cited
 theorem in a book no Makefile certification root reaches, a cited function
 whose guards are not verified, or a stale `ledger.md`.
 
-`python3 tools/certified_claims.py` also runs in `make check` as a warning.
+`python3 tools/certified_claims.py` also runs in `make check` and fails it.
 For each target marked `certified`, it checks that the registry names curated
 events in the current books and that each event's defining book has archived
 manifest evidence for its current source and include closure. It uses
 `green_check`'s verdict, so a pass records compatible evidence from a named
-run, not a certificate installed here or a qualified native image. Missing or
-partial manifest evidence remains a warning rather than a failed theorem.
+run, not a certificate installed here or a qualified native image. The row
+must also cite that evidence itself: its `evidence` list names at least one
+manifest under `planning/evidence/manifests/`, every cited manifest exists, and
+for each event's book some cited manifest records the book `passed` at its
+current source digest and include closure. A certified row whose own citation
+has gone stale fails even when an uncited run would vouch for it; `--explain
+PRF-xxx` names, per event, the book, its current digest and the newest
+manifest that certified it, which is the citation to add. A row with no such
+manifest is not `certified`.
+
+`python3 tools/proof_cost.py` in `make check` holds the ten-second rule as a
+ratchet. `planning/proof-cost-baseline.json` lists each book whose worst
+current measurement, over every host and toolchain, was above ten seconds when
+the baseline was written, with that figure, its run and host. The check fails
+on a book above ten seconds that the baseline does not list, or that runs more
+than 25 % over its listed figure; a listed book now under ten seconds is
+reported "improved; remove from baseline". Unmeasured books remain a warning
+with their count. `--write-baseline` drops improved books and lowers numbers
+but never adds a book or raises a figure; that needs `--allow-regression`,
+which is a decision to record in the commit that uses it. The baseline only
+shrinks.
 
 ### Guard status
 
