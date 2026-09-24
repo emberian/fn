@@ -130,6 +130,12 @@ this tranche stores the complete canonical prefix rather than a semantic
 summary, it cannot compact an arbitrarily large history; rolling packs or a
 proved state summary remain future work.
 
+Preservation (PRF-073, `books/checkpoint-compaction-preservation`): deleting
+any subset of the reclaim plan leaves the next open's namespace observation
+valid, and the framed pack reconstructs the identical record list, so replay
+and every served fact are unchanged. The plan reads the open path's own
+namespace gate, `fn-profile-txn-observation`.
+
 STO-006: replacing history with a checkpoint preserves the full logical state
 needed for future behavior, including allocation watermarks, duplicate history,
 outstanding obligations, relevant policy context, and receipt/release evidence.

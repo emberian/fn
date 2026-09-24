@@ -282,6 +282,19 @@ refused by name. Open: headroom of a running owner (the control channel has
 no such query), an offline profile upgrade, and the reopen cost that makes
 the 4096 budget admissible rather than usable.
 
+Incremental evidence (2026-09-24, [m5-compaction](evidence/m5-compaction-2026-09-24.md)):
+"compaction with its preservation proof" for the transaction prefix. A
+selected lossless pack plus `pack-reclaim` already existed; PRF-073 now
+proves, over the functions the reclaim and the next open call
+(`fn-bs-pack-reclaim-plan`, `fn-profile-txn-observation`,
+`fn-ccp-observe-framed`), that the open after a reclaim, at any cut, hands
+replay the identical record list, and the plan's namespace bound is the
+profile's (one owner). Natively on a developer image of the branch, GROUP,
+ARTICLE by number and Message-ID, HDR and retention are identical across
+the reclaim and each of its cuts, and the next POST gets high+1. Open:
+no operator entry reaches compaction, the pack is bounded at 4096 events
+and 4 MiB, and article-object closure and temporary space are unaddressed.
+
 ## M6: additional interfaces and mission profiles
 
 - Extend the already exercised BP path with additional convergence-layer and
