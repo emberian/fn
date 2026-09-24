@@ -13,11 +13,11 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 698 |
 | Certification roots in the Makefile | 687 |
 | Books inside the root closure | 696 |
-| `defthm` and `defthmd` events | 9379 |
-| `defun` events | 6661 |
+| `defthm` and `defthmd` events | 9381 |
+| `defun` events | 6721 |
 | Functions with verified guards | 2038 |
 | Functions declared `:verify-guards nil` and never verified | 421 |
-| Functions left at the default with an explicit guard | 3283 |
+| Functions left at the default with an explicit guard | 3343 |
 | Functions left at the default with no guard | 919 |
 | `assert-event` checks | 10265 |
 | `must-fail` checks | 734 |
@@ -26,8 +26,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 109 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 55 |
-| Include-hygiene warnings | 669 |
-| Host-names warnings | 855 |
+| Include-hygiene warnings | 670 |
+| Host-names warnings | 813 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -331,7 +331,7 @@ that `make certify` requests.
 | `books/native-config.lisp` | root | 2 | 65 | 0/0/65/0 | 0 | 0 | 0 |
 | `books/native-control.lisp` | root | 5 | 22 | 0/0/22/0 | 0 | 0 | 0 |
 | `books/native-hybrid-control.lisp` | root | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
-| `books/native-operator.lisp` | unreadable | | | | | | unbalanced close parenthesis at line 159 |
+| `books/native-operator.lisp` | root | 2 | 60 | 0/0/60/0 | 0 | 0 | 0 |
 | `books/nntp-auth-fold.lisp` | root | 50 | 4 | 0/3/1/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 31 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-auth.lisp` | root | 122 | 60 | 42/3/14/1 | 0 | 0 | 3 |
