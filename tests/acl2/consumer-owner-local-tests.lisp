@@ -166,8 +166,14 @@
 (defconst *colt-s2* (colt-commit *colt-s1* (cadr *colt-ack*)))
 (defconst *colt-o2* (fn-own-start *colt-s2* 2))
 (assert-event
- (equal (fn-col-status *colt-o2* *colt-id*)
-        (fn-col-status *colt-o1* *colt-id*)))
+ (equal (fn-cp-nth 1 (fn-col-status *colt-o2* *colt-id*)) 2))
+(assert-event
+ (equal (fn-cp-nth 2 (fn-col-status *colt-o2* *colt-id*))
+        (1+ (fn-cp-nth 2 *colt-status-before-article*))))
+(assert-event
+ (equal (fn-cp-nth 3 (fn-col-status *colt-o2* *colt-id*))
+        (- (fn-cp-nth 2 (fn-col-status *colt-o2* *colt-id*))
+           (fn-cp-nth 1 (fn-col-status *colt-o2* *colt-id*)))))
 (assert-event (eq (car (fn-col-ack *colt-o2*
                                      (fn-cp-cursor-encode *colt-cursor*)))
                   :no-op))

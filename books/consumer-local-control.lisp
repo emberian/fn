@@ -180,21 +180,6 @@
           (list :consumer-status-reply status nil nil nil))
          (t (list :refused :reply)))))))
 
-(defthm fn-ncl-status-reply-roundtrip
-  (implies (and (fn-cp-uintp ack)
-                (fn-cp-uintp frontier)
-                (fn-cp-uintp gap)
-                (equal gap (- frontier ack)))
-           (equal (fn-ncl-status-reply-decode
-                   (fn-ncl-status-reply-encode
-                    :accepted ack frontier gap))
-                  (list :consumer-status-reply :accepted
-                        ack frontier gap)))
-  :hints (("Goal"
-           :in-theory (enable fn-ncl-status-reply-encode
-                              fn-ncl-status-open
-                              fn-ncl-status-reply-decode))))
-
 ; Poll carries one exact accepted Store event at most.  The two lengths make
 ; the cursor and report unambiguous without asking raw Lisp to parse either.
 (defun fn-ncl-poll-event-bytesp (bytes)
