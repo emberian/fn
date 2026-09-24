@@ -246,6 +246,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-compaction-preservation-tests \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
+	books/store-history-marker \
+	tests/acl2/store-history-marker-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \

@@ -89,6 +89,9 @@
 (include-book "books/bp-handoff-status")
 (include-book "books/bp-native-app-fast")
 
+;; The committed-history boundary: io.lisp fnn-mark-committed and
+;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
+(include-book "books/store-history-marker")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose

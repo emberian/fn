@@ -29,6 +29,9 @@
 (include-book "books/bp-node-records")
 (include-book "books/bp-node-machine")
 (include-book "books/bp-node-machine-codec")
+;; The committed-history boundary: io.lisp fnn-mark-committed and
+;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
+(include-book "books/store-history-marker")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
