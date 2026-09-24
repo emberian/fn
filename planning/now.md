@@ -113,18 +113,19 @@ m5-profile-upgrade (offline development-to-scale upgrade with its byte
 program and cuts, PRF-072), p8-signed-post (a signed POST over NNTP gets a
 durable verdict through the transit classification).
 
-**In flight:**
+Landed since: dtn-node-image (the DTN image runs the BP node; N08 and the
+dtn7-rs severed contact on it), p10-k0-recovery (K0 over all 25 cut
+coordinates), commit-path-2 (prepare fold and the advance's node check
+carried: 3.5 ms CPU per POST at N=120), second-count (the transaction file
+name and the payload bound are ACL2's). Image five `834124b1` is frozen with
+all four images built and its closure green; it is NOT yet qualified
+(matrix, campaign, native modules) nor deployed, and it predates the last
+four merges.
 
-| Lane | Intended result |
-| --- | --- |
-| dtn-node-image | the DTN image runs the BP node (bp-node loaded), admits inbound bundles through the enrolled boundary, uncertain on a severed contact, same-identity retry |
-| p10-k0-recovery | K0 over the seven recovery cuts (entry theorem from the scan) and the issued-link error arm |
-| p11-machine-gaps | N07 (clock boot domain) and N11 (kind-14 conflict record) added to the machine with theorems and teeth |
-| commit-path-2 | fn-sf-next-lower in prepare and the advance's node check carried; fn-ocl-relation across an article completion |
-| second-count | the transaction file name from ACL2's sequence; the payload bound from the profile; the host counter and constant gone |
-
-Next cut (the fifth) follows the DTN node lane; it carries everything since
-`47bdb9a4` and is the image on which the deployed store's profile upgrade runs.
+**In flight:** p11-machine-gaps (N07 clock boot domain, N11 kind-14 conflict
+record). The context window rotates after it lands; the next window starts
+by qualifying `834124b1` (three lanes as for 47bdb9a4), deploying it in
+place, and running the profile upgrade on the node store (decision 9).
 
 ## Where to read next
 
