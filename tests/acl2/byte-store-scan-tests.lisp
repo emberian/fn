@@ -113,6 +113,9 @@
  (fn-sn-observed-consumer-okp
   (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-initial-crash)))))
 (assert-event
+ (fn-sn-observed-topic-okp
+  (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-initial-crash)))))
+(assert-event
  (fn-sn-open-okp
   (fn-sn-open-observed
    (fn-sn-groups (bsk-e2-initial-node))
@@ -161,6 +164,7 @@
                               (fn-bs-unit (car pair)))
         (equal (fn-bs-scan-records scan) (list *csnt-boot*))
         (fn-sn-observed-consumer-okp (fn-bs-scan-records scan))
+        (fn-sn-observed-topic-okp (fn-bs-scan-records scan))
         (fn-sn-open-okp
          (fn-sn-open-observed '("g") 32
                               (fn-bs-scan-frontier scan)
@@ -266,6 +270,88 @@
  (assert-event
   (fn-sn-observed-consumer-okp
    (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-invalid-image))))))
+
+; K4 topic tooth: a syntactically valid topic anchor follows the completed
+; consumer bootstrap.  Its authorization reference names no historical
+; accepted article, so the independent topic projection faults at historical
+; authorship.  The frame, filename, frontier and crash are produced by the
+; actual byte programs; this is not a malformed scan or a sequence gap.  The
+; node below is the exact generic Store/identity/consumer replay projection
+; of those files.  It is a relation witness, not a served topic-prepare trace;
+; proving the latter maintains the topic prefix is the open shared bridge.
+(defconst *bsk-topic-source-id*
+  (fn-id-subject (make-list 32 :initial-element 7)))
+(defconst *bsk-topic-root-id* (make-list 32 :initial-element 8))
+(defconst *bsk-topic-unbound-anchor*
+  (list :topic-anchor 1 1 1 *bsk-topic-source-id*
+        (list 0 0 *bsk-topic-source-id* 0 0 *fn-hsig-profile-tag*)
+        1 *bsk-topic-root-id*))
+(assert-event (fn-th-topic-eventp *bsk-topic-unbound-anchor*))
+(assert-event (fn-store-event-p *bsk-topic-unbound-anchor*))
+(defun bsk-topic-anchor-frame ()
+  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+                 *fn-frame-store-kind*
+                 (fn-store-event-encode *bsk-topic-unbound-anchor*)))
+(defun bsk-topic-frontier-pair ()
+  (let ((pair (bsk-e2-bootstrap-finished-pair)))
+    (car (last (fn-bs-run (car pair) (cdr pair)
+                          (fn-bs-frontier-program ".allocation-topic-tooth"
+                                                  (fn-bs-frontier-encode 2))
+                          nil '("g") 32)))))
+(defun bsk-topic-record-pair ()
+  (let ((pair (bsk-topic-frontier-pair)))
+    (car (last
+          (fn-bs-run (car pair)
+                     (fn-sf-prepare-record (cdr pair)
+                                           *bsk-topic-unbound-anchor* '("g") 32)
+                     (fn-bs-record-program ".stage-topic-tooth"
+                                           (fn-bs-txn-name 1)
+                                           (bsk-topic-anchor-frame))
+                     nil '("g") 32)))))
+(defun bsk-topic-finished-pair ()
+  (let ((pair (bsk-topic-record-pair)))
+    (car (last (fn-bs-run (car pair) (cdr pair)
+                            (fn-bs-finish-program 1 1) nil '("g") 32)))))
+(defun bsk-topic-image ()
+  (fn-bs-crash (car (bsk-topic-finished-pair)) nil))
+(defun bsk-topic-node ()
+  (let* ((files (cdr (bsk-topic-finished-pair)))
+         (records (fn-sf-records files))
+         (node (fn-sf-replay-node '("g") 32 records
+                                  (fn-sf-frontier files)))
+         (consumer (cadr (fn-cpe-projection-replay nil records 0)))
+         (s (fn-sn-update *csnt-after-boot* files node)))
+    (update-nth 11 consumer (update-nth 9 2 s))))
+(defthm bsk-topic-image-is-an-admissible-crash
+  (fn-bs-crash-imagep (car (bsk-topic-finished-pair))
+                      (bsk-topic-image))
+  :hints (("Goal"
+           :use ((:instance fn-bs-lose-everything-is-an-admissible-image
+                            (s (car (bsk-topic-finished-pair))))))))
+(assert-event
+ (let* ((pair (bsk-topic-finished-pair))
+        (s (bsk-topic-node))
+        (scan (fn-bs-scan-store (bsk-topic-image)))
+        (records (fn-bs-scan-records scan)))
+   (and (fn-csi-full-relationp s)
+        (fn-bs-store-relation (car pair) (fn-sn-files s))
+        (fn-bs-crash-choicesp nil (fn-bs-pending (car pair))
+                              (fn-bs-unit (car pair)))
+        (equal records (list *csnt-boot* *bsk-topic-unbound-anchor*))
+        (fn-sn-observed-consumer-okp records)
+        (fn-sn-observed-identity-okp records)
+        (not (fn-sn-observed-topic-okp records))
+        (not (fn-sn-open-okp
+              (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
+                                   (fn-bs-scan-frontier scan) records))))))
+(must-fail
+ (assert-event
+  (let* ((s (bsk-topic-node))
+         (scan (fn-bs-scan-store (bsk-topic-image))))
+    (fn-sn-open-okp
+     (fn-sn-open-observed
+      (fn-sn-groups s) (fn-sn-capacity s)
+      (fn-bs-scan-frontier scan) (fn-bs-scan-records scan))))))
 
 ; -----------------------------------------------------------------------------
 ; Tooth 1: without (fn-bs-store-relation bs ks).

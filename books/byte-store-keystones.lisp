@@ -50,8 +50,9 @@
 
 ; -----------------------------------------------------------------------------
 ; K4, first half, and the one with no vacuous instance: the host's reopen
-; entry SUCCEEDS on every byte-level crash image of a related state, in both
-; windows and whatever the pending entry operation did.  This is the half
+; entry SUCCEEDS on a byte-level crash image of a related state whose
+; observed identity and topic histories replay, in both windows and whatever
+; the pending entry operation did.  This is the half
 ; the wider predicate made new (fn-sn-recovery-admissible-image-reopens,
 ; lane w11/bytestore-k2); over fn-sf-crash-imagep it could not be stated at
 ; all in the recovery window.
@@ -67,6 +68,9 @@
 ; prefix relation and K2's exact crash-image scan, including the recovery
 ; rollback arm.  The byte theorem must carry that reachable relation rather
 ; than silently assuming that the observed record history will replay.
+; Topic replay is a separate condition of the observed reopen theorem.
+; The consumer relation does not establish it for an arbitrary byte crash
+; image; a maintained topic/crash bridge is still needed to discharge it.
 (defthm fn-bs-crash-image-consumer-replay-ok
   (implies (and (fn-csi-full-relationp s)
                 (fn-bs-store-relation bs (fn-sn-files s))
@@ -88,6 +92,8 @@
                 (fn-bs-store-relation bs (fn-sn-files s))
                 (fn-bs-crash-imagep bs image)
                 (fn-sn-observed-identity-okp
+                 (fn-bs-scan-records (fn-bs-scan-store image)))
+                (fn-sn-observed-topic-okp
                  (fn-bs-scan-records (fn-bs-scan-store image))))
            (fn-sn-open-okp
             (fn-sn-open-observed
@@ -130,6 +136,8 @@
                 (fn-bs-store-relation bs (fn-sn-files s))
                 (fn-bs-crash-imagep bs image)
                 (fn-sn-observed-identity-okp
+                 (fn-bs-scan-records (fn-bs-scan-store image)))
+                (fn-sn-observed-topic-okp
                  (fn-bs-scan-records (fn-bs-scan-store image)))
                 (member-equal pair (fn-sf-successes (fn-sn-files s))))
            (let ((opened (fn-sn-open-observed
@@ -429,8 +437,8 @@
 ; fn-store-sn-sweep-round, host/store-node-host.lisp); its death point after
 ; each unlink is recovery-stage-unlinked, the :cut of the program.  At every
 ; such cut, with any syscall outcomes, every crash image of the byte store
-; whose identity history replays (the kernel reopen theorems' own
-; condition) reopens through the host's reopen entry, and the kernel state --
+; whose identity and topic histories replay (the kernel reopen theorems' own
+; conditions) reopens through the host's reopen entry, and the kernel state --
 ; hence the recoverable history and frontier -- is the one before the sweep.
 (defthm fn-bs-sweep-round-keeps-every-cut-reopenable
   (implies (and (fn-csi-full-relationp s)
@@ -442,6 +450,8 @@
                                          outcomes groups capacity))
                 (fn-bs-crash-imagep (car pair) image)
                 (fn-sn-observed-identity-okp
+                 (fn-bs-scan-records (fn-bs-scan-store image)))
+                (fn-sn-observed-topic-okp
                  (fn-bs-scan-records (fn-bs-scan-store image))))
            (and (equal (cdr pair) (fn-sn-files s))
                 (equal (fn-bs-scan-store (car pair)) (fn-bs-scan-store bs))
