@@ -2116,11 +2116,12 @@ post-replacement slot and octet budgets. The served
 fragment, and only a matching durable kind-18 publication invokes the same
 `fn-bpnf-family-apply` rule used by ordered byte replay. Refusal leaves the
 source rows intact; uncertainty fences ordinary events until recovery.
-The first kind-18 byte component, `bp-fnbs-family-codec.lisp`, encodes
+The historical kind-18 byte component, `bp-fnbs-family-codec.lisp`, encoded
 `(epoch, operation-id, anchor-arrival, whole-arrival, exact-whole-wire)`
-under the protected FNBS frame. The anchor is a previously durable kind-5
+under the protected FNBS frame. Version 1 appends the exact family proposal
+observation. The anchor is a previously durable kind-5
 arrival, and the whole arrival must be allocated by the node's durable
-arrival frontier. Replay must recompute the active family from earlier
+arrival frontier. Version-1 replay recomputes the active family from earlier
 kind-5 rows and compare the wire byte for byte before applying replacement;
 the record alone is not authority to retire fragments. The codec currently
 has round-trip/corruption witnesses. The state-owned `next-arrival` frontier
