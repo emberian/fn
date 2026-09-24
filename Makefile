@@ -162,6 +162,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-prepare-correspondence-tests \
 	books/store-node-retention \
 	tests/acl2/store-node-retention-tests \
+	books/store-budget \
+	tests/acl2/store-budget-tests \
 	books/store-node-resolution \
 	books/store-identity-sequence-invariants \
 	tests/acl2/store-identity-sequence-invariants-tests \
@@ -602,6 +604,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-tests \
 	tests/acl2/owner-config-tests \
 	tests/acl2/owner-prepare-correspondence-tests \
+	books/owner-store-budget \
+	tests/acl2/owner-store-budget-tests \
 	tests/acl2/owner-retention-preparation-tests \
 	books/relay \
 	books/relay-invariants \

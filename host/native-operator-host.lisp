@@ -163,6 +163,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-store-octets result))
 
+(defun fn-native-operator-host-result-init-profile (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-init-profile result))
+
 (defun fn-native-operator-host-result-init-group-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-group-octets result))

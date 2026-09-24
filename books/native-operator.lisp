@@ -122,12 +122,31 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         :bad
       (fn-nop-parse-init-groups (cdr words) (cons (car words) groups)))))
 
+; The store profile `init' writes (books/byte-store-frame.lisp
+; `fn-bs-config-for-profile'): its transaction budget is fixed for the life of
+; the store (books/store-budget.lisp).  Without `--profile' it is the
+; 128-transaction :development profile; `--profile scale' is the
+; 4096-transaction one.  Any other word is a usage error, never a default.
+(defun fn-nop-init-profile-word (word)
+  (declare (xargs :guard t))
+  (cond ((equal word "development") :development)
+        ((equal word "scale") :scale)
+        (t nil)))
+
 (defun fn-nop-parse-init (words config)
   (declare (xargs :guard t))
-  (let ((groups (fn-nop-parse-init-groups words nil)))
-    (if (equal groups :bad)
-        (fn-nop-usage :invalid-init-groups "init" config words)
-      (fn-nop-result :accepted :plan "init" config (list :init groups)))))
+  (let* ((profilep (and (consp words) (equal (car words) "--profile")))
+         (profile (if profilep
+                      (fn-nop-init-profile-word (fn-ncfg-second words))
+                    :development))
+         (names (if profilep (fn-ncfg-rest (fn-ncfg-rest words)) words))
+         (groups (fn-nop-parse-init-groups names nil)))
+    (cond ((null profile)
+           (fn-nop-usage :invalid-init-profile "init" config words))
+          ((equal groups :bad)
+           (fn-nop-usage :invalid-init-groups "init" config words))
+          (t (fn-nop-result :accepted :plan "init" config
+                            (list :init groups profile))))))
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
@@ -137,7 +156,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   "Bounded operator help output, selected only from ACL2-normalized subjects."
   (declare (xargs :guard t))
   (cond ((equal subject "init")
-         "usage: fn operator CONFIG init GROUP [GROUP...]")
+         "usage: fn operator CONFIG init [--profile development|scale] GROUP [GROUP...]")
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "post")
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
@@ -455,6 +474,15 @@ is installed into the owner for both served and control submission."
   (if (fn-native-operator-result-init-planp result)
       (fn-native-operator-post-group-octets
        (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-native-operator-result-init-profile (result)
+  "The store profile keyword an accepted init plan writes, else nil."
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-init-planp result)
+      (let ((profile (fn-ncfg-second
+                      (fn-ncfg-rest (fn-native-operator-result-arguments result)))))
+        (if (member-equal profile '(:development :scale)) profile nil))
     nil))
 
 (defun fn-native-operator-init-outcome (result observed)
