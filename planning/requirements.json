@@ -1327,7 +1327,8 @@
         "tests/acl2/native-admin-tests.lisp",
         "tests/acl2/native-operator-tests.lisp",
         "host/config-host.lisp",
-        "tests/test_native_operator_verbs.py"
+        "tests/test_native_operator_verbs.py",
+        "planning/evidence/manifests/certify-20260924T160912Z-2158325.json"
       ],
       "implementation_note": "RFC requirement (RFC 5536 section 3.1.4): a <newsgroup-name> is dot-separated nonempty components of ALPHA, DIGIT, \"+\", \"-\" and \"_\", and names whose first (or only) component is \"example\", and the name \"poster\", MUST NOT be used as the name of a newsgroup. Local fn policy: a name is at most 128 octets (*fn-record-max-group-name*); the RFC sets no bound. Stronger fn guarantee: the reserved comparison folds ASCII case, so \"Example.a\" and \"POSTER\" are refused too. fn-record-group-namep is the one recognizer every host site applies to a name; fn-native-admin-group-name-reservedp is the creation rule, applied by group create (fn-native-admin-plan), operator init (fn-native-operator-run, a refusal with exit 1) and the initial configuration record of any store init (fn-cfg-host-initial-octets). Retire, replay and service of an existing name are not refused.",
       "keystones": [
