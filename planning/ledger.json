@@ -690,16 +690,16 @@
     "books": 694,
     "books_in_root_closure": 692,
     "roots": 683,
-    "theorems": 9365,
-    "functions": 6701,
-    "assert_events": 10205,
-    "must_fails": 719,
+    "theorems": 9372,
+    "functions": 6707,
+    "assert_events": 10227,
+    "must_fails": 728,
     "encapsulates": 30,
     "guards": {
       "verified": 2038,
       "declared-off": 419,
-      "default-guarded": 3327,
-      "default-unguarded": 917
+      "default-guarded": 3331,
+      "default-unguarded": 919
     },
     "suspect_theorems": 83,
     "export_hygiene_warnings": 109,
@@ -7019,18 +7019,18 @@
       "book": "books/native-admin.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 14,
-      "functions": 44,
+      "theorems": 19,
+      "functions": 48,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 43,
+        "default-guarded": 47,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 6,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 2,
       "includes": [
@@ -7211,7 +7211,7 @@
       "book": "books/native-operator.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 2,
       "functions": 58,
       "guards": {
         "verified": 0,
@@ -16151,17 +16151,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 1,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 110,
-      "must_fails": 2,
-      "defconsts": 21,
+      "assert_events": 120,
+      "must_fails": 8,
+      "defconsts": 25,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -16449,16 +16449,18 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 98,
-      "must_fails": 0,
-      "defconsts": 18,
+      "assert_events": 110,
+      "must_fails": 3,
+      "defconsts": 21,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/native-operator"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
