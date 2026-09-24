@@ -299,14 +299,19 @@ three parts have three different owners of the *reply*, all of them ACL2.
    distinct `441` line (`fn-post-outcome-store-refusal-kinds-are-distinct`):
    `:duplicate` "this article is already stored here", `:conflict` "a
    different article with this Message-ID is stored here" (the two answers of
-   `fn-sn-existing-action`), `:malformed` (`fn-owner-prepare`'s `:invalid`),
+   `fn-pb-existing-action`, which since D25 compares the poster's bytes: the
+   submission's and the held article's octets without the fields the node
+   injects -- Path, Xref, Injection-Date, Injection-Info, and a Date the node
+   generated because the poster sent none -- so a resend of the same poster
+   octets at any later clock second is the duplicate; the stored record keeps
+   the injected fields; `books/poster-bytes-invariants.lisp`), `:malformed` (`fn-owner-prepare`'s `:invalid`),
    `:unaffordable` (the persisted profile or the transaction capacity),
    `:storage-failed` (a write that failed before publication, whose
    reservation `fn-owner-known-abort` consumed, so nothing was stored), and
    `:refused` "the article was refused" for a refusal no kind names. RFC 3977
    §6.3.1 permits `441` for all of them; the distinct text is a stronger fn
-   guarantee and its exact words are a local policy choice (P2, pending
-   ember's decision on duplicate vs conflict at the wire). A refusal is
+   guarantee and its exact words are a local policy choice (P2; the
+   duplicate-versus-conflict key is decision D25). A refusal is
    rendered only while no completion has been consumed after the take: once
    one has, every word but `:durable` is the uncertain line
    (`fn-own-consumed-completion-is-240-or-uncertain`), so a durable article
