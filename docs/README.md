@@ -57,7 +57,7 @@ reading stored articles over loopback NNTP.
 | What should happen next? | [The trajectory plan](../planning/plan-2026-09-22-trajectory.md) §3 and its phase schedule; [how we work](../planning/how-we-work.md) |
 | Which examples must be exercised? | [Scenario catalog](../tests/scenarios/catalog.json) |
 | Which standards support the design? | [References](references.md) |
-| What evidence exists, and what does it not show? | [Evidence index](../planning/evidence-index.md), one row per record in `tests/evidence/` |
+| What evidence exists, and what does it not show? | [Evidence index](../planning/archive/evidence-index.md), one row per record in `tests/evidence/` |
 
 The registries track requirement and proof status. Narrative documents explain
 contracts rather than maintain competing completion counts. Scenario entries are

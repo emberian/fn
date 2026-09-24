@@ -1,12 +1,14 @@
 # Handoff to Codex, 2026-09-23
 
+> Archived on 2026-09-24, superseded by [now.md](../now.md) and the [wind-down handoff](../handoff-2026-09-24-winddown.md).
+
 Draft written by the fn root coordinator (Claude) while the last four lanes
 of the night finish; the "State" section is updated when they land. Read
-[how we work](how-we-work.md) and `AGENTS.md` first: they are the rules,
+[how we work](../how-we-work.md) and `AGENTS.md` first: they are the rules,
 this file is the work. Everything here is briefed from
-[the trajectory plan](plan-2026-09-22-trajectory.md) §3 and, for DTN,
-[the BP node-machine contract](../specs/bp-node-machine.md) §11 together
-with [gpt-6's third review](review-2026-09-23-bp-node-machine-3.md), whose
+[the trajectory plan](../plan-2026-09-22-trajectory.md) §3 and, for DTN,
+[the BP node-machine contract](../../specs/bp-node-machine.md) §11 together
+with [gpt-6's third review](../review-2026-09-23-bp-node-machine-3.md), whose
 §2 to §5 are contract changes the DTN slices own; where this file and those
 disagree, those win and this file is wrong.
 
@@ -16,8 +18,8 @@ disagree, those win and this file is wrong.
   is green at every commit. The deployed node is hbox at 192.168.50.39:1119,
   upgraded in place on 2026-09-23 to the `da5fd8cb` image (sources `dev`
   2e53fae2) with its store, credentials and TLS pair kept
-  ([page](../docs/nodes/hbox.md),
-  [record](evidence/node-hbox-da5fd8cb-2026-09-23.md)); the probe from a
+  ([page](../../docs/nodes/hbox.md),
+  [record](../evidence/node-hbox-da5fd8cb-2026-09-23.md)); the probe from a
   Mac on the LAN holds on every row and the node's log file writes.
 - The image closure is green from scratch: 177 books in 1 min 44 s at
   sixteen jobs on hbox (`manifests/certify-20260923T024247Z-3464004.json`). The
@@ -35,10 +37,10 @@ disagree, those win and this file is wrong.
   `V0-NODE-PROFILE` and `V0-POST-FROM-MAILBOX` agree, which witnesses the
   live-rows, profile and conformance repairs on an image.
 - The INN lab on this image holds 33 of 33 with no fn-side finding
-  ([record](evidence/inn-lab-da5fd8cb-2026-09-23.md)): the operator's post
+  ([record](../evidence/inn-lab-da5fd8cb-2026-09-23.md)): the operator's post
   crosses injected, INN's article is served under fn's Path with no Xref,
   `From: yue` is refused. The cut campaign on this image
-  ([record](evidence/campaign-da5fd8cb-2026-09-23.md), two runs, identical
+  ([record](../evidence/campaign-da5fd8cb-2026-09-23.md), two runs, identical
   tables) witnesses every finding of the first: the served owner dies at
   each of sixteen cuts, recovery changes no byte, the control stop answers
   uncertain ten of ten, the production image refuses all eight selectors at
@@ -64,7 +66,7 @@ disagree, those win and this file is wrong.
 ## The loop, in one paragraph
 
 Read "Certification cost, learned 2026-09-23" at the end of
-[how we work](how-we-work.md) before your first farm run: report when the
+[how we work](../how-we-work.md) before your first farm run: report when the
 run is submitted, do not merge `dev` mid-flight, and run a provisional wave
 only when a closure failed behind a cascade.
 

@@ -1,5 +1,7 @@
 # Assurance and development snapshot — 2026-09-24
 
+> Archived on 2026-09-24, superseded by [now.md](../now.md) and the [wind-down handoff](../handoff-2026-09-24-winddown.md).
+
 Snapshot of integrated dev `a7184f37`. This is an assessment of evidence and
 open work, not a release declaration. Scoped book results are distinguished
 from combined closure and source-matched image results; work still on agent
@@ -145,21 +147,21 @@ closure is necessary evidence; it is not the final system-level conclusion.
 
 ## Evidence entry points
 
-- [Last shared qualified image and selected tests](evidence/native-luna-e160-selected-2026-09-24.md).
-- [Latest failed `67d026ad` combined gate](evidence/wide-combined-67d026ad-red-2026-09-24.md); [earlier `f0d` gate](evidence/topic-index-f0d-combined-red-2026-09-24.md) and [first `8c61` gate](evidence/topic-index-8c61-full-gate-red-2026-09-24.md).
-- [Scoped configuration proof repair](evidence/config-live-v6-proof-repair-2026-09-24.md).
-- [Mini B3 signed reply, native post and cold verification on e160](evidence/mini-b3-e160-native-join-2026-09-24.md); [transaction-to-ACK join](evidence/native-mini-live-join-2026-09-24.md).
-- [Owner frontier callback projection and limits](evidence/k0-owner-frontier-caller-2026-09-24.md).
-- [Selected modeled root-directory EIO owner fence](evidence/k0-frontier-directory-eio-2026-09-24.md).
-- [Certified mixed consumer/topic Store trace](evidence/consumer-topic-store-trace-2026-09-24.md).
-- [BP progress route-wait slice](evidence/bp-progress-route-wait-2026-09-24.md); [conditional observed-topic reopen](evidence/bp-observed-topic-reopen-interim-2026-09-24.md).
-- [Scoped Store-prepare repair](evidence/store-prepare-v6-export-repair-2026-09-24.md).
-- [Topic historical retry and anchor-generation gap](evidence/topic-history-historical-retry-p3-2026-09-24.md).
-- [Host-reached retention preparation guard](evidence/retention-prepare-guard-2026-09-24.md).
-- [Measured Store proof-cost repair](evidence/store-proof-cost-2026-09-24.md); [pinned-peer proof-cost repair](evidence/peer-inbound-pinned-cost-2026-09-24.md).
-- [Reader, consumer and cold-clone experiment](evidence/native-poll-reader-clone-1d26-2026-09-23.md).
-- [Protected two-host exchange](evidence/relocated-native-1836ed01-2026-09-23.md).
-- [Earlier native BP admission](evidence/native-bp-admission-c1bb-2026-09-23.md).
-- [Isolated filesystem EIO experiment](evidence/t16-private-eio-2026-09-23.md).
-- [Assurance review follow-up](evidence/assurance-review-followup-e160442f-2026-09-23.md).
-- [Proof registry](proofs.json), [trust and proof scope](../docs/proofs.md), and [active work](now.md).
+- [Last shared qualified image and selected tests](../evidence/native-luna-e160-selected-2026-09-24.md).
+- [Latest failed `67d026ad` combined gate](../evidence/wide-combined-67d026ad-red-2026-09-24.md); [earlier `f0d` gate](../evidence/topic-index-f0d-combined-red-2026-09-24.md) and [first `8c61` gate](../evidence/topic-index-8c61-full-gate-red-2026-09-24.md).
+- [Scoped configuration proof repair](../evidence/config-live-v6-proof-repair-2026-09-24.md).
+- [Mini B3 signed reply, native post and cold verification on e160](../evidence/mini-b3-e160-native-join-2026-09-24.md); [transaction-to-ACK join](../evidence/native-mini-live-join-2026-09-24.md).
+- [Owner frontier callback projection and limits](../evidence/k0-owner-frontier-caller-2026-09-24.md).
+- [Selected modeled root-directory EIO owner fence](../evidence/k0-frontier-directory-eio-2026-09-24.md).
+- [Certified mixed consumer/topic Store trace](../evidence/consumer-topic-store-trace-2026-09-24.md).
+- [BP progress route-wait slice](../evidence/bp-progress-route-wait-2026-09-24.md); [conditional observed-topic reopen](../evidence/bp-observed-topic-reopen-interim-2026-09-24.md).
+- [Scoped Store-prepare repair](../evidence/store-prepare-v6-export-repair-2026-09-24.md).
+- [Topic historical retry and anchor-generation gap](../evidence/topic-history-historical-retry-p3-2026-09-24.md).
+- [Host-reached retention preparation guard](../evidence/retention-prepare-guard-2026-09-24.md).
+- [Measured Store proof-cost repair](../evidence/store-proof-cost-2026-09-24.md); [pinned-peer proof-cost repair](../evidence/peer-inbound-pinned-cost-2026-09-24.md).
+- [Reader, consumer and cold-clone experiment](../evidence/native-poll-reader-clone-1d26-2026-09-23.md).
+- [Protected two-host exchange](../evidence/relocated-native-1836ed01-2026-09-23.md).
+- [Earlier native BP admission](../evidence/native-bp-admission-c1bb-2026-09-23.md).
+- [Isolated filesystem EIO experiment](../evidence/t16-private-eio-2026-09-23.md).
+- [Assurance review follow-up](../evidence/assurance-review-followup-e160442f-2026-09-23.md).
+- [Proof registry](../proofs.json), [trust and proof scope](../../docs/proofs.md), and [active work](../now.md).

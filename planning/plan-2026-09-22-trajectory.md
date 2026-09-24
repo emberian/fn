@@ -1,6 +1,6 @@
 # Trajectory to a node agents use, and what comes after — 2026-09-22
 
-The 2026-09-23 [takeover plan](takeover-2026-09-23.md) and
+The 2026-09-23 [takeover plan](archive/takeover-2026-09-23.md) and
 [working loop](how-we-work.md) supersede this document's five-lane schedule
 and exclusive-file allocation: start around ten useful agents with direct
 peer coordination and a separate bounded compute budget. Release scope and
