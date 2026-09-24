@@ -457,6 +457,16 @@
     "books/owner-prepare-correspondence",
     "books/owner-agent",
     "books/owner-log",
+    "books/consumer-event-index",
+    "tests/acl2/consumer-event-index-tests",
+    "books/consumer-poll-index",
+    "tests/acl2/consumer-poll-index-tests",
+    "books/consumer-event-index-store-invariants",
+    "tests/acl2/consumer-event-index-store-invariants-tests",
+    "books/consumer-owner-local",
+    "tests/acl2/consumer-owner-local-tests",
+    "books/consumer-owner-index-invariants",
+    "tests/acl2/consumer-owner-index-invariants-tests",
     "tests/acl2/owner-tests",
     "tests/acl2/owner-verdict-tests",
     "tests/acl2/owner-operator-tests",
@@ -541,25 +551,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 554,
-    "books_in_root_closure": 545,
-    "roots": 537,
-    "theorems": 8106,
-    "functions": 6098,
-    "assert_events": 8883,
-    "must_fails": 415,
+    "books": 556,
+    "books_in_root_closure": 554,
+    "roots": 547,
+    "theorems": 8107,
+    "functions": 6099,
+    "assert_events": 8887,
+    "must_fails": 416,
     "encapsulates": 26,
     "guards": {
       "verified": 1984,
       "declared-off": 325,
       "default-guarded": 3024,
-      "default-unguarded": 765
+      "default-unguarded": 766
     },
     "suspect_theorems": 74,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
-    "teeth_form_warnings": 30,
-    "include_hygiene_warnings": 425,
+    "teeth_form_warnings": 31,
+    "include_hygiene_warnings": 429,
     "host_names_warnings": 766,
     "hand_written_record_warnings": 18
   },
@@ -3972,8 +3982,8 @@
     },
     {
       "book": "books/consumer-event-index-store-invariants.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 15,
       "functions": 1,
       "guards": {
@@ -3999,7 +4009,7 @@
     {
       "book": "books/consumer-event-index.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 16,
       "functions": 10,
       "guards": {
@@ -4022,9 +4032,35 @@
       "read_error": null
     },
     {
+      "book": "books/consumer-owner-index-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-event-index-store-invariants",
+        "consumer-owner-local"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/consumer-owner-local.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 7,
       "guards": {
@@ -4050,8 +4086,8 @@
     },
     {
       "book": "books/consumer-poll-index.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 7,
       "functions": 6,
       "guards": {
@@ -11684,8 +11720,8 @@
     },
     {
       "book": "tests/acl2/consumer-event-index-store-invariants-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -11711,8 +11747,8 @@
     },
     {
       "book": "tests/acl2/consumer-event-index-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -11737,9 +11773,37 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/consumer-owner-index-invariants-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 1,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/consumer-owner-index-invariants",
+        "consumer-owner-local-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/consumer-owner-local-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -11763,8 +11827,8 @@
     },
     {
       "book": "tests/acl2/consumer-poll-index-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -16943,6 +17007,12 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "coit-caller-equality-needs-derived-index-relation",
+        "book": "tests/acl2/consumer-owner-index-invariants-tests.lisp",
+        "line": 21,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "fn-cpt-statep-needs-valid-start",
         "book": "tests/acl2/consumer-position-tests.lisp",
         "line": 151,
@@ -17687,6 +17757,20 @@
         "line": 19,
         "include": "records-seam",
         "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/consumer-owner-index-invariants.lisp",
+        "line": 4,
+        "include": "consumer-owner-local",
+        "included": "books/consumer-owner-local.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/consumer-owner-index-invariants.lisp",
+        "line": 5,
+        "include": "consumer-event-index-store-invariants",
+        "included": "books/consumer-event-index-store-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -19171,6 +19255,20 @@
         "line": 3,
         "include": "../../books/consumer-event-index",
         "included": "books/consumer-event-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-owner-index-invariants-tests.lisp",
+        "line": 4,
+        "include": "../../books/consumer-owner-index-invariants",
+        "included": "books/consumer-owner-index-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-owner-index-invariants-tests.lisp",
+        "line": 5,
+        "include": "consumer-owner-local-tests",
+        "included": "tests/acl2/consumer-owner-local-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
