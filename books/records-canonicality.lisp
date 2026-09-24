@@ -448,7 +448,10 @@
                  fn-record-encode-impl
                  fn-record-p
                  fn-record-octets-string
-                 fn-record-string-octets)))))
+                 fn-record-string-octets
+                 ; As in the composition lemma above: both sides are nested
+                 ; appends, and this rule made type-set walk them (12 s).
+                 (:type-prescription true-listp-append))))))
 
 (defthm fn-record-decode-after-header-reencode
   (implies (and (member-equal schema '(0 1))
@@ -905,7 +908,11 @@
            :cases ((equal (fn-record-stamp record) :legacy))
            :in-theory (e/d (fn-record-encode-impl fn-record-schema-octet)
                            (fn-record-p fn-cbor-encode fn-record-encode-groups
-                            fn-record-string-octets fn-cbor-at-mostp)))))
+                            fn-record-string-octets fn-cbor-at-mostp
+                            ; The opened encoding is a right-nested append of
+                            ; fourteen fields; type-set backchains through each
+                            ; level's true-listp hypothesis (26 s, 14 808 steps).
+                            (:type-prescription true-listp-append))))))
 
 (defthm fn-record-impl-accepted-schema-is-the-stamp-kind
   (implies (fn-record-result-okp (fn-record-decode-exact-impl octets))
