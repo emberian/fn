@@ -7,7 +7,7 @@
 ; The fixtures are tests/acl2/owner-tests.lisp's served POST scenario.
 
 (in-package "ACL2")
-(local (include-book "owner-tests"))
+(include-book "owner-tests")
 (include-book "../../books/owner-served-invariants")
 (include-book "std/testing/must-fail" :dir :system)
 
