@@ -769,7 +769,231 @@ the address and which has no port or TLS mode of its own."
             (fn-record-string-octets "source-address:"))
           (fn-native-admin-peer-label-octets (fn-ag-car (fn-ag-cdr auth)))))
 
-(defun fn-native-admin-peer-row-octets (p)
+; D23 row kinds a peer record holds beyond the typed record: the carried
+; principals of an NNTP peer, and the carried sources and release issuers of
+; a BP boundary.  `fn-cfg-peer-of-rows' ignores them, so the line renders
+; them from the peer's own row group, one ` TAG=VALUE' word per row, in row
+; order, after the auth field.  The decoder below reads them back, and
+; `fn-native-admin-peer-extra-decode-lists-exactly-the-rows' is the keystone:
+; the words of the three tags are exactly the rows of the three kinds.
+(defun fn-native-admin-peer-slot-values (rows slot)
+  "The value of every row of ROWS whose slot label is SLOT, in row order."
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (equal (fn-cfg-row-b (car rows)) slot)
+          (cons (fn-cfg-row-c (car rows))
+                (fn-native-admin-peer-slot-values (cdr rows) slot))
+        (fn-native-admin-peer-slot-values (cdr rows) slot))
+    nil))
+
+(defun fn-native-admin-peer-list-octets (head values)
+  (declare (xargs :guard (true-listp head)))
+  (if (consp values)
+      (append head
+              (true-list-fix (fn-native-admin-peer-label-octets (car values)))
+              (fn-native-admin-peer-list-octets head (cdr values)))
+    nil))
+
+(defun fn-native-admin-peer-word-octetp (x)
+  (declare (xargs :guard t))
+  (and (not (equal x 32)) (not (equal x 10))))
+
+(defun fn-native-admin-peer-token (octets)
+  (declare (xargs :guard t))
+  (if (and (consp octets) (fn-native-admin-peer-word-octetp (car octets)))
+      (cons (car octets) (fn-native-admin-peer-token (cdr octets)))
+    nil))
+
+(defun fn-native-admin-peer-after-token (octets)
+  (declare (xargs :guard t))
+  (if (and (consp octets) (fn-native-admin-peer-word-octetp (car octets)))
+      (fn-native-admin-peer-after-token (cdr octets))
+    octets))
+
+(defun fn-native-admin-peer-head-p (head octets)
+  (declare (xargs :guard t))
+  (if (consp head)
+      (and (consp octets)
+           (equal (car head) (car octets))
+           (fn-native-admin-peer-head-p (cdr head) (cdr octets)))
+    t))
+
+(defun fn-native-admin-peer-drop (head octets)
+  (declare (xargs :guard t))
+  (if (and (consp head) (consp octets))
+      (fn-native-admin-peer-drop (cdr head) (cdr octets))
+    octets))
+
+(defthm fn-native-admin-peer-after-token-len
+  (<= (len (fn-native-admin-peer-after-token x)) (len x))
+  :rule-classes :linear)
+
+(defthm fn-native-admin-peer-drop-len
+  (implies (and (consp head) (fn-native-admin-peer-head-p head x))
+           (< (len (fn-native-admin-peer-drop head x)) (len x)))
+  :rule-classes :linear)
+
+; The reader of a rendered list: the values of consecutive ` TAG=VALUE'
+; words at the head of OCTETS, and what follows them.  A value ends at a
+; space or a newline.
+(defun fn-native-admin-peer-list-decode (head octets)
+  (declare (xargs :guard t :measure (len octets)))
+  (if (and (consp head) (fn-native-admin-peer-head-p head octets))
+      (let ((rest (fn-native-admin-peer-drop head octets)))
+        (let ((more (fn-native-admin-peer-list-decode
+                     head (fn-native-admin-peer-after-token rest))))
+          (list (cons (fn-native-admin-peer-token rest) (car more))
+                (cadr more))))
+    (list nil octets)))
+
+(defun fn-native-admin-peer-label-octets-list (values)
+  (declare (xargs :guard t))
+  (if (consp values)
+      (cons (true-list-fix (fn-native-admin-peer-label-octets (car values)))
+            (fn-native-admin-peer-label-octets-list (cdr values)))
+    nil))
+
+(defun fn-native-admin-peer-wordp (octets)
+  (declare (xargs :guard t))
+  (if (consp octets)
+      (and (fn-native-admin-peer-word-octetp (car octets))
+           (fn-native-admin-peer-wordp (cdr octets)))
+    t))
+
+(defun fn-native-admin-peer-clean-valuesp (values)
+  (declare (xargs :guard t))
+  (if (consp values)
+      (and (fn-native-admin-peer-wordp
+            (true-list-fix (fn-native-admin-peer-label-octets (car values))))
+           (fn-native-admin-peer-clean-valuesp (cdr values)))
+    t))
+
+(defun fn-native-admin-peer-boundaryp (octets)
+  (declare (xargs :guard t))
+  (or (atom octets) (not (fn-native-admin-peer-word-octetp (car octets)))))
+
+(local (defthm fn-native-admin-peer-append-assoc
+  (equal (append (append a b) c) (append a (append b c)))))
+(local (defthm head-p-of-append-head
+  (fn-native-admin-peer-head-p head (append head x))))
+(local (defthm drop-of-append-head
+  (implies (true-listp head)
+           (equal (fn-native-admin-peer-drop head (append head x)) x))))
+(local (defthm token-of-append-word
+  (implies (and (fn-native-admin-peer-wordp w) (true-listp w)
+                (fn-native-admin-peer-boundaryp x))
+           (equal (fn-native-admin-peer-token (append w x)) w))))
+(local (defthm after-token-of-append-word
+  (implies (and (fn-native-admin-peer-wordp w)
+                (fn-native-admin-peer-boundaryp x))
+           (equal (fn-native-admin-peer-after-token (append w x)) x))))
+(local (defthm boundaryp-of-list-octets
+  (implies (and (fn-native-admin-peer-boundaryp x)
+                (consp head)
+                (not (fn-native-admin-peer-word-octetp (car head))))
+           (fn-native-admin-peer-boundaryp
+            (append (fn-native-admin-peer-list-octets head values) x)))))
+
+(defthm fn-native-admin-peer-list-decode-of-list-octets
+  (implies (and (fn-native-admin-peer-clean-valuesp values)
+                (true-listp head)
+                (consp head)
+                (not (fn-native-admin-peer-word-octetp (car head)))
+                (fn-native-admin-peer-boundaryp tail)
+                (not (fn-native-admin-peer-head-p head tail)))
+           (equal (fn-native-admin-peer-list-decode
+                   head (append (fn-native-admin-peer-list-octets head values) tail))
+                  (list (fn-native-admin-peer-label-octets-list values) tail)))
+  :hints (("Goal" :in-theory (disable fn-native-admin-peer-label-octets))))
+
+(defconst *fn-native-admin-peer-carries-principal-head*
+  (list 32 99 97 114 114 105 101 115 45 112 114 105 110 99 105 112 97 108 61)) ; " carries-principal="
+(defconst *fn-native-admin-peer-carries-head*
+  (list 32 99 97 114 114 105 101 115 61)) ; " carries="
+(defconst *fn-native-admin-peer-releases-for-head*
+  (list 32 114 101 108 101 97 115 101 115 45 102 111 114 61)) ; " releases-for="
+
+(defun fn-native-admin-peer-extra-octets (rows)
+  (declare (xargs :guard t))
+  (append (fn-native-admin-peer-list-octets
+           *fn-native-admin-peer-carries-principal-head*
+           (fn-native-admin-peer-slot-values rows "carries-principal"))
+          (fn-native-admin-peer-list-octets
+           *fn-native-admin-peer-carries-head*
+           (fn-native-admin-peer-slot-values rows "bp-boundary-carries"))
+          (fn-native-admin-peer-list-octets
+           *fn-native-admin-peer-releases-for-head*
+           (fn-native-admin-peer-slot-values rows "bp-boundary-releases-for"))))
+
+(defun fn-native-admin-peer-extra-decode (octets)
+  (declare (xargs :guard t))
+  (let* ((a (fn-native-admin-peer-list-decode
+             *fn-native-admin-peer-carries-principal-head* octets))
+         (b (fn-native-admin-peer-list-decode
+             *fn-native-admin-peer-carries-head* (cadr a)))
+         (c (fn-native-admin-peer-list-decode
+             *fn-native-admin-peer-releases-for-head* (cadr b))))
+    (list (car a) (car b) (car c) (cadr c))))
+
+(defun fn-native-admin-peer-extra-cleanp (rows)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-peer-clean-valuesp
+        (fn-native-admin-peer-slot-values rows "carries-principal"))
+       (fn-native-admin-peer-clean-valuesp
+        (fn-native-admin-peer-slot-values rows "bp-boundary-carries"))
+       (fn-native-admin-peer-clean-valuesp
+        (fn-native-admin-peer-slot-values rows "bp-boundary-releases-for"))))
+
+(local (defthm head-p-of-append-when-diverged
+  (implies (and (not (fn-native-admin-peer-head-p h1 h2))
+                (not (fn-native-admin-peer-head-p h2 h1)))
+           (not (fn-native-admin-peer-head-p h1 (append h2 x))))))
+
+(local (defthm head-p-of-list-octets-when-diverged
+  (implies (and (consp vs)
+                (not (fn-native-admin-peer-head-p h1 h2))
+                (not (fn-native-admin-peer-head-p h2 h1)))
+           (not (fn-native-admin-peer-head-p
+                 h1 (append (fn-native-admin-peer-list-octets h2 vs) x))))
+  :hints (("Goal" :expand ((fn-native-admin-peer-list-octets h2 vs))))))
+
+(local (defthm list-decode-when-not-head
+  (implies (not (fn-native-admin-peer-head-p head octets))
+           (equal (fn-native-admin-peer-list-decode head octets)
+                  (list nil octets)))))
+
+(local (defthm list-octets-of-atom
+  (implies (not (consp vs))
+           (equal (fn-native-admin-peer-list-octets h vs) nil))))
+
+(defthm fn-native-admin-peer-extra-decode-lists-exactly-the-rows
+  (implies (fn-native-admin-peer-extra-cleanp rows)
+           (equal (fn-native-admin-peer-extra-decode
+                   (append (fn-native-admin-peer-extra-octets rows) (list 10)))
+                  (list (fn-native-admin-peer-label-octets-list
+                         (fn-native-admin-peer-slot-values rows "carries-principal"))
+                        (fn-native-admin-peer-label-octets-list
+                         (fn-native-admin-peer-slot-values rows "bp-boundary-carries"))
+                        (fn-native-admin-peer-label-octets-list
+                         (fn-native-admin-peer-slot-values rows "bp-boundary-releases-for"))
+                        (list 10))))
+  :hints (("Goal" :do-not-induct t
+                  :in-theory (disable fn-native-admin-peer-list-octets
+                                      fn-native-admin-peer-list-decode
+                                      fn-native-admin-peer-slot-values
+                                      fn-native-admin-peer-clean-valuesp
+                                      fn-native-admin-peer-label-octets-list
+                                      fn-native-admin-peer-label-octets)
+                  :cases ((and (consp (fn-native-admin-peer-slot-values rows "bp-boundary-carries"))
+                               (consp (fn-native-admin-peer-slot-values rows "bp-boundary-releases-for")))
+                          (and (consp (fn-native-admin-peer-slot-values rows "bp-boundary-carries"))
+                               (not (consp (fn-native-admin-peer-slot-values rows "bp-boundary-releases-for"))))
+                          (and (not (consp (fn-native-admin-peer-slot-values rows "bp-boundary-carries")))
+                               (consp (fn-native-admin-peer-slot-values rows "bp-boundary-releases-for")))))))
+
+(defun fn-native-admin-peer-row-octets (p rows)
+  "One `peer list' line: the typed record P, then the D23 rows of ROWS (the
+peer's row group), then a newline."
   (declare (xargs :guard t))
   (append (fn-native-admin-peer-label-octets (fn-cfg-peer-name p))
           (fn-record-string-octets " path-identity=")
@@ -784,13 +1008,17 @@ the address and which has no port or TLS mode of its own."
               (fn-native-admin-peer-label-octets (fn-cfg-peer-outbound-groups p))
             *fn-native-admin-peer-absent*)
           (fn-native-admin-peer-auth-octets (fn-cfg-peer-auth p))
+          (fn-native-admin-peer-extra-octets rows)
           (list 10)))
 
 (defun fn-native-admin-peer-report-rows (names peers)
   (declare (xargs :guard t))
   (if (consp names)
       (let ((p (fn-cfg-peer-find (car names) peers)))
-        (append (if p (fn-native-admin-peer-row-octets p) nil)
+        (append (if p
+                    (fn-native-admin-peer-row-octets
+                     p (fn-cfg-rows-with-key peers (car names)))
+                  nil)
                 (fn-native-admin-peer-report-rows (cdr names) peers)))
     nil))
 

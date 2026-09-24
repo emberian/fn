@@ -299,8 +299,9 @@ def reread(node: Node, candidate: bytes, out: dict, injected: bool):
     The candidate is resubmitted through the entry that first submitted it:
     `operator CFG post` to the restarted owner when the owner injected it,
     `store ROOT post` after the owner stops otherwise.  The two entries store
-    different octets for one payload, so a retry through the other entry
-    meets a conflict, not a duplicate (the `cross-entry-retry` fault row).
+    different octets for one payload; under D25 the Store compares the
+    poster's bytes, so a retry through the other entry is still the
+    duplicate (the `cross-entry-retry` fault row).
     """
     checks = (("prior", PRIOR_ID, node.prior_stored, False),
               ("candidate", CANDIDATE_ID, candidate, injected))
@@ -588,20 +589,27 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
         rows.append(row)
 
     # Since a0b6d41f the owner injects what `operator CFG post` hands it and
-    # `store ROOT post` stores the payload as read, so one payload through
-    # the two entries is two different articles under one Message-ID.  Each
-    # order, with no fault: the second submission meets the first.
+    # `store ROOT post` stores the payload as read.  Under D25 the Store
+    # compares the poster's bytes, not the stored copy, so one payload
+    # through the two entries is one article: the second submission is the
+    # duplicate.  A third submission, through the second entry, changes one
+    # authored byte (the Subject) under the same Message-ID: the conflict.
+    # Each order, with no fault.
+    changed = candidate.with_name("candidate-changed.art")
+    changed.write_bytes(article(CANDIDATE_ID, "candidatf", "candidate content"))
     for first, second in (("store", "operator"), ("operator", "store")):
         node, row = fresh(dev, "cross-entry-retry-{}-then-{}".format(first, second))
         try:
             owner = None
-            for entry, label in ((first, "first"), (second, "second")):
+            for entry, label, payload in ((first, "first", candidate),
+                                          (second, "second", candidate),
+                                          (second, "changed", changed)):
                 if entry == "operator":
                     owner = node.start_owner()
-                    row[label] = public(node.post(CANDIDATE_ID, candidate))
+                    row[label] = public(node.post(CANDIDATE_ID, payload))
                     row[label + "_owner"] = node.stop_owner(owner)
                 else:
-                    row[label] = public(node.store_post(CANDIDATE_ID, candidate))
+                    row[label] = public(node.store_post(CANDIDATE_ID, payload))
                 row["after_" + label] = snapshot(node.store)
         finally:
             node.reap()
