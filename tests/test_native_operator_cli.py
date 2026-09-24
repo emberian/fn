@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Executable boundary checks for the installed native operator image."""
 import os
+import re
 from pathlib import Path
 import select
 import socket
@@ -19,7 +20,25 @@ class NativeOperatorPrincipalCompositionTests(unittest.TestCase):
     def test_operator_calls_existing_acl2_credential_plan_and_executor(self):
         model = (ROOT / "books" / "native-operator.lisp").read_text(encoding="ascii")
         host = (ROOT / "host" / "native" / "operator.lisp").read_text(encoding="ascii")
-        self.assertIn("(fn-native-auth-admin-parse-argv (cdr argv))", model)
+        # The ACL2 credential parser reads the words after `principal', so
+        # the operator must hand it the tail of argv: `cdr' itself, or a
+        # book function whose definition is the guard-total tail.
+        principal = model[model.index("(defun fn-nop-parse-principal"):]
+        principal = principal[:principal.index("\n(defun ")]
+        call = re.search(r"\(fn-native-auth-admin-parse-argv \(([a-z0-9-]+) argv\)\)",
+                         principal)
+        self.assertIsNotNone(call, "principal plan does not parse a function of argv")
+        tail = call.group(1)
+        if tail != "cdr":
+            definitions = [
+                match for book in sorted((ROOT / "books").glob("*.lisp"))
+                for match in re.findall(
+                    rf"\(defun {re.escape(tail)} \((\S+)\)\s+"
+                    r"\(declare \(xargs :guard t\)\)\s+"
+                    r"\(if \(consp (\S+)\) \(cdr (\S+)\) nil\)\)",
+                    book.read_text(encoding="utf-8"))]
+            self.assertEqual(len(definitions), 1, f"{tail} is not defined once as argv's tail")
+            self.assertEqual(len(set(definitions[0])), 1, f"{tail} is not the tail of its argument")
         self.assertIn("'fn-native-operator-host-result-principal-plan result", host)
         self.assertIn("(fnn-native-auth-admin-execute", host)
 
