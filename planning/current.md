@@ -16,21 +16,21 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 | capability | keystone | implemented | proved | qualified | deployed |
 | --- | --- | --- | --- | --- | --- |
-| [P1](#p1) protected channel | `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` | yes | yes: `certify-20260924T224341Z-2081666` | no: source changed since 18c91321 | yes: 4eca4148 |
-| [P2](#p2) 240 after a consumed completion | `fn-own-240-follows-consumed-completion` | yes | yes: `certify-20260924T224341Z-2081666` | no: source changed since 18c91321 | yes: 4eca4148 |
-| [P3](#p3) reading resumes | `fn-own-pinned-view-survives-other-post` | yes | yes: `certify-20260924T224341Z-2081666` | no: source changed since 18c91321 | yes: 4eca4148 |
+| [P1](#p1) protected channel | `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` | yes | yes: `certify-20260924T224341Z-2081666` | yes: 4eca4148 | yes: 4eca4148 |
+| [P2](#p2) 240 after a consumed completion | `fn-own-240-follows-consumed-completion` | yes | yes: `certify-20260924T224341Z-2081666` | yes: 4eca4148 | yes: 4eca4148 |
+| [P3](#p3) reading resumes | `fn-own-pinned-view-survives-other-post` | yes | yes: `certify-20260924T224341Z-2081666` | yes: 4eca4148 | yes: 4eca4148 |
 | [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-poster-bytes-is-answered-already-stored` | yes | yes: `certify-20260924T224341Z-2081666` | lab only: `9cb82454` | yes: 4eca4148 |
-| [P5](#p5) a connection-local fault costs one connection | `fn-ocfg-fault-keeps-every-other-connection` | yes | yes: `certify-20260924T224341Z-2081666` | no: source changed since 18c91321 | yes: 4eca4148 |
-| [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20260924T224341Z-2081666` | no: source changed since 18c91321 | yes: 4eca4148 |
-| [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | yes: `certify-20260924T224341Z-2081666` | no: source changed since 18c91321 | yes: 4eca4148 |
-| [P8](#p8) signature verdict visible | `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` | yes | yes: `certify-20260924T224341Z-2081666` | no: source changed since 18c91321 | yes: 4eca4148 |
-| [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20260924T224341Z-2081666` | no: source changed since 18c91321 | yes: 4eca4148 |
-| [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | yes: `certify-20260924T224341Z-2081666` | no: source changed since 18c91321 | yes: 4eca4148 |
-| [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | no: closure moved | no: source changed since 18c91321 | no: profile not deployed |
+| [P5](#p5) a connection-local fault costs one connection | `fn-ocfg-fault-keeps-every-other-connection` | yes | yes: `certify-20260924T224341Z-2081666` | yes: 4eca4148 | yes: 4eca4148 |
+| [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20260924T224341Z-2081666` | yes: 4eca4148 | yes: 4eca4148 |
+| [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | yes: `certify-20260924T224341Z-2081666` | yes: 4eca4148 | yes: 4eca4148 |
+| [P8](#p8) signature verdict visible | `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` | yes | yes: `certify-20260924T224341Z-2081666` | yes: 4eca4148 | yes: 4eca4148 |
+| [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20260924T224341Z-2081666` | yes: 4eca4148 | yes: 4eca4148 |
+| [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | yes: `certify-20260924T224341Z-2081666` | yes: 4eca4148 | yes: 4eca4148 |
+| [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | no: closure moved | no: source changed since 4eca4148 | no: profile not deployed |
 | [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | yes: `certify-20260924T231054Z-2148356` | lab only: `dc27d36d` | no: profile not deployed |
 | [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-profile-budget` | yes | yes: `certify-20260924T224341Z-2081666` | lab only: `5181e0ea` | yes: 4eca4148 |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | yes: `certify-20260924T224341Z-2081666` | lab only: `lane/m6-list-counts` | yes: 4eca4148 |
-| [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260924T224341Z-2081666` | no: source changed since 18c91321 | yes: 4eca4148 |
+| [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260924T224341Z-2081666` | yes: 4eca4148 | yes: 4eca4148 |
 
 ## Records
 
@@ -40,7 +40,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1415, equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:173).
 - Keystone: `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` (books/nntp-auth-invariants.lisp:520; PRF-031 (in-progress)); certified at the current source and closure by `certify-20260924T224341Z-2081666` (earliest archived).
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile native-operator matrix and native modules, production and developer; changed since it: `books/nntp-auth-invariants.lisp`, `books/served-carried.lisp`, `host/owner-host.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile native-operator matrix and native modules, production and developer; it carries this source.
 - Deployed: yes: node image `4eca4148`; it carries this source.
 - Latest positive result: matrix AUTH-GATED-A/B 480 before login, AUTH-LOGIN 281, AUTH-WRONG 481, every TLS/AUTHINFO transit row; auth 4/4, starttls 2/2, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: the 483 clause is not observed in the matrix (its nodes run `[auth] required` over clear loopback, not `protected_only`).
@@ -52,7 +52,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-ccar-own-finish` at host/owner-host.lisp:602, equated by `fn-ccar-own-finish-is-own-finish` (books/owner-commit-carried.lisp:294).
 - Keystone: `fn-own-240-follows-consumed-completion` (books/owner-served-invariants.lisp:135; PRF-015 (in-progress)); certified at the current source and closure by `certify-20260924T224341Z-2081666` (earliest archived).
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile developer twin for the cuts, production for the kill run; changed since it: `host/owner-host.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile developer twin for the cuts, production for the kill run; it carries this source.
 - Deployed: yes: node image `4eca4148`; it carries this source.
 - Latest positive result: 50/50 cut observations, probe 40/40, served_crash_model 3/3 over 18 cuts, 90 production SIGKILLs with 0 torn, 0 lost 240, 0 reused numbers ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: uncertainty raised as a condition outside the Store word closes without a line; the EIO rows run on the developer image only.
@@ -64,7 +64,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1415, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:219).
 - Keystone: `fn-own-pinned-view-survives-other-post` (books/owner-served-invariants.lisp:279; PRF-002 (in-progress)); certified at the current source and closure by `certify-20260924T224341Z-2081666` (earliest archived).
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile native-operator matrix and native modules; changed since it: `books/owner-served-carried.lisp`, `host/owner-host.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile native-operator matrix and native modules; it carries this source.
 - Deployed: yes: node image `4eca4148`; it carries this source.
 - Latest positive result: reader_index 4/4, served_differential 7/7, the matrix reader rows with 0 disagreed ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: the NEWNEWS and stamp migration cases skip for want of a frozen pre-T2 image.
@@ -88,7 +88,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-ocfg-fault` at host/owner-host.lisp:1448.
 - Keystone: `fn-ocfg-fault-keeps-every-other-connection` (books/owner-served-invariants.lisp:327; PRF-040 (in-progress)); certified at the current source and closure by `certify-20260924T224341Z-2081666` (earliest archived).
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile native modules, image's own tests; changed since it: `host/owner-host.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile native modules, image's own tests; it carries this source.
 - Deployed: yes: node image `4eca4148`; it carries this source.
 - Latest positive result: owner 18/18 (local fault, disconnect, reset), control 14/14 with the busy ceiling, POST-CONCURRENT accepted ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: the property's sentence still says any fault; the review restates it as connection-local containment with fail-stop of uncertain shared authority, not yet in the plan.
@@ -100,7 +100,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-ocl-publish` at host/owner-host.lisp:324.
 - Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (in-progress)); certified at the current source and closure by `certify-20260924T224341Z-2081666` (earliest archived).
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile native-operator matrix and native modules; changed since it: `host/owner-host.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile native-operator matrix and native modules; it carries this source.
 - Deployed: yes: node image `4eca4148`; it carries this source.
 - Latest positive result: CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: none named for the half-change property; the node's own reconfiguration is operator-driven and not exercised on the deployed store.
@@ -112,7 +112,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-own-submission-intent-records` at host/owner-host.lisp:1013, equated by `fn-own-submission-targets-are-feed-targets` (books/owner-feed-subject.lisp:35).
 - Keystone: `fn-own-submission-never-targets-a-loop` (books/owner-feed-subject.lisp:63; PRF-029 (in-progress)); certified at the current source and closure by `certify-20260924T224341Z-2081666` (earliest archived).
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile two-node native-operator matrix with INN; changed since it: `host/owner-host.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile two-node native-operator matrix with INN; it carries this source.
 - Deployed: yes: node image `4eca4148`; it carries this source.
 - Latest positive result: all 22 TRANSIT-*-AB/BA rows and INN 33/33; peering 5/5 with the Path-identity transit, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: D23 relay carriage over NNTP is proved and its three-node native chain is written but not run ([d23-nntp-relay](evidence/d23-nntp-relay-2026-09-24.md)); the deployed node has no peers.
@@ -124,7 +124,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1415, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:219).
 - Keystone: `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` (books/owner-verdict-read.lisp:416; PRF-026 (planned)); certified at the current source and closure by `certify-20260924T224341Z-2081666` (earliest archived).
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile native modules, developer and production; changed since it: `books/owner-served-carried.lisp`, `host/owner-host.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile native modules, developer and production; it carries this source.
 - Deployed: yes: node image `4eca4148`; it carries this source.
 - Latest positive result: hybrid_author 6/6 including a signed POST over NNTP getting the transit classification; consumer_e2 signed poll 1/1 with a dated source ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: the published completion record is not proved to be the event ACL2 built; library trust is not a named assumption; `fn_verify.py` is not on the image; consumer_e2 fails with an undated source.
@@ -136,7 +136,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-pcar-sbud-prepare` at host/owner-host.lisp:392, equated by `fn-pcar-sbud-prepare-is-sbud-prepare` (books/owner-prepare-carried.lisp:215).
 - Keystone: `fn-sbud-prepare-refuses-at-budget` (books/owner-store-budget.lisp:37; PRF-004 (in-progress)); certified at the current source and closure by `certify-20260924T224341Z-2081666` (earliest archived).
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile native-operator matrix, operator verbs, kill run; changed since it: `host/owner-host.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile native-operator matrix, operator verbs, kill run; it carries this source.
 - Deployed: yes: node image `4eca4148`; it carries this source.
 - Latest positive result: CAP-REFUSE-A/B refused, CAP-SET accepted; operator_verbs budget cases, bp_obligation 4/4, app_journal 10/10 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: compaction does not relieve the transaction budget (it counts committed records); admission headroom beyond it needs D13 history pruning.
@@ -148,7 +148,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-cpo-open-observed` at host/owner-host.lisp:193, equated by `fn-bs-host-reopened-kernel-is-the-recovered-kernel` (books/byte-store-k0-recovery.lisp:544).
 - Keystone: `fn-bs-recover-program-keeps-relation-at-every-cut` (books/byte-store-k0-recovery.lisp:469; PRF-041 (in-progress)); certified at the current source and closure by `certify-20260924T224341Z-2081666` (earliest archived).
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile developer twin for the cuts, production refuses selectors; changed since it: `host/owner-host.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile developer twin for the cuts, production refuses selectors; it carries this source.
 - Deployed: yes: node image `4eca4148`; it carries this source.
 - Latest positive result: all 25 cuts pass through both entries; production refuses 30/30 selector starts with exit 5; checkpoint 23/23, recovery 13/13 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: no general per-step K0; in-process recovery (admin re-running `fnn-recover`) has no entry theorem; 6 checkpoint cuts and about 12 BP/TCPCL/owner kill points lack an `fn-bs-*` coordinate; process death on ZFS only.
@@ -160,7 +160,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-bpnp-step` at host/native/bp-service.lisp:170.
 - Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:150; PRF-046 (in-progress)); no archived manifest certifies the current closure; `certify-20260924T230640Z-2140288` passed this source of `books/bp-node-forward-retry.lisp`, and since then `books/bp-app-handoff.lisp`, `books/bp-session-admission.lisp` changed.
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile DTN developer image, bp_node and bp_app modules; changed since it: `books/bp-node-forward-retry.lisp`, `host/native/bp-service.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile DTN developer image, bp_node and bp_app modules; changed since it: `books/bp-node-forward-retry.lisp`, `host/native/bp-service.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: bp_node 17/17 with N08 on both developer images, bp_app 5/5, contact_relay 1/1 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: the no-release and lifecycle keystones are over `fn-bpn-step` with a state-only bridge; `bp-node serve` forwarding still expects the application peer as its TCPCL neighbour; the retry budget is not yet persisted across restarts (review, retry budget).
@@ -208,7 +208,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 - Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1415, equated by `fn-ocfg-read-tls-prefix-is-full-read` (books/owner-tls-prefix.lisp:91).
 - Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:29; PRF-067 (in-progress)); certified at the current source and closure by `certify-20260924T224341Z-2081666` (earliest archived).
-- Tested: image `18c91321` ([qual-18c91321-2026-09-24](evidence/qual-18c91321-2026-09-24.md), closure `certify-20260924T210828Z-1892761`), profile native reader and peering modules; changed since it: `host/owner-host.lisp`.
+- Tested: image `4eca4148` ([qual-4eca4148-2026-09-24](evidence/qual-4eca4148-2026-09-24.md), closure `certify-20260924T224341Z-2081666`), profile native reader and peering modules; it carries this source.
 - Deployed: yes: node image `4eca4148`; it carries this source.
 - Latest positive result: reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
 - Remaining obstruction: the per-event `fn-peer-sessionp` evaluation, not the history scan, is the served cost at the N the CLI reaches (ember's decision); the fast path's reuse after refresh is not a theorem.

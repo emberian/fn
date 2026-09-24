@@ -60,7 +60,7 @@
       "bridge": "fn-scar-auth-step-pinned-is-auth-step-pinned",
       "keystone": "fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "native-operator matrix and native modules, production and developer"
       },
       "profile": "default",
@@ -79,7 +79,7 @@
       "bridge": "fn-ccar-own-finish-is-own-finish",
       "keystone": "fn-own-240-follows-consumed-completion",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "developer twin for the cuts, production for the kill run"
       },
       "profile": "default",
@@ -98,7 +98,7 @@
       "bridge": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
       "keystone": "fn-own-pinned-view-survives-other-post",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "native-operator matrix and native modules"
       },
       "profile": "default",
@@ -136,7 +136,7 @@
       },
       "keystone": "fn-ocfg-fault-keeps-every-other-connection",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "native modules, image's own tests"
       },
       "profile": "default",
@@ -154,7 +154,7 @@
       },
       "keystone": "fn-ocl-no-reader-observes-a-half-change",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "native-operator matrix and native modules"
       },
       "profile": "default",
@@ -173,7 +173,7 @@
       "bridge": "fn-own-submission-targets-are-feed-targets",
       "keystone": "fn-own-submission-never-targets-a-loop",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "two-node native-operator matrix with INN"
       },
       "profile": "default",
@@ -192,7 +192,7 @@
       "bridge": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
       "keystone": "fn-own-read-hdr-fn-verified-is-the-pinned-verdict",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "native modules, developer and production"
       },
       "profile": "default",
@@ -211,7 +211,7 @@
       "bridge": "fn-pcar-sbud-prepare-is-sbud-prepare",
       "keystone": "fn-sbud-prepare-refuses-at-budget",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "native-operator matrix, operator verbs, kill run"
       },
       "profile": "default",
@@ -230,7 +230,7 @@
       "bridge": "fn-bs-host-reopened-kernel-is-the-recovered-kernel",
       "keystone": "fn-bs-recover-program-keeps-relation-at-every-cut",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "developer twin for the cuts, production refuses selectors"
       },
       "profile": "default",
@@ -248,7 +248,7 @@
       },
       "keystone": "fn-bpnp-step-session-offer-is-the-scan-choice",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "DTN developer image, bp_node and bp_app modules"
       },
       "profile": "dtn",
@@ -325,7 +325,7 @@
       "bridge": "fn-ocfg-read-tls-prefix-is-full-read",
       "keystone": "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan",
       "tested": {
-        "image": "18c91321",
+        "image": "4eca4148",
         "profile": "native reader and peering modules"
       },
       "profile": "default",
