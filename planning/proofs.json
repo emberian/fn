@@ -2852,7 +2852,12 @@
         "fn-ccp-complete-observation-reconstructs-its-records",
         "fn-ccp-reclaim-preserves-reconstructed-history",
         "fn-ccp-profile-upgrade-keeps-reclaim-plan",
-        "fn-bs-selected-reclaim-crash-preserves-suffix-payload"
+        "fn-bs-selected-reclaim-crash-preserves-suffix-payload",
+        "fn-cverb-pack-fits-the-profile-budget",
+        "fn-cverb-capture-within-pack-octets",
+        "fn-cverb-pack-decision-capture-succeeds",
+        "fn-native-operator-run-store-compact-is-the-compact-action",
+        "fn-native-operator-run-compact-action-is-only-store-compact"
       ]
     }
   ]

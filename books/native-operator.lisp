@@ -685,24 +685,45 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                    fn-ncfg-ascii-octetsp
                                    fn-native-config-operator-availablep)))))
 
+(local
+ (defthm fn-nop-result-accessors
+   (and (equal (fn-native-operator-result-status (fn-nop-result s r c g a)) s)
+        (equal (fn-native-operator-result-command (fn-nop-result s r c g a)) c)
+        (equal (fn-native-operator-result-arguments (fn-nop-result s r c g a)) a))
+   :hints (("Goal" :in-theory (enable fn-nop-result fn-native-operator-result-status
+                                      fn-native-operator-result-command
+                                      fn-native-operator-result-arguments)))))
+
 ; Which subcommand parser answers is visible in the result's command field.
 (local
- (defthm fn-nop-subparser-commands
-   (and (equal (fn-native-operator-result-command (fn-nop-parse-init w c)) "init")
-        (equal (fn-native-operator-result-command (fn-nop-parse-post w c)) "post")
-        (equal (fn-native-operator-result-command (fn-nop-parse-principal a c))
-               "principal")
-        (equal (fn-native-operator-result-command
-                (fn-nop-parse-administration command a c))
-               command)
-        (equal (fn-native-operator-result-command (fn-nop-parse-store w c))
-               "store"))
-   :hints (("Goal" :in-theory (enable fn-nop-parse-init fn-nop-parse-post
-                                      fn-nop-parse-principal
-                                      fn-nop-parse-administration
-                                      fn-nop-parse-store
-                                      fn-nop-usage fn-nop-refused fn-nop-result
-                                      fn-native-operator-result-command)))))
+ (defthm fn-nop-parse-init-command
+   (equal (fn-native-operator-result-command (fn-nop-parse-init w c)) "init")
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-init fn-nop-usage fn-nop-refused)
+                                   (fn-nop-result fn-native-operator-result-command fn-nop-parse-init-groups fn-nop-init-profile-word fn-native-admin-some-group-name-reservedp))))))
+
+(local
+ (defthm fn-nop-parse-post-command
+   (equal (fn-native-operator-result-command (fn-nop-parse-post w c)) "post")
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-post fn-nop-usage fn-nop-refused)
+                                   (fn-nop-result fn-native-operator-result-command fn-nop-parse-post-aux fn-native-config-posting-enabledp))))))
+
+(local
+ (defthm fn-nop-parse-principal-command
+   (equal (fn-native-operator-result-command (fn-nop-parse-principal a c)) "principal")
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-principal fn-nop-usage fn-nop-refused)
+                                   (fn-nop-result fn-native-operator-result-command fn-native-auth-admin-parse-argv fn-native-auth-admin-plan-status fn-native-auth-admin-plan-reason))))))
+
+(local
+ (defthm fn-nop-parse-administration-command
+   (equal (fn-native-operator-result-command (fn-nop-parse-administration command a c)) command)
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-administration fn-nop-usage fn-nop-refused)
+                                   (fn-nop-result fn-native-operator-result-command fn-native-admin-plan fn-native-admin-result-status fn-native-admin-result-reason))))))
+
+(local
+ (defthm fn-nop-parse-store-command
+   (equal (fn-native-operator-result-command (fn-nop-parse-store w c)) "store")
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-refused)
+                                   (fn-nop-result fn-native-operator-result-command fn-nop-init-profile-word))))))
 
 (local
  (defthm fn-nop-parse-store-compact-words
@@ -715,15 +736,6 @@ when that store already exists is `fn-native-operator-init-outcome'."
    :rule-classes nil
    :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
                                       fn-native-operator-result-status
-                                      fn-native-operator-result-arguments)))))
-
-(local
- (defthm fn-nop-result-accessors
-   (and (equal (fn-native-operator-result-status (fn-nop-result s r c g a)) s)
-        (equal (fn-native-operator-result-command (fn-nop-result s r c g a)) c)
-        (equal (fn-native-operator-result-arguments (fn-nop-result s r c g a)) a))
-   :hints (("Goal" :in-theory (enable fn-nop-result fn-native-operator-result-status
-                                      fn-native-operator-result-command
                                       fn-native-operator-result-arguments)))))
 
 (local
@@ -752,6 +764,36 @@ when that store already exists is `fn-native-operator-init-outcome'."
             :use ((:instance fn-nop-parse-store-compact-words
                              (w (cdr words)) (c config)))))))
 
+(local
+ (defthm fn-nop-compact-action-shape
+   (implies (equal (fn-native-operator-result-native-action result) :compact)
+            (and (equal (fn-native-operator-result-status result) :accepted)
+                 (equal (fn-native-operator-result-command result) "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                        :compact)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+
+(local
+ (defthm fn-nop-native-action-of-unaccepted
+   (implies (not (equal (fn-native-operator-result-status result) :accepted))
+            (equal (fn-native-operator-result-native-action result) :none))
+   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+
+(local
+ (defthm fn-nop-parse-command-compact-action-words
+   (implies (equal (fn-native-operator-result-native-action
+                    (fn-nop-parse-command words config argv))
+                   :compact)
+            (equal words '("store" "compact")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-nop-compact-action-shape
+                                       fn-native-operator-result-native-action
+                                       fn-nop-parse-command)
+            :use ((:instance fn-nop-compact-action-shape
+                             (result (fn-nop-parse-command words config argv)))
+                  fn-nop-parse-command-compact-words)))))
+
 (defthm fn-native-operator-run-compact-action-is-only-store-compact
   (implies (equal (fn-native-operator-result-native-action
                    (fn-native-operator-run config argv))
@@ -761,9 +803,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
   :hints (("Goal" :in-theory (e/d (fn-native-operator-run
                                    fn-native-operator-command-preflight
                                    fn-native-operator-preflight-needs-config-p
-                                   fn-nop-usage
-                                   fn-native-operator-result-native-action)
+                                   fn-nop-usage)
                                   (fn-nop-result
+                                   fn-native-operator-result-native-action
                                    fn-native-operator-result-status
                                    fn-native-operator-result-command
                                    fn-native-operator-result-arguments
@@ -771,10 +813,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                    fn-nop-argvp fn-native-config-load
                                    fn-ncfg-ascii-octetsp
                                    fn-native-config-operator-availablep))
-           :use ((:instance fn-nop-parse-command-compact-words
+           :use ((:instance fn-nop-parse-command-compact-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
                             (argv argv))
-                 (:instance fn-nop-parse-command-compact-words
+                 (:instance fn-nop-parse-command-compact-action-words
                             (words (fn-nop-argument-texts argv))
                             (config nil) (argv argv))))))
