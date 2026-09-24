@@ -11,8 +11,11 @@ foundation and shared poll definitions. The first run exposed a configured
 ADVANCE proof regression; its repaired follow-up reused 581 certificates and
 certified 16 books in 35.604 seconds at four jobs. `make check` passed. The
 [integration record](evidence/cleanup-integration-2026-09-24.md) preserves both
-runs and the bounded Luna trials. A new shared native image is being built;
-source certification does not extend the older image's runtime evidence.
+runs and the bounded Luna trials. The a785 production and developer images were built; selected native
+consumer and reader checks passed, while the BP report cut exposed an
+unregistered developer fault selector. The [native record](evidence/native-a785-selected-gate-2026-09-24.md)
+retains both results and limitations. Its selector and test-fixture repairs
+are integrated; their source-matched runtime check remains pending.
 The index foundation still needs its actual owner/Store join and does not yet
 establish bounded served polling. The read-only expiry selector is integrated;
 native fragment admission and persisted replacement remain a separate join.
@@ -26,12 +29,23 @@ The protected live node remains `da5fd8cb`.
 
 Active joins are native BP fragment custody with expiry-safe reassembly,
 topic Store admission, the maintained consumer index on the actual served
-path, and the full allocator byte/kernel relation. Two bounded Luna trials
-cover a client verdict display and proof-cost diagnosis. The client change
+path, and the full allocator byte/kernel relation. Two earlier bounded Luna trials
+covered a client verdict display and proof-cost diagnosis. The client change
 landed after an article/verdict association correction; Luna's local proof hint has now certified with unchanged theorem statements
 and fewer prover steps. [Cleanup and recovery](worktree-recovery-2026-09-24.md)
 records 101 verified worktree archives and recovery from an external accidental
 checkout reset. Old branch counts are not a feature backlog.
+
+A new three-lane GPT-6-Luna feature trial is underway with Sol review.
+Bounded web history windows and native offline cursor inspection are on dev;
+web socket/HTTP tests pass, while the inspector awaits one shared saved
+image. Local consumer status remains in its implementation lane, with ACL2
+owning scope checks and journal-distance arithmetic. Review has already
+corrected the cursor file ceiling, advanced empty-group navigation, and a
+frame-kind collision with the pending topic branch. This trial records
+review assistance as well as implementation results; it does not establish
+unreviewed model reliability. The old topic, consumer-index, BP activation
+and allocator packets remain separate integration work.
 
 The dated checkpoints below are historical observations, not competing
 descriptions of current source.
