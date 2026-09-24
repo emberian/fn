@@ -568,6 +568,7 @@
     "books/owner-feed-subject",
     "books/owner-prepare-correspondence",
     "books/owner-served-invariants",
+    "books/owner-numbering",
     "books/owner-retention-preparation",
     "books/owner-agent",
     "books/owner-log",
@@ -583,6 +584,8 @@
     "tests/acl2/consumer-owner-index-invariants-tests",
     "tests/acl2/owner-tests",
     "tests/acl2/owner-served-invariants-tests",
+    "tests/acl2/owner-numbering-tests",
+    "tests/acl2/owner-fault-tests",
     "tests/acl2/owner-verdict-tests",
     "tests/acl2/owner-verdict-read-tests",
     "tests/acl2/owner-operator-tests",
@@ -678,25 +681,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 685,
-    "books_in_root_closure": 683,
-    "roots": 674,
-    "theorems": 9226,
-    "functions": 6653,
-    "assert_events": 10083,
-    "must_fails": 693,
+    "books": 688,
+    "books_in_root_closure": 686,
+    "roots": 677,
+    "theorems": 9269,
+    "functions": 6666,
+    "assert_events": 10145,
+    "must_fails": 700,
     "encapsulates": 30,
     "guards": {
       "verified": 2038,
       "declared-off": 418,
-      "default-guarded": 3309,
-      "default-unguarded": 888
+      "default-guarded": 3311,
+      "default-unguarded": 899
     },
     "suspect_theorems": 83,
     "export_hygiene_warnings": 109,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 48,
-    "include_hygiene_warnings": 661,
+    "include_hygiene_warnings": 663,
     "host_names_warnings": 813,
     "hand_written_record_warnings": 18
   },
@@ -8119,6 +8122,31 @@
       "encapsulates": 0,
       "includes": [
         "owner"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-numbering.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 41,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-served-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -16784,6 +16812,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-fault-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 37,
+      "must_fails": 4,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-feed-port-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -16857,6 +16912,34 @@
       "encapsulates": 0,
       "includes": [
         "../../books/owner-log"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-numbering-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 3,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-numbering",
+        "owner-served-invariants-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -24986,10 +25069,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-fault-tests.lisp",
+        "line": 18,
+        "include": "owner-tests",
+        "included": "tests/acl2/owner-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-log-tests.lisp",
         "line": 15,
         "include": "../../books/owner-log",
         "included": "books/owner-log.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-numbering-tests.lisp",
+        "line": 12,
+        "include": "owner-served-invariants-tests",
+        "included": "tests/acl2/owner-served-invariants-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
