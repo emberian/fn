@@ -286,7 +286,8 @@
        (equal (car x) :bpnf-operation)
        (natp (fn-bpn-nth 1 x)) (natp (fn-bpn-nth 2 x))
        (member-equal (fn-bpn-nth 3 x)
-                     '(:store :deliver :attempt :discard :handoff :family :delete))
+                     '(:store :deliver :attempt :discard :handoff :family :delete
+                       :dispatch))
        (member-equal (fn-bpn-nth 5 x) '(:pending :uncertain))))
 
 (defun fn-bpnf-operation-matchp (issued epoch operation-id)

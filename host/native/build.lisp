@@ -90,6 +90,7 @@
 (include-book "books/bp-receive-evidence")
 (include-book "books/bp-app-handoff-time")
 (include-book "books/bp-fnbs-family-publication")
+(include-book "books/bp-fnbs-dispatch-publication")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
