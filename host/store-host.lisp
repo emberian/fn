@@ -94,25 +94,9 @@
         (fn-profile-txn-observation names maximum selected-lower)
       :invalid)))
 
-(defun fn-store-txn-covered-names (pairs selected-lower)
-  (declare (xargs :mode :program))
-  (if (consp pairs)
-      (if (< (first (car pairs)) selected-lower)
-          (cons (second (car pairs))
-                (fn-store-txn-covered-names (cdr pairs) selected-lower))
-        nil)
-    nil))
-
-(defun fn-store-txn-prefix-reclaim-plan (observed maximum selected-lower)
-  (declare (xargs :mode :program))
-  (let ((names (fn-store-octet-lists->strings observed)))
-    (if (and (natp maximum) (natp selected-lower) (true-listp observed)
-             (not (equal names :bad)) (<= (len names) maximum)
-             (not (equal (fn-bs-txn-observation-selected names selected-lower)
-                         :invalid)))
-        (let ((pairs (third (fn-bs-txn-observation-selected names selected-lower))))
-          (fn-store-txn-covered-names pairs selected-lower))
-      :invalid)))
+; The transaction-prefix reclaim plan is `fn-bs-pack-reclaim-plan'
+; (books/byte-store-compaction-correspondence), whose namespace gate is
+; `fn-profile-txn-observation'; host/native/checkpoint.lisp calls it directly.
 
 (defun fn-store-decode-records (octet-records)
   (declare (xargs :mode :program))

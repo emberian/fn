@@ -30,6 +30,9 @@
 ; The native pack-reclaim command calls fn-bs-pack-reclaim-plan from this
 ; guard-verified book; checkpoint-publish does not include it.
 (include-book "books/byte-store-compaction-correspondence")
+; Recovery after a reclaim calls fn-ccp-observe-framed and fn-ccp-coverage-framed
+; through host/checkpoint-host.lisp.
+(include-book "books/checkpoint-compaction-preservation")
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")
