@@ -1108,6 +1108,10 @@
   (value (fn-pa-current-plan
           received (fn-sn-keyring-snapshots (fn-owner-store state)))))
 
+(defun fn-owner-peer-carrier-form (received state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pa-carrier-form received)))
+
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge
                  observed-ml-key ed-observation ml-observation state)
