@@ -494,6 +494,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/topic-history-store-node-tests \
 	tests/acl2/topic-history-local-proposals-tests \
 	tests/acl2/topic-history-local-control-tests \
+	tests/acl2/topic-history-native-vector-tests \
 	tests/acl2/hybrid-store-tests \
 	books/crypto-attach \
 	books/auth-secret \

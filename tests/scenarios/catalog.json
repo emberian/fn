@@ -1062,21 +1062,29 @@
       "steps": [
         "From an already accepted schema-1 root and historical key snapshot, prepare and commit a finite local anchor under the installed administrator ID. Repeat with a different caller, changed snapshot and the same already anchored root.",
         "Construct an accepted report signed by a roster author, propose and commit its admission, then retry the exact source after the finite quota is consumed.",
-        "Construct separate accepted reports under a non-roster signer, with an unadmitted same-topic parent and after quota exhaustion. Compare the projection before preparation and after completion."
+        "Construct separate accepted reports under a non-roster signer, with an unadmitted same-topic parent and after quota exhaustion. Compare the projection before preparation and after completion.",
+        "Complete a valid administrator install, anchor and report in Store; reopen the completed prefix, then try a structurally valid duplicate administrator install image."
       ],
       "expected": [
         "Only the matching administrator/root context yields a proposed anchor; the same root cannot be anchored twice.",
         "The report receives one historical admission, exact retry returns that record without another charge, and proposal alone does not change state.",
-        "Non-roster author, missing parent and no remaining quota each refuse fresh admission; no ordinary article acceptance is undone."
+        "Non-roster author, missing parent and no remaining quota each refuse fresh admission; no ordinary article acceptance is undone.",
+        "Completed topic events advance Store sequence/transaction and carried topic state while preserving article acceptance; observed reopen rejects the duplicate-install topic history with :replay."
       ],
       "evidence": [
         "tests/acl2/topic-history-admission-tests.lisp",
         "planning/evidence/topic-history-admission-component-p3-2026-09-23.md",
         "planning/evidence/manifests/certify-20260923T215046Z-608772.json",
         "tests/acl2/topic-history-store-events-tests.lisp",
-        "planning/evidence/manifests/certify-20260923T215838Z-688900.json"
+        "planning/evidence/manifests/certify-20260923T215838Z-688900.json",
+        "tests/acl2/topic-history-store-node-tests.lisp",
+        "tests/acl2/store-observed-tests.lisp",
+        "planning/evidence/topic-history-store-base-p3-2026-09-24.md",
+        "planning/evidence/manifests/certify-20260924T015446Z-2921507.json",
+        "tests/acl2/topic-history-native-vector-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T022329Z-3173943.json"
       ],
-      "execution_scope": "The ACL2 component and T10 constructor fixtures certify on persvati. This is not a same-journal native Store scenario; Store event union, publication, recovery and retention pins remain unimplemented."
+      "execution_scope": "ACL2 Store slot-12 prepare, completion, trace and observed reopen certify on persvati; the authenticated native owner path and saved image remain unqualified."
     }
   ]
 }

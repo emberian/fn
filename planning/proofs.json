@@ -2276,7 +2276,9 @@
         "tests/acl2/topic-history-local-control-tests.lisp",
         "planning/evidence/topic-history-native-source-p3-2026-09-24.md",
         "planning/evidence/manifests/certify-20260924T020813Z-3039371.json",
-        "planning/evidence/manifests/certify-20260924T020336Z-2999170.json"
+        "planning/evidence/manifests/certify-20260924T020336Z-2999170.json",
+        "tests/acl2/topic-history-native-vector-tests.lisp",
+        "planning/evidence/manifests/certify-20260924T022329Z-3173943.json"
       ],
       "progress_note": "The coherent slot-12 Store, trace, resolution, observed-open and configuration roots and tests certify on persvati. The source-level native owner/control path now calls one ACL2 local proposal dispatcher and uses the existing connected same-euid credential observation; its ACL2 proposal/control books and tests certify. The staged native install/root/report/reopen test, combined saved image and broad reverse closure remain unqualified, so this is not yet a served durable-admission claim."
     }
