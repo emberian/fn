@@ -442,4 +442,25 @@
                  fn-record-shape-vocabulary
                  fn-record-record-vocabulary)))))
 
+; A staged record is already a typed Store event at the carried dense
+; sequence.  The record-file state checks the event, while the maintained
+; identity relation equates the committed record count with identity-next.
+; Topic replay may use this fact without rescanning the committed history on
+; a served prepare path.
+(defthm fn-sis-staged-candidate-matches-identity-next-by-definition
+  (implies (and (fn-sn-statep s)
+                (fn-sn-identity-sequencep s)
+                (fn-sf-record-phasep (fn-sf-phase (fn-sn-files s))))
+           (and (fn-store-event-p
+                 (fn-sf-record-candidate (fn-sn-files s)))
+                (equal (fn-store-event-sequence
+                        (fn-sf-record-candidate (fn-sn-files s)))
+                       (fn-sn-identity-next s))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sn-statep fn-sf-statep
+                            fn-sf-phase-shapep fn-sf-candidatep
+                            fn-sn-identity-sequencep)
+                           (fn-store-event-p fn-sf-record-listp
+                            fn-sn-make-v6)))))
+
 (in-theory (disable fn-sn-identity-sequencep))

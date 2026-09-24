@@ -565,6 +565,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/topic-history-authorship \
 	books/topic-history-admission \
 	books/topic-history-store-events \
+	books/topic-history-prefix-invariants \
+	books/topic-history-store-invariants \
+	books/topic-history-recovery-invariants \
 	books/topic-history-local-proposals \
 	books/topic-history-local-control \
 	tests/acl2/topic-history-metadata-tests \
@@ -573,6 +576,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/topic-history-store-events-tests \
 	tests/acl2/topic-history-store-union-tests \
 	tests/acl2/topic-history-prefix-tests \
+	tests/acl2/topic-history-prefix-invariants-tests \
+	tests/acl2/topic-history-store-invariants-tests \
+	tests/acl2/topic-history-recovery-invariants-tests \
+	tests/acl2/topic-history-v2-crash-tests \
 	tests/acl2/topic-history-local-admin-tests \
 	tests/acl2/topic-history-store-node-tests \
 	tests/acl2/consumer-topic-store-tests \
