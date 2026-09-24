@@ -1383,6 +1383,21 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bs-k0-frontier-node-root-eio-applied-fences-related-state",
+          "note": "The substantive physical EIO :apply and Store-node error relation proof; host/native/io.lisp fnn-advance-frontier observes this Store-node subject through the owner callback."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-eio-applied-run-has-actual-failed-cut",
+          "note": "Equates the actual P-FRONTIER failing fn-bs-run pair 12 to the physical EIO :apply state used by the Store-node proof."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-owner-frontier-root-eio-applied-run-fences-related-state",
+          "note": "Exact configured-owner fn-ocfg-step :store/:io caller projection of the Store-node keystone and failed byte run; host/native/owner.lisp:718 binds the callback."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-bs-sweep-round-keeps-every-cut-reopenable"
         },
         {

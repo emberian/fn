@@ -1291,6 +1291,26 @@
    (bsk0-owner-frontier-entry)
    ".allocation-owner-k0" (fn-bs-frontier-encode 1))))
 
+; This predicate is exactly the public owner theorem's three-conjunct
+; conclusion.  Premise teeth below refute this predicate itself.
+(defun bsk0-owner-frontier-eio-applied-conclusionp (bs oc stage octets)
+  (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+         (run (fn-bs-run bs (fn-sn-files s)
+                         (fn-bs-frontier-program stage octets)
+                         (fn-bs-k0-root-error-outcomes :apply)
+                         (fn-sn-groups s) (fn-sn-capacity s)))
+         (failed (car (nth 12 run)))
+         (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok))))
+         (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok))))
+         (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok))))
+         (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
+         (k3 (fn-sn-files (fn-own-store (fn-ocfg-owner oc3))))
+         (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
+    (and (fn-bs-store-relation failed k4)
+         (equal (fn-sf-phase k4) :fenced-frontier)
+         (equal (fn-bs-durable-frontier failed)
+                (fn-sf-frontier-candidate k3)))))
+
 ; The called owner path classifies a root-directory EIO after rename as a
 ; recovery fence.  The byte interpreter stops at the failing fsync (pair 12),
 ; even when the pending replacement actually landed.  No :reserved callback
@@ -1306,15 +1326,11 @@
          (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok))))
          (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok))))
          (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
-         (k3 (fn-sn-files (fn-own-store (fn-ocfg-owner oc3))))
          (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
-    (and (equal (len run) 13)
+    (and (bsk0-owner-frontier-eio-applied-conclusionp bs oc stage octets)
+         (equal (len run) 13)
          (fn-bs-dir-quietp failed :root)
-         (fn-bs-store-relation failed k4)
-         (equal (fn-sf-phase k4) :fenced-frontier)
-         (equal (fn-sf-frontier k4) (fn-sf-frontier (fn-sn-files s)))
-         (equal (fn-bs-durable-frontier failed)
-                (fn-sf-frontier-candidate k3)))))
+         (equal (fn-sf-frontier k4) (fn-sf-frontier (fn-sn-files s))))))
 
 (assert-event
  (let* ((bs (bsk5-initial))
@@ -1327,7 +1343,8 @@
         (fn-bs-store-relation bs (fn-sn-files s))
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bs :staging stage))
-        (bsk0-owner-frontier-eio-appliedp bs oc stage octets))))
+        (bsk0-owner-frontier-eio-appliedp bs oc stage octets)
+        (bsk0-owner-frontier-eio-applied-conclusionp bs oc stage octets))))
 
 ; The opposite legal fsync-error choice is reachable from the same owner and
 ; byte entry.  It also fences, but leaves the old durable frontier.  Thus
@@ -1359,16 +1376,48 @@
 
 ; Each theorem premise is independently necessary for the applied-error
 ; conclusion at this real program cut.
+(assert-event
+ (with-guard-checking :none
+  (let* ((bs (bsk5-initial))
+        (oc0 (bsk0-owner-frontier-entry))
+        (s0 (fn-own-store (fn-ocfg-owner oc0)))
+        (s (fn-sn-update s0 (fn-sn-files s0) :bad))
+        (oc (fn-ocfg-make (fn-own-start s 2) nil nil nil))
+        (stage ".allocation-owner-eio-k0")
+        (octets (fn-bs-frontier-encode 1)))
+   (and (not (fn-sn-statep s))
+        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
+        (not (fn-bs-lookup bs :staging stage))
+        (not (bsk0-owner-frontier-eio-applied-conclusionp
+              bs oc stage octets))))))
 (must-fail
  (assert-event
-  (let* ((bs (bsk5-initial))
+  (with-guard-checking :none
+   (let* ((bs (bsk5-initial))
          (oc0 (bsk0-owner-frontier-entry))
          (o (fn-ocfg-owner oc0))
          (s0 (fn-own-store o))
          (s (fn-sn-update s0 (fn-sn-files s0) :bad))
          (oc (fn-ocfg-make (fn-own-start s 2) nil nil nil)))
-    (bsk0-owner-frontier-eio-appliedp
-     bs oc ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1)))))
+     (bsk0-owner-frontier-eio-applied-conclusionp
+      bs oc ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1))))))
+(assert-event
+ (let* ((bs (bsk5-initial))
+        (oc (bsk0-owner-frontier-entry))
+        (s (fn-own-store (fn-ocfg-owner oc)))
+        (bad (fn-bs-make (fn-bs-unit bs)
+                         (fn-bs-put-assoc 0 '(65) (fn-bs-inodes bs))
+                         (fn-bs-dirs bs) (fn-bs-pending bs)
+                         (fn-bs-next-ino bs)))
+        (stage ".allocation-owner-eio-k0")
+        (octets (fn-bs-frontier-encode 1)))
+   (and (fn-sn-statep s)
+        (not (fn-bs-store-relation bad (fn-sn-files s)))
+        (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
+        (not (fn-bs-lookup bad :staging stage))
+        (not (bsk0-owner-frontier-eio-applied-conclusionp
+              bad oc stage octets)))))
 (must-fail
  (assert-event
   (let* ((bs (bsk5-initial))
@@ -1376,18 +1425,45 @@
                           (fn-bs-put-assoc 0 '(65) (fn-bs-inodes bs))
                           (fn-bs-dirs bs) (fn-bs-pending bs)
                           (fn-bs-next-ino bs))))
-    (bsk0-owner-frontier-eio-appliedp
+    (bsk0-owner-frontier-eio-applied-conclusionp
      bad (bsk0-owner-frontier-entry)
      ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1)))))
+(assert-event
+ (let* ((bs (bsk5-initial))
+        (oc (bsk0-owner-frontier-entry))
+        (s (fn-own-store (fn-ocfg-owner oc)))
+        (stage ".allocation-owner-eio-k0")
+        (octets (fn-bs-frontier-encode 0)))
+   (and (fn-sn-statep s)
+        (fn-bs-store-relation bs (fn-sn-files s))
+        (not (fn-bs-frontier-inputp (fn-sn-files s) stage octets))
+        (not (fn-bs-lookup bs :staging stage))
+        (not (bsk0-owner-frontier-eio-applied-conclusionp
+              bs oc stage octets)))))
 (must-fail
  (assert-event
-  (bsk0-owner-frontier-eio-appliedp
+  (bsk0-owner-frontier-eio-applied-conclusionp
    (bsk5-initial) (bsk0-owner-frontier-entry)
    ".allocation-owner-eio-k0" (fn-bs-frontier-encode 0))))
+(assert-event
+ (mv-let (result bs)
+   (fn-bs-create (bsk5-initial) :staging ".allocation-owner-eio-k0" :ok)
+   (declare (ignore result))
+   (let* ((oc (bsk0-owner-frontier-entry))
+          (s (fn-own-store (fn-ocfg-owner oc)))
+          (stage ".allocation-owner-eio-k0")
+          (octets (fn-bs-frontier-encode 1)))
+     (and (fn-sn-statep s)
+          (fn-bs-store-relation bs (fn-sn-files s))
+          (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
+          (fn-bs-lookup bs :staging stage)
+          (not (bsk0-owner-frontier-eio-applied-conclusionp
+                bs oc stage octets))))))
 (must-fail
  (assert-event
-  (bsk0-owner-frontier-eio-appliedp
-   (mv-nth 1 (fn-bs-create (bsk5-initial) :staging
-                           ".allocation-owner-eio-k0" :ok))
-   (bsk0-owner-frontier-entry)
-   ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1))))
+  (mv-let (result bs)
+    (fn-bs-create (bsk5-initial) :staging ".allocation-owner-eio-k0" :ok)
+    (declare (ignore result))
+    (bsk0-owner-frontier-eio-applied-conclusionp
+     bs (bsk0-owner-frontier-entry)
+     ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1)))))
