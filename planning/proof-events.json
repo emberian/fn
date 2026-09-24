@@ -2566,6 +2566,43 @@
           "note": "Over fn-native-admin-group-name-creatablep, which fn-native-admin-plan applies through its reserved clause: the case-folded first-component reading equals the example / example. / poster reading; native-admin-tests has one must-fail per disjunct and for the case fold."
         }
       ]
+    },
+    {
+      "id": "PRF-072",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-profile-upgrade-keeps-txn-observation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-upgrade-keeps-replay-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-upgrade-keeps-publication-admissibility"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-upgrade-keeps-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-upgrade-verdict-writes-only-upgrades"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-config-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-program-crash-is-old-or-new"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-program-crash-budget-is-old-or-new"
+        }
+      ]
     }
   ]
 }

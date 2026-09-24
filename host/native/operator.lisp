@@ -275,6 +275,13 @@ observation into the outcome and this function only carries it out."
         (let ((code (case action
                       (:status (fnn-command-status root))
                       (:recover (fnn-command-recover root))
+                      (:upgrade-profile
+                       (let ((profile (fnn-core
+                                       'fn-native-operator-host-result-upgrade-profile
+                                       result)))
+                         (unless (member profile '(:development :scale))
+                           (fnn-fault "ACL2 accepted a store plan with no profile"))
+                         (fnn-command-upgrade-profile root profile)))
                       (t +fnn-exit-fault+))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) action)
           code)
@@ -318,7 +325,8 @@ configuration usage result."
           (:init (fnn-operator-execute-init result))
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
-          ((:status :recover) (fnn-operator-execute-store-action result action))
+          ((:status :recover :upgrade-profile)
+           (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
           (:principal (fnn-operator-execute-principal result))
           (:owner-required
