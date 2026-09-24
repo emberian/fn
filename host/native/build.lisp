@@ -114,6 +114,9 @@
 (include-book "books/anchor-servers")
 (include-book "books/anchor-replace")
 
+;; The committed-history boundary: io.lisp fnn-mark-committed and
+;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
+(include-book "books/store-history-marker")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
