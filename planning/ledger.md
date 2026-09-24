@@ -13,19 +13,19 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 631 |
 | Certification roots in the Makefile | 621 |
 | Books inside the root closure | 629 |
-| `defthm` and `defthmd` events | 8734 |
+| `defthm` and `defthmd` events | 8736 |
 | `defun` events | 6440 |
 | Functions with verified guards | 2036 |
 | Functions declared `:verify-guards nil` and never verified | 382 |
 | Functions left at the default with an explicit guard | 3202 |
 | Functions left at the default with no guard | 820 |
-| `assert-event` checks | 9473 |
-| `must-fail` checks | 544 |
+| `assert-event` checks | 9479 |
+| `must-fail` checks | 547 |
 | `encapsulate` events | 27 |
 | Theorems flagged SUSPECT by shape | 82 |
 | Export-hygiene warnings | 103 |
 | Enabled-projection warnings | 37 |
-| Teeth-form warnings | 44 |
+| Teeth-form warnings | 47 |
 | Include-hygiene warnings | 574 |
 | Host-names warnings | 807 |
 | Hand-written-record warnings | 18 |
@@ -228,7 +228,7 @@ that `make certify` requests.
 | `books/checkpoint-auxiliary.lisp` | root | 0 | 12 | 7/0/0/5 | 0 | 0 | 0 |
 | `books/checkpoint-codec.lisp` | root | 110 | 36 | 13/1/21/1 | 0 | 0 | 1 |
 | `books/checkpoint-compaction.lisp` | root | 5 | 19 | 0/15/4/0 | 0 | 0 | 0 |
-| `books/checkpoint-pack-retire.lisp` | root | 8 | 10 | 0/0/10/0 | 0 | 0 | 0 |
+| `books/checkpoint-pack-retire.lisp` | root | 10 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/checkpoint-publish.lisp` | root | 65 | 63 | 13/1/49/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -557,12 +557,12 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-auxiliary-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 49 | 0 | 0 |
 | `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 80 | 1 | 0 |
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
-| `tests/acl2/checkpoint-pack-retire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 5 | 0 |
+| `tests/acl2/checkpoint-pack-retire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 8 | 0 |
 | `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 85 | 0 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/codec-seam-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
-| `tests/acl2/config-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
+| `tests/acl2/config-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
 | `tests/acl2/config-owner-advance-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
 | `tests/acl2/config-owner-advance-reader-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
 | `tests/acl2/config-owner-live-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 43 | 1 | 0 |
