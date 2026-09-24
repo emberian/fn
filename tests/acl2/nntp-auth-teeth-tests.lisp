@@ -1880,3 +1880,664 @@
 (assert-event (not (fn-auth-session-handshakingp (aut-role-after (aut-bound) "CAPABILITIES"))))
 (assert-event (fn-auth-principal-rolep (aut-role-after (aut-bound) "CAPABILITIES")))
 (local (must-fail (aut-k10 aut-k10-without-s2 (s1))))
+
+; =============================================================================
+; P1 at the host-called step (keystones 11 to 17, books/nntp-auth-invariants,
+; section "P1 at the host-called step").
+;
+; The subject of keystones 11, 12 and 15 to 17 is `fn-auth-step-pinned', the
+; one call books/served.lisp:617 `fn-served-dispatch' makes into this layer;
+; the subject of 13 and 14 is `fn-served-dispatch' itself.  The host reaches
+; both from host/owner-host.lisp:1240 (`fn-owner-chunk', through
+; `fn-ocfg-read-tls-prefix').  Each keystone is admitted here once more from
+; its own hypothesis list, with every hypothesis named, and then once per
+; hypothesis with that one left out under `must-fail'; beside each
+; `must-fail' is the evaluated value that refutes the weaker statement.
+
+(defconst *aut-pin* (fn-served-conn-pinned-index *aut-conn-req*))
+
+(defun aut-pinned-octets (as line)
+  (fn-auth-step-pinned as *aut-archive* *aut-pin* nil *aut-config* *aut-obs*
+                       *aut-obs* (list :command line)))
+(defun aut-pinned (as text)
+  (aut-pinned-octets as (fn-nntp-string-octets text)))
+(defun aut-pinned-reply (as text)
+  (fn-post-result-effects (aut-pinned as text)))
+(defun aut-pinned-after (as text)
+  (fn-post-result-session (aut-pinned as text)))
+(defun aut-delegated (as text)
+  (fn-auth-delegate-pinned as *aut-archive* *aut-pin* nil *aut-config*
+                           *aut-obs* *aut-obs*
+                           (list :command (fn-nntp-string-octets text))))
+(defun aut-dispatch-octets (conn line)
+  (fn-served-dispatch conn (list :command line)))
+(defun aut-dispatch (conn text)
+  (aut-dispatch-octets conn (fn-nntp-string-octets text)))
+
+(defmacro aut-p1-tooth (name keys alist conclusion keystone)
+  `(defthm ,name
+     (implies (and ,@(aut-hyps keys alist)) ,conclusion)
+     :rule-classes nil
+     :hints (("Goal" :do-not-induct t
+              :use ((:instance ,keystone))
+              :in-theory (disable fn-auth-step-pinned fn-auth-delegate-pinned
+                                  fn-served-dispatch fn-served-connp
+                                  fn-auth-sessionp fn-auth-single
+                                  fn-auth-postingp fn-auth-find-cred
+                                  fn-auth-cred-postingp fn-auth-cred-principal
+                                  fn-auth-restricted-keywordp
+                                  fn-auth-config-requiredp
+                                  fn-auth-config-protected-onlyp
+                                  fn-nntp-tokenize fn-nntp-command-inputp
+                                  fn-nntp-keywordp
+                                  fn-nntp-command-arguments-at-mostp)))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE 11: fn-auth-step-pinned-gated-command-is-refused-and-not-performed
+; (b) at the step.  Hypotheses H1 to H7 of keystone 1, over the pinned step.
+
+(defconst *aut-k11-hyps*
+  '((h1 . (fn-auth-sessionp as))
+    (h2 . (not (fn-auth-session-handshakingp as)))
+    (h3 . (fn-auth-config-requiredp (fn-auth-session-config as)))
+    (h4 . (not (fn-auth-session-subject as)))
+    (h5 . (fn-nntp-command-inputp line))
+    (h6 . (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line)))
+    (h7 . (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))))
+(defconst *aut-k11-conclusion*
+  '(and (null (fn-post-result-submission
+               (fn-auth-step-pinned as archive index verdicts config
+                                    observation injection
+                                    (list :command line))))
+        (not (fn-post-offeredp
+              (fn-post-result-effects
+               (fn-auth-step-pinned as archive index verdicts config
+                                    observation injection
+                                    (list :command line)))))
+        (equal (fn-post-result-session
+                (fn-auth-step-pinned as archive index verdicts config
+                                     observation injection
+                                     (list :command line)))
+               as)
+        (equal (fn-post-result-effects
+                (fn-auth-step-pinned as archive index verdicts config
+                                     observation injection
+                                     (list :command line)))
+               (fn-auth-single as "480 authentication required"))))
+(defmacro aut-k11 (name keys)
+  `(aut-p1-tooth ,name ,keys ,*aut-k11-hyps* ,*aut-k11-conclusion*
+                 fn-auth-step-pinned-gated-command-is-refused-and-not-performed))
+
+(aut-k11 aut-k11-full (h1 h2 h3 h4 h5 h6 h7))
+
+; The witness: GROUP and ARTICLE on an unauthenticated connection under the
+; required policy, and POST, which the archive's one group would accept
+; once authenticated.  480, the session unchanged, no submission, no offer.
+(assert-event (equal (aut-pinned-reply *aut-s-req* "GROUP fn.letters")
+                     (aut-single *aut-480*)))
+(assert-event (equal (aut-pinned-after *aut-s-req* "GROUP fn.letters")
+                     *aut-s-req*))
+(assert-event (equal (aut-pinned-reply *aut-s-req* "ARTICLE 1")
+                     (aut-single *aut-480*)))
+(assert-event (equal (aut-pinned-reply *aut-s-req* "POST")
+                     (aut-single *aut-480*)))
+(assert-event (null (fn-post-result-submission (aut-pinned *aut-s-req* "POST"))))
+; Non-degenerate: authenticated, the same GROUP selects the group.
+(assert-event (not (equal (aut-pinned-reply (aut-authed) "GROUP fn.letters")
+                          (aut-single *aut-480*))))
+(assert-event (not (equal (aut-pinned-after (aut-authed) "GROUP fn.letters")
+                          (aut-authed))))
+
+; H1 dropped: the forged session is answered nothing.
+(assert-event (equal (aut-pinned-reply *aut-forged* "GROUP fn.letters") nil))
+(local (must-fail (aut-k11 aut-k11-without-h1 (h2 h3 h4 h5 h6 h7))))
+; H2 dropped: a handshaking session is answered nothing.
+(assert-event (equal (aut-pinned-reply *aut-s-handshaking* "GROUP fn.letters")
+                     nil))
+(local (must-fail (aut-k11 aut-k11-without-h2 (h1 h3 h4 h5 h6 h7))))
+; H3 dropped: the open policy serves GROUP unauthenticated.
+(assert-event (not (equal (aut-pinned-reply *aut-s-open* "GROUP fn.letters")
+                          (aut-single *aut-480*))))
+(local (must-fail (aut-k11 aut-k11-without-h3 (h1 h2 h4 h5 h6 h7))))
+; H4 dropped: the authenticated session (witness above).
+(local (must-fail (aut-k11 aut-k11-without-h4 (h1 h2 h3 h5 h6 h7))))
+; H5 dropped: the over-long GROUP line is delegated to the reader preflight.
+(assert-event
+ (not (equal (fn-post-result-effects
+              (aut-pinned-octets *aut-s-req* *aut-over-long-line*))
+             (aut-single *aut-480*))))
+(local (must-fail (aut-k11 aut-k11-without-h5 (h1 h2 h3 h4 h6 h7))))
+; H6 dropped: the over-long GROUP argument is delegated too.
+(assert-event
+ (not (equal (fn-post-result-effects
+              (aut-pinned-octets *aut-s-req* *aut-over-long-argument-line*))
+             (aut-single *aut-480*))))
+(local (must-fail (aut-k11 aut-k11-without-h6 (h1 h2 h3 h4 h5 h7))))
+; H7 dropped: HELP is answered unauthenticated.
+(assert-event (not (equal (aut-pinned-reply *aut-s-req* "HELP")
+                          (aut-single *aut-480*))))
+(local (must-fail (aut-k11 aut-k11-without-h7 (h1 h2 h3 h4 h5 h6))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE 12: fn-auth-step-pinned-protected-only-refuses-authinfo-before-tls
+; (a) at the step.  Hypotheses G1 to G8 of keystone 2, over the pinned step.
+
+(defconst *aut-k12-hyps*
+  '((g1 . (fn-auth-sessionp as))
+    (g2 . (not (fn-auth-session-handshakingp as)))
+    (g3 . (not (fn-auth-session-subject as)))
+    (g4 . (fn-auth-config-protected-onlyp (fn-auth-session-config as)))
+    (g5 . (not (fn-auth-session-tlsp as)))
+    (g6 . (fn-nntp-command-inputp line))
+    (g7 . (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line)))
+    (g8 . (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))))
+(defconst *aut-k12-conclusion*
+  '(and (equal (fn-post-result-effects
+                (fn-auth-step-pinned as archive index verdicts config
+                                     observation injection
+                                     (list :command line)))
+               (fn-auth-single
+                as "483 a protected channel is required; use STARTTLS"))
+        (equal (fn-post-result-session
+                (fn-auth-step-pinned as archive index verdicts config
+                                     observation injection
+                                     (list :command line)))
+               as)
+        (null (fn-post-result-submission
+               (fn-auth-step-pinned as archive index verdicts config
+                                    observation injection
+                                    (list :command line))))))
+(defmacro aut-k12 (name keys)
+  `(aut-p1-tooth ,name ,keys ,*aut-k12-hyps* ,*aut-k12-conclusion*
+                 fn-auth-step-pinned-protected-only-refuses-authinfo-before-tls))
+
+(aut-k12 aut-k12-full (g1 g2 g3 g4 g5 g6 g7 g8))
+
+; The witness: a clear connection under protected-only sends the correct
+; secret.  483, and the session is the one it arrived on: no name is
+; cached, no subject is installed, and the reply is the same for USER, for
+; the right PASS and for a wrong one, so the secret is never compared.
+(assert-event (equal (aut-pinned-reply *aut-s-prot* "AUTHINFO USER reader")
+                     (aut-single *aut-483*)))
+(assert-event (equal (aut-pinned-reply *aut-s-prot* "AUTHINFO PASS correct-horse")
+                     (aut-single *aut-483*)))
+(assert-event (equal (aut-pinned-reply *aut-s-prot* "AUTHINFO PASS wrong-horse")
+                     (aut-single *aut-483*)))
+(assert-event (equal (aut-pinned-after *aut-s-prot* "AUTHINFO USER reader")
+                     *aut-s-prot*))
+(assert-event (null (fn-auth-session-pending
+                     (aut-pinned-after *aut-s-prot* "AUTHINFO USER reader"))))
+; Non-degenerate: over TLS the same policy caches the name (381).
+(assert-event (equal (aut-pinned-reply *aut-s-prot-tls* "AUTHINFO USER reader")
+                     (aut-single "381 password required")))
+
+; G1 dropped: the forged protected session is answered nothing.
+(assert-event (equal (aut-pinned-reply *aut-forged-prot* "AUTHINFO USER reader")
+                     nil))
+(local (must-fail (aut-k12 aut-k12-without-g1 (g2 g3 g4 g5 g6 g7 g8))))
+; G2 dropped: a handshaking session is answered nothing.
+(assert-event (equal (aut-pinned-reply *aut-s-prot-handshaking*
+                                       "AUTHINFO USER reader")
+                     nil))
+(local (must-fail (aut-k12 aut-k12-without-g2 (g1 g3 g4 g5 g6 g7 g8))))
+; G3 dropped: an authenticated session is 502.
+(assert-event (equal (aut-pinned-reply (aut-prot-authed) "AUTHINFO USER reader")
+                     (aut-single "502 already authenticated")))
+(local (must-fail (aut-k12 aut-k12-without-g3 (g1 g2 g4 g5 g6 g7 g8))))
+; G4 dropped: required but not protected-only answers 381 in the clear.
+(assert-event (equal (aut-pinned-reply *aut-s-req* "AUTHINFO USER reader")
+                     (aut-single "381 password required")))
+(local (must-fail (aut-k12 aut-k12-without-g4 (g1 g2 g3 g5 g6 g7 g8))))
+; G5 dropped: over TLS, 381 (witness above).
+(local (must-fail (aut-k12 aut-k12-without-g5 (g1 g2 g3 g4 g6 g7 g8))))
+; G6 dropped: the over-long AUTHINFO line is delegated.
+(assert-event
+ (not (equal (fn-post-result-effects
+              (aut-pinned-octets *aut-s-prot* *aut-authinfo-over-long-line*))
+             (aut-single *aut-483*))))
+(local (must-fail (aut-k12 aut-k12-without-g6 (g1 g2 g3 g4 g5 g7 g8))))
+; G7 dropped: the over-long AUTHINFO argument is delegated.
+(assert-event
+ (not (equal (fn-post-result-effects
+              (aut-pinned-octets *aut-s-prot*
+                                 *aut-authinfo-over-long-argument-line*))
+             (aut-single *aut-483*))))
+(local (must-fail (aut-k12 aut-k12-without-g7 (g1 g2 g3 g4 g5 g6 g8))))
+; G8 dropped: STARTTLS on the same connection is 382.
+(assert-event (not (equal (aut-pinned-reply *aut-s-prot* "STARTTLS")
+                          (aut-single *aut-483*))))
+(local (must-fail (aut-k12 aut-k12-without-g8 (g1 g2 g3 g4 g5 g6 g7))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONES 13 and 14: the same two answers from fn-served-dispatch, where
+; the WHOLE connection is unchanged.
+
+(defconst *aut-conn-prot*
+  (fn-served-result-conn
+   (fn-served-open *aut-archive* 510 8192 *aut-config* *aut-obs* *aut-obs*
+                   *aut-protected*)))
+(assert-event (fn-served-connp *aut-conn-prot*))
+(defconst *aut-conn-req-hs*
+  (fn-served-result-conn (aut-dispatch *aut-conn-req* "STARTTLS")))
+(defconst *aut-conn-prot-hs*
+  (fn-served-result-conn (aut-dispatch *aut-conn-prot* "STARTTLS")))
+(defconst *aut-conn-prot-tls*
+  (fn-served-result-conn
+   (fn-served-dispatch *aut-conn-prot-hs* (list :tls-established))))
+(assert-event (fn-served-connp *aut-conn-req-hs*))
+(assert-event (fn-auth-session-handshakingp
+               (fn-served-conn-session *aut-conn-req-hs*)))
+(assert-event (fn-served-connp *aut-conn-prot-tls*))
+(assert-event (equal (fn-auth-session-tlsp
+                      (fn-served-conn-session *aut-conn-prot-tls*))
+                     t))
+; A connection whose session slot holds the forged session: not a served
+; connection, and every session hypothesis but the recognizer holds.
+(defconst *aut-conn-forged* (update-nth 1 *aut-forged* *aut-conn-req*))
+(defconst *aut-conn-forged-prot* (update-nth 1 *aut-forged-prot* *aut-conn-prot*))
+(assert-event (not (fn-served-connp *aut-conn-forged*)))
+(assert-event (not (fn-served-connp *aut-conn-forged-prot*)))
+; Authenticated connections, as macros (the PASS runs the SHA-256
+; attachment).
+(defmacro aut-conn-authed ()
+  '(fn-served-result-conn
+    (aut-dispatch (fn-served-result-conn
+                   (aut-dispatch *aut-conn-req* "AUTHINFO USER reader"))
+                  "AUTHINFO PASS correct-horse")))
+(defmacro aut-conn-prot-authed ()
+  '(fn-served-result-conn
+    (aut-dispatch (fn-served-result-conn
+                   (aut-dispatch *aut-conn-prot-tls* "AUTHINFO USER reader"))
+                  "AUTHINFO PASS correct-horse")))
+(assert-event (fn-served-connp (aut-conn-authed)))
+(assert-event (fn-auth-session-subject (fn-served-conn-session (aut-conn-authed))))
+(assert-event (fn-served-connp (aut-conn-prot-authed)))
+(assert-event (fn-auth-session-subject
+               (fn-served-conn-session (aut-conn-prot-authed))))
+
+(defconst *aut-k13-hyps*
+  '((c1 . (fn-served-connp conn))
+    (c2 . (not (fn-auth-session-handshakingp (fn-served-conn-session conn))))
+    (c3 . (fn-auth-config-requiredp
+           (fn-auth-session-config (fn-served-conn-session conn))))
+    (c4 . (not (fn-auth-session-subject (fn-served-conn-session conn))))
+    (c5 . (fn-nntp-command-inputp line))
+    (c6 . (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line)))
+    (c7 . (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))))
+(defconst *aut-k13-conclusion*
+  '(and (equal (fn-served-result-conn
+                (fn-served-dispatch conn (list :command line)))
+               conn)
+        (equal (fn-served-result-effects
+                (fn-served-dispatch conn (list :command line)))
+               (fn-auth-single (fn-served-conn-session conn)
+                               "480 authentication required"))))
+(defmacro aut-k13 (name keys)
+  `(aut-p1-tooth ,name ,keys ,*aut-k13-hyps* ,*aut-k13-conclusion*
+                 fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing))
+
+(aut-k13 aut-k13-full (c1 c2 c3 c4 c5 c6 c7))
+
+; The witness: POST, GROUP and ARTICLE on the served connection that
+; requires authentication.  The connection after is the connection before,
+; field for field, and the one effect is the 480 line.
+(assert-event (equal (fn-served-result-conn (aut-dispatch *aut-conn-req* "POST"))
+                     *aut-conn-req*))
+(assert-event (equal (fn-served-result-effects (aut-dispatch *aut-conn-req* "POST"))
+                     (aut-single *aut-480*)))
+(assert-event (equal (fn-served-result-conn
+                      (aut-dispatch *aut-conn-req* "GROUP fn.letters"))
+                     *aut-conn-req*))
+(assert-event (equal (fn-served-result-effects
+                      (aut-dispatch *aut-conn-req* "ARTICLE 1"))
+                     (aut-single *aut-480*)))
+; Non-degenerate: on the open policy the same POST switches the wire.
+(assert-event (not (equal (fn-served-result-conn
+                           (aut-dispatch *aut-conn-open* "POST"))
+                          *aut-conn-open*)))
+
+; C1 dropped: the forged connection answers nothing.
+(assert-event (equal (fn-served-result-effects
+                      (aut-dispatch *aut-conn-forged* "GROUP fn.letters"))
+                     nil))
+(local (must-fail (aut-k13 aut-k13-without-c1 (c2 c3 c4 c5 c6 c7))))
+; C2 dropped: a handshaking connection answers nothing.
+(assert-event (equal (fn-served-result-effects
+                      (aut-dispatch *aut-conn-req-hs* "GROUP fn.letters"))
+                     nil))
+(local (must-fail (aut-k13 aut-k13-without-c2 (c1 c3 c4 c5 c6 c7))))
+; C3 dropped: the open policy selects the group.
+(assert-event (not (equal (fn-served-result-effects
+                           (aut-dispatch *aut-conn-open* "GROUP fn.letters"))
+                          (aut-single *aut-480*))))
+(local (must-fail (aut-k13 aut-k13-without-c3 (c1 c2 c4 c5 c6 c7))))
+; C4 dropped: authenticated, the group is selected.
+(assert-event (not (equal (fn-served-result-effects
+                           (aut-dispatch (aut-conn-authed) "GROUP fn.letters"))
+                          (aut-single *aut-480*))))
+(local (must-fail (aut-k13 aut-k13-without-c4 (c1 c2 c3 c5 c6 c7))))
+; C5 dropped: the over-long GROUP line.
+(assert-event (not (equal (fn-served-result-effects
+                           (aut-dispatch-octets *aut-conn-req*
+                                                *aut-over-long-line*))
+                          (aut-single *aut-480*))))
+(local (must-fail (aut-k13 aut-k13-without-c5 (c1 c2 c3 c4 c6 c7))))
+; C6 dropped: the over-long GROUP argument.
+(assert-event (not (equal (fn-served-result-effects
+                           (aut-dispatch-octets *aut-conn-req*
+                                                *aut-over-long-argument-line*))
+                          (aut-single *aut-480*))))
+(local (must-fail (aut-k13 aut-k13-without-c6 (c1 c2 c3 c4 c5 c7))))
+; C7 dropped: HELP.
+(assert-event (not (equal (fn-served-result-effects
+                           (aut-dispatch *aut-conn-req* "HELP"))
+                          (aut-single *aut-480*))))
+(local (must-fail (aut-k13 aut-k13-without-c7 (c1 c2 c3 c4 c5 c6))))
+
+(defconst *aut-k14-hyps*
+  '((e1 . (fn-served-connp conn))
+    (e2 . (not (fn-auth-session-handshakingp (fn-served-conn-session conn))))
+    (e3 . (not (fn-auth-session-subject (fn-served-conn-session conn))))
+    (e4 . (fn-auth-config-protected-onlyp
+           (fn-auth-session-config (fn-served-conn-session conn))))
+    (e5 . (not (fn-auth-session-tlsp (fn-served-conn-session conn))))
+    (e6 . (fn-nntp-command-inputp line))
+    (e7 . (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line)))
+    (e8 . (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))))
+(defconst *aut-k14-conclusion*
+  '(and (equal (fn-served-result-conn
+                (fn-served-dispatch conn (list :command line)))
+               conn)
+        (equal (fn-served-result-effects
+                (fn-served-dispatch conn (list :command line)))
+               (fn-auth-single
+                (fn-served-conn-session conn)
+                "483 a protected channel is required; use STARTTLS"))))
+(defmacro aut-k14 (name keys)
+  `(aut-p1-tooth
+    ,name ,keys ,*aut-k14-hyps* ,*aut-k14-conclusion*
+    fn-served-dispatch-of-authinfo-on-a-clear-connection-is-483-and-changes-nothing))
+
+(aut-k14 aut-k14-full (e1 e2 e3 e4 e5 e6 e7 e8))
+
+; The witness: the clear protected-only connection sends USER, then PASS
+; with the right secret.  Each is 483 and leaves the connection as it was.
+(assert-event (equal (fn-served-result-conn
+                      (aut-dispatch *aut-conn-prot* "AUTHINFO USER reader"))
+                     *aut-conn-prot*))
+(assert-event (equal (fn-served-result-effects
+                      (aut-dispatch *aut-conn-prot* "AUTHINFO USER reader"))
+                     (aut-single *aut-483*)))
+(assert-event (equal (fn-served-result-conn
+                      (aut-dispatch *aut-conn-prot* "AUTHINFO PASS correct-horse"))
+                     *aut-conn-prot*))
+
+; E1 dropped: the forged protected connection answers nothing.
+(assert-event (equal (fn-served-result-effects
+                      (aut-dispatch *aut-conn-forged-prot* "AUTHINFO USER reader"))
+                     nil))
+(local (must-fail (aut-k14 aut-k14-without-e1 (e2 e3 e4 e5 e6 e7 e8))))
+; E2 dropped: handshaking answers nothing.
+(assert-event (equal (fn-served-result-effects
+                      (aut-dispatch *aut-conn-prot-hs* "AUTHINFO USER reader"))
+                     nil))
+(local (must-fail (aut-k14 aut-k14-without-e2 (e1 e3 e4 e5 e6 e7 e8))))
+; E3 dropped: authenticated (over TLS) is 502.
+(assert-event (equal (fn-served-result-effects
+                      (aut-dispatch (aut-conn-prot-authed) "AUTHINFO USER reader"))
+                     (aut-single "502 already authenticated")))
+(local (must-fail (aut-k14 aut-k14-without-e3 (e1 e2 e4 e5 e6 e7 e8))))
+; E4 dropped: the required policy in the clear caches the name.
+(assert-event (equal (fn-served-result-effects
+                      (aut-dispatch *aut-conn-req* "AUTHINFO USER reader"))
+                     (aut-single "381 password required")))
+(local (must-fail (aut-k14 aut-k14-without-e4 (e1 e2 e3 e5 e6 e7 e8))))
+; E5 dropped: over TLS, 381.
+(assert-event (equal (fn-served-result-effects
+                      (aut-dispatch *aut-conn-prot-tls* "AUTHINFO USER reader"))
+                     (aut-single "381 password required")))
+(local (must-fail (aut-k14 aut-k14-without-e5 (e1 e2 e3 e4 e6 e7 e8))))
+; E6 dropped: the over-long AUTHINFO line.
+(assert-event (not (equal (fn-served-result-effects
+                           (aut-dispatch-octets *aut-conn-prot*
+                                                *aut-authinfo-over-long-line*))
+                          (aut-single *aut-483*))))
+(local (must-fail (aut-k14 aut-k14-without-e6 (e1 e2 e3 e4 e5 e7 e8))))
+; E7 dropped: the over-long AUTHINFO argument.
+(assert-event (not (equal (fn-served-result-effects
+                           (aut-dispatch-octets
+                            *aut-conn-prot* *aut-authinfo-over-long-argument-line*))
+                          (aut-single *aut-483*))))
+(local (must-fail (aut-k14 aut-k14-without-e7 (e1 e2 e3 e4 e5 e6 e8))))
+; E8 dropped: STARTTLS is 382 and moves the connection into the handshake.
+(assert-event (not (equal (fn-served-result-effects
+                           (aut-dispatch *aut-conn-prot* "STARTTLS"))
+                          (aut-single *aut-483*))))
+(local (must-fail (aut-k14 aut-k14-without-e8 (e1 e2 e3 e4 e5 e6 e7))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONES 15 to 17: the posting allowance follows the credential.
+;
+; Two enrolled principals under one required policy: "reader" with the
+; posting flag and "guest" without it.
+
+(defconst *aut-p-policy* *aut-role-policy*)
+(defconst *aut-p-s* (aut-session *aut-p-policy* nil))
+(defconst *aut-p-reader-user* (aut-pinned-after *aut-p-s* "AUTHINFO USER reader"))
+(defconst *aut-p-guest-user* (aut-pinned-after *aut-p-s* "AUTHINFO USER guest"))
+(defmacro aut-p-reader ()
+  '(aut-pinned-after *aut-p-reader-user* "AUTHINFO PASS correct-horse"))
+(defmacro aut-p-guest ()
+  '(aut-pinned-after *aut-p-guest-user* "AUTHINFO PASS guest-pass"))
+(assert-event (fn-auth-sessionp *aut-p-s*))
+(assert-event (equal (fn-auth-session-subject (aut-p-reader)) *aut-principal*))
+(assert-event (equal (fn-auth-session-subject (aut-p-guest)) *aut-principal-guest*))
+; A session whose subject is not the principal of the credential under its
+; cached name.  No command sequence reaches it; it is here only to refute
+; the statements that leave out the premise excluding it.
+(defconst *aut-p-mismatch*
+  (fn-auth-make-session (fn-auth-session-base *aut-p-s*) *aut-p-policy*
+                        *aut-name* *aut-principal-guest* nil nil))
+(assert-event (fn-auth-sessionp *aut-p-mismatch*))
+
+(defconst *aut-k15-hyps*
+  '((l1 . (not (fn-auth-session-subject as)))
+    (l2 . (fn-auth-session-subject
+           (fn-post-result-session
+            (fn-auth-step-pinned as archive index verdicts config
+                                 observation injection wire-event))))))
+(defconst *aut-k15-conclusion*
+  '(iff (fn-auth-postingp
+         (fn-post-result-session
+          (fn-auth-step-pinned as archive index verdicts config
+                               observation injection wire-event)))
+        (fn-auth-cred-postingp
+         (fn-auth-find-cred (fn-auth-session-pending as)
+                            (fn-auth-config-creds
+                             (fn-auth-session-config as))))))
+(defmacro aut-k15 (name keys)
+  `(aut-p1-tooth ,name ,keys ,*aut-k15-hyps* ,*aut-k15-conclusion*
+                 fn-auth-step-pinned-login-installs-the-credential-posting-flag))
+
+(aut-k15 aut-k15-full (l1 l2))
+
+; The witness, both ways: the reader's login installs a posting allowance,
+; the guest's installs none, under the same policy and the same injection
+; configuration (which allows posting).
+(assert-event (fn-auth-postingp (aut-p-reader)))
+(assert-event (not (fn-auth-postingp (aut-p-guest))))
+(assert-event (fn-inj-config-allow *aut-config*))
+
+; L1 dropped: the mismatched session keeps its subject over HELP; its
+; allowance is false while the credential under its cached name posts.
+(assert-event (equal (fn-auth-session-subject (aut-pinned-after *aut-p-mismatch* "HELP"))
+                     *aut-principal-guest*))
+(assert-event (not (fn-auth-postingp (aut-pinned-after *aut-p-mismatch* "HELP"))))
+(assert-event (fn-auth-cred-postingp
+               (fn-auth-find-cred *aut-name* (list *aut-cred* *aut-cred-guest*))))
+(local (must-fail (aut-k15 aut-k15-without-l1 (l2))))
+; L2 dropped: USER reader cached, no login yet; HELP leaves it unauthenticated
+; under the required policy, so the allowance is false while the credential
+; under the cached name posts.
+(assert-event (null (fn-auth-session-subject
+                     (aut-pinned-after *aut-p-reader-user* "HELP"))))
+(assert-event (not (fn-auth-postingp (aut-pinned-after *aut-p-reader-user* "HELP"))))
+(local (must-fail (aut-k15 aut-k15-without-l2 (l1))))
+
+(defconst *aut-k16-hyps*
+  '((p1 . (fn-auth-sessionp as))
+    (p2 . (not (fn-auth-session-handshakingp as)))
+    (p3 . (fn-auth-session-subject as))
+    (p4 . (not (fn-auth-cred-postingp
+                (fn-auth-find-cred (fn-auth-session-pending as)
+                                   (fn-auth-config-creds
+                                    (fn-auth-session-config as))))))
+    (p5 . (fn-nntp-command-inputp line))
+    (p6 . (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line)))
+    (p7 . (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "POST"))))
+(defconst *aut-k16-conclusion*
+  '(and (equal (fn-post-result-effects
+                (fn-auth-step-pinned as archive index verdicts config
+                                     observation injection
+                                     (list :command line)))
+               (fn-auth-single
+                as "440 posting not permitted for this principal"))
+        (equal (fn-post-result-session
+                (fn-auth-step-pinned as archive index verdicts config
+                                     observation injection
+                                     (list :command line)))
+               as)
+        (null (fn-post-result-submission
+               (fn-auth-step-pinned as archive index verdicts config
+                                    observation injection
+                                    (list :command line))))))
+(defmacro aut-k16 (name keys)
+  `(aut-p1-tooth ,name ,keys ,*aut-k16-hyps* ,*aut-k16-conclusion*
+                 fn-auth-step-pinned-post-by-a-principal-without-the-flag-is-440))
+
+(aut-k16 aut-k16-full (p1 p2 p3 p4 p5 p6 p7))
+
+(defconst *aut-440* "440 posting not permitted for this principal")
+; The witness: the guest logs in and sends POST.  440, session unchanged.
+(assert-event (equal (aut-pinned-reply (aut-p-guest) "POST") (aut-single *aut-440*)))
+(assert-event (equal (aut-pinned-after (aut-p-guest) "POST") (aut-p-guest)))
+(assert-event (null (fn-post-result-submission (aut-pinned (aut-p-guest) "POST"))))
+; Non-degenerate: the reader, same policy, is offered 340.
+(assert-event (fn-post-offeredp (aut-pinned-reply (aut-p-reader) "POST")))
+
+; P1 dropped: a value with the guest's fields over a non-session base.
+(defconst *aut-p-forged-guest*
+  (fn-auth-make-session :not-a-peer-session *aut-p-policy*
+                        (fn-nntp-string-octets "guest") *aut-principal-guest*
+                        nil nil))
+(assert-event (not (fn-auth-sessionp *aut-p-forged-guest*)))
+(assert-event (equal (aut-pinned-reply *aut-p-forged-guest* "POST") nil))
+(local (must-fail (aut-k16 aut-k16-without-p1 (p2 p3 p4 p5 p6 p7))))
+; P2 dropped: the guest's fields, handshaking: answered nothing.
+(defconst *aut-p-hs-guest*
+  (fn-auth-make-session (fn-auth-session-base *aut-p-s*) *aut-p-policy*
+                        (fn-nntp-string-octets "guest") *aut-principal-guest*
+                        nil t))
+(assert-event (fn-auth-sessionp *aut-p-hs-guest*))
+(assert-event (equal (aut-pinned-reply *aut-p-hs-guest* "POST") nil))
+(local (must-fail (aut-k16 aut-k16-without-p2 (p1 p3 p4 p5 p6 p7))))
+; P3 dropped: no subject and no cached name: the gate answers 480.
+(assert-event (equal (aut-pinned-reply *aut-p-s* "POST") (aut-single *aut-480*)))
+(local (must-fail (aut-k16 aut-k16-without-p3 (p1 p2 p4 p5 p6 p7))))
+; P4 dropped: the reader is offered 340 (witness above).
+(local (must-fail (aut-k16 aut-k16-without-p4 (p1 p2 p3 p5 p6 p7))))
+; P5 dropped: an over-long POST line goes to the reader preflight.
+(defconst *aut-post-over-long-line*
+  (append (fn-nntp-string-octets "POST ")
+          (make-list 490 :initial-element 97)
+          '(32)
+          (make-list 30 :initial-element 98)))
+(assert-event (not (fn-nntp-command-inputp *aut-post-over-long-line*)))
+(assert-event (fn-nntp-command-arguments-at-mostp
+               (fn-nntp-tokenize *aut-post-over-long-line*)))
+(assert-event (fn-nntp-keywordp (car (fn-nntp-tokenize *aut-post-over-long-line*))
+                                "POST"))
+(assert-event (not (equal (fn-post-result-effects
+                           (aut-pinned-octets (aut-p-guest)
+                                              *aut-post-over-long-line*))
+                          (aut-single *aut-440*))))
+(local (must-fail (aut-k16 aut-k16-without-p5 (p1 p2 p3 p4 p6 p7))))
+; P6 dropped: an over-long POST argument.
+(defconst *aut-post-over-long-argument-line*
+  (append (fn-nntp-string-octets "POST ")
+          (make-list 498 :initial-element 97)))
+(assert-event (fn-nntp-command-inputp *aut-post-over-long-argument-line*))
+(assert-event (not (fn-nntp-command-arguments-at-mostp
+                    (fn-nntp-tokenize *aut-post-over-long-argument-line*))))
+(assert-event (not (equal (fn-post-result-effects
+                           (aut-pinned-octets (aut-p-guest)
+                                              *aut-post-over-long-argument-line*))
+                          (aut-single *aut-440*))))
+(local (must-fail (aut-k16 aut-k16-without-p6 (p1 p2 p3 p4 p5 p7))))
+; P7 dropped: the guest may read.
+(assert-event (not (equal (aut-pinned-reply (aut-p-guest) "GROUP fn.letters")
+                          (aut-single *aut-440*))))
+(local (must-fail (aut-k16 aut-k16-without-p7 (p1 p2 p3 p4 p5 p6))))
+
+(defconst *aut-k17-hyps*
+  '((d1 . (fn-auth-sessionp as))
+    (d2 . (not (fn-auth-session-handshakingp as)))
+    (d3 . (fn-auth-cred-postingp
+           (fn-auth-find-cred (fn-auth-session-pending as)
+                              (fn-auth-config-creds
+                               (fn-auth-session-config as)))))
+    (d4 . (equal (fn-auth-cred-principal
+                  (fn-auth-find-cred (fn-auth-session-pending as)
+                                     (fn-auth-config-creds
+                                      (fn-auth-session-config as))))
+                 (fn-auth-session-subject as)))
+    (d5 . (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "POST"))))
+(defconst *aut-k17-conclusion*
+  '(equal (fn-auth-step-pinned as archive index verdicts config
+                               observation injection (list :command line))
+          (fn-auth-delegate-pinned as archive index verdicts config
+                                   observation injection
+                                   (list :command line))))
+(defmacro aut-k17 (name keys)
+  `(aut-p1-tooth ,name ,keys ,*aut-k17-hyps* ,*aut-k17-conclusion*
+                 fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated))
+
+(aut-k17 aut-k17-full (d1 d2 d3 d4 d5))
+
+; The witness: the reader's POST is the delegated POST, and that is the 340
+; offer (the pinned injection configuration allows posting).
+(assert-event (equal (aut-pinned (aut-p-reader) "POST")
+                     (aut-delegated (aut-p-reader) "POST")))
+(assert-event (fn-post-offeredp
+               (fn-post-result-effects (aut-delegated (aut-p-reader) "POST"))))
+
+; D1 dropped: the reader's fields with a TLS flag that is not a boolean: not
+; a session, answered nothing, while the delegation offers 340.
+(defmacro aut-p-bad-tls-reader ()
+  '(fn-auth-make-session (fn-auth-session-base (aut-p-reader)) *aut-p-policy*
+                         *aut-name* *aut-principal* :maybe nil))
+(assert-event (not (fn-auth-sessionp (aut-p-bad-tls-reader))))
+(assert-event (not (equal (aut-pinned (aut-p-bad-tls-reader) "POST")
+                          (aut-delegated (aut-p-bad-tls-reader) "POST"))))
+(local (must-fail (aut-k17 aut-k17-without-d1 (d2 d3 d4 d5))))
+; D2 dropped: the reader's fields, handshaking.
+(defmacro aut-p-hs-reader ()
+  '(fn-auth-make-session (fn-auth-session-base (aut-p-reader)) *aut-p-policy*
+                         *aut-name* *aut-principal* nil t))
+(assert-event (fn-auth-sessionp (aut-p-hs-reader)))
+(assert-event (not (equal (aut-pinned (aut-p-hs-reader) "POST")
+                          (aut-delegated (aut-p-hs-reader) "POST"))))
+(local (must-fail (aut-k17 aut-k17-without-d2 (d1 d3 d4 d5))))
+; D3 dropped: the guest is answered 440, not delegated.
+(assert-event (not (equal (aut-pinned (aut-p-guest) "POST")
+                          (aut-delegated (aut-p-guest) "POST"))))
+(local (must-fail (aut-k17 aut-k17-without-d3 (d1 d2 d4 d5))))
+; D4 dropped: the reader's name is cached but nobody has logged in; the
+; gate answers 480.
+(assert-event (not (equal (aut-pinned *aut-p-reader-user* "POST")
+                          (aut-delegated *aut-p-reader-user* "POST"))))
+(local (must-fail (aut-k17 aut-k17-without-d4 (d1 d2 d3 d5))))
+; D5 dropped: AUTHINFO from the logged-in reader is 502, not delegated.
+(assert-event (not (equal (aut-pinned (aut-p-reader) "AUTHINFO USER reader")
+                          (aut-delegated (aut-p-reader) "AUTHINFO USER reader"))))
+(local (must-fail (aut-k17 aut-k17-without-d5 (d1 d2 d3 d4))))
