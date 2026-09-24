@@ -12,10 +12,10 @@ stale. Counts describe artifacts, not coverage; see
 | --- | --- |
 | Books read | 593 |
 | Certification roots in the Makefile | 583 |
-| Books inside the root closure | 588 |
-| `defthm` and `defthmd` events | 8447 |
-| `defun` events | 6267 |
-| Functions with verified guards | 2030 |
+| Books inside the root closure | 590 |
+| `defthm` and `defthmd` events | 8446 |
+| `defun` events | 6262 |
+| Functions with verified guards | 2025 |
 | Functions declared `:verify-guards nil` and never verified | 371 |
 | Functions left at the default with an explicit guard | 3067 |
 | Functions left at the default with no guard | 799 |
@@ -26,7 +26,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 102 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 39 |
-| Include-hygiene warnings | 508 |
+| Include-hygiene warnings | 509 |
 | Host-names warnings | 788 |
 | Hand-written-record warnings | 18 |
 
@@ -236,10 +236,10 @@ that `make certify` requests.
 | `books/config-store-traces.lisp` | root | 2 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 42 | 133 | 1/0/132/0 | 0 | 0 | 0 |
-| `books/consumer-event-index.lisp` | - | 16 | 10 | 2/1/7/0 | 0 | 0 | 0 |
+| `books/consumer-event-index.lisp` | closure | 16 | 10 | 2/1/7/0 | 0 | 0 | 0 |
 | `books/consumer-local-control.lisp` | root | 0 | 15 | 15/0/0/0 | 0 | 0 | 0 |
-| `books/consumer-owner-local.lisp` | root | 1 | 11 | 11/0/0/0 | 0 | 0 | 0 |
-| `books/consumer-poll-index.lisp` | - | 7 | 7 | 6/1/0/0 | 0 | 0 | 0 |
+| `books/consumer-owner-local.lisp` | root | 0 | 7 | 7/0/0/0 | 0 | 0 | 0 |
+| `books/consumer-poll-index.lisp` | closure | 7 | 6 | 5/1/0/0 | 0 | 0 | 0 |
 | `books/consumer-poll-projection.lisp` | root | 2 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-position.lisp` | root | 56 | 29 | 28/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |

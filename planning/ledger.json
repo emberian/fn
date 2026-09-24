@@ -588,15 +588,15 @@
   ],
   "totals": {
     "books": 593,
-    "books_in_root_closure": 588,
+    "books_in_root_closure": 590,
     "roots": 583,
-    "theorems": 8447,
-    "functions": 6267,
+    "theorems": 8446,
+    "functions": 6262,
     "assert_events": 9139,
     "must_fails": 484,
     "encapsulates": 26,
     "guards": {
-      "verified": 2030,
+      "verified": 2025,
       "declared-off": 371,
       "default-guarded": 3067,
       "default-unguarded": 799
@@ -605,7 +605,7 @@
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 39,
-    "include_hygiene_warnings": 508,
+    "include_hygiene_warnings": 509,
     "host_names_warnings": 788,
     "hand_written_record_warnings": 18
   },
@@ -4594,7 +4594,7 @@
     },
     {
       "book": "books/consumer-event-index.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 16,
       "functions": 10,
@@ -4648,24 +4648,24 @@
       "book": "books/consumer-owner-local.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
-      "functions": 11,
+      "theorems": 0,
+      "functions": 7,
       "guards": {
-        "verified": 11,
+        "verified": 7,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 11,
+      "verify_guards_events": 7,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 4,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "consumer-poll-index",
         "consumer-store-projection",
-        "owner",
-        "replay"
+        "owner"
       ],
       "system_includes": [],
       "suspects": [],
@@ -4673,17 +4673,17 @@
     },
     {
       "book": "books/consumer-poll-index.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 7,
-      "functions": 7,
+      "functions": 6,
       "guards": {
-        "verified": 6,
+        "verified": 5,
         "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 6,
+      "verify_guards_events": 5,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 1,
@@ -19127,6 +19127,13 @@
         "line": 19,
         "include": "records-seam",
         "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/consumer-owner-local.lisp",
+        "line": 7,
+        "include": "consumer-poll-index",
+        "included": "books/consumer-poll-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
