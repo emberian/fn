@@ -1135,9 +1135,10 @@
         "planning/evidence/manifests/certify-20260924T015446Z-2921507.json",
         "planning/evidence/manifests/certify-20260924T024533Z-763031.json",
         "tests/acl2/topic-history-native-vector-tests.lisp",
-        "planning/evidence/manifests/certify-20260924T022329Z-3173943.json"
+        "planning/evidence/manifests/certify-20260924T022329Z-3173943.json",
+        "planning/evidence/manifests/certify-20260924T030421Z-3524851.json"
       ],
-      "execution_scope": "The ACL2 slot-12 topic and slot-13 consumer index union certifies through Store trace and observed reopen on hbox; the earlier persvati manifest covers the slot-12-only source. Authenticated native owner publication and a saved-image root/report/reopen run remain unqualified."
+      "execution_scope": "The merged ACL2 topic/index Store, observed reopen, local proposal/control and native-control host roots passed on persvati at d4b48fda. The authenticated native owner path has source-level caller binding, but no source-matched saved-image install/root/report/reopen run or whole reverse closure is qualified."
     }
   ]
 }
