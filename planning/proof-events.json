@@ -1398,6 +1398,37 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bs-k0-frontier-eio-dropped-run-has-actual-failed-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-node-root-eio-dropped-fences-related-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-owner-frontier-root-eio-dropped-run-fences-related-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-eio-choice-run-has-actual-failed-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-owner-frontier-root-eio-choice-run-fences-related-state",
+          "note": "Actual stopped P-FRONTIER root EIO pair 12 and exact configured-owner callback preserve the full byte/kernel relation and fence for both modeled entry choices."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orpr-configured-store-of-prepare-retention",
+          "note": "Equates the native configured-owner :store/:prepare-retention event's Store projection with the called Store-node transition."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orpr-host-retention-prepare-branches",
+          "note": "The exact host-constructed retention event enters the configured-owner Store step; a changed reserved Store stages that event, while an unchanged Store is the refused branch."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-bs-sweep-round-keeps-every-cut-reopenable"
         },
         {
