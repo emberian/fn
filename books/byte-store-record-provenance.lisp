@@ -4929,3 +4929,58 @@
            :in-theory (e/d (fn-sf-dispatch fn-bs-native-io-event)
                            (fn-bs-run fn-bs-frontier-program fn-sn-io
                             fn-bs-store-relation fn-sf-frontier-dir-result)))))
+
+; The shared native service binds fnn-observe to fnn-owner-observe
+; (host/native/owner.lisp:718).  It calls the program-mode fn-owner-io
+; (host/owner-host.lisp:299), which submits exactly this event through
+; fn-ocfg-step.  Expose the Store-node projection of that called path.
+(include-book "owner-invariants")
+
+(defthm fn-bs-k0-owner-io-store-is-node-io
+  (equal (fn-own-store
+          (fn-ocfg-owner
+           (fn-ocfg-step oc (list :store (list :io operation result)))))
+         (fn-sn-io (fn-own-store (fn-ocfg-owner oc)) operation result))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ocfg-step fn-ocfg-pass fn-ocfg-with-owner
+                            fn-own-step fn-own-store-step fn-snrt-step
+                            fn-snt-step)
+                           (fn-own-refresh fn-sn-io fn-ocfg-make
+                            fn-own-make)))))
+
+(defthm fn-bs-k0-owner-frontier-calls-match-byte-run
+  (implies
+   (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+        (fn-bs-store-relation bs
+                              (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+        (fn-bs-frontier-inputp
+         (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) stage octets)
+        (not (fn-bs-lookup bs :staging stage)))
+   (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+          (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok))))
+          (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok))))
+          (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok))))
+          (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :ok))))
+          (run (fn-bs-run bs (fn-sn-files s)
+                          (fn-bs-frontier-program stage octets)
+                          nil groups capacity))
+          (file-pair (nth 12 run))
+          (return-pair (nth 14 run)))
+     (and (equal (fn-sn-files (fn-own-store (fn-ocfg-owner oc3)))
+                 (cdr file-pair))
+          (equal (car return-pair) (car file-pair))
+          (equal (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))
+                 (cdr return-pair))
+          (fn-bs-store-relation
+           (car return-pair)
+           (fn-sn-files (fn-own-store (fn-ocfg-owner oc4))))
+          (equal (fn-sf-phase
+                  (fn-sn-files (fn-own-store (fn-ocfg-owner oc4))))
+                 :reserved))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-frontier-native-call-sequence-matches-run
+                            (s (fn-own-store (fn-ocfg-owner oc)))))
+           :in-theory (union-theories
+                       '(fn-bs-k0-owner-io-store-is-node-io)
+                       (theory 'minimal-theory)))))
