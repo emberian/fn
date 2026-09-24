@@ -1004,33 +1004,61 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-ocl-no-reader-observes-a-half-change",
+          "note": "headline 1 over the called path; subjects fn-ocfg-step for (:reconfigure ...) (host/owner-host.lisp:213, fn-owner-step from fn-owner-reconfigure-deltas) and fn-ocl-publish (host/owner-host.lisp:271, fn-owner-reconfigure-complete, which installs its owner unconditionally); no hypothesis"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-publish-installs-the-whole-staged-record",
+          "note": "headline 1, the value published; subject fn-ocl-publish (host/owner-host.lisp:271); hypothesis fn-ocl-config-historyp, a conjunct of fn-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-cpr-loop-configuration-is-the-record-fold",
+          "note": "the induction the whole-record keystone rests on; subject fn-cpr-loop under fn-cpr-replay, called at host/owner-host.lisp:173 (fn-owner-recover) and inside fn-ocl-complete (fn-ocl-store-config)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-publish-agrees-with-ocfg-complete-on-readers",
+          "note": "the equation from the called fn-ocl-publish to the model event fn-ocfg-step (:complete) on pins, served tables, connection records and the stage; owner and live configuration differ and are not transferred"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-request-refused-over-a-reader-in-the-group",
+          "note": "subject fn-ocl-request-deltas (host/owner-host.lisp:247, fn-owner-reconfigure, the tools/run_owner.py path) through fn-ocfg-step (host/owner-host.lisp:213); the native live arm stages fn-native-admin-plan-deltas instead"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-ocfg-no-reader-observes-a-half-change",
-          "note": "headline 1; subject fn-ocfg-step, called at host/owner-host.lisp:214 (fn-owner-step) for (:reconfigure ...) from fn-owner-reconfigure-deltas and (:complete) from fn-owner-reconfigure-complete"
+          "note": "the model statement over fn-ocfg-step (:complete); cited with fn-ocl-publish-agrees-with-ocfg-complete-on-readers",
+          "pending_subject": "Publication subject is fn-ocfg-complete through fn-ocfg-step (:complete); the host calls fn-ocl-publish (host/owner-host.lisp:271). fn-ocl-publish-agrees-with-ocfg-complete-on-readers equates them on pins, served tables, connection records and the stage only; the owner conjunct is false of the called path (tests/acl2/config-owner-publish-tests must-fail fn-ocl-publish-keeps-the-owner-is-false). The called-path headline is fn-ocl-no-reader-observes-a-half-change."
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-pin-is-stable-without-advance",
-          "note": "headline 1, the until-advance half; subject fn-ocfg-run, the fold of fn-ocfg-step (host/owner-host.lisp:214)"
+          "note": "headline 1, the until-advance half; subject fn-ocfg-run, the fold of fn-ocfg-step (host/owner-host.lisp:213)"
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-crash-at-any-instant-recovers-the-live-generation",
-          "note": "headline 2; subjects fn-ocfg-step (host/owner-host.lisp:214) over the live arm's event sequence (host/native/admin.lisp:134-162) and fn-cnode-config-replay (host/owner-host.lisp:172, fn-owner-recover)"
+          "note": "headline 2; subjects fn-ocfg-step over the live arm's event sequence (host/native/admin.lisp) and fn-cnode-config-replay",
+          "pending_subject": "Subjects are fn-cnode-config-replay and fn-ocfg-step (:complete); no host line calls fn-cnode-config-replay (fn-owner-recover calls fn-cpr-replay, host/owner-host.lisp:173) and publication calls fn-ocl-publish (host/owner-host.lisp:271). fn-ocl-cpr-loop-configuration-is-the-record-fold and fn-ocl-publish-installs-the-whole-staged-record state the configuration half over the called functions; no theorem equates the :ok verdicts of fn-cpr-replay and fn-cnode-config-replay."
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-config-replay-of-one-more-record",
-          "note": "the replay keystone headline 2 uses; subject fn-cnode-config-replay (host/owner-host.lisp:172)"
+          "note": "the replay keystone headline 2 uses; subject fn-cnode-config-replay",
+          "pending_subject": "fn-cnode-config-replay has no host caller; recovery calls fn-cpr-replay (host/owner-host.lisp:173). See fn-ocl-cpr-loop-configuration-is-the-record-fold."
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-open-pins-the-live-configuration",
-          "note": "host line host/owner-host.lisp:1005 (fn-ocfg-open)"
+          "note": "host line host/owner-host.lisp:1205 (fn-ocfg-open)"
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-advance-observes-the-live-configuration",
-          "note": "subject fn-ocfg-advance through fn-ocfg-step (host/owner-host.lisp:214, fn-owner-advance)"
+          "note": "subject fn-ocfg-advance through fn-ocfg-step (host/owner-host.lisp:213, fn-owner-advance)"
         },
         {
           "kind": "theorem",
