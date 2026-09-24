@@ -804,7 +804,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-hc-field-limit-refuses-by-definition` | `books/hybrid-carrier.lisp` | 377 | branch-of-definition: the hypothesis is a branch test of fn-hc-field-decode and the conclusion is that branch's value |
 | `fn-inj-instantp-opens` | `books/injection-invariants.lisp` | 278 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp |
 | `fn-lace-cross-canonical-self` | `books/lace-invariants.lisp` | 289 | definition-restated: the conclusion is the body of fn-lace-canonicalp; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-nntp-block-scan-start-without-a-dot` | `books/nntp-effects.lisp` | 463 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value |
+| `fn-nntp-block-scan-start-without-a-dot` | `books/nntp-effects.lisp` | 466 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value |
 | `fn-node-capacity-refusal-is-no-op` | `books/node.lisp` | 296 | branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value |
 | `fn-node-complete-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 159 | closed-theory-corollary: proved only by fn-node-complete-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
@@ -812,7 +812,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 320 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 844 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
-| `fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session` | `books/owner-invariants.lisp` | 776 | branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
+| `fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session` | `books/owner-invariants.lisp` | 788 | branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
 | `fn-own-feed-port-lost-is-port-peer` | `books/owner-feed-port.lisp` | 80 | definition-restated: the conclusion is the body of fn-own-feed-port-lost-peer; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-own-feed-port-observe-is-port-peer` | `books/owner-feed-port.lisp` | 75 | definition-restated: the conclusion is the body of fn-own-feed-port-observe-peer; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-own-feed-port-restart-is-port-peer` | `books/owner-feed-port.lisp` | 85 | definition-restated: the conclusion is the body of fn-own-feed-port-restart-peer; reflexive-conclusion: a conjunct is (equal X X) |
