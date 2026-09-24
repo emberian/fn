@@ -2877,6 +2877,15 @@
           "name": "fn-bpaj-carried-unenrolled-request-is-refused"
         }
       ]
+    },
+    {
+      "id": "PRF-076",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bprq-plan-is-the-works-request"
+        }
+      ]
     }
   ]
 }
