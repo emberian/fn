@@ -10,7 +10,8 @@
 ; resubmissions after a death in the 47bdb9a4 campaign (finding K1).
 ;
 ; D25: the comparison drops the fields the node injects -- Path, Xref,
-; Injection-Date and Injection-Info -- and compares what remains.  The names
+; Injection-Date and Injection-Info, and a Date the node generated because the
+; poster sent none -- and compares what remains.  The names
 ; are books/hybrid-carrier.lisp's constants, the four mutable relay fields
 ; fn-hc-authored-source already excludes from a signature subject; the other
 ; three names that projection drops (FN-Authorship, FN-Statement, FN-Policy)
@@ -77,11 +78,41 @@
   (declare (xargs :guard t))
   (fn-pb-injected-namep (fn-article-ascii-downcase (fn-pb-name-octets x))))
 
+;; A field line's value: the octets after its first colon, before the LF.
+(defun fn-pb-upto-lf (x)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (if (equal (car x) 10) nil (cons (car x) (fn-pb-upto-lf (cdr x))))
+    nil))
+
+(defun fn-pb-value (x)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (cond ((equal (car x) 10) nil)
+            ((equal (car x) 58) (fn-pb-upto-lf (cdr x)))
+            (t (fn-pb-value (cdr x))))
+    nil))
+
+(defun fn-pb-line-namedp (x name)
+  (declare (xargs :guard t))
+  (equal (fn-article-ascii-downcase (fn-pb-name-octets x)) name))
+
+(defconst *fn-pb-message-id-name* '(109 101 115 115 97 103 101 45 105 100))
+
 ; The header of X with every injected field removed, a field being its line
 ; and the continuation lines (leading space or tab) that follow it; DROP says
-; the field in progress is injected.  The empty line that ends the header,
-; and the body after it, are kept verbatim.
-(defun fn-pb-project (x drop)
+; the field in progress is dropped.  The empty line that ends the header, and
+; the body after it, are kept verbatim.
+;
+; A Date the node generated is injected too (RFC 5537 section 3.5 item 5;
+; books/injection.lisp fn-inj-prefix writes it with the Injection-Date's own
+; date, after Injection-Info and an optional generated Message-ID).  IDATE is
+; the value of the Injection-Date just read while no poster field other than
+; Message-ID has been kept since: in that position a Date whose value equals
+; it is the generated one and is dropped.  A Date the poster supplied is kept
+; unless it opens the source and equals the injection's rendering octet for
+; octet (fn-pb-opens-with-a-date, the hypothesis of the invariance theorem).
+(defun fn-pb-project (x drop idate)
   (declare (xargs :guard t :measure (len x)))
   (if (not (consp x))
       nil
@@ -90,10 +121,20 @@
       (cond ((equal line '(13 10)) x)
             ((fn-article-wspp (car x))
              (if drop
-                 (fn-pb-project rest drop)
-               (append line (fn-pb-project rest nil))))
-            ((fn-pb-line-injectedp x) (fn-pb-project rest t))
-            (t (append line (fn-pb-project rest nil)))))))
+                 (fn-pb-project rest drop idate)
+               (append line (fn-pb-project rest nil idate))))
+            ((fn-pb-line-injectedp x)
+             (fn-pb-project rest t
+                            (if (fn-pb-line-namedp x *fn-hc-injection-date-name*)
+                                (fn-pb-value x)
+                              idate)))
+            ((and idate
+                  (fn-pb-line-namedp x *fn-inj-date-name*)
+                  (equal (fn-pb-value x) idate))
+             (fn-pb-project rest t nil))
+            ((fn-pb-line-namedp x *fn-pb-message-id-name*)
+             (append line (fn-pb-project rest nil idate)))
+            (t (append line (fn-pb-project rest nil nil)))))))
 
 (defthm fn-pb-true-listp-of-line
   (true-listp (fn-pb-line x)))
@@ -103,7 +144,7 @@
 ; The poster's bytes of an article's octets: the D25 key.
 (defun fn-pb-poster-bytes (octets)
   (declare (xargs :guard t))
-  (fn-pb-project octets nil))
+  (fn-pb-project octets nil nil))
 
 ; The live Store's decision for an already held Message-ID, keyed on the
 ; poster's bytes.  The host calls it at host/owner-host.lisp

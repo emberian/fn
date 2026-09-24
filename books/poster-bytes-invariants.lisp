@@ -31,68 +31,132 @@
    (implies (not (member-equal 10 a))
             (equal (fn-pb-line (append a y)) (append a (fn-pb-line y))))))
 
-; An injected field line is dropped with its continuation lines.
+;; The one line-level fact: splitting a line whose octets carry no LF.
+(local
+ (defthm fn-pb-value-of-append-lf-free
+   (implies (and (not (member-equal 10 a)) (not (member-equal 58 a)))
+            (equal (fn-pb-value (append a y)) (fn-pb-value y)))))
+
+(local
+ (defthm fn-pb-upto-lf-of-append-lf-free
+   (implies (not (member-equal 10 a))
+            (equal (fn-pb-upto-lf (append a y)) (append a (fn-pb-upto-lf y))))))
+
+; The source opens with a Date: after only Message-ID lines, continuations
+; and injected lines other than Injection-Date, its next field is a Date.
+; This is the one place where the projection reads the injection's date.
+(defun fn-pb-opens-with-a-date (x)
+  (declare (xargs :guard t :measure (len x)))
+  (if (not (consp x))
+      nil
+    (let ((rest (fn-pb-rest x)))
+      (cond ((equal (fn-pb-line x) '(13 10)) nil)
+            ((fn-article-wspp (car x)) (fn-pb-opens-with-a-date rest))
+            ((fn-pb-line-injectedp x)
+             (if (fn-pb-line-namedp x *fn-hc-injection-date-name*)
+                 nil
+               (fn-pb-opens-with-a-date rest)))
+            ((fn-pb-line-namedp x *fn-inj-date-name*) t)
+            ((fn-pb-line-namedp x *fn-pb-message-id-name*)
+             (fn-pb-opens-with-a-date rest))
+            (t nil)))))
+
+; An injected field line is dropped with its continuation lines, and an
+; Injection-Date line's value is carried for the generated Date.
 (defthm fn-pb-project-skips-an-injected-line
   (implies (and (consp x)
                 (not (fn-article-wspp (car x)))
                 (fn-pb-line-injectedp x)
                 (not (equal (fn-pb-line x) '(13 10))))
-           (equal (fn-pb-project x drop) (fn-pb-project (fn-pb-rest x) t)))
-  :hints (("Goal" :expand ((fn-pb-project x drop)))))
+           (equal (fn-pb-project x drop idate)
+                  (fn-pb-project (fn-pb-rest x) t
+                                 (if (fn-pb-line-namedp x *fn-hc-injection-date-name*)
+                                     (fn-pb-value x)
+                                   idate))))
+  :hints (("Goal" :expand ((fn-pb-project x drop idate)))))
 
-; Every other field line is kept verbatim.
-(defthm fn-pb-project-keeps-a-field-line
+; The generated Date: in the injected block, its value is the Injection-Date's.
+(defthm fn-pb-project-skips-the-generated-date
   (implies (and (consp x)
                 (not (fn-article-wspp (car x)))
                 (not (fn-pb-line-injectedp x))
-                (not (equal (fn-pb-line x) '(13 10))))
-           (equal (fn-pb-project x drop)
-                  (append (fn-pb-line x) (fn-pb-project (fn-pb-rest x) nil))))
-  :hints (("Goal" :expand ((fn-pb-project x drop)))))
+                (not (equal (fn-pb-line x) '(13 10)))
+                idate
+                (fn-pb-line-namedp x *fn-inj-date-name*)
+                (equal (fn-pb-value x) idate))
+           (equal (fn-pb-project x drop idate)
+                  (fn-pb-project (fn-pb-rest x) t nil)))
+  :hints (("Goal" :expand ((fn-pb-project x drop idate)))))
+
+; A Message-ID line is kept and leaves the injected block open.
+(defthm fn-pb-project-keeps-a-message-id-line
+  (implies (and (consp x)
+                (not (fn-article-wspp (car x)))
+                (not (fn-pb-line-injectedp x))
+                (not (equal (fn-pb-line x) '(13 10)))
+                (not (fn-pb-line-namedp x *fn-inj-date-name*))
+                (fn-pb-line-namedp x *fn-pb-message-id-name*))
+           (equal (fn-pb-project x drop idate)
+                  (append (fn-pb-line x) (fn-pb-project (fn-pb-rest x) nil idate))))
+  :hints (("Goal" :expand ((fn-pb-project x drop idate)))))
 
 (defthm fn-pb-project-drop-is-irrelevant-off-a-continuation
   (implies (not (fn-article-wspp (car x)))
-           (equal (fn-pb-project x t) (fn-pb-project x nil)))
-  :hints (("Goal" :expand ((fn-pb-project x t) (fn-pb-project x nil)))))
+           (equal (fn-pb-project x t idate) (fn-pb-project x nil idate)))
+  :hints (("Goal" :expand ((fn-pb-project x t idate) (fn-pb-project x nil idate)))))
 
-(local (in-theory (disable fn-pb-project fn-pb-line-injectedp)))
+; Unless the source opens with a Date, the carried date is never read.
+(defthm fn-pb-project-idate-is-irrelevant-unless-a-date-opens
+  (implies (and (syntaxp (not (equal idate ''nil)))
+                (not (fn-pb-opens-with-a-date x)))
+           (equal (fn-pb-project x drop idate) (fn-pb-project x drop nil)))
+  :hints (("Goal" :induct (fn-pb-project x drop idate)
+                  :expand ((fn-pb-project x drop idate) (fn-pb-project x drop nil)
+                           (fn-pb-opens-with-a-date x)))))
+
+(local (in-theory (disable fn-pb-project fn-pb-line-injectedp fn-pb-line-namedp
+                           fn-pb-opens-with-a-date)))
 
 ; -----------------------------------------------------------------------------
 ; The node's injection prefix is invisible to the projection.  fn-inj-prefix
 ; (books/injection.lisp) is what fn-inj-decide prepends to the poster's
 ; source: Path, Injection-Date and Injection-Info, then a generated
 ; Message-ID line when none was supplied and a generated Date line when none
-; was supplied.  With no generated Date, the projection of the injected
-; article is the projection of the source after an injected field -- for
-; every date, so the clock second never reaches the key.  (fn-inj-append is
-; append; the statements below use append.)
+; was supplied.  The projection of the injected article is the kept
+; Message-ID line (if generated) and the projection of the source, entered
+; with the Injection-Date's value carried only when no Date was generated.
+; (fn-inj-append is append; the statements below use append.)
 
 (defthm fn-pb-project-of-an-injection-prefix
   (implies (and (not (member-equal 10 date))
-                (not (member-equal 10 agent)))
+                (not (member-equal 10 agent))
+                (or (not gid) (not (member-equal 10 msgid))))
            (equal (fn-pb-project
-                   (append (fn-inj-prefix date msgid agent gid nil) source)
-                   drop)
-                  (fn-pb-project (append (if gid (fn-inj-message-id-line msgid) nil)
-                                         source)
-                                 t)))
+                   (append (fn-inj-prefix date msgid agent gid gdate) source)
+                   drop idate)
+                  (append (if gid (fn-inj-message-id-line msgid) nil)
+                          (fn-pb-project source
+                                         (not (and gid (not gdate)))
+                                         (if gdate
+                                             nil
+                                           (cons 32 (append date '(13))))))))
   :hints (("Goal" :in-theory (enable fn-inj-prefix fn-inj-path-line
                                      fn-inj-injection-date-line
                                      fn-inj-injection-info-line
-                                     fn-pb-line-injectedp))))
+                                     fn-inj-message-id-line fn-inj-date-line
+                                     fn-pb-line-injectedp fn-pb-line-namedp))))
 
-; With a supplied Message-ID and a source that opens on a field line, the
-; poster's bytes of the injected article are the poster's bytes of the
-; source itself.
+; With a supplied Message-ID and Date, and a source that opens on a field
+; line other than Date, the poster's bytes of the injected article are the
+; source's own.
 (defthm fn-pb-poster-bytes-of-an-injection-are-the-sources
   (implies (and (not (member-equal 10 date))
                 (not (member-equal 10 agent))
-                (not (fn-article-wspp (car source))))
+                (not (fn-article-wspp (car source)))
+                (not (fn-pb-opens-with-a-date source)))
            (equal (fn-pb-poster-bytes
                    (append (fn-inj-prefix date msgid agent nil nil) source))
-                  (fn-pb-poster-bytes source)))
-  :hints (("Goal" :use ((:instance fn-pb-project-of-an-injection-prefix
-                                   (gid nil) (drop nil))))))
+                  (fn-pb-poster-bytes source))))
 
 ; The rendered date and a configured agent contain no line feed.
 (local
@@ -162,19 +226,23 @@
   :rule-classes nil)
 
 ; KEYSTONE (injection invariance).  One proto-article injected under two
-; clock readings, with one Message-ID and a Date the poster supplied, has one
-; poster's bytes: Injection-Date is the only octets the clock writes, and
-; the projection drops it.  Without a supplied Date the injection writes a
-; Date line from the clock, which is the poster's field, and the key differs
-; (the teeth in tests/acl2/poster-bytes-tests.lisp).
+; clock readings, with a Message-ID the poster supplied, has one poster's
+; bytes: the clock writes
+; only the Injection-Date and, when the poster sent no Date, the generated
+; Date, and the projection drops both.  The one exception is a source that
+; opens with a Date of its own (before any field but Message-ID), where the
+; projection compares that Date with the injection's; the teeth in
+; tests/acl2/poster-bytes-tests.lisp show the key moving there.
 (defthm fn-pb-a-resent-injection-has-the-same-poster-bytes
   (implies (and (fn-inj-injectedp (fn-inj-decide source config a))
                 (fn-inj-injectedp (fn-inj-decide source config b))
-                (equal (fn-inj-decision-msgid (fn-inj-decide source config a))
-                       (fn-inj-decision-msgid (fn-inj-decide source config b)))
-                (not (fn-inj-absentp (fn-article-result-article
-                                      (fn-article-parse source))
-                                     *fn-inj-date-name*)))
+                (fn-inj-nth 1 (fn-af-proto-article-check
+                               (fn-article-result-article
+                                (fn-article-parse source))))
+                (or (fn-inj-absentp (fn-article-result-article
+                                     (fn-article-parse source))
+                                    *fn-inj-date-name*)
+                    (not (fn-pb-opens-with-a-date source))))
            (equal (fn-pb-poster-bytes
                    (fn-inj-decision-octets (fn-inj-decide source config a)))
                   (fn-pb-poster-bytes
@@ -299,8 +367,8 @@
   :rule-classes nil)
 
 ; KEYSTONE (K1 closed).  The held article is one proto-article injected at
-; clock A; the poster resends the same source, injected at clock B, under
-; the same Message-ID and groups.  The reply is the duplicate line at every
+; clock A; the poster resends the same source, with its own Message-ID,
+; injected at clock B, under the same groups.  The reply is the duplicate line at every
 ; pair of clock readings.
 (defthm fn-pb-a-resend-at-a-later-second-is-answered-already-stored
   (let ((held (fn-find-article
@@ -314,11 +382,13 @@
                          (fn-inj-decision-octets (fn-inj-decide source config a)))
                   (fn-inj-injectedp (fn-inj-decide source config a))
                   (fn-inj-injectedp (fn-inj-decide source config b))
-                  (equal (fn-inj-decision-msgid (fn-inj-decide source config a))
-                         (fn-inj-decision-msgid (fn-inj-decide source config b)))
-                  (not (fn-inj-absentp (fn-article-result-article
-                                        (fn-article-parse source))
-                                       *fn-inj-date-name*))
+                  (fn-inj-nth 1 (fn-af-proto-article-check
+                                 (fn-article-result-article
+                                  (fn-article-parse source))))
+                  (or (fn-inj-absentp (fn-article-result-article
+                                       (fn-article-parse source))
+                                      *fn-inj-date-name*)
+                      (not (fn-pb-opens-with-a-date source)))
                   (equal groups (fn-article-groups held)))
              (equal (car (fn-own-outcome
                           o id
@@ -331,8 +401,5 @@
                                    (payload (fn-inj-decision-octets
                                              (fn-inj-decide source config b))))
                         fn-pb-a-resent-injection-has-the-same-poster-bytes)
-                  :in-theory (disable fn-own-outcome fn-pb-existing-action
-                                      fn-pb-poster-bytes fn-inj-decide
-                                      fn-inj-injectedp fn-inj-absentp
-                                      fn-find-article fn-pb-served-reply)))
+                  :in-theory (theory 'minimal-theory)))
   :rule-classes nil)
