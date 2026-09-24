@@ -718,7 +718,7 @@
     "books": 722,
     "books_in_root_closure": 720,
     "roots": 711,
-    "theorems": 9637,
+    "theorems": 9650,
     "functions": 6845,
     "assert_events": 10567,
     "must_fails": 813,
@@ -8422,7 +8422,7 @@
       "book": "books/owner-offer-indexed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 40,
+      "theorems": 53,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -8437,7 +8437,11 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "config-owner-publish",
+        "owner-advance-carried",
+        "owner-commit-carried",
         "owner-config-observe",
+        "owner-prepare-carried",
         "owner-served-carried"
       ],
       "system_includes": [],
@@ -23724,7 +23728,7 @@
       },
       {
         "book": "books/owner-offer-indexed.lisp",
-        "line": 22,
+        "line": 26,
         "include": "owner-config-observe",
         "included": "books/owner-config-observe.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

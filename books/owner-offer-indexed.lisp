@@ -7,9 +7,13 @@
 ; the premise the host call needs is fn-scar-view-indexedp of the owner.
 ; fn-own-relation already carries it (fn-own-view-okp); this book carries it
 ; for the configured owner the host runs: it holds at fn-own-start and every
-; transition the host drives keeps it -- each fn-ocfg-step event
-; (fn-oix-ocfg-step-keeps-view-indexed), fn-ocfg-observe and the carried
-; read.  It is never evaluated on a served path.
+; transition the host installs keeps it -- each fn-ocfg-step event
+; (fn-oix-ocfg-step-keeps-view-indexed), and the owners host/owner-host.lisp
+; installs directly: fn-ocfg-observe, the carried read, fn-ocfg-open,
+; -open-peer, -read-step and -fault, the carried prepare, finish and outcome
+; (fn-pcar-sbud-prepare, fn-ccar-own-finish, fn-acar-own-outcome),
+; fn-own-transit-outcome, fn-own-configure, fn-own-with-feeds and
+; fn-ocl-publish.  It is never evaluated on a served path.
 ;
 ; The only transition that changes the trie is fn-own-refresh, which the
 ; commit arms (complete, advance, reopen, the writer outcomes) call; there
@@ -20,6 +24,10 @@
 (in-package "ACL2")
 (include-book "owner-served-carried")
 (include-book "owner-config-observe")
+(include-book "owner-commit-carried")
+(include-book "owner-prepare-carried")
+(include-book "owner-advance-carried")
+(include-book "config-owner-publish")
 
 ; The keystone of maintenance: a refresh keeps the view trie keyed to the
 ; view's articles, whichever of its three branches it takes.
@@ -292,3 +300,87 @@
   :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp)
                                   (fn-scar-ocfg-read-tls-prefix
                                    fn-midx-correspondencep)))))
+
+; -----------------------------------------------------------------------------
+; The owners host/owner-host.lisp installs without going through fn-ocfg-step.
+
+(defthm fn-oix-ocfg-with-owner-is-view-indexed
+  (implies (fn-scar-view-indexedp owner)
+           (fn-scar-view-indexedp (fn-ocfg-owner (fn-ocfg-with-owner oc owner))))
+  :hints (("Goal" :in-theory (e/d (fn-ocfg-with-owner) (fn-scar-view-indexedp)))))
+
+(defthm fn-oix-ocfg-open-keeps-view-indexed
+  (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
+           (fn-scar-view-indexedp (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg)))))
+  :hints (("Goal" :in-theory (e/d (fn-ocfg-open)
+                                  (fn-scar-view-indexedp fn-own-open
+                                   fn-own-reader-context)))))
+
+(defthm fn-oix-ocfg-open-peer-keeps-view-indexed
+  (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
+           (fn-scar-view-indexedp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg)))))
+  :hints (("Goal" :in-theory (e/d (fn-ocfg-open-peer fn-ocfg-with-owner)
+                                  (fn-scar-view-indexedp fn-own-open-peer)))))
+
+(defthm fn-oix-ocfg-read-step-keeps-view-indexed
+  (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
+           (fn-scar-view-indexedp (fn-ocfg-owner (cdr (fn-ocfg-read-step oc id event)))))
+  :hints (("Goal" :in-theory (e/d (fn-ocfg-read-step fn-ocfg-with-read-owner)
+                                  (fn-scar-view-indexedp fn-own-read-step)))))
+
+(defthm fn-oix-ocfg-fault-keeps-view-indexed
+  (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
+           (fn-scar-view-indexedp (fn-ocfg-owner (cdr (fn-ocfg-fault oc id)))))
+  :hints (("Goal" :in-theory (e/d (fn-ocfg-fault)
+                                  (fn-scar-view-indexedp fn-own-fault)))))
+
+(defthm fn-oix-with-feeds-keeps-view-indexed
+  (implies (fn-scar-view-indexedp o)
+           (fn-scar-view-indexedp (fn-own-with-feeds o feeds)))
+  :hints (("Goal" :in-theory (enable fn-scar-view-indexedp))))
+
+(defthm fn-oix-finish-keeps-view-indexed
+  (implies (fn-scar-view-indexedp o)
+           (fn-scar-view-indexedp (cdr (fn-own-finish o cfg))))
+  :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-own-finish)
+                                  (fn-midx-correspondencep fn-own-refresh)))))
+
+(defthm fn-oix-ccar-own-finish-keeps-view-indexed
+  (implies (fn-scar-view-indexedp o)
+           (fn-scar-view-indexedp (cdr (fn-ccar-own-finish o cfg))))
+  :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-ccar-own-finish)
+                                  (fn-midx-correspondencep fn-own-refresh)))))
+
+(defthm fn-oix-acar-advance-result-keeps-view-indexed
+  (implies (fn-scar-view-indexedp o)
+           (fn-scar-view-indexedp (cdr (fn-acar-own-advance-result o id))))
+  :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-acar-own-advance-result)
+                                  (fn-midx-correspondencep fn-own-refresh)))))
+
+(defthm fn-oix-acar-own-outcome-keeps-view-indexed
+  (implies (fn-scar-view-indexedp o)
+           (fn-scar-view-indexedp (cdr (fn-acar-own-outcome o id word))))
+  :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-acar-own-outcome)
+                                  (fn-midx-correspondencep fn-own-refresh)))))
+
+(defthm fn-oix-pcar-sbud-prepare-keeps-view-indexed
+  (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
+           (fn-scar-view-indexedp (fn-ocfg-owner (fn-pcar-sbud-prepare oc record budget))))
+  :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-sbud-prepare fn-opc-prepare
+                                   fn-opc-owner-prepare fn-ocfg-with-owner)
+                                  (fn-midx-correspondencep fn-own-refresh
+                                   fn-sbud-admitp fn-sbud-used)))))
+
+(defthm fn-oix-ocl-owner-with-store-keeps-view-indexed
+  (implies (fn-scar-view-indexedp o)
+           (fn-scar-view-indexedp (fn-ocl-owner-with-store o st)))
+  :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-ocl-owner-with-store)
+                                  (fn-midx-correspondencep fn-own-refresh)))))
+
+(defthm fn-oix-ocl-publish-keeps-view-indexed
+  (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
+           (fn-scar-view-indexedp
+            (fn-ocfg-owner (mv-nth 1 (fn-ocl-publish oc generation max-octets)))))
+  :hints (("Goal" :in-theory (e/d (fn-ocl-publish fn-ocfg-with-owner fn-ocl-complete)
+                                  (fn-scar-view-indexedp fn-own-configure
+                                   fn-ocl-owner-with-store fn-own-complete)))))
