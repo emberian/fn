@@ -189,6 +189,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-stable-prefix-tests \
 	books/byte-store-record-fence \
 	tests/acl2/byte-store-record-fence-tests \
+	books/byte-store-record-provenance-bytes \
+	books/byte-store-record-provenance-node \
+	books/byte-store-record-provenance-owner \
 	books/byte-store-record-provenance \
 	tests/acl2/byte-store-record-provenance-tests \
 	books/byte-store-k0 \

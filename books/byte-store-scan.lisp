@@ -328,7 +328,8 @@
 (defthm fn-bs-crash-select-names-are-an-outcome
   (member-equal (fn-bs-names-after (fn-bs-crash-select ops choices unit) old dir)
                 (fn-bs-names-outcomes (fn-bs-ops-for-dir ops dir) old))
-  :hints (("Goal" :induct (fn-bs-names-induct ops choices old dir))))
+  :hints (("Goal" :induct (fn-bs-names-induct ops choices old dir)
+           :in-theory (disable fn-bs-tear-write fn-bs-unit-count))))
 
 ; -----------------------------------------------------------------------------
 ; 3. The scan (design 3.1).
