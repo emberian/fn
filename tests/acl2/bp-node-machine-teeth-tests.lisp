@@ -225,6 +225,40 @@
   (equal (car (car (fn-bpnf-answer-effects *bpnmt-n03-woken*)))
          :deliver)))
 
+; A failed cold-recovery attempt cannot consume the volatile wait or any
+; held work.  A successful model replay changes epoch and clears the wait;
+; it must present its own recovered held rows from the durable journal.
+(defconst *bpnmt-n03-fault-recovery*
+  (fn-bpnp-step
+   *bpnmt-n03-waited*
+   (list :recover-fnbs 0 nil :ready
+         (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil))))
+(assert-event
+ (and (equal (fn-bpnf-answer-effects *bpnmt-n03-fault-recovery*)
+             '((:restart-fault :fnbs-or-base)))
+      (equal (fn-bpnf-answer-state *bpnmt-n03-fault-recovery*)
+             *bpnmt-n03-waited*)
+      (equal (fn-bpnp-wait-for
+              *bpnmt-n03-old-key*
+              (fn-bpnp-waits
+               (fn-bpnf-answer-state *bpnmt-n03-fault-recovery*)))
+             (list :bpnp-wait *bpnmt-n03-old-key* :route 0))))
+(must-fail
+ (assert-event
+  (not (fn-bpnp-waits
+        (fn-bpnf-answer-state *bpnmt-n03-fault-recovery*)))))
+(defconst *bpnmt-n03-recovered*
+  (fn-bpnp-step
+   *bpnmt-n03-waited*
+   (list :recover-fnbs 1 nil :ready
+         (list :ready (fn-bpnf-held-list *bpnmt-n03-s2*) nil))))
+(assert-event
+ (and (equal (car (car (fn-bpnf-answer-effects *bpnmt-n03-recovered*)))
+             :restart-ready)
+      (not (fn-bpnp-waits (fn-bpnf-answer-state *bpnmt-n03-recovered*)))
+      (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpnmt-n03-recovered*))
+             (fn-bpnf-held-list *bpnmt-n03-s2*))))
+
 ; PENDING N03 general two-tick theorem and its remaining hypothesis teeth.
 ; PENDING N04: two *received* valid no-fragment bundles with 48 KiB and 8 KiB
 ; payloads, both encoded below 131072, are checked against a 32768-byte MRU;
