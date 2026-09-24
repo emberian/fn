@@ -2433,7 +2433,7 @@
                                  (fn-auth-session-base
                                   (fn-own-conn-session
                                    (fn-own-find-conn id (fn-own-conns o))))))
-                            (completion (fn-own-outcome-completion o word)))
+                            (completion (fn-own-outcome-rendering o word)))
                  (:instance fn-own-ledger-durablep-member
                             (ledger (fn-own-ledger o))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))
@@ -2457,6 +2457,40 @@
                             fn-own-prefix-archive fn-own-view-okp
                             fn-own-ledger-durablep
                             fn-midx-correspondencep fn-gidx-build)))))
+
+;
+; A consumed completion is never answered as a refusal (P2's wire half;
+; campaign W2, 2026-09-24).  Once fn-own-complete has consumed a completion
+; into the ledger after this submission was taken, the reply fn-own-outcome
+; renders for its connection -- the function the host calls at
+; host/owner-host.lisp fn-owner-outcome -- is the 240 when the host's word is
+; :durable and the uncertain `441 ... do not repost' for EVERY other word.
+; No host word, and in particular no OS error the host classified as a
+; refusal, turns a durable record into `441 ... refused'.
+(defthm fn-own-consumed-completion-is-240-or-uncertain
+  (implies (and (fn-own-find-conn id (fn-own-conns o))
+                (equal (fn-own-sub-id (fn-own-inflight o)) id)
+                (natp (fn-own-sub-mark (fn-own-inflight o)))
+                (< (fn-own-sub-mark (fn-own-inflight o)) (len (fn-own-ledger o))))
+           (equal (car (fn-own-outcome o id word))
+                  (let ((conn (fn-own-find-conn id (fn-own-conns o))))
+                    (fn-served-result-effects
+                     (fn-served-post-outcome
+                      (fn-served-make-conn-group-indexed
+                       (fn-own-conn-wire conn) (fn-own-conn-session conn)
+                       (fn-own-conn-archive conn) (fn-own-conn-config conn)
+                       (fn-own-conn-observation conn) (fn-own-clock o)
+                       (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
+                       (fn-own-conn-group-index conn))
+                      (if (equal word :durable) :durable :uncertain))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-own-outcome fn-own-outcome-completion
+                                   fn-own-outcome-rendering
+                                   fn-own-completion-consumedp)
+                                  (fn-served-post-outcome fn-own-advance
+                                   fn-own-feed-durable fn-own-find-conn
+                                   fn-served-make-conn-group-indexed
+                                   fn-own-refusal-wordp)))))
 
 ; -----------------------------------------------------------------------------
 ; Clock-stamped group facts: no fact without an observation; the live group

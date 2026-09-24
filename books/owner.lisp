@@ -1944,25 +1944,56 @@
                                       (fn-own-sub-decision sub)) (fn-own-feeds o)))
     o))
 
-; The completion the owner reports for the submission in flight, from the
-; word the host observed.  :durable needs a completion consumed into the
-; ledger after the take (fn-own-complete is the only ledger writer, and it
-; consumes the actual fn-sn-finish, fn-own-completion-consumed-once); a host
-; word of :durable without one is :uncertain, never 240.  :refused is the
-; host's typed refusal (nothing was staged, or the reservation was consumed
-; by a refusal); :clock-unusable remains a distinct owner-clock refusal,
-; and all other words are :uncertain.
-(defun fn-own-outcome-completion (o word)
+; The Store refusal words the host may relay.  Each is the kind an ACL2
+; step decided: :duplicate and :conflict are fn-sn-existing-action's,
+; :malformed is fn-owner-prepare's :invalid, :unaffordable is the persisted
+; profile's or the capacity's refusal, :storage-failed is a write that failed
+; before publication whose reservation fn-owner-known-abort consumed, and
+; :refused is a refusal no kind names.  The wire line for each is
+; fn-post-store-refusal-line (books/nntp-post.lisp).
+(defun fn-own-refusal-wordp (word)
+  (declare (xargs :guard t))
+  (fn-post-store-refusalp word))
+
+; A completion was consumed into the ledger after the take: fn-own-complete
+; is the only ledger writer, and it consumes the actual fn-sn-finish
+; (fn-own-completion-consumed-once).
+(defun fn-own-completion-consumedp (o)
   (declare (xargs :guard t))
   (let ((sub (fn-own-inflight o)))
-    (cond ((and (equal word :durable)
-                sub
-                (natp (fn-own-sub-mark sub))
-                (< (fn-own-sub-mark sub) (len (fn-own-ledger o))))
-           :durable)
-          ((equal word :clock-unusable) :clock-unusable)
-          ((member-equal word '(:refused :duplicate)) :refused)
-          (t :uncertain))))
+    (and sub
+         (natp (fn-own-sub-mark sub))
+         (< (fn-own-sub-mark sub) (len (fn-own-ledger o))))))
+
+; The completion the owner reports for the submission in flight, from the
+; word the host observed.  :durable needs a completion consumed into the
+; ledger after the take; a host word of :durable without one is :uncertain,
+; never 240.  A refusal word is :refused only while NO completion has been
+; consumed after the take: once the record is durable and its completion
+; consumed, no host word can make it a refusal, and anything but :durable is
+; :uncertain (campaign W2, 2026-09-24: an OS error raised after publication
+; was reported as `441 ... refused' for a durable article).  :clock-unusable
+; remains a distinct owner-clock refusal, and all other words are :uncertain.
+(defun fn-own-outcome-completion (o word)
+  (declare (xargs :guard t))
+  (cond ((and (equal word :durable)
+              (fn-own-completion-consumedp o))
+         :durable)
+        ((fn-own-completion-consumedp o) :uncertain)
+        ((equal word :clock-unusable) :clock-unusable)
+        ((fn-own-refusal-wordp word) :refused)
+        (t :uncertain)))
+
+; What the served reply is rendered from: the completion, except that a
+; refusal carries the kind the host relayed from the ACL2 step that refused
+; (fn-post-store-refusal-line gives each its own 441 line).  Only the text of
+; a refusal depends on the word; which of the outcomes it is does not.
+(defun fn-own-outcome-rendering (o word)
+  (declare (xargs :guard t))
+  (let ((completion (fn-own-outcome-completion o word)))
+    (if (equal completion :refused)
+        word
+      completion)))
 
 ; Resolution repeats the complete intent identity.  Durable is projected from
 ; the consumed owner completion, never from the host word alone.  A known
@@ -2028,7 +2059,7 @@
                                        (fn-own-conn-verdicts conn)
                                        (fn-own-conn-index conn)
                                        (fn-own-conn-group-index conn))
-                  completion))
+                  (fn-own-outcome-rendering o word)))
                 (if (equal completion :durable)
                     (fn-own-advance next id)
                   next)))
@@ -2043,7 +2074,8 @@
   (declare (xargs :guard t))
   (if (not (fn-own-control-submissionp (fn-own-inflight o)))
       :absent
-    (if (equal word :duplicate)
+    (if (and (equal word :duplicate)
+             (equal (fn-own-outcome-completion o word) :refused))
         :duplicate
       (case (fn-own-outcome-completion o word)
         (:durable :accepted)
