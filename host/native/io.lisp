@@ -1496,6 +1496,23 @@ after the syscall."
     (unwind-protect (progn (fnn-write-all fd contents) (fnn-fsync-file fd))
       (fnn-close fd))))
 
+(defun fnn-write-staged-at (store stage contents created written)
+  "fnn-write-staged with the byte programs' two staging cuts between its calls.
+
+The Store's frontier and record writers call this rather than
+fnn-write-staged, so that fn-bs-frontier-program's `frontier-created' and
+`frontier-written' (and fn-bs-record-program's `record-created' and
+`record-written') are `fnn-at' sites: after the O_EXCL create and after
+write_all, before fsync(fd).  An EIO there is a pre-publication failure of
+the same arm as a failing write; SIGKILL leaves a staging file the
+recovery sweep owns."
+  (let ((fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
+    (unwind-protect (progn (fnn-at store created)
+                           (fnn-write-all fd contents)
+                           (fnn-at store written)
+                           (fnn-fsync-file fd))
+      (fnn-close fd))))
+
 (defun fnn-advance-frontier (store current-txid)
   "Report each allocator observation to the file kernel in order."
   (fnn-require-writer store)
@@ -1515,7 +1532,7 @@ after the syscall."
           (unless (eq (fnn-observe store :start-frontier) :frontier-staged)
             (setf (fnn-store-fenced store) t)
             (fnn-fault "ACL2 rejected allocator start"))
-          (fnn-write-staged stage contents)
+          (fnn-write-staged-at store stage contents :frontier-created :frontier-written)
           (setf (fnn-store-fenced store) t)
           (unless (eq (fnn-observe store :frontier-file :ok) :frontier-data-durable)
             (fnn-fault "ACL2 rejected durable allocator file"))
@@ -1561,7 +1578,7 @@ after the syscall."
          (attempted nil))
     (handler-case
         (progn
-          (fnn-write-staged stage data)
+          (fnn-write-staged-at store stage data :record-created :record-written)
           (setf (fnn-store-fenced store) t)
           (unless (eq (fnn-observe store :record-file :ok) :record-data-durable)
             (fnn-fault "ACL2 rejected durable record file"))
@@ -1587,7 +1604,12 @@ after the syscall."
             (fnn-indeterminate "ACL2 rejected record directory barrier after publication"))
           (setf (fnn-store-completion-pending store) t)
           (fnn-at store :record-completing)
-          (ignore-errors (fnn-unlink stage) (fnn-fsync-dir (fnn-staging store)))
+          ;; Best-effort cleanup: an error here is swallowed, as the model's
+          ;; P-RECORD says, and that includes an EIO selected at the
+          ;; `record-stage-unlinked' cut between the unlink and its barrier.
+          (ignore-errors (fnn-unlink stage)
+                         (fnn-at store :record-stage-unlinked)
+                         (fnn-fsync-dir (fnn-staging store)))
           (fnn-at store :record-staging-cleaned)
           :durable)
       (fnn-os-error (e)
@@ -1789,10 +1811,13 @@ in-process retry."
                                     "injected transaction directory barrier failure"))))
 
 (defparameter +fnn-post-model-cuts+
-  '(:frontier-staged-durable :frontier-replaced :frontier-attempted
-    :frontier-durable :frontier-reserved :record-staged-durable
+  '(:frontier-created :frontier-written
+    :frontier-staged-durable :frontier-replaced :frontier-attempted
+    :frontier-durable :frontier-reserved
+    :record-created :record-written :record-staged-durable
     :record-linked :record-attempted :record-durable :record-completing
-    :record-staging-cleaned :finish-consumed :finish-durable))
+    :record-stage-unlinked :record-staging-cleaned
+    :finish-consumed :finish-durable))
 
 (defun fnn-post-test-fault ()
   "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector.
