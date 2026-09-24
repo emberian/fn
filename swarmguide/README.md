@@ -83,6 +83,18 @@ vacuous statement, or an unreachable case. A helper that merely unfolds a
 definition should be named and used as a helper, not counted as the security
 or durability result.
 
+A negative witness must negate the theorem's exact conclusion while preserving
+its other premises. Assert that conjunction positively before the `must-fail`
+check. A stronger test helper can fail on an extra clause while the theorem's
+conclusion remains true; an evaluation or guard error can also make
+`must-fail` succeed without supplying a counterexample. For a deliberately
+invalid input that removes a guard-shaped premise, use logical evaluation
+explicitly and still assert the other premises and false conclusion. Failed
+counterexample search is not evidence that a premise is redundant: have ACL2
+prove the weakened statement before removing it. The
+[frontier EIO packet](../planning/evidence/k0-frontier-directory-eio-2026-09-24.md)
+records the exact-conclusion repair and its earlier failed attempts.
+
 ## Make proof search small and interactive
 
 A caller that dispatches on a record kind should not need to unfold a complete
