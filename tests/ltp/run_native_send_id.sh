@@ -7,6 +7,7 @@ run=${1:?usage: run_native_send_id.sh ABSOLUTE_RUN_DIR}
 sender=${FN_LTP_SEND_BIN:-$ION_ROOT/install/bin/fn_ltp_send}
 case "$run" in /*) ;; *) echo 'run directory must be absolute' >&2; exit 5;; esac
 mkdir -p "$run/stage"
+chmod 700 "$run"
 if [ -e "$run/observation" ]; then echo 'existing observation' >&2; exit 1; fi
 cleanup() {
   bash "$here/stop_node.sh" "$ION_ROOT/cfg/node2" >/dev/null 2>&1 || true
