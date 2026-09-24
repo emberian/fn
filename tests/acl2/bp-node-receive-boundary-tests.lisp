@@ -31,7 +31,10 @@
  (equal (fn-bpnf-host-eventp '(:persist-result 1 0 :refused)) t))
 (assert-event
  (equal (fn-bpnf-host-eventp '(:persist-result 1 0 :uncertain)) t))
-(assert-event (equal (fn-bpnf-host-eventp '(:family 0)) t))
+(assert-event
+ (equal (fn-bpnf-host-eventp
+         (list :family 0 (fn-clock-observation 0 0 0 nil))) t))
+(assert-event (equal (fn-bpnf-host-eventp '(:family 0)) nil))
 (assert-event (null (fn-bpnf-host-eventp '(:family -1))))
 (assert-event
  (equal (fn-bpnf-host-eventp (list :expire-held *bpnf-obs* t)) t))

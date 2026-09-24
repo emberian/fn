@@ -14,7 +14,7 @@
       (if stored stored
         (let ((delivered (fn-bpah-delivery-unframe (cadr row))))
           (if delivered delivered
-            (let ((family (fn-bpnf-family-unframe (cadr row))))
+            (let ((family (fn-bpnf-family-replay-unframe (cadr row))))
               (if family family
                 (fn-bpnf-delete-unframe (cadr row))))))))))
 
@@ -59,7 +59,7 @@
                next next-arrival))))
          ((equal (car record) :bpnf-family)
           (let* ((st (fn-bpnf-state base held nil handoffs nil nil nil epoch op))
-                 (applied (fn-bpnf-family-apply st record next-arrival)))
+                 (applied (fn-bpnf-family-apply-at st record next-arrival)))
             (if (not (equal (car applied) :ready))
                 (list :fault :kind-eighteen-row)
               (fn-bpnf-family-replay-rows-aux

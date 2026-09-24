@@ -24,7 +24,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-bpnf-held principal (fn-bpb-bundle-id bundle) arrival
                  (list :cl (cons arrival 0) 1 *bpnff-peer* principal 0)
-                 nil nil bundle (fn-bpb-encode bundle) nil nil nil
+                 nil nil bundle (fn-bpb-encode bundle) '(:wall) nil nil
                  constraints nil deleted arrival))
 
 (defconst *bpnff-b0*
