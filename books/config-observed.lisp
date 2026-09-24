@@ -39,16 +39,18 @@
                           (fn-cnode-domain-of config)
                           (fn-cfg-capacity (fn-cfg-value config))
                           frontier events))
-                   (opened (fn-sn-with-topic
-                            (fn-sn-with-consumer
-                             (fn-cpo-install
-                              (fn-sn-update-replayed
-                               seed files advanced
-                               (fn-stx-index-of-store (fn-stx-store advanced) nil)
-                               identity)
-                              (fn-cnode-make advanced config) configs)
-                             (fn-cp-nth 1 consumer))
-                            topic)))
+                   (opened (fn-sn-with-event-index
+                            (fn-sn-with-topic
+                             (fn-sn-with-consumer
+                              (fn-cpo-install
+                               (fn-sn-update-replayed
+                                seed files advanced
+                                (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                                identity)
+                               (fn-cnode-make advanced config) configs)
+                              (fn-cp-nth 1 consumer))
+                             topic)
+                            (fn-cei-build events))))
               (if (and (equal (fn-stxk-context-kind identity) :ok)
                        (eq (car consumer) :ok)
                        (eq (fn-th-at 0 topic) :ok)
@@ -169,6 +171,7 @@
                   (equal (fn-sf-phase (fn-sn-files st)) :recovering)
                   (equal (fn-sf-barriers (fn-sn-files st)) 0)
                   (equal (fn-sn-config-history st) configs)
+                  (equal (fn-sn-event-index st) (fn-cei-build events))
                   (equal (fn-sn-groups st) (fn-cnode-domain cn))
                   (equal (fn-sn-capacity st)
                          (fn-cfg-capacity
