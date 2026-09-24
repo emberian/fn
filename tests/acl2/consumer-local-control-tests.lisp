@@ -43,7 +43,7 @@
         '(:run :status (47 116 109 112 47 99) (99) nil nil)))
 (assert-event
  (equal (fn-ncl-cli-plan '(115 116 97 116 117 115)
-                         (list '(47 116 109 112 47 99) '(32)))
+                         (list '(47 116 109 112 47 99) '(10)))
         '(:usage :status)))
 (assert-event
  (equal (fn-ncl-reply-decode
@@ -97,11 +97,10 @@
   (fn-frame-protected *fn-nctrl-magic* *fn-nctrl-version*
                       *fn-ncl-status-reply-kind*
                       *ncl-status-overbound-payload*))
-(defconst *ncl-status-overbound-frame*
-  (append *ncl-status-overbound-protected*
-          (fn-frame-trailer *ncl-status-overbound-protected*)))
 (assert-event
- (equal (fn-ncl-status-reply-decode *ncl-status-overbound-frame*)
+ (equal (fn-ncl-status-reply-decode
+         (append *ncl-status-overbound-protected*
+                 (fn-frame-trailer *ncl-status-overbound-protected*)))
         '(:refused :frame)))
 (defconst *ncl-status-malformed-gap-payload*
   (append '(0) (fn-cbor-u32-bytes 3) (fn-cbor-u32-bytes 11)
