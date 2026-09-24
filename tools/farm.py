@@ -112,6 +112,26 @@ class FarmError(Exception):
     """A farm run that did not start, reported instead of returned as a run id."""
 
 
+def refuse_unmerged_source(root: Path) -> None:
+    """Refuse unresolved Git operations before any remote side effect.
+
+    Ordinary uncommitted lane edits and exported source archives remain valid
+    inputs. This check does not freeze a mutable checkout: image qualification
+    must submit from its own pinned checkout or immutable export.
+    """
+    if not (root / ".git").exists():
+        return
+    result = run(["git", "-C", str(root), "diff", "--name-only",
+                  "--diff-filter=U", "-z"], check=False)
+    if result.returncode:
+        raise FarmError(f"cannot inspect source index under {root}: "
+                        f"{result.stdout.strip()}")
+    paths = [path for path in result.stdout.split("\0") if path]
+    if paths:
+        raise FarmError("unmerged source; no farm run started: "
+                        + ", ".join(repr(path) for path in paths))
+
+
 def host_settings(host: str, cache: str | None = None,
                   acl2: str | None = None) -> dict:
     """What this host needs, with explicit cache and ACL2 overrides.
@@ -493,6 +513,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
     against the argument, so a runner invocation that would seed the box's
     cache cannot start under a caller that asked for no publication.
     """
+    refuse_unmerged_source(root)
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
     push(host, root, remote)

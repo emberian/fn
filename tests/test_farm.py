@@ -202,6 +202,45 @@ class RemoteRootTests(unittest.TestCase):
 class FailureTests(unittest.TestCase):
     """submit reports what did not happen; it never prints a run id for it."""
 
+    def test_unmerged_real_index_refuses_before_remote_io(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            blob = subprocess.run(
+                ["git", "-C", str(root), "hash-object", "-w", "--stdin"],
+                input="unfinished source\n", text=True, capture_output=True,
+                check=True).stdout.strip()
+            subprocess.run(
+                ["git", "-C", str(root), "update-index", "--index-info"],
+                input=f"100644 {blob} 1\tMakefile\n100644 {blob} 2\tMakefile\n",
+                text=True, check=True)
+            with mock.patch.object(farm, "push") as push, \
+                    mock.patch.object(farm, "ssh") as ssh:
+                with self.assertRaisesRegex(farm.FarmError, "unmerged.*Makefile"):
+                    farm.submit("hbox", root, [], jobs=2, timeout_seconds=60,
+                                affected_by=[], remote=Path("~/unused"))
+            push.assert_not_called()
+            ssh.assert_not_called()
+            self.assertFalse((root / "build" / "farm").exists())
+
+    def test_clean_index_allows_uncommitted_lane_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            source = root / "book.lisp"
+            source.write_text("original\n")
+            subprocess.run(["git", "-C", str(root), "add", "book.lisp"],
+                           check=True)
+            source.write_text("uncommitted proof attempt\n")
+            farm.refuse_unmerged_source(root)
+
+    def test_broken_git_metadata_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".git").write_text("gitdir: missing-directory\n")
+            with self.assertRaisesRegex(farm.FarmError, "cannot inspect source index"):
+                farm.refuse_unmerged_source(root)
+
     def test_a_runner_that_did_not_start_fails_the_submit(self):
         fake = Fake([], codes={"nohup sh -c": 9})
         with tempfile.TemporaryDirectory() as directory:
