@@ -1,0 +1,11 @@
+checkpoint cut candidate-file
+checkpoint cut candidate-link
+checkpoint cut candidate-directory
+checkpoint cut selection-file
+checkpoint cut selection-replace
+checkpoint cut selection-directory
+checkpoint cut pack-reclaim-unlink
+checkpoint cut pack-reclaim-directory
+checkpoint cut pack-retire-unlink
+checkpoint cut pack-retire-directory
+EXIT 0

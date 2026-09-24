@@ -1,0 +1,4911 @@
+{
+ "images": "/tank/fn/scratch/m5-compact/src2/build/images/5181e0eab687918ee04d6e072fdd6f108ac98433",
+ "cuts": [],
+ "checkpoint_cuts": [
+  {
+   "cut": "candidate-file",
+   "program": "fn-cpp-publication-step",
+   "book": "byte-store-programs.lisp",
+   "table_candidate": "absent",
+   "entries": {
+    "developer": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.21
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.13
+     },
+     "seed_owner": {
+      "pid": 2077018,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/control.sock",
+       "LISTENING 35313",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:30Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "6a94a8d12173112e960bf24985bc0fd22cee5a9d351d9cb52e3a8352ed28b24d"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "0c216647a39bdce14f9c7ec720ef5428a0b7efb9857910b3001f08953ed5af7e",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=0 records=1 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.08
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.07
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.13
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "6eadf2a8a4b5c4c4a3db33bbe55f3e7c77d9897e17af4392bcb4d148192cb524"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/store",
+        "select"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "candidate-file"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.09
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "6eadf2a8a4b5c4c4a3db33bbe55f3e7c77d9897e17af4392bcb4d148192cb524"
+      },
+      "staging": {
+       ".pack-2077064-0d99d35872ebda709a42a5e2": "9e5099bde699c0e61ae6dd6b4f6f35e9e76a2089a45ccd9ca4976ef3b3084105"
+      },
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=1 records=2 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.14
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.09
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=1\n",
+       "stderr": "",
+       "seconds": 0.11
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.11
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    },
+    "operator": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-operator/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/candidate-file-operator/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.17
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "seed_owner": {
+      "pid": 2077130,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/candidate-file-operator/control.sock",
+       "LISTENING 46233",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:33Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "bffb0105e1bd5740aad67df617c56166887430c7963acd97efbb9e4ecd1cc36f"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "942dbea6e75b6d371e572337b59ac9f3b19dcd073ab7c45414531ded880a1328",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=1 generation=0 reclaimed=1 retired=0\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.38
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.31
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "1a7414102046e5d38a8b333e790db613292f6563cf416aefb76d04b88222b27e"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "candidate-file"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.1
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "1a7414102046e5d38a8b333e790db613292f6563cf416aefb76d04b88222b27e"
+      },
+      "staging": {
+       ".pack-2077178-0d99d35872ebda709a42a5e2": "65e0a2bdf326f6d3b13c8edf43fb726ccfa6f0dd82be0614a4bb3c166aab5fb1"
+      },
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=2 generation=1 reclaimed=1 retired=1\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.12
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-operator/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-file-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.11
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    }
+   },
+   "pass": true
+  },
+  {
+   "cut": "candidate-link",
+   "program": "fn-cpp-publication-step",
+   "book": "byte-store-programs.lisp",
+   "table_candidate": "either",
+   "entries": {
+    "developer": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.15
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.1
+     },
+     "seed_owner": {
+      "pid": 2077231,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/control.sock",
+       "LISTENING 51141",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:35Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "cd5668ee7a94c3f83a32dfb59def3b9033db1ed6fd6651a098e5ae4861746ccf"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "8399a468c1c03d46b541d9132f5c44e9212a3b71f459be21ba4852d191735efc",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=0 records=1 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.08
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.07
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.13
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "4296d822592c138a23229b352ff58aa068a609c7c6177cb460b146f9b25684d7"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/store",
+        "select"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "candidate-link"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.1
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "4296d822592c138a23229b352ff58aa068a609c7c6177cb460b146f9b25684d7"
+      },
+      "staging": {
+       ".pack-2077280-0d99d35872ebda709a42a5e2": "5fe32ddc6c0f8f4b615283e02c4fe2c91c218627e2e72f799f4dc65060ee04c1"
+      },
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=2 records=2 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.11
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.09
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=2\n",
+       "stderr": "",
+       "seconds": 0.07
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    },
+    "operator": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-operator/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/candidate-link-operator/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.17
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "seed_owner": {
+      "pid": 2077343,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/candidate-link-operator/control.sock",
+       "LISTENING 50975",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:37Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "5233bb24377c2e97b720479fa4c1b3aa8ee5ccbf78bc0e01ee62e8330e5b8418"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "aa901ad082b3343efe5d26c703b3e770fb60e001d67ad266c2be424cd292d670",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=1 generation=0 reclaimed=1 retired=0\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.13
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.16
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "e682544032e467bff2b31ec789051784e9e81de29231d46e8468d31f58ff5506"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "candidate-link"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.12
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "e682544032e467bff2b31ec789051784e9e81de29231d46e8468d31f58ff5506"
+      },
+      "staging": {
+       ".pack-2077383-0d99d35872ebda709a42a5e2": "3645cc246d680366fb19c1e033b7f875d8e6d08494fd38d9041682c962ece1b9"
+      },
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=2 generation=2 reclaimed=1 retired=2\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.17
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-operator/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.08
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-link-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    }
+   },
+   "pass": true
+  },
+  {
+   "cut": "candidate-directory",
+   "program": "fn-cpp-publication-step",
+   "book": "byte-store-programs.lisp",
+   "table_candidate": "present",
+   "entries": {
+    "developer": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.18
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "seed_owner": {
+      "pid": 2077434,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/control.sock",
+       "LISTENING 33539",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:39Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "22c8101dacaa8a8f2073790ceb135b9320af668ef5f30c7c0e4da5e70a6ea51e"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "2cc3ae73173bbd55b1e5d80c80e7ffab5860af83cd04020c9ffe510d363f5ef0",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=0 records=1 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.08
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.07
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.13
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "72374a1f799e6ead568bf7996c244c4be8476730969539d3bf10cde41f7446a9"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/store",
+        "select"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "candidate-directory"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.1
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "72374a1f799e6ead568bf7996c244c4be8476730969539d3bf10cde41f7446a9"
+      },
+      "staging": {
+       ".pack-2077490-0d99d35872ebda709a42a5e2": "bf2fa6274c66f38704a49e487d933f1696edb9f0b6776686b0a2d6ccd3d785b8"
+      },
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=2 records=2 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.11
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.09
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=2\n",
+       "stderr": "",
+       "seconds": 0.07
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.11
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    },
+    "operator": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-operator/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/candidate-directory-operator/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.17
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "seed_owner": {
+      "pid": 2077558,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/candidate-directory-operator/control.sock",
+       "LISTENING 35957",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:41Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "96442c9d7e1b523ea7e66fdfd14258b7e96b22ea3fbbd10816912c1e8618916e"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "061c73aa57ee98d2239070f843e89ee490681bbed7fe63d06b229526c6ead84a",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=1 generation=0 reclaimed=1 retired=0\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.13
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "c2bb3638771499133d7e64bc857b589b024994ed2e830e70da6ceb3ab56c13a0"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "candidate-directory"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.1
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "c2bb3638771499133d7e64bc857b589b024994ed2e830e70da6ceb3ab56c13a0"
+      },
+      "staging": {
+       ".pack-2077600-0d99d35872ebda709a42a5e2": "1e2fa84b5100e7bcd720208e005b25db37ddb53496ff6515995db1d959aea434"
+      },
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=2 generation=2 reclaimed=1 retired=2\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.13
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-operator/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.26
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    }
+   },
+   "pass": true
+  },
+  {
+   "cut": "selection-file",
+   "program": "fn-cpp-marker-step",
+   "book": "byte-store-programs.lisp",
+   "table_candidate": "absent",
+   "entries": {
+    "developer": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.5
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.13
+     },
+     "seed_owner": {
+      "pid": 2077680,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/control.sock",
+       "LISTENING 43161",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:44Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "91fdb7f5a9069038563a5677a052a12ba98f3bc7b67559af16c36818e13a0b65"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "d665b15d5954d73ffaed44f8664ec752fc8ce0236e6d0d3edff270c098eec206",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=0 records=1 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.08
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.06
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "1dd31ee87dbfc2006b844a50cc95a53aca431aaad78b790a2d1a9070866db7df"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/store",
+        "select"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "selection-file"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.12
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "1dd31ee87dbfc2006b844a50cc95a53aca431aaad78b790a2d1a9070866db7df"
+      },
+      "staging": {
+       ".pack-selection-2077728-90b8a14dc43bbded88f99452": "da8645cb1f99ca5f84fe322bfa2909af848310e736a876ce1313ec7b48c6345f"
+      },
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=2 records=2 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.08
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=2\n",
+       "stderr": "",
+       "seconds": 0.08
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-file-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    },
+    "operator": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-file-operator/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/selection-file-operator/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.17
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-file-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.11
+     },
+     "seed_owner": {
+      "pid": 2077785,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/selection-file-operator/control.sock",
+       "LISTENING 49477",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:46Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "4cd9f99fc5a168af10a3f34b8380adfe48ae092c94d78166d444603ab42be402"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "27ffa1709a95ea11aad6416f5fc5ef349c37476116a28563b5d60aa80b29894d",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-file-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=1 generation=0 reclaimed=1 retired=0\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.12
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-file-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.11
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "530d964bb26dac6843b1752085f8de553e4849fd5df6254fcd159041ff195d20"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-file-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "selection-file"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.11
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "530d964bb26dac6843b1752085f8de553e4849fd5df6254fcd159041ff195d20"
+      },
+      "staging": {
+       ".pack-selection-2077825-90b8a14dc43bbded88f99452": "da8645cb1f99ca5f84fe322bfa2909af848310e736a876ce1313ec7b48c6345f"
+      },
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-file-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=2 generation=2 reclaimed=1 retired=2\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.13
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-file-operator/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.08
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-file-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.14
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    }
+   },
+   "pass": true
+  },
+  {
+   "cut": "selection-replace",
+   "program": "fn-cpp-marker-step",
+   "book": "byte-store-programs.lisp",
+   "table_candidate": "present",
+   "entries": {
+    "developer": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.57
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.26
+     },
+     "seed_owner": {
+      "pid": 2077880,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/control.sock",
+       "LISTENING 45491",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:49Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "e91d04e5c07deaa5f4fc278e2d12e7e01730ce6c8882ca88b22c435b0ce30fa7"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "f342fa77bf57d17354cb19d87760ed5334ee5fcf2453a17d60067695f47e6806",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=0 records=1 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.13
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.07
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.07
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "8c32d40ee9b8c634dca90d53e71eaf9d0172bbaeb2797eed6eca6edec2f7b8a8"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/store",
+        "select"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "selection-replace"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.12
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "8c32d40ee9b8c634dca90d53e71eaf9d0172bbaeb2797eed6eca6edec2f7b8a8"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=2 records=2 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.09
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=2\n",
+       "stderr": "",
+       "seconds": 0.08
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    },
+    "operator": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-operator/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/selection-replace-operator/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.17
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "seed_owner": {
+      "pid": 2077986,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/selection-replace-operator/control.sock",
+       "LISTENING 49837",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:51Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "c28a6ab83ecb4f114aab4a49cb4d0688fb93548c83201b5ca80d5a7e0ca2d66e"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "88a33a5f36d4d2174f18b70eaa75188885ad2b1dc84761b33597624ec3d0ad36",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=1 generation=0 reclaimed=1 retired=0\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.13
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.11
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "1e1e17fddadc91361bebc228085fea59db8b528d02d8639490cac07ac8bc2aba"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "selection-replace"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.12
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "1e1e17fddadc91361bebc228085fea59db8b528d02d8639490cac07ac8bc2aba"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=reclaim,retire records=2 generation=1 reclaimed=1 retired=1\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.09
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-operator/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-replace-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    }
+   },
+   "pass": true
+  },
+  {
+   "cut": "selection-directory",
+   "program": "fn-cpp-marker-step",
+   "book": "byte-store-programs.lisp",
+   "table_candidate": "present",
+   "entries": {
+    "developer": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.18
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.27
+     },
+     "seed_owner": {
+      "pid": 2078092,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/control.sock",
+       "LISTENING 33653",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:53Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "baff54a497e1cc3f1a0e51c84bd38f1e7dd5f042bd9e83f1de0761be540bc0f4"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "35f2b47a8849ce60f84da5e9c33797cc4eb639ef16766ff1afb2c6c4f18be6fa",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=0 records=1 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.32
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.11
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.08
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "acb3517dfd64facbc849fbf9e8b7917a616e2d3f0c6f1811df9eda52a36a7d89"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/store",
+        "select"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "selection-directory"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.11
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "acb3517dfd64facbc849fbf9e8b7917a616e2d3f0c6f1811df9eda52a36a7d89"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=2 records=2 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.09
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=2\n",
+       "stderr": "",
+       "seconds": 0.08
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    },
+    "operator": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-operator/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/selection-directory-operator/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.17
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "seed_owner": {
+      "pid": 2078203,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/selection-directory-operator/control.sock",
+       "LISTENING 33145",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:56Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "9820bcfb3af9ad72562f556f8e5c341e10da9738264551917f31b5be9dc9154c"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "828926e94d1096fbd0e0c20752172ba128e4e067d27bdaeae4eb312b50edc716",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=1 generation=0 reclaimed=1 retired=0\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.13
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "6be6e7cf9bae07d314bb79f58fe975a1ee256e576fb413da9688395d35e2fed3"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "selection-directory"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.12
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {
+       "00000000000000000001.txn": "6be6e7cf9bae07d314bb79f58fe975a1ee256e576fb413da9688395d35e2fed3"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=reclaim,retire records=2 generation=1 reclaimed=1 retired=1\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.09
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-operator/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.09
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/selection-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    }
+   },
+   "pass": true
+  },
+  {
+   "cut": "pack-reclaim-unlink",
+   "program": "fn-bs-pack-reclaim-program",
+   "book": "byte-store-programs.lisp",
+   "table_candidate": "either",
+   "entries": {
+    "developer": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.19
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.11
+     },
+     "seed_owner": {
+      "pid": 2078304,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/control.sock",
+       "LISTENING 44361",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:38:58Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "49e1c6686e03933a6cf699fbc66ffebaf40f61a1d2ef2dabdc571e2b3fbdd3c6"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "3360c9c5f61cd51d74de68a684863dc1877bae3d42e0e384fed6949e107e51d6",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=0 records=1 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.08
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.06
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.25
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "95353f783d2d90cdde92b365c7d48953a314e50806ea4b62047acd600d9c62c0"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/store",
+        "select"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-reclaim-unlink"
+       },
+       "stopped": false,
+       "rc": 0,
+       "stdout": "packed generation=1 records=2 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.24
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/store"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-reclaim-unlink"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.09
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=0\n",
+       "stderr": "",
+       "seconds": 0.08
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=1\n",
+       "stderr": "",
+       "seconds": 0.07
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.13
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    },
+    "operator": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-operator/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-operator/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.2
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "seed_owner": {
+      "pid": 2078504,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-operator/control.sock",
+       "LISTENING 58643",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:39:00Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "9d633df5e1fe73529e46cbd0ed47d8fbd9f100457a99928fb4825867a4d6f2c6"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "2805f78dbc556b08a57a39e3232e7439603647e51de9fd6a7409a22f71b57721",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=1 generation=0 reclaimed=1 retired=0\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.14
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.13
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "31f79f4aa9c662583293377db4881c2ba70ccfe4bd008767a65fb7ba294a78e5"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-reclaim-unlink"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.14
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=reclaim,retire records=2 generation=1 reclaimed=0 retired=1\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.08
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-operator/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.08
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-unlink-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    }
+   },
+   "pass": true
+  },
+  {
+   "cut": "pack-reclaim-directory",
+   "program": "fn-bs-pack-reclaim-program",
+   "book": "byte-store-programs.lisp",
+   "table_candidate": "n/a",
+   "entries": {
+    "developer": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.18
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.13
+     },
+     "seed_owner": {
+      "pid": 2078595,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/control.sock",
+       "LISTENING 58381",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:39:02Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "7af0b7199fd3cbd4ceecb3f25d72ffb691c36ed9840ee210aba9ab375369907f"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "354095c8602a0eac68bf3df35754cc5630a28b4f9f5de098556fd2768ec7581b",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=0 records=1 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.13
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.08
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.06
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "7ffaa28346edd01e0b8e8f7d1f8936106cdabaaabe1848e4a87a85931945086e"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/store",
+        "select"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-reclaim-directory"
+       },
+       "stopped": false,
+       "rc": 0,
+       "stdout": "packed generation=1 records=2 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/store"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-reclaim-directory"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.09
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=0\n",
+       "stderr": "",
+       "seconds": 0.07
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=1\n",
+       "stderr": "",
+       "seconds": 0.11
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.08
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    },
+    "operator": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-operator/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-operator/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.17
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "seed_owner": {
+      "pid": 2078708,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-operator/control.sock",
+       "LISTENING 43083",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:39:04Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "c6f2e6a4da7d81536e1e29336e9c30d3557abaf351636dc8915dff1ad0375b4d"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "708d6e8f9d86a9dd2987388eac25987547eff66864cae53dee9a3630e5d2e447",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=1 generation=0 reclaimed=1 retired=0\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.13
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "ca3ab497adc9a2e88082febb874051f79ab34409f7141a9e2d3249be803965fc"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-reclaim-directory"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.13
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=reclaim,retire records=2 generation=1 reclaimed=0 retired=1\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.08
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-operator/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-reclaim-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    }
+   },
+   "pass": true
+  },
+  {
+   "cut": "pack-retire-unlink",
+   "program": "fn-cprt-retire-program",
+   "book": "checkpoint-pack-retire.lisp",
+   "table_candidate": "either",
+   "entries": {
+    "developer": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.18
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "seed_owner": {
+      "pid": 2078902,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/control.sock",
+       "LISTENING 42523",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:39:06Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "784a1ca3f74f0b107c373be4fd05f27670c72cfc8fd0d0a6a641633f8c5bcbad"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "a844e766eb72beb63ba1b08d7adbf15e52a7dd23c0a23b7a1d9698612fe2a440",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=0 records=1 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.08
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.08
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "29b24ea8c5927d0fb6bb9959ad282af7b297138f9c2cef10be49051802778fcc"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/store",
+        "select"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-retire-unlink"
+       },
+       "stopped": false,
+       "rc": 0,
+       "stdout": "packed generation=1 records=2 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.12
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/store"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-retire-unlink"
+       },
+       "stopped": false,
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.1
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/store"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-retire-unlink"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.09
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.07
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.06
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    },
+    "operator": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-operator/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-operator/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.55
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.3
+     },
+     "seed_owner": {
+      "pid": 2079011,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-operator/control.sock",
+       "LISTENING 52189",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:39:09Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "60362be99d262feac7ff5c7feefa308975a877e9a0eee70b542789eb618b935b"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "20c392efcb78106672b35645043c78ed45a519fe4599ce933978a2e10fedf29f",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=1 generation=0 reclaimed=1 retired=0\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.15
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "acc4e816579b3b7fcd9dfd467cd611794a4db685879ebd4f7a3f9b40c9026f7c"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-retire-unlink"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.13
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 1,
+       "stdout": "",
+       "stderr": "refused operator compact compaction refused: already-compact\n",
+       "seconds": 0.06
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-operator/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.06
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-unlink-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.13
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    }
+   },
+   "pass": true
+  },
+  {
+   "cut": "pack-retire-directory",
+   "program": "fn-cprt-retire-program",
+   "book": "checkpoint-pack-retire.lisp",
+   "table_candidate": "n/a",
+   "entries": {
+    "developer": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.18
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.11
+     },
+     "seed_owner": {
+      "pid": 2079106,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/control.sock",
+       "LISTENING 47053",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:39:11Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "8984891e2d1c2353ee2fcdb05816a5fb3acbea4512d1589b3e486316d984c2ca"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "81f8f6237ba17818a23c7f23d0ebfe366214373bb38732b0e0df2af84e2ec922",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/store",
+        "select"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "packed generation=0 records=1 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.13
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.08
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.06
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.13
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "d3c55d87d682d4a1e8fbac16200b75fc64ee06e9869deaad0c72db55365c75a1"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/store",
+        "select"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-retire-directory"
+       },
+       "stopped": false,
+       "rc": 0,
+       "stdout": "packed generation=1 records=2 selected=yes\n",
+       "stderr": "",
+       "seconds": 0.14
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-reclaim",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/store"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-retire-directory"
+       },
+       "stopped": false,
+       "rc": 0,
+       "stdout": "reclaimed transaction-prefix=1\n",
+       "stderr": "",
+       "seconds": 0.1
+      },
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/store"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-retire-directory"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.12
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "checkpoint",
+        "pack-retire",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/store"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "retired pack-generations=0\n",
+       "stderr": "",
+       "seconds": 0.06
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.07
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-developer/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    },
+    "operator": {
+     "init": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-operator/fn.toml",
+       "init",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "initialized /tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-operator/store\n",
+      "stderr": "accepted operator init\n",
+      "seconds": 0.23
+     },
+     "seed_owner_ready": true,
+     "seed_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<prior@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/prior.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.27
+     },
+     "seed_owner": {
+      "pid": 2079235,
+      "env": {},
+      "ready": true,
+      "lines": [
+       "CONTROL /tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-operator/control.sock",
+       "LISTENING 46297",
+       ""
+      ],
+      "stopped_by": "SIGTERM",
+      "rc": 0,
+      "stderr": "accepted post path=control message-id=<prior@campaign.invalid> time=2026-09-24T22:39:14Z\naccepted operator run\n"
+     },
+     "seeded": {
+      "transactions": {
+       "00000000000000000000.txn": "0a4bc0dd28845f1019680414f5c1b8ea054e236c40cd3baf7aa4dc0a213a31a5"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+     },
+     "seed_inspect_prior": {
+      "rc": 0,
+      "sha256": "d0b097adc2df1a169fa7fd3e0f814f4a3e87e338f8a82b5f228c3f07e0f0fce8",
+      "injected": true
+     },
+     "seed_compact": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 0,
+       "stdout": "compacted steps=pack,select,reclaim,retire records=1 generation=0 reclaimed=1 retired=0\n",
+       "stderr": "accepted operator compact\n",
+       "seconds": 0.38
+      }
+     ],
+     "candidate_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<candidate@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/candidate.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "before": {
+      "transactions": {
+       "00000000000000000001.txn": "68045caab873160caef041b9a8a9e51a246f4027c06a7ef4059a473c83e0207a"
+      },
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "cut_runs": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {
+        "FN_CHECKPOINT_TEST_STOP": "pack-retire-directory"
+       },
+       "stopped": true,
+       "rc": -9,
+       "stdout": "",
+       "stderr": "",
+       "seconds": 0.13
+      }
+     ],
+     "reached": true,
+     "killed": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "recover_rc": 0,
+     "identical_after_cut": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "resume": [
+      {
+       "argv": [
+        "IMAGE",
+        "--fn",
+        "operator",
+        "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-operator/fn.toml",
+        "store",
+        "compact"
+       ],
+       "env": {},
+       "rc": 1,
+       "stdout": "",
+       "stderr": "refused operator compact compaction refused: already-compact\n",
+       "seconds": 0.06
+      }
+     ],
+     "again": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-operator/fn.toml",
+       "store",
+       "compact"
+      ],
+      "env": {},
+      "rc": 1,
+      "stdout": "",
+      "stderr": "refused operator compact compaction refused: already-compact\n",
+      "seconds": 0.06
+     },
+     "after": {
+      "transactions": {},
+      "staging": {},
+      "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+     },
+     "identical_after_resume": {
+      "<prior@campaign.invalid>": true,
+      "<candidate@campaign.invalid>": true
+     },
+     "third_post": {
+      "argv": [
+       "IMAGE",
+       "--fn",
+       "operator",
+       "/tank/fn/scratch/m5-compact/campaign-work/pack-retire-directory-operator/fn.toml",
+       "post",
+       "--message-id",
+       "<third@campaign.invalid>",
+       "--payload",
+       "/tank/fn/scratch/m5-compact/campaign-work/third.art",
+       "--group",
+       "fn.letters"
+      ],
+      "env": {},
+      "rc": 0,
+      "stdout": "",
+      "stderr": "accepted operator post ACCEPTED\n",
+      "seconds": 0.12
+     },
+     "group_before": [
+      2,
+      1,
+      2
+     ],
+     "group_after": [
+      3,
+      1,
+      3
+     ],
+     "pass": true
+    }
+   },
+   "pass": true
+  }
+ ],
+ "faults": []
+}
