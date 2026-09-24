@@ -11,7 +11,8 @@
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
                 (not (fn-stxa-p (fn-sn-completion-record s)))
-                (not (fn-cpe-eventp (fn-sn-completion-record s))))
+                (not (fn-cpe-eventp (fn-sn-completion-record s)))
+                (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (and
             (consp (fn-find-article
                     (fn-record-msgid (fn-sn-completion-record s))
@@ -30,7 +31,8 @@
                             fn-sn-completion-enabledp
                             fn-sn-completion-record
                             fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
-                            fn-store-retention-event-p)))))
+                            fn-store-retention-event-p
+                            fn-th-topic-eventp)))))
 
 ; These two projections are deliberately independent of the replay step.
 ; Article state is newest first; the Store journal is oldest first.
@@ -53,7 +55,8 @@
   (and (not (fn-store-retention-event-p record))
        (not (fn-stxe-p record))
        (not (fn-stxk-p record))
-       (not (fn-cpe-eventp record))))
+       (not (fn-cpe-eventp record))
+       (not (fn-th-topic-eventp record))))
 
 (defun fn-replay-journal-article-stamps (records)
   (declare (xargs :guard t))
