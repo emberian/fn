@@ -69,6 +69,7 @@
 ; that Store into workflow state; the former reverse-copy join was removed.
 (include-book "books/bp-outbound")
 (include-book "books/bp-ion-workflow")
+(include-book "books/bp-request-plan")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")
 ; The TCPCLv4 convergence layer: the octet grammar and the session machine the
@@ -221,7 +222,6 @@
         (load "host/native/signature-command.lisp")
         (load "host/native/checkpoint.lisp")
         (load "host/native/workflow.lisp")
-        (load "host/native/bp-obligation.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")
         (load "host/native/bp.lisp")
@@ -231,6 +231,8 @@
         (load "host/native/bp-app.lisp")
         (load "host/native/bp-service.lisp")
         (load "host/native/bp-contact.lisp")
+        ; After FNBS: `bp-obligation request' hands its ADU to the carrier.
+        (load "host/native/bp-obligation.lisp")
         (load "host/native/bp-node.lisp")
         ; Native anchor acquisition and its real primitive facility.  The
         ; anchor command calls fnn-crypto-startup in the restarted image, so

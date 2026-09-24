@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../books/bp-workflow-constructors")
 (include-book "../books/bp-ion-workflow")
+(include-book "../books/bp-request-plan")
 ; `fn-sn-node' is books/store-node's; include it rather than depend on a
 ; store session having been opened in this ACL2 first.
 (include-book "../books/store-node")
@@ -152,12 +153,22 @@
       (let ((state (f-put-global 'fn-workflow-effects nil state))) (value t))
     (value nil))))
 
+; The generic native request (`bp-obligation request'): ACL2's whole plan for
+; one work, from the attempt record to the request ADU and its destination
+; (books/bp-request-plan.lisp, keystone fn-bprq-plan-is-the-works-request).
+(defun fn-workflow-request-plan (work-id attempt-id state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bprq-plan (f-get-global 'fn-workflow-state state)
+                       work-id attempt-id)))
+
 ; Native ION sender calls these exact ACL2 constructors. Raw Lisp only
 ; publishes their returned records and executes their returned ADU bytes.
+; ION is an adapter of the generic attempt: fn-bpiw-attempt-record is
+; fn-bprq-attempt-record (tests/acl2/bp-request-plan-tests.lisp).
 (defun fn-workflow-ion-attempt-record
     (txid tx-generation work-id attempt-id state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpiw-attempt-record
+  (value (fn-bprq-attempt-record
           (f-get-global 'fn-workflow-state state)
           txid tx-generation work-id attempt-id)))
 
