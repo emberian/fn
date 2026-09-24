@@ -92,7 +92,7 @@
              (final (fnn-pack-generation-path store generation))
              (frame (fnn-seal (fnn-octets (second captured)))))
         (let ((authorization
-                (fnn-core 'fn-store-checkpoint-publication-initial
+                (fnn-core 'fn-store-checkpoint-pack-publication-initial
                           generations generation t (if (fnn-lstat final) nil t))))
           (unless (and (listp authorization) (eq (first authorization) :ok)
                        (= (second authorization) generation))

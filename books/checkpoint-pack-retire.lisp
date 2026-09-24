@@ -35,6 +35,20 @@
       (fn-cprt-next-from generations -1)
     :invalid))
 
+; Publication of a replacement pack must use the same gap-aware namespace
+; contract as its allocator.  Ordinary node checkpoints retain the separate
+; gap-free fn-cpp-publication-initial policy.
+(defun fn-cprt-publication-initial
+  (generations proposed-generation exclusivep final-absentp)
+  (declare (xargs :guard t))
+  (let ((next (fn-cprt-next-generation generations)))
+    (cond ((equal next :invalid) '(:error :namespace))
+          ((equal next :exhausted) '(:error :exhausted))
+          ((not (equal proposed-generation next)) '(:error :generation))
+          ((not (equal exclusivep t)) '(:error :authority))
+          ((not (equal final-absentp t)) '(:error :occupied))
+          (t (list :ok next (fn-jpub-initial t))))))
+
 (defun fn-cprt-older-prefix (generations selected)
   (declare (xargs :guard t))
   (if (consp generations)
@@ -179,7 +193,8 @@
 
 (deftheory fn-checkpoint-pack-retire-vocabulary
   '(fn-cprt-generations-after-p fn-cprt-generationsp fn-cprt-next-from
-    fn-cprt-next-generation fn-cprt-older-prefix fn-cprt-retire-plan
+    fn-cprt-next-generation fn-cprt-publication-initial
+    fn-cprt-older-prefix fn-cprt-retire-plan
     fn-cprt-retire-steps fn-cprt-retire-program fn-cprt-crash-survivors
     fn-cprt-prefixp))
 (in-theory (disable fn-checkpoint-pack-retire-vocabulary))

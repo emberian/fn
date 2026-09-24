@@ -136,6 +136,12 @@
   (declare (xargs :mode :program))
   (fn-cprt-next-generation generations))
 
+(defun fn-store-checkpoint-pack-publication-initial
+  (generations proposed-generation exclusivep final-absentp)
+  (declare (xargs :mode :program))
+  (fn-cprt-publication-initial generations proposed-generation
+                               exclusivep final-absentp))
+
 (defun fn-store-checkpoint-pack-retire-plan (generations selected)
   (declare (xargs :mode :program))
   (fn-cprt-retire-plan generations selected))
