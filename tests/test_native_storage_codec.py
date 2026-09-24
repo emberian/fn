@@ -107,6 +107,39 @@ class NativeStorageCodecTests(unittest.TestCase):
         self.assertEqual(result.returncode, expected, result.stderr.decode("utf-8", "replace"))
         return result
 
+    def assert_frames_identical_but_for_the_stamp(self, python_frame, native_frame):
+        """The two runtimes frame the same article identically but for its stamp.
+
+        Each record carries its acceptance stamp (`fn-record-stamp',
+        books/records-shape.lisp; specs/acceptance-stamp.md), read from the
+        clock when it was prepared, so two posts made apart in time differ in
+        that field and in the trailer over it.  ACL2 opens both frames and
+        decodes both records; the native record, given the Python record's
+        stamp by `fn-record-with-stamp', must then encode and frame to the
+        Python transaction file byte for byte.
+        """
+        session = frame_bridge.session()
+        python_record = session.store_unframe(python_frame)
+        native_record = session.store_unframe(native_frame)
+        answer = session.call(
+            "(let ((n (fn-record-decode-exact {})) (p (fn-record-decode-exact {})))"
+            " (if (and (consp n) (equal (car n) :ok) (consp (cdr n))"
+            "          (fn-record-p (cadr n))"
+            "          (consp p) (equal (car p) :ok) (consp (cdr p))"
+            "          (fn-record-p (cadr p)))"
+            "     (list (fn-record-stamp (cadr n)) (fn-record-stamp (cadr p))"
+            "           (fn-record-encode (fn-record-with-stamp (cadr n)"
+            "                                                  (fn-record-stamp (cadr p)))))"
+            "   :undecodable))".format(frame_bridge._octets(native_record),
+                                       frame_bridge._octets(python_record)))
+        self.assertIsInstance(answer, list, f"ACL2 could not decode both records: {answer}")
+        native_stamp, python_stamp, restamped = answer
+        # Both runtimes stamped the article: neither wrote a legacy record.
+        self.assertIsInstance(native_stamp, int, native_stamp)
+        self.assertIsInstance(python_stamp, int, python_stamp)
+        self.assertEqual(bytes(restamped), python_record)
+        self.assertEqual(session.store_frame(bytes(restamped)), python_frame)
+
     def test_native_and_python_cross_open_identical_acl2_frames(self):
         native_store = self.base / "native-store"
         self.invoke(True, native_store, "init")
@@ -131,7 +164,7 @@ class NativeStorageCodecTests(unittest.TestCase):
         self.assertEqual(
             (python_store / "allocation-frontier.json").read_bytes(),
             (native_store / "allocation-frontier.json").read_bytes())
-        self.assertEqual(
+        self.assert_frames_identical_but_for_the_stamp(
             (python_store / "transactions" / "00000000000000000000.txn").read_bytes(),
             (native_store / "transactions" / "00000000000000000000.txn").read_bytes())
 

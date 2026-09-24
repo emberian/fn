@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import select
 import shutil
+import socket
 import subprocess
 import tempfile
 import time
@@ -43,6 +44,7 @@ class NativeBpApplicationTests(unittest.TestCase):
         self.env = environment()
         initialized = self.invoke("store", self.store, "init", "fn.test")
         self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+        self.enroll_sender_boundary()
 
         self.msgid = b"<native-bp-app@example.invalid>"
         self.article = (
@@ -76,6 +78,29 @@ class NativeBpApplicationTests(unittest.TestCase):
             self.request_path.write_bytes(run_store.acl2_octets(bridge.call(form)))
         finally:
             bridge.close()
+
+    def enroll_sender_boundary(self):
+        """Admit dtn://sender/ as a BP boundary principal of the receiving Store.
+
+        The receiver plans a request as transit from an admitted ingress
+        principal (books/bp-transit-join.lisp `fn-bpaj-ingress-peer'): with
+        no boundary for the sender's EID the plan is `(:refused
+        :no-principal)'.  This is the enrollment the fragment and node
+        fixtures carry (tests/test_bp_fragment_node_native.py).
+        """
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            sender_port = reservation.getsockname()[1]
+        config = self.temp / "receiver-fn.toml"
+        config.write_text(f'[store]\npath = "{self.store}"\n', encoding="ascii")
+        policy = self.invoke("operator", config, "policy", "set",
+                             "path-identity", "receiver.bp.gate.invalid")
+        self.assertEqual(policy.returncode, 0, policy.stderr.decode())
+        trusted = self.invoke(
+            "operator", config, "bp-boundary", "add", "sender-boundary",
+            "sender.bp.gate.invalid", "dtn://sender/", sender_port,
+            "fn.test", 32768, 16)
+        self.assertEqual(trusted.returncode, 0, trusted.stderr.decode())
 
     def invoke(self, *args, env=None, timeout=180):
         return subprocess.run(
