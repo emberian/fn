@@ -37,6 +37,7 @@
 (include-book "books/owner-tls-prefix")
 (include-book "books/owner-config-observe")
 (include-book "books/owner-served-carried")
+(include-book "books/owner-commit-carried")
 (include-book "books/owner-served-invariants")
 (include-book "books/owner-agent")
 (include-book "books/owner-log")
