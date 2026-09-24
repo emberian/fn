@@ -52,7 +52,10 @@
 (assert-event (fn-csi-livep *cts-admin-staged*))
 (assert-event (fn-csi-full-relationp *cts-admin-staged*))
 (assert-event (equal (fn-sn-consumer *cts-admin-staged*)
-                     (fn-sn-consumer *cts-registered*)))
+                     (fn-sn-consumer *cts-admin-reserved*)))
+(assert-event (equal (fn-cp-nth 7
+                      (fn-cp-find '(3)
+                       (fn-cp-nth 5 (fn-sn-consumer *cts-admin-staged*)))) 0))
 (make-event `(defconst *cts-installed*
                ',(fn-sn-finish (thsn-publish *cts-admin-staged*))))
 (assert-event (and (fn-csi-livep *cts-installed*)
