@@ -125,9 +125,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 (defun fn-nop-parse-init (words config)
   (declare (xargs :guard t))
   (let ((groups (fn-nop-parse-init-groups words nil)))
-    (if (equal groups :bad)
-        (fn-nop-usage :invalid-init-groups "init" config words)
-      (fn-nop-result :accepted :plan "init" config (list :init groups)))))
+    (cond ((equal groups :bad)
+           (fn-nop-usage :invalid-init-groups "init" config words))
+          ; RFC 5536 s3.1.4: "example.*" and "poster" MUST NOT be created.
+          ; The command line is well formed; the node declines it.
+          ((fn-native-admin-some-group-name-reservedp words)
+           (fn-nop-refused :reserved-group-name "init" config words))
+          (t (fn-nop-result :accepted :plan "init" config (list :init groups))))))
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
@@ -174,10 +178,15 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
   (declare (xargs :guard t))
   (let ((plan (fn-native-admin-plan argv)))
-    (if (equal (fn-native-admin-result-status plan) :accepted)
-        (fn-nop-result :accepted :plan command config (list plan argv))
-      (fn-nop-usage (list :administration (fn-native-admin-result-reason plan))
-                    command config argv))))
+    (cond ((equal (fn-native-admin-result-status plan) :accepted)
+           (fn-nop-result :accepted :plan command config (list plan argv)))
+          ; A reserved group name is a refusal, not a usage error: the
+          ; command line is well formed and the node declines it (exit 1).
+          ((equal (fn-native-admin-result-reason plan) :reserved-group-name)
+           (fn-nop-refused (list :administration :reserved-group-name)
+                           command config argv))
+          (t (fn-nop-usage (list :administration (fn-native-admin-result-reason plan))
+                           command config argv)))))
 
 (defun fn-nop-parse-command (words config argv)
   "The accepted tag means a bounded command *plan* exists; no host effect ran."
@@ -545,3 +554,35 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "policy")) :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           (t :owner-required))))
+
+; KEYSTONE (RFC 5536 s3.1.4 reserved names at `init').  The subject is
+; `fn-native-operator-run', which host/native-operator-host.lisp:19 calls
+; (`fn-native-operator-host-run').  An `init' naming a reserved group, in
+; any position, is never an accepted plan, so `fnn-operator-dispatch-plan'
+; (host/native/operator.lisp) emits the result and exits before
+; `fnn-operator-execute-init' observes or creates anything.
+(local (defthm fn-nop-some-reserved-when-member
+  (implies (and (member-equal name names)
+                (fn-native-admin-group-name-reservedp name))
+           (fn-native-admin-some-group-name-reservedp names))))
+
+(defthm fn-native-operator-run-refuses-a-reserved-init-group
+  (implies (and (equal (car (fn-nop-argument-texts argv)) "init")
+                (member-equal name (cdr (fn-nop-argument-texts argv)))
+                (fn-native-admin-group-name-reservedp name))
+           (not (equal (fn-native-operator-result-status
+                        (fn-native-operator-run config argv))
+                       :accepted)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-parse-command fn-nop-parse-init
+                                   fn-nop-usage fn-nop-refused fn-nop-result
+                                   fn-native-operator-result-status)
+                                  (fn-native-admin-group-name-reservedp
+                                   fn-native-admin-some-group-name-reservedp
+                                   fn-nop-parse-init-groups fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep)))))
