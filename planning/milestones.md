@@ -42,7 +42,12 @@ and physical qualification remain open. No succession or fork policy follows.
 K6 now carries exact typed Store-event frames
 through the modeled surviving-link crash. The ordered whole-list scanner
 join now holds under the actual pair-10 byte/kernel relation; general K0 must
-establish that relation along every supported served trace.
+establish that relation along every supported served trace. The successful
+allocator P-FRONTIER pair-12 root fence and pair-14 callback now reestablish
+the full byte/kernel relation from a related ready input with a typed
+successor frame and fresh staging name. Its Store-node and shared-owner
+callback projections are certified; served call-entry establishment, error
+outcomes and physical barrier qualification remain open.
 Release gates remain the [trajectory](plan-2026-09-22-trajectory.md), and
 image qualification proceeds alongside implementation under
 [how we work](how-we-work.md).
