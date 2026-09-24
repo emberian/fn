@@ -126,6 +126,16 @@
           "kind": "theorem",
           "name": "fn-ccar-own-finish-preserves-sn-statep",
           "note": "The carried commit's premise survives it: if the store satisfies fn-sn-statep, so does the store after fn-ccar-own-finish, with nothing else assumed (fn-sn-finish-preserves-state over the reference). Teeth: tests/acl2/owner-commit-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocmt-post-commit-preserves-ocl-relation",
+          "note": "The configured owner the host's POST commit installs (host/owner-host.lisp fn-owner-finish-submission: fn-ocfg-with-owner of (cdr (fn-ccar-own-finish o cfg))) satisfies fn-ocl-relation whenever the owner before it did, for every configuration; a staged configuration record is carried through. Teeth: tests/acl2/owner-advance-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocmt-sn-finish-preserves-cst-relation",
+          "note": "fn-cst-relation (the configured store's history relation) survives fn-sn-finish on every arm: the completing phase's link equates the node fn-sn-finish installs with the replay of the unchanged history. Teeth: tests/acl2/owner-advance-carried-tests.lisp."
         }
       ]
     },
@@ -253,6 +263,11 @@
         {
           "kind": "theorem",
           "name": "fn-sbud-used-names-the-transaction-namespace"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcar-sbud-prepare-is-sbud-prepare",
+          "note": "Transfers fn-sbud-prepare-refuses-at-budget and fn-sbud-prepare-below-budget-is-the-owner-prepare to the function the host calls: fn-owner-prepare installs fn-pcar-sbud-prepare, equal to fn-sbud-prepare with no hypothesis. Teeth: tests/acl2/owner-prepare-carried-tests.lisp."
         }
       ]
     },
@@ -805,6 +820,26 @@
           "kind": "theorem",
           "name": "fn-ccar-seek-is-find-record",
           "note": "On a record list whose sequence numbers run contiguously from SEQ (fn-sf-record-listp, carried inside fn-sn-statep), the seek that skips to position (car pair) and compares one pair equals the whole-history fn-sn-find-record, for every pair. Teeth: tests/acl2/owner-commit-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcar-sbud-prepare-is-sbud-prepare",
+          "note": "The owner prepare the host calls (host/owner-host.lisp fn-owner-prepare installs fn-pcar-sbud-prepare) equals fn-sbud-prepare for every configured owner, record and budget, with no hypothesis, under the same guard; its guard-verified candidate test reads the last record's txid instead of folding every record's through fn-record-p. Teeth: tests/acl2/owner-prepare-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcar-next-lower-is-next-lower",
+          "note": "The history's txid fold from 0 (fn-sf-next-lower records 0) is 1 + the txid of the last record, or 0 on the empty history, for every value: no hypothesis, so no invariant is spent on it. Teeth: tests/acl2/owner-prepare-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acar-own-outcome-is-reference-under-ocl-relation",
+          "note": "The POST outcome the host calls (host/owner-host.lisp fn-owner-outcome calls fn-acar-own-outcome) equals fn-own-outcome under fn-ocl-relation of the configured owner, for every connection identifier and word; its re-pin tests the rebuilt session at the node the held session already carries instead of evaluating fn-node-statep on it. Teeth: tests/acl2/owner-advance-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acar-scar-auth-sessionp-of-rebuilt-session",
+          "note": "If a session satisfies fn-auth-sessionp, the session rebuilt from it by replacing its innermost post session is recognized by fn-scar-auth-sessionp at the held session's node exactly when fn-auth-sessionp recognizes it. Teeth: tests/acl2/owner-advance-carried-tests.lisp."
         }
       ]
     },
@@ -876,6 +911,11 @@
           "kind": "theorem",
           "name": "fn-ccar-own-finish-is-own-finish",
           "note": "Transfers fn-own-240-follows-consumed-completion to the function the host calls: fn-owner-finish-submission (host/owner-host.lisp) calls fn-ccar-own-finish, equal to fn-own-finish for every owner and configuration. Teeth: tests/acl2/owner-commit-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acar-own-outcome-is-reference-under-ocl-relation",
+          "note": "Transfers the outcome theorems over fn-own-outcome (the 240 only after a consumed completion, the re-pin) to the function the host calls: fn-owner-outcome calls fn-acar-own-outcome, equal to fn-own-outcome under fn-ocl-relation, which fn-ocmt-post-commit-preserves-ocl-relation keeps across the commit before it. Teeth: tests/acl2/owner-advance-carried-tests.lisp."
         }
       ]
     },
