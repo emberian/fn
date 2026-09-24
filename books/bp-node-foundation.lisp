@@ -711,8 +711,15 @@
   (equal (fn-bpnf-held-list
           (fn-bpnf-answer-state (fn-bpnf-step st (list :receive-bundle bundle wire ingress))))
          (fn-bpnf-held-list st))
+  ; The receive arm's admission recognizers decide only which answer is
+  ; built, and no answer installs a held entry; opened, they expand the
+  ; ingress principal down to its wildmat decoder.
   :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
-                                     fn-bpb-bundlep fn-bpb-bundle-id))))
+                                     fn-bpb-bundlep fn-bpb-bundle-id
+                                     fn-bpnf-cl-ingressp
+                                     fn-bpnf-receive-decision
+                                     fn-clock-observationp
+                                     fn-cbor-octet-listp))))
 
 (defthm fn-bpnf-stale-publication-does-not-install-held
   (implies (not (fn-bpnf-operation-matchp (fn-bpnf-issued st) epoch op))
@@ -796,7 +803,9 @@
            (disable fn-bpn-step fn-bpb-encode fn-bpb-bundlep
                     fn-bpb-bundle-id fn-bpah-deliver-step
                     fn-bpah-deliver-result-step
-                    fn-bpah-persist-delivery-step)))
+                    fn-bpah-persist-delivery-step
+                    fn-bpnf-cl-ingressp fn-bpnf-receive-decision
+                    fn-clock-observationp fn-cbor-octet-listp)))
   :rule-classes nil)
 
 ; The issued publication consumes a fresh id from this state, irrespective

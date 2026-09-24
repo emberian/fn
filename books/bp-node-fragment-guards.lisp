@@ -137,7 +137,12 @@
 (local
  (defthm fn-bpnfg-second-is-cadr
    (equal (fn-bpn-nth 1 xs) (cadr xs))
-   :hints (("Goal" :in-theory (enable fn-bpn-nth fn-cbor-ag-car)))))
+   ; Two unfoldings and nothing else; the enabled world spent 4 s here.
+   :hints (("Goal" :expand ((fn-bpn-nth 1 xs) (fn-bpn-nth 0 (cdr xs)))
+            :in-theory (union-theories
+                        '(fn-cbor-ag-car natp zp (natp) (zp) (binary-+)
+                          (unary--) (not) default-car default-cdr)
+                        (theory 'minimal-theory))))))
 (local
  (defthm fn-bpnfg-car-is-car
    (equal (fn-cbor-ag-car xs) (car xs))
