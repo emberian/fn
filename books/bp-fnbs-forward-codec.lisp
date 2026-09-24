@@ -34,10 +34,11 @@
           (if (consp session) (car session) 0)
           (if (consp session) (cdr session) 0)
           (if (consp outcome) :refused outcome)
-          (if (consp outcome) (cadr outcome) 0))))
+          (if (consp outcome) (fn-bpn-nth 1 outcome) 0))))
 
 (defun fn-bpnp-forward-frame-with (kind fields values)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (fn-cbor-octetp kind)
+                              (fn-frame-spec-listp fields))))
   (if (not (fn-frame-values-okp fields values)) :bad
     (let ((payload (fn-frame-fields-octets fields values)))
       (if (not (and (fn-cbor-octet-listp payload)
