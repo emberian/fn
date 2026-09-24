@@ -322,6 +322,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-namespace \
 	tests/acl2/bp-fnbs-namespace-tests \
 	books/bp-node-debt \
+	tests/acl2/bp-node-debt-tests \
 	books/bp-fnbs-publication \
 	tests/acl2/bp-fnbs-publication-tests \
 	books/bp-clock-domain \
