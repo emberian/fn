@@ -1713,6 +1713,11 @@
           "kind": "theorem",
           "name": "fn-bpn-sf-trace-preserves-safety",
           "pending_subject": "Model-only (reach_check orphan): the subject is the fn-bpn-sf observed-file model, whose wrappers equal fn-bpn-sequence-reserve/-recover. The served fn-bpnp-step allocates no sequence; the host reserves one outside it (fnn-bp-reserve-sequence, host/native/bp.lisp:152, through fn-bpn-host-sequence-reserve/-recover in the uncertified host/bp-node-host.lisp:83-104, called at host/native/bp.lisp:168-174 and bp-service.lisp:158) or reuses one via fn-bpn-host-existing-sequence (host/bp-node-machine-host.lisp:21, bp-service.lisp:799-806), and passes it to fn-bpnp-step as an :enqueue operand. No served-path theorem exists until those host functions move into a certified book and a theorem shows the existing-sequence reuse binds one bundle."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-image-keeps-the-held-primary",
+          "note": "Served forwarding path, including a retry after an uncertain kind 8: the image fn-bpnp-step offers (fn-bpnp-step-session-offer-is-the-scan-choice binds it to the scan's forwarding image) encodes a bundle whose primary block is the held bundle's, so source, creation timestamp and sequence are the original ones; the forwarding path reserves no sequence. It does not cover the host sequence allocator. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through fn-bpnp-step, one must-fail per separable hypothesis, stranded after the bound)."
         }
       ]
     },
@@ -1758,6 +1763,26 @@
           "kind": "theorem",
           "name": "fn-bpnp-recovery-success-clears-sessions-and-pending-image",
           "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step; the only recovery event is built at bp-service.lisp:744 in fnn-bps-open): on a :recover-fnbs event whose first effect is tagged :restart-ready, the outbound session table and the pending kind-8 wire are empty afterwards. A faulted recovery keeps both. Teeth: tests/acl2/bp-node-counterexamples-tests (N08 recovery witness with a live session before; one must-fail for the :restart-ready hypothesis; the recovery-event hypothesis has no separating case since only fn-bpnf-recover-fnbs-step builds :restart-ready)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-session-offer-is-the-scan-choice",
+          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step) on a (:session peer s t mru obs) open event: any :persist-attempt it answers names the arrival and primary identity of the row fn-bpnp-forward-scan returns over the state's own held list, waits, credit and epoch, and the pending image is that scan's forwarding image. Bridge for the scan keystone. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through fn-bpnp-step, one must-fail per separable hypothesis, stranded after the bound)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-scan-offers-the-only-candidate",
+          "note": "Selection keystone of the kind-8 retry policy (spec bp-node-machine 4.3.1, pending ember): the scan the :session arm of fn-bpnp-step calls returns a row that is the only forward candidate for the peer (a row with an uncertain attempt from an earlier epoch under the bound is one), is not MRU- or credit-waiting and whose image is ready and fits, with that image and the waits unchanged. Competition among several candidates (N03/N04 fairness) is not claimed. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through fn-bpnp-step, one must-fail per separable hypothesis, stranded after the bound)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-step-attempt-persist-preserves-the-retry-bound",
+          "note": "Over the called fn-bpnp-step (host/native/bp-service.lisp:172 (fnn-bps-foundation-step) calls fn-bpnp-step) on (:persist-result e o r) with an issued kind 8: every held row keeps its retry count within *fn-bpnp-max-forward-retries* (3). Only this arm writes an attempt slot on a served path; other arms are not claimed. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through fn-bpnp-step, one must-fail per separable hypothesis, stranded after the bound)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-attempt-apply-bounds-retries",
+          "note": "The kind-8 apply that both the served persist arm and ordered FNBS replay call keeps held retry counts within the bound. Teeth: tests/acl2/bp-node-forward-retry-tests (N08 witness through fn-bpnp-step, one must-fail per separable hypothesis, stranded after the bound)."
         }
       ]
     },
