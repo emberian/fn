@@ -124,7 +124,7 @@
                (fn-ag-cdr
                 (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr result)))))))))
 
-(defun fn-native-admin-peer-plan (words)
+(defun fn-native-admin-peer-plan-base (words)
   "Build the complete peer record in ACL2; raw Lisp receives no field defaults.
 
 The explicit grammar carries auth-kind/auth-value.  The older grammar is
@@ -208,6 +208,57 @@ decoded as source-address for durable command compatibility."
               (fn-native-admin-result :accepted nil :set-peer nil 0 peer nil)
             (fn-native-admin-result :refused :peer-record nil nil 0 nil nil)))
       (fn-native-admin-result :refused :syntax nil nil 0 nil nil)))))
+
+;; D23: `peer add ... carries HEX [HEX ...]'.  The words before `carries'
+;; are the record grammar above; each HEX after it is a principal, 64
+;; lowercase hexadecimal characters, and becomes one row
+;; (name "carries-principal" HEX 0) of the peer's group, the carried-source
+;; list books/peer-authored-accept.lisp fn-pa-peer-carried-sources reads.
+;; The rows ride in the result's value slot; a peer without `carries' is the
+;; base plan unchanged.
+(defun fn-native-admin-carries-hexp (x)
+  (declare (xargs :guard t))
+  (and (stringp x)
+       (equal (length x) 64)
+       (subsetp-equal (coerce x 'list) (coerce "0123456789abcdef" 'list))))
+
+(defun fn-native-admin-carries-rows (name hexes)
+  (declare (xargs :guard t))
+  (if (consp hexes)
+      (let ((rest (fn-native-admin-carries-rows name (cdr hexes))))
+        (if (and (fn-native-admin-carries-hexp (car hexes)) (listp rest))
+            (cons (list name "carries-principal" (car hexes) 0) rest)
+          :bad))
+    nil))
+
+(defun fn-native-admin-before-carries (words)
+  (declare (xargs :guard t))
+  (if (or (atom words) (equal (car words) "carries")) nil
+    (cons (car words) (fn-native-admin-before-carries (cdr words)))))
+
+(defun fn-native-admin-peer-plan (words)
+  (declare (xargs :guard t))
+  (let ((tail (member-equal "carries" (if (true-listp words) words nil))))
+    (if (not tail)
+        (fn-native-admin-peer-plan-base words)
+      (let* ((base (fn-native-admin-peer-plan-base
+                    (fn-native-admin-before-carries words)))
+             (rows (fn-native-admin-carries-rows (nth 2 words) (cdr tail))))
+        (cond ((not (equal (fn-native-admin-result-status base) :accepted)) base)
+              ((or (not (consp rows)) (equal rows :bad))
+               (fn-native-admin-result :refused :carries nil nil 0 nil nil))
+              (t (fn-native-admin-result
+                  :accepted nil :set-peer nil 0
+                  (fn-native-admin-result-peer base) rows)))))))
+
+(defun fn-native-admin-set-peer-delta (plan)
+  (declare (xargs :guard t))
+  (let ((peer (fn-native-admin-result-peer plan))
+        (rows (fn-native-admin-result-value plan)))
+    (if (consp rows)
+        (fn-cfg-set-peer (fn-cfg-peer-name peer)
+                         (append (fn-cfg-peer-rows peer) rows))
+      (fn-cfg-set-peer-delta peer))))
 
 ; A BP-only peer boundary is one durable :set-peer row group.  The profile is
 ; deliberately narrow: loopback IPv4, no translation, and every co-resident
@@ -408,7 +459,7 @@ decoded as source-address for durable command compatibility."
     (let ((kind (fn-native-admin-result-kind plan))
           (name (fn-record-octets-string (fn-native-admin-result-name plan))))
       (cond ((equal kind :set-peer)
-             (list (fn-cfg-set-peer-delta (fn-native-admin-result-peer plan))))
+             (list (fn-native-admin-set-peer-delta plan)))
             ((equal kind :set-bp-boundary)
              (list (fn-cfg-set-peer name
                                     (fn-native-admin-result-value plan))))
@@ -435,14 +486,27 @@ decoded as source-address for durable command compatibility."
   (equal (fn-native-admin-result-name (fn-native-admin-result s r k n c p v)) n)))
 (local (in-theory (disable fn-native-admin-result fn-native-admin-result-kind
                            fn-native-admin-result-status fn-native-admin-result-name)))
+(defthm fn-native-admin-peer-plan-base-kind
+  (member-equal (fn-native-admin-result-kind (fn-native-admin-peer-plan-base words))
+                '(:set-peer nil))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-peer-plan-base)
+                                  (fn-cfg-peerp fn-cfg-peer-make nth len
+                                   fn-native-admin-decimalp fn-native-admin-decimal-value
+                                   fn-native-config-ipv4-address fn-id-hex-listp)))))
 (defthm fn-native-admin-peer-plan-kind
   (member-equal (fn-native-admin-result-kind (fn-native-admin-peer-plan words))
                 '(:set-peer nil))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-admin-peer-plan)
-                                  (fn-cfg-peerp fn-cfg-peer-make nth len
-                                   fn-native-admin-decimalp fn-native-admin-decimal-value
-                                   fn-native-config-ipv4-address fn-id-hex-listp)))))
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-peer-plan
+                                   fn-native-admin-result
+                                   fn-native-admin-result-kind)
+                                  (fn-native-admin-peer-plan-base
+                                   fn-native-admin-carries-rows
+                                   fn-native-admin-before-carries))
+           :use ((:instance fn-native-admin-peer-plan-base-kind)
+                 (:instance fn-native-admin-peer-plan-base-kind
+                  (words (fn-native-admin-before-carries words)))))))
 (defthm fn-native-admin-plan-group-name-is-a-group-name
   (implies (and (equal (fn-native-admin-result-status (fn-native-admin-plan argv)) :accepted)
                 (member-equal (fn-native-admin-result-kind (fn-native-admin-plan argv))

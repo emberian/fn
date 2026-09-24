@@ -324,7 +324,7 @@
                             fn-pa-carried-arm-needs-the-list-and-no-local-snapshot
                             fn-pa-carried-event-requires-the-carried-arm
                             fn-hsig-article-event-carried-bindsp
-                            fn-stxa-bindsp fn-stxe-encode fn-record-encode
+                            fn-stxa-bindsp fn-stxe-encode 
                             fn-record-stamp-of-observation fn-record-make
                             fn-record-string-octets
                             fn-hsig-carried-record-metadatap
@@ -365,7 +365,7 @@
                                fn-pa-carried-event-is-a-carried-record
                                fn-record-round-trip-succeeds
                                fn-hls-kind4-verdict-event
-                               fn-record-encode
+
                                fn-record-stamp-of-observation))))
 
 ; Replay's dispatch: a carried composite is recorded by the carried branch,
