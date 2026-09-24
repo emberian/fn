@@ -242,6 +242,12 @@ for one), or nil."
            (fn-olog-field "detail" (fn-olog-symbol-text detail))
            (fn-olog-field "time" (fn-olog-time (fn-own-clock o)))))))
 
+; A feed name as octets: the feed's peer is a string, its Message-ID the
+; octets fn-feed-namep admits.
+(defun fn-olog-name-octets (x)
+  (declare (xargs :guard t))
+  (if (stringp x) (fn-olog-text x) x))
+
 ; The sender's line for one parsed feed reply, or nil for a 335/238 (the
 ; peer asked for the article; the TAKETHIS/IHAVE body is not an outcome).
 (defun fn-olog-feed-reply-line (o peer response)
@@ -252,9 +258,10 @@ for one), or nil."
       (fn-olog-join
        (list (fn-olog-code-class-word code)
              (fn-olog-text "feed")
-             (fn-olog-field "peer" (fn-olog-text peer))
+             (fn-olog-field "peer" (fn-olog-name-octets peer))
              (fn-olog-field "message-id"
-                            (fn-olog-text (fn-feed-response-msgid response)))
+                            (fn-olog-name-octets
+                             (fn-feed-response-msgid response)))
              (fn-olog-field "code" (fn-olog-decimal code))
              (fn-olog-field "time" (fn-olog-time (fn-own-clock o))))))))
 
