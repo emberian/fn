@@ -175,8 +175,10 @@ in `host/owner-host.lisp`, which calls the ACL2 `fn-col-*` decisions in
 table, epoch allocator and ack positions. Consumer write proposals pass
 through `fn-sn-prepare-consumer`, the ordinary publication barrier and
 `fn-sn-finish`; recovery reconstructs the projection from the committed Store
-stream. `fn-col-poll` is read-only over that committed event prefix. An NNTP
-watermark, NEWNEWS result or acceptance stamp cannot substitute for this
+stream. `fn-col-poll` is read-only over that committed event prefix. It reads a
+derived sequence index in Store slot 13, rebuilt from the exact committed
+event list on observed reopen; this index is not separate durable authority.
+An NNTP watermark, NEWNEWS result or acceptance stamp cannot substitute for this
 consumer position or its declaration of processing.
 
 The executable `fn-cp-register`, `fn-cp-ack`, `fn-cp-rebase` and
@@ -321,11 +323,18 @@ The `consumer-project` exact-file reader uses the ACL2 cursor and event
 ceilings (346 and 196,608 octets). A file beyond either ceiling is a bounded
 `:limit` refusal of that CLI request; malformed files within the ceilings
 reach the ACL2 projector's codec refusal. Neither result advances an ack.
-The current list-backed selector copies a 16-event window after a positional
-walk of at most the configured Store transaction limit, so its pessimistic
-work is that limit plus 16 event steps per poll, not constant-time lookup.
-A derived event-index kernel has been certified in a separate lane but is not
-installed or called here; it does not reduce that served cost. The original
+The called `fn-col-poll` reads at most 16 consecutive events by sequence from
+the carried four-octet radix index, then runs the ACL2 article selector over
+that window. It does not walk the acknowledged prefix for each poll. The
+index is maintained when the committed Store directory grows and rebuilt
+from the exact event list on recovery; that rebuild scans retained history,
+and the index retains event references proportional to retained history.
+The ACL2 correspondence proof equates the called indexed poll with a
+proof-only list selector when the carried index and Store relations hold in
+a serving phase. It derives the file-state and uint32 record-count conditions
+from the maintained Store relation. Its stale-index and fault-phase negative
+witnesses pass; independent structural-relation teeth and a source-matched
+native poll cost measurement are still open. The original
 `bc9be7ec` image's signed poll attempt failed before submission because the
 CLI supplied the cursor output path as an extra ACL2 request argument,
 as recorded in [the original failure](../planning/evidence/native-e2-poll-bc9-original.md).
