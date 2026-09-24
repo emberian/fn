@@ -1690,6 +1690,20 @@
                                    fn-record-shape-vocabulary
                                    fn-store-event-p fn-cpe-eventp)))))
 
+; The event-index update on a successful record-directory observation changes
+; only the derived index.  Project files before proving the file-kernel prefix
+; property, so this proof never opens the index insertion or its bounds codec.
+(local
+ (defthm fn-snt-files-of-io
+   (equal (fn-sn-files (fn-sn-io s operation result))
+          (if (fn-sn-statep s)
+              (fn-sn-file-step (fn-sn-files s) operation result)
+            (fn-sn-files s)))
+   :hints (("Goal"
+            :in-theory '(fn-sn-io
+                         fn-sn-files-of-fn-sn-update
+                         fn-sn-files-of-fn-sn-with-event-index)))))
+
 (defthm fn-snt-io-records-prefix
   (implies (fn-sn-statep s)
            (fn-sf-prefixp (fn-sf-records (fn-sn-files s))
@@ -1698,8 +1712,10 @@
            :use ((:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
                  (:instance fn-sf-stable-records-prefix-of-record-dir-result
                             (s (fn-sn-files s))))
-           :in-theory (e/d (fn-sn-io fn-sn-file-step fn-sn-update )
+           :in-theory (e/d (fn-sn-file-step)
                            (fn-sn-statep fn-sf-statep  fn-sf-prefixp
+                            fn-sn-io fn-sn-update fn-sn-with-event-index
+                            fn-cei-put fn-cp-uintp
                             fn-sf-start-frontier fn-sf-frontier-file-result
                             fn-sf-frontier-replace-result fn-sf-frontier-dir-result
                             fn-sf-record-file-result fn-sf-record-link-result

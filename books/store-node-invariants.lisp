@@ -1596,6 +1596,8 @@
             (e/d (fn-sn-completion-enabledp fn-replay-apply-record)
                  (fn-cpe-eventp fn-store-retention-event-p
                   fn-stxe-p fn-stxk-p fn-stxa-p
+                  fn-sn-statep fn-sn-record-bindsp
+                  fn-node-pending-matchesp fn-pending-matchesp
                   fn-replay-apply-identity-neutral))))))
 (local
  (defthm fn-snx-consumer-completion-replay-non-nil-by-definition
@@ -1607,6 +1609,8 @@
             (e/d (fn-sn-completion-enabledp fn-replay-apply-record)
                  (fn-cpe-eventp fn-store-retention-event-p
                   fn-stxe-p fn-stxk-p fn-stxa-p
+                  fn-sn-statep fn-sn-record-bindsp
+                  fn-node-pending-matchesp fn-pending-matchesp
                   fn-replay-apply-identity-neutral))))))
 (local
  (defthmd fn-sn-finish-consumer-arm-keeps-the-store-and-index
