@@ -33,12 +33,6 @@
       "host": "hbox",
       "verdict": "passed"
     },
-    "books/owner-invariants": {
-      "seconds": 12.552,
-      "run": "certify-20260924T150908Z-1457985",
-      "host": "hbox",
-      "verdict": "passed"
-    },
     "books/store-node-invariants": {
       "seconds": 17.197,
       "run": "certify-20260924T153508Z-1499013",
