@@ -95,6 +95,12 @@ working division for fn, not a general model benchmark.
 
 ## Useful parallelism and proof cost
 
+The current working budget is four jobs for the shared combined qualification
+and at most two for a lane's scoped run, within the existing machine-wide
+pools and memory limits. Those are per-run ceilings, not permission to exceed
+the shared pool. Historical sixteen-job timings are measurements, not the
+current launch recipe. Coordinate resource use directly before submission.
+
 Before starting a duplicate proof/build job, check peer announcements, current
 farm runs and the certificate cache. Reuse a matching result; if needed,
 coordinate one run and share its manifest. Default to incremental selected
@@ -164,7 +170,7 @@ published a certification of `dev`'s head since. The rules that follow:
 
 - **Root keeps `dev` certified.** After each merge batch root submits one
   treewide run of `dev`'s head on persvati (`farm.py submit persvati
-  $(python3 tools/proof_artifacts.py roots --profile default; python3 tools/proof_artifacts.py roots --profile dtn; ls tests/acl2/*.lisp | sed 's/\.lisp$//') --jobs 16
+  $(python3 tools/proof_artifacts.py roots --profile default; python3 tools/proof_artifacts.py roots --profile dtn; ls tests/acl2/*.lisp | sed 's/\.lisp$//') --jobs 4
   --cache /home/ember/fn-certcache ...`) so the cache carries every
   unchanged book at its current digest, and a lane's run certifies only
   what the lane changed and what includes it. Since 2026-09-23 that run is
