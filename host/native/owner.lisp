@@ -801,11 +801,16 @@ follows is justified only by this line."
           detail))
   :refused)
 
-(defun fnn-owner-attempt-transit (service msgid payload groups evidence)
+(defun fnn-owner-attempt-transit (service msgid payload groups evidence
+                                  &optional nntp-transit-p)
   "One ingress decision for both NNTP and BP transit under the caller's
 durable intent. ACL2 distinguishes carrier absence from present-invalid,
 selects the B-local current enrollment, and constructs the exact kind-4
-event. A carrier-absent article keeps the established legacy Store path."
+event. A carrier-absent article keeps the established legacy Store path.
+NNTP-TRANSIT-P is true only for NNTP transit: ACL2 then also consults the
+delivering boundary's carried-source list (D23) and, on its :carried arm,
+builds the carried kind-4 event, which names no enrollment and claims no
+verification."
   (let ((form (fnn-owner-core 'fn-owner-peer-carrier-form
                               (fnn-octet-list payload))))
     (cond
@@ -834,7 +839,31 @@ event. A carrier-absent article keeps the established legacy Store path."
                (:conflict (return-from fnn-owner-attempt-transit
                             (fnn-owner-transit-refused :conflict))))
              (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
-                                         (fnn-octet-list payload))))
+                                         (fnn-octet-list payload)
+                                         (and nntp-transit-p t))))
+               (when (and (consp plan) (eq (first plan) :carried))
+                 (unless (eq (fnn-owner-advance-clock) :observed)
+                   (return-from fnn-owner-attempt-transit :clock-unusable))
+                 (multiple-value-bind (obligation subject ignored)
+                     (fnn-metadata msgid payload)
+                   (declare (ignore ignored))
+                   (let* ((coordinates
+                            (fnn-owner-core 'fn-owner-next-store-coordinates))
+                          (event
+                            (fnn-owner-core
+                             'fn-owner-peer-carried-relay-event coordinates
+                             (fnn-octet-list msgid) (fnn-octet-list payload)
+                             codes (fnn-octet-list obligation)
+                             (fnn-octet-list subject) (fnn-octet-list evidence)
+                             charge)))
+                     (unless event
+                       (return-from fnn-owner-attempt-transit
+                         (fnn-owner-transit-refused :event)))
+                     ;; A log detail only (fn-olog-transit-line): the Store
+                     ;; record's token, not an input to any decision.
+                     (setq *fnn-owner-transit-detail* :carried)
+                     (return-from fnn-owner-attempt-transit
+                       (fnn-owner-identity-commit service event)))))
                (unless (and (consp plan) (eq (first plan) :ok))
                  (return-from fnn-owner-attempt-transit
                    (fnn-owner-transit-refused plan)))
@@ -1175,7 +1204,7 @@ refused or deferred peer transfer is never silent."
                   (fnn-owner-feed-flush service)
                   (let ((word (if transitp
                                   (fnn-owner-attempt-transit
-                                   service msgid payload groups evidence)
+                                   service msgid payload groups evidence t)
                                 (fnn-owner-attempt-served
                                  service msgid payload groups evidence))))
                     (fnn-owner-action 'fn-owner-submission-resolution

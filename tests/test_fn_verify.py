@@ -175,6 +175,9 @@ class FakeNodeVerifyTests(unittest.TestCase):
                 "<impostor@x.invalid>": impostor.carried(source_for("<impostor@x.invalid>")),
                 "<no-hdr@x.invalid>": good,
                 "<garbled@x.invalid>": good,
+                "<carried@x.invalid>": cls.author.carried(source_for("<carried@x.invalid>")),
+                "<carried-unpinned@x.invalid>": cls.stranger.carried(
+                    source_for("<carried-unpinned@x.invalid>")),
             },
             verdicts={
                 "<good@x.invalid>": a,
@@ -187,6 +190,8 @@ class FakeNodeVerifyTests(unittest.TestCase):
                 "<unpinned@x.invalid>": "verified " + "66" * 32 + " keyring 1",
                 "<impostor@x.invalid>": a,
                 "<garbled@x.invalid>": "maybe",
+                "<carried@x.invalid>": "carried " + "55" * 32,
+                "<carried-unpinned@x.invalid>": "carried " + "66" * 32,
             })
         cls.principal = p
 
@@ -232,6 +237,19 @@ class FakeNodeVerifyTests(unittest.TestCase):
         code, _ = run_verifier("<good@x.invalid>", "--node", "127.0.0.1:1", "--plain",
                                "--keyring", self.keyring)
         self.assertEqual(code, 3)
+
+    def test_a_carried_article_is_undecided_3_never_0_or_1(self):
+        # D23: a relay that carries without an enrollment says `carried P'.
+        # Even when the signature verifies under the pinned keys, the node
+        # claimed nothing, so the tool neither agrees nor disagrees.
+        for msgid, check in (("<carried@x.invalid>", "verified"),
+                             ("<carried-unpinned@x.invalid>", None)):
+            code, report = self.verify(msgid)
+            self.assertEqual(code, 3, (msgid, report))
+            self.assertIn("carried this article", report["detail"])
+            self.assertEqual(report["node"]["outcome"], "carried")
+            if check:
+                self.assertEqual(report["independent"]["outcome"], check)
 
     def test_usage_error_never_reads_as_disagreement(self):
         code, _ = run_verifier("not-a-msgid", "--node", "x", "--plain",

@@ -37,8 +37,11 @@ Exit codes:
     2  disagreement: the node says verified and the check fails (or names
        another principal), or the node says not verified and the check verifies
     3  cannot decide: connection, TLS or login failure, no such article, an
-       unpinned principal, a malformed answer, a missing library, or two
-       implementations of one primitive that disagree
+       unpinned principal, a malformed answer, a missing library, two
+       implementations of one primitive that disagree, or a node that says
+       `carried P': it holds and relays the article for a neighbour whose
+       boundary allowlists P and verified nothing itself (D23).  Ask a node
+       that enrolled P; the independent check is still run and reported.
     64 usage (argparse's own 2 is remapped so it never reads as disagreement)
 
 Credentials come from FN_CLIENT_USER and FN_CLIENT_PASSWORD or from
@@ -339,7 +342,7 @@ def independent_check(article, msgid, keyring):
 
 def parse_hdr_item(line):
     """`N verified HEX keyring G [policy ...]`, `N verified legacy keyring G`,
-    `N unverified REASON keyring G`, `N absent REASON`."""
+    `N unverified REASON keyring G`, `N absent REASON`, `N carried HEX`."""
     parts = line.split()
     if len(parts) < 3 or not parts[0].isdigit():
         raise Undecided("malformed HDR :fn-verified line {!r}".format(line))
@@ -355,6 +358,10 @@ def parse_hdr_item(line):
                 "keyring": parts[4] if len(parts) >= 5 else None}
     if token == "absent":
         return {"outcome": "absent", "reason": parts[2]}
+    if token == "carried":
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", parts[2]):
+            raise Undecided("the node's carried line names no principal: {!r}".format(line))
+        return {"outcome": "carried", "principal": parts[2].lower()}
     raise Undecided("unknown HDR :fn-verified token in {!r}".format(line))
 
 
@@ -556,7 +563,20 @@ def verify(args):
             check = independent_check(article, args.msgid, keyring)
         except ValueError as error:
             raise Undecided("the served article does not parse: {}".format(error))
+        except Undecided as error:
+            if claim["outcome"] != "carried":
+                raise
+            check = {"outcome": "undecided", "reason": str(error)}
         report["node"], report["independent"] = claim, check
+        if claim["outcome"] == "carried":
+            # D23: the node claims nothing about the signature; there is no
+            # verdict to agree or disagree with.
+            raise Undecided(
+                "the node carried this article for a neighbour without verifying it "
+                "(it holds no enrollment of {}); ask a node that enrolled the author "
+                "(the independent check here says {})".format(
+                    claim["principal"],
+                    check.get("reason") or check["outcome"]))
         code, sentence = compare(claim, check)
     except Undecided as error:
         code, sentence = UNDECIDED, str(error)

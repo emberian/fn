@@ -33,7 +33,12 @@
 ; -----------------------------------------------------------------------------
 ; The verdict record: (token detail generation).
 
-(defconst *fn-stx-verdicts* '(:verified :unverified :absent))
+;; D23 (planning/decisions.md, 2026-09-24): a fourth token that
+;; fn-stx-verdict never returns.  :carried is the Store's record of a signed
+;; article a node held and relays for a neighbour whose boundary allowlists
+;; the author, without an enrollment of that author here: nothing was
+;; verified at this node (books/peer-authored-accept.lisp fn-pa-transit-plan).
+(defconst *fn-stx-verdicts* '(:verified :unverified :absent :carried))
 
 (defun fn-stx-make-verdict (token detail generation)
   (declare (xargs :guard t))
@@ -117,7 +122,7 @@
 ; -----------------------------------------------------------------------------
 ; Rendering the HDR :fn-verified metadata item (section 5).
 ;
-; Three tokens, one per member of *fn-stx-verdicts*, never a boolean and
+; One token per member of *fn-stx-verdicts*, never a boolean and
 ; never two outcomes collapsed into one token.  The principal id is hex, the
 ; keyring generation decimal.  The policy term of the design's sample line is
 ; packet S4's and is not rendered here.
@@ -164,6 +169,7 @@
 (defconst *fn-stx-token-signature*
   '(115 105 103 110 97 116 117 114 101))
 (defconst *fn-stx-token-unknown* '(117 110 107 110 111 119 110))
+(defconst *fn-stx-token-carried* '(99 97 114 114 105 101 100))
 
 (defun fn-stx-reason-token (detail)
   (declare (xargs :guard t))
@@ -188,6 +194,9 @@
                    (append '(32)
                            (append (fn-stx-hex-octets detail)
                                    (fn-stx-keyring-suffix generation)))))
+          ((equal token :carried)
+           (append *fn-stx-token-carried*
+                   (append '(32) (fn-stx-hex-octets detail))))
           ((equal token :unverified)
            (append *fn-stx-token-unverified*
                    (append '(32)
@@ -269,7 +278,8 @@
 
 ; Three outcomes stay distinct all the way out (D13): the rendered item
 ; begins with a different token for each member of *fn-stx-verdicts*, so no
-; rendering collapses :unverified and :absent.
+; rendering collapses :unverified and :absent, and a :carried record (D23)
+; never renders as `verified'.
 (defthm fn-stx-verified-item-separates-the-three-outcomes
   (and (equal (fn-stx-verified-item (fn-stx-make-verdict :verified detail generation))
               (append *fn-stx-token-verified*
@@ -283,8 +293,22 @@
                                       (fn-stx-keyring-suffix generation)))))
        (equal (fn-stx-verified-item (fn-stx-make-verdict :absent detail generation))
               (append *fn-stx-token-absent*
-                      (append '(32) (fn-stx-reason-token detail)))))
+                      (append '(32) (fn-stx-reason-token detail))))
+       (equal (fn-stx-verified-item (fn-stx-make-verdict :carried detail generation))
+              (append *fn-stx-token-carried*
+                      (append '(32) (fn-stx-hex-octets detail)))))
   :rule-classes nil)
+
+;; D23: the SUB-002 verdict is one of its three outcomes; :carried is only
+;; ever a Store record of a relayed article (fn-pa-carried-event), never the
+;; verdict of an article this node checked.
+(defthm fn-stx-verdict-is-never-carried
+  (not (equal (fn-stx-verdict-token (fn-stx-verdict article keyring generation))
+              :carried))
+  :hints (("Goal" :in-theory (e/d ((:d fn-stx-verdict))
+                                  (fn-stx-parse-header fn-stx-payload-for
+                                   fn-stx-field fn-stx-reattach
+                                   fn-prin-verifiedp)))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).
