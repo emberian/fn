@@ -58,18 +58,19 @@
   (declare (xargs :guard t))
   (if (not (fn-bpnf-family-record-atp row))
       :bad
-    (let* ((values (fn-bpnf-family-v1-values row))
-           (payload (fn-frame-fields-octets
-                     *fn-bpnf-family-fields-v1* values)))
-      (if (not (and (fn-frame-values-okp
-                     *fn-bpnf-family-fields-v1* values)
-                    (fn-cbor-octet-listp payload)
-                    (<= (len payload) *fn-bpn-lifecycle-max-payload*)))
+    (let ((values (fn-bpnf-family-v1-values row)))
+      (if (not (fn-frame-values-okp
+                *fn-bpnf-family-fields-v1* values))
           :bad
-        (let ((protected (fn-frame-protected
-                          *fn-frame-magic-bundle-store* *fn-frame-version*
-                          *fn-bpnf-family-kind* payload)))
-          (append protected (fn-frame-trailer protected)))))))
+        (let ((payload (fn-frame-fields-octets
+                        *fn-bpnf-family-fields-v1* values)))
+          (if (not (and (fn-cbor-octet-listp payload)
+                        (<= (len payload) *fn-bpn-lifecycle-max-payload*)))
+              :bad
+            (let ((protected (fn-frame-protected
+                              *fn-frame-magic-bundle-store* *fn-frame-version*
+                              *fn-bpnf-family-kind* payload)))
+              (append protected (fn-frame-trailer protected)))))))))
 
 (defun fn-bpnf-family-values (row)
   (declare (xargs :guard t))

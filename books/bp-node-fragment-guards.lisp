@@ -167,7 +167,12 @@
 (verify-guards fn-bpnf-family-record-at)
 (verify-guards fn-bpnf-family-v1-values)
 (verify-guards fn-bpnf-family-v1-frame)
-(verify-guards fn-bpnf-family-apply-at)
+(verify-guards fn-bpnf-family-apply-at
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpn-machine-statep
+                               fn-bpnf-family-record-atp
+                               fn-bpnf-family-plan-at
+                               fn-bpnf-family-apply))))
 ; Recovery calls the inherited unverified kind-5 decoder and row predicate.
 ; Its guard closure remains a separate A2 codec obligation.
 (verify-guards fn-bpnf-family-issuedp)
