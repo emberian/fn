@@ -319,7 +319,11 @@
 (verify-guards fn-ncl-request-decode)
 (verify-guards fn-ncl-reply-encode)
 (verify-guards fn-ncl-reply-decode)
-(verify-guards fn-ncl-status-reply-encode)
+(verify-guards fn-ncl-status-reply-encode
+  :hints (("Goal"
+           :use ((:instance fn-cp-u32-bytes-true-listp (n ack))
+                 (:instance fn-cp-u32-bytes-true-listp (n frontier))
+                 (:instance fn-cp-u32-bytes-true-listp (n gap))))))
 (verify-guards fn-ncl-status-open)
 (verify-guards fn-ncl-status-reply-decode)
 (verify-guards fn-ncl-poll-event-bytesp)
