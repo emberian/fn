@@ -614,12 +614,12 @@
     "books_in_root_closure": 614,
     "roots": 606,
     "theorems": 8562,
-    "functions": 6353,
-    "assert_events": 9320,
-    "must_fails": 506,
+    "functions": 6354,
+    "assert_events": 9354,
+    "must_fails": 508,
     "encapsulates": 27,
     "guards": {
-      "verified": 2034,
+      "verified": 2035,
       "declared-off": 379,
       "default-guarded": 3133,
       "default-unguarded": 807
@@ -1270,14 +1270,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 2,
-      "functions": 3,
+      "functions": 4,
       "guards": {
-        "verified": 3,
+        "verified": 4,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 3,
+      "verify_guards_events": 4,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -10543,9 +10543,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 3,
-      "must_fails": 2,
-      "defconsts": 5,
+      "assert_events": 37,
+      "must_fails": 4,
+      "defconsts": 25,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -19031,7 +19031,7 @@
       },
       {
         "book": "books/bp-app-handoff-time.lisp",
-        "line": 5,
+        "line": 7,
         "include": "bp-app-handoff",
         "included": "books/bp-app-handoff.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
