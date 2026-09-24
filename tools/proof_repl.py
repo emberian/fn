@@ -424,18 +424,21 @@ def install_closure(book: str) -> tuple[bool, str]:
     if not fingerprint.qualified or fingerprint.identity is None:
         return False, ("proof-repl: unqualified ACL2 launcher/core/runtime: "
                        + fingerprint.reason)
+    cache = certs.cache_directory()
     try:
         # The alist probe starts ACL2 directly. Hold the same machine-wide
         # slot that the subsequent interactive wrapper will take.
         with acl2_slots.slot(f"proof-repl cache {book}"):
             report = certs.install_artifact_set(
-                ROOT, certs.cache_directory(), [book],
+                ROOT, cache, [book],
                 toolchain_identity=fingerprint.identity,
                 dependencies_only=True, purge_on_miss=True, acl2=acl2)
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         return False, f"proof-repl: certificate acquisition failed: {error}"
     if report.artifact_set is None:
-        return False, ("proof-repl: no complete compatible cached dependency set; "
+        return False, (f"proof-repl: no complete compatible cached dependency set "
+                       f"in {cache}; check FN_CERT_CACHE and FN_ACL2. "
+                       "Compatible dependencies may come from multiple origins. Missing: "
                        + ", ".join(report.uncached))
     return True, "\n".join(report.lines())
 
