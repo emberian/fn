@@ -39,7 +39,18 @@
 (verify-guards fn-bpnp-wait-key)
 (verify-guards fn-bpnp-primary)
 (verify-guards fn-bpnp-payload)
-(verify-guards fn-bpnp-held-expiry)
+;; The obligation needs only the clock-time and primary-field shapes.  In
+;; the ambient theory every true-listp/fragment/report rule backchains on the
+;; held primary, which cost 20 s and 6.4 million steps for no useful rewrite.
+(verify-guards fn-bpnp-held-expiry
+  :hints (("Goal" :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-clock-timep natp fn-bpp-lifetime fn-bpp-creation-time
+              (:type-prescription fn-clock-age-anchorp)
+              (:type-prescription fn-clock-observationp)
+              (:executable-counterpart fn-clock-age-anchorp)
+              (:compound-recognizer natp-compound-recognizer))))))
 (verify-guards fn-bpnp-local-class)
 (verify-guards fn-bpnp-live-pendingp)
 (verify-guards fn-bpnp-blockedp)
