@@ -589,13 +589,15 @@
         "Carry a real versioned batch through a selected BP implementation.",
         "Observe transport status before application acceptance.",
         "Expire a bundle or interrupt its path and retry.",
-        "Receive a nonzero fragment, restart, then receive offset zero and reassemble only from a complete coherent live family."
+        "Receive a nonzero fragment, restart, then receive offset zero and reassemble only from a complete coherent live family.",
+        "Reopen an FNWF journal interleaving ION route/observation records with application attempt, receipt and release records."
       ],
       "expected": [
         "Transport status is not a retention undertaking.",
         "Only validated complete application inputs receive matching receipts.",
         "No fragment enters Store before durable whole-bundle replacement; expired or unknown-age source rows cannot be silently omitted from that replacement.",
-        "Adapter version, lifetime profile, and interoperability evidence are recorded."
+        "Adapter version, lifetime profile, and interoperability evidence are recorded.",
+        "Successful mixed-journal replay preserves application work status with one restart, while ION observations remain separate from receipt/release authority; PRF-034 actual-caller correspondence is still open."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-bp-exchange.md",
@@ -604,7 +606,8 @@
         "planning/evidence/native-bp-app-2026-09-21.md",
         "tests/test_bp_app_native.py",
         "tests/test_bp_fragment_node_native.py",
-        "planning/evidence/bp-fragment-expiry-activation-2026-09-24.md", "planning/evidence/ion-observation-binding-2026-09-24.md"
+        "planning/evidence/bp-fragment-expiry-activation-2026-09-24.md",
+        "planning/evidence/ion-observation-binding-2026-09-24.md"
       ],
       "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified. Native TCPCL request-to-owner-Store-to-receipt composition has a separate loopback restart witness; it is not external BPA interoperability or a complete contact-plan test. The fragment-carrier and observation-bound kind-18 transitions have ACL2 evidence; the two-process interrupted-fragment native fixture awaits a source-matched saved image. The optional offline ION sender has a certified ACL2 observation/route/replay component and a source-present native caller; native image qualification, real death/reopen and receipt-return over ION remain open."
     },
@@ -1218,7 +1221,9 @@
       "title": "Protected peer carrier becomes a receiver-local historical authorship event",
       "milestone": "M3",
       "status": "specified",
-      "requirements": ["OBJ-007"],
+      "requirements": [
+        "OBJ-007"
+      ],
       "steps": [
         "Enroll the exact principal and ordered hybrid keys at receiving node B, transfer A's signed carrier over a configured protected peer, and poll B's consumer cursor after Store completion and restart.",
         "Repeat with a present malformed carrier, a wrong key set, a revoked enrollment, and a carrier with one altered signature.",

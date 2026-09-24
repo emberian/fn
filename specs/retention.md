@@ -94,8 +94,8 @@ receipt, no release, and nothing for `fn-assume-peer-retainsp` to hold of);
 evidence shapes `fn-assume-policy-authorizedp` consumes; binding the verdict
 to that signature is D09).
 
-Workflow journal: the host now calls `fn-bprl-apply-journal-record` and
-`fn-bprl-replay-journal` for preflight, durable apply and recovery. They
+Workflow journal: the release-aware layer uses `fn-bprl-apply-journal-record`
+and `fn-bprl-replay-journal` for preflight, durable apply and recovery. They
 extend the earlier `fn-bp-*` workflow interpreter with two append-only FNWF
 records, `(:undertake work-id charge)` and
 `(:release receipt-id work-id subject issuer policy-id terms-id incarnation)`;
@@ -112,11 +112,15 @@ authority. The configured owner's separate Store release event remains the
 authoritative retention mutation.
 
 On a successful reopen, `fn-bprl-replay-work-status-is-durable-status-restarted`
-equates the work status installed by the host-called release-aware replay with
+equates the work status installed by the release-aware replay with
 one restart of the status obtained by folding its exact durable records through
 the same ACL2 interpreter. The witness includes undertaking and release; a
 malformed suffix is refused and shows why the successful-replay premise is
 needed. This is status correspondence, not physical filesystem durability.
+The current offline workflow host wraps this language in
+`fn-bpiw-replay-journal` for ION route/observation records. Its full mixed-stream
+work-status correspondence remains open (PRF-034); single-record projections
+do not establish that whole-replay result.
 
 The authoritative retention mutation is a variant of the Store's single
 immutable transaction history (`books/store-events.lisp`). Existing article

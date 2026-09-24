@@ -2830,7 +2830,7 @@
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 35,
+      "verify_guards_events": 39,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
