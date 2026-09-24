@@ -25,27 +25,21 @@ log that lived here is [archive/now-2026-09-24.md](archive/now-2026-09-24.md).
 | `books/bp-node-progress-selection-invariants` | `fn-bpnp-step-progress-preserves-held-and-issued`, non-clock `:progress` Subgoal 40.2' | bp-selection-invariant |
 | `tests/acl2/bp-node-machine-teeth-tests` | blocked by the uncertified selection include, not its own counterexample | follows bp-selection-invariant |
 
-## Tonight's goal (set by ember; Claude took over at 07:25 UTC)
+## The goal now: v0 (set 2026-09-24 ~08:00 EDT)
 
-1. A frozen image past `863c2141`: the three roots above certified, and BP
-   N03 plus the interrupted-fragment native cases passing on it.
-2. Stretch, **done**: the two-Store join ran complete on `1a9dd747` with no cut
-   and under all four cut families ([record](evidence/two-store-join-1a9dd747-2026-09-24.md));
-   the lost-ACK cut answered UNCERTAIN and settled.
-3. Proof cost down: books over 10 s from 30 to at most 20, and
-   `tools/proof_cost.py` and `tools/certified_claims.py` failing `make check`
-   against a baseline instead of warning.
-4. Planning consolidated onto this page (this change).
+The night goal (image, join, cost, planning) is met; see the
+[restart record](handoff-2026-09-24-night.md). ember's next goal is v0 itself,
+as [plan §2.2](plan-2026-09-22-trajectory.md) defines it: P1 to P11 each held
+as a theorem over the host-called function, with teeth, observed on the
+deployed image; one matrix run on that image agreeing with every row it
+reaches; the cut campaign passing on the production image. The scoreboard is
+[v0-scoreboard.md](v0-scoreboard.md) (one row per P: theorem / host-called
+subject / teeth / observed on image / obstruction); a P is DONE or names its
+obstruction there. Deploying an image to the hbox node happens only after the
+matrix and campaign pass on it, in place with the store kept and the previous
+release retained. Proof cost stays a failing check.
 
-Measure 3 with the tool, not prose: the ratchet baseline counts 37 books
-over 10 s at `46f2660d` (slowest measurement per book, any host); the
-night's target in those terms is 27 or fewer, and a book leaves the
-baseline only by a passing measurement under 10 s. At 07:40 EDT the
-baseline holds 7 books (store-node-traces 10.5 s, checkpoint-codec 10.7,
-consumer-local-control 11.5, records 11.7, owner-invariants 11.8,
-tcpcl-octets 12.9, byte-store-record-provenance 13.2).
-
-## Active lanes (batch 1)
+## Active lanes
 
 Lanes run on Claude Opus 5.5 in `build/lanes/<name>` on branch `lane/<name>`,
 created from dev `46f2660d`; Claude Fable coordinates and merges. How lanes
