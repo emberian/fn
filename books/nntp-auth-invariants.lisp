@@ -124,7 +124,12 @@
                             fn-served-submission fn-nntp-close-effect
                             fn-nntp-begin-article-effect
                             fn-auth-starttls-effect)
-                           (fn-nntp-replyp fn-octet-listp)))))
+                           (fn-nntp-replyp fn-octet-listp fn-nntp-effectsp
+                            fn-auth-nntp-effects-are-auth-effects
+                            fn-nntp-article-idp-is-consp
+                            fn-nntp-response-text-true-listp
+                            fn-nntp-message-id-token-is-response-text
+                            (:linear fn-cp-id-length-bound))))))
 
 ; POST is resolved by fn-auth-command before the pinned reader/trie can run.
 ; This is the exact auth transition called by fn-served-dispatch.
@@ -195,7 +200,13 @@
                             fn-served-connp-is-consistent-session
                             fn-auth-step-pinned-effects-well-formed
                             fn-auth-effects-carry-no-submission
-                            fn-auth-step-pinned-post-without-permission-is-not-offered))
+                            fn-auth-step-pinned-post-without-permission-is-not-offered
+                            fn-auth-nntp-effects-are-auth-effects
+                            fn-nntp-article-idp-is-consp
+                            fn-nntp-response-text-true-listp
+                            fn-nntp-message-id-token-is-response-text
+                            (:linear fn-served-step-nntp-steps-is-bounded)
+                            (:linear fn-cp-id-length-bound)))
            :use ((:instance fn-auth-step-pinned-post-without-permission-is-not-offered
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
