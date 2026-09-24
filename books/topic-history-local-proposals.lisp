@@ -59,6 +59,40 @@
          (fn-th-at 1 projection) txid txid accepted snapshot
          (fn-th-at 4 projection))))))
 
+; The owner host calls this one logical dispatcher.  The operation and source
+; sequence arrive through the bounded local control grammar; neither carries
+; an authorship verdict or source bytes.
+(defun fn-th-local-propose (operation projection txid source-sequence
+                                     observed-uid entropy-id quota)
+  (declare (xargs :guard t))
+  (case operation
+    (:install (fn-th-local-propose-install projection txid observed-uid
+                                           entropy-id))
+    (:anchor (fn-th-local-propose-anchor projection txid source-sequence
+                                         observed-uid quota))
+    (:report (fn-th-local-propose-report projection txid source-sequence))
+    (otherwise (fn-stmt-error :operation))))
+
+(defthm fn-th-local-propose-anchor-requires-earlier-accepted-source
+  (implies (and (equal operation :anchor)
+                (fn-stmt-okp
+                 (fn-th-local-propose operation projection txid source-sequence
+                                      observed-uid entropy-id quota)))
+           (fn-th-prefix-find-accepted-sequence
+            source-sequence (fn-th-at 3 projection)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-th-local-propose))))
+
+(defthm fn-th-local-propose-report-requires-earlier-accepted-source
+  (implies (and (equal operation :report)
+                (fn-stmt-okp
+                 (fn-th-local-propose operation projection txid source-sequence
+                                      observed-uid entropy-id quota)))
+           (fn-th-prefix-find-accepted-sequence
+            source-sequence (fn-th-at 3 projection)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-th-local-propose))))
+
 (defthm fn-th-local-anchor-proposal-requires-earlier-accepted-source
   (implies (fn-stmt-okp
             (fn-th-local-propose-anchor projection txid source-sequence
