@@ -73,19 +73,26 @@
    (defthm fn-native-mission-command-of-administration
      (equal (fn-native-operator-result-command (fn-nop-parse-administration command argv config))
             command)
-     :hints (("Goal" :in-theory (enable fn-nop-parse-administration fn-nop-usage fn-nop-refused))))
+     :hints (("Goal" :in-theory (e/d (fn-nop-parse-administration fn-nop-usage fn-nop-refused)
+                                     (fn-native-admin-plan fn-native-admin-result-status
+                                      fn-native-admin-result-reason)))))
    (defthm fn-native-mission-command-of-store
      (equal (fn-native-operator-result-command (fn-nop-parse-store words config)) "store")
-     :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-refused))))
+     :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-refused)
+                                     (fn-nop-parse-profile-flags fn-nop-profile-preset-word)))))
    (defthm fn-native-mission-command-of-post
      (equal (fn-native-operator-result-command (fn-nop-parse-post words config)) "post")
-     :hints (("Goal" :in-theory (enable fn-nop-parse-post fn-nop-usage fn-nop-refused))))
+     :hints (("Goal" :in-theory (e/d (fn-nop-parse-post fn-nop-usage fn-nop-refused)
+                                     (fn-nop-parse-post-aux)))))
    (defthm fn-native-mission-command-of-peering
      (equal (fn-native-operator-result-command (fn-nop-parse-peering words config)) "peer")
      :hints (("Goal" :in-theory (enable fn-nop-parse-peering fn-nop-usage))))
    (defthm fn-native-mission-command-of-principal
      (equal (fn-native-operator-result-command (fn-nop-parse-principal argv config)) "principal")
-     :hints (("Goal" :in-theory (enable fn-nop-parse-principal fn-nop-usage fn-nop-refused))))
+     :hints (("Goal" :in-theory (e/d (fn-nop-parse-principal fn-nop-usage fn-nop-refused)
+                                     (fn-native-auth-admin-parse-argv
+                                      fn-native-auth-admin-plan-status
+                                      fn-native-auth-admin-plan-reason)))))
 
    ; Under a mission, an accepted init plans the mission's request.
    (defthm fn-native-mission-parse-init-profile
