@@ -3363,6 +3363,44 @@
         "fn-bs-scp-program-crash-is-old-or-new",
         "fn-bs-read-ranges-concatenate"
       ]
+    },
+    {
+      "id": "PRF-085",
+      "title": "A chain of packs reconstructs the history: contiguous digest-linked links compose one prefix, compaction extends it over the uncovered suffix, the open over the walked chain answers the history, reclaim and publication cuts keep it",
+      "statement": "Over the functions host/checkpoint-host.lisp calls for host/native/checkpoint.lisp (fnn-pack-walk, fnn-pack-extend-chain, fnn-pack-recover-records, fnn-pack-retire-older-generations): fn-ccc-links-okp-composes-a-prefix (a walked chain is BOUNDARY exact Store events from sequence 0 under the newest frontier); fn-ccc-capture-extends-the-chain (fn-ccc-capture-link from the chain's boundary, frontier, generation and digest yields a link that, consed on, is again a chain whose records are a prefix of the history and strictly longer; the old chain is its tail); fn-ccc-capture-link-succeeds (it succeeds on a valid suffix); fn-ccc-chain-reconstructs-the-history (fn-ccc-observe-chain over the decoded chain and a complete observation of H answers (:ok H frontier) when the chain's records are a prefix of H and the suffix is valid); fn-ccc-reclaim-preserves-reconstructed-history (PRF-073 over a chain); fn-ccc-retire-plan-keeps-the-chain; fn-ccc-publication-crash-walks-old-or-new-chain (under the marker-old-or-complete-candidate and files-kept facts of the pack program, the walk reads the old chain or the new link on it); fn-ccc-links-count-within-boundary (walk fuel T suffices); fn-cverb-pack-decision-capture-succeeds restated over the chain capture.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-012",
+        "STO-007"
+      ],
+      "depends_on": [
+        "PRF-073"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/checkpoint-pack-chain.lisp",
+        "tests/acl2/checkpoint-pack-chain-tests.lisp",
+        "books/store-compact-verb.lisp",
+        "tests/acl2/store-compact-verb-tests.lisp",
+        "planning/evidence/manifests/certify-20260925T091457Z-3109471.json",
+        "planning/evidence/bounds-p5-2026-09-25.md"
+      ],
+      "progress_note": "Lane bounds-p5 (2026-09-25). Open: the link codec round trip is executed, not proved; the crash keystone is stated under the pack program's two facts, not composed with fn-cpp-crash-selects-old-authority-or-complete-candidate by a theorem; no K0 relation over the chain cuts.",
+      "events": [
+        "fn-ccc-links-okp-composes-a-prefix",
+        "fn-ccc-capture-extends-the-chain",
+        "fn-ccc-capture-link-succeeds",
+        "fn-ccc-chain-reconstructs-the-history",
+        "fn-ccc-reclaim-preserves-reconstructed-history",
+        "fn-ccc-retire-plan-keeps-the-chain",
+        "fn-ccc-publication-crash-walks-old-or-new-chain",
+        "fn-ccc-links-count-within-boundary",
+        "fn-cverb-pack-decision-capture-succeeds"
+      ]
     }
   ]
 }
