@@ -750,6 +750,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-event-index-store-invariants-tests \
 	books/consumer-owner-local \
 	tests/acl2/consumer-owner-local-tests \
+	books/consumer-owner-local-progress \
+	tests/acl2/consumer-owner-local-progress-tests \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
