@@ -314,6 +314,16 @@ coverage (:ok BOUNDARY FRONTIER) and the selected generation."
         (fnn-checkpoint-corrupt "selected pack does not reconstruct observed history"))
       (mapcar #'fnn-as-octets (second answer)))))
 
+(defun fnn-pack-chain-report (store)
+  "The `status' line for the selected pack chain: its links, newest first,
+and the boundary ACL2 computed over them."
+  (multiple-value-bind (chain coverage) (fnn-pack-selected-raw-and-coverage store)
+    (if (null coverage)
+        "pack-chain none"
+      (format nil "pack-chain links=~d boundary=~d generations=~{~d~^,~}"
+              (length chain) (second coverage) (mapcar #'first chain)))))
+
+(setq *fnn-pack-status-callback* #'fnn-pack-chain-report)
 (setq *fnn-pack-recover-callback* #'fnn-pack-recover-records)
 (setq *fnn-pack-lower-bound-callback* #'fnn-pack-lower-bound)
 
