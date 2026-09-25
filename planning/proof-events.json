@@ -3242,6 +3242,35 @@
           "name": "fn-bs-read-ranges-concatenate"
         }
       ]
+    },
+    {
+      "id": "PRF-091",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-request-within-profile-frame"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-request-within-read-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frame-fields-octets-within-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frame-field-parse-of-octets-wide-blob"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nctrl-groups-encode-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nhctrl-read-bound-covers-both"
+        }
+      ]
     }
   ]
 }
