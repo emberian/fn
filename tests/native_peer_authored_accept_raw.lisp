@@ -18,6 +18,10 @@
 (defvar *existing* nil)
 (defvar *signature* :verified)
 (defvar *calls* nil)
+(defvar *filing* nil)
+(defun fnn-fault (&rest args) (error "fault ~s" args))
+(defun fnn-octet-list-p (x) (and (listp x) (every #'integerp x)))
+(defun fnn-octets (x) (coerce x 'vector))
 (defun fnn-owner-service-store (service)
   (declare (ignore service)) *store*)
 (defun fnn-store-fenced (store) (sample-store-fenced store))
@@ -31,6 +35,11 @@
      (assert (equal args '((65 66)))) *form*)
     (fn-owner-peer-carrier-plan *plan*)
     (fn-owner-group-codes '(0))
+    (fn-owner-post-boundary :post-boundary)
+    ;; books/peer-authored-accept.lisp fn-pa-filing-plan on an ordinary
+    ;; article: the ingress's groups, unchanged.
+    ;; A test sets *FILING* to answer for it.
+    (fn-owner-control-filing (or *filing* (list :file (second args))))
     (fn-owner-next-store-coordinates '(3 3 3))
     (fn-owner-peer-carried-event
      (push :event *calls*) :kind4)
@@ -41,7 +50,9 @@
      (destructuring-bind (word detail) args
        (if (and (eq word :refused)
                 (member detail '(:article :carrier :carrier-shape
-                                 :local-enrollment :signature :conflict)))
+                                 :local-enrollment :signature :conflict
+                                 :control-not-filed :control-malformed
+                                 :control-signed)))
            detail word)))
     (otherwise (error "unexpected owner core ~s" name))))
 (defun fnn-core (name &rest args)
@@ -94,7 +105,7 @@
                              (list #(103)) #(69)))
 (defun reset-case ()
   (setq *calls* nil *existing* nil *signature* :verified
-        *fnn-owner-transit-detail* nil
+        *fnn-owner-transit-detail* nil *filing* nil
         *plan* '(:refused :local-enrollment)))
 
 ; A carrier-absent article keeps the old path. A present malformed carrier
@@ -175,4 +186,27 @@
                    ((:ed25519 . (17)) (:ml-dsa-65 . (19))) snapshot 1))
 (assert (eq (served) :durable))
 (assert (member :kind4-commit *calls*))
+; C1: the filing plan's refusal stops every ingress before any Store call
+; and its reason reaches the served word; a filed control article reaches
+; the Store under the filing group, not the ingress's own.
+(reset-case)
+(setq *form* :absent *filing* '(:refused :control-not-filed))
+(assert (eq (served) :control-not-filed))
+(assert (equal *calls* '(:served-word)))
+(reset-case)
+(setq *filing* '(:refused :control-not-filed))
+(assert (eq (attempt) :refused))
+(assert (eq *fnn-owner-transit-detail* :control-not-filed))
+(assert (null *calls*))
+(reset-case)
+(setq *form* :absent *filing* '(:file ((99 46 99))))
+(let ((seen nil))
+  (let ((old (fdefinition 'fnn-owner-attempt)))
+    (setf (fdefinition 'fnn-owner-attempt)
+          (lambda (service msgid payload groups evidence)
+            (declare (ignore service msgid payload evidence))
+            (setq seen groups) :durable))
+    (assert (eq (attempt) :durable))
+    (setf (fdefinition 'fnn-owner-attempt) old))
+  (assert (equalp seen (list #(99 46 99)))))
 (format t "native peer-authored transit boundary passed~%")

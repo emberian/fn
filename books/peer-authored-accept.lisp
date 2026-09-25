@@ -5,6 +5,7 @@
 (include-book "hybrid-lifecycle")
 (include-book "hybrid-carrier")
 (include-book "config")
+(include-book "control-classify")
 
 ; The classifier prevents a malformed or unauthorized FN-Authorship field
 ; from falling through to the legacy article-only Store path.  An article
@@ -305,7 +306,8 @@
 ;; including every word of the carrier-absent arm (whose detail is nil), is
 ;; the attempt's own word unchanged.
 (defconst *fn-pa-served-reasons*
-  '(:article :carrier :carrier-shape :local-enrollment :signature :conflict))
+  '(:article :carrier :carrier-shape :local-enrollment :signature :conflict
+    :control-not-filed :control-malformed :control-signed))
 
 (defun fn-pa-served-word (word detail)
   (declare (xargs :guard t))
@@ -317,5 +319,106 @@
 (defthm fn-pa-served-word-without-detail-by-definition
   (equal (fn-pa-served-word word nil) word))
 
+;; ---------------------------------------------------------------------------
+;; Control messages, packet C1 (planning/design-2026-09-25-control-messages.md
+;; section 2.1 rules 1 and 2; specs/peering.md section 8, "Filing").  The
+;; filing step every ingress takes before its Store attempt: host/native/
+;; owner.lisp fnn-owner-attempt-transit calls it (through host/owner-host.lisp
+;; fn-owner-control-filing) first, and served POST (fnn-owner-attempt-served),
+;; NNTP transit and BP transit (fnn-owner-complete-bp-transit-submission) all
+;; reach the Store only through that function.  GROUPS are the octet names
+;; the ingress decision chose (the injection decision's, fn-peer-scope-groups',
+;; the bound submission's); DOMAIN the names of the owner's allocation domain,
+;; the table fn-owner-group-codes resolves against.
+;;
+;;   (:file GROUPS')          GROUPS for an ordinary article; for a control
+;;                            article exactly its filing group, control.<verb>
+;;                            or control, never a group Newsgroups names;
+;;   (:refused :control-not-filed)   the operator has not created that group;
+;;   (:refused :control-malformed)   two Control fields, Control beside
+;;                            Supersedes, or a command outside the grammar;
+;;   (:refused :control-signed)      a control article with an FN-Authorship
+;;                            carrier.  OPEN (C1): a signed article's Store
+;;                            record must list exactly the source's Newsgroups
+;;                            (books/hybrid-store.lisp, the three
+;;                            `(equal groups (cadr fields))' tests and the
+;;                            replay binding), so it cannot be filed under
+;;                            control.<verb> until that binding names the
+;;                            filing group; refused rather than filed where
+;;                            RFC 5537 section 3.7 says not to.
+;;
+;; The stored bytes are the received bytes; only the membership changes.
+(defun fn-pa-filing-plan (received groups domain)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn-ctl-classify-octets
+                                          fn-pa-carrier-kind)))))
+  (let ((classified (fn-ctl-classify-octets received)))
+    (cond ((and (consp classified) (eq (car classified) :malformed))
+           (list :refused :control-malformed))
+          ((and (consp classified) (eq (car classified) :control))
+           (if (not (eq (fn-pa-carrier-kind received) :absent))
+               (list :refused :control-signed)
+             (let ((group (fn-ctl-filing-group (cadr classified))))
+               (if (fn-ctl-memberp group domain)
+                   (list :file (list (fn-record-string-octets group)))
+                 (list :refused :control-not-filed)))))
+          (t (list :file groups)))))
+
+; KEYSTONE (C1).  Over the plan the host calls: a control article is filed
+; in exactly one group, its filing group, which is `control' or
+; `control.<verb>' and is in the operator's domain, or it is refused with a
+; control reason.  No other group, in particular none its Newsgroups field
+; names, is ever the answer.
+(defthm fn-ctl-control-article-is-filed-only-in-control
+  (implies (equal (car (fn-ctl-classify-octets received)) :control)
+           (let ((plan (fn-pa-filing-plan received groups domain))
+                 (group (fn-ctl-filing-group
+                         (cadr (fn-ctl-classify-octets received)))))
+             (and (fn-ctl-control-group-namep group)
+                  (if (equal (car plan) :file)
+                      (and (equal (cadr plan)
+                                  (list (fn-record-string-octets group)))
+                           (fn-ctl-memberp group domain))
+                    (or (equal plan (list :refused :control-not-filed))
+                        (equal plan (list :refused :control-signed)))))))
+  :hints (("Goal" :in-theory (disable fn-ctl-classify-octets
+                                      fn-pa-carrier-kind
+                                      fn-record-string-octets))))
+
+; For an unsigned control article the one refusal is the absent group:
+; filed exactly when the operator created control.<verb> (or control).
+(defthm fn-ctl-unsigned-control-filing-by-definition
+  (implies (and (equal (car (fn-ctl-classify-octets received)) :control)
+                (equal (fn-pa-carrier-kind received) :absent))
+           (equal (fn-pa-filing-plan received groups domain)
+                  (if (fn-ctl-memberp (fn-ctl-filing-group
+                                     (cadr (fn-ctl-classify-octets received)))
+                                    domain)
+                      (list :file
+                            (list (fn-record-string-octets
+                                   (fn-ctl-filing-group
+                                    (cadr (fn-ctl-classify-octets received))))))
+                    (list :refused :control-not-filed))))
+  :hints (("Goal" :in-theory (disable fn-ctl-classify-octets
+                                      fn-pa-carrier-kind
+                                      fn-record-string-octets))))
+
+; KEYSTONE (C1, RFC 5537 section 5).  An article with no Control field is
+; ordinary at the plan: its groups pass through unchanged, whatever its
+; Subject ("cmsg cancel ..."), its Newsgroups (".ctl") or Also-Control say.
+; fn does not take the RFC's MAY to reject the cmsg form as ambiguous.
+(defthm fn-ctl-cmsg-subject-is-ordinary
+  (implies (atom (fn-ctl-fields-named
+                  *fn-ctl-control-name*
+                  (fn-article-fields
+                   (fn-article-result-article (fn-article-parse received)))))
+           (equal (fn-pa-filing-plan received groups domain)
+                  (list :file groups)))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-classify-octets fn-ctl-classify)
+                                  (fn-pa-carrier-kind fn-article-parse
+                                   fn-record-string-octets)))))
+
 (in-theory (disable (:d fn-pa-current-plan) (:d fn-pa-authorized-event)
-                    (:d fn-pa-carried-event) (:d fn-pa-carriesp)))
+                    (:d fn-pa-carried-event) (:d fn-pa-carriesp)
+                    (:d fn-pa-filing-plan)))

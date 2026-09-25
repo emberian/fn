@@ -1248,6 +1248,17 @@
           received (fn-sn-keyring-snapshots (fn-owner-store state))
           (fn-owner-transit-carried-list transitp state))))
 
+;; C1 (control messages): the filing step every ingress takes first,
+;; books/peer-authored-accept.lisp fn-pa-filing-plan over the received
+;; octets, the ingress's group names and the owner's allocation domain (the
+;; table fn-owner-group-codes resolves against).  (:file GROUPS) or
+;; (:refused REASON); the host uses GROUPS in place of its own.
+(defun fn-owner-control-filing (received group-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pa-filing-plan
+          received group-octets
+          (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
+
 (defun fn-owner-peer-carrier-form (received state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-carrier-form received)))

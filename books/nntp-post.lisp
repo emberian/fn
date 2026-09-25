@@ -287,7 +287,10 @@
                        ;; (books/peer-authored-accept.lisp fn-pa-served-word):
                        ;; the plan's reason, or the signature observation.
                        :article :carrier :carrier-shape :local-enrollment
-                       :signature))
+                       :signature
+                       ;; A control article the filing plan refused
+                       ;; (books/peer-authored-accept.lisp fn-pa-filing-plan).
+                       :control-not-filed :control-malformed :control-signed))
        t))
 
 (defun fn-post-store-refusal-line (kind)
@@ -313,6 +316,12 @@
     "441 posting failed; the signer has no current enrollment here (local-enrollment)")
    ((equal kind :signature)
     "441 posting failed; the author signature does not verify")
+   ((equal kind :control-not-filed)
+    "441 posting failed; control message not filed: its control group is not configured here (control-not-filed)")
+   ((equal kind :control-malformed)
+    "441 posting failed; the Control header field is malformed (control-malformed)")
+   ((equal kind :control-signed)
+    "441 posting failed; a signed control message cannot be filed here yet (control-signed)")
    (t "441 posting failed; the article was refused")))
 
 (defconst *fn-post-malformed-session-line*
