@@ -36,6 +36,14 @@
 ; reads each transaction file in one bounded read of that ceiling plus the
 ; frame overhead (host/native/io.lisp `fnn-durable-records').
 (defconst *fn-frame-max-store-payload* 4294967295)
+; The two journal payload caps are codec widths over their field tables
+; (D27): each is at least its table's width (`fn-frame-workflow-table-within-
+; its-payload', `fn-frame-receipt-table-within-its-payload' below), so neither
+; refuses a record its own encoder builds.  Every FNWF field is node-built
+; (names, reasons, counters, enumerations).  The FNRJ blobs are `:blob' fields
+; at 131 072 octets, and two of them carry operator data (the request ADU and
+; the Store record of an application ingress): that width is a data cap, open
+; (planning/evidence/bounds-blob-2026-09-25.md, deferrals).
 (defconst *fn-frame-max-workflow-payload* 16342)
 (defconst *fn-frame-max-receipt-payload* 269958)
 ; The BP inbound journal's physical ceiling, the u32 LENGTH width; the
@@ -122,6 +130,29 @@
         (fn-frame-spec-for kind (cdr table)))
     :none))
 
+; A table's width: the widest record any of its kinds can encode.
+(defun fn-frame-table-width (table)
+  (declare (xargs :guard t))
+  (if (consp table)
+      (max (if (consp (car table)) (fn-frame-specs-width (cdr (car table))) 0)
+           (fn-frame-table-width (cdr table)))
+    0))
+
+(defthm fn-frame-spec-for-within-table-width
+  (<= (fn-frame-specs-width (fn-frame-spec-for kind table))
+      (fn-frame-table-width table))
+  :rule-classes :linear)
+
+(defthm fn-frame-workflow-table-within-its-payload
+  (<= (fn-frame-table-width *fn-frame-workflow-specs*)
+      *fn-frame-max-workflow-payload*)
+  :rule-classes nil)
+
+(defthm fn-frame-receipt-table-within-its-payload
+  (<= (fn-frame-table-width *fn-frame-receipt-specs*)
+      *fn-frame-max-receipt-payload*)
+  :rule-classes nil)
+
 (defthm fn-frame-spec-for-workflow-is-spec-list
   (implies (not (equal (fn-frame-spec-for kind *fn-frame-workflow-specs*) :none))
            (fn-frame-spec-listp
@@ -197,28 +228,9 @@
                                    fn-frame-spec-listp)))))
 
 ; The encoded length of a well-formed record, for the guard's
-; `(<= (len payload) *fn-cbor-max-uint*)': no field encodes to more than a
-; blob's four length octets and its cap, and no workflow kind has more than
-; eleven fields.
-(local (defthm fn-frame-field-octets-length-bound
-  (implies (fn-frame-field-okp spec value)
-           (<= (len (fn-frame-field-octets spec value))
-               (+ 4 *fn-frame-max-blob*)))
-  :rule-classes :linear
-  :hints (("Goal" :in-theory (enable fn-frame-field-okp fn-frame-field-octets
-                                     fn-frame-textp fn-frame-blobp)))))
-
-(local (defthm fn-frame-fields-octets-length-bound
-  (implies (fn-frame-values-okp specs values)
-           (<= (len (fn-frame-fields-octets specs values))
-               (* (+ 4 *fn-frame-max-blob*) (len specs))))
-  :rule-classes :linear
-  :hints (("Goal" :induct (fn-frame-values-okp specs values)
-           :in-theory (disable fn-frame-field-octets fn-frame-field-okp)))))
-
-(local (defthm fn-frame-spec-for-workflow-length
-  (<= (len (fn-frame-spec-for kind *fn-frame-workflow-specs*)) 11)
-  :rule-classes :linear))
+; `(<= (len payload) *fn-cbor-max-uint*)': a record encodes to at most its
+; spec's width (`fn-frame-fields-octets-within-width', books/frame-fields),
+; which is at most its table's width, a constant far below u32.
 
 (defun fn-frame-bundle-store-record-okp (kind values)
   (declare (xargs :guard t :verify-guards nil))

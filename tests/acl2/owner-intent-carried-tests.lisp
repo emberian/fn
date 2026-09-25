@@ -22,8 +22,8 @@
 (defconst *icar-t-sub* (fn-own-inflight *own-control-fed-taken*))
 (defun icar-t-carry () (fn-icar-carry-of *icar-t-sub*))
 (assert-event (fn-icar-carryp (icar-t-carry)))
-(assert-event (fn-feed-namep (cdr (icar-t-carry))))
-(assert-event (equal (cdr (icar-t-carry))
+(assert-event (fn-feed-namep (cadr (icar-t-carry))))
+(assert-event (equal (cadr (icar-t-carry))
                      (fn-own-feed-intent-id *own-control-msgid*
                                             *own-control-source*)))
 
@@ -71,9 +71,10 @@
 ; that names the in-flight submission itself (so the atom clause and the
 ; submission match do not separate it) but holds another submission's
 ; identity violates it, and then every reader differs from its reference.
-(defun icar-t-forged () (cons *icar-t-sub* (cdr (icar-t-stale))))
+(defun icar-t-forged () (list* *icar-t-sub* (cadr (icar-t-stale))
+                               (cddr (icar-t-carry))))
 (assert-event (not (fn-icar-carryp (icar-t-forged))))
-(assert-event (fn-feed-namep (cdr (icar-t-forged))))
+(assert-event (fn-feed-namep (cadr (icar-t-forged))))
 (assert-event (not (equal (fn-icar-intent-id *icar-t-sub* (icar-t-forged))
                           (fn-own-feed-intent-id
                            (fn-own-sub-msgid *icar-t-sub*)
@@ -88,10 +89,45 @@
                           (own-control-commits))))
 ; A carry whose identity is not a feed name at all refuses the intent.
 (assert-event (equal (car (fn-icar-submission-intent
-                           *own-control-fed-taken* (cons *icar-t-sub* nil)
+                           *own-control-fed-taken*
+                           (list* *icar-t-sub* nil (cddr (icar-t-carry)))
                            *own-control-evidence* 1 3))
                      :refused))
 
+; The Path (PKT-113).  The carry holds the Path the take parsed; the source
+; has no Path header, so it is nil.  A carry whose identity is right but
+; whose Path names the outbound peer's path identity violates
+; fn-icar-carryp, and the feed targets then drop the peer: the intent has
+; no records where the reference has one.
+(assert-event (equal (cddr (icar-t-carry))
+                     (fn-own-feed-path-of *own-control-source*)))
+(assert-event (equal (fn-icar-submission-targets *own-control-fed-taken* (icar-t-carry))
+                     (fn-own-submission-targets *own-control-fed-taken*)))
+(assert-event (consp (fn-own-submission-targets *own-control-fed-taken*)))
+(defun icar-t-forged-path ()
+  (list* *icar-t-sub* (cadr (icar-t-carry))
+         (fn-nntp-string-octets "out.example!not-for-mail")))
+(assert-event (not (fn-icar-carryp (icar-t-forged-path))))
+(assert-event (not (equal (fn-icar-submission-targets *own-control-fed-taken*
+                                                      (icar-t-forged-path))
+                          (fn-own-submission-targets *own-control-fed-taken*))))
+(assert-event (not (equal (fn-icar-submission-intent *own-control-fed-taken*
+                                                     (icar-t-forged-path)
+                                                     *own-control-evidence* 1 3)
+                          (icar-t-intent))))
+; The same refutations over constants the prover evaluates (the identity
+; slot is 0: the Path readers never read it).
+(defconst *icar-t-forged-path-carry*
+  (list* *icar-t-sub* 0 (fn-nntp-string-octets "out.example!not-for-mail")))
+(must-fail
+ (defthm icar-t-path-without-carryp
+   (equal (fn-icar-path *icar-t-sub* *icar-t-forged-path-carry*)
+          (fn-own-feed-path-of (fn-own-sub-octets *icar-t-sub*)))))
+(must-fail
+ (defthm icar-t-targets-without-carryp
+   (equal (fn-icar-submission-targets *own-control-fed-taken*
+                                      *icar-t-forged-path-carry*)
+          (fn-own-submission-targets *own-control-fed-taken*))))
 (must-fail
  (defthm icar-t-intent-id-without-carryp
    (equal (fn-icar-intent-id sub carry)

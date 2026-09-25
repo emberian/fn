@@ -81,6 +81,9 @@
 (include-book "books/bp-fnbs-family-publication")
 (include-book "books/bp-fnbs-dispatch-publication")
 (include-book "books/bp-fnbs-forward-publication")
+(include-book "books/bp-node-receipt-send")
+;; Routed queued jobs, offered once per contact (PRF-103).
+(include-book "books/bp-node-contact-driver")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")
@@ -103,11 +106,24 @@
 ;; The committed-history boundary: io.lisp fnn-mark-committed and
 ;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
 (include-book "books/store-history-marker")
+;; D31: the history requirement and the recovery catch-up: io.lisp
+;; fnn-check-history-marker, fnn-recover and fnn-command-upgrade-profile call
+;; fn-hmr-open-verdict, fn-hmr-catch-up and fn-hmr-upgrade-verdict.
+(include-book "books/store-history-required")
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")
 ;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io, as in build.lisp.
 (include-book "books/records-concrete-owner")
+;; The octet buffer (D27 boundary 6) and the existing-article test over it,
+;; as in build.lisp: fn-owner-prepare-buffer and
+;; fn-owner-existing-action-buffer (host/owner-host.lisp, which
+;; host/native-admin-host.lisp `ld`s) take the fn-octets stobj and call
+;; fn-pbb-existing-action.  Without them the DTN image did not build at
+;; 32842f50 (planning/evidence/native-drift-2026-09-25.md, finding 3);
+;; tools/build_lists_check.py `included` checks this now.
+(include-book "books/octets-stobj")
+(include-book "books/poster-bytes-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
@@ -123,6 +139,8 @@
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
 (ld "host/native-operator-host.lisp" :ld-error-action :error)
+; The status report, offline and from the running owner.
+(ld "host/native-live-status-host.lisp" :ld-error-action :error)
 ; The canonical preimage the transit signature check verifies.
 (ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
 ;; The external freshness anchor.  Without it the image cannot answer the

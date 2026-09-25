@@ -224,7 +224,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-016",
-        "PRF-062"
+        "PRF-062",
+        "PRF-091"
       ],
       "verification": [
         "proof",
@@ -309,7 +310,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-010",
-        "PRF-067"
+        "PRF-067",
+        "PRF-089"
       ],
       "verification": [
         "proof",
@@ -622,7 +624,7 @@
     },
     {
       "id": "STO-009",
-      "title": "A lost committed suffix is detected at open",
+      "title": "A lost committed suffix is detected at open, and after migration a missing marker is damage",
       "specification": "specs/storage.md#the-committed-history-boundary",
       "milestone": "M5",
       "status": "implemented",
@@ -641,10 +643,14 @@
         "tests/test_native_history_marker.py",
         "planning/evidence/manifests/certify-20260924T230629Z-1648710.json",
         "planning/evidence/manifests/certify-20260924T232218Z-1792716.json",
-        "planning/evidence/m5-history-lifetimes-2026-09-24.md"
+        "planning/evidence/m5-history-lifetimes-2026-09-24.md",
+        "books/store-history-required.lisp",
+        "tests/acl2/store-history-required-tests.lisp",
+        "tests/test_native_history_required.py",
+        "planning/evidence/marker-required-2026-09-25.md"
       ],
-      "implementation_note": "committed-history.json (FNSM kind 3) holds the committed-record count. fnn-mark-committed writes it through fn-hm-after-commit after each record's transaction-directory barrier and before fnn-finish, at all three publish sites. fnn-recover evaluates fn-hm-open-verdict once against the reconstructed record count and faults with history-short-of-marker or marker-damaged. An absent marker is admitted as unmarked, which covers stores written before it.",
-      "note": "Not detected: loss of the marker with the files it covers, an unacknowledged record above the marker, whole-store replacement by an older valid copy (D14), and the configuration history and BP stores. The crash table is a transcription of rename atomicity, not yet a program of the fn-bs byte model."
+      "implementation_note": "committed-history.json (FNSM kind 3) holds the committed-record count. fnn-mark-committed writes it through fn-hm-after-commit after each record's transaction-directory barrier and before fnn-finish, at all three publish sites, and through fn-hmr-catch-up in fnn-recover after the recovery barriers and before the open returns (D31 case 2: a record durable without its marker is covered before any retry is answered as already stored). fnn-check-history-marker evaluates fn-hmr-open-verdict once against the reconstructed record count and faults with history-short-of-marker, marker-damaged, or, when the profile's history-marker field is required, marker-missing. store upgrade-profile --history-marker required is granted by fn-hmr-upgrade-verdict only over a marker counting the reconstructed history; init never writes it; the field never falls.",
+      "note": "Not detected: loss of the marker with the files it covers in an unmarked store, an unacknowledged and never-answered record above the marker, whole-store replacement by an older valid copy (D14), and the configuration history and BP stores. A shared-lock reader may serve a record above the marker until the next writable open. The guarantee A <= M <= D is frozen (D31), not the syscall sequence."
     },
     {
       "id": "STO-010",
@@ -659,10 +665,11 @@
       "evidence": [
         "specs/storage.md",
         "planning/evidence/m5-history-lifetimes-2026-09-24.md",
-        "planning/evidence/bounds-p1-2026-09-25.md"
+        "planning/evidence/bounds-p1-2026-09-25.md",
+        "planning/evidence/marker-required-2026-09-25.md"
       ],
       "implementation_note": "Packing (P) is implemented and proved (PRF-073). History compaction (H) and content reclamation (C) are not implemented. Each needs D13 and a decision-preserving summary obligation, as the class table states. Today's compaction relieves the transaction-file count and per-file overhead only.",
-      "note": "This row is the contract. The open policy cells (release summaries, key-epoch summaries, BP outcome summaries, configuration-generation lifetime, the headroom line) are marked open in the specification. Lane bounds-p1-profile (2026-09-25, D27): admission adds the history gate -- the committed record octets plus the kind's worst case within the profile's max_history_octets (fn-sbud-verdict-is-the-count-and-history-admissibility), the owner carrying the octet sum (fn-sbud-bytes-used-is-kernel-sum); status prints every profile field and bytes-used/history-bound; the budget is raised by any non-shrinking `store upgrade-profile --FIELD N`."
+      "note": "This row is the contract. The open policy cells (release summaries, key-epoch summaries, BP outcome summaries, configuration-generation lifetime, the headroom line) are marked open in the specification. Lane bounds-p1-profile (2026-09-25, D27): admission adds the history gate -- the committed record octets plus the kind's worst case within the profile's max_history_octets (fn-sbud-verdict-is-the-count-and-history-admissibility), the owner carrying the octet sum (fn-sbud-bytes-used-is-kernel-sum); status prints every profile field and bytes-used/history-bound; the budget is raised by any non-shrinking `store upgrade-profile --FIELD N`. Lane marker-required (2026-09-25, D31): the profile gains history-marker (unmarked|required); the committed-history marker (a class of the table) is written by commits and by the recovery catch-up, and under required its removal is damage at open."
     },
     {
       "id": "FLR-001",
@@ -851,7 +858,9 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-012"
+        "PRF-012",
+        "PRF-082",
+        "PRF-103"
       ],
       "verification": [
         "proof",
@@ -1107,7 +1116,8 @@
         "PRF-061",
         "PRF-075",
         "PRF-077",
-        "PRF-081"
+        "PRF-081",
+        "PRF-082"
       ],
       "verification": [
         "proof",
@@ -1257,7 +1267,8 @@
         "PRF-053",
         "PRF-056",
         "PRF-057",
-        "PRF-063"
+        "PRF-063",
+        "PRF-091"
       ],
       "verification": [
         "proof",
@@ -1425,7 +1436,10 @@
       "milestone": "M1",
       "status": "specified",
       "proof_targets": [
-        "PRF-014"
+        "PRF-014",
+        "PRF-092",
+        "PRF-087",
+        "PRF-095"
       ],
       "verification": [
         "proof",
@@ -1456,7 +1470,8 @@
       "proof_targets": [
         "PRF-015",
         "PRF-016",
-        "PRF-054"
+        "PRF-054",
+        "PRF-095"
       ],
       "verification": [
         "proof",
@@ -1513,7 +1528,9 @@
         "PRF-035",
         "PRF-047",
         "PRF-049",
-        "PRF-051"
+        "PRF-051",
+        "PRF-092",
+        "PRF-087"
       ],
       "verification": [
         "proof",
@@ -1853,7 +1870,7 @@
     {
       "id": "NNT-010",
       "title": "A control article is filed only in its control group, or refused; never in the groups it names",
-      "specification": "specs/peering.md#8-control-messages-filing-implemented-execution-proposed-not-decided",
+      "specification": "specs/peering.md#8-control-messages-filing-and-authority-implemented-cancel-decided-served-withdrawal-open-group-control-deferred",
       "milestone": "M3",
       "status": "implemented",
       "proof_targets": [
@@ -1875,7 +1892,40 @@
         "tests/native_peer_authored_accept_raw.lisp",
         "planning/evidence/control-c1-2026-09-25.md"
       ],
-      "implementation_note": "RFC requirement (RFC 5537 section 5): any article with a Control header field is a control message, and a Subject starting \"cmsg \", a \".ctl\" group name or an Also-Control field MUST NOT make one; fn does not take the MAY to reject the cmsg form. RFC 5537 section 3.7's SHOULD (control messages are not stored in the groups their Newsgroups field lists, but in the \"control\" hierarchy) is kept as a requirement: fn-pa-filing-plan, the first step of host/native/owner.lisp fnn-owner-attempt-transit for served POST, bound submission, NNTP transit and BP transit, and host/native/hybrid-control.lisp fnn-hybrid-control-author calls fn-owner-control-filing itself for the local signed-author path, files a control article only in control.<verb> (cancel, newgroup, rmgroup, checkgroups, ihave, sendme) or control (obsolete and unknown verbs; verb compared in ASCII lower case, a local policy), and only if the operator created that group; otherwise it is refused :control-not-filed, and two Control fields, Control beside Supersedes (RFC 5536 section 3.2.3's MUST NOT) or a command outside the grammar are refused :control-malformed. Each refusal is its own 441 line on POST and a named service-log reason on transit. Stored bytes are unchanged. Nothing is executed (packets C2 to C4 are proposals). Open: a control article carrying an FN-Authorship carrier is refused :control-signed, because a signed article's Store record must list exactly its source's Newsgroups (books/hybrid-store.lisp)."
+      "implementation_note": "RFC requirement (RFC 5537 section 5): any article with a Control header field is a control message, and a Subject starting \"cmsg \", a \".ctl\" group name or an Also-Control field MUST NOT make one; fn does not take the MAY to reject the cmsg form. RFC 5537 section 3.7's SHOULD (control messages are not stored in the groups their Newsgroups field lists, but in the \"control\" hierarchy) is kept as a requirement: fn-pa-filing-plan, the first step of host/native/owner.lisp fnn-owner-attempt-transit for served POST, bound submission, NNTP transit and BP transit, and host/native/hybrid-control.lisp fnn-hybrid-control-author calls fn-owner-control-filing itself for the local signed-author path, files a control article only in control.<verb> (cancel, newgroup, rmgroup, checkgroups, ihave, sendme) or control (obsolete and unknown verbs; verb compared in ASCII lower case, a local policy), and only if the operator created that group; otherwise it is refused :control-not-filed, and two Control fields, Control beside Supersedes (RFC 5536 section 3.2.3's MUST NOT) or a command outside the grammar are refused :control-malformed. Each refusal is its own 441 line on POST and a named service-log reason on transit. Stored bytes are unchanged. Nothing is executed (packets C2 to C4 are proposals). A control article carrying an FN-Authorship carrier is filed the same way: its signed Store record lists the filing group (books/hybrid-store.lisp fn-hsig-source-filed-groups, lane control-c3)."
+    },
+    {
+      "id": "NNT-011",
+      "title": "Control authority is an operator grant, and a cancel withdraws its target from newly published reader views only for its author or a covering authority",
+      "specification": "specs/peering.md#8-control-messages-filing-and-authority-implemented-cancel-decided-served-withdrawal-open-group-control-deferred",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-084"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc5537.txt",
+        "rfc3977.txt",
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/native-admin.lisp",
+        "books/control-authority.lisp",
+        "tests/acl2/control-authority-tests.lisp",
+        "host/native-admin-host.lisp",
+        "host/native/admin.lisp",
+        "tests/test_native_control_authority.py",
+        "planning/evidence/control-c2c3-2026-09-25.md",
+        "books/hybrid-store.lisp",
+        "books/control-visible.lisp",
+        "tests/acl2/control-visible-tests.lisp",
+        "tests/test_native_control_filing.py",
+        "planning/evidence/control-c3-2026-09-25.md"
+      ],
+      "implementation_note": "D29 (planning/decisions.md, 2026-09-25). RFC 5537 section 5.1 leaves control authentication to local authorization policy; fn's policy (a stronger fn guarantee): a control article acts only when this node verified its signature (verdict :verified; :carried and unsigned never act) and the operator granted the principal the verb over a namespace covering every group involved. C2, implemented: the authorities slot of the configuration value, (:grant-control NS P 0 ((NS P VERB 0))) code 11 and (:revoke-control NS P) code 12 through the assured live path, `control grant|revoke|list`, fn-ctl-authorize. C3, the decision implemented: the withdrawal record bound to cause, target, scope and generation (fn-ctl-cancel-plan), its effect on the target's accepted group bindings (author, or an authority covering every served group; the cancel's declared groups never enter), the visible article list, and the journal-derived records (a later revoke rewrites none). RFC 5537 section 5.3 recommends rejecting a target whose cancel arrived first; fn accepts it under ordinary admission and never serves it (local policy, D29). Lane control-c3 (2026-09-25): a signed control article is filed in control.<verb> (the signed record binding names the filing group, fn-hsig-source-filed-groups), so a cancel can be verified here; the visible list has an incremental form (books/control-visible.lisp) proved equal to the definition. Open, so the requirement stays specified: the served view does not apply the withdrawal (430/423 withdrawn, listings, HDR :fn-control), the host does not call fn-ctl-cancel-plan, Supersedes, and feed suppression (a later transition). C4 (group control) is deferred by D29."
     },
     {
       "id": "REP-007",
@@ -1884,7 +1934,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-079"
+        "PRF-079",
+        "PRF-103"
       ],
       "verification": [
         "proof",
@@ -1925,6 +1976,162 @@
         "planning/evidence/bounds-p3-2026-09-25.md"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
+    },
+    {
+      "id": "STO-015",
+      "title": "A namespace the store holds is bounded by the operator's profile, never by a constant; the writer refuses exactly past it and the reader admits everything within it",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-102"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-profile-namespace.lisp",
+        "books/native-config-observation.lisp",
+        "books/native-admin.lisp",
+        "books/native-auth-profile.lisp",
+        "books/native-auth-admin.lisp",
+        "planning/evidence/bounds-profile-2026-09-25.md"
+      ],
+      "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9), BP rows (10) and policy members (13) still have constants (256, 4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
+    },
+    {
+      "id": "HST-006",
+      "title": "The operator's status, pins, obligations and peers answer while the owner runs, in the offline words",
+      "specification": "specs/host.md#status-while-the-owner-runs",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-089"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/native-live-status.lisp",
+        "tests/acl2/native-live-status-tests.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native/control.lisp",
+        "host/native/operator.lisp",
+        "planning/evidence/live-status-2026-09-25.md"
+      ],
+      "implementation_note": "`operator CONFIG status|pins|obligations|peer list` asks the owner whose control socket the configuration names (FNLS frames); the owner renders the report from the Store, configuration and connection pins it carries (fn-nls-live-report) under its mutex and returns no state; with no owner the Store is opened read-only and the same renderer runs (fn-nls-offline-report). fn-nls-route: no socket, or a socket nothing accepts on, is the offline path, whose shared lock refuses behind a live owner; any other failure is uncertain (3), an owner refusal is refused (1). `status --watch N` re-asks every N seconds (1..86400).",
+      "note": "Spike deferral 'live status, obligations, pins' (planning/evidence/spike-operator-2026-09-25.md). Held BP forwarding obligations are the DTN image's `bp-obligation status`, not this report: the NNTP owner carries no BP node."
+    },
+    {
+      "id": "STO-014",
+      "title": "Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs",
+      "specification": "specs/storage.md#content-reclamation-under-d13-sto-014",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-088"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/reclaim-rule.lisp",
+        "books/reclaim-tombstone.lisp",
+        "books/store-reclaim.lisp",
+        "books/nntp-responses.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/store-reclaim-tests.lisp",
+        "planning/evidence/reclaim-d13-2026-09-25.md"
+      ],
+      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-rcl-existing-action for D25 and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. Not yet implemented: the host `store reclaim` verb, its byte program and cuts, status counts, the native N=5,000 scenario; holders are an argument, not yet read from the consumer projection, feed state or FNBS rows; the retention ledger keeps the reclaimed article's charge."
+    },
+    {
+      "id": "NNT-012",
+      "title": "A served POST accepts a supplied Path, prefixes the node's identity in place, and keeps it as the poster's source",
+      "specification": "specs/nntp.md#a-supplied-path-d32-2026-09-25",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-090"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/injection-path.lisp",
+        "books/injection.lisp",
+        "books/injection-invariants.lisp",
+        "books/poster-bytes.lisp",
+        "books/poster-bytes-invariants.lisp",
+        "books/hybrid-store-injected.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/injection-tests.lisp",
+        "tests/acl2/poster-bytes-tests.lisp",
+        "tests/acl2/hybrid-store-tests.lisp",
+        "tools/inn_lab.py",
+        "planning/evidence/path-and-login-2026-09-25.md"
+      ],
+      "implementation_note": "D32. RFC 5537 section 3.4.1 permits a proto-article's Path; section 3.2.1 has the injecting agent prepend its identity and '!'. fn-inj-decide accepts one Path field whose unfolded value is RFC 5536 section 3.1.5 syntax (fn-inj-path-valuep) and whose content begins one SP after the colon, inserts AGENT! there (recipe v3: the v2 block without its Path line, then the spliced source), and refuses :path-malformed, :path-duplicate and :path-posted (local policy) by name; Xref stays refused. fn-inj-source-of recovers the source exactly over v2 and v3, so D25 keys on the supplied Path too. The hybrid carrier route keeps refusing a Path (:path-present). No !.POSTED diagnostic is written (a SHOULD)."
+    },
+    {
+      "id": "NNT-013",
+      "title": "Under the bound-logins posting policy a bound login posts only articles signed by its bound principal",
+      "specification": "specs/identity.md#a-login-bound-to-a-signing-principal-2026-09-25",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-109"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/login-binding.lisp",
+        "books/native-auth-profile.lisp",
+        "books/native-auth-admin.lisp",
+        "books/native-admin.lisp",
+        "books/peer-authored-accept.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/login-binding-tests.lisp",
+        "tests/acl2/native-auth-admin-tests.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/auth.lisp",
+        "host/native/auth-admin.lisp",
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "planning/evidence/path-and-login-2026-09-25.md"
+      ],
+      "implementation_note": "Local policy, not an RFC requirement (RFC 4643 relates a login to nothing beyond the server's own authorization). `fn principal bind LOGIN HEX` writes the login's `signing` field into the credential file (fn-native-auth-admin-bind; set-password keeps bindings; a malformed value refuses the profile); `fn policy set posting-policy bound-logins|open` is a durable configuration record applied live. host/native/owner.lisp fnn-owner-attempt-served calls fn-lb-owner-gate (through host/owner-host.lisp fn-owner-login-gate) before the transit attempt: under the policy a bound login's unsigned article is :login-unsigned and one whose carrier names another principal :login-not-bound, each its own 441 line; unbound logins, unauthenticated connections, local and BP submissions and policy-off nodes are unchanged. The verdict and its service-log line name the login; the Store's kind-4 verdict record does not."
+    },
+    {
+      "id": "NNT-015",
+      "title": "Opaque carriage is admitted only within the boundary's budget, and a present carrier's transit refusal names its class",
+      "specification": "specs/peering.md#123-the-opaque-carriage-budget-and-the-refusal-classes",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-099"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-carriage-rows.lisp",
+        "books/peer-carriage.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "planning/evidence/peer-carriage-2026-09-25.md"
+      ],
+      "implementation_note": "The carried arm's event is built by fn-pcb-carried-event (host/owner-host.lisp fn-owner-peer-carried-relay-event, called from host/native/owner.lisp fnn-owner-attempt-transit) over the boundary's typed budget rows and the owner-carried usage cache (fn-owner-carried-usage); NNTP transit refusals of a present carrier carry fn-pcb-refusal-class as their log detail. The class is not yet recorded in a durable verdict: no present-carrier article is held unverified on dev (see the evidence record)."
     },
     {
       "id": "STO-012",

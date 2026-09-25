@@ -47,8 +47,14 @@
 (make-event `(defconst *bpfr-dispatch* ',(fn-bpnp-step *bpfr-s1* *bpfr-progress*)))
 (defconst *bpfr-s2* (fn-bpnf-answer-state (bpfr-durable *bpfr-dispatch*)))
 (defconst *bpfr-session* (cons 1 1))
+;; The routed session (spec 4.6): the host opens an outbound session only to
+;; the boundary the route table names, and a :session without VIA offers
+;; nothing.  This fixture's table sends dtn://bp-dest/ to the boundary "relay".
+(defconst *bpfr-via*
+  (list :via "relay" (fn-record-string-octets "dtn://relay/")
+        (list (fn-bprt-route 100 "dtn://bp-dest/" "relay" "dtn://relay/" 4556))))
 (defconst *bpfr-session-event*
-  (list :session *bpfr-dest* *bpfr-session* t 32768 *bpfr-obs*))
+  (list :session *bpfr-dest* *bpfr-session* t 32768 *bpfr-obs* *bpfr-via*))
 (make-event `(defconst *bpfr-open* ',(fn-bpnp-step *bpfr-s2* *bpfr-session-event*)))
 (defconst *bpfr-attempt-effect* (car (fn-bpnf-answer-effects *bpfr-open*)))
 (defconst *bpfr-s3-answer* (bpfr-durable *bpfr-open*))
@@ -63,7 +69,7 @@
                           (list :ready (fn-bpnf-held-list st) nil) 3))))
 (defun bpfr-session-event (st)
   (declare (xargs :guard t :verify-guards nil))
-  (list :session *bpfr-dest* (cons (fn-bpnf-epoch st) 1) t 32768 *bpfr-obs*))
+  (list :session *bpfr-dest* (cons (fn-bpnf-epoch st) 1) t 32768 *bpfr-obs* *bpfr-via*))
 (defun bpfr-reopen (st)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bpnp-step st (bpfr-session-event st)))
@@ -123,7 +129,7 @@
 (make-event `(defconst *bpfr-o7* ',(bpfr-reopen *bpfr-r7*)))
 (assert-event
  (and (equal (fn-bpnp-attempt-retries (bpfr-slot *bpfr-s6*)) 3)
-      (fn-bpnp-stranded-slotp (bpfr-slot *bpfr-r7*) (fn-bpnf-epoch *bpfr-r7*) *bpfr-dest*)
+      (fn-bpnp-stranded-slotp (bpfr-slot *bpfr-r7*) (fn-bpnf-epoch *bpfr-r7*) *bpfr-dest* 3)
       (equal (fn-bpnf-answer-effects *bpfr-o7*)
              (list (list :forward-stranded
                          (fn-bpn-nth 3 (car (fn-bpnf-held-list *bpfr-r7*)))
@@ -139,7 +145,7 @@
 ;; event on the attempted state, before any death, offers nothing.
 (assert-event
  (null (fn-bpnf-answer-effects
-        (fn-bpnp-step *bpfr-s3* (list :session *bpfr-dest* (cons 1 2) t 32768 *bpfr-obs*)))))
+        (fn-bpnp-step *bpfr-s3* (list :session *bpfr-dest* (cons 1 2) t 32768 *bpfr-obs* *bpfr-via*)))))
 
 ;; ---------------------------------------------------------------------
 ;; Teeth of fn-bpnp-forward-scan-offers-the-only-candidate.  Witness: the
@@ -150,31 +156,31 @@
 (defconst *bpfr-e* (fn-bpnf-epoch *bpfr-r1*))
 (defun bpfr-scan (ordered mru node waits free)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-bpnp-forward-scan ordered *bpfr-dest* mru node *bpfr-obs* waits free *bpfr-e*))
+  (fn-bpnp-forward-scan ordered *bpfr-dest* mru node *bpfr-obs* waits free *bpfr-e* 3))
 (defun bpfr-offers-h (scan)
   (declare (xargs :guard t :verify-guards nil))
   (and (equal (car scan) :ready) (equal (fn-bpn-nth 1 scan) *bpfr-h*)))
 (defconst *bpfr-key* (fn-bpnp-wait-key *bpfr-h*))
 (assert-event
- (and (fn-bpnp-forward-candidatep *bpfr-h* *bpfr-dest* *bpfr-obs* *bpfr-e*)
+ (and (fn-bpnp-forward-candidatep *bpfr-h* *bpfr-dest* *bpfr-obs* *bpfr-e* 3)
       (equal (car (fn-bpnp-forward-image *bpfr-h* *bpfr-local* *bpfr-obs*)) :ready)
       (bpfr-offers-h (bpfr-scan (list *bpfr-h*) 32768 *bpfr-local* nil 100))))
 ;; member dropped: the row is not in the scanned list.
 (must-fail (assert-event (bpfr-offers-h (bpfr-scan nil 32768 *bpfr-local* nil 100))))
 ;; only-candidate dropped: an older fresh candidate to the same peer wins.
 (assert-event
- (fn-bpnp-forward-candidatep *bpfr-fresh* *bpfr-dest* *bpfr-obs* *bpfr-e*))
+ (fn-bpnp-forward-candidatep *bpfr-fresh* *bpfr-dest* *bpfr-obs* *bpfr-e* 3))
 (must-fail
  (assert-event
   (bpfr-offers-h (bpfr-scan (list *bpfr-fresh* *bpfr-h*) 32768 *bpfr-local* nil 100))))
 ;; candidatep dropped: a live attempt (current epoch) is not re-offered.
 (assert-event
  (not (fn-bpnp-forward-candidatep *bpfr-live* *bpfr-dest* *bpfr-obs*
-                                  (fn-bpnf-epoch *bpfr-s3*))))
+                                  (fn-bpnf-epoch *bpfr-s3*) 3)))
 (must-fail
  (assert-event
   (equal (car (fn-bpnp-forward-scan (list *bpfr-live*) *bpfr-dest* 32768 *bpfr-local*
-                                    *bpfr-obs* nil 100 (fn-bpnf-epoch *bpfr-s3*)))
+                                    *bpfr-obs* nil 100 (fn-bpnf-epoch *bpfr-s3*) 3))
          :ready)))
 ;; mru-wait dropped.
 (must-fail
@@ -203,7 +209,7 @@
                *bpfr-obs* (fn-bpnp-waits *bpfr-s3*)
                (fn-bpnd-free (fn-bpnp-used *bpfr-s3*) (fn-bpnp-debt *bpfr-s3*)
                              *fn-bpnp-control-margin*)
-               (fn-bpnf-epoch *bpfr-s3*)))
+               (fn-bpnf-epoch *bpfr-s3*) 3))
          :ready)))
 
 ;; Teeth of fn-bpnp-forward-image-keeps-the-held-primary: witness, the
@@ -227,8 +233,12 @@
                                   (fn-bpn-nth 3 *bpfr-at-bound*)
                                   (fn-bpah-held-primary-identity *bpfr-at-bound*)
                                   *bpfr-dest* (cons (fn-bpnf-epoch *bpfr-r7*) 1) 0))
-(assert-event (not (fn-bpnp-attempt-matches-heldp *bpfr-rec* *bpfr-at-bound*)))
-(assert-event (equal (car (fn-bpnp-attempt-apply *bpfr-rec* (list *bpfr-at-bound*))) :fault))
+;; Since the budget is configured (lane bp-budgets-receipts), applying a
+;; kind 8 does not re-judge it: the history replays whatever budget wrote
+;; it.  The live proposal is what refuses a row at the budget.
+(assert-event (fn-bpnp-attempt-matches-heldp *bpfr-rec* *bpfr-at-bound*))
+(assert-event (not (fn-bpnp-under-budgetp *bpfr-at-bound* 3)))
+(assert-event (fn-bpnp-under-budgetp *bpfr-at-bound* 4))
 (must-fail
  (assert-event
   (<= (fn-bpnp-attempt-retries
@@ -245,10 +255,11 @@
   (update-nth 2 (cons *bpfr-over* (fn-bpnf-held-list *bpfr-pending*)) *bpfr-pending*))
 (assert-event
  (and (equal (fn-bpn-nth 3 (fn-bpnf-issued *bpfr-pending-over*)) :attempt)
-      (fn-bpnp-retries-boundedp (fn-bpnf-held-list *bpfr-pending*))
+      (fn-bpnp-retries-boundedp (fn-bpnf-held-list *bpfr-pending*) 3)
       (fn-bpnp-retries-boundedp
        (fn-bpnf-held-list
-        (fn-bpnf-answer-state (bpfr-durable (bpfr-reopen *bpfr-r1*)))))))
+        (fn-bpnf-answer-state (bpfr-durable (bpfr-reopen *bpfr-r1*))))
+       3)))
 (must-fail
  (assert-event
   (fn-bpnp-retries-boundedp
@@ -257,7 +268,8 @@
      (let ((effect (car (fn-bpnf-answer-effects (bpfr-reopen *bpfr-r1*)))))
        (fn-bpnp-step *bpfr-pending-over*
                      (list :persist-result (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect)
-                           :durable))))))))
+                           :durable))))
+   3))))
 
 ;; ---------------------------------------------------------------------
 ;; The retry count survives recovery from the durable rows themselves.

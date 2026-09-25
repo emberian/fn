@@ -1232,3 +1232,15 @@ Source: `planning/review-2026-09-25-gpt6-decisions.md`, forwarded by ember.
   a durable marker-required state after migration so that absence is damage,
   and the recovered-success-without-a-later-commit sequence tested and
   protected; then a cheaper publication program against the same invariant.
+
+### 2026-09-25: D32 — a client-supplied Path is accepted (~09:10 UTC)
+
+The reader spike found that tin cannot post, reply or cancel: it always
+sends a Path field and fn answers "441 posting failed; Path must not be
+supplied". RFC 5537 §3.4 allows a posting agent to supply Path; refusing it
+was fn's own early policy. Decided by the coordinator under the overnight
+goal: a served POST accepts a supplied Path and the injector prepends the
+node's own identity (the RFC's injecting-agent rule), the supplied tail kept
+verbatim as part of the poster's source under D25 (a changed Path is a
+changed source). The refusal stays for a Path that is not syntactically a
+path. A supplied Xref is still refused (it is the server's).

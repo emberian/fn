@@ -35,7 +35,8 @@
                                fn-bpah-apply-delivery fn-bpnf-family-apply-at
                                fn-bpn-report-apply-delete fn-bpnp-dispatch-apply
                                fn-bpnp-attempt-apply fn-bpnp-forward-result-apply
-                               fn-bpnf-conflict-apply fn-bpnf-state
+                               fn-bpnf-conflict-apply fn-bpnp-deferral-apply
+                               fn-bpnf-state
                                fn-bpnf-held-octets fn-bpn-machine-state-max-jobs
                                fn-bpn-machine-state-max-octets
                                fn-bpnf-held-bundle))))

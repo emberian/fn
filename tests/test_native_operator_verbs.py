@@ -84,7 +84,14 @@ class NativeOperatorVerbCompositionTests(unittest.TestCase):
     def test_peer_list_is_a_query_and_the_host_asks_acl2_which(self):
         self.assertIn("(defun fn-native-admin-result-queryp (result)", self.admin)
         self.assertIn(":list-peers", self.admin)
-        self.assertIn("(defun fn-native-admin-peer-report (peers)", self.admin)
+        # The peer report moved to books/native-admin-peer.lisp; the query
+        # report in native-admin still asks it for a :list-peers plan.
+        admin_peer = (ROOT / "books" / "native-admin-peer.lisp").read_text(encoding="ascii")
+        self.assertIn("(defun fn-native-admin-peer-report (peers)", admin_peer)
+        self.assertIn('(include-book "native-admin-peer")', self.admin)
+        report = self.admin.index("(defun fn-native-admin-query-report (plan value)")
+        self.assertIn("(fn-native-admin-peer-report (fn-cfg-peers value))",
+                      self.admin[report:self.admin.index("\n(", report)])
         self.assertIn("'fn-native-admin-host-queryp plan", self.host)
         self.assertIn("(queryp (fnn-admin-query root plan))", self.host)
         # The read-only executor opens the store non-writable and publishes
@@ -93,7 +100,7 @@ class NativeOperatorVerbCompositionTests(unittest.TestCase):
         execute = self.admin_host.index("(defun fnn-admin-execute (root plan)", query)
         body = self.admin_host[query:execute]
         self.assertIn("(fnn-open-live-store root nil)", body)
-        self.assertIn("'fn-native-admin-host-peer-report", body)
+        self.assertIn("'fn-native-admin-host-query-report plan", body)
         for forbidden in ("fnn-admin-publish", "fnn-admin-reconfigure", "fnn-control-admin"):
             self.assertNotIn(forbidden, body)
 
@@ -573,7 +580,8 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         for line in status.stdout.decode("ascii").splitlines():
             if line.startswith("profile "):
-                return {k: int(v) for k, v in (w.split("=", 1) for w in line.split()[1:])}
+                return {k: int(v) if v.isdigit() else v
+                        for k, v in (w.split("=", 1) for w in line.split()[1:])}
         self.fail(status.stdout.decode())
 
     def test_init_writes_the_operators_fields_and_status_prints_them(self):

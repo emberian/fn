@@ -46,13 +46,24 @@
 ;
 ; Two local policy choices, neither of them an RFC requirement:
 ;
-;   * A proto-article that already carries a Path header field is refused
-;     (:path-present).  RFC 5537 section 3.2.1 would have the injecting agent
-;     prepend its identity to an existing Path.  Rewriting a supplied field
-;     would break the property this book does prove, that the supplied source
-;     octets are a verbatim suffix of the injected article, so fn refuses
-;     instead of rewriting.  fn is the origin injecting agent for a POST.
-;
+;   * A supplied Path (D32, 2026-09-25).  RFC 5537 section 3.4.1 lets a
+;     proto-article carry Path and section 3.2.1 has the injecting agent
+;     prepend its identity and "!".  fn does exactly that, in place: the
+;     injected article's Path is AGENT "!" followed by the supplied content,
+;     the insertion made at the octet where that content begins
+;     (books/injection-path.lisp fn-inj-splice), and the block above it is
+;     recipe v2's without its Path line (fn-inj-block).  The supplied Path is
+;     part of the poster's source (D25): fn-inj-source-of removes the
+;     insertion and gives the source back octet for octet.  A Path that is not
+;     RFC 5536 section 3.1.5 syntax is refused (:path-malformed), and so is a
+;     second Path field (:path-duplicate) and one carrying the POSTED
+;     diag-keyword RFC 5537 section 3.4.1 says a proto-article SHOULD NOT
+;     carry (:path-posted, local policy: it claims an injection this node did
+;     not make).  RFC 5537 section 3.2.1 item 2's "!.POSTED" is a SHOULD fn
+;     does not write, for a supplied Path as for its own "AGENT!not-for-mail".
+;     Before D32 a supplied Path was refused (:path-present), so that the
+;     source stayed a verbatim suffix; with no Path supplied it still is.
+
 ;   * The wall clock must be present and must lie inside the 400-year
 ;     Gregorian cycle beginning 2000-01-01 (:clock-unusable,
 ;     :clock-out-of-range).  The calendar below walks that cycle; outside it
@@ -66,6 +77,7 @@
 
 (in-package "ACL2")
 (include-book "injection-shape")
+(include-book "injection-path")
 (include-book "article-fields")
 (include-book "mailbox")
 (include-book "clock")
@@ -78,6 +90,7 @@
 ; they were defined here, and still do; fn-inj-vocabulary below disables
 ; them again at export.
 (local (in-theory (enable fn-inj-shape-vocabulary)))
+(local (in-theory (enable fn-inj-path-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; Literal octets
@@ -555,6 +568,60 @@
            (fn-inj-groups-admissiblep (cdr names) allowed))
     (null names)))
 
+;; -----------------------------------------------------------------------------
+; A supplied Path (D32)
+
+; fn-inj-mandatory-reason's checks after its Path arm: every field a
+; proto-article must supply present once, and no Injection-Date.
+; fn-inj-mandatory-reason-without-a-path (books/injection-invariants.lisp)
+; ties the two together.
+(defun fn-inj-other-reason (article)
+  (declare (xargs :guard (fn-article-syntax-p article)))
+  (cond
+   ((not (fn-inj-absentp article *fn-inj-injection-date-name*))
+    :injection-date-present)
+   ((fn-inj-absentp article *fn-inj-from-name*) :from-missing)
+   ((not (fn-inj-single-fieldp article *fn-inj-from-name*)) :from-duplicate)
+   ((not (fn-inj-from-validp article)) :from-invalid)
+   ((fn-inj-absentp article *fn-inj-subject-name*) :subject-missing)
+   ((not (fn-inj-single-fieldp article *fn-inj-subject-name*))
+    :subject-duplicate)
+   ((and (not (fn-inj-absentp article *fn-inj-date-name*))
+         (not (fn-inj-single-fieldp article *fn-inj-date-name*)))
+    :date-duplicate)
+   (t nil)))
+
+; nil when the one supplied Path field is a path this agent can prepend to:
+; its content begins one SP after the colon on a header line of the source
+; octets, and its unfolded value is RFC 5536 section 3.1.5 syntax with no
+; POSTED diag-keyword.  Read only when a Path field is present.
+(defun fn-inj-path-reason (article source)
+  (declare (xargs :guard (fn-article-syntax-p article)))
+  (let* ((fields (fn-article-get-headers article *fn-inj-path-name*))
+         (value (if (and (consp fields) (fn-article-fieldp (car fields)))
+                    (fn-article-field-unfolded-value (car fields))
+                  nil))
+         (k (fn-inj-path-offset source)))
+    (cond
+     ((and (consp fields) (consp (cdr fields))) :path-duplicate)
+     ((not k) :path-malformed)
+     ((not (fn-inj-nodot-octetp (fn-inj-car (fn-inj-drop-n k source))))
+      :path-malformed)
+     ((not (fn-inj-path-valuep value)) :path-malformed)
+     ((fn-inj-path-postedp value) :path-posted)
+     (t nil))))
+
+; Whether the source's article supplies a Path field.  The hybrid carrier
+; route (books/hybrid-store-injected.lisp) refuses such a carrier before
+; injection, as every route did before D32.
+(defun fn-inj-supplies-pathp (source)
+  (declare (xargs :guard t))
+  (let ((parsed (fn-article-parse source)))
+    (and (fn-article-result-okp parsed)
+         (fn-article-syntax-p (fn-article-result-article parsed))
+         (not (fn-inj-absentp (fn-article-result-article parsed)
+                              *fn-inj-path-name*)))))
+
 ; -----------------------------------------------------------------------------
 ; The injection decision
 ;
@@ -576,6 +643,19 @@
      (fn-inj-append
       (if generate-date (fn-inj-date-line date) nil)
       (fn-inj-injection-info-line agent))))))
+
+; The block when the poster supplied Path: recipe v2's block without its Path
+; line, since the poster's Path line, prefixed, stays where the poster put
+; it (recipe v3).  It opens with "Injection-", never with "Path: ".
+(defun fn-inj-block (date msgid agent generate-id generate-date)
+  (declare (xargs :guard t))
+  (fn-inj-append
+   (if (or generate-id generate-date) (fn-inj-injection-date-line date) nil)
+   (fn-inj-append
+    (if generate-id (fn-inj-message-id-line msgid) nil)
+    (fn-inj-append
+     (if generate-date (fn-inj-date-line date) nil)
+     (fn-inj-injection-info-line agent)))))
 
 ; -----------------------------------------------------------------------------
 ; The injection inverse: the poster's source of a stored article
@@ -649,7 +729,7 @@
                  (fn-inj-strip-optional (fn-inj-message-id-line msgid) r2)))))
         (if (equal s :no) nil (cons t s))))))
 
-(defun fn-inj-source-of (stored agent msgid)
+(defun fn-inj-source-of-v2 (stored agent msgid)
   (declare (xargs :guard t))
   (let ((r1 (fn-inj-strip (fn-inj-path-line agent) stored)))
     (cond ((equal r1 :no) nil)
@@ -665,6 +745,19 @@
                  nil
                (fn-inj-source-after-stamp r2 date agent msgid)))))))
 
+; The inverse over all three recipes.  A record opening with this agent's
+; Path line is v2 (or v1).  Otherwise it is v3 when this agent's Path line
+; followed by it reads as v2 -- the v3 block is the v2 block without its Path
+; line -- and what that gives back is a source whose Path content opens with
+; AGENT!: removing that insertion gives the poster's source.
+(defun fn-inj-source-of (stored agent msgid)
+  (declare (xargs :guard t))
+  (if (not (equal (fn-inj-strip (fn-inj-path-line agent) stored) :no))
+      (fn-inj-source-of-v2 stored agent msgid)
+    (let ((s (fn-inj-source-of-v2 (fn-inj-append (fn-inj-path-line agent) stored)
+                                  agent msgid)))
+      (if s (fn-inj-unsplice (cdr s) agent) nil))))
+
 ; `stored' is an injection of `source' by `agent' under `msgid': the
 ; operator's retry test (books/owner.lisp fn-own-operator-decision).  Since
 ; 2026-09-24 it is exactly the inverse above; before, it also accepted a
@@ -672,9 +765,7 @@
 ; direction.
 (defun fn-inj-reinjectionp (stored source agent msgid)
   (declare (xargs :guard t))
-  (let ((r1 (fn-inj-strip (fn-inj-path-line agent) stored)))
-    (and (not (equal r1 :no))
-         (equal (fn-inj-source-of stored agent msgid) (cons t source)))))
+  (equal (fn-inj-source-of stored agent msgid) (cons t source)))
 
 (defun fn-inj-decide (source config observation)
   (declare (xargs :guard t))
@@ -703,7 +794,11 @@
                   (let ((check (fn-af-proto-article-check article)))
                     (if (fn-inj-proto-reason check)
                         (fn-inj-refuse (fn-inj-proto-reason check))
-                      (let ((mandatory (fn-inj-mandatory-reason article)))
+                      (let ((mandatory
+                             (if (fn-inj-absentp article *fn-inj-path-name*)
+                                 (fn-inj-mandatory-reason article)
+                               (or (fn-inj-path-reason article source)
+                                   (fn-inj-other-reason article)))))
                         (if mandatory (fn-inj-refuse mandatory)
                           (let ((supplied (fn-inj-nth 1 check))
                                 (groups (fn-inj-nth 2 check)))
@@ -719,14 +814,28 @@
                                           (fn-inj-generated-message-id
                                            observation config)))
                                        (octets
-                                        (fn-inj-append
-                                         (fn-inj-prefix
-                                          date msgid
-                                          (fn-inj-config-agent config)
-                                          (not supplied)
-                                          (fn-inj-absentp
-                                           article *fn-inj-date-name*))
-                                         source)))
+                                        (if (fn-inj-absentp
+                                             article *fn-inj-path-name*)
+                                            (fn-inj-append
+                                             (fn-inj-prefix
+                                              date msgid
+                                              (fn-inj-config-agent config)
+                                              (not supplied)
+                                              (fn-inj-absentp
+                                               article *fn-inj-date-name*))
+                                             source)
+                                          (fn-inj-append
+                                           (fn-inj-block
+                                            date msgid
+                                            (fn-inj-config-agent config)
+                                            (not supplied)
+                                            (fn-inj-absentp
+                                             article *fn-inj-date-name*))
+                                           (fn-inj-splice
+                                            source
+                                            (fn-inj-path-offset source)
+                                            (fn-inj-path-insert
+                                             (fn-inj-config-agent config)))))))
                                   (if (< (fn-inj-config-max-octets config)
                                          (len octets))
                                       (fn-inj-refuse :oversize)
@@ -791,12 +900,17 @@
 (verify-guards fn-inj-mandatory-reason)
 (verify-guards fn-inj-proto-reason)
 (verify-guards fn-inj-prefix)
+(verify-guards fn-inj-block)
+(verify-guards fn-inj-other-reason)
+(verify-guards fn-inj-path-reason)
+(verify-guards fn-inj-supplies-pathp)
 (verify-guards fn-inj-decide)
 (verify-guards fn-inj-strip)
 (verify-guards fn-inj-take)
 (verify-guards fn-inj-drop)
 (verify-guards fn-inj-strip-optional)
 (verify-guards fn-inj-source-after-stamp)
+(verify-guards fn-inj-source-of-v2)
 (verify-guards fn-inj-source-of)
 (verify-guards fn-inj-reinjectionp)
 
@@ -825,8 +939,10 @@
           fn-inj-generated-message-id fn-inj-single-fieldp fn-inj-absentp
           fn-inj-from-validp
           fn-inj-memberp fn-inj-groups-admissiblep fn-inj-mandatory-reason
-          fn-inj-proto-reason fn-inj-prefix fn-inj-decide
+          fn-inj-proto-reason fn-inj-prefix fn-inj-block fn-inj-other-reason
+          fn-inj-path-reason fn-inj-supplies-pathp fn-inj-decide
           fn-inj-strip fn-inj-take fn-inj-drop fn-inj-strip-optional
-          fn-inj-source-after-stamp fn-inj-source-of fn-inj-reinjectionp)))
+          fn-inj-source-after-stamp fn-inj-source-of-v2 fn-inj-source-of
+          fn-inj-reinjectionp)))
 
 (in-theory (disable fn-inj-vocabulary))

@@ -246,6 +246,14 @@ that could release them (T2's confinement pair).
   :car-fn fn-cbor-ag-car :cdr-fn fn-cbor-ag-cdr)
 ```
 
+**Implemented (2026-09-25).** The owner backoff and the retry budget are
+the node's configuration rows `owner-backoff N` and `retry-budget N` in
+`JOURNAL/bp-node-budgets`. ACL2 supplies the defaults (5000 ms, 3) and
+validates them (`fn-bpnp-configured-budgets`, `fn-bpnp-budgetsp`: frame
+naturals, budget at least 1); each deciding host event carries them as its
+optional last field (`fn-bpnp-budgeted-lengthp`). They are not a
+`fn-bpn-policy` field yet.
+
 The five budgets are distinct and each is checked by name:
 
 | Budget | Measure | Consumed by | Released by |
@@ -804,6 +812,7 @@ selectors and a `-of-constructor` theorem.
 | 12 | `(fn-bpn-rec-history-retired token key)` | remove the outcome for submission `key`, and for a `:receipt` key its handoff; §2.4's retirement rule is part of applicability |
 | 13 | `(fn-bpn-rec-rerouted token id next-hop)` | replace next hop; `nil` returns the entry to `:dispatch-pending` with `dispatch` nil |
 | 14 | `(fn-bpn-rec-conflict token id ingress content-id)` | append a conflict entry to history (§4.1). Implemented (2026-09-24) as `(fn-bpnf-conflict-record epoch op arrival identity peer session transfer content-id)`, FNBS version 1 kind 14: the held row is named by arrival and primary identity, the ingress by peer EID, session pair and transfer ID, the content id is `fn-digest` of the conflicting carrier's exact wire (not of its immutable projection, which has no canonical encoding yet). Replay checks the named held row and changes nothing; the history is the journal row itself (no in-memory projection), bounded by journal credit: one received final, zero debt |
+| 20 | `(fn-bpnp-deferral-record epoch op arrival identity count)` | The durable busy-delivery count (2026-09-25, lane bp-budgets-receipts), FNBS version 1 kind 20 (`books/bp-fnbs-forward-codec.lisp`). It names a local `:dispatch-pending` row by arrival and primary identity and sets its attempt slot to `(:busy count)`; `count` is one more than the slot's (a busy answer) or 0 (the operator's resume, which clears the slot). Applied by `fn-bpnp-deferral-apply`, live and at ordered replay. One received final, zero debt. Kind 19 is reserved for the rotation checkpoint (§3.6) |
 | 15 | `(fn-bpn-rec-family-planned token family plan)` | slice C, §7.3 |
 | 16 | `(fn-bpn-rec-family-child token family index held)` | slice C, §7.3 |
 | 17 | `(fn-bpn-rec-family-retired token family disposition)` | slice C, §7.3; `disposition` `:materialized` or `(:terminated reason)` |
@@ -1006,6 +1015,24 @@ is the pure START-time capacity query (§9.2); it is advisory and step 6 is
 the decision.
 
 ### 4.2 The progress boundary: `fn-bpn-progress-step st obs` (`:clock`)
+
+**Busy delivery, durable (2026-09-25, lane bp-budgets-receipts).** The
+application's `:busy` answer proposes a kind 20 counting it
+(`fn-bpnp-step-busy-delivery-proposes-its-count`); the count moves only when
+that record is durable, through `fn-bpnp-deferral-apply`, the function
+ordered replay calls on the same record
+(`fn-bpnp-step-deferral-durable-applies-the-replay-function`). So the count
+after recovery is the count the live node held
+(`fn-bpnp-busy-count-after-recovery-is-the-live-count`, with
+`fn-bpnp-host-recovery-installs-the-durable-replay`): a restart gives a
+stranded row no fresh tries. Only the backoff reading is volatile
+(`(:bpnp-wait key :busy m budget)`); a restart drops it. At the configured
+retry budget the row is stranded, never selected
+(`fn-bpnp-busy-stranded-row-is-not-offered`), and every progress event that
+selects nothing else reports it (`fn-bpnp-progress-reports-a-stranded-row`;
+`fnn-bpnode-dispatch-one` prints it on every tick). `bp-node resume` of a
+busy-stranded row writes kind 20 with count 0. The backoff and the retry
+budget are the operator's (§2.1).
 
 **Current A3 native subset and first progress slice.** The shared `bp-node`
 service calls `fn-bpnp-step` on the same FNBS state. Its `:progress` event
@@ -1290,6 +1317,64 @@ A slot whose epoch is not earlier than the current epoch after recovery would
 not be classified; ordered replay makes every replayed attempt epoch earlier
 than the new epoch, and that replay fact is not yet a theorem.
 
+**Configured budget (2026-09-25, lane bp-budgets-receipts).** The retry
+budget is `fn-bpnp-budget-retries` of the budgets the deciding event carries
+(default 3, `*fn-bpnp-max-forward-retries*`). It is the live proposal's
+check (`fn-bpnp-forward-candidatep`, `fn-bpnp-resume-refusal`,
+`fn-bpnp-forward-scan-offers-a-candidate`). Applying a kind 8 or a
+`:resumed` kind 9, live or at replay, needs only an uncertain slot naming
+the attempt, so a budget the operator changes later never makes the
+journal's history unreplayable. Each durable kind 8 counts exactly one more
+(`fn-bpnp-attempted-held-counts-one-more`); the bound theorems are restated
+with the row under the budget as a hypothesis.
+
+### 4.3.2 An uncertain receipt transfer is connection-local (2026-09-25, lane bp-budgets-receipts)
+
+The base contact (the FNBS lower machine, `fn-bpn-step` under `(:base E)`)
+carries the owed receipts `bp-node serve` and `dispatch` now send
+themselves (§9.4). Its transfer outcome has the same scope as a forwarding
+transfer's in §4.3.1: an uncertain transfer costs its connection, never the
+node.
+
+- **The model.** On `(:forward-result KEY :uncertain)` for an `:attempting`
+  job, `fn-bpn-forward-result-step` proposes the lifecycle record
+  `(:requeued TOKEN WORK ATTEMPT GENERATION :uncertain :requeued)`. Until it
+  is durable the job stays `:attempting` under its durable `:attempting`
+  record; nothing fences, nothing FNBS-level is issued, no delivery becomes
+  uncertain, and no effect releases, prepares a receipt or reports the
+  transfer `:forwarded`
+  (`fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed`, over the called
+  `fn-bpnp-step`, books/bp-node-receipt-send.lisp; the form of
+  `fn-bpnp-step-emits-no-release-and-no-receipt-prepare`). Once the record
+  is durable the job is `:queued` again with its own work, attempt,
+  generation, peer, route and wire; the effects are exactly the `:attempted`
+  transport observation and the retention report; and
+  `fn-bpnp-receipt-contact-event` opens the contact for that peer again, so
+  the next contact offers the job by the same identity
+  (`fn-bpnp-receipt-reoffer-after-uncertain`, with
+  `fn-bpnp-receipt-contact-offers-the-queued-job`). The job is never
+  dropped and never acknowledged by a transport reading.
+- **Why a re-offer is safe.** A second carrier of the same receipt is a
+  second carrier of the same receipt fact, never a second receipt fact
+  (§2.4); the requester's join answers it from the committed receipt.
+- **What still fences.** Only an uncertain *publication*: the requeue
+  record's own persistence answered `:uncertain` fences the base
+  (`:bundle-queue-uncertain`, `fn-bpn-persist-result-step`), as for every
+  lifecycle record.
+- **No retry budget.** Unlike §4.3.1, the base job carries no retry count:
+  each contact offers it at most once (the host stops the contact at the
+  first transfer that is not accepted), and it leaves the queue by a
+  durable `:finished` or by expiry (`fn-bpn-clock-step`). Work per contact
+  is bounded; the number of contacts is the operator's.
+- **The host.** `fnn-bps-send-effect` records the transfer reading in the
+  service; under `bp-node serve` and `dispatch` (transfer scope
+  `:connection`, set by `fnn-bpnode-send-receipts`) it does not become the
+  process outcome, and the pass prints `BP node receipt transfer uncertain`
+  and continues (exit 0 for the pass). `bp-contact tick` and `bp-service
+  run` keep scope `:process`: their caller asked for the transfer, so an
+  uncertain one is their answer (exit 3) and a refused one exit 2, although
+  ACL2 has requeued the job exactly as under `serve`.
+
 ### 4.4 Authoring: `fn-bpn-transmit-step`, `fn-bpn-report-step`
 
 `fn-bpn-transmit-step st submission destination sequence adu obs`:
@@ -1470,14 +1555,22 @@ nothing.
    is the negotiated node ID octets.
 
 **Call site.** `fn-bpnp-step`'s `:session` arm, given a `:via` field, calls
-`fn-bpnp-routed-start`. That function runs the arrival-order scan that
-`fn-bpnp-start-one` runs, then asks `fn-bprt-offer-decision` about the chosen
-row's destination (`fn-bpaj-eid-text` of the primary block's destination):
+`fn-bpnp-routed-start`; so does the `:resume` arm, which takes the same
+optional field (`(:resume PEER S OBS [VIA] [BUDGETS])`). A `:session` open or
+a `:resume` without VIA offers nothing (2026-09-25, lane bp-routing-2).
+`fn-bpnp-routed-start` runs the arrival-order scan of `fn-bpnp-start-one` over
+the held rows `fn-bprt-offer-decision` offers on this session
+(`fn-bpnp-routed-rows`, the rows whose destination, `fn-bpaj-eid-text` of the
+primary block's destination, is routed to HOP with the contact announcing
+HOP's enrolled EID):
 - `:offer` requires the decision over LIVE = (HOP) to name HOP, and ANNOUNCED
-  to be the octets of that route's EID. Only then is start-one called.
-- Otherwise the answer is `(:forward-no-route ARRIVAL HOP DECISION)` with
-  DECISION one of `:no-route`, `:no-live-hop` or `:announced-mismatch`.
-  Nothing is proposed and no held row changes.
+  to be the octets of that route's EID.
+- A row routed elsewhere or nowhere is not in the scanned list, so it never
+  blocks a younger routed row under the same dispatch key.
+- When no routed row is ready but the scan over every row is, the answer is
+  `(:forward-no-route ARRIVAL HOP DECISION)` for that row, with DECISION one
+  of `:no-route`, `:no-live-hop` or `:announced-mismatch`. Nothing is proposed
+  and no held row changes.
 
 **Theorems.**
 
@@ -1499,22 +1592,78 @@ Over `fn-bpnp-step`, in `books/bp-route-step.lisp`:
 The teeth are in `tests/acl2/bp-route-tests.lisp`.
 
 **Covered scope, stated.**
-- The dispatch key is still `fn-bpnp-single-peer-routes PEER-ID`, and the
-  scan still selects by that key. The routing gate reads the row's own
-  destination, so the theorem holds for any key. If an older row under the
-  key has no route to HOP, it blocks younger rows under the same key on that
-  session. With single-peer routes, every row under a key has that key as its
-  destination.
-- The unrouted 6-field `:session` form remains in the machine. The host no
-  longer sends it open. The theorem covers the 7-field form.
-- `:resume` (never sent by the host) reaches start-one without the gate.
+- The dispatch key is still `fn-bpnp-single-peer-routes PEER-ID`. The routed
+  scan reads each row's own destination, so the theorems hold for any key
+  (`fn-bpnp-routed-rows-skip-an-unrouted-row`; the teeth witness two rows of
+  different destinations under one key).
 - LIVE is (HOP): the host holds one outbound session at a time. Priority
   therefore chooses among boundaries with a contact
   (`fn-bprt-outbound-choice`), not among concurrent sessions.
-- FNBS base jobs are not routed: `bp-obligation request`, the queued receipt
-  outboxes and reports that `bp-contact tick` sends, and `bp-service`. Each
-  still carries the CONTACT-HOST:PORT given when it was queued.
+- Queued FNBS base jobs are routed by §4.8.
 - Inbound admission is unchanged (`fn-bpaj-session-principal`).
+
+### 4.8 Routed queued jobs and the base contact driver (2026-09-25, lane bp-routing-2)
+
+REP-007 covers the queued FNBS base jobs too: A's request carrier (`bp-obligation
+request`), B's receipts and status reports (`bp-node serve`/dispatch, `bp-contact
+tick`) and `bp-service resume`. Before this section each job kept the
+CONTACT-HOST:PORT it was queued with (bp-routing finding 1).
+
+**Queue time.** With a route table in force, the host queues a job only on the
+route `fn-bprt-job-route DEST TABLE NODE KEEPALIVE SEGMENT TRANSFER` answers
+(`books/bp-route-jobs.lisp`): the loopback contact of the boundary
+`fn-bprt-outbound-choice` names, with this node's session parameters. A
+destination the table routes nowhere is not queued; the obligation stays owed
+where it is (the FNRJ receipt, the report intent, the durable request attempt
+with its pin) and `BP queue route destination=… decision=…` is logged. That
+route is the job's durable route (its `:queued` record).
+
+**Contact time.** `fn-bpnp-contact-next ST PEER ROUTING OFFERED`
+(`books/bp-node-contact-driver.lisp`) is the one question the host asks before
+each offer of a base contact (`fnn-bpc-drive-contact`, which `bp-service
+run/resume`, `bp-obligation request`, `bp-contact tick` and `bp-node serve`
+all drive). ROUTING is `(:table TABLE)`, or nil for a verb without a Store,
+which keeps the queued address. The answer is:
+- `(:offer (:base (:contact PEER t)) OFFERED' EID)` when the peer's first
+  queued job is offerable (`fn-bpnp-receipt-contact-event`), is not in
+  OFFERED, and `fn-bprt-send-decision` over the current table names the job's
+  own durable route; EID is the node ID the hop's contact must announce, which
+  the host passes to the TCPCL session machine;
+- `(:held KEY DECISION)` with DECISION `:no-route`, `:no-live-hop` or
+  `:route-changed` (the table now names another hop than the durable route);
+- `(:close)` otherwise.
+
+**Once per contact.** The host threads OFFERED and stops at the first answer
+that is not an offer. A job whose transfer was not accepted is `:queued` again
+(its `:requeued` record, §4.3.2) and is in OFFERED, so it waits for the next
+contact; an accepted one is `:forwarded`, which no record returns to
+`:queued`.
+
+**Theorems** (`books/bp-node-contact-driver.lisp`):
+- `fn-bpnp-contact-offer-is-the-routed-hop`: over `fn-bpnp-step` on the
+  driver's event, the one effect persists the first queued job's `:attempting`
+  record, its `:cl-send` carries the job's durable route, and that route is
+  the contact port of the boundary `fn-bprt-next-hop` chooses for the
+  destination among the boundaries with a contact.
+- `fn-bpnp-contact-holds-an-unrouted-job`: with no matching route the driver
+  never offers.
+- `fn-bpnp-contact-offers-each-job-at-most-once`: along any sequence of
+  states, the keys one contact offers are distinct and none was already in
+  OFFERED.
+- `fn-bpnp-contact-closes-only-when-nothing-owed-remains`: with the gates
+  open, a close means the peer's first queued job was already offered on this
+  contact.
+- `fn-bpn-apply-record-keeps-forwarded`: no lifecycle record returns a
+  `:forwarded` job to `:queued`.
+
+**Covered scope, stated.**
+- A table change after queueing holds the job (`:route-changed`) until the
+  table routes it back; a durable re-route record is open. The lower machine
+  offers the first queued job for a peer, so such a held job also holds the
+  younger jobs to that peer on that contact.
+- Verbs without a Store (`bp-service run`, `resume` and `bp-contact tick`
+  without STORE) keep the queued address.
+- The contact host is loopback.
 
 ## 5. The theorems
 
@@ -3203,6 +3352,23 @@ repair.
   durable.
 
 ### 9.4 The receipt outbox: FNRJ to FNBS (F-C, §12 D-12)
+
+**The node sends its own receipts (2026-09-25, lane bp-budgets-receipts).**
+After queueing the outbox, `bp-node serve` and `dispatch` ask
+`fn-bpnp-receipt-contact-event` whether to open a base contact for the
+configured peer (non-nil exactly when a job is queued for it and nothing is
+issued, fenced, pending or delivery-uncertain:
+`fn-bpnp-receipt-contact-event-needs-a-queued-job`) and drive it as `bp-contact
+tick` does. Over `fn-bpnp-step`, the event's one proposal is the
+`:attempting` record of the first queued job for that peer, with the
+`:cl-send` of that job's route, peer, key and wire
+(`fn-bpnp-receipt-contact-offers-the-queued-job`). A connect that never
+produced a socket reads `:failed` (no octet left; ACL2 requeues the job);
+any failure after the connection exists stays `:uncertain`, and that
+reading is connection-local (§4.3.2): the pass logs it and continues. Not
+claimed as a theorem: once per contact (the host stops the contact at the
+first transfer or outcome that is not accepted; a durable `:attempting`
+makes the job not `:queued`).
 
 The first native A3 caller is `host/native/bp-node.lisp` in the full image.
 It opens the clock-gated single FNBS owner, then the Store owner. `serve`

@@ -190,6 +190,22 @@
         (cons (car rows) (fn-cfg-row-upsert (cdr rows) row)))
     (list row)))
 
+; A policy slot holds one value: replace the first row whose slot (row-a) is
+; this row's, else append.  fn-cfg-policy reads the first row of a slot, so
+; the value set last is the value in force.  Until 2026-09-25 :set-policy
+; used fn-cfg-row-upsert, keyed on (slot, value): a second `policy set' of
+; the same slot with another value appended a row the lookup never reached,
+; so the first value set stayed in force for good (found on hbox by lane
+; path-and-login: `policy set posting-policy open' after `bound-logins' was
+; accepted and changed nothing).
+(defun fn-cfg-row-replace-key (rows row)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (equal (fn-cfg-row-a (car rows)) (fn-cfg-row-a row))
+          (cons row (cdr rows))
+        (cons (car rows) (fn-cfg-row-replace-key (cdr rows) row)))
+    (list row)))
+
 ; The peer table is the peers row list keyed by row-a (the peer name); one
 ; peer is the group of rows sharing that key (specs/peering.md section 1.2,
 ; books/peer-config.lisp decodes the group into the typed record).  Three total
@@ -353,7 +369,7 @@
 
 (defun fn-cfg-value-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 7)))
+  (and (true-listp x) (equal (len x) 8)))
 
 (defun fn-cfg-groups (v)
   (declare (xargs :guard t))
@@ -383,55 +399,71 @@
                                                  (fn-cfg-ag-cdr
                                                   (fn-cfg-ag-cdr v))))))))
 
-(defun fn-cfg-value-make (groups capacity quotas policies listeners peers
-                                 limits)
+; The eighth slot (D29, control packet C2): the control-authority grants,
+; rows (NAMESPACE PRINCIPAL-HEX VERB 0) written only by :grant-control and
+; :revoke-control (specs/peering.md section 8).
+(defun fn-cfg-authorities (v)
   (declare (xargs :guard t))
-  (list groups capacity quotas policies listeners peers limits))
+  (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr
+                                                (fn-cfg-ag-cdr
+                                                 (fn-cfg-ag-cdr
+                                                  (fn-cfg-ag-cdr
+                                                   (fn-cfg-ag-cdr v)))))))))
+
+(defun fn-cfg-value-make (groups capacity quotas policies listeners peers
+                                 limits authorities)
+  (declare (xargs :guard t))
+  (list groups capacity quotas policies listeners peers limits authorities))
 
 (defthm fn-cfg-value-shapep-of-value-make
   (fn-cfg-value-shapep
-   (fn-cfg-value-make groups capacity quotas policies listeners peers limits)))
+   (fn-cfg-value-make groups capacity quotas policies listeners peers limits authorities)))
 (defthm fn-cfg-groups-of-value-make
   (equal (fn-cfg-groups
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits))
+                             limits authorities))
          groups))
 (defthm fn-cfg-capacity-of-value-make
   (equal (fn-cfg-capacity
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits))
+                             limits authorities))
          capacity))
 (defthm fn-cfg-quotas-of-value-make
   (equal (fn-cfg-quotas
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits))
+                             limits authorities))
          quotas))
 (defthm fn-cfg-policies-of-value-make
   (equal (fn-cfg-policies
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits))
+                             limits authorities))
          policies))
 (defthm fn-cfg-listeners-of-value-make
   (equal (fn-cfg-listeners
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits))
+                             limits authorities))
          listeners))
 (defthm fn-cfg-peers-of-value-make
   (equal (fn-cfg-peers
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits))
+                             limits authorities))
          peers))
 (defthm fn-cfg-limits-of-value-make
   (equal (fn-cfg-limits
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits))
+                             limits authorities))
          limits))
+(defthm fn-cfg-authorities-of-value-make
+  (equal (fn-cfg-authorities
+          (fn-cfg-value-make groups capacity quotas policies listeners peers
+                             limits authorities))
+         authorities))
 
 (in-theory (disable (:d fn-cfg-value-shapep) (:d fn-cfg-value-make)
                     (:d fn-cfg-groups) (:d fn-cfg-capacity)
                     (:d fn-cfg-quotas) (:d fn-cfg-policies)
                     (:d fn-cfg-listeners) (:d fn-cfg-peers)
-                    (:d fn-cfg-limits)))
+                    (:d fn-cfg-limits) (:d fn-cfg-authorities)))
 
 (defun fn-cfg-member-namep (name names)
   (declare (xargs :guard t))
@@ -473,12 +505,13 @@
        (fn-cfg-row-listp (fn-cfg-listeners v))
        (fn-cfg-row-listp (fn-cfg-peers v))
        (fn-cfg-row-listp (fn-cfg-limits v))
-       (fn-cfg-limits-withinp (fn-cfg-limits v))))
+       (fn-cfg-limits-withinp (fn-cfg-limits v))
+       (fn-cfg-row-listp (fn-cfg-authorities v))))
 
 (defun fn-cfg-empty-value ()
   ; The fail-closed floor: no groups and zero capacity accepts nothing.
   (declare (xargs :guard t))
-  (fn-cfg-value-make nil 0 nil nil nil nil nil))
+  (fn-cfg-value-make nil 0 nil nil nil nil nil nil))
 
 (defun fn-cfg-limit (v slot)
   (declare (xargs :guard t))
@@ -585,7 +618,8 @@
 
 (defconst *fn-cfg-delta-kinds*
   '(:create-group :remove-group :set-capacity :set-quota :set-policy
-    :set-listeners :set-peers :set-limit :set-peer :remove-peer))
+    :set-listeners :set-peers :set-limit :set-peer :remove-peer
+    :grant-control :revoke-control))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -599,6 +633,8 @@
         ((equal kind :set-limit) 8)
         ((equal kind :set-peer) 9)
         ((equal kind :remove-peer) 10)
+        ((equal kind :grant-control) 11)
+        ((equal kind :revoke-control) 12)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -613,6 +649,8 @@
         ((equal code 8) :set-limit)
         ((equal code 9) :set-peer)
         ((equal code 10) :remove-peer)
+        ((equal code 11) :grant-control)
+        ((equal code 12) :revoke-control)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -665,6 +703,86 @@
   (declare (xargs :guard t))
   (fn-cfg-delta-make :remove-peer name "" 0 nil))
 
+;; Control authority (D29, packet C2; specs/peering.md section 8).  A grant
+;; is one authorities row (NAMESPACE PRINCIPAL-HEX VERB 0), keyed on the pair
+;; (NAMESPACE, PRINCIPAL-HEX).  C2 carries only the authority C3 needs: the
+;; one grantable verb is "cancel" (group control, C4, is deferred by D29).
+;;
+;;   (:grant-control NAMESPACE PRINCIPAL 0 ((NAMESPACE PRINCIPAL VERB 0)))  code 11
+;;   (:revoke-control NAMESPACE PRINCIPAL 0 nil)                          code 12
+(defconst *fn-cfg-control-verbs* '("cancel"))
+
+(defun fn-cfg-hex-digit-octetp (b)
+  (declare (xargs :guard t))
+  (and (integerp b)
+       (or (and (<= 48 b) (<= b 57))
+           (and (<= 97 b) (<= b 102)))))
+
+(defun fn-cfg-hex-digit-octetsp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (fn-cfg-hex-digit-octetp (car xs))
+           (fn-cfg-hex-digit-octetsp (cdr xs)))
+    (null xs)))
+
+; A principal as the 64 lowercase hexadecimal characters of its 32 octets,
+; the spelling `fn-pa-carriesp' and HDR :fn-verified compare.
+(defun fn-cfg-principal-hexp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (equal (len (fn-record-string-octets text)) 64)
+       (fn-cfg-hex-digit-octetsp (fn-record-string-octets text))))
+
+; The group-name prefix of a wildcard pattern "PREFIX.*", or nil.
+(defun fn-cfg-namespace-prefix-octets (octets)
+  (declare (xargs :guard t))
+  (let ((n (len octets)))
+    (if (and (true-listp octets) (< 2 n)
+             (equal (nthcdr (- n 2) octets) '(46 42)))
+        (take (- n 2) octets)
+      nil)))
+
+; A namespace pattern: a group name, or a group name followed by ".*".
+(defun fn-cfg-namespace-patternp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (or (fn-record-group-namep text)
+           (let ((prefix (fn-cfg-namespace-prefix-octets
+                          (fn-record-string-octets text))))
+             (and (consp prefix)
+                  (fn-record-group-namep (fn-record-octets-string prefix)))))))
+
+(defun fn-cfg-grant-verb (rows)
+  (declare (xargs :guard t))
+  (fn-cfg-row-c (fn-cfg-ag-car rows)))
+
+(defun fn-cfg-rows-have-pair (rows a b)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (or (and (equal (fn-cfg-row-a (car rows)) a)
+               (equal (fn-cfg-row-b (car rows)) b))
+          (fn-cfg-rows-have-pair (cdr rows) a b))
+    nil))
+
+(defun fn-cfg-rows-without-pair (rows a b)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (equal (fn-cfg-row-a (car rows)) a)
+               (equal (fn-cfg-row-b (car rows)) b))
+          (fn-cfg-rows-without-pair (cdr rows) a b)
+        (cons (car rows) (fn-cfg-rows-without-pair (cdr rows) a b)))
+    nil))
+
+(defun fn-cfg-grant-control (namespace principal verb)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :grant-control namespace principal 0
+                     (list (fn-cfg-row-make namespace principal verb 0))))
+(defun fn-cfg-revoke-control (namespace principal)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :revoke-control namespace principal 0 nil))
+
 ; -----------------------------------------------------------------------------
 ; Applying a delta.  Total, and never a deletion.
 
@@ -696,7 +814,8 @@
   (declare (xargs :guard t))
   (fn-cfg-value-make es (fn-cfg-capacity v) (fn-cfg-quotas v)
                      (fn-cfg-policies v) (fn-cfg-listeners v)
-                     (fn-cfg-peers v) (fn-cfg-limits v)))
+                     (fn-cfg-peers v) (fn-cfg-limits v)
+                     (fn-cfg-authorities v)))
 
 (defun fn-cfg-apply-delta (v gen stamp d)
   (declare (xargs :guard t))
@@ -714,47 +833,67 @@
      ((equal kind :set-capacity)
       (fn-cfg-value-make (fn-cfg-groups v) n (fn-cfg-quotas v)
                          (fn-cfg-policies v) (fn-cfg-listeners v)
-                         (fn-cfg-peers v) (fn-cfg-limits v)))
+                         (fn-cfg-peers v) (fn-cfg-limits v)
+                     (fn-cfg-authorities v)))
      ((equal kind :set-quota)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-row-upsert (fn-cfg-quotas v)
                                             (fn-cfg-row-make a b "" n))
                          (fn-cfg-policies v) (fn-cfg-listeners v)
-                         (fn-cfg-peers v) (fn-cfg-limits v)))
+                         (fn-cfg-peers v) (fn-cfg-limits v)
+                     (fn-cfg-authorities v)))
      ((equal kind :set-policy)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v)
-                         (fn-cfg-row-upsert (fn-cfg-policies v)
-                                            (fn-cfg-row-make a b "" 0))
+                         (fn-cfg-row-replace-key (fn-cfg-policies v)
+                                                 (fn-cfg-row-make a b "" 0))
                          (fn-cfg-listeners v) (fn-cfg-peers v)
-                         (fn-cfg-limits v)))
+                         (fn-cfg-limits v) (fn-cfg-authorities v)))
      ((equal kind :set-listeners)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v) rows
-                         (fn-cfg-peers v) (fn-cfg-limits v)))
+                         (fn-cfg-peers v) (fn-cfg-limits v)
+                     (fn-cfg-authorities v)))
      ((equal kind :set-peers)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
-                         (fn-cfg-listeners v) rows (fn-cfg-limits v)))
+                         (fn-cfg-listeners v) rows (fn-cfg-limits v)
+                         (fn-cfg-authorities v)))
      ((equal kind :set-limit)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-row-upsert (fn-cfg-limits v)
-                                            (fn-cfg-row-make a "" "" n))))
+                                            (fn-cfg-row-make a "" "" n))
+                         (fn-cfg-authorities v)))
      ((equal kind :set-peer)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
                                  rows)
-                         (fn-cfg-limits v)))
+                         (fn-cfg-limits v) (fn-cfg-authorities v)))
      ((equal kind :remove-peer)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (fn-cfg-rows-without-key (fn-cfg-peers v) a)
-                         (fn-cfg-limits v)))
+                         (fn-cfg-limits v) (fn-cfg-authorities v)))
+     ((equal kind :grant-control)
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v)
+                         (fn-cfg-row-upsert (fn-cfg-authorities v)
+                                            (fn-cfg-row-make
+                                             a b (fn-cfg-grant-verb rows) 0))))
+     ((equal kind :revoke-control)
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v)
+                         (fn-cfg-rows-without-pair (fn-cfg-authorities v)
+                                                   a b)))
      (t v))))
 
 (defun fn-cfg-apply (v gen stamp deltas)
@@ -817,6 +956,27 @@
      ((equal kind :remove-peer)
       (if (consp (fn-cfg-rows-with-key (fn-cfg-peers v) a)) nil
         :no-such-peer))
+     ; A grant names its namespace pattern and principal in a and b and
+     ; carries exactly the one row (a b VERB 0); VERB is a grantable verb.
+     ; Reserved names (RFC 5536 section 3.1.4) are refused at the operator
+     ; surface, books/native-admin.lisp `fn-native-admin-control-plan'.
+     ((equal kind :grant-control)
+      (let ((rows (fn-cfg-delta-rows d)))
+        (cond ((not (fn-cfg-namespace-patternp a)) :namespace-pattern)
+              ((not (fn-cfg-principal-hexp (fn-cfg-delta-b d))) :principal)
+              ((not (member-equal (fn-cfg-grant-verb rows)
+                                  *fn-cfg-control-verbs*))
+               :verb-not-grantable)
+              ((not (equal rows
+                           (list (fn-cfg-row-make a (fn-cfg-delta-b d)
+                                                  (fn-cfg-grant-verb rows)
+                                                  0))))
+               :grant-row)
+              (t nil))))
+     ((equal kind :revoke-control)
+      (if (fn-cfg-rows-have-pair (fn-cfg-authorities v) a (fn-cfg-delta-b d))
+          nil
+        :no-such-grant))
      (t nil))))
 
 (defun fn-cfg-admissible-reason (v gen stamp reserved ceiling deltas)
@@ -1358,7 +1518,7 @@
     (:d fn-cfg-endpoint-address) (:d fn-cfg-peer-eid)
     (:d fn-cfg-peer-endpoint) (:d fn-cfg-peer-contact-plan)
     (:d fn-cfg-limit-slot) (:d fn-cfg-limit-value) (:d fn-cfg-row-lookup)
-    (:d fn-cfg-row-upsert) (:d fn-cfg-rows-with-key)
+    (:d fn-cfg-row-upsert) (:d fn-cfg-row-replace-key) (:d fn-cfg-rows-with-key)
     (:d fn-cfg-rows-without-key) (:d fn-cfg-rows-keyed-p)
     (:d fn-cfg-group-entryp) (:d fn-cfg-group-listp)
     (:d fn-cfg-group-all-names) (:d fn-cfg-group-find) (:d fn-cfg-entry-livep)
@@ -1372,6 +1532,11 @@
     (:d fn-cfg-set-quota) (:d fn-cfg-set-policy) (:d fn-cfg-set-listeners)
     (:d fn-cfg-set-peers) (:d fn-cfg-set-limit) (:d fn-cfg-set-peer)
     (:d fn-cfg-remove-peer) (:d fn-cfg-groups-create)
+    (:d fn-cfg-hex-digit-octetp) (:d fn-cfg-hex-digit-octetsp)
+    (:d fn-cfg-principal-hexp) (:d fn-cfg-namespace-prefix-octets)
+    (:d fn-cfg-namespace-patternp) (:d fn-cfg-grant-verb)
+    (:d fn-cfg-rows-have-pair) (:d fn-cfg-rows-without-pair)
+    (:d fn-cfg-grant-control) (:d fn-cfg-revoke-control)
     (:d fn-cfg-groups-retire) (:d fn-cfg-set-groups) (:d fn-cfg-apply-delta)
     (:d fn-cfg-apply) (:d fn-cfg-name-line-octets) (:d fn-cfg-delta-reason)
     (:d fn-cfg-admissible-reason) (:d fn-cfg-admissiblep)

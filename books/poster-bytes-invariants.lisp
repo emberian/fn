@@ -41,9 +41,164 @@
 (defthm fn-pb-path-agent-of-a-path-line
   (implies (and (true-listp agent) (consp agent)
                 (not (member-equal 10 agent)))
-           (equal (fn-pb-path-agent (append (fn-inj-path-line agent) rest))
+           (equal (fn-pb-path-agent (append (fn-inj-path-line agent) rest) msgid)
                   agent))
-  :hints (("Goal" :in-theory (enable fn-inj-path-line fn-inj-strip))))
+  :hints (("Goal" :in-theory (e/d (fn-pb-path-agent fn-pb-path-line-agent
+                                   fn-inj-path-line fn-inj-strip)
+                                  (fn-pb-block-agent)))))
+
+; A recipe v3 block (a supplied Path, D32) names its agent in its closing
+; Injection-Info line.
+
+(local
+ (defthm fn-pb-len-of-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local
+ (defthm fn-pb-drop-of-append
+   (implies (and (true-listp a) (equal n (len a)))
+            (equal (fn-inj-drop n (append a b)) b))
+   :hints (("Goal" :in-theory (enable fn-inj-drop)))))
+
+(local
+ (defthm fn-pb-info-line-agent-of-an-info-line
+   (implies (and (true-listp agent) (consp agent)
+                 (not (member-equal 10 agent)))
+            (equal (fn-pb-info-line-agent
+                    (append (fn-inj-injection-info-line agent) rest))
+                   agent))
+   :hints (("Goal" :in-theory (enable fn-pb-info-line-agent
+                                      fn-inj-injection-info-line fn-inj-strip)))))
+
+(local
+ (defthm fn-pb-s1
+   (fn-pb-opensp *fn-inj-injection-date-field*
+                  (append (fn-inj-injection-date-line date) x))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pb-s2
+   (not (fn-pb-opensp *fn-inj-injection-date-field*
+                       (append (fn-inj-injection-info-line agent) x)))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pb-s3
+   (implies (and (true-listp date) (equal (len date) 31))
+            (equal (fn-inj-drop 49 (append (fn-inj-injection-date-line date) x)) x))
+   :hints (("Goal" :in-theory (e/d (fn-inj-injection-date-line) (fn-inj-drop fn-pb-drop-of-append))
+            :use ((:instance fn-pb-drop-of-append
+                             (a (fn-inj-injection-date-line date)) (b x) (n 49)))))))
+
+(local
+ (defthm fn-pb-message-id-line-is-a-true-list
+   (true-listp (fn-inj-message-id-line msgid))
+   :hints (("Goal" :in-theory (enable fn-inj-message-id-line)))))
+
+(local
+ (defthm fn-pb-lines-are-conses
+   (and (consp (fn-inj-date-line date))
+        (consp (fn-inj-injection-info-line agent)))
+   :hints (("Goal" :in-theory (enable fn-inj-date-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pb-append-of-a-cons-is-not-no
+   (implies (consp a) (not (equal (append a b) :no)))))
+
+(local
+ (defthm fn-pb-s4
+   (implies (not (equal x :no))
+            (equal (fn-inj-strip-optional (fn-inj-message-id-line msgid)
+                                          (append (fn-inj-message-id-line msgid) x))
+                   x))
+   :hints (("Goal" :in-theory (e/d (fn-inj-strip-optional)
+                                   (fn-inj-message-id-line fn-pb-strip-of-append-left))
+            :use ((:instance fn-pb-strip-of-append-left
+                             (a (fn-inj-message-id-line msgid)) (b x)))))))
+
+(local
+ (defthm fn-pb-s5
+   (equal (fn-inj-strip-optional (fn-inj-message-id-line msgid)
+                                 (append (fn-inj-date-line date) x))
+          (append (fn-inj-date-line date) x))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pb-s6
+   (equal (fn-inj-strip-optional (fn-inj-message-id-line msgid)
+                                 (append (fn-inj-injection-info-line agent) x))
+          (append (fn-inj-injection-info-line agent) x))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pb-s7
+   (fn-pb-opensp *fn-inj-date-field* (append (fn-inj-date-line date) x))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pb-s8
+   (implies (and (true-listp date) (equal (len date) 31))
+            (equal (fn-inj-drop 39 (append (fn-inj-date-line date) x)) x))
+   :hints (("Goal" :in-theory (e/d (fn-inj-date-line) (fn-inj-drop fn-pb-drop-of-append))
+            :use ((:instance fn-pb-drop-of-append
+                             (a (fn-inj-date-line date)) (b x) (n 39)))))))
+
+(local
+ (defthm fn-pb-s9
+   (not (fn-pb-opensp *fn-inj-date-field*
+                       (append (fn-inj-injection-info-line agent) x)))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pb-block-agent-of-a-block
+   (implies (and (true-listp agent) (consp agent)
+                 (not (member-equal 10 agent))
+                 (true-listp date) (equal (len date) 31))
+            (equal (fn-pb-block-agent
+                    (append (fn-inj-block date msgid agent gid gdate) rest)
+                    msgid)
+                   agent))
+   :hints (("Goal" :in-theory (e/d (fn-pb-block-agent fn-inj-block)
+                                   (fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                    fn-inj-drop fn-pb-info-line-agent
+                                    fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line))
+            :do-not-induct t
+            :cases ((and gid gdate) (and gid (not gdate))
+                    (and (not gid) gdate))))))
+
+(local
+ (defthm fn-pb-path-line-agent-of-another-line
+   (implies (and (consp x) (not (equal (car x) 80)) (not (equal (car x) 10)))
+            (not (fn-pb-path-line-agent x)))
+   :hints (("Goal" :in-theory (enable fn-pb-path-line-agent fn-inj-strip)
+            :expand ((fn-pb-line x))))))
+
+(local
+ (defthm fn-pb-a-block-opens-with-i
+   (and (consp (append (fn-inj-block date msgid agent gid gdate) rest))
+        (equal (car (append (fn-inj-block date msgid agent gid gdate) rest)) 73))
+   :hints (("Goal" :in-theory (enable fn-inj-block fn-inj-injection-date-line
+                                      fn-inj-injection-info-line)
+            :cases ((or gid gdate))))))
+
+(local
+ (defthm fn-pb-path-agent-of-a-block
+   (implies (and (true-listp agent) (consp agent)
+                 (not (member-equal 10 agent))
+                 (true-listp date) (equal (len date) 31))
+            (equal (fn-pb-path-agent
+                    (fn-inj-append (fn-inj-block date msgid agent gid gdate) rest)
+                    msgid)
+                   agent))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-pb-path-agent)
+                            (fn-pb-block-agent fn-pb-path-line-agent fn-inj-block))))))
 
 (local (in-theory (disable fn-pb-path-agent)))
 
@@ -75,29 +230,56 @@
                                     fn-clock-observationp fn-clock-has-wall
                                     fn-clock-wall))))))
 
+(local
+ (defthm fn-pb-date-octets-shape
+   (and (true-listp (fn-inj-date-octets inst))
+        (equal (len (fn-inj-date-octets inst)) 31))
+   :hints (("Goal" :in-theory (enable fn-inj-date-octets)))))
+
 ; Every injection block opens with the agent's Path line.
 (local
  (defthm fn-pb-path-agent-of-a-prefix
    (implies (and (true-listp agent) (consp agent)
                  (not (member-equal 10 agent)))
             (equal (fn-pb-path-agent
-                    (fn-inj-append (fn-inj-prefix date msgid agent gid gdate) source))
+                    (fn-inj-append (fn-inj-prefix date msgid agent gid gdate) source)
+                    msgid2)
                    agent))
    :hints (("Goal" :in-theory (e/d (fn-inj-prefix)
                                    (fn-inj-path-line fn-inj-injection-date-line
                                     fn-inj-injection-info-line
                                     fn-inj-message-id-line fn-inj-date-line))))))
 
-; An injected article's Path line names the configured agent.
+; An injected article names the configured agent: in its Path line, or in
+; the closing line of its block when the poster supplied Path.
 (defthm fn-pb-path-agent-of-an-injection
   (implies (fn-inj-injectedp (fn-inj-decide source config obs))
            (equal (fn-pb-path-agent
-                   (fn-inj-decision-octets (fn-inj-decide source config obs)))
+                   (fn-inj-decision-octets (fn-inj-decide source config obs))
+                   (fn-inj-decision-msgid (fn-inj-decide source config obs)))
                   (fn-inj-config-agent config)))
-  :hints (("Goal" :use ((:instance fn-inj-injected-octets-are-the-block-and-the-source)
+  :hints (("Goal" :cases ((fn-inj-supplies-pathp source))
+                  :use ((:instance fn-inj-injected-octets-are-the-block-and-the-source)
+                        (:instance fn-inj-injected-octets-are-the-block-and-the-prefixed-source)
                         fn-pb-an-injection-configures
                         fn-pb-a-configured-agent-is-a-line-free-list
+                        (:instance fn-pb-date-octets-shape
+                                   (inst (fn-inj-instant-of (fn-clock-wall obs))))
                         (:instance fn-pb-path-agent-of-a-prefix
+                                   (date (fn-inj-date-octets
+                                          (fn-inj-instant-of (fn-clock-wall obs))))
+                                   (msgid (fn-inj-decision-msgid
+                                           (fn-inj-decide source config obs)))
+                                   (msgid2 (fn-inj-decision-msgid
+                                            (fn-inj-decide source config obs)))
+                                   (agent (fn-inj-config-agent config))
+                                   (gid (not (fn-inj-nth 1 (fn-af-proto-article-check
+                                                            (fn-article-result-article
+                                                             (fn-article-parse source))))))
+                                   (gdate (fn-inj-absentp (fn-article-result-article
+                                                           (fn-article-parse source))
+                                                          *fn-inj-date-name*)))
+                        (:instance fn-pb-path-agent-of-a-block
                                    (date (fn-inj-date-octets
                                           (fn-inj-instant-of (fn-clock-wall obs))))
                                    (msgid (fn-inj-decision-msgid
@@ -108,7 +290,10 @@
                                                              (fn-article-parse source))))))
                                    (gdate (fn-inj-absentp (fn-article-result-article
                                                            (fn-article-parse source))
-                                                          *fn-inj-date-name*))))
+                                                          *fn-inj-date-name*))
+                                   (rest (fn-inj-splice source (fn-inj-path-offset source)
+                                                        (fn-inj-path-insert
+                                                         (fn-inj-config-agent config))))))
                   :in-theory (theory 'minimal-theory))))
 
 ; -----------------------------------------------------------------------------
