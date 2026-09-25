@@ -459,6 +459,8 @@ its outcome, which is the refusal to the offering ingress."
          (key (fourth effect))
          (wire (fifth effect))
          (socket nil)
+         (fragments nil)
+         (plan-refused nil)
          (outcome :uncertain))
     (handler-case
         (unwind-protect
@@ -470,16 +472,73 @@ its outcome, which is the refusal to the offering ingress."
                  (fnn-fault "bp-service: injected send core fault"))
                (setq socket (fnn-tcl-connect (fnn-bps-route-host route)
                                              (fnn-bps-route-port route)))
-               (let ((conn (fnn-tcl-session
-                            (fnn-socket-fd socket) :active
-                            (fnn-tcl-params
-                             (fnn-bps-route-node route) (fnn-bps-expected service)
-                             (fnn-bps-route-keepalive route)
-                             (fnn-bps-route-segment-mru route)
-                             (fnn-bps-route-transfer-mru route))
-                            "bp-service" (fnn-bps-root service)
-                            :bundle wire :expect 0)))
-                 (setq outcome (or (fnn-tclc-outcome conn) :uncertain))))
+               ;; RFC 9174 5.4.1: no transfer exceeds the peer's Transfer
+               ;; MRU.  Once SESS_INIT has negotiated it, ACL2's
+               ;; fn-bpfs-plan (books/bp-fragment-send.lisp) answers whether
+               ;; WIRE goes whole, as RFC 9171 5.8 fragments each at most
+               ;; that MRU (fn-bpfs-plan-fragments-fit-mru), or not at all.
+               ;; The first transfer rides this session; each further
+               ;; fragment gets its own session to the same hop.
+               (let* ((params (fnn-tcl-params
+                               (fnn-bps-route-node route) (fnn-bps-expected service)
+                               (fnn-bps-route-keepalive route)
+                               (fnn-bps-route-segment-mru route)
+                               (fnn-bps-route-transfer-mru route)))
+                      (conn (fnn-tcl-session
+                             (fnn-socket-fd socket) :active params
+                             "bp-service" (fnn-bps-root service)
+                             :expect 0
+                             :on-ready
+                             (lambda (connection)
+                               (let* ((mtu (fnn-core 'fn-tcl-negotiated-transfer-mtu
+                                                     (fnn-core 'fn-tcl-session-negotiated
+                                                               (fnn-tclc-session connection))))
+                                      (plan (fnn-core 'fn-bpfs-plan wire mtu)))
+                                 (case (first plan)
+                                   (:whole
+                                    (setf (fnn-tclc-pending connection)
+                                          (cons "bp-service" wire)))
+                                   (:fragments
+                                    (fnn-out "BP fragmenting length=~d peer-mru=~d fragments=~d"
+                                             (length wire) mtu (length (rest plan)))
+                                    (setf (fnn-tclc-pending connection)
+                                          (cons "bp-service" (second plan)))
+                                    (setq fragments (cddr plan)))
+                                   (otherwise
+                                    (fnn-out "BP fragmentation refused reason=~(~a~) length=~d peer-mru=~d"
+                                             (second plan) (length wire) mtu)
+                                    (setq plan-refused t))))))))
+                 (setq outcome (if plan-refused
+                                   :refused
+                                 (or (fnn-tclc-outcome conn) :uncertain)))
+                 (fnn-socket-shut socket)
+                 (setq socket nil)
+                 ;; The job's one attempt covers all of its fragments: ACL2
+                 ;; (fn-bpfs-fragment-outcome) reads each further transfer,
+                 ;; and after the first fragment has gone a connect that
+                 ;; sent nothing is :uncertain, never :failed.
+                 (loop for fragment in fragments
+                       for index from 2
+                       while (eq outcome :accepted)
+                       do (let* ((next nil)
+                                 (transfer
+                                   (handler-case
+                                       (unwind-protect
+                                            (progn
+                                              (setq next (fnn-tcl-connect
+                                                          (fnn-bps-route-host route)
+                                                          (fnn-bps-route-port route)))
+                                              (or (fnn-tclc-outcome
+                                                   (fnn-tcl-session
+                                                    (fnn-socket-fd next) :active params
+                                                    "bp-service" (fnn-bps-root service)
+                                                    :bundle fragment :expect 0))
+                                                  :uncertain))
+                                         (when next (fnn-socket-shut next)))
+                                     ((or fnn-os-error sb-bsd-sockets:socket-error) ()
+                                       (if next :uncertain :failed)))))
+                            (setq outcome (fnn-core 'fn-bpfs-fragment-outcome index transfer))
+                            (fnn-out "BP fragment ~d transfer ~(~a~)" index outcome)))))
           (when socket (fnn-socket-shut socket)))
       (fnn-store-fault (e) (error e))
       ((or fnn-os-error sb-bsd-sockets:socket-error fnn-store-error) ()

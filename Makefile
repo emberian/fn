@@ -474,6 +474,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \
 	tests/acl2/bp-limits-tests \
+	books/bp-fragment-send \
+	tests/acl2/bp-fragment-send-tests \
 	books/clock \
 	books/clock-invariants \
 	tests/acl2/clock-tests \
