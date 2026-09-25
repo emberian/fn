@@ -3,6 +3,7 @@
 ; here include a burned transaction-id gap and a released high reservation.
 
 (in-package "ACL2")
+(include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/config-physical-replay")
 
 (defconst *cpr-t-stamp* *fn-cfg-default-stamp*)
@@ -127,3 +128,42 @@
 ; Successful recovery is deterministic on the same exact records.
 (assert-event (equal (fn-cpr-replay *cpr-t-configs* *cpr-t-events*)
                      *cpr-t-open*))
+
+; -----------------------------------------------------------------------------
+; The carried invariant (fn-cpr-apply-event-preserves-cnode-statep,
+; fn-cpr-loop-preserves-cnode-statep): a reachable, non-degenerate witness and
+; one must-fail per hypothesis.
+
+(defconst *cpr-t-configured*
+  (fn-replay-result-node (fn-cpr-replay (list *fn-cfg-default-record*) nil)))
+(defconst *cpr-t-step*
+  (fn-cpr-apply-event *cpr-t-configured* *cpr-t-undertake*))
+; Witness: the undertaking replays from the configured default node, and the
+; result is a configured node carrying the pin.
+(assert-event (fn-cnode-statep *cpr-t-configured*))
+(assert-event (consp *cpr-t-step*))
+(assert-event (fn-cnode-statep *cpr-t-step*))
+(assert-event (not (equal *cpr-t-step* *cpr-t-configured*)))
+; The one hypothesis: a refused event (here, an article in a group the
+; configuration does not serve) leaves NIL, which is not a configured node.
+(defconst *cpr-t-unserved*
+  (fn-record-make 1 1 1 "<cpr-unserved@example.invalid>" '(65) '("no.such.group")
+                  "archive-cpr-2" "subject" "evidence" 2 841000000))
+(assert-event (null (fn-cpr-apply-event *cpr-t-step* *cpr-t-unserved*)))
+(must-fail
+ (defthm cpr-t-apply-event-statep-without-non-refusal
+   (fn-cnode-statep (fn-cpr-apply-event *cpr-t-step* *cpr-t-unserved*))))
+; The loop: from a configured node every result's node is configured, the
+; faults included (a sequence fault keeps the last good node).
+(assert-event (equal (fn-replay-result-kind
+                      (fn-cpr-loop *cpr-t-step* nil (list *cpr-t-undertake*) 1 0))
+                     :fault))
+(assert-event (fn-cnode-statep
+               (fn-replay-result-node
+                (fn-cpr-loop *cpr-t-step* nil (list *cpr-t-undertake*) 1 0))))
+; Its hypothesis: from a node that is not configured the fault carries that
+; node, and the conclusion fails.
+(must-fail
+ (defthm cpr-t-loop-statep-without-configured-start
+   (fn-cnode-statep
+    (fn-replay-result-node (fn-cpr-loop nil nil nil 0 0)))))
