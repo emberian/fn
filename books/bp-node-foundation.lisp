@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "bp-node-machine")
 (include-book "bp-adu")
+(include-book "bp-signed-receipt")
 (set-verify-guards-eagerness 0)
 (defconst *fn-bpnf-max-held-image* 131072)
 
@@ -193,7 +194,10 @@
 (defun fn-bpah-held-adu-result (held)
   (declare (xargs :guard t))
   (if (fn-bpnf-heldp held)
-      (fn-bpa-decode-exact (fn-bpb-payload (fn-bpnf-held-bundle held)))
+      ;; A signed receipt (books/bp-signed-receipt.lisp) is classified by
+      ;; the receipt ADU it carries.
+      (fn-bpa-decode-exact
+       (fn-bpsr-adu-octets (fn-bpb-payload (fn-bpnf-held-bundle held))))
     nil))
 
 (defun fn-bpah-held-class (held)
