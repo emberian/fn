@@ -370,14 +370,32 @@
                                fn-native-admin-bp-boundary-base-plan
                                kind-of-result status-of-result
                                (:executable-counterpart equal))))))
+; The argv words, closed: the plan's tests read the words and its results
+; the argv, and these four rules relate them without re-expanding the map
+; at every occurrence (16,000 expansions, 6.4 s REPL hbox, with the
+; retention and peer-extend arms).
+(local (defthm car-of-words
+  (equal (car (fn-native-admin-words argv))
+         (if (consp argv) (fn-record-octets-string (car argv)) nil))))
+(local (defthm cdr-of-words
+  (equal (cdr (fn-native-admin-words argv))
+         (fn-native-admin-words (cdr argv)))))
+(local (defthm consp-of-words
+  (equal (consp (fn-native-admin-words argv)) (consp argv))))
+(local (defthm len-of-words
+  (equal (len (fn-native-admin-words argv)) (len argv))))
 (defthm fn-native-admin-plan-group-name-is-a-group-name
   (implies (and (equal (fn-native-admin-result-status (fn-native-admin-plan argv)) :accepted)
                 (member-equal (fn-native-admin-result-kind (fn-native-admin-plan argv))
                               '(:create-group :remove-group)))
            (fn-record-group-namep
             (fn-record-octets-string (fn-native-admin-result-name (fn-native-admin-plan argv)))))
-  :hints (("Goal" :in-theory (e/d (fn-native-admin-plan fn-native-admin-words)
-                                  (fn-native-admin-peer-plan fn-record-group-namep
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
+                                  (fn-native-admin-words
+                                   fn-native-admin-carries-rows
+                                   fn-native-admin-carries-hexp subsetp-equal
+                                   fn-native-admin-retention-days
+                                   fn-native-admin-peer-plan fn-record-group-namep
                                    fn-path-identityp fn-native-admin-decimalp
                                    fn-native-admin-decimal-value fn-native-admin-argvp
                                    fn-native-admin-bp-boundary-split
