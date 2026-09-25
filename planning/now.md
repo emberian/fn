@@ -419,8 +419,10 @@ service.
 - **BP:** fragmentation without the 65,538 × 64 caps; N16 §3.6 (chunks,
   manifest kind 21, `:quiesce`); production DTN labs; ION (a dtn7-to-ION UDP
   hop); PKT-064.
-- **Control:** the reader answers into the NNTP step (running); C4 deferred
-  by D29.
+- **Control:** the reader answers are served since control-c3e (423/430
+  withdrawn, HDR :fn-control; fn_verify --withdrawal exits 0 on a real node);
+  open: the owner-level teeth, the relation carrying the journal equality and
+  txid order, a Message-ID-to-txid index; C4 deferred by D29.
 - **Peering:** decisions 4 and 8; `peer add` still separate after confirm.
 - **Marker:** the cheaper publication program (PKT-143).
 - **K0 still open:**
