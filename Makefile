@@ -938,6 +938,8 @@ check:
 # its reason, as DTN-omitted; and no name an omitted file defines is spelled
 # as a counterpart in a raw module the DTN image loads.  At 6c0626c5 the DTN
 # images omitted host/checkpoint-host.lisp and could not `store init'.
+# And every book a DTN-loaded host file calls is included before its `ld`:
+# at 32842f50 build-dtn.lisp lacked books/octets-stobj and the image failed.
 # Static, under a second, with its teeth test.
 	$(PYTHON) tools/build_lists_check.py
 	$(PYTHON) -m unittest -q tests.test_build_lists_check
