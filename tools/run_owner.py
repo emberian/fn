@@ -1316,7 +1316,10 @@ class Owner:
             if existing == "duplicate":
                 return "duplicate"
             if existing == "conflict":
-                return "refused"
+                # The word itself, as the native owner passes it
+                # (host/native/owner.lisp fnn-owner-attempt): the book renders
+                # the conflict refusal line from it (D25), not the generic 441.
+                return "conflict"
             # `fn-sbud-verdict` under the persisted profile, asked of the
             # ACL2 that holds this owner's store node (as the CLI post asks).
             if not publication_admissible(self.store, self.bridge):

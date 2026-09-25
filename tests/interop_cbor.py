@@ -9,13 +9,10 @@ does not interpolate or evaluate Lisp forms supplied by a peer.
 from __future__ import annotations
 
 
-def _heap_capped(environment):
-    """The pool's heap cap (tools/acl2_slots.py) for an ACL2 this check starts."""
-    import sys as _sys
-    from pathlib import Path as _Path
-    _sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "tools"))
-    import acl2_slots
-    return acl2_slots.apply_heap_cap(environment)
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "tools"))
+import acl2_slots  # noqa: E402
 
 import argparse
 import datetime as dt
@@ -118,14 +115,10 @@ class ACL2:
     """A fixed-call ACL2 bridge following the existing store/reader discipline."""
 
     def __init__(self, executable: Path):
-        environment = os.environ.copy()
-        environment["ACL2_CUSTOMIZATION"] = "NONE"
-        environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
-        environment = _heap_capped(environment)
-        environment.pop("ACL2_SYSTEM_BOOKS", None)
-        self.proc = subprocess.Popen(
-            [str(executable)], cwd=ROOT, stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=environment,
+        # The machine's ACL2 pool and heap cap (PKT-162); close() returns it.
+        self.proc = acl2_slots.popen(
+            [str(executable)], "cbor interop", cwd=ROOT, stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         )
         try:
             read_prompt(self.proc)
@@ -169,6 +162,8 @@ class ACL2:
             for stream in (self.proc.stdin, self.proc.stdout):
                 if stream and not stream.closed:
                     stream.close()
+            self.proc = None
+            acl2_slots.release_tree_slot()
 
     def __enter__(self) -> "ACL2":
         return self
