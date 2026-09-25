@@ -749,7 +749,9 @@ refused transfer stays in (fnn-bps-outcome bp) for the exit code."
                          (fnn-bps-state bp) (fnn-bp-eid peer-id))))
     (when event
       (fnn-out "BP node receipt contact peer=~a" peer-id)
-      (fnn-bpc-drive-contact bp event))
+      (let ((*fnn-bps-connection-local-uncertain* t)
+            (*fnn-bps-local-uncertain-seen* nil))
+        (fnn-bpc-drive-contact bp event)))
     bp))
 
 (defun fnn-command-bp-node

@@ -460,6 +460,9 @@ def main(argv=None):
     ap.add_argument("--flip-signature", action="store_true",
                     help="with --signed-receipts: a proxy between B and the relay "
                          "flips one octet of the receipt's ML-DSA-65 signature")
+    ap.add_argument("--no-cuts", action="store_true",
+                    help="with --native: skip step 5, whose kills need developer "
+                         "selectors a production image refuses")
     ap.add_argument("--no-contact-tick", action="store_true",
                     help="step 4 runs no bp-contact tick: B's bp-node serve sends "
                          "its own owed receipt; exit 1 unless A accepts it")
@@ -591,8 +594,10 @@ def main(argv=None):
                           if signed_a else [])
             setup.append(lab.fn("setup-{}-boundary".format(side), "operator", config,
                                 "bp-boundary", "add", name, remote, eid, port,
-                                *scope, *carries, *releases, *required,
-                                "contact", contacts[side]).returncode)
+                                *scope, *carries, *releases,
+                                # `contact PORT' precedes the receipt options,
+                                # which the grammar peels first from the tail.
+                                "contact", contacts[side], *required).returncode)
             # Spec bp-node-machine 4.6: the topology as routes.  A reaches
             # B (and B reaches A) through the neighbour boundary, whichever
             # relay stands behind it.  In this lab the fn endpoints send
@@ -792,9 +797,11 @@ def main(argv=None):
                      request_again_lines=[l for l in (again.stdout + again.stderr).splitlines()
                                           if l.startswith(("BP obligation", "fn: "))],
                      status_after_again=later.stdout.strip())
-            cut("work-cut-submit", "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_SUBMIT",
-                "BP OBLIGATION SUBMIT TAKEN")
-            cut("work-cut-attempt", "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT",
+            if not args.no_cuts:
+                cut("work-cut-submit", "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_SUBMIT",
+                    "BP OBLIGATION SUBMIT TAKEN")
+            if not args.no_cuts:
+              cut("work-cut-attempt", "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT",
                 "BP OBLIGATION ATTEMPT DURABLE")
             final = {w: lab.fn("a-6-status-" + w, "bp-obligation", "status", a_store, a_wf,
                                w).stdout.strip()

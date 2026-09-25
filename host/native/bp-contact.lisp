@@ -30,7 +30,10 @@
               for effects = (fnn-bps-step service event)
               while effects
               do (fnn-bps-drive-effects service effects)
-              when (not (eq (fnn-bps-outcome service) :accepted))
+              when (or (not (eq (fnn-bps-outcome service) :accepted))
+                       ;; A connection-local uncertain transfer ends this
+                       ;; contact; the requeued job waits for a later one.
+                       *fnn-bps-local-uncertain-seen*)
                 do (loop-finish))
         (fnn-bps-drive-effects
          service (fnn-bps-step service (list :contact (second event) nil))))
