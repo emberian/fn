@@ -516,7 +516,9 @@
                (if (caddr decision)
                    (if (fn-stxa-p (caddr decision))
                        (fn-stxa-encode (caddr decision))
-                     (fn-record-encode-impl (caddr decision)))
+                     ; fn-rcon-record-encode-impl-is-record-encode-impl
+                     ; (books/records-codec-concrete, no hypothesis).
+                     (fn-rcon-record-encode-impl (caddr decision)))
                  nil))
        decision))))
 

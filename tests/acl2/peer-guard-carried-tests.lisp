@@ -187,3 +187,30 @@
                                            *pt-idloop* nil 0 *pgc-t-empty-trie* nil)
                       (fn-pix-decide-offer *pgc-t-bad-ledger-node* *pt-cfg* "innA" nil
                                            *pt-idloop* nil 0 *pgc-t-empty-trie* nil))))
+
+; -----------------------------------------------------------------------------
+; A peer's retrieval by Message-ID (lane/rep-records-2): the peer commands do
+; not answer STAT or ARTICLE, so the arm delegates to the reader step, now
+; fn-pix-peer-delegate-pinned, which looks the Message-ID up in the pinned
+; view trie by index.  With the view pinned (*pix-t-pin*,
+; peer-offer-indexed-tests) the held article answers 223 and the absent one
+; 430, each the reference step's answer.
+(defun pgc-arm-pinned (event)
+  (fn-post-result-effects
+   (fn-pgc-peer-arm *pt-ps1* *pix-t-trie* *pix-t-arts* *pix-t-archive* *pix-t-pin* nil
+                    *pt-inj* *pt-obs* *pt-obs* event)))
+(defun pgc-ref-pinned (event)
+  (fn-post-result-effects
+   (fn-peer-step-pinned *pt-ps1* *pix-t-archive* *pix-t-pin* nil
+                        *pt-inj* *pt-obs* *pt-obs* event)))
+(assert-event (fn-peer-session-peer *pt-ps1*))
+(assert-event (equal (pgc-arm-pinned (pt-cmd "STAT <a1@example.invalid>"))
+                     (pgc-ref-pinned (pt-cmd "STAT <a1@example.invalid>"))))
+(assert-event (equal (take 3 (cadr (car (pgc-arm-pinned (pt-cmd "STAT <a1@example.invalid>")))))
+                     (pt-o "223")))
+(assert-event (equal (pgc-arm-pinned (pt-cmd "STAT <loop@example.invalid>"))
+                     (pgc-ref-pinned (pt-cmd "STAT <loop@example.invalid>"))))
+(assert-event (equal (take 3 (cadr (car (pgc-arm-pinned (pt-cmd "STAT <loop@example.invalid>")))))
+                     (pt-o "430")))
+(assert-event (equal (pgc-arm-pinned (pt-cmd "ARTICLE <a1@example.invalid>"))
+                     (pgc-ref-pinned (pt-cmd "ARTICLE <a1@example.invalid>"))))

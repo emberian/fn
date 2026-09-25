@@ -560,6 +560,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-prepare-carried \
 	books/records-concrete \
 	books/records-concrete-owner \
+	books/records-attach-concrete \
 	books/msgid-index-concrete \
 	books/owner-advance-carried \
 	books/owner-commit-ocl \
