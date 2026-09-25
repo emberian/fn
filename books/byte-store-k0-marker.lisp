@@ -22,8 +22,9 @@
 ;; marker-replaced is closed by fn-bs-k0-marker-replaced-cut-relation: both
 ;; resolutions are related to the cut's kernel, and every crash image of the
 ;; pending-rename state is a crash image of one of them
-;; (fn-bs-k0m-marker-rename-crash-is-a-resolution-crash, from the commutation
-;; fn-bs-k0m-crash-of-pending-marker-rename).
+;; (fn-bs-k0m-root-rename-crash-is-a-resolution-crash at the marker's name,
+;; from the commutation fn-bs-k0m-crash-of-pending-root-rename, both generic
+;; over the root name).
 ;;
 ;; OPEN, named and not claimed: the error arms (every OS error in
 ;; fnn-mark-committed is uncertain, and the state is the cut pair's).
@@ -274,25 +275,34 @@
   (implies (and (fn-bs-statep b) (stringp name) (natp ino))
            (fn-bs-statep (fn-bs-k0m-with-root-entry b name ino)))
   :hints (("Goal" :in-theory (enable fn-bs-statep fn-bs-invariants-vocabulary fn-bs-dir-tablep fn-bs-entriesp))))
-(defun fn-bs-k0m-drop-root-marker (ops)
+;
+; A pending root rename onto a name other than the allocation frontier (the
+; committed-history marker, the state checkpoint, config.json): the relation's
+; pending shape names only the frontier's root entry, so such a rename is
+; covered through its two resolutions.  The dropped resolution removes every
+; such root set-entry; the landed one also makes it durable.
+(defun fn-bs-k0m-root-rename-opp (op)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (consp op) (equal (car op) :set-entry)
+       (equal (nth 1 op) :root)
+       (not (equal (nth 2 op) *fn-bs-scan-frontier-name*))))
+(defun fn-bs-k0m-drop-root-rename (ops)
   (declare (xargs :guard t :verify-guards nil))
   (cond ((atom ops) nil)
-        ((and (consp (car ops)) (equal (car (car ops)) :set-entry)
-              (equal (nth 1 (car ops)) :root)
-              (equal (nth 2 (car ops)) *fn-bs-history-marker-name*))
-         (fn-bs-k0m-drop-root-marker (cdr ops)))
-        (t (cons (car ops) (fn-bs-k0m-drop-root-marker (cdr ops))))))
-(defun fn-bs-marker-rename-dropped (b)
+        ((fn-bs-k0m-root-rename-opp (car ops))
+         (fn-bs-k0m-drop-root-rename (cdr ops)))
+        (t (cons (car ops) (fn-bs-k0m-drop-root-rename (cdr ops))))))
+(defun fn-bs-root-rename-dropped (b)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
-              (fn-bs-k0m-drop-root-marker (fn-bs-pending b)) (fn-bs-next-ino b)))
+              (fn-bs-k0m-drop-root-rename (fn-bs-pending b)) (fn-bs-next-ino b)))
 (defthm fn-bs-k0m-drop-of-root-quiet
   (implies (not (fn-bs-ops-for-dir ops :root))
-           (equal (fn-bs-k0m-drop-root-marker ops) (true-list-fix ops)))
+           (equal (fn-bs-k0m-drop-root-rename ops) (true-list-fix ops)))
   :hints (("Goal" :in-theory (enable fn-bs-ops-for-dir))))
 (defthm fn-bs-k0m-drop-of-append
-  (equal (fn-bs-k0m-drop-root-marker (append a b))
-         (append (fn-bs-k0m-drop-root-marker a) (fn-bs-k0m-drop-root-marker b))))
+  (equal (fn-bs-k0m-drop-root-rename (append a b))
+         (append (fn-bs-k0m-drop-root-rename a) (fn-bs-k0m-drop-root-rename b))))
 (local (defthm fn-bs-k0m-not-for-dir-id
   (implies (not (fn-bs-ops-for-dir ops d)) (equal (fn-bs-ops-not-for-dir ops d) (true-list-fix ops)))
   :hints (("Goal" :in-theory (enable fn-bs-ops-for-dir fn-bs-ops-not-for-dir)))))
@@ -303,7 +313,7 @@
   (implies (and (fn-bs-statep bs) (stringp stage) (not (fn-bs-lookup bs :staging stage))
                 (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
                 (fn-cbor-octet-listp octets) (consp octets))
-           (and (equal (fn-bs-marker-rename-dropped (fn-bs-marker-b4 bs stage octets))
+           (and (equal (fn-bs-root-rename-dropped (fn-bs-marker-b4 bs stage octets))
                        (mv-nth 1 (fn-bs-unlink (fn-bs-marker-b3 bs stage octets) :staging stage :ok)))
                 (equal (mv-nth 1 (fn-bs-fsync-dir (fn-bs-marker-b4 bs stage octets) :root :ok))
                        (fn-bs-marker-b5 bs stage octets))))
@@ -328,7 +338,7 @@
                   (fn-bs-store-relation (car (nth 1 run)) (cdr (nth 1 run)))
                   (fn-bs-store-relation (car (nth 3 run)) (cdr (nth 3 run)))
                   (fn-bs-store-relation (car (nth 5 run)) (cdr (nth 5 run)))
-                  (fn-bs-store-relation (fn-bs-marker-rename-dropped (car (nth 7 run)))
+                  (fn-bs-store-relation (fn-bs-root-rename-dropped (car (nth 7 run)))
                                         (cdr (nth 7 run)))
                   (equal (mv-nth 1 (fn-bs-fsync-dir (car (nth 7 run)) :root :ok))
                          (car (nth 9 run)))
@@ -364,7 +374,7 @@
                            (fn-bs-store-relation fn-bs-statep fn-bs-lookup fn-bs-create fn-bs-write
                             fn-bs-fsync-file fn-bs-fsync-dir fn-bs-unlink fn-bs-marker-program fn-bs-run
                             fn-bs-marker-b1 fn-bs-marker-b2 fn-bs-marker-b3 fn-bs-marker-b4 fn-bs-marker-b5
-                            fn-bs-k0m-with-content fn-bs-k0m-with-root-entry fn-bs-marker-rename-dropped
+                            fn-bs-k0m-with-content fn-bs-k0m-with-root-entry fn-bs-root-rename-dropped
                             fn-bs-authority-inode-list fn-bs-finish-inputp fn-bs-replay-visiblep
                             fn-bs-create-preserves-statep fn-bs-write-preserves-statep
                             fn-bs-fsync-file-preserves-statep fn-bs-unlink-preserves-statep
@@ -380,32 +390,28 @@
 ; root entry operation is this rename (the root was quiet before it), and the
 ; root directory exists (a related state's config.json entry).
 
-(defun fn-bs-k0m-root-marker-onlyp (ops ino)
+(defun fn-bs-k0m-root-rename-onlyp (ops name ino)
   (declare (xargs :guard t :verify-guards nil))
   (cond ((atom ops) t)
         ((and (consp (car ops)) (member-equal (car (car ops)) '(:set-entry :del-entry))
               (equal (nth 1 (car ops)) :root))
          (and (equal (car (car ops)) :set-entry)
-              (equal (nth 2 (car ops)) *fn-bs-history-marker-name*)
+              (not (equal name *fn-bs-scan-frontier-name*))
+              (equal (nth 2 (car ops)) name)
               (equal (nth 3 (car ops)) ino)
-              (fn-bs-k0m-root-marker-onlyp (cdr ops) ino)))
-        (t (fn-bs-k0m-root-marker-onlyp (cdr ops) ino))))
-(defun fn-bs-k0m-has-root-marker (ops)
+              (fn-bs-k0m-root-rename-onlyp (cdr ops) name ino)))
+        (t (fn-bs-k0m-root-rename-onlyp (cdr ops) name ino))))
+(defun fn-bs-k0m-has-root-rename (ops)
   (declare (xargs :guard t :verify-guards nil))
   (cond ((atom ops) nil)
-        ((and (consp (car ops)) (equal (car (car ops)) :set-entry)
-              (equal (nth 1 (car ops)) :root)
-              (equal (nth 2 (car ops)) *fn-bs-history-marker-name*))
-         t)
-        (t (fn-bs-k0m-has-root-marker (cdr ops)))))
-(defun fn-bs-k0m-drop-marker-choices (ops choices)
+        ((fn-bs-k0m-root-rename-opp (car ops)) t)
+        (t (fn-bs-k0m-has-root-rename (cdr ops)))))
+(defun fn-bs-k0m-drop-rename-choices (ops choices)
   (declare (xargs :guard t :verify-guards nil))
   (cond ((or (atom ops) (atom choices)) nil)
-        ((and (consp (car ops)) (equal (car (car ops)) :set-entry)
-              (equal (nth 1 (car ops)) :root)
-              (equal (nth 2 (car ops)) *fn-bs-history-marker-name*))
-         (fn-bs-k0m-drop-marker-choices (cdr ops) (cdr choices)))
-        (t (cons (car choices) (fn-bs-k0m-drop-marker-choices (cdr ops) (cdr choices))))))
+        ((fn-bs-k0m-root-rename-opp (car ops))
+         (fn-bs-k0m-drop-rename-choices (cdr ops) (cdr choices)))
+        (t (cons (car choices) (fn-bs-k0m-drop-rename-choices (cdr ops) (cdr choices))))))
 (encapsulate ()
 (local (defun fn-bs-k0m-all-writesp (ops)
   (declare (xargs :guard t :verify-guards nil))
@@ -419,44 +425,44 @@
                            (fn-bs-unit-count floor min max fn-bs-take fn-bs-zeros nthcdr))))))
 (local (defthm fn-bs-k0m-all-writes-facts
   (implies (fn-bs-k0m-all-writesp ops)
-           (and (equal (fn-bs-k0m-drop-root-marker ops) (true-list-fix ops))
-                (fn-bs-k0m-root-marker-onlyp ops ino)
-                (not (fn-bs-k0m-has-root-marker ops))))
+           (and (equal (fn-bs-k0m-drop-root-rename ops) (true-list-fix ops))
+                (fn-bs-k0m-root-rename-onlyp ops name ino)
+                (not (fn-bs-k0m-has-root-rename ops))))
   :hints (("Goal" :induct (fn-bs-k0m-all-writesp ops)
-           :in-theory (e/d (fn-bs-k0m-drop-root-marker) (fn-bs-k0m-drop-of-root-quiet))))))
-(defthm fn-bs-k0m-root-marker-onlyp-of-append
-  (equal (fn-bs-k0m-root-marker-onlyp (append a b) ino)
-         (and (fn-bs-k0m-root-marker-onlyp a ino) (fn-bs-k0m-root-marker-onlyp b ino))))
-(defthm fn-bs-k0m-has-root-marker-of-append
-  (equal (fn-bs-k0m-has-root-marker (append a b))
-         (or (fn-bs-k0m-has-root-marker a) (fn-bs-k0m-has-root-marker b))))
-(defthm fn-bs-k0m-drop-marker-choices-fit
+           :in-theory (e/d (fn-bs-k0m-drop-root-rename) (fn-bs-k0m-drop-of-root-quiet))))))
+(defthm fn-bs-k0m-root-rename-onlyp-of-append
+  (equal (fn-bs-k0m-root-rename-onlyp (append a b) name ino)
+         (and (fn-bs-k0m-root-rename-onlyp a name ino) (fn-bs-k0m-root-rename-onlyp b name ino))))
+(defthm fn-bs-k0m-has-root-rename-of-append
+  (equal (fn-bs-k0m-has-root-rename (append a b))
+         (or (fn-bs-k0m-has-root-rename a) (fn-bs-k0m-has-root-rename b))))
+(defthm fn-bs-k0m-drop-rename-choices-fit
   (implies (fn-bs-crash-choicesp choices ops unit)
-           (fn-bs-crash-choicesp (fn-bs-k0m-drop-marker-choices ops choices)
-                                 (fn-bs-k0m-drop-root-marker ops) unit))
-  :hints (("Goal" :induct (fn-bs-k0m-drop-marker-choices ops choices)
-           :in-theory (e/d (fn-bs-k0m-drop-root-marker fn-bs-crash-choicesp)
+           (fn-bs-crash-choicesp (fn-bs-k0m-drop-rename-choices ops choices)
+                                 (fn-bs-k0m-drop-root-rename ops) unit))
+  :hints (("Goal" :induct (fn-bs-k0m-drop-rename-choices ops choices)
+           :in-theory (e/d (fn-bs-k0m-drop-root-rename fn-bs-crash-choicesp)
                            (fn-bs-crash-choicep fn-bs-k0m-drop-of-root-quiet)))))
 (local (defthm fn-bs-k0m-crash-select-of-dropped
-  (equal (fn-bs-crash-select (fn-bs-k0m-drop-root-marker ops)
-                             (fn-bs-k0m-drop-marker-choices ops choices) unit)
-         (fn-bs-k0m-drop-root-marker (fn-bs-crash-select ops choices unit)))
-  :hints (("Goal" :induct (fn-bs-k0m-drop-marker-choices ops choices)
-           :in-theory (e/d (fn-bs-k0m-drop-root-marker fn-bs-crash-select)
+  (equal (fn-bs-crash-select (fn-bs-k0m-drop-root-rename ops)
+                             (fn-bs-k0m-drop-rename-choices ops choices) unit)
+         (fn-bs-k0m-drop-root-rename (fn-bs-crash-select ops choices unit)))
+  :hints (("Goal" :induct (fn-bs-k0m-drop-rename-choices ops choices)
+           :in-theory (e/d (fn-bs-k0m-drop-root-rename fn-bs-crash-select)
                            (fn-bs-tear-write fn-bs-k0m-drop-of-root-quiet))))))
-(local (defthm fn-bs-k0m-crash-select-keeps-root-marker-only
-  (implies (fn-bs-k0m-root-marker-onlyp ops ino)
-           (fn-bs-k0m-root-marker-onlyp (fn-bs-crash-select ops choices unit) ino))
+(local (defthm fn-bs-k0m-crash-select-keeps-root-rename-only
+  (implies (fn-bs-k0m-root-rename-onlyp ops name ino)
+           (fn-bs-k0m-root-rename-onlyp (fn-bs-crash-select ops choices unit) name ino))
   :hints (("Goal" :induct (fn-bs-crash-select ops choices unit)
            :in-theory (e/d (fn-bs-crash-select) (fn-bs-tear-write))))))
 (local (defthm fn-bs-k0m-apply-writes-of-drop
-  (equal (fn-bs-apply-writes inodes (fn-bs-k0m-drop-root-marker ops))
+  (equal (fn-bs-apply-writes inodes (fn-bs-k0m-drop-root-rename ops))
          (fn-bs-apply-writes inodes ops))
   :hints (("Goal" :induct (fn-bs-apply-writes inodes ops)
-           :in-theory (e/d (fn-bs-k0m-drop-root-marker fn-bs-apply-writes) (fn-bs-k0m-drop-of-root-quiet))))))
-(local (defun fn-bs-k0m-set-marker (dirs ino)
+           :in-theory (e/d (fn-bs-k0m-drop-root-rename fn-bs-apply-writes) (fn-bs-k0m-drop-of-root-quiet))))))
+(local (defun fn-bs-k0m-set-marker (dirs name ino)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-bs-put-assoc :root (fn-bs-put-assoc *fn-bs-history-marker-name* ino
+  (fn-bs-put-assoc :root (fn-bs-put-assoc name ino
                                           (cdr (assoc-equal :root dirs)))
                    dirs)))
 (local (defthm fn-bs-k0m-put-assoc-commutes
@@ -475,94 +481,94 @@
   :hints (("Goal" :in-theory (enable fn-bs-put-assoc)))))
 (local (defthm fn-bs-k0m-set-marker-facts
   (implies (consp (assoc-equal :root dirs))
-           (and (consp (assoc-equal :root (fn-bs-k0m-set-marker dirs ino)))
-                (equal (fn-bs-k0m-set-marker (fn-bs-k0m-set-marker dirs ino) ino)
-                       (fn-bs-k0m-set-marker dirs ino))
+           (and (consp (assoc-equal :root (fn-bs-k0m-set-marker dirs name ino)))
+                (equal (fn-bs-k0m-set-marker (fn-bs-k0m-set-marker dirs name ino) name ino)
+                       (fn-bs-k0m-set-marker dirs name ino))
                 (implies (not (equal d :root))
-                         (and (equal (assoc-equal d (fn-bs-k0m-set-marker dirs ino)) (assoc-equal d dirs))
+                         (and (equal (assoc-equal d (fn-bs-k0m-set-marker dirs name ino)) (assoc-equal d dirs))
                               (consp (assoc-equal :root (fn-bs-put-assoc d v dirs)))
-                              (equal (fn-bs-k0m-set-marker (fn-bs-put-assoc d v dirs) ino)
-                                     (fn-bs-put-assoc d v (fn-bs-k0m-set-marker dirs ino)))))))
+                              (equal (fn-bs-k0m-set-marker (fn-bs-put-assoc d v dirs) name ino)
+                                     (fn-bs-put-assoc d v (fn-bs-k0m-set-marker dirs name ino)))))))
   :hints (("Goal" :in-theory (e/d (fn-bs-k0m-set-marker) (fn-bs-put-assoc fn-bs-k0m-put-assoc-commutes))
                   :use ((:instance fn-bs-k0m-put-assoc-commutes (k1 d) (v1 v) (k2 :root)
-                         (v2 (fn-bs-put-assoc *fn-bs-history-marker-name* ino (cdr (assoc-equal :root dirs))))
+                         (v2 (fn-bs-put-assoc name ino (cdr (assoc-equal :root dirs))))
                          (al dirs)))))))
 (local (in-theory (disable fn-bs-k0m-set-marker)))
 (local (defthm fn-bs-k0m-set-marker-folds
-  (equal (fn-bs-put-assoc :root (fn-bs-put-assoc *fn-bs-history-marker-name* ino
+  (equal (fn-bs-put-assoc :root (fn-bs-put-assoc name ino
                                                  (cdr (assoc-equal :root dirs)))
                           dirs)
-         (fn-bs-k0m-set-marker dirs ino))
+         (fn-bs-k0m-set-marker dirs name ino))
   :hints (("Goal" :in-theory (enable fn-bs-k0m-set-marker)))))
 (local (defthm fn-bs-k0m-apply-entries-of-marker-rename
-  (implies (and (fn-bs-k0m-root-marker-onlyp ops ino)
+  (implies (and (fn-bs-k0m-root-rename-onlyp ops name ino)
                 (consp (assoc-equal :root dirs)))
            (equal (fn-bs-apply-entries dirs ops)
-                  (fn-bs-apply-entries (if (fn-bs-k0m-has-root-marker ops)
-                                           (fn-bs-k0m-set-marker dirs ino)
+                  (fn-bs-apply-entries (if (fn-bs-k0m-has-root-rename ops)
+                                           (fn-bs-k0m-set-marker dirs name ino)
                                          dirs)
-                                       (fn-bs-k0m-drop-root-marker ops))))
+                                       (fn-bs-k0m-drop-root-rename ops))))
   :hints (("Goal" :induct (fn-bs-apply-entries dirs ops)
-           :in-theory (e/d (fn-bs-apply-entries fn-bs-k0m-drop-root-marker)
+           :in-theory (e/d (fn-bs-apply-entries fn-bs-k0m-drop-root-rename)
                            (fn-bs-k0m-drop-of-root-quiet fn-bs-k0m-set-marker
                             fn-bs-put-assoc fn-bs-del-assoc fn-bs-k0m-put-assoc-commutes))))))
 ; The crash of the pending state under CHOICES is the crash of a resolution
 ; under the same choices with the rename's own choice removed.
-(defthm fn-bs-k0m-crash-of-pending-marker-rename
-  (implies (and (fn-bs-k0m-root-marker-onlyp (fn-bs-pending s) ino)
+(defthm fn-bs-k0m-crash-of-pending-root-rename
+  (implies (and (fn-bs-k0m-root-rename-onlyp (fn-bs-pending s) name ino)
                 (consp (assoc-equal :root (fn-bs-dirs s))))
            (equal (fn-bs-crash s choices)
-                  (fn-bs-crash (if (fn-bs-k0m-has-root-marker
+                  (fn-bs-crash (if (fn-bs-k0m-has-root-rename
                                     (fn-bs-crash-select (fn-bs-pending s) choices (fn-bs-unit s)))
-                                   (fn-bs-k0m-with-root-entry (fn-bs-marker-rename-dropped s)
-                                                              *fn-bs-history-marker-name* ino)
-                                 (fn-bs-marker-rename-dropped s))
-                               (fn-bs-k0m-drop-marker-choices (fn-bs-pending s) choices))))
+                                   (fn-bs-k0m-with-root-entry (fn-bs-root-rename-dropped s)
+                                                              name ino)
+                                 (fn-bs-root-rename-dropped s))
+                               (fn-bs-k0m-drop-rename-choices (fn-bs-pending s) choices))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0m-apply-entries-of-marker-rename
                   (dirs (fn-bs-dirs s))
                   (ops (fn-bs-crash-select (fn-bs-pending s) choices (fn-bs-unit s)))))
-           :in-theory (e/d (fn-bs-crash fn-bs-k0m-with-root-entry fn-bs-marker-rename-dropped
+           :in-theory (e/d (fn-bs-crash fn-bs-k0m-with-root-entry fn-bs-root-rename-dropped
                             fn-bs-apply-ops-inodes-are-apply-writes fn-bs-apply-ops-dirs-are-apply-entries)
                            (fn-bs-k0m-apply-entries-of-marker-rename fn-bs-apply-ops fn-bs-apply-entries
                             fn-bs-apply-writes fn-bs-crash-select fn-bs-put-assoc
                             fn-bs-k0m-put-assoc-commutes)))))
 )
-(defthm fn-bs-k0m-marker-rename-crash-is-a-resolution-crash
-  (implies (and (fn-bs-k0m-root-marker-onlyp (fn-bs-pending s) ino)
+(defthm fn-bs-k0m-root-rename-crash-is-a-resolution-crash
+  (implies (and (fn-bs-k0m-root-rename-onlyp (fn-bs-pending s) name ino)
                 (consp (assoc-equal :root (fn-bs-dirs s)))
                 (fn-bs-crash-imagep s image))
-           (or (fn-bs-crash-imagep (fn-bs-marker-rename-dropped s) image)
-               (fn-bs-crash-imagep (fn-bs-k0m-with-root-entry (fn-bs-marker-rename-dropped s)
-                                                              *fn-bs-history-marker-name* ino)
+           (or (fn-bs-crash-imagep (fn-bs-root-rename-dropped s) image)
+               (fn-bs-crash-imagep (fn-bs-k0m-with-root-entry (fn-bs-root-rename-dropped s)
+                                                              name ino)
                                    image)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bs-k0m-crash-of-pending-marker-rename
+           :use ((:instance fn-bs-k0m-crash-of-pending-root-rename
                   (choices (fn-bs-crash-imagep-witness s image)))
-                 (:instance fn-bs-k0m-drop-marker-choices-fit
+                 (:instance fn-bs-k0m-drop-rename-choices-fit
                   (choices (fn-bs-crash-imagep-witness s image)) (ops (fn-bs-pending s))
                   (unit (fn-bs-unit s)))
                  (:instance fn-bs-crash-imagep-suff
-                  (s (fn-bs-marker-rename-dropped s))
-                  (choices (fn-bs-k0m-drop-marker-choices (fn-bs-pending s) (fn-bs-crash-imagep-witness s image))))
+                  (s (fn-bs-root-rename-dropped s))
+                  (choices (fn-bs-k0m-drop-rename-choices (fn-bs-pending s) (fn-bs-crash-imagep-witness s image))))
                  (:instance fn-bs-crash-imagep-suff
-                  (s (fn-bs-k0m-with-root-entry (fn-bs-marker-rename-dropped s) *fn-bs-history-marker-name* ino))
-                  (choices (fn-bs-k0m-drop-marker-choices (fn-bs-pending s) (fn-bs-crash-imagep-witness s image)))))
+                  (s (fn-bs-k0m-with-root-entry (fn-bs-root-rename-dropped s) name ino))
+                  (choices (fn-bs-k0m-drop-rename-choices (fn-bs-pending s) (fn-bs-crash-imagep-witness s image)))))
            :in-theory (e/d (fn-bs-crash-imagep)
                            (fn-bs-crash fn-bs-crash-imagep-suff fn-bs-crash-choicesp
-                            fn-bs-k0m-drop-marker-choices-fit fn-bs-crash-select)))
+                            fn-bs-k0m-drop-rename-choices-fit fn-bs-crash-select)))
           (and stable-under-simplificationp
-               '(:in-theory (e/d (fn-bs-crash-imagep fn-bs-k0m-with-root-entry fn-bs-marker-rename-dropped)
+               '(:in-theory (e/d (fn-bs-crash-imagep fn-bs-k0m-with-root-entry fn-bs-root-rename-dropped)
                            (fn-bs-crash fn-bs-crash-imagep-suff fn-bs-crash-choicesp
-                            fn-bs-k0m-drop-marker-choices-fit fn-bs-crash-select))))))
+                            fn-bs-k0m-drop-rename-choices-fit fn-bs-crash-select))))))
 
 ; K0 at marker-replaced: both resolutions are related to the cut's kernel, and
 ; every crash image of the cut's byte state is a crash image of one of them.
-(defthm fn-bs-k0m-root-quiet-is-marker-only
+(defthm fn-bs-k0m-root-quiet-is-rename-only
   (implies (not (fn-bs-ops-for-dir ops :root))
-           (fn-bs-k0m-root-marker-onlyp ops ino))
+           (fn-bs-k0m-root-rename-onlyp ops name ino))
   :hints (("Goal" :in-theory (enable fn-bs-ops-for-dir))))
 (defthm fn-bs-k0m-root-entry-means-root-dir
   (implies (fn-bs-inop (fn-bs-durable-entry b :root name))
@@ -572,8 +578,8 @@
 (defthm fn-bs-k0m-b4-marker-only
   (implies (and (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
                 (fn-bs-inop (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*)))
-           (and (fn-bs-k0m-root-marker-onlyp (fn-bs-pending (fn-bs-marker-b4 bs stage octets))
-                                             (fn-bs-next-ino bs))
+           (and (fn-bs-k0m-root-rename-onlyp (fn-bs-pending (fn-bs-marker-b4 bs stage octets))
+                                             *fn-bs-history-marker-name* (fn-bs-next-ino bs))
                 (consp (assoc-equal :root (fn-bs-dirs (fn-bs-marker-b4 bs stage octets))))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-bs-k0m-root-entry-means-root-dir (b bs) (name *fn-bs-scan-config-name*)))
@@ -587,10 +593,10 @@
            (let* ((run (fn-bs-run bs ks (fn-bs-marker-program stage octets) nil groups capacity))
                   (b (car (nth 7 run))) (k (cdr (nth 7 run)))
                   (landed (mv-nth 1 (fn-bs-fsync-dir b :root :ok))))
-             (and (fn-bs-store-relation (fn-bs-marker-rename-dropped b) k)
+             (and (fn-bs-store-relation (fn-bs-root-rename-dropped b) k)
                   (fn-bs-store-relation landed k)
                   (implies (fn-bs-crash-imagep b image)
-                           (or (fn-bs-crash-imagep (fn-bs-marker-rename-dropped b) image)
+                           (or (fn-bs-crash-imagep (fn-bs-root-rename-dropped b) image)
                                (fn-bs-crash-imagep landed image))))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -600,17 +606,17 @@
                  fn-bs-k0m-resolutions
                  (:instance fn-bs-store-relation-unfolds)
                  (:instance fn-bs-k0m-b4-marker-only)
-                 (:instance fn-bs-k0m-marker-rename-crash-is-a-resolution-crash
-                  (s (fn-bs-marker-b4 bs stage octets)) (ino (fn-bs-next-ino bs))))
+                 (:instance fn-bs-k0m-root-rename-crash-is-a-resolution-crash
+                  (s (fn-bs-marker-b4 bs stage octets)) (name *fn-bs-history-marker-name*) (ino (fn-bs-next-ino bs))))
            :in-theory (e/d (fn-bs-marker-run-shape)
                            (fn-bs-store-relation fn-bs-statep fn-bs-lookup fn-bs-create fn-bs-write
                             fn-bs-fsync-file fn-bs-fsync-dir fn-bs-unlink fn-bs-marker-program fn-bs-run
                             fn-bs-marker-b1 fn-bs-marker-b2 fn-bs-marker-b3 fn-bs-marker-b4 fn-bs-marker-b5
-                            fn-bs-k0m-with-content fn-bs-k0m-with-root-entry fn-bs-marker-rename-dropped
+                            fn-bs-k0m-with-content fn-bs-k0m-with-root-entry fn-bs-root-rename-dropped
                             fn-bs-crash-imagep fn-bs-finish-inputp fn-bs-replay-visiblep
                             fn-bs-inop fn-bs-durable-entry)))))
 
 (in-theory (disable fn-bs-k0m-with-content fn-bs-k0m-with-root-entry
-                    fn-bs-k0m-drop-root-marker fn-bs-marker-rename-dropped
-                    fn-bs-k0m-root-marker-onlyp fn-bs-k0m-has-root-marker
-                    fn-bs-k0m-drop-marker-choices))
+                    fn-bs-k0m-drop-root-rename fn-bs-root-rename-dropped
+                    fn-bs-k0m-root-rename-onlyp fn-bs-k0m-has-root-rename
+                    fn-bs-k0m-drop-rename-choices))

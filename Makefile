@@ -285,6 +285,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-k0-step-bridge-tests \
 	books/byte-store-k0-step-bridge-frontier \
 	tests/acl2/byte-store-k0-cuts-tests \
+	books/byte-store-k0-step-bridge-root \
+	tests/acl2/byte-store-k0-step-bridge-root-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \

@@ -1,8 +1,9 @@
 ; fn: the general per-step K0 (T16's model side, lane k0-general-step).
 ;
 ; fn-bs-step-preserves-k0-coverage: from any byte state COVERED by the
-; kernel (related to it, or a pending committed-history rename both of whose
-; resolutions are related, fn-bs-k0-coveredp), any step of the byte language
+; kernel (related to it, or a pending root rename onto a name other than the
+; allocation frontier both of whose resolutions are related,
+; fn-bs-k0-coveredp), any step of the byte language
 ; whose precondition fn-bs-k0-step-inputp holds, with ANY outcome the
 ; environment chooses, leaves a covered pair; a syscall leaves the kernel as
 ; it was, an observation moves it to its successor.  Every crash image of a
@@ -25,13 +26,19 @@
 ;                 part is a well-formed crash selection of the staging entry
 ;                 operations; :transactions with :ok in phase
 ;                 :record-attempted with the link pending (the record
-;                 barrier); :root over a pending marker rename, any outcome
+;                 barrier); :root over a pending root rename (the
+;                 marker's, the checkpoint's, config.json's), any outcome
 ;                 (lands or drops it); :root with :ok from any related state
 ;                 (over a pending frontier rename, or quiet:
 ;                 fn-bs-k0s-root-fence-preserves-relation, lane k0-cuts).
 ;   :unlink       outside :root and :transactions; any outcome.
-;   :rename       :staging to the committed-history marker name, root quiet,
-;                 source present: covered, any outcome; :staging to the
+;   :rename       :staging to any :root name but the allocation frontier
+;                 (the committed-history marker, the state checkpoint,
+;                 config.json), root quiet, source present, and onto
+;                 config.json only from a fenced, allocated inode whose
+;                 content passes fn-bs-config-okp
+;                 (fn-bs-k0s-root-rename-targetp): covered, any outcome;
+;                 :staging to the
 ;                 allocation frontier, root and transactions quiet, source
 ;                 fenced and allocated and decoding to the kernel's frontier
 ;                 candidate, kernel in a frontier-new-visible phase with
@@ -46,7 +53,7 @@
 ;                 and emit success; (:record-dir :ok) and (:frontier-dir :ok)
 ;                 with their directory-committed premise.
 ; The step precondition carries the relation (or, for the root barrier, the
-; marker-pending coverage), so the theorem has no separate coverage
+; root-rename-pending coverage), so the theorem has no separate coverage
 ; hypothesis.
 ; NOT covered, named: :mkdir and :link-eexist (initialization only; the init
 ; program has its own theorem), the error outcomes of the :staging and
@@ -124,7 +131,7 @@
                        (and (fn-bs-store-relation bs ks) (equal d1 :transactions) (equal outcome :ok)
                             (equal (fn-sf-phase ks) :record-attempted)
                             (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
-                       (and (equal d1 :root) (fn-bs-k0s-marker-pendingp bs ks))
+                       (and (equal d1 :root) (fn-bs-k0s-root-rename-pendingp bs ks))
                        (and (fn-bs-store-relation bs ks) (equal d1 :root) (equal outcome :ok))
                        ; k0-steps (PKT-086): the staging barrier's error outcome.
                        (and (fn-bs-store-relation bs ks) (equal d1 :staging) (not (equal outcome :ok))
@@ -134,9 +141,8 @@
        (:unlink (and (fn-bs-store-relation bs ks) (not (member-equal d1 '(:root :transactions)))))
        (:rename (and (fn-bs-store-relation bs ks) (equal d1 :staging) (equal d3 :root)
                      (let ((ino (fn-bs-lookup bs :staging n2)))
-                       (or (and (equal n4 *fn-bs-history-marker-name*)
-                                (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
-                                (fn-bs-inop ino))
+                       (or (and (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+                                (fn-bs-k0s-root-rename-targetp bs n4 ino))
                            (and (equal n4 *fn-bs-frontier-name*)
                                 (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
                                 (not (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
@@ -180,13 +186,13 @@
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-create-preserves-relation (b bs) (k ks) (stage (nth 2 step))))
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
-                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed
-                            fn-bs-marker-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
+                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
+                            fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
                             fn-bs-authority-inode-list fn-bs-durable-names fn-bs-durable-records
                             fn-bs-durable fn-bs-record-of fn-bs-durable-content fn-bs-durable-frontier
-                            fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target)))
-          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp) (fn-bs-store-relation fn-bs-k0s-marker-landed fn-bs-marker-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target fn-bs-lookup))))))
+                            fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
+          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-write-all-covered
   (implies (and (equal (car step) :write-all) (fn-bs-k0-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
@@ -194,13 +200,13 @@
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-write-preserves-relation (b bs) (k ks) (octets (nth 3 step)) (ino (fn-bs-lookup bs (nth 1 step) (nth 2 step)))))
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
-                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed
-                            fn-bs-marker-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
+                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
+                            fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
                             fn-bs-authority-inode-list fn-bs-durable-names fn-bs-durable-records
                             fn-bs-durable fn-bs-record-of fn-bs-durable-content fn-bs-durable-frontier
-                            fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target)))
-          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp) (fn-bs-store-relation fn-bs-k0s-marker-landed fn-bs-marker-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target fn-bs-lookup))))))
+                            fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
+          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-fsync-file-covered
   (implies (and (equal (car step) :fsync-file) (fn-bs-k0-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
@@ -208,28 +214,28 @@
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-fsync-file-preserves-relation (b bs) (k ks) (x (fn-bs-lookup bs (nth 1 step) (nth 2 step)))))
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
-                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed
-                            fn-bs-marker-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
+                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
+                            fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
                             fn-bs-authority-inode-list fn-bs-durable-names fn-bs-durable-records
                             fn-bs-durable fn-bs-record-of fn-bs-durable-content fn-bs-durable-frontier
-                            fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target)))
-          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp) (fn-bs-store-relation fn-bs-k0s-marker-landed fn-bs-marker-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target fn-bs-lookup))))))
+                            fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
+          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-fsync-dir-covered
   (implies (and (equal (car step) :fsync-dir) (fn-bs-k0-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
-           :use ((:instance fn-bs-k0-staging-fence-preserves-relation (b bs) (k ks)) (:instance fn-bs-k8-pending-link-fence-preserves-relation) (:instance fn-bs-k0s-marker-barrier-resolves (m bs)) fn-bs-k0s-root-fence-preserves-relation
+           :use ((:instance fn-bs-k0-staging-fence-preserves-relation (b bs) (k ks)) (:instance fn-bs-k8-pending-link-fence-preserves-relation) (:instance fn-bs-k0s-root-rename-barrier-resolves (m bs)) fn-bs-k0s-root-fence-preserves-relation
                  (:instance fn-bs-k0-staging-fsync-error-preserves-relation (b bs) (k ks)))
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation fn-bs-k0s-fsync-dir-ok-is-fence)
-                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed
-                            fn-bs-marker-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
+                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
+                            fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
                             fn-bs-authority-inode-list fn-bs-durable-names fn-bs-durable-records
                             fn-bs-durable fn-bs-record-of fn-bs-durable-content fn-bs-durable-frontier
-                            fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target)))
-          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp) (fn-bs-store-relation fn-bs-k0s-marker-landed fn-bs-marker-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target fn-bs-lookup))))))
+                            fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
+          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-unlink-covered
   (implies (and (equal (car step) :unlink) (fn-bs-k0-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
@@ -237,27 +243,27 @@
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-unlink-preserves-relation (b bs) (k ks) (dir (nth 1 step)) (name (nth 2 step))))
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
-                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed
-                            fn-bs-marker-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
+                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
+                            fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
                             fn-bs-authority-inode-list fn-bs-durable-names fn-bs-durable-records
                             fn-bs-durable fn-bs-record-of fn-bs-durable-content fn-bs-durable-frontier
-                            fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target)))
-          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp) (fn-bs-store-relation fn-bs-k0s-marker-landed fn-bs-marker-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target fn-bs-lookup))))))
+                            fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
+          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-rename-covered
   (implies (and (equal (car step) :rename) (fn-bs-k0-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
-           :use ((:instance fn-bs-k0s-marker-rename-covered (b bs) (k ks) (stage (nth 2 step))) (:instance fn-bs-k0s-frontier-rename-preserves-relation (b bs) (k ks) (stage (nth 2 step))))
+           :use ((:instance fn-bs-k0s-root-rename-covered (b bs) (k ks) (stage (nth 2 step)) (name (nth 4 step))) (:instance fn-bs-k0s-frontier-rename-preserves-relation (b bs) (k ks) (stage (nth 2 step))))
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
-                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed
-                            fn-bs-marker-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
+                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
+                            fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
                             fn-bs-authority-inode-list fn-bs-durable-names fn-bs-durable-records
                             fn-bs-durable fn-bs-record-of fn-bs-durable-content fn-bs-durable-frontier
-                            fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target)))
-          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp) (fn-bs-store-relation fn-bs-k0s-marker-landed fn-bs-marker-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target fn-bs-lookup))))))
+                            fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
+          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-link-covered
   (implies (and (equal (car step) :link) (fn-bs-k0-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
@@ -265,13 +271,13 @@
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-link-preserves-relation (b bs) (k ks) (stage (nth 2 step)) (name (nth 4 step))))
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
-                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed
-                            fn-bs-marker-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
+                           (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
+                            fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
                             fn-bs-authority-inode-list fn-bs-durable-names fn-bs-durable-records
                             fn-bs-durable fn-bs-record-of fn-bs-durable-content fn-bs-durable-frontier
-                            fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target)))
-          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp) (fn-bs-store-relation fn-bs-k0s-marker-landed fn-bs-marker-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target fn-bs-lookup))))))
+                            fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
+          (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-step-preserves-k0-coverage
   (implies (fn-bs-k0-step-inputp bs ks step outcome)
            (let ((bs1 (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)))
@@ -295,4 +301,4 @@
                '(:in-theory (e/d (fn-bs-k0s-covered-of-relation fn-bs-k0-step-inputp)
                            (fn-bs-step fn-bs-k0s-observe-step fn-bs-k0c-cut-step-is-identity
                             fn-bs-store-relation fn-bs-k0-coveredp fn-sf-dispatch fn-bs-k0-observation-inputp
-                            fn-bs-k0s-marker-pendingp fn-bs-lookup fn-bs-authority-inode-list))))))
+                            fn-bs-k0s-root-rename-pendingp fn-bs-lookup fn-bs-authority-inode-list))))))
