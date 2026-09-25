@@ -456,7 +456,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-txn-pairs-octets (pairs)
   (declare (xargs :mode :program))
   (if (consp pairs)
-      (cons (list (car (car pairs)) (fn-record-string-octets (cadr (car pairs))))
+      (cons (list (car (car pairs)) (fn-record-string-octets (nth 1 (car pairs))))
             (fn-store-txn-pairs-octets (cdr pairs)))
     nil))
 
@@ -484,7 +484,7 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :mode :program))
   (let ((value (fn-store-txn-observation-selected observed maximum 0)))
     (if (and (consp value) (equal (car value) :ok))
-        (fn-store-txn-pairs-octets (caddr value))
+        (fn-store-txn-pairs-octets (nth 2 value))
       :invalid)))
 
 (defun fn-store-cfg-last-octets (state)
