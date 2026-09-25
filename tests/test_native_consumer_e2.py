@@ -2,8 +2,10 @@
 
 Requires the combined consumer-local command and production bootstrap.
 The cursor files are ACL2 output; this test never constructs or edits fncu bytes.
-There is no served poll endpoint yet, so these cases exercise a zero-position
-ack and do not claim nonzero scan progress or consumer inbox processing.
+The first two cases exercise declarations at position zero.  The gated
+signed-poll case (FN_RUN_CONSUMER_POLL_E2E=1) drives `consumer poll`, checks
+the exact signed composite through ACL2, and loses a positive ack reply.
+Consumer inbox processing is tests/test_native_consumer_exchange.py.
 """
 
 import os
@@ -322,7 +324,7 @@ class NativeConsumerE2Tests(unittest.TestCase):
                     "(and (fn-stxa-bindsp event) "
                     "(equal (fn-stxa-authored-source event) '" +
                     bridge.literal(source) + ") "
-                    "(fn-record-result-okp record-result))))))")
+                    "(fn-record-result-okp record-result)))))")
             self.assertTrue(run_store.acl2_boolean(bridge.call(form)))
         finally:
             bridge.close()
