@@ -279,6 +279,12 @@
     "books/store-reclaim",
     "books/nntp-reclaimed",
     "tests/acl2/store-reclaim-tests",
+    "books/store-reclaim-buffer",
+    "tests/acl2/store-reclaim-buffer-tests",
+    "books/store-reclaim-holders",
+    "tests/acl2/store-reclaim-holders-tests",
+    "books/reclaim-admission",
+    "tests/acl2/reclaim-admission-tests",
     "tests/acl2/store-history-marker-tests",
     "books/store-history-required",
     "tests/acl2/store-history-required-tests",
@@ -858,26 +864,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 870,
-    "books_in_root_closure": 866,
-    "roots": 854,
-    "theorems": 11956,
-    "functions": 8399,
-    "assert_events": 12700,
-    "must_fails": 1326,
-    "encapsulates": 52,
+    "books": 876,
+    "books_in_root_closure": 872,
+    "roots": 860,
+    "theorems": 11991,
+    "functions": 8418,
+    "assert_events": 12734,
+    "must_fails": 1345,
+    "encapsulates": 53,
     "guards": {
       "verified": 2167,
-      "declared-off": 633,
-      "default-guarded": 4375,
-      "default-unguarded": 1224
+      "declared-off": 640,
+      "default-guarded": 4385,
+      "default-unguarded": 1226
     },
-    "suspect_theorems": 102,
+    "suspect_theorems": 103,
     "export_hygiene_warnings": 146,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 103,
-    "include_hygiene_warnings": 870,
-    "host_names_warnings": 957,
+    "include_hygiene_warnings": 884,
+    "host_names_warnings": 959,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -8928,11 +8934,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 31,
-      "functions": 34,
+      "functions": 37,
       "guards": {
         "verified": 0,
-        "declared-off": 11,
-        "default-guarded": 23,
+        "declared-off": 12,
+        "default-guarded": 25,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8945,7 +8951,9 @@
         "native-admin",
         "native-control",
         "owner-config",
-        "store-budget"
+        "records-stamp",
+        "store-budget",
+        "store-reclaim-holders"
       ],
       "system_includes": [],
       "suspects": [],
@@ -9436,11 +9444,11 @@
       "book": "books/nntp-reclaimed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
-      "functions": 0,
+      "theorems": 13,
+      "functions": 1,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -9449,8 +9457,9 @@
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
+        "nntp-range-indexed",
         "nntp-responses"
       ],
       "system_includes": [],
@@ -11236,6 +11245,35 @@
       "read_error": null
     },
     {
+      "book": "books/reclaim-admission.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "peer-authored-accept",
+        "reclaim-tombstone",
+        "stx-lace"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-rca-result-okp-is-line-okp"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/reclaim-rule.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -12988,6 +13026,60 @@
         "cbor-invariants",
         "frame-invariants",
         "store-budget"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-reclaim-buffer.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "poster-bytes-buffer",
+        "sha256-buffer",
+        "sha256-stobj",
+        "store-reclaim"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-reclaim-holders.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-node",
+        "store-reclaim"
       ],
       "system_includes": [],
       "suspects": [],
@@ -21951,6 +22043,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/reclaim-admission-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 4,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/reclaim-admission",
+        "../../books/store-reclaim",
+        "stx-transit-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/records-ceiling-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -23358,21 +23479,79 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/store-reclaim-tests.lisp",
+      "book": "tests/acl2/store-reclaim-buffer-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 0,
+      "theorems": 1,
+      "functions": 3,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 3,
         "default-guarded": 0,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 41,
-      "must_fails": 11,
-      "defconsts": 25,
+      "assert_events": 8,
+      "must_fails": 1,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-reclaim-buffer",
+        "octets-stobj-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-reclaim-holders-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 13,
+      "must_fails": 5,
+      "defconsts": 11,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/native-live-status",
+        "../../books/store-reclaim-holders",
+        "owner-served-invariants-tests",
+        "stx-transit-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-reclaim-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 48,
+      "must_fails": 20,
+      "defconsts": 36,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -24904,6 +25083,14 @@
       ]
     },
     {
+      "theorem": "fn-rca-result-okp-is-line-okp",
+      "book": "books/reclaim-admission.lisp",
+      "line": 76,
+      "reasons": [
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-rcl-config-rule-without-a-row-keeps-forever",
       "book": "books/reclaim-rule.lisp",
       "line": 155,
@@ -26140,9 +26327,10 @@
           "books/article-public-bound.lisp",
           "books/article-public-work.lisp",
           "books/article-work-scanners.lisp",
+          "books/reclaim-admission.lisp",
           "books/source-projection-bridge.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-rest",
@@ -28943,6 +29131,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/native-live-status.lisp",
+        "line": 36,
+        "include": "store-reclaim-holders",
+        "included": "books/store-reclaim-holders.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/native-live-status.lisp",
+        "line": 37,
+        "include": "records-stamp",
+        "included": "books/records-stamp.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/native-operator.lisp",
         "line": 11,
         "include": "native-admin",
@@ -29020,6 +29222,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/nntp-reclaimed.lisp",
+        "line": 21,
+        "include": "nntp-range-indexed",
+        "included": "books/nntp-range-indexed.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/nntp-responses.lisp",
         "line": 7,
         "include": "article-fields",
@@ -29035,7 +29244,7 @@
       },
       {
         "book": "books/nntp-responses.lisp",
-        "line": 2299,
+        "line": 2311,
         "include": "msgid-index",
         "included": "books/msgid-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -29234,6 +29443,13 @@
         "line": 41,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/reclaim-admission.lisp",
+        "line": 30,
+        "include": "reclaim-tombstone",
+        "included": "books/reclaim-tombstone.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -29493,6 +29709,20 @@
         "line": 46,
         "include": "byte-store-txn-name",
         "included": "books/byte-store-txn-name.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-reclaim-buffer.lisp",
+        "line": 26,
+        "include": "store-reclaim",
+        "included": "books/store-reclaim.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-reclaim-holders.lisp",
+        "line": 27,
+        "include": "store-reclaim",
+        "included": "books/store-reclaim.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -32457,6 +32687,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/reclaim-admission-tests.lisp",
+        "line": 5,
+        "include": "../../books/reclaim-admission",
+        "included": "books/reclaim-admission.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/reclaim-admission-tests.lisp",
+        "line": 6,
+        "include": "../../books/store-reclaim",
+        "included": "books/store-reclaim.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/reclaim-admission-tests.lisp",
+        "line": 9,
+        "include": "stx-transit-tests",
+        "included": "tests/acl2/stx-transit-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/records-ceiling-tests.lisp",
         "line": 13,
         "include": "../../books/records-attach",
@@ -32832,6 +33083,41 @@
         "line": 4,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-reclaim-buffer-tests.lisp",
+        "line": 12,
+        "include": "octets-stobj-tests",
+        "included": "tests/acl2/octets-stobj-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-reclaim-holders-tests.lisp",
+        "line": 4,
+        "include": "../../books/store-reclaim-holders",
+        "included": "books/store-reclaim-holders.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-reclaim-holders-tests.lisp",
+        "line": 5,
+        "include": "../../books/native-live-status",
+        "included": "books/native-live-status.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-reclaim-holders-tests.lisp",
+        "line": 7,
+        "include": "owner-served-invariants-tests",
+        "included": "tests/acl2/owner-served-invariants-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-reclaim-holders-tests.lisp",
+        "line": 9,
+        "include": "stx-transit-tests",
+        "included": "tests/acl2/stx-transit-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -39761,6 +40047,13 @@
       },
       {
         "host": "host/owner-host.lisp",
+        "line": 534,
+        "name": "fn-rcl-existing-action",
+        "source": "books/store-reclaim.lisp",
+        "reason": "defined in books/store-reclaim.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
         "line": 613,
         "name": "fn-octets-len",
         "source": null,
@@ -39769,9 +40062,9 @@
       {
         "host": "host/owner-host.lisp",
         "line": 613,
-        "name": "fn-pbb-existing-action",
-        "source": "books/poster-bytes-buffer.lisp",
-        "reason": "defined in books/poster-bytes-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "name": "fn-rclb-existing-action",
+        "source": "books/store-reclaim-buffer.lisp",
+        "reason": "defined in books/store-reclaim-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
@@ -39782,14 +40075,14 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1831,
+        "line": 1834,
         "name": "fn-shb-subject-id",
         "source": "books/sha256-buffer.lisp",
         "reason": "defined in books/sha256-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2051,
+        "line": 2054,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -39877,6 +40170,13 @@
         "name": "fn-rcon-sn-io",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 677,
+        "name": "fn-rcl-existing-action",
+        "source": "books/store-reclaim.lisp",
+        "reason": "defined in books/store-reclaim.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
