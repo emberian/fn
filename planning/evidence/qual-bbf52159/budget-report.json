@@ -1,0 +1,265 @@
+[
+  {
+    "module": "tests.test_store",
+    "seconds": 15.844,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/qual-bbf52159/budget-logs/tests.test_store.log",
+    "tests": 21,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_store.StoreTests.test_acl2_transaction_names_continue_after_nonempty_recovery",
+        1.129
+      ],
+      [
+        "tests.test_store.StoreTests.test_allocator_barrier_failure_recovers_observed_frontier_on_same_object",
+        0.455
+      ],
+      [
+        "tests.test_store.StoreTests.test_allocator_replace_error_and_frontier_replay_boundaries",
+        1.149
+      ],
+      [
+        "tests.test_store.StoreTests.test_checksum_unknown_schema_and_final_symlink_fault",
+        1.078
+      ],
+      [
+        "tests.test_store.StoreTests.test_corruption_truncation_and_gap_fault_instead_of_prefix_recovery",
+        0.889
+      ],
+      [
+        "tests.test_store.StoreTests.test_duplicate_is_detected_before_full_transaction_limit",
+        0.522
+      ],
+      [
+        "tests.test_store.StoreTests.test_duplicate_retry_and_conflicting_id_do_not_overwrite",
+        1.127
+      ],
+      [
+        "tests.test_store.StoreTests.test_empty_payload_is_present_and_orphan_staging_is_ignored",
+        0.749
+      ],
+      [
+        "tests.test_store.StoreTests.test_failed_config_file_barrier_is_reestablished_during_recovery",
+        0.343
+      ],
+      [
+        "tests.test_store.StoreTests.test_finish_rejects_stale_and_prepublication_states",
+        0.34
+      ],
+      [
+        "tests.test_store.StoreTests.test_initialize_refuses_missing_frontier_when_history_exists",
+        0.531
+      ],
+      [
+        "tests.test_store.StoreTests.test_known_abort_before_publication_and_indeterminate_after_publication",
+        1.425
+      ],
+      [
+        "tests.test_store.StoreTests.test_legacy_json_metadata_is_never_rewritten_on_open",
+        0.346
+      ],
+      [
+        "tests.test_store.StoreTests.test_link_eio_without_visible_final_fences_host_and_core",
+        0.38
+      ],
+      [
+        "tests.test_store.StoreTests.test_metadata_frames_round_trip_and_reject_truncation",
+        0.549
+      ],
+      [
+        "tests.test_store.StoreTests.test_post_reopen_replays_and_preserves_literal_lisp_bytes",
+        0.815
+      ],
+      [
+        "tests.test_store.StoreTests.test_published_post_with_failed_core_reply_stays_fenced_and_recovers",
+        1.633
+      ],
+      [
+        "tests.test_store.StoreTests.test_recovery_limits_and_barrier_failure_fence_until_success",
+        0.634
+      ],
+      [
+        "tests.test_store.StoreTests.test_recovery_scan_io_failure_keeps_gate_closed_until_success",
+        0.517
+      ],
+      [
+        "tests.test_store.StoreTests.test_two_group_post_replays_both_allocations_and_one_pin",
+        0.616
+      ],
+      [
+        "tests.test_store.StoreTests.test_writer_lock_refuses_concurrent_mutator",
+        0.509
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_checkpoint",
+    "seconds": 13.89,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/qual-bbf52159/budget-logs/tests.test_checkpoint.log",
+    "tests": 7,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_checkpoint.CheckpointTests.test_corrupt_marker_is_reported",
+        0.725
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_corrupt_selected_generation_is_reported_not_rolled_back",
+        1.485
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_differential_mismatch_is_corruption_without_a_debug_flag",
+        0.647
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_no_marker_is_a_distinct_outcome",
+        0.896
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation",
+        6.147
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_publish_select_and_suffix_replay_on_128_records",
+        3.407
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_select_refuses_unpublished_generation",
+        0.468
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_store_corruption",
+    "seconds": 22.268,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/qual-bbf52159/budget-logs/tests.test_store_corruption.log",
+    "tests": 7,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_store_corruption.StoreCorruptionTests.test_config_and_history_inconsistency_matrix",
+        4.243
+      ],
+      [
+        "tests.test_store_corruption.StoreCorruptionTests.test_filename_record_sequence_mismatch_refuses_prefix",
+        1.179
+      ],
+      [
+        "tests.test_store_corruption.StoreCorruptionTests.test_final_name_collision_never_overwrites_and_faults_image",
+        1.194
+      ],
+      [
+        "tests.test_store_corruption.StoreCorruptionTests.test_frontier_malformed_namespace_matrix",
+        9.849
+      ],
+      [
+        "tests.test_store_corruption.StoreCorruptionTests.test_malformed_frame_matrix",
+        3.41
+      ],
+      [
+        "tests.test_store_corruption.StoreCorruptionTests.test_metadata_checked_then_frontier_changes_is_a_fenced_fault",
+        1.149
+      ],
+      [
+        "tests.test_store_corruption.StoreCorruptionTests.test_multiple_prior_crossposts_and_uncertain_tail_replay_atomically",
+        1.126
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_bridge_image",
+    "seconds": 6.42,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/qual-bbf52159/budget-logs/tests.test_bridge_image.log",
+    "tests": 7,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_bridge_image.ClosureTests.test_a_changed_closure_file_changes_the_digest",
+        0.138
+      ],
+      [
+        "tests.test_bridge_image.ClosureTests.test_references_follow_include_and_ld_and_skip_system_books",
+        0.0
+      ],
+      [
+        "tests.test_bridge_image.ClosureTests.test_the_owner_image_extends_the_store_boot",
+        0.0
+      ],
+      [
+        "tests.test_bridge_image.ClosureTests.test_the_store_closure_reaches_every_boot_file",
+        0.029
+      ],
+      [
+        "tests.test_bridge_image.SlotTests.test_a_child_of_the_holder_shares_the_only_slot",
+        0.051
+      ],
+      [
+        "tests.test_bridge_image.SlotTests.test_an_unrelated_process_waits_for_the_held_slot",
+        3.005
+      ],
+      [
+        "tests.test_bridge_image.SlotTests.test_nested_bridges_in_one_process_hold_one_slot",
+        3.056
+      ]
+    ],
+    "passed": true
+  },
+  {
+    "module": "tests.test_test_budget",
+    "seconds": 6.521,
+    "budget": 300.0,
+    "over_budget": false,
+    "returncode": 0,
+    "log": "/tank/fn/scratch/qual-bbf52159/budget-logs/tests.test_test_budget.log",
+    "tests": 5,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_test_budget.TestBudgetRunner.test_a_failing_module_is_failed_not_over_budget",
+        0.052
+      ],
+      [
+        "tests.test_test_budget.TestBudgetRunner.test_a_module_past_its_budget_is_terminated_and_reported_over",
+        2.009
+      ],
+      [
+        "tests.test_test_budget.TestBudgetRunner.test_a_passing_module_reports_its_time_and_tests",
+        0.051
+      ],
+      [
+        "tests.test_test_budget.TestBudgetRunner.test_exit_codes_keep_failure_and_budget_apart",
+        4.312
+      ],
+      [
+        "tests.test_test_budget.TestBudgetRunner.test_the_budget_can_be_lowered_never_raised",
+        0.001
+      ]
+    ],
+    "passed": true
+  }
+]

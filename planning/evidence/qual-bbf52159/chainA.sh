@@ -1,0 +1,8 @@
+#!/bin/sh
+cd /tank/fn/scratch/qual-bbf52159
+sh run.sh test_bp_service_native test_bp_contact_native test_bp_contact_relay_native test_bp_receive_integrity_native
+NS_BP_IMAGE=fn-host-dtn-developer NS_TAG=dtn-developer sh run.sh test_bp_service_native test_bp_receive_integrity_native
+sh run.sh test_native_app_journal test_native_image_profiles test_bp_obligation_native test_bp_node_native test_bp_app_native test_bp_fragment_node_native
+NS_BP_NODE_IMAGE=fn-host-developer NS_TAG=developer sh run.sh test_bp_node_native.NativeBpNodeTests.test_death_after_kind_eight_retries_once_and_peer_holds_one_copy
+sh /tank/fn/scratch/qual-bbf52159/labs.sh
+touch /tank/fn/scratch/qual-bbf52159/done.A

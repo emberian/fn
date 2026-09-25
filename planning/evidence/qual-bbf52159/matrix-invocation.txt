@@ -1,0 +1,9 @@
+# laptop, worktree build/lanes/qual-bbf52159-lane at dev 95279f8f (tools/ equals bbf52159's byte for byte; the only diff is a manifest)
+# stores provisioned on hbox as tools/runbooks/hbox-matrix-provision.sh does, under /tank/fn/scratch/qual-bbf52159/matrix/stores/{a,b}
+#   <image>/fn-host --fn store <root>/store init fn.letters ; fn.toml: 127.0.0.1:11190 / 11191, control socket
+python3 tools/v0_matrix.py HEAD --host hbox --tree native-bbf52159 --backend native-operator \
+  --native-image /tank/fn/gates/qual-bbf52159-20260925/build/images/bbf52159dcab19228bd6cd0b855b99dd6d68758d/fn-host --native-developer-image /tank/fn/gates/qual-bbf52159-20260925/build/images/bbf52159dcab19228bd6cd0b855b99dd6d68758d/fn-host-developer \
+  --native-config-a /tank/fn/scratch/qual-bbf52159/matrix/stores/a/fn.toml --native-config-b /tank/fn/scratch/qual-bbf52159/matrix/stores/b/fn.toml --native-group fn.letters \
+  --native-image-source bbf52159dcab19228bd6cd0b855b99dd6d68758d \
+  --native-runtime /tank/fn/gates/qual-bbf52159-20260925/build/images/bbf52159dcab19228bd6cd0b855b99dd6d68758d/runtime/sbcl --native-openssl-prefix /tank/fn/gates/qual-bbf52159-20260925/build/images/bbf52159dcab19228bd6cd0b855b99dd6d68758d/openssl \
+  --inn --keep --publish-current

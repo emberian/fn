@@ -1,0 +1,96 @@
+STEP init rc=0
+  | initialized /tank/fn/scratch/qual-bbf52159/probe-opconfig/store
+  | accepted operator init
+STEP show (whole file) rc=0
+  | [store]
+  | path="/tank/fn/scratch/qual-bbf52159/probe-opconfig/store"
+  | [listener]
+  | host="127.0.0.1"
+  | port=50197
+  | [auth]
+  | required=false
+  | protected_only=false
+  | path="/tank/fn/scratch/qual-bbf52159/probe-opconfig/store/auth.toml"
+  | [posting]
+  | enabled=true
+  | [anchor]
+  | [acl2]
+  | [log]
+  | path="/tank/fn/scratch/qual-bbf52159/probe-opconfig/fn.log"
+  | [control]
+  | path="/tank/fn/scratch/qual-bbf52159/probe-opconfig/control.sock"
+  | [alerts]
+  | headroom_min_percent=10
+  | refusal_rate_per_minute=30
+  | cooldown_seconds=900
+  | [ops]
+  | scope="user"
+  | keep_releases=3
+  | log_max_bytes=67108864
+  | log_keep=7
+  | accepted operator show
+STEP show listener port rc=0
+  | 50197
+  | accepted operator show
+STEP mission relay --port rc=0
+  | wrote /tank/fn/scratch/qual-bbf52159/probe-opconfig/relay/fn.toml
+  | accepted operator mission
+STEP mission relay again (existing file, expected refusal) rc=1
+  | refused operator mission CONFIG-EXISTS
+  mission fn.toml:
+[store]
+path="/tank/fn/scratch/qual-bbf52159/probe-opconfig/relay/store"
+[listener]
+host="127.0.0.1"
+port=43283
+tls_cert="/tank/fn/scratch/qual-bbf52159/probe-opconfig/relay/tls/cert.pem"
+tls_key="/tank/fn/scratch/qual-bbf52159/probe-opconfig/relay/tls/key.pem"
+[auth]
+required=true
+protected_only=true
+path="/tank/fn/scratch/qual-bbf52159/probe-opconfig/relay/store/auth.toml"
+[posting]
+enabled=false
+[anchor]
+[acl2]
+[log]
+path="/tank/fn/scratch/qual-bbf52159/probe-opconfig/relay/log/fn.log"
+[control]
+path="/tank/fn/scratch/qual-bbf52159/probe-opconfig/relay/store/control.sock"
+[alerts]
+headroom_min_percent=20
+refusal_rate_per_minute=120
+cooldown_seconds=900
+[ops]
+mission="relay"
+scope="user"
+keep_releases=3
+log_max_bytes=67108864
+log_keep=7
+
+STEP init under the mission rc=0
+  | initialized /tank/fn/scratch/qual-bbf52159/probe-opconfig/relay/store
+  | accepted operator init
+STEP init under the mission with a profile flag (expected refusal) rc=5
+  | usage operator init MISSION-FIXES-PROFILE
+STEP status under the mission rc=0
+  | transactions=0 articles=0 staging-orphans=0 unsigned-legacy-experiment
+  | profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=1048576 max-groups-per-article=16 max-group-name-octets=256 max-open-suffix=65536 max-consumers=
+  | open-cost replay-records=4294967295 list-memory-octets=35184372088832
+  | headroom transactions-used=0 transactions-budget=4294967295 bytes-used=0 history-bound=1099511627776 charge-reserved=0 charge-capacity=1048576
+  | open=full-replay reason=absent
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | checkpoint-file=absent
+  | pins=0 reserved=0 connections=0
+  | accepted operator status
+owner pid 3950086 b'LISTENING 50197\n'
+fn.log exists after SIGHUP: True
+== fn.log.1
+
+== fn.log
+reopened log signal=hup requests=1 time=2026-09-25T21:50:38Z
+accepted reader connection=0 time=2026-09-25T21:50:40Z
+reopened log signal=hup requests=2 time=2026-09-25T21:50:40Z
+
+owner exit 0
+rc=0

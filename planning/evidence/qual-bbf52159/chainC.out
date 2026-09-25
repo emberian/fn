@@ -1,0 +1,20 @@
+test_native_peer_invite rc=1 
+test_native_peer_pull rc=0 OK
+test_native_bounds_blob rc=0 OK
+test_native_bounds_join rc=0 OK
+test_native_control_authority rc=0 OK
+test_native_control_filing rc=0 
+test_native_history_required rc=0 
+test_native_profile_namespace rc=0 OK
+test_native_state_checkpoint rc=0 OK
+test_native_crash_correspondence rc=0 OK
+test_native_key_statements.developer rc=1 FAILED (failures=1)
+test_native_operator_verdicts.developer rc=0 
+test_native_hybrid_author rc=1 FAILED (failures=1)
+test_native_topic_local rc=0 OK (skipped=2)
+test_native_topic_metadata rc=0 OK
+test_native_consumer_inspect rc=0 OK
+test_native_consumer_project_bounds rc=1 FAILED (failures=1)
+test_native_consumer_e2 rc=1 FAILED (failures=1, skipped=1)
+test_fn_verify rc=0 
+test_native_consumer_e2.NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply.dated-source rc=1 FAILED (errors=1)

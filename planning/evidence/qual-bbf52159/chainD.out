@@ -1,0 +1,9 @@
+test_native_checkpoint rc=0 OK
+test_native_compaction_crash_map rc=0 OK
+test_native_cut_map rc=0 OK
+test_native_peering rc=0 
+test_native_protected_peering rc=0 OK
+test_native_served_crash_model rc=0 OK
+test_native_tls_transport rc=0 OK
+test_fn_web_native rc=0 OK
+test_checkpoint rc=0 OK
