@@ -269,6 +269,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
 	books/store-history-marker \
+	books/reclaim-tombstone \
+	books/reclaim-rule \
+	books/store-reclaim \
+	books/nntp-reclaimed \
+	tests/acl2/store-reclaim-tests \
 	tests/acl2/store-history-marker-tests \
 	books/store-history-required \
 	tests/acl2/store-history-required-tests \

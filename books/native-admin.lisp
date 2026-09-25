@@ -26,6 +26,8 @@
 (include-book "native-admin-peer")
 ; `bp-route add|remove', the BP route table (books/bp-route.lisp).
 (include-book "bp-route")
+; D13: `retention set RULE [DAYS]' (books/reclaim-rule).
+(include-book "reclaim-rule")
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is
@@ -149,6 +151,14 @@
               (fn-native-admin-arg 4 argv) 0 (fn-native-admin-arg 2 argv)
               (fn-native-admin-arg 3 argv))))))
 
+; The DAYS of `retention set release-after DAYS', or nil.
+(defun fn-native-admin-retention-days (words)
+  (declare (xargs :guard t))
+  (and (true-listp words)
+       (equal (len words) 4)
+       (fn-native-admin-decimalp (cadddr words))
+       (fn-native-admin-decimal-value (coerce (cadddr words) 'list))))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t))
@@ -196,6 +206,20 @@
                                 (cadddr argv)))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
+       ; D13 (STO-014): the operator's content-retention rule.  Two
+       ; `:set-limit' rows (books/reclaim-rule), staged, published and
+       ; replayed as every other configuration record.  The default, with
+       ; no row, is keep-forever.
+       ((and (member-equal (len words) '(3 4))
+             (equal (car words) "retention")
+             (equal (cadr words) "set")
+             (fn-rcl-rule-of-words (caddr words)
+                                   (fn-native-admin-retention-days words)))
+        (fn-native-admin-result :accepted nil :set-retention (caddr argv)
+                                (nfix (fn-native-admin-retention-days words))
+                                nil nil))
+       ((and (consp words) (equal (car words) "retention"))
+        (fn-native-admin-result :refused :retention nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "peer"))
         (cond
          ; `peer list' is the table's read side.  It carries no name, no
@@ -253,6 +277,13 @@
              (list (fn-cfg-remove-group name)))
             ((equal kind :set-capacity)
              (list (fn-cfg-set-capacity (fn-native-admin-result-capacity plan))))
+            ((equal kind :set-retention)
+             (fn-rcl-rule-deltas
+              (fn-rcl-rule-of-words
+               name
+               (if (equal name "release-after")
+                   (fn-native-admin-result-capacity plan)
+                 nil))))
             ((equal kind :set-policy)
              (list (fn-cfg-set-policy
                     name
