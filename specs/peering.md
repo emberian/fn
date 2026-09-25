@@ -1262,10 +1262,17 @@ and succession are decided. What the node does:
   are ACL2 definitions with keystones (paragraph "Cancel" below), and a
   signed control article is filed in `control.<verb>` (its Store record's
   binding names the filing group, `fn-hsig-source-filed-groups`), so a
-  cancel can now be verified here. The visible list has an incremental form
-  with a correspondence theorem (`books/control-visible.lisp`), but the
-  served view does not yet apply it, and Supersedes is not handled. Until
-  those land, a filed cancel withdraws nothing.
+  cancel can now be verified here. Since lane control-c3b the committed
+  view serves the visible state: `fn-own-refresh` decides the record for a
+  cancel it first publishes (`fn-ctl-refresh-withdrawals`, which calls
+  `fn-ctl-cancel-plan`) and extends the visible list incrementally
+  (`fn-ctl-refresh-visible`, keystone `fn-ctl-refresh-visible-is-visible`),
+  and K1 is restated over it (the view is the visible state of its prefix;
+  a connection serves its prefix with a subsequence of its articles). A
+  withdrawn target answers 430 by Message-ID and is absent from the
+  listings of every view published after its cancel. Open: 423 `withdrawn`
+  by number (today a plain 423), `HDR :fn-control`, Supersedes, and the
+  durable binding at recovery (below).
 
 **The rule.** A control article (RFC 5536 §3.2.3; RFC 5537 §5) is
 executed only when all of these hold:
@@ -1337,14 +1344,20 @@ them, and the configuration in force after every record is the replay
 a byte: retention, the duplicate history and the Store are neither inputs
 nor outputs of these functions.
 
-*Open (C3):* (1) the served view: `fn-ctl-visible-articles` applied where the
-committed view is refreshed (`fn-own-refresh`), with K1
-(`fn-own-read-is-served-step-on-pinned-prefix`) restated over it, 430 and
-423 `withdrawn`, the listings, and `HDR :fn-control`, carrying the visible
-list incrementally (`fn-ctl-visible-extend`, `fn-ctl-visible-extend-is-visible`);
-(2) done 2026-09-25: the signed filing below; (3) the host calling `fn-ctl-cancel-plan` at commit and
-`fn-ctl-journal-withdrawals` at recovery; (4) Supersedes as a cancel plus
-the replacement; (5) feed suppression, a later transition by D29.
+*Open (C3):* (1) the served view: done 2026-09-25 (control-c3b) for 430
+and the listings, with K1 restated; open are 423 `withdrawn` by number and
+`HDR :fn-control`; (2) done 2026-09-25: the signed filing below; (3) the
+records are decided in ACL2 at the refresh that first publishes a cancel
+(`fn-own-refresh` calls `fn-ctl-cancel-plan` through
+`fn-ctl-refresh-withdrawals`) under the store's configuration journal
+through the archive's next txid; at recovery the first refresh rebuilds
+them under the same rule, not `fn-ctl-journal-withdrawals` at each cancel's
+own txid, which differs only when a configuration record falls between a
+cancel's commit and its refresh (open); (4) Supersedes as a cancel plus the
+replacement; (5) feed suppression, a later transition by D29; (6) the peer
+IHAVE/CHECK history reads the view's trie, which is keyed to the visible
+list, so once a target is withdrawn it answers by the scan
+(`fn-pix-history-hasp`'s fallback; correct, not incremental).
 
 RFC 5537 §5.1 leaves authentication to "local authorization policy". The
 rule above is fn's policy, and signature verification over the exact
