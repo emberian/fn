@@ -38,7 +38,14 @@
 ;; article a node held and relays for a neighbour whose boundary allowlists
 ;; the author, without an enrollment of that author here: nothing was
 ;; verified at this node (books/peer-authored-accept.lisp fn-pa-transit-plan).
-(defconst *fn-stx-verdicts* '(:verified :unverified :absent :carried))
+;; A fifth token, :revoked, that fn-stx-verdict never returns either: the
+;; Store's record of a signed article that reached this node by NNTP transit
+;; after this node revoked its principal, under keys this node had enrolled
+;; for that principal, both primitive observations verified.  Its detail is
+;; the principal and its generation the revocation tombstone's
+;; (books/peer-authored-accept.lisp fn-pa-revoked-event); it is rendered
+;; `revoked HEX keyring G' and never `verified'.
+(defconst *fn-stx-verdicts* '(:verified :unverified :absent :carried :revoked))
 
 (defun fn-stx-make-verdict (token detail generation)
   (declare (xargs :guard t))
@@ -170,6 +177,7 @@
   '(115 105 103 110 97 116 117 114 101))
 (defconst *fn-stx-token-unknown* '(117 110 107 110 111 119 110))
 (defconst *fn-stx-token-carried* '(99 97 114 114 105 101 100))
+(defconst *fn-stx-token-revoked* '(114 101 118 111 107 101 100)) ; revoked
 
 (defun fn-stx-reason-token (detail)
   (declare (xargs :guard t))
@@ -197,6 +205,11 @@
           ((equal token :carried)
            (append *fn-stx-token-carried*
                    (append '(32) (fn-stx-hex-octets detail))))
+          ((equal token :revoked)
+           (append *fn-stx-token-revoked*
+                   (append '(32)
+                           (append (fn-stx-hex-octets detail)
+                                   (fn-stx-keyring-suffix generation)))))
           ((equal token :unverified)
            (append *fn-stx-token-unverified*
                    (append '(32)
@@ -276,11 +289,11 @@
                                       (:d fn-stx-keyring-suffix)
                                       (:d fn-stx-decimal-octets)))))
 
-; Three outcomes stay distinct all the way out (D13): the rendered item
-; begins with a different token for each member of *fn-stx-verdicts*, so no
-; rendering collapses :unverified and :absent, and a :carried record (D23)
-; never renders as `verified'.
-(defthm fn-stx-verified-item-separates-the-three-outcomes
+;; Five tokens stay distinct all the way out (D13): the rendered item
+;; begins with a different token for each member of *fn-stx-verdicts*, so no
+;; rendering collapses :unverified and :absent, and neither a :carried record
+;; (D23) nor a :revoked one renders as `verified'.
+(defthm fn-stx-verified-item-separates-the-five-tokens
   (and (equal (fn-stx-verified-item (fn-stx-make-verdict :verified detail generation))
               (append *fn-stx-token-verified*
                       (append '(32)
@@ -296,15 +309,55 @@
                       (append '(32) (fn-stx-reason-token detail))))
        (equal (fn-stx-verified-item (fn-stx-make-verdict :carried detail generation))
               (append *fn-stx-token-carried*
-                      (append '(32) (fn-stx-hex-octets detail)))))
+                      (append '(32) (fn-stx-hex-octets detail))))
+       (equal (fn-stx-verified-item (fn-stx-make-verdict :revoked detail generation))
+              (append *fn-stx-token-revoked*
+                      (append '(32)
+                              (append (fn-stx-hex-octets detail)
+                                      (fn-stx-keyring-suffix generation))))))
   :rule-classes nil)
+
+;; KEYSTONE (the separation over five tokens).  Subject: fn-stx-verified-item,
+;; the renderer the HDR :fn-verified line prints (books/nntp-legacy.lisp over
+;; the pinned verdict).  The first octet of the rendered item names the
+;; token: `v' only for :verified, `u' for :unverified, `c' for :carried, `r'
+;; for :revoked and `a' for every other value (the absent arm).  The five
+;; first octets are pairwise distinct, so the reader cannot confuse any two,
+;; and an item is a `verified' line exactly when its token is :verified.
+(defun fn-stx-token-initial (token)
+  (declare (xargs :guard t))
+  (cond ((equal token :verified) 118)
+        ((equal token :unverified) 117)
+        ((equal token :carried) 99)
+        ((equal token :revoked) 114)
+        (t 97)))
+
+(defthm fn-stx-verified-item-first-octet-names-the-token
+  (equal (car (fn-stx-verified-item verdict))
+         (fn-stx-token-initial (fn-stx-verdict-token verdict)))
+  :hints (("Goal" :in-theory (e/d (fn-stx-verified-item)
+                                  ((:d fn-stx-hex-octets) (:d fn-stx-reason-token)
+                                   (:d fn-stx-keyring-suffix))))))
+
+(defthm fn-stx-verified-item-is-verified-only-for-verified
+  (iff (equal (car (fn-stx-verified-item verdict)) 118)
+       (equal (fn-stx-verdict-token verdict) :verified))
+  :hints (("Goal" :in-theory (disable fn-stx-verified-item))))
 
 ;; D23: the SUB-002 verdict is one of its three outcomes; :carried is only
 ;; ever a Store record of a relayed article (fn-pa-carried-event), never the
-;; verdict of an article this node checked.
+;; verdict of an article this node checked.  So is :revoked.
 (defthm fn-stx-verdict-is-never-carried
   (not (equal (fn-stx-verdict-token (fn-stx-verdict article keyring generation))
               :carried))
+  :hints (("Goal" :in-theory (e/d ((:d fn-stx-verdict))
+                                  (fn-stx-parse-header fn-stx-payload-for
+                                   fn-stx-field fn-stx-reattach
+                                   fn-prin-verifiedp)))))
+
+(defthm fn-stx-verdict-is-never-revoked
+  (not (equal (fn-stx-verdict-token (fn-stx-verdict article keyring generation))
+              :revoked))
   :hints (("Goal" :in-theory (e/d ((:d fn-stx-verdict))
                                   (fn-stx-parse-header fn-stx-payload-for
                                    fn-stx-field fn-stx-reattach
@@ -317,4 +370,5 @@
                     (:d fn-stx-hex-digit) (:d fn-stx-hex-octets)
                     (:d fn-stx-decimal-rev) (:d fn-stx-decimal-octets)
                     (:d fn-stx-reason-token) (:d fn-stx-keyring-suffix)
-                    (:d fn-stx-verified-item) (:d fn-stx-printablep)))
+                    (:d fn-stx-verified-item) (:d fn-stx-printablep)
+                    (:d fn-stx-token-initial)))

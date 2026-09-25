@@ -80,6 +80,9 @@
    (defthm fn-native-mission-command-of-post
      (equal (fn-native-operator-result-command (fn-nop-parse-post words config)) "post")
      :hints (("Goal" :in-theory (enable fn-nop-parse-post fn-nop-usage fn-nop-refused))))
+   (defthm fn-native-mission-command-of-peering
+     (equal (fn-native-operator-result-command (fn-nop-parse-peering words config)) "peer")
+     :hints (("Goal" :in-theory (enable fn-nop-parse-peering fn-nop-usage))))
    (defthm fn-native-mission-command-of-principal
      (equal (fn-native-operator-result-command (fn-nop-parse-principal argv config)) "principal")
      :hints (("Goal" :in-theory (enable fn-nop-parse-principal fn-nop-usage fn-nop-refused))))
@@ -111,6 +114,7 @@
      :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage fn-nop-refused)
                                      (fn-nop-parse-init fn-nop-parse-store fn-nop-parse-post
                                       fn-nop-parse-principal fn-nop-parse-administration
+                                      fn-nop-parse-peering fn-nop-peering-verbp
                                       fn-nop-parse-run fn-native-config-show fn-nop-help-text
                                       fn-nop-help-subjectp fn-nop-watch-seconds
                                       fn-nop-result fn-native-operator-result-command

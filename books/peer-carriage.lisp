@@ -505,7 +505,7 @@
 (defun fn-pcb-refusal-class (received snapshots carried ed-observation
                                       ml-observation)
   (declare (xargs :guard t))
-  (let ((plan (fn-pa-current-plan received snapshots carried)))
+  (let ((plan (fn-pa-current-plan received snapshots carried nil)))
     (cond ((not (consp plan)) nil)
           ((eq (car plan) :refused)
            (cond ((equal (cadr plan) :local-enrollment) :no-local-binding)
@@ -525,7 +525,7 @@
 ; observations has one of the four classes, never nil: a present carrier is
 ; never relabelled as the unsigned arm, and never reads as verified.
 (defthm fn-pcb-present-carrier-not-accepted-has-a-class
-  (let ((plan (fn-pa-current-plan received snapshots carried)))
+  (let ((plan (fn-pa-current-plan received snapshots carried nil)))
     (implies (and (not (equal (fn-pa-carrier-kind received) :absent))
                   (not (equal (car plan) :carried))
                   (not (and (equal (car plan) :ok)
@@ -535,12 +535,13 @@
                            *fn-pcb-refusal-classes*)))
   :hints (("Goal" :in-theory (disable fn-pa-current-plan fn-pa-carrier-kind
                                       fn-pcb-unsupported-profilep)
-           :use (fn-pa-current-plan-outcomes
+           :use ((:instance fn-pa-current-plan-outcomes (transitp nil))
+                 fn-pa-current-plan-off-transit-never-revoked
                  fn-pa-absent-is-only-parser-confirmed-absence))))
 
 ; Accepted under a local binding with a failed primitive: signature-failed.
 (defthm fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed
-  (implies (and (equal (car (fn-pa-current-plan received snapshots carried)) :ok)
+  (implies (and (equal (car (fn-pa-current-plan received snapshots carried nil)) :ok)
                 (not (and (equal ed :verified) (equal ml :verified))))
            (equal (fn-pcb-refusal-class received snapshots carried ed ml)
                   :signature-failed))
@@ -564,7 +565,7 @@
 ; carrier the plan accepts under a binding is never unsupported-profile, and
 ; one the plan refuses is never signature-failed.
 (defthm fn-pcb-refused-carrier-is-never-signature-failed
-  (implies (equal (car (fn-pa-current-plan received snapshots carried)) :refused)
+  (implies (equal (car (fn-pa-current-plan received snapshots carried nil)) :refused)
            (not (equal (fn-pcb-refusal-class received snapshots carried ed ml)
                        :signature-failed)))
   :hints (("Goal" :in-theory (disable fn-pa-current-plan

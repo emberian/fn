@@ -371,6 +371,31 @@
                      (cons e (fn-stxk-context-verdicts ctx))
                      (fn-stxk-context-current-generation ctx) nil))))
 
+;; PRF-098: the :revoked composite (fn-hsig-article-event-revoked-bindsp).
+;; Its verdict is recorded only when the generation it names is, in the
+;; replayed history, a revocation tombstone (*fn-hsig-revoked-profile*) of
+;; exactly the verdict's principal, and the carrier's keys are ones a key
+;; snapshot of that history enrolled for that principal.  Otherwise the
+;; replay faults :composite-binding: no fifth token enters the verdict
+;; projection by its shape alone.  KEYS is the stored carrier's key set.
+(defun fn-replay-apply-revoked-verdict (ctx e keys)
+  (declare (xargs :guard t))
+  (cond
+   ((not (equal (fn-stxk-context-kind ctx) :ok)) ctx)
+   ((not (fn-stxe-p e)) (fn-stxk-fault ctx :malformed-verdict))
+   ((not (equal (fn-stxe-sequence e) (fn-stxk-context-next ctx)))
+    (fn-stxk-fault ctx :sequence))
+   ((not (equal (fn-stxe-token e) :revoked))
+    (fn-stxk-fault ctx :composite-verdict))
+   ((not (fn-hsig-revoked-tombstone-bindsp
+          e keys (fn-stxk-context-snapshots ctx)))
+    (fn-stxk-fault ctx :composite-binding))
+   (t
+    (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
+                     (fn-stxk-context-snapshots ctx)
+                     (cons e (fn-stxk-context-verdicts ctx))
+                     (fn-stxk-context-current-generation ctx) nil))))
+
 (defun fn-replay-identity-step (ctx event)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (equal (fn-stxk-context-kind ctx) :ok)) ctx
@@ -392,6 +417,12 @@
         (fn-replay-apply-carried-verdict
          ctx (fn-stmt-value (fn-stxe-decode-exact
                              (fn-stxa-verdict-event event)))))
+       ;; PRF-098: a revoked composite names this node's tombstone.
+       ((fn-hsig-article-event-revoked-bindsp event)
+        (fn-replay-apply-revoked-verdict
+         ctx (fn-stmt-value (fn-stxe-decode-exact
+                             (fn-stxa-verdict-event event)))
+         (fn-hsig-article-event-carrier-keys event)))
        ((fn-stxa-p event)
         (let ((snapshot
                (fn-stxk-find (fn-stxa-keyring-generation event)

@@ -4,6 +4,8 @@
     fn_verify.py --node HOST[:PORT] --cafile NODE-CERT.pem --keyring KEYRING.json '<id@host>'
     fn_verify.py --node 127.0.0.1:1119 --plain --keyring KEYRING.json '<id@host>' --json
     fn_verify.py keyring-entry PRINCIPAL.bin ED-PUBLIC.bin ML-PUBLIC.pem [--generation N]
+    fn_verify.py --node ... --keyring K.json '<target@host>' --withdrawal '<cancel@host>' \
+        [--target-copy TARGET.eml]
 
 The node answers two things about an article: its bytes (`ARTICLE`) and its
 own recorded verdict (`HDR :fn-verified`, specs/substrate-transport.md §5).
@@ -44,6 +46,24 @@ Exit codes:
        boundary allowlists P and verified nothing itself (D23).  Ask a node
        that enrolled P; the independent check is still run and reported.
     64 usage (argparse's own 2 is remapped so it never reads as disagreement)
+
+A withdrawn article (a cancel or a Supersedes field, D29) answers 430, so the
+first form cannot decide it.  `--withdrawal CAUSE` asks about the withdrawal
+instead: the tool fetches the withdrawing article CAUSE, checks its carrier
+against the keyring exactly as above, checks that its signed `Control:
+cancel` or `Supersedes` field names the target, and reads the node's claim
+`HDR :fn-control CAUSE` (`executed withdrawal <T> author|authority`, `owed`,
+`declined REASON`, `none`).  Given a copy of the target (`--target-copy`),
+it also checks the author basis: the copy's carrier principal is the
+withdrawing article's.  Exit 0: the node says executed by the author and
+every independent check agrees; 1: the node says the target is not
+withdrawn (owed or declined) and serves it or holds none; 2: the node's
+claim contradicts a check (it serves a target it says it withdrew, the
+withdrawing article does not verify or does not name the target, or the
+copy's principal differs); 3: undecided, including every `authority`
+claim, since the grant is this node's configuration and nothing
+independent can check it (the limit specs/identity.md states for local
+policy).
 
 Credentials come from FN_CLIENT_USER and FN_CLIENT_PASSWORD or from
 `--credentials PATH` (mode 0600, `user password` on one line).  The password
@@ -99,6 +119,14 @@ MAX_ARTICLE_WIRE = SOURCE_MAX_V2 + 65536
 
 class Undecided(Exception):
     """The verifier cannot reach a verdict; the message says why."""
+
+
+class _Decided(Exception):
+    """A verdict reached on the withdrawal path (carries the exit code)."""
+
+    def __init__(self, code, sentence):
+        super().__init__(sentence)
+        self.code, self.sentence = code, sentence
 
 
 # ---------------------------------------------------------------- primitives
@@ -509,6 +537,129 @@ def compare(claim, check):
         claim["outcome"], check["principal"])
 
 
+# ---------------------------------------------------------------- withdrawal
+
+def parse_control_item(text):
+    """The item of one `HDR :fn-control` line (books/control-served.lisp,
+    fn-ctl-control-item)."""
+    parts = text.split()
+    if parts[:2] == ["executed", "withdrawal"] and len(parts) == 4 \
+            and parts[3] in ("author", "authority"):
+        return {"outcome": "executed", "target": parts[2], "basis": parts[3]}
+    if parts == ["owed"]:
+        return {"outcome": "owed"}
+    if len(parts) == 2 and parts[0] == "declined":
+        return {"outcome": "declined", "reason": parts[1]}
+    if parts == ["none"]:
+        return {"outcome": "none"}
+    raise Undecided("unknown HDR :fn-control item {!r}".format(text))
+
+
+def ask_control(node, cause):
+    """The node's :fn-control claim for CAUSE, or None when it makes none."""
+    status = node.command("HDR :fn-control " + cause)
+    if not status.startswith("225"):
+        return None, status
+    block = node.multiline().decode("utf-8", "replace").splitlines()
+    if len(block) != 1:
+        raise Undecided("HDR :fn-control returned {} lines for one Message-ID".format(len(block)))
+    number, _, item = block[0].partition(" ")
+    if not number.isdigit():
+        raise Undecided("malformed HDR :fn-control line {!r}".format(block[0]))
+    return parse_control_item(item), block[0]
+
+
+def named_target(article):
+    """The target the article's own fields name: `Control: cancel <T>` or a
+    single `Supersedes: <T>` (RFC 5536 sections 3.2.3 and 3.2.12)."""
+    fields, _ = parse_fields(article)
+    controls = [field_value(lines).strip() for name, lines in fields if name == b"control"]
+    supersedes = [field_value(lines).strip() for name, lines in fields if name == b"supersedes"]
+    if len(controls) == 1 and not supersedes:
+        words = controls[0].split()
+        if len(words) == 2 and words[0].lower() == b"cancel":
+            return words[1].decode("ascii", "replace")
+        return None
+    if not controls and len(supersedes) == 1 and len(supersedes[0].split()) == 1:
+        return supersedes[0].decode("ascii", "replace")
+    return None
+
+
+def fetch(node, msgid):
+    status = node.command("ARTICLE " + msgid)
+    if status.startswith("430"):
+        return None
+    if status.startswith("220"):
+        return node.multiline()
+    raise Undecided("ARTICLE {} answered {!r}".format(msgid, status))
+
+
+def decide_withdrawal(target, served, check, named, claim, copy_check):
+    """(exit code, sentence) from the node's claim and the independent facts."""
+    if claim is None:
+        return UNDECIDED, "the node makes no HDR :fn-control claim for the withdrawing article"
+    outcome = claim["outcome"]
+    if outcome == "executed":
+        problems = []
+        if claim["target"] != target:
+            problems.append("the node's claim names target {}".format(claim["target"]))
+        if served:
+            problems.append("the node serves the target it claims withdrawn")
+        if check["outcome"] != "verified":
+            problems.append("the withdrawing article does not verify ({})".format(
+                check.get("reason")))
+        if named != target:
+            problems.append("the withdrawing article's signed fields name {!r}".format(named))
+        if claim["basis"] == "author" and copy_check is not None \
+                and copy_check["outcome"] == "verified" \
+                and copy_check["principal"] != check.get("principal"):
+            problems.append("the target copy is {}'s, the withdrawal {}'s".format(
+                copy_check["principal"], check.get("principal")))
+        if problems:
+            return DISAGREE, "; ".join(problems)
+        if claim["basis"] == "authority":
+            return UNDECIDED, ("withdrawn by an authority: the withdrawing article verifies as "
+                               "{}'s and names the target, but the grant is this node's "
+                               "configuration".format(check["principal"]))
+        basis = "checked against the target copy" if copy_check is not None \
+            else "not checked (no target copy)"
+        return AGREE_VERIFIED, "withdrawn by its author {} (author basis {})".format(
+            check["principal"], basis)
+    if outcome == "owed":
+        if served:
+            return DISAGREE, "the node says the target is not held but serves it"
+        return AGREE_UNVERIFIED, "not withdrawn: the target has not arrived here"
+    if outcome == "declined":
+        if served:
+            return AGREE_UNVERIFIED, "not withdrawn: the node declines ({})".format(claim["reason"])
+        return UNDECIDED, "the node declines ({}) and holds no target to serve".format(
+            claim["reason"])
+    return UNDECIDED, "the node says the article withdraws nothing"
+
+
+def verify_withdrawal(args, keyring, node, report):
+    target, cause = args.msgid, args.withdrawal
+    target_article = fetch(node, target)
+    report["target-served"] = target_article is not None
+    cause_article = fetch(node, cause)
+    if cause_article is None:
+        raise Undecided("the node holds no withdrawing article {}".format(cause))
+    try:
+        check = independent_check(cause_article, cause, keyring)
+        named = named_target(cause_article)
+    except ValueError as error:
+        raise Undecided("the withdrawing article does not parse: {}".format(error))
+    claim, raw = ask_control(node, cause)
+    report["node-control"] = raw
+    copy_check = None
+    if args.target_copy:
+        copy_check = independent_check(Path(args.target_copy).read_bytes(), target, keyring)
+    report.update({"withdrawal": check, "named-target": named, "node": claim,
+                   "target-copy": copy_check})
+    return decide_withdrawal(target, target_article is not None, check, named, claim,
+                             copy_check)
+
+
 # ---------------------------------------------------------------- keyring
 
 def ml_public_from_pem(text):
@@ -583,6 +734,9 @@ def verify(args):
         node = Node(host, port, cafile=args.cafile, plain=args.plain,
                     credentials=None if args.plain else credentials_from(args),
                     timeout=args.timeout)
+        if args.withdrawal:
+            code, sentence = verify_withdrawal(args, keyring, node, report)
+            raise _Decided(code, sentence)
         article, claim, raw = ask_node(node, args.msgid)
         report["node-hdr"] = raw
         if article is None or claim is None:
@@ -607,6 +761,8 @@ def verify(args):
                     claim["principal"],
                     check.get("reason") or check["outcome"]))
         code, sentence = compare(claim, check)
+    except _Decided as decided:
+        code, sentence = decided.code, decided.sentence
     except Undecided as error:
         code, sentence = UNDECIDED, str(error)
     except (OSError, ValueError, KeyError) as error:
@@ -616,7 +772,9 @@ def verify(args):
             report["transcript"] = node.transcript
             node.close()
     report["exit"], report["detail"] = code, sentence
-    word = {0: "verified", 1: "unverified", 2: "DISAGREE", 3: "undecided"}[code]
+    word = ({0: "withdrawn", 1: "not-withdrawn", 2: "DISAGREE", 3: "undecided"}
+            if args.withdrawal else
+            {0: "verified", 1: "unverified", 2: "DISAGREE", 3: "undecided"})[code]
     if args.json:
         print(json.dumps(report, indent=1, sort_keys=True))
     else:
@@ -653,11 +811,18 @@ def main(argv=None):
     parser.add_argument("--keyring", required=True,
                         help="fn-verify-keyring-v1 JSON of pinned principals")
     parser.add_argument("--credentials", help="mode-0600 file: user password")
+    parser.add_argument("--withdrawal", metavar="CAUSE",
+                        help="the Message-ID of the cancel or superseding article; "
+                             "decide the target's withdrawal instead of its verdict")
+    parser.add_argument("--target-copy", metavar="PATH",
+                        help="a copy of the target's bytes, to check the author basis")
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     if not re.fullmatch(r"<[!-;=?-~]+>", args.msgid):
         parser.error("the Message-ID must be <...> printable ASCII")
+    if args.withdrawal and not re.fullmatch(r"<[!-;=?-~]+>", args.withdrawal):
+        parser.error("the withdrawal's Message-ID must be <...> printable ASCII")
     return verify(args)
 
 
