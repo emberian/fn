@@ -223,9 +223,16 @@
                  (fn-post-single
                   ps (fn-post-refusal-line (fn-inj-decision-reason decision)))
                  nil)))
+          ; The wire closed the article at the served body limit (the
+          ; profile's article bound, `fn-own-body-limit'; books/wire.lisp
+          ; `fn-wire-close' :body-overlimit): the refusal names the size, the
+          ; same line an injection :oversize gives.  Any other event is an
+          ; article that was not received.
           (fn-post-make-result
            (fn-post-make-session (fn-post-session-base ps) nil)
-           (fn-post-single ps "441 posting failed; the article was not received")
+           (fn-post-single ps (if (equal wire-event '(:reject :body-overlimit))
+                                  (fn-post-refusal-line :oversize)
+                                "441 posting failed; the article was not received"))
            nil))
       ; The reader environment is built here, where the dispatcher is called:
       ; the connection's pinned clock observation and the persisted

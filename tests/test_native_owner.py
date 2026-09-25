@@ -573,7 +573,8 @@ class NativeOwnerTests(unittest.TestCase):
             except OSError:
                 answer = b""
             self.assertEqual(
-                answer, b"441 posting failed; the article was not received\r\n",
+                answer,
+                b"441 posting failed; the article exceeds the configured size\r\n",
                 "an oversize article got {!r}".format(answer))
             client.close()
 
