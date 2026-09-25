@@ -70,9 +70,11 @@ Lane `k0-corollaries`, branch `lane/k0-corollaries` from dev `9458fcd4`
   observe step. The one hypothesis, the relation, has a `must-fail`: the
   initial byte image under the same kernel.
 - Marker theorem: the witness is the K5 completing pair and the marker run
-  from it. It checks the hypotheses for `:ok` and `(:eio)`, and the
-  conclusion for `:ok`, `(:eio)`, a short write `(:eio . 3)`, and issued
-  and unissued failed renames. There is one `must-fail` for each of these
+  from it. It checks the hypotheses and the conclusion for `:ok` and for
+  a plain `(:eio)`: one outcome is applied to all five steps. A short
+  write or an issued rename is not a file-barrier outcome, and
+  `byte-store-k0-step-tests` already witnesses those kinds at these same
+  pairs. There is one `must-fail` for each of these
   hypotheses: the relation (initial image), the completion window (the
   related record-attempted pair 10), the string stage (`7`), the absent
   stage (the marker run's own created pair 1), and typed octets (`(300)`).
