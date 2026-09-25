@@ -3242,6 +3242,47 @@
           "name": "fn-bs-read-ranges-concatenate"
         }
       ]
+    },
+    {
+      "id": "PRF-085",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-links-okp-composes-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-capture-extends-the-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-capture-link-succeeds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-chain-reconstructs-the-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-reclaim-preserves-reconstructed-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-retire-plan-keeps-the-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-publication-crash-walks-old-or-new-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-links-count-within-boundary"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cverb-pack-decision-capture-succeeds"
+        }
+      ]
     }
   ]
 }

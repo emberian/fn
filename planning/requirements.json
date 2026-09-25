@@ -1924,6 +1924,31 @@
         "planning/evidence/bounds-p3-2026-09-25.md"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
+    },
+    {
+      "id": "STO-012",
+      "title": "Compaction chains packs: each compaction packs only the uncovered suffix into a link naming its predecessor by digest, the open walks the chain, retire keeps it",
+      "specification": "specs/storage.md#chained-packs-p5-2026-09-25-sto-012",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-085"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/checkpoint-pack-chain.lisp",
+        "tests/acl2/checkpoint-pack-chain-tests.lisp",
+        "books/store-compact-verb.lisp",
+        "host/checkpoint-host.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_pack_chain.py",
+        "planning/evidence/manifests/certify-20260925T091457Z-3109471.json",
+        "planning/evidence/bounds-p5-2026-09-25.md"
+      ],
+      "implementation_note": "A link holds one scheduling quantum (4096 events, 4 MiB) and at least one record; the chain is bounded by the committed count, which the profile's max-transactions bounds. store compact no longer refuses above 4096 transactions."
     }
   ]
 }
