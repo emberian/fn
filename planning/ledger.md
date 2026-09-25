@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 758 |
-| Certification roots in the Makefile | 746 |
-| Books inside the root closure | 756 |
-| `defthm` and `defthmd` events | 10075 |
-| `defun` events | 7161 |
+| Books read | 761 |
+| Certification roots in the Makefile | 749 |
+| Books inside the root closure | 759 |
+| `defthm` and `defthmd` events | 10137 |
+| `defun` events | 7189 |
 | Functions with verified guards | 2090 |
-| Functions declared `:verify-guards nil` and never verified | 506 |
-| Functions left at the default with an explicit guard | 3561 |
-| Functions left at the default with no guard | 1004 |
-| `assert-event` checks | 11152 |
-| `must-fail` checks | 987 |
-| `encapsulate` events | 34 |
+| Functions declared `:verify-guards nil` and never verified | 518 |
+| Functions left at the default with an explicit guard | 3565 |
+| Functions left at the default with no guard | 1016 |
+| `assert-event` checks | 11167 |
+| `must-fail` checks | 994 |
+| `encapsulate` events | 38 |
 | Theorems flagged SUSPECT by shape | 91 |
-| Export-hygiene warnings | 118 |
+| Export-hygiene warnings | 119 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 66 |
-| Include-hygiene warnings | 743 |
+| Include-hygiene warnings | 745 |
 | Host-names warnings | 860 |
 | Hand-written-record warnings | 18 |
 
@@ -235,10 +235,12 @@ that `make certify` requests.
 | `books/byte-store-frame.lisp` | root | 11 | 16 | 1/0/13/2 | 0 | 0 | 0 |
 | `books/byte-store-initializer.lisp` | root | 8 | 10 | 0/8/0/2 | 0 | 0 | 0 |
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
+| `books/byte-store-k0-marker.lisp` | root | 34 | 4 | 0/4/0/0 | 0 | 0 | 0 |
 | `books/byte-store-k0-recovery.lisp` | root | 51 | 4 | 0/2/0/2 | 0 | 0 | 0 |
 | `books/byte-store-k0-staging.lisp` | root | 73 | 3 | 0/1/0/2 | 0 | 0 | 0 |
 | `books/byte-store-k0.lisp` | root | 36 | 5 | 0/3/0/2 | 0 | 0 | 0 |
 | `books/byte-store-keystones.lisp` | root | 35 | 3 | 0/3/0/0 | 0 | 0 | 0 |
+| `books/byte-store-marker-program.lisp` | root | 28 | 12 | 0/8/4/0 | 7 | 0 | 0 |
 | `books/byte-store-native-correspondence.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/byte-store-observation-scan.lisp` | root | 15 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/byte-store-observation.lisp` | root | 0 | 8 | 0/8/0/0 | 0 | 0 | 0 |
@@ -629,6 +631,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-fault-keystones-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 8 | 19 | 0 |
 | `tests/acl2/byte-store-frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 0 | 0 |
 | `tests/acl2/byte-store-initializer-tests.lisp` | root | 0 | 9 | 0/4/0/5 | 12 | 3 | 0 |
+| `tests/acl2/byte-store-k0-marker-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 8 | 7 | 0 |
 | `tests/acl2/byte-store-k0-recovery-tests.lisp` | root | 0 | 20 | 0/0/0/20 | 15 | 9 | 0 |
 | `tests/acl2/byte-store-k0-tests.lisp` | root | 0 | 22 | 0/0/0/22 | 11 | 14 | 0 |
 | `tests/acl2/byte-store-native-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 2 | 0 |

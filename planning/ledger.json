@@ -246,6 +246,9 @@
     "tests/acl2/store-compact-verb-tests",
     "books/store-history-marker",
     "tests/acl2/store-history-marker-tests",
+    "books/byte-store-marker-program",
+    "books/byte-store-k0-marker",
+    "tests/acl2/byte-store-k0-marker-tests",
     "books/checkpoint-auxiliary",
     "tests/acl2/checkpoint-auxiliary-tests",
     "books/hybrid-signature-invariants",
@@ -750,25 +753,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 758,
-    "books_in_root_closure": 756,
-    "roots": 746,
-    "theorems": 10075,
-    "functions": 7161,
-    "assert_events": 11152,
-    "must_fails": 987,
-    "encapsulates": 34,
+    "books": 761,
+    "books_in_root_closure": 759,
+    "roots": 749,
+    "theorems": 10137,
+    "functions": 7189,
+    "assert_events": 11167,
+    "must_fails": 994,
+    "encapsulates": 38,
     "guards": {
       "verified": 2090,
-      "declared-off": 506,
-      "default-guarded": 3561,
-      "default-unguarded": 1004
+      "declared-off": 518,
+      "default-guarded": 3565,
+      "default-unguarded": 1016
     },
     "suspect_theorems": 91,
-    "export_hygiene_warnings": 118,
+    "export_hygiene_warnings": 119,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 66,
-    "include_hygiene_warnings": 743,
+    "include_hygiene_warnings": 745,
     "host_names_warnings": 860,
     "hand_written_record_warnings": 18
   },
@@ -4725,6 +4728,32 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-k0-marker.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 34,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "byte-store-k0-staging",
+        "byte-store-marker-program"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-k0-recovery.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4826,6 +4855,33 @@
         "consumer-store-invariants",
         "store-observed",
         "store-sweep"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-marker-program.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 28,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 8,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 7,
+      "must_fails": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 3,
+      "includes": [
+        "byte-store-invariants",
+        "byte-store-programs",
+        "store-history-marker"
       ],
       "system_includes": [],
       "suspects": [],
@@ -15316,6 +15372,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/byte-store-k0-marker-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 12
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 7,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-k0-marker",
+        "byte-store-stable-prefix-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/byte-store-k0-recovery-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -22061,6 +22145,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-bs-k0m-drop-of-root-quiet",
+        "book": "books/byte-store-k0-marker.lisp",
+        "line": 284,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-bs-txn-undigits-rev-inverts-natural-digits-rev",
         "book": "books/byte-store-txn-name.lisp",
         "line": 124,
@@ -24505,6 +24595,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/byte-store-k0-marker.lisp",
+        "line": 26,
+        "include": "byte-store-k0-staging",
+        "included": "books/byte-store-k0-staging.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/byte-store-k0-recovery.lisp",
         "line": 55,
         "include": "byte-store-keystones",
@@ -26826,6 +26923,13 @@
         "line": 6,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-k0-marker-tests.lisp",
+        "line": 11,
+        "include": "byte-store-stable-prefix-tests",
+        "included": "tests/acl2/byte-store-stable-prefix-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
