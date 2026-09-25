@@ -613,6 +613,17 @@ class NativeVerifyTests(unittest.TestCase):
 
         cls.owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(cls.config), "run"],
                                      cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            cls.start(control)
+        except BaseException:
+            # tearDownClass does not run after a failed setUpClass.
+            stop_and_diagnostics(cls.owner, timeout=60)
+            cls.temp.cleanup()
+            raise
+
+    @classmethod
+    def start(cls, control):
+        from tests.native_process import wait_for_announcement
         line = wait_for_announcement(cls.owner, b"LISTENING ")
         assert line.startswith(b"LISTENING "), line
         if not OLD_IMAGE:
