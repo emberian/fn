@@ -4,7 +4,7 @@
 ; kernel (related to it, or a pending root rename onto a name other than the
 ; allocation frontier both of whose resolutions are related,
 ; fn-bs-k0-coveredp), any step of the byte language
-; whose precondition fn-bs-k0-step-inputp holds, with ANY outcome the
+; whose precondition fn-bs-k0-outside-step-inputp holds, with ANY outcome the
 ; environment chooses, leaves a covered pair; a syscall leaves the kernel as
 ; it was, an observation moves it to its successor.  Every crash image of a
 ; covered state is a crash image of a related state
@@ -68,6 +68,7 @@
 (include-book "byte-store-k0-step-lemmas")
 (include-book "byte-store-k0-staging-error")
 (include-book "byte-store-k0-authority-error")
+(include-book "byte-store-k0-window")
 
 (defthm fn-bs-k0s-covered-of-relation
   (implies (fn-bs-store-relation bs ks) (fn-bs-k0-coveredp bs ks))
@@ -112,7 +113,7 @@
       (and (equal event '(:frontier-dir :ok))
            (equal (fn-sf-phase ks) :frontier-attempted)
            (fn-bs-frontier-directory-committedp bs ks))))
-(defun fn-bs-k0-step-inputp (bs ks step outcome)
+(defun fn-bs-k0-outside-step-inputp (bs ks step outcome)
   (declare (xargs :guard t :verify-guards nil))
   (let ((d1 (nth 1 step)) (n2 (nth 2 step)) (d3 (nth 3 step)) (n4 (nth 4 step)))
     (and
@@ -190,12 +191,12 @@
                             fn-sf-record-dir-result fn-sf-core-completion fn-sf-emit-success
                             fn-bs-record-directory-committedp fn-bs-frontier-directory-committedp)))))
 (defthm fn-bs-k0s-step-create-covered
-  (implies (and (equal (car step) :create) (fn-bs-k0-step-inputp bs ks step outcome))
+  (implies (and (equal (car step) :create) (fn-bs-k0-outside-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-create-preserves-relation (b bs) (k ks) (stage (nth 2 step))))
-           :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
+           :in-theory (e/d (fn-bs-k0-outside-step-inputp fn-bs-k0s-covered-of-relation)
                            (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
                             fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
@@ -204,12 +205,12 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-write-all-covered
-  (implies (and (equal (car step) :write-all) (fn-bs-k0-step-inputp bs ks step outcome))
+  (implies (and (equal (car step) :write-all) (fn-bs-k0-outside-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-write-preserves-relation (b bs) (k ks) (octets (nth 3 step)) (ino (fn-bs-lookup bs (nth 1 step) (nth 2 step)))))
-           :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
+           :in-theory (e/d (fn-bs-k0-outside-step-inputp fn-bs-k0s-covered-of-relation)
                            (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
                             fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
@@ -218,12 +219,12 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-fsync-file-covered
-  (implies (and (equal (car step) :fsync-file) (fn-bs-k0-step-inputp bs ks step outcome))
+  (implies (and (equal (car step) :fsync-file) (fn-bs-k0-outside-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-fsync-file-preserves-relation (b bs) (k ks) (x (fn-bs-lookup bs (nth 1 step) (nth 2 step)))))
-           :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
+           :in-theory (e/d (fn-bs-k0-outside-step-inputp fn-bs-k0s-covered-of-relation)
                            (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
                             fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
@@ -232,14 +233,14 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-fsync-dir-covered
-  (implies (and (equal (car step) :fsync-dir) (fn-bs-k0-step-inputp bs ks step outcome))
+  (implies (and (equal (car step) :fsync-dir) (fn-bs-k0-outside-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0-staging-fence-preserves-relation (b bs) (k ks)) (:instance fn-bs-k8-pending-link-fence-preserves-relation) (:instance fn-bs-k0s-root-rename-barrier-resolves (m bs)) fn-bs-k0s-root-fence-preserves-relation
                  (:instance fn-bs-k0-staging-fsync-error-preserves-relation (b bs) (k ks))
                  (:instance fn-bs-k0a-authority-fsync-error-preserves-relation (b bs) (k ks) (dir (nth 1 step))))
-           :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation fn-bs-k0s-fsync-dir-ok-is-fence)
+           :in-theory (e/d (fn-bs-k0-outside-step-inputp fn-bs-k0s-covered-of-relation fn-bs-k0s-fsync-dir-ok-is-fence)
                            (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
                             fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
@@ -248,12 +249,12 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-unlink-covered
-  (implies (and (equal (car step) :unlink) (fn-bs-k0-step-inputp bs ks step outcome))
+  (implies (and (equal (car step) :unlink) (fn-bs-k0-outside-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-unlink-preserves-relation (b bs) (k ks) (dir (nth 1 step)) (name (nth 2 step))))
-           :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
+           :in-theory (e/d (fn-bs-k0-outside-step-inputp fn-bs-k0s-covered-of-relation)
                            (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
                             fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
@@ -262,12 +263,12 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-rename-covered
-  (implies (and (equal (car step) :rename) (fn-bs-k0-step-inputp bs ks step outcome))
+  (implies (and (equal (car step) :rename) (fn-bs-k0-outside-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-root-rename-covered (b bs) (k ks) (stage (nth 2 step)) (name (nth 4 step))) (:instance fn-bs-k0s-frontier-rename-preserves-relation (b bs) (k ks) (stage (nth 2 step))))
-           :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
+           :in-theory (e/d (fn-bs-k0-outside-step-inputp fn-bs-k0s-covered-of-relation)
                            (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
                             fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
@@ -276,12 +277,12 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-link-covered
-  (implies (and (equal (car step) :link) (fn-bs-k0-step-inputp bs ks step outcome))
+  (implies (and (equal (car step) :link) (fn-bs-k0-outside-step-inputp bs ks step outcome))
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-link-preserves-relation (b bs) (k ks) (stage (nth 2 step)) (name (nth 4 step))))
-           :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation)
+           :in-theory (e/d (fn-bs-k0-outside-step-inputp fn-bs-k0s-covered-of-relation)
                            (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed
                             fn-bs-root-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
                             fn-bs-fence-dir fn-bs-rename fn-bs-link fn-bs-unlink fn-bs-k0-observation-inputp
@@ -289,12 +290,22 @@
                             fn-bs-durable fn-bs-record-of fn-bs-durable-content fn-bs-durable-frontier
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
-(defthm fn-bs-step-preserves-k0-coverage
-  (implies (fn-bs-k0-step-inputp bs ks step outcome)
+; The recovery window (lane k0-recovery): fn-bs-k0w-step-inputp is the
+; recovery program's steps from a related pair in the window
+; (books/byte-store-k0-window.lisp).  Disabled below: an includer that
+; discharges this predicate at a pair outside the window proves the first
+; disjunct.
+(defun fn-bs-k0-step-inputp (bs ks step outcome)
+  (declare (xargs :guard t :verify-guards nil))
+  (or (fn-bs-k0-outside-step-inputp bs ks step outcome)
+      (fn-bs-k0w-step-inputp bs ks step outcome)))
+(defthm fn-bs-k0-outside-step-preserves-k0-coverage
+  (implies (fn-bs-k0-outside-step-inputp bs ks step outcome)
            (let ((bs1 (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)))
                  (ks1 (mv-nth 2 (fn-bs-step bs ks step outcome groups capacity))))
              (and (fn-bs-k0-coveredp bs1 ks1)
                   (or (equal ks1 ks) (equal (car step) :observe)))))
+  :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :cases ((equal (car step) :observe) (equal (car step) :cut) (equal (car step) :create)
                    (equal (car step) :write-all) (equal (car step) :fsync-file) (equal (car step) :fsync-dir)
@@ -306,10 +317,25 @@
                  (:instance fn-bs-k0s-observation-preserves-relation (event (nth 1 step)) (g groups) (c capacity))
                  (:instance fn-bs-k0c-cut-step-is-identity (o outcome) (g groups) (c capacity)))
            :in-theory (e/d (fn-bs-k0s-covered-of-relation)
-                           (fn-bs-step fn-bs-k0-step-inputp fn-bs-k0s-observe-step fn-bs-k0c-cut-step-is-identity
+                           (fn-bs-step fn-bs-k0-outside-step-inputp fn-bs-k0s-observe-step fn-bs-k0c-cut-step-is-identity
                             fn-bs-store-relation fn-bs-k0-coveredp fn-sf-dispatch fn-bs-k0-observation-inputp)))
           (and stable-under-simplificationp
-               '(:in-theory (e/d (fn-bs-k0s-covered-of-relation fn-bs-k0-step-inputp)
+               '(:in-theory (e/d (fn-bs-k0s-covered-of-relation fn-bs-k0-outside-step-inputp)
                            (fn-bs-step fn-bs-k0s-observe-step fn-bs-k0c-cut-step-is-identity
                             fn-bs-store-relation fn-bs-k0-coveredp fn-sf-dispatch fn-bs-k0-observation-inputp
                             fn-bs-k0s-root-rename-pendingp fn-bs-lookup fn-bs-authority-inode-list))))))
+(defthm fn-bs-step-preserves-k0-coverage
+  (implies (fn-bs-k0-step-inputp bs ks step outcome)
+           (let ((bs1 (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)))
+                 (ks1 (mv-nth 2 (fn-bs-step bs ks step outcome groups capacity))))
+             (and (fn-bs-k0-coveredp bs1 ks1)
+                  (or (equal ks1 ks) (equal (car step) :observe)))))
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-k0-outside-step-preserves-k0-coverage fn-bs-k0w-step-preserves-relation
+                 (:instance fn-bs-k0s-covered-of-relation
+                  (bs (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)))
+                  (ks (mv-nth 2 (fn-bs-step bs ks step outcome groups capacity)))))
+           :in-theory (e/d (fn-bs-k0-step-inputp)
+                           (fn-bs-k0-outside-step-inputp fn-bs-k0w-step-inputp fn-bs-step fn-bs-k0-coveredp
+                            fn-bs-store-relation fn-bs-k0s-covered-of-relation)))))
+(in-theory (disable fn-bs-k0w-step-inputp))

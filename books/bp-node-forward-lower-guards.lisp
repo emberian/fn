@@ -17,10 +17,21 @@
 (verify-guards fn-bpnp-forward-anchor)
 (verify-guards fn-bpnp-forward-one-block
   :hints (("Goal" :in-theory (enable fn-bpb-blockp))))
+;; The guards need only the shapes of the recursive result and of the
+;; bundle; opening the per-block step, the expiry check, or the fragment and
+;; list rules below them cost 1.5 s and 2.1 s without closing any goal.
 (verify-guards fn-bpnp-forward-blocks
-  :hints (("Goal" :in-theory (enable fn-bpb-block-listp))))
+  :hints (("Goal" :in-theory (e/d (fn-bpb-block-listp)
+                                  (fn-bpnp-forward-one-block
+                                   fn-bpnp-forward-blocks)))))
 (verify-guards fn-bpnp-forward-image
-  :hints (("Goal" :in-theory (enable fn-bpb-bundlep))))
+  :hints (("Goal" :in-theory (e/d (fn-bpb-bundlep)
+                                  (fn-bpnp-forward-blocks fn-bpah-held-expiry
+                                   fn-bpf-fragment-listp-is-a-true-list
+                                   fn-cp-idp-true-listp
+                                   fn-nntp-response-text-true-listp
+                                   fn-bpf-fragment-listp-car-and-cdr
+                                   fn-bpf-fragmentp-fields)))))
 
 (verify-guards fn-bpnf-arrival-count)
 (verify-guards fn-bpnf-find-arrival)
