@@ -3510,6 +3510,35 @@
           "name": "fn-icar-submission-targets-is-submission-targets"
         }
       ]
+    },
+    {
+      "id": "PRF-102",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nco-observe-refuses-exactly-past-the-operator-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-publication-within-the-operator-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-auth-parse-lines-within-the-operator-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-auth-load-within-the-operator-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-namespace-counts-within-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-upgrade-keeps-namespace-counts"
+        }
+      ]
     }
   ]
 }

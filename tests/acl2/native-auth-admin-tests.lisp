@@ -293,23 +293,24 @@
 ; max-credentials.  Over the one-credential file the witness above wrote, a
 ; second login is accepted under 2 and refused by name under 1; re-setting
 ; the existing login is not a new one and is accepted under 1.
-(defconst *fn-naa-test-one* (fn-native-auth-admin-result-octets (fn-naa-test-set)))
+; A macro, not a defconst: ACL2 ignores the SHA-256 attachment in a defconst.
+(defmacro fn-naa-test-one () '(fn-native-auth-admin-result-octets (fn-naa-test-set)))
 (defconst *fn-naa-test-other-name* (fn-record-string-octets "second-reader"))
 (assert-event
  (equal (fn-native-auth-admin-result-status
          (fn-native-auth-admin-set-password
-          *fn-naa-test-one* t *fn-naa-test-other-name* *fn-naa-test-secret*
+          (fn-naa-test-one) t *fn-naa-test-other-name* *fn-naa-test-secret*
           *fn-naa-test-secret* *fn-naa-test-salt* nil nil t 2))
         :accepted))
 (assert-event
  (equal (fn-native-auth-admin-result-reason
          (fn-native-auth-admin-set-password
-          *fn-naa-test-one* t *fn-naa-test-other-name* *fn-naa-test-secret*
+          (fn-naa-test-one) t *fn-naa-test-other-name* *fn-naa-test-secret*
           *fn-naa-test-secret* *fn-naa-test-salt* nil nil t 1))
         :too-many-credentials))
 (assert-event
  (equal (fn-native-auth-admin-result-status
          (fn-native-auth-admin-set-password
-          *fn-naa-test-one* t *fn-naa-test-name* *fn-naa-test-secret*
+          (fn-naa-test-one) t *fn-naa-test-name* *fn-naa-test-secret*
           *fn-naa-test-secret* *fn-naa-test-salt* nil nil t 1))
         :accepted))
