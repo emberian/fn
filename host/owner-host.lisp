@@ -64,6 +64,7 @@
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
+(include-book "../books/login-binding")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -247,6 +248,16 @@
   (if (boundp-global 'fn-owner-store-profile state)
       (f-get-global 'fn-owner-store-profile state)
     nil))
+
+; The carried profile's article bound A and group bound G, for the control
+; socket's read bound (host/native/control.lisp `fnn-control-start').  Both
+; are 0 before a profile is installed, and the read bound is then the
+; command-frame bound: no article is accepted without a profile anyway.
+(defun fn-owner-control-profile-bounds (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((profile (fn-owner-store-profile state)))
+    (value (list (nfix (fn-sbud-payload-bound profile))
+                 (nfix (fn-sbud-group-bound profile))))))
 
 (defun fn-owner-served-post-bound (state)
   (declare (xargs :stobjs state :mode :program))
@@ -541,6 +552,57 @@
              (equal (fn-sf-phase (fn-sn-files next)) :ready))
         (value :refused)
       (value :fault))))
+
+; fn-owner-prepare with the payload in the octet buffer (books/octets-stobj.lisp;
+; host/native/owner.lisp fnn-owner-attempt).  Three things differ from the
+; list entry above, each by a theorem of books/poster-bytes-buffer.lisp:
+; the fn-octet-listp test is discharged by the buffer's recognizer
+; (fn-pbb-buffer-is-octet-listp); the length is the fill count
+; (fn-octets-len); the existing-article test reads the buffer by index
+; (fn-pbb-existing-action-is-pb-existing-action).  The record's payload is
+; the buffer's list (fn-octets-list), consed once here: it is the store
+; record's own field, held for the record's life, until wave C gives the
+; owner state a concrete representation.  Everything after the record is
+; the same prepare (fn-pcar-sbud-prepare) on the same record.
+(defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
+                                 subject-octets evidence-octets charge
+                                 fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
+    (if (or (not (fn-store-msgid-octetsp msgid-octets))
+            (> (fn-octets-len fn-octets) *fn-record-max-payload*)
+            (equal groups :bad) (null groups)
+            (not (fn-store-text-octetsp id-octets))
+            (not (fn-store-text-octetsp subject-octets))
+            (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
+        (value :invalid)
+      (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
+          (value :refused)
+      (let* ((msgid (fn-store-octets->string msgid-octets))
+             (existing (fn-pbb-existing-action msgid fn-octets groups s)))
+        (if existing
+            (value existing)
+          (let* ((record (fn-sn-article-record
+                          s (fn-own-clock (fn-owner-core state))
+                          msgid (fn-octets-list fn-octets) groups
+                          (fn-store-octets->string id-octets)
+                          (fn-store-octets->string subject-octets)
+                          (fn-store-octets->string evidence-octets)
+                          charge))
+                 (budget (fn-sbud-budget (fn-owner-store-profile state) :article))
+                 (before (fn-owner-ocfg state))
+                 (state (if (equal record :clock-unusable)
+                            state
+                          (fn-owner-install-ocfg
+                           (fn-pcar-sbud-prepare before record budget)
+                           state))))
+            (if (equal record :clock-unusable)
+                (value :clock-unusable)
+              (if (equal (fn-owner-store state) s)
+                (value (fn-sbud-refusal-kind before budget))
+              (value :prepared))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge state)
@@ -1433,6 +1495,36 @@
       (f-get-global 'fn-owner-transit-carried state)
     nil))
 
+;; The login-binding table the native auth profile loaded
+;; (books/native-auth-profile.lisp fn-native-auth-load-bindings), installed
+;; beside the auth configuration before the listener opens.  Transport only:
+;; ACL2 built it, and fn-lb-owner-gate is the only reader.
+(defun fn-owner-set-login-bindings (bindings state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-login-bindings bindings state)))
+    (value :ok)))
+
+(defun fn-owner-login-bindings (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-login-bindings state)
+      (f-get-global 'fn-owner-login-bindings state)
+    nil))
+
+;; The posting policy's gate for the served submission in flight
+;; (books/login-binding.lisp fn-lb-owner-gate over the owner, its LIVE
+;; configuration and the binding table), called by host/native/owner.lisp
+;; fnn-owner-attempt-served before the transit attempt.  The verdict's
+;; service-log line is left in fn-owner-login-log-line (nil: no login).
+(defun fn-owner-login-gate (received state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((verdict (fn-lb-owner-gate (fn-owner-core state)
+                                    (fn-ocfg-config (fn-owner-ocfg state))
+                                    (fn-owner-login-bindings state)
+                                    received))
+         (state (f-put-global 'fn-owner-login-log-line
+                              (fn-lb-verdict-line verdict) state)))
+    (value verdict)))
+
 (defun fn-owner-peer-carrier-plan (received transitp state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-current-plan
@@ -1540,6 +1632,28 @@
         (value :absent)
       (let ((action (fn-pb-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
+                     (fn-owner-store state))))
+        (value (if action action :absent))))))
+
+; The same question with the submitted payload in the octet buffer
+; (books/octets-stobj.lisp): host/native/owner.lisp fnn-owner-attempt fills
+; the buffer once from the byte vector the owner handed back and asks this
+; and fn-owner-prepare-buffer over it, so the payload is not consed into a
+; list for either.  The decision is fn-pbb-existing-action
+; (books/poster-bytes-buffer.lisp), equal to fn-pb-existing-action on the
+; buffer's logical value (fn-pbb-existing-action-is-pb-existing-action);
+; the list entry's fn-octet-listp test is the buffer's recognizer
+; (fn-pbb-buffer-is-octet-listp).
+(defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let ((groups (fn-store-groups-from-codes
+                 group-codes
+                 (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
+    (if (or (not (fn-store-msgid-octetsp msgid-octets))
+            (equal groups :bad) (null groups))
+        (value :absent)
+      (let ((action (fn-pbb-existing-action
+                     (fn-store-octets->string msgid-octets) fn-octets groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
 

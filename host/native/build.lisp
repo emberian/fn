@@ -22,6 +22,7 @@
 (include-book "books/identity")
 (include-book "books/hybrid-store-injected")
 (include-book "books/peer-authored-accept")
+(include-book "books/login-binding")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")
@@ -48,6 +49,11 @@
 (include-book "books/owner-prepare-carried")
 ;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io.
 (include-book "books/records-concrete-owner")
+;; The octet buffer (D27 boundary 6) and the existing-article test over it:
+;; fn-owner-existing-action-buffer and fn-owner-prepare-buffer
+;; (host/owner-host.lisp) call fn-pbb-existing-action.
+(include-book "books/octets-stobj")
+(include-book "books/poster-bytes-buffer")
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-intent-carried")
 (include-book "books/owner-commit-ocl")

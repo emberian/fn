@@ -271,6 +271,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
 	books/store-history-marker \
+	books/reclaim-tombstone \
+	books/reclaim-rule \
+	books/store-reclaim \
+	books/nntp-reclaimed \
+	tests/acl2/store-reclaim-tests \
 	tests/acl2/store-history-marker-tests \
 	books/store-history-required \
 	tests/acl2/store-history-required-tests \
@@ -569,6 +574,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-teeth-tests \
 	books/mailbox \
 	books/injection-shape \
+	books/injection-path \
 	books/injection \
 	books/injection-invariants \
 	tests/acl2/injection-tests \
@@ -604,6 +610,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-concrete-owner \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
+	books/octets-stobj \
+	books/poster-bytes-buffer \
+	tests/acl2/octets-stobj-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -741,6 +750,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
+	books/control-visible \
+	tests/acl2/control-visible-tests \
+	books/login-binding \
+	tests/acl2/login-binding-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \

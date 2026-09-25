@@ -166,7 +166,7 @@
              (source-id (fn-hsig-authored-source-id source)))
         (if (and (natp stamp) fields source-id
                  (equal msgid (car fields))
-                 (equal groups (cadr fields))
+                 (equal groups (fn-hsig-source-filed-groups source fields))
                  (equal charge (fn-charge-for-payload (len received)))
                  (fn-hsig-carried-record-metadatap source received record))
             (let* ((verdict (fn-stxe-make sequence txid generation msgid
@@ -309,7 +309,10 @@
 (defconst *fn-pa-served-reasons*
   '(:article :carrier :carrier-shape :local-enrollment :signature :conflict
     :control-not-filed :control-malformed :control-signed
-    :event :signed-record))
+    :event :signed-record
+    ;; books/login-binding.lisp fn-lb-gate: a bound login under the
+    ;; `posting-policy bound-logins' policy.
+    :login-not-bound :login-unsigned))
 
 (defun fn-pa-served-word (word detail)
   (declare (xargs :guard t))
@@ -339,15 +342,15 @@
 ;;   (:refused :control-not-filed)   the operator has not created that group;
 ;;   (:refused :control-malformed)   two Control fields, Control beside
 ;;                            Supersedes, or a command outside the grammar;
-;;   (:refused :control-signed)      a control article with an FN-Authorship
-;;                            carrier.  OPEN (C1): a signed article's Store
-;;                            record must list exactly the source's Newsgroups
-;;                            (books/hybrid-store.lisp, the three
-;;                            `(equal groups (cadr fields))' tests and the
-;;                            replay binding), so it cannot be filed under
-;;                            control.<verb> until that binding names the
-;;                            filing group; refused rather than filed where
-;;                            RFC 5537 section 3.7 says not to.
+;;
+;; A signed control article is filed the same way (C3, 2026-09-25): the
+;; signed record binding names the filing group, not the source's
+;; Newsgroups (books/hybrid-store.lisp `fn-hsig-source-filed-groups', used
+;; by every signed constructor and by replay's `fn-hsig-carried-record-
+;; metadatap'), so the Store record of a signed cancel lists control.cancel.
+;; The binding classifies the signed SOURCE; this plan classifies the
+;; received carrier article.  Where the two disagree the constructors return
+;; no event and the attempt is refused, never filed elsewhere.
 ;;
 ;; The stored bytes are the received bytes; only the membership changes.
 (defun fn-pa-filing-plan (received groups domain)
@@ -359,12 +362,10 @@
     (cond ((and (consp classified) (eq (car classified) :malformed))
            (list :refused :control-malformed))
           ((and (consp classified) (eq (car classified) :control))
-           (if (not (eq (fn-pa-carrier-kind received) :absent))
-               (list :refused :control-signed)
-             (let ((group (fn-ctl-filing-group (cadr classified))))
-               (if (fn-ctl-memberp group domain)
-                   (list :file (list (fn-record-string-octets group)))
-                 (list :refused :control-not-filed)))))
+           (let ((group (fn-ctl-filing-group (cadr classified))))
+             (if (fn-ctl-memberp group domain)
+                 (list :file (list (fn-record-string-octets group)))
+               (list :refused :control-not-filed))))
           (t (list :file groups)))))
 
 ; KEYSTONE (C1).  Over the plan the host calls: a control article is filed
@@ -382,17 +383,15 @@
                       (and (equal (cadr plan)
                                   (list (fn-record-string-octets group)))
                            (fn-ctl-memberp group domain))
-                    (or (equal plan (list :refused :control-not-filed))
-                        (equal plan (list :refused :control-signed)))))))
+                    (equal plan (list :refused :control-not-filed))))))
   :hints (("Goal" :in-theory (disable fn-ctl-classify-octets
                                       fn-pa-carrier-kind
                                       fn-record-string-octets))))
 
-; For an unsigned control article the one refusal is the absent group:
-; filed exactly when the operator created control.<verb> (or control).
-(defthm fn-ctl-unsigned-control-filing-by-definition
-  (implies (and (equal (car (fn-ctl-classify-octets received)) :control)
-                (equal (fn-pa-carrier-kind received) :absent))
+; For a control article, signed or not, the one refusal is the absent
+; group: filed exactly when the operator created control.<verb> (or control).
+(defthm fn-ctl-control-filing-by-definition
+  (implies (equal (car (fn-ctl-classify-octets received)) :control)
            (equal (fn-pa-filing-plan received groups domain)
                   (if (fn-ctl-memberp (fn-ctl-filing-group
                                      (cadr (fn-ctl-classify-octets received)))

@@ -40,7 +40,7 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))
     (cond ((member-equal kind '(:set-bp-boundary :set-bp-route :remove-bp-route
-                                :grant-control :revoke-control))
+                                :grant-control :revoke-control :set-retention))
            (fn-store-cfg-peer-delta-record
             (fn-native-admin-plan-deltas plan) monotonic wall state))
           ((equal kind :set-peer)

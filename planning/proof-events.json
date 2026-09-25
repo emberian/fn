@@ -3512,6 +3512,182 @@
       ]
     },
     {
+      "id": "PRF-087",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "create-fn-octets{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-get{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-put{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-append-octet{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-list{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-from-list{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oct-slice-list-is-take-nthcdr"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oct-prefix-equalp-is-list-prefixp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oct-suffix-equalp-is-equal"
+        }
+      ]
+    },
+    {
+      "id": "PRF-084",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-authorize-requires-verified-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-authorize-requires-a-covering-grant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-grant-control-admissible-iff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-revoke-changes-decisions-not-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-cancel-plan-record-is-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-cancel-executes-only-for-author-or-authority"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-pinned-view-keeps-its-archive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-visible-is-arrival-order-independent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-target-is-never-visible-beside-its-cancel"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-signed-control-record-lists-its-filing-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-malformed-control-binds-no-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-visible-add-is-visible"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-visible-extend-is-visible"
+        }
+      ]
+    },
+    {
+      "id": "PRF-091",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-request-within-profile-frame"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-request-within-read-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frame-fields-octets-within-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frame-field-parse-of-octets-wide-blob"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nctrl-groups-encode-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nhctrl-read-bound-covers-both"
+        }
+      ]
+    },
+    {
+      "id": "PRF-088",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaimable-is-no-obligation-names-it"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaim-never-touches-a-held-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaim-keeps-the-duplicate-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaim-keeps-every-binding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaim-keeps-the-numbering"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaim-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-prepare-commutes-with-reclaim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-existing-action-after-reclaim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-config-rule-after-retention-set"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-msgid-retrieval-answers-reclaimed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-number-retrieval-answers-reclaimed"
+        }
+      ]
+    },
+    {
       "id": "PRF-102",
       "events": [
         {

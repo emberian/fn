@@ -106,6 +106,32 @@
        ((and (consp argv)
              (equal (car argv) (fn-record-string-octets "set-password")))
         (fn-native-auth-admin-plan-result :usage :missing-name nil))
+       ; `principal bind LOGIN PRINCIPAL-HEX': bind a login to the signing
+       ; principal books/login-binding.lisp's posting policy compares with a
+       ; served POST's FN-Authorship carrier.  `principal unbind LOGIN'
+       ; removes the binding.  Both rewrite the credential file through the
+       ; same replacement machine as set-password.
+       ((and (equal (len argv) 3)
+             (equal (car argv) (fn-record-string-octets "bind")))
+        (let ((name (car (cdr argv))) (hex (car (cdr (cdr argv)))))
+          (cond
+           ((not (fn-native-auth-login-namep name))
+            (fn-native-auth-admin-plan-result :usage :name nil))
+           ((not (and (true-listp hex) (equal (len hex) 64)
+                      (fn-id-hex-listp hex)))
+            (fn-native-auth-admin-plan-result :usage :principal nil))
+           (t (fn-native-auth-admin-plan-result
+               :accepted :plan (list :bind name hex))))))
+       ((and (equal (len argv) 2)
+             (equal (car argv) (fn-record-string-octets "unbind")))
+        (if (fn-native-auth-login-namep (car (cdr argv)))
+            (fn-native-auth-admin-plan-result
+             :accepted :plan (list :bind (car (cdr argv)) nil))
+          (fn-native-auth-admin-plan-result :usage :name nil)))
+       ((and (consp argv)
+             (or (equal (car argv) (fn-record-string-octets "bind"))
+                 (equal (car argv) (fn-record-string-octets "unbind"))))
+        (fn-native-auth-admin-plan-result :usage :bind-arguments nil))
        ((null argv)
         (fn-native-auth-admin-plan-result :usage :missing-action nil))
        (t (fn-native-auth-admin-plan-result :usage :unsupported-action nil)))))
@@ -118,8 +144,17 @@
 
 (defun fn-native-auth-admin-action-name (plan-result)
   (declare (xargs :guard t))
-  (if (equal (fn-native-auth-admin-action-kind plan-result) :set-password)
+  (if (member-equal (fn-native-auth-admin-action-kind plan-result)
+                    '(:set-password :bind))
       (fn-ncfg-second (fn-native-auth-admin-plan-action plan-result))
+    nil))
+
+; The bind action's principal text (64 lowercase hex octets), or nil for
+; `unbind'.
+(defun fn-native-auth-admin-action-signing-text (plan-result)
+  (declare (xargs :guard t))
+  (if (equal (fn-native-auth-admin-action-kind plan-result) :bind)
+      (fn-ncfg-third (fn-native-auth-admin-plan-action plan-result))
     nil))
 
 (defun fn-native-auth-admin-action-principal-text (plan-result)
@@ -203,7 +238,23 @@
   (append (fn-authsec-octets name-octets) (list 32 61 32)
           (fn-native-auth-admin-quoted value) (list 10)))
 
-(defun fn-native-auth-admin-serialize-cred (credential)
+; The login's binding in BINDINGS ((NAME . PRINCIPAL) pairs,
+; books/native-auth-profile.lisp fn-native-auth-load-bindings), or nil.
+(defun fn-native-auth-admin-binding (name bindings)
+  (declare (xargs :guard t))
+  (let ((pair (fn-native-auth-assoc name bindings)))
+    (if (consp pair) (cdr pair) nil)))
+
+(defun fn-native-auth-admin-signing-field (name bindings)
+  (declare (xargs :guard t))
+  (let ((principal (fn-native-auth-admin-binding name bindings)))
+    (if principal
+        (fn-native-auth-admin-field
+         (fn-record-string-octets "signing")
+         (fn-id-hex-octets (fn-authsec-octets principal)))
+      nil)))
+
+(defun fn-native-auth-admin-serialize-cred (credential bindings)
   (declare (xargs :guard t))
   (let* ((verifier (fn-auth-cred-secret credential))
          (name (fn-auth-cred-name credential)))
@@ -222,41 +273,48 @@
       (fn-record-string-octets "digest")
       (fn-id-hex-octets (fn-authsec-octets
                          (fn-authsec-ver-digest verifier))))
+     (fn-native-auth-admin-signing-field name bindings)
      (fn-record-string-octets
       (if (fn-auth-cred-postingp credential)
           "posting = true"
         "posting = false"))
      (list 10 10))))
 
-(defun fn-native-auth-admin-serialize-creds (credentials)
+(defun fn-native-auth-admin-serialize-creds (credentials bindings)
   (declare (xargs :guard t))
   (if (consp credentials)
-      (append (fn-native-auth-admin-serialize-cred (car credentials))
-              (fn-native-auth-admin-serialize-creds (cdr credentials)))
+      (append (fn-native-auth-admin-serialize-cred (car credentials) bindings)
+              (fn-native-auth-admin-serialize-creds (cdr credentials) bindings))
     nil))
 
-(defun fn-native-auth-admin-serialize (credentials)
+(defun fn-native-auth-admin-serialize (credentials bindings)
   (declare (xargs :guard t))
   (append *fn-native-auth-admin-header*
-          (fn-native-auth-admin-serialize-creds credentials)))
+          (fn-native-auth-admin-serialize-creds credentials bindings)))
 
-(defun fn-native-auth-admin-public-row (credential)
+(defun fn-native-auth-admin-public-row (credential bindings)
   (declare (xargs :guard t))
-  (append (fn-authsec-octets (fn-auth-cred-name credential))
-          (fn-record-string-octets " principal=")
-          (fn-id-hex-octets
-           (fn-authsec-octets (fn-auth-cred-principal credential)))
-          (fn-record-string-octets
-           (if (fn-auth-cred-postingp credential)
-               " posting=true"
-             " posting=false"))
-          (list 10)))
+  (let ((signing (fn-native-auth-admin-binding
+                  (fn-auth-cred-name credential) bindings)))
+    (append (fn-authsec-octets (fn-auth-cred-name credential))
+            (fn-record-string-octets " principal=")
+            (fn-id-hex-octets
+             (fn-authsec-octets (fn-auth-cred-principal credential)))
+            (fn-record-string-octets
+             (if (fn-auth-cred-postingp credential)
+                 " posting=true"
+               " posting=false"))
+            (if signing
+                (append (fn-record-string-octets " signing=")
+                        (fn-id-hex-octets (fn-authsec-octets signing)))
+              nil)
+            (list 10))))
 
-(defun fn-native-auth-admin-public-report (credentials)
+(defun fn-native-auth-admin-public-report (credentials bindings)
   (declare (xargs :guard t))
   (if (consp credentials)
-      (append (fn-native-auth-admin-public-row (car credentials))
-              (fn-native-auth-admin-public-report (cdr credentials)))
+      (append (fn-native-auth-admin-public-row (car credentials) bindings)
+              (fn-native-auth-admin-public-report (cdr credentials) bindings))
     nil))
 
 (defun fn-native-auth-admin-list (octets presentp max-credentials)
@@ -271,7 +329,8 @@
             (fn-native-auth-admin-public-report
              (fn-native-auth-admin-sort-credentials
               (fn-auth-config-creds
-               (fn-native-auth-result-config loaded))))))))
+               (fn-native-auth-result-config loaded)))
+             (fn-native-auth-load-bindings octets presentp max-credentials))))))
 
 (defun fn-native-auth-admin-set-password
   (octets presentp name secret confirmation salt
@@ -313,14 +372,70 @@
                    (credentials
                     (fn-native-auth-admin-sort-credentials
                      (fn-native-auth-admin-upsert name credential old)))
-                   (serialized (fn-native-auth-admin-serialize credentials)))
+                   ; A password change keeps the login's binding, and every
+                   ; other login's (fn-native-auth-load-bindings of the file
+                   ; read under the writer lock).
+                   (bindings (fn-native-auth-load-bindings octets presentp max-credentials))
+                   (serialized (fn-native-auth-admin-serialize
+                                credentials bindings)))
               (if (or (not (fn-auth-credp credential))
                       (not (fn-ncfg-ascii-octetsp serialized))
                       (< (fn-native-auth-max-octets max-credentials)
                          (len serialized)))
                   (list :fault :serialized-profile)
                 (list :accepted serialized
-                      (fn-native-auth-admin-public-row credential))))))))))))
+                      (fn-native-auth-admin-public-row credential bindings))))))))))))
+
+; The bindings with NAME's replaced by PRINCIPAL, or removed when PRINCIPAL
+; is nil.
+(defun fn-native-auth-admin-rebind (name principal bindings)
+  (declare (xargs :guard t))
+  (if (consp bindings)
+      (if (and (consp (car bindings)) (equal (car (car bindings)) name))
+          (fn-native-auth-admin-rebind name principal (cdr bindings))
+        (cons (car bindings)
+              (fn-native-auth-admin-rebind name principal (cdr bindings))))
+    (if principal (list (cons name principal)) nil)))
+
+(defun fn-native-auth-admin-bind (octets presentp name signing-text
+                                        max-credentials)
+  ; Host-called mutation subject for `principal bind' / `unbind'.  The login
+  ; must already be enrolled; its credential row is unchanged and only its
+  ; `signing' field is written or removed.  MAX-CREDENTIALS is the store
+  ; profile's (D27, PRF-102): the file is loaded and rewritten under it.
+  (declare (xargs :guard t))
+  (let ((loaded (fn-native-auth-load octets presentp nil nil nil
+                                     max-credentials))
+        (principal (if signing-text
+                       (if (and (true-listp signing-text)
+                                (equal (len signing-text) 64)
+                                (fn-id-hex-listp signing-text))
+                           (fn-id-unhex signing-text)
+                         :bad)
+                     nil)))
+    (cond
+     ((not (fn-native-auth-login-namep name)) (list :refused :name))
+     ((equal principal :bad) (list :refused :principal))
+     ((not (equal (fn-native-auth-result-status loaded) :accepted))
+      (list :refused (fn-native-auth-result-reason loaded)))
+     (t
+      (let* ((creds (fn-auth-config-creds (fn-native-auth-result-config loaded)))
+             (credential (fn-auth-find-cred name creds)))
+        (if (not (consp credential))
+            (list :refused :unknown-login)
+          (let* ((bindings (fn-native-auth-admin-rebind
+                            name principal
+                            (fn-native-auth-load-bindings octets presentp max-credentials)))
+                 (serialized (fn-native-auth-admin-serialize
+                              (fn-native-auth-admin-sort-credentials creds)
+                              bindings)))
+            (if (or (not (fn-ncfg-ascii-octetsp serialized))
+                    (< (fn-native-auth-max-octets max-credentials)
+                       (len serialized)))
+                (list :fault :serialized-profile)
+              (list :accepted serialized
+                    (fn-native-auth-admin-public-row
+                     credential bindings))))))))))
 
 (defun fn-native-auth-admin-result-status (result)
   (declare (xargs :guard t))
@@ -349,9 +464,11 @@
 (defthm fn-native-auth-admin-public-report-ignores-verifier
   (equal
    (fn-native-auth-admin-public-report
-    (cons (fn-auth-make-cred name principal verifier-a postingp) rest))
+    (cons (fn-auth-make-cred name principal verifier-a postingp) rest)
+    bindings)
    (fn-native-auth-admin-public-report
-    (cons (fn-auth-make-cred name principal verifier-b postingp) rest))))
+    (cons (fn-auth-make-cred name principal verifier-b postingp) rest)
+    bindings)))
 
 ; The physical replacement protocol is exactly the already-certified FNAN
 ; mutable replacement machine.  These wrappers add no credential or anchor
@@ -557,6 +674,11 @@
           (:d fn-native-auth-admin-parse-argv)
           (:d fn-native-auth-admin-action-kind)
           (:d fn-native-auth-admin-action-name)
+          (:d fn-native-auth-admin-action-signing-text)
+          (:d fn-native-auth-admin-binding)
+          (:d fn-native-auth-admin-signing-field)
+          (:d fn-native-auth-admin-rebind)
+          (:d fn-native-auth-admin-bind)
           (:d fn-native-auth-admin-action-principal-text)
           (:d fn-native-auth-admin-action-principal-presentp)
           (:d fn-native-auth-admin-action-postingp)
