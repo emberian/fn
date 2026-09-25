@@ -125,6 +125,8 @@
 ;; tools/build_lists_check.py `included` checks this now.
 (include-book "books/octets-stobj")
 (include-book "books/poster-bytes-buffer")
+;; fn-owner-subject-id-buffer (host/owner-host.lisp) calls fn-shb-subject-id, as in build.lisp.
+(include-book "books/sha256-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose

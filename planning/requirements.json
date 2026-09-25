@@ -2211,6 +2211,30 @@
         "planning/evidence/checkpoint-cost-2026-09-25.md"
       ],
       "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list, and fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic (planning/evidence/checkpoint-cost-2026-09-25.md)."
+    },
+    {
+      "id": "NNT-014",
+      "title": "Key succession and revocation are owner-executed signed statements; a revoked principal is never verified again and its later transit is :revoked evidence",
+      "specification": "specs/peering.md#9-key-statements-succession-and-revocation-prf-098",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-098"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/key-statements.lisp",
+        "books/peer-authored-accept.lisp",
+        "books/replay.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "tests/acl2/peer-authored-accept-tests.lisp",
+        "planning/evidence/peer-keys-2026-09-25.md",
+        "tests/test_native_key_statements.py"
+      ],
+      "implementation_note": "A stronger fn guarantee and local policy (no RFC defines key statements). ACL2 decides: fn-ks-plan in C2's fn-ctl-authorize shape (verb keys, grantable beside cancel) with the PoP observations checked in ACL2; the owner executes after every durable kind-4 commit (carried and revoked ones decline); the revoked arm of fn-pa-current-plan on NNTP transit only. The kind-4-then-kind-3 crash cut is a model crash point (fn-ks-cut, fn-ks-recover): the open executes the newest record when it is a statement. A Store refusal of the key change leaves the article accepted and is reported as detail key-change-refused."
     }
   ]
 }

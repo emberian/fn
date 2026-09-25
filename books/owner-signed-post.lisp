@@ -104,7 +104,7 @@
             sequence txid generation msgid received groups obligation-id
             content-subject release-evidence charge snapshots
             observed-ml-key ed-observation ml-observation clock-observation))
-        (plan (fn-pa-current-plan received snapshots nil)))
+        (plan (fn-pa-current-plan received snapshots nil nil)))
     (implies e
              (and (equal (car plan) :ok)
                   (fn-stxa-p e)
@@ -114,13 +114,13 @@
   :hints (("Goal"
            :use (fn-pa-authorized-event-requires-current-plan-by-definition
                  (:instance fn-osp-carried-event-base-shape
-                  (keyring-generation (nth 6 (fn-pa-current-plan received snapshots nil)))
+                  (keyring-generation (nth 6 (fn-pa-current-plan received snapshots nil nil)))
                   (enrolled-snapshot (fn-stxk-snapshot
-                                      (nth 5 (fn-pa-current-plan received snapshots nil))))
-                  (source (nth 1 (fn-pa-current-plan received snapshots nil)))
-                  (principal (nth 2 (fn-pa-current-plan received snapshots nil)))
-                  (keys (nth 3 (fn-pa-current-plan received snapshots nil)))
-                  (signatures (nth 4 (fn-pa-current-plan received snapshots nil)))
+                                      (nth 5 (fn-pa-current-plan received snapshots nil nil))))
+                  (source (nth 1 (fn-pa-current-plan received snapshots nil nil)))
+                  (principal (nth 2 (fn-pa-current-plan received snapshots nil nil)))
+                  (keys (nth 3 (fn-pa-current-plan received snapshots nil nil)))
+                  (signatures (nth 4 (fn-pa-current-plan received snapshots nil nil)))
                   (ed25519-observation ed-observation)
                   (ml-dsa-65-observation ml-observation)
                   (observation clock-observation)
@@ -170,7 +170,7 @@
              sequence txid generation msgid received groups obligation-id
              content-subject release-evidence charge snapshots
              observed-ml-key ed-observation ml-observation clock-observation))
-         (plan (fn-pa-current-plan received snapshots nil))
+         (plan (fn-pa-current-plan received snapshots nil nil))
          (v (fn-hls-kind4-verdict-event e)))
     (implies (and e
                   (fn-sn-completion-enabledp (fn-own-store o))
@@ -196,7 +196,7 @@
              sequence txid generation msgid received groups obligation-id
              content-subject release-evidence charge snapshots
              observed-ml-key ed-observation ml-observation clock-observation))
-         (plan (fn-pa-current-plan received snapshots nil))
+         (plan (fn-pa-current-plan received snapshots nil nil))
          (v (fn-hls-kind4-verdict-event e))
          (o2 (cdr (fn-own-open (fn-own-step o '(:complete)) acfg)))
          (conn (fn-own-find-conn (fn-own-next-id o) (fn-own-conns o2))))
@@ -243,8 +243,8 @@
 ; feed or connection change.
 
 (defthm fn-osp-plan-refusal-is-a-served-reason
-  (implies (equal (car (fn-pa-current-plan received snapshots nil)) :refused)
-           (and (member-equal (cadr (fn-pa-current-plan received snapshots nil))
+  (implies (equal (car (fn-pa-current-plan received snapshots nil nil)) :refused)
+           (and (member-equal (cadr (fn-pa-current-plan received snapshots nil nil))
                               '(:article :carrier :carrier-shape :local-enrollment))
                 (not (equal (fn-pa-carrier-form received) :absent))))
   :hints (("Goal" :in-theory (e/d (fn-pa-current-plan fn-pa-carrier-form)
@@ -358,7 +358,8 @@
                   (equal (fn-stxa-authored-source e)
                          (nth 1 (fn-pa-carrier-form received))))))
   :hints (("Goal"
-           :use ((:instance fn-pa-carried-arm-needs-the-list-and-no-local-snapshot)
+           :use ((:instance fn-pa-carried-arm-needs-the-list-and-no-local-snapshot
+                            (transitp t))
                  (:instance fn-pa-carried-event-requires-the-carried-arm))
            :in-theory (e/d (fn-pa-carried-event fn-stxa-make-carried)
                            (fn-pa-current-plan fn-pa-carrier-form
@@ -431,6 +432,111 @@
                             fn-stxe-decode-exact fn-stxk-apply-snapshot
                             fn-stxk-apply-verdict fn-store-event-sequence
                             fn-replay-identity-advance)))))
+
+;; PRF-098: the revoked composite at replay.  Replay's dispatch records a
+;; revoked composite by its own branch (never the enrolled one, never the
+;; carried one), and admits it exactly when the generation its verdict names
+;; is, in the replayed snapshots, a tombstone of exactly the verdict's
+;; principal and the stored carrier's keys were enrolled for that principal.
+(defthm fn-osp-replay-records-a-revoked-composite
+  (implies (and (fn-hsig-article-event-revoked-bindsp e)
+                (equal (fn-stxk-context-kind ctx) :ok)
+                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
+           (equal (fn-replay-identity-step ctx e)
+                  (fn-replay-apply-revoked-verdict
+                   ctx (fn-stmt-value
+                        (fn-stxe-decode-exact (fn-stxa-verdict-event e)))
+                   (fn-hsig-article-event-carrier-keys e))))
+  :hints (("Goal"
+           :use ((:instance fn-hls-kind4-disjoint-from-other-store-events
+                            (event e))
+                 (:instance fn-hsig-article-event-revoked-bindsp-facts
+                            (event e))
+                 (:instance fn-hsig-article-event-revoked-is-not-carried
+                            (event e)))
+           :in-theory (e/d (fn-replay-identity-step)
+                           (fn-replay-apply-carried-verdict
+                            fn-replay-apply-revoked-verdict
+                            fn-hls-kind4-disjoint-from-other-store-events
+                            fn-hsig-article-event-carried-bindsp
+                            fn-hsig-article-event-revoked-bindsp
+                            fn-hsig-article-event-revoked-bindsp-facts
+                            fn-hsig-article-event-revoked-is-not-carried
+                            fn-hsig-article-event-carrier fn-hsig-article-event-carrier-keys
+                            fn-stxk-p fn-stxe-p fn-stxa-p fn-stxa-bindsp
+                            fn-hsig-article-event-snapshot-bindsp
+                            fn-stxe-decode-exact fn-stxk-apply-snapshot
+                            fn-stxk-apply-verdict fn-store-event-sequence
+                            fn-replay-identity-advance)))))
+
+; KEYSTONE (replay admits :revoked exactly at a tombstone).  Given the
+; composite's verdict is at the replay cursor, the step is :ok exactly when
+; fn-hsig-revoked-tombstone-bindsp holds over the replayed snapshots; it then
+; records exactly that verdict and leaves the keyring snapshots unchanged.
+(defthm fn-osp-replay-admits-a-revoked-composite-exactly-at-its-tombstone
+  (let* ((v (fn-stmt-value (fn-stxe-decode-exact (fn-stxa-verdict-event e))))
+         (keys (fn-hsig-article-event-carrier-keys e))
+         (next (fn-replay-identity-step ctx e)))
+    (implies (and (fn-hsig-article-event-revoked-bindsp e)
+                  (fn-stxe-p v)
+                  (equal (fn-stxk-context-kind ctx) :ok)
+                  (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx))
+                  (equal (fn-stxe-sequence v) (fn-stxk-context-next ctx)))
+             (and (iff (equal (fn-stxk-context-kind next) :ok)
+                       (fn-hsig-revoked-tombstone-bindsp
+                        v keys (fn-stxk-context-snapshots ctx)))
+                  (implies (equal (fn-stxk-context-kind next) :ok)
+                           (and (equal (fn-stxk-context-verdicts next)
+                                       (cons v (fn-stxk-context-verdicts ctx)))
+                                (equal (fn-stxk-context-snapshots next)
+                                       (fn-stxk-context-snapshots ctx)))))))
+  :hints (("Goal"
+           :use ((:instance fn-osp-replay-records-a-revoked-composite)
+                 (:instance fn-hsig-article-event-revoked-bindsp-facts
+                            (event e)))
+           :in-theory (e/d (fn-replay-apply-revoked-verdict fn-stxk-fault
+                            fn-stxk-context)
+                           (fn-replay-identity-step
+                            fn-osp-replay-records-a-revoked-composite
+                            fn-hsig-article-event-revoked-bindsp
+                            fn-hsig-article-event-revoked-bindsp-facts
+                            fn-hsig-revoked-tombstone-bindsp
+                            fn-hsig-article-event-carrier fn-hsig-article-event-carrier-keys
+                            fn-stxe-p fn-stxe-decode-exact)))))
+
+; A carried or revoked composite never changes a keyring: the replay step
+; that records it leaves the snapshot list as it was.
+(defthm fn-osp-carried-composite-keeps-the-keyring
+  (implies (and (fn-hsig-article-event-carried-bindsp e)
+                (equal (fn-stxk-context-kind ctx) :ok)
+                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
+           (equal (fn-stxk-context-snapshots (fn-replay-identity-step ctx e))
+                  (fn-stxk-context-snapshots ctx)))
+  :hints (("Goal"
+           :use ((:instance fn-osp-replay-records-a-carried-composite))
+           :in-theory (e/d (fn-replay-apply-carried-verdict fn-stxk-fault
+                            fn-stxk-context)
+                           (fn-replay-identity-step
+                            fn-osp-replay-records-a-carried-composite
+                            fn-hsig-article-event-carried-bindsp
+                            fn-stxe-p fn-stxe-decode-exact)))))
+
+(defthm fn-osp-revoked-composite-keeps-the-keyring
+  (implies (and (fn-hsig-article-event-revoked-bindsp e)
+                (equal (fn-stxk-context-kind ctx) :ok)
+                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
+           (equal (fn-stxk-context-snapshots (fn-replay-identity-step ctx e))
+                  (fn-stxk-context-snapshots ctx)))
+  :hints (("Goal"
+           :use ((:instance fn-osp-replay-records-a-revoked-composite))
+           :in-theory (e/d (fn-replay-apply-revoked-verdict fn-stxk-fault
+                            fn-stxk-context)
+                           (fn-replay-identity-step
+                            fn-osp-replay-records-a-revoked-composite
+                            fn-hsig-article-event-revoked-bindsp
+                            fn-hsig-revoked-tombstone-bindsp
+                            fn-hsig-article-event-carrier fn-hsig-article-event-carrier-keys
+                            fn-stxe-p fn-stxe-decode-exact)))))
 
 ; The recorded pair is (token detail generation) of that verdict
 ; (fn-replay-verdict-pairs), and the HDR :fn-verified item the reader renders

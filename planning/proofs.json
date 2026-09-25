@@ -4108,6 +4108,84 @@
         "fn-article-listp-is-shape-and-distinct-msgids",
         "fn-node-binding-listp-is-shape-and-distinct"
       ]
+    },
+    {
+      "id": "PRF-098",
+      "title": "Key succession and revocation over the acceptance plan: the owner's key-statement executor, the :revoked token and its replay binding",
+      "statement": "Over fn-pa-current-plan (host/owner-host.lisp fn-owner-peer-carrier-plan, called by host/native/owner.lisp fnn-owner-attempt-transit), which now takes TRANSITP and has a fifth outcome :revoked: while a principal's newest snapshot is its tombstone no plan for it is :ok on any path (fn-pa-no-ok-plan-for-a-revoked-principal, fn-pa-revocation-leaves-no-ok-plan), and on NNTP transit a carrier under keys once enrolled is :revoked at the tombstone's generation, elsewhere refused :local-enrollment (fn-pa-revoked-principal-on-transit-is-revoked-at-its-tombstone); fn-pa-revoked-event exists only with both primitive observations verified and is the composite replay's revoked branch admits at those snapshots (fn-pa-revoked-event-binds-the-arm-and-both-observations), and replay admits a :revoked composite exactly when its generation names a tombstone of that principal (fn-osp-replay-admits-a-revoked-composite-exactly-at-its-tombstone), leaving the keyring unchanged, as the carried composite does (fn-osp-*-composite-keeps-the-keyring). Over the key-statement executor fn-ks-plan / fn-ks-execute (host/owner-host.lisp fn-owner-key-statement-plan / -event, called by host/native/owner.lisp fnn-owner-key-statement after a :verified kind-4 commit): a statement acts only on its own stored :verified verdict with a keys grant covering its groups (C2's fn-ctl-authorize), so a :carried or :revoked statement never changes a keyring; the verdict's generation was the principal's current enrollment and a succession's old key is that enrollment's; the PoP is a D09 signature by the new keys over the statement's Message-ID and old key with both observations verified; after the succession's kind-3 event the new keys are selected and any other key set, the old one included, is refused :local-enrollment; after a revocation's no plan is :ok. The executor runs after every durable kind-4 composite, :carried and :revoked included (host/native/owner.lisp fnn-owner-statement-committed), and a Store refusal of the key change leaves the article accepted and is reported as such (transit detail :key-change-refused; log line `key-statement ... refused`). The crash cut between the statement's commit and its change's is a model crash point: the open's recovery (fn-ks-recover; host/native/owner.lisp fnn-owner-key-statement-recover over the newest record, through host/owner-host.lisp fn-owner-key-statement-pending) reaches from the cut exactly the uninterrupted acceptance under the recovery's rows and observations (fn-ks-recover-completes-the-cut) and, after an acceptance that acted, changes nothing under any rows or observations (fn-ks-recover-after-an-acting-acceptance-changes-nothing); executing a statement whose change is already the newest snapshot yields nothing (fn-ks-execute-is-idempotent). The verb keys is grantable (fn-cfg-grant-control-admissible-iff over *fn-cfg-control-verbs* = (cancel keys)). The rendered item for :revoked begins `r`, never `v` (fn-stx-verified-item-first-octet-names-the-token), and token code 5 round-trips. The next generation is ACL2's (fn-hl-next-generation; control kinds 7 and 8). Evidence is never rewritten: a kind-3 completion keeps every stored verdict (fn-hls-finish-snapshot-keeps-historical-verdicts, existing) and a kind-4 one conses its own (fn-hls-finish-kind4-verdicts, existing).",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-014"
+      ],
+      "depends_on": [
+        "PRF-084",
+        "PRF-026"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-HOST"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/stx-verify.lisp",
+        "books/stx-evidence-records.lisp",
+        "books/hybrid-store.lisp",
+        "books/hybrid-lifecycle.lisp",
+        "books/replay.lisp",
+        "books/peer-authored-accept.lisp",
+        "books/owner-signed-post.lisp",
+        "books/key-statements.lisp",
+        "books/native-hybrid-control.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "tests/acl2/peer-authored-accept-tests.lisp",
+        "tests/acl2/owner-signed-post-tests.lisp",
+        "tests/acl2/stx-evidence-records-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/hybrid-control.lisp",
+        "planning/evidence/peer-keys-2026-09-25.md"
+      ],
+      "progress_note": "Open: no native run (no image was built on hbox for these bytes); a crash between the statement's kind-4 commit and the executor's kind-3 commit leaves the statement accepted and unexecuted (no model crash point, no recovery re-run); a refused kind-3 commit surfaces as the transit attempt's refusal after its kind-4 committed; fn_verify.py does not render :revoked; the served path (NNTP POST, BP transit) never reports :revoked by design (TRANSITP nil).",
+      "events": [
+        "fn-stx-verified-item-separates-the-five-tokens",
+        "fn-stx-verified-item-first-octet-names-the-token",
+        "fn-stx-verified-item-is-verified-only-for-verified",
+        "fn-stx-verdict-is-never-revoked",
+        "fn-stxe-code-token-of-token-code",
+        "fn-stxe-token-code-of-code-token",
+        "fn-hsig-article-event-revoked-bindsp-facts",
+        "fn-hsig-article-event-revoked-is-not-carried",
+        "fn-hsig-article-event-revoked-binds-no-snapshot",
+        "fn-hsig-keyring-snapshot-value-of-keyring-event",
+        "fn-hl-next-generation-is-the-next-generation",
+        "fn-hl-revoke-event-is-the-principals-tombstone",
+        "fn-hl-enroll-event-enrolls-its-keys",
+        "fn-pa-current-plan-outcomes",
+        "fn-pa-current-plan-off-the-transit-arms-is-the-d02-plan",
+        "fn-pa-current-plan-off-transit-never-revoked",
+        "fn-pa-revoked-arm-needs-transit-a-tombstone-and-once-enrolled-keys",
+        "fn-pa-no-ok-plan-for-a-revoked-principal",
+        "fn-pa-revocation-leaves-no-ok-plan",
+        "fn-pa-revoked-principal-on-transit-is-revoked-at-its-tombstone",
+        "fn-pa-revoked-event-binds-the-arm-and-both-observations",
+        "fn-osp-replay-records-a-revoked-composite",
+        "fn-osp-replay-admits-a-revoked-composite-exactly-at-its-tombstone",
+        "fn-osp-carried-composite-keeps-the-keyring",
+        "fn-osp-revoked-composite-keeps-the-keyring",
+        "fn-ks-plan-acts-only-on-a-verified-granted-statement",
+        "fn-ks-carried-or-revoked-statement-never-changes-a-keyring",
+        "fn-ks-plan-old-key-was-the-current-enrollment",
+        "fn-ks-plan-pop-binds-the-new-keys-to-the-statement",
+        "fn-ks-succession-selects-the-new-keys",
+        "fn-ks-succession-refuses-other-keys",
+        "fn-ks-succession-refuses-the-old-keys",
+        "fn-ks-revocation-leaves-no-ok-plan",
+        "fn-native-hybrid-control-enroll-next-event-is-at-the-next-generation",
+        "fn-native-hybrid-control-revoke-next-event-is-at-the-next-generation",
+        "fn-ks-execute-is-idempotent",
+        "fn-ks-recover-completes-the-cut",
+        "fn-ks-recover-after-an-acting-acceptance-changes-nothing"
+      ]
     }
   ]
 }
