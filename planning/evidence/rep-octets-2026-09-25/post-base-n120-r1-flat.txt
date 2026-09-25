@@ -1,0 +1,54 @@
+
+Number of samples:   41
+Sample interval:     0.001 seconds
+Total sampling time: 0.041 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=3043118 "fn owner client" RUNNING {1210074F13}> (11600/1048576 bytes, 39 hash buckets)
+   #<THREAD tid=3043115 "fn outbound feed" RUNNING {120FF0B303}> (144/1048576 bytes, 1 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2      3   7.3      3   7.3      3   7.3        -  foreign function __write
+   4      2   4.9      2   4.9      5  12.2        -  FN-AG-CDR
+   6      2   4.9      2   4.9      7  17.1        -  SB-IMPL::LIST-REVERSE
+   8      2   4.9      2   4.9      9  22.0        -  FN-AG-CAR
+  10      2   4.9      2   4.9     11  26.8        -  FN-WIRE-AG-CDR
+  12      2   4.9      2   4.9     13  31.7        -  SB-IMPL::APPEND2
+  14      1   2.4      4   9.8     14  34.1        -  FN-GIDX-BUILD-ENTRIES
+  16      1   2.4      2   4.9     15  36.6        -  FN-RETAIN-OBLIGATION-IDS
+  18      1   2.4      2   4.9     16  39.0        -  FN-CBOR-OCTET-LISTP
+  20      1   2.4      2   4.9     17  41.5        -  FN-RECORD-PAYLOADP
+  22      1   2.4      2   4.9     18  43.9        -  FN-GIDX-PUT
+  24      1   2.4      2   4.9     19  46.3        -  FN-INJ-APPEND
+  26      1   2.4      2   4.9     20  48.8        -  FN-OLOG-VISIBLE-AUX
+  28      1   2.4      1   2.4     21  51.2        -  FN-NNTP-UPCASE-BYTE
+  30      1   2.4      1   2.4     22  53.7        -  FN-ARTICLE-ASCII-DOWNCASE-BYTE
+  32      1   2.4      1   2.4     23  56.1        -  SB-IMPL::FIND-SYMBOL2
+  34      1   2.4      1   2.4     24  58.5        -  ACL2_*1*_ACL2::FN-OWNER-TAKE
+  36      1   2.4      1   2.4     25  61.0        -  FN-SHS-EXTEND
+  38      1   2.4      1   2.4     26  63.4        -  foreign function __open64
+  40      1   2.4      1   2.4     27  65.9        -  FN-INJ-INSTANT-MONTH
+  42      1   2.4      1   2.4     28  68.3        -  foreign function poll
+  44      1   2.4      1   2.4     29  70.7        -  FN-ARTICLE-HEADER-BYTEP
+  46      1   2.4      1   2.4     30  73.2        -  FPR-RESTORE
+  48      1   2.4      1   2.4     31  75.6        -  FN-RECORD-STRING-OCTETS
+  50      1   2.4      1   2.4     32  78.0        -  FN-ARTICLE-NEXT-LINE-AUX
+  52      1   2.4      1   2.4     33  80.5        -  FN-WILDMAT-UTF8-OK
+  54      1   2.4      1   2.4     34  82.9        -  foreign function __close
+  56      1   2.4      1   2.4     35  85.4        -  FN-FRAME-NATP
+  58      1   2.4      1   2.4     36  87.8        -  SB-KERNEL:TWO-ARG->=
+  60      1   2.4      1   2.4     37  90.2        -  ACL2_*1*_ACL2::FN-OWNER-PENDING-SEQUENCE
+  62      1   2.4      1   2.4     38  92.7        -  FN-CBOR-OCTETP
+  64      1   2.4      1   2.4     39  95.1        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  66      1   2.4      1   2.4     40  97.6        -  FN-CBOR-AG-CDR
+  68      1   2.4      1   2.4     41 100.0        -  foreign function clock_nanosleep
+  70      0   0.0     41 100.0     41 100.0        -  (FLET SB-UNIX::BODY :IN SB-THREAD::RUN)
+  72      0   0.0     41 100.0     41 100.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN)
+  74      0   0.0     41 100.0     41 100.0        -  SB-THREAD::RUN
+  76      0   0.0     41 100.0     41 100.0        -  foreign function call_into_lisp_
+  78      0   0.0     41 100.0     41 100.0        -  foreign function funcall1
+  80      0   0.0     41 100.0     41 100.0        -  foreign function new_thread_trampoline
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere

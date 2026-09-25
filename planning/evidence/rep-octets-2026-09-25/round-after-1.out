@@ -1,0 +1,7 @@
+articles 120 payload 160 load_s 1.114 last_q_median_ms 0.805 rss_kib 385124 slope_kib 501.6
+articles 120 payload 160 load_s 1.114 last_q_median_ms 1.182 rss_kib 385220 slope_kib 501.3
+articles 120 payload 2048 load_s 0.293 last_q_median_ms 2.174 rss_kib 389492 slope_kib 189.9
+POST 128 body: b''
+POST 0 body: b'441 posting failed; the article exceeds the configured size\r\n'
+POST 0 body: b'441 posting failed; the article exceeds the configured size\r\n'
+ 05:31:50 up 71 days, 11:15, 58 users,  load average: 6.38, 8.23, 8.86

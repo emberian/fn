@@ -1,0 +1,29 @@
+{
+ "image": "/tank/fn/scratch/rep-octets/after-tree/build/fn-host-developer-prof",
+ "launcher_sha256": "54b7579e5752bd01952d0d3faeff201083b5bae57b3429cb9741d27af0ac9ac2",
+ "core_sha256": "fbb2ff859bf64d4b89723e65d1fbbb2a7c123f5ed1bb7ed169025be7c09baa48",
+ "articles": 120,
+ "payload_octets": 160,
+ "article_octets": 160,
+ "stats": 48,
+ "rss_at_quarter_kib": 339752,
+ "stats_seconds": 0.043574762530624866,
+ "load_seconds": 1.1238684803247452,
+ "post_first_quarter": {
+  "n": 30,
+  "min_ms": 0.7978565990924835,
+  "median_ms": 1.413778867572546,
+  "p95_ms": 1.607285812497139,
+  "max_ms": 1.7688516527414322
+ },
+ "post_last_quarter": {
+  "n": 30,
+  "min_ms": 0.6239078938961029,
+  "median_ms": 0.7806355133652687,
+  "p95_ms": 1.022358424961567,
+  "max_ms": 3.138115629553795
+ },
+ "rss_after_load_kib": 384912,
+ "rss_slope_kib_per_article": 501.77777777777777,
+ "dprof": ""
+}
