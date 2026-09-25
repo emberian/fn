@@ -1986,6 +1986,29 @@
       ],
       "implementation_note": "`operator CONFIG status|pins|obligations|peer list` asks the owner whose control socket the configuration names (FNLS frames); the owner renders the report from the Store, configuration and connection pins it carries (fn-nls-live-report) under its mutex and returns no state; with no owner the Store is opened read-only and the same renderer runs (fn-nls-offline-report). fn-nls-route: no socket, or a socket nothing accepts on, is the offline path, whose shared lock refuses behind a live owner; any other failure is uncertain (3), an owner refusal is refused (1). `status --watch N` re-asks every N seconds (1..86400).",
       "note": "Spike deferral 'live status, obligations, pins' (planning/evidence/spike-operator-2026-09-25.md). Held BP forwarding obligations are the DTN image's `bp-obligation status`, not this report: the NNTP owner carries no BP node."
+    },
+    {
+      "id": "NNT-012",
+      "title": "Opaque carriage is admitted only within the boundary's budget, and a present carrier's transit refusal names its class",
+      "specification": "specs/peering.md#123-the-opaque-carriage-budget-and-the-refusal-classes",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-099"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-carriage-rows.lisp",
+        "books/peer-carriage.lisp",
+        "tests/acl2/peer-carriage-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "planning/evidence/peer-carriage-2026-09-25.md"
+      ],
+      "implementation_note": "The carried arm's event is built by fn-pcb-carried-event (host/owner-host.lisp fn-owner-peer-carried-relay-event, called from host/native/owner.lisp fnn-owner-attempt-transit) over the boundary's typed budget rows and the owner-carried usage cache (fn-owner-carried-usage); NNTP transit refusals of a present carrier carry fn-pcb-refusal-class as their log detail. The class is not yet recorded in a durable verdict: no present-carrier article is held unverified on dev (see the evidence record)."
     }
   ]
 }
