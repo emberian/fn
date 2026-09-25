@@ -255,7 +255,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "status" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "principal")))
+  (member-equal subject '("help" "init" "run" "post" "status" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "principal" "control")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -279,6 +279,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG bp-route {add PATTERN BOUNDARY [PRIORITY] | remove PATTERN BOUNDARY} (PATTERN is a BP EID, or one ending in * for every EID with that prefix; the next hop of held transit, spec bp-node-machine 4.7)")
         ((equal subject "policy")
          "usage: fn operator CONFIG policy set path-identity IDENTITY")
+        ((equal subject "control")
+         "usage: fn operator CONFIG control {grant NAMESPACE PRINCIPAL-HEX VERB... | revoke NAMESPACE PRINCIPAL-HEX | apply-checkgroups MESSAGE-ID}")
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list|set-password NAME [--principal HEX] [--posting|--no-posting]}")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
@@ -343,7 +345,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "store") (fn-nop-parse-store rest config))
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
-                 (equal command "bp-route") (equal command "policy"))
+                 (equal command "bp-route") (equal command "policy")
+                 (equal command "control"))
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
@@ -641,7 +644,8 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "peer")
            (equal (fn-native-operator-result-command result) "bp-boundary")
            (equal (fn-native-operator-result-command result) "bp-route")
-           (equal (fn-native-operator-result-command result) "policy"))))
+           (equal (fn-native-operator-result-command result) "policy")
+           (equal (fn-native-operator-result-command result) "control"))))
 
 (defun fn-native-operator-result-admin-plan (result)
   "The exact ACL2 administrative plan; no raw argv reaches the executor."
