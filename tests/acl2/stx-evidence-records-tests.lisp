@@ -52,3 +52,23 @@
 (assert-event (equal (fn-stxe-sequence *stxe-evidence*) 3))
 (assert-event (equal (fn-stxe-txid *stxe-evidence*) 7))
 (assert-event (equal (fn-stxe-generation *stxe-evidence*) 11))
+
+;; Carrier v2 evidence tag (bounds P4): both tags are supported, both map to
+;; the one D09 keyring profile, and an unknown tag stays unsupported and maps
+;; to itself.
+(assert-event
+ (and (fn-stxe-profile-supportedp *fn-stxe-profile-hybrid-v2*)
+      (not (equal *fn-stxe-profile-hybrid-v2* *fn-hsig-profile-tag*))
+      (equal (fn-stxe-keyring-profile *fn-stxe-profile-hybrid-v2*)
+             *fn-hsig-profile-tag*)
+      (equal (fn-stxe-keyring-profile *fn-hsig-profile-tag*)
+             *fn-hsig-profile-tag*)
+      (not (fn-stxe-profile-supportedp
+            '(102 110 45 104 121 98 114 105 100 45 118 51)))
+      (equal (fn-stxe-keyring-profile
+              '(102 110 45 104 121 98 114 105 100 45 118 51))
+             '(102 110 45 104 121 98 114 105 100 45 118 51))))
+(must-fail
+ (defthm stxe-keyring-profile-identity-without-off-v2
+   (equal (fn-stxe-keyring-profile profile) profile)
+   :hints (("Goal" :in-theory (enable fn-stxe-keyring-profile)))))

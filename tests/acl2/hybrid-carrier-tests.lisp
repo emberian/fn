@@ -165,3 +165,62 @@
    (equal (car (fn-hc-value
                 (fn-hc-native-plan source principal keys signatures)))
           source)))
+
+;; ---------------------------------------------------------------- carrier v2
+;; Item 1 says the version; everything else keeps the v1 shape and widths.
+(assert-event
+ (let ((v1 (fn-hc-encode-at 1 *hc-principal* *hc-keys* *hc-sigs*))
+       (v2 (fn-hc-encode-at 2 *hc-principal* *hc-keys* *hc-sigs*)))
+   (and (equal v1 (fn-hc-encode *hc-principal* *hc-keys* *hc-sigs*))
+        (equal (len v2) 5405)
+        (equal (nth 1 v2) 2)
+        (equal (update-nth 1 1 v2) v1)
+        (null (fn-hc-encode-at 3 *hc-principal* *hc-keys* *hc-sigs*)))))
+
+;; Round trip at v2, and the version item binds in both directions.
+(assert-event
+ (let ((v1 (fn-hc-encode-at 1 *hc-principal* *hc-keys* *hc-sigs*))
+       (v2 (fn-hc-encode-at 2 *hc-principal* *hc-keys* *hc-sigs*)))
+   (and (equal (fn-hc-decode-at 2 v2)
+               (fn-hc-ok (list *hc-principal* *hc-keys* *hc-sigs*)))
+        (equal (fn-hc-decode-at 1 v2) (fn-hc-error :profile v2))
+        (equal (fn-hc-decode v2) (fn-hc-error :profile v2))
+        (equal (fn-hc-decode-at 2 v1) (fn-hc-error :profile v1))
+        (equal (fn-hc-decode-at 3 v2) (fn-hc-error :profile v2))
+        (equal (fn-hc-field-decode-at
+                2 (fn-hc-field-encode-at 2 *hc-principal* *hc-keys* *hc-sigs*))
+               (fn-hc-ok (list *hc-principal* *hc-keys* *hc-sigs*))))))
+
+;; A v1-sized source must carry a v1 carrier: the native plan emits v1, and
+;; the same article with a v2 carrier (item 1 flipped to 2) is refused
+;; :carrier by the received plan, which decodes at the source's version.
+(assert-event
+ (let* ((v2-field (fn-hc-field-encode-at 2 *hc-principal* *hc-keys* *hc-sigs*))
+        (forged (append (fn-hc-field-lines v2-field) *hc-source*))
+        (plan (fn-hc-native-plan *hc-source* *hc-principal* *hc-keys* *hc-sigs*)))
+   (and (equal (cadr (fn-hc-value plan))
+               (fn-hc-field-encode *hc-principal* *hc-keys* *hc-sigs*))
+        (equal (fn-hc-received-plan forged)
+               (fn-hc-error :carrier forged)))))
+
+;; Teeth: the round trip needs the emission premise (an unemittable
+;; version, key set or signature pair has no carrier to decode) ...
+(must-fail
+ (defthm hc-decode-at-of-encode-at-without-emission
+   (equal (fn-hc-decode-at version
+                           (fn-hc-encode-at version principal keys signatures))
+          (fn-hc-ok (list principal keys signatures)))))
+;; ... and version binding needs both premises: another version, and a
+;; carrier that was emitted.
+(must-fail
+ (defthm hc-decode-at-refuses-without-other-version
+   (implies (fn-hc-encode-at version principal keys signatures)
+            (not (fn-hc-okp (fn-hc-decode-at other
+                                             (fn-hc-encode-at version principal
+                                                              keys signatures)))))))
+(must-fail
+ (defthm hc-decode-at-refuses-without-emission
+   (implies (not (equal other version))
+            (not (fn-hc-okp (fn-hc-decode-at other
+                                             (fn-hc-encode-at version principal
+                                                              keys signatures)))))))

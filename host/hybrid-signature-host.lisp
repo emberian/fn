@@ -13,11 +13,15 @@
   (fn-hc-render-at-most *fn-article-max-octets*
                         source principal keys signatures))
 
+; The carrier version is ACL2's (`fn-hsig-source-version'): v1 up to the
+; u16's 65535 source octets, v2 above.  A received carrier was decoded at
+; that same version (`fn-hc-received-plan'), so the host never classifies.
 (defun fn-hsig-host-preimage (principal keys source)
   (declare (xargs :mode :program))
-  (if (fn-hsig-subject-p principal keys source)
-      (fn-hsig-signed-preimage principal keys source)
-    nil))
+  (let ((version (fn-hsig-source-version source)))
+    (if (fn-hsig-subject-at-p version principal keys source)
+        (fn-hsig-signed-preimage-at version principal keys source)
+      nil)))
 
 (defun fn-hsig-host-max-source-octets ()
   (declare (xargs :mode :program))
@@ -34,7 +38,8 @@
 (defun fn-hsig-host-authorize
     (principal keys source signatures observed-ml-key ed ml)
   (declare (xargs :mode :program))
-  (fn-hsig-authorize principal keys source signatures observed-ml-key ed ml))
+  (fn-hsig-authorize-at (fn-hsig-source-version source)
+                        principal keys source signatures observed-ml-key ed ml))
 
 (defun fn-hsig-host-keyring-event
     (sequence txid generation keyring-generation principal keys)

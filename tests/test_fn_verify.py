@@ -124,12 +124,19 @@ class Signer:
         return {"principal": self.principal.hex(), "ed25519": self.ed_public.hex(),
                 "ml-dsa-65": self.ml_public.hex(), "generation": 1}
 
-    def carried(self, source):
-        preimage = (fn_verify.cbor_bytes_head(len(fn_verify.DOMAIN_TAG))
-                    + fn_verify.DOMAIN_TAG + bytes([1, 1]) + self.principal
+    def carried(self, source, claim_version=None):
+        """Sign SOURCE as fn does: v1 (u16 length) up to 65535 octets, v2
+        (u32 length, the v2 tag) above.  CLAIM_VERSION overrides only the
+        carrier's item 1, after signing."""
+        if len(source) <= 65535:
+            version, tag, width = 1, b"fn-authored-source-hybrid-v1", 2
+        else:
+            version, tag, width = 2, b"fn-authored-source-hybrid-v2", 4
+        preimage = (b"\x58\x1c" + tag + bytes([version, 1]) + self.principal
                     + bytes([1]) + self.ed_public + bytes([2]) + self.ml_public
-                    + len(source).to_bytes(2, "big") + source)
-        items = [bytes([1]), bytes([1]), b"\x58\x20" + self.principal, bytes([1]),
+                    + len(source).to_bytes(width, "big") + source)
+        claimed = version if claim_version is None else claim_version
+        items = [bytes([claimed]), bytes([1]), b"\x58\x20" + self.principal, bytes([1]),
                  b"\x58\x20" + self.ed_public, bytes([2]),
                  b"\x59\x07\xa0" + self.ml_public,
                  b"\x58\x40" + self.ed.sign(preimage),
@@ -137,6 +144,12 @@ class Signer:
         value = base64.b64encode(b"".join(items))
         return (b"Path: node.example.invalid!not-for-mail\r\n"
                 + fold_carrier(value) + source)
+
+
+def big_body(octets):
+    """Numbered 72-octet CRLF lines, at least OCTETS long."""
+    lines = [b"line %05d " % i + b"x" * 60 + b"\r\n" for i in range(octets // 72 + 1)]
+    return b"".join(lines)
 
 
 def source_for(msgid, body=b"exact post source\r\n"):
@@ -178,6 +191,18 @@ class FakeNodeVerifyTests(unittest.TestCase):
                 "<carried@x.invalid>": cls.author.carried(source_for("<carried@x.invalid>")),
                 "<carried-unpinned@x.invalid>": cls.stranger.carried(
                     source_for("<carried-unpinned@x.invalid>")),
+                "<v1-60k@x.invalid>": cls.author.carried(
+                    source_for("<v1-60k@x.invalid>", body=big_body(60 * 1024))),
+                "<v2-200k@x.invalid>": cls.author.carried(
+                    source_for("<v2-200k@x.invalid>", body=big_body(200 * 1024))),
+                "<v2-tampered@x.invalid>": cls.author.carried(
+                    source_for("<v2-tampered@x.invalid>", body=big_body(200 * 1024))
+                ).replace(b"line 00100 ", b"LINE 00100 "),
+                "<v2-says-v1@x.invalid>": cls.author.carried(
+                    source_for("<v2-says-v1@x.invalid>", body=big_body(200 * 1024)),
+                    claim_version=1),
+                "<v1-says-v2@x.invalid>": cls.author.carried(
+                    source_for("<v1-says-v2@x.invalid>"), claim_version=2),
             },
             verdicts={
                 "<good@x.invalid>": a,
@@ -192,6 +217,11 @@ class FakeNodeVerifyTests(unittest.TestCase):
                 "<garbled@x.invalid>": "maybe",
                 "<carried@x.invalid>": "carried " + "55" * 32,
                 "<carried-unpinned@x.invalid>": "carried " + "66" * 32,
+                "<v1-60k@x.invalid>": a,
+                "<v2-200k@x.invalid>": a,
+                "<v2-tampered@x.invalid>": "unverified signature keyring 1",
+                "<v2-says-v1@x.invalid>": "unverified carrier keyring 1",
+                "<v1-says-v2@x.invalid>": a,
             })
         cls.principal = p
 
@@ -251,6 +281,42 @@ class FakeNodeVerifyTests(unittest.TestCase):
             if check:
                 self.assertEqual(report["independent"]["outcome"], check)
 
+    def test_carrier_v1_now_carries_up_to_65535_octets(self):
+        # Bounds P4 step one: 60 KiB was over the old 32768 bound; the u16
+        # already carried it, so it is a v1 carrier and verifies.
+        code, report = self.verify("<v1-60k@x.invalid>")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["independent"]["carrier-version"], 1)
+        self.assertGreater(report["independent"]["source-octets"], 32768)
+
+    def test_carrier_v2_valid_is_0(self):
+        code, report = self.verify("<v2-200k@x.invalid>")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["independent"]["carrier-version"], 2)
+        self.assertGreater(report["independent"]["source-octets"], 65535)
+
+    def test_carrier_v2_tampered_is_1(self):
+        code, report = self.verify("<v2-tampered@x.invalid>")
+        self.assertEqual((code, report["independent"]["reason"]), (1, "signature"), report)
+        self.assertEqual(report["independent"]["carrier-version"], 2)
+
+    def test_carrier_wrong_version_byte_is_refused(self):
+        # A v2 signature whose item 1 says 1: the source is too long for v1.
+        code, report = self.verify("<v2-says-v1@x.invalid>")
+        self.assertEqual((code, report["independent"]["reason"]), (1, "carrier"), report)
+        # A v1 signature whose item 1 says 2, under a node that claims
+        # verified: the carrier is not fn's, so the node is contradicted.
+        code, report = self.verify("<v1-says-v2@x.invalid>")
+        self.assertEqual((code, report["independent"]["reason"]), (2, "carrier"), report)
+
+    def test_the_versions_sign_disjoint_preimages(self):
+        source = source_for("<disjoint@x.invalid>")
+        v1 = fn_verify.signed_preimage(1, b"p" * 32, b"e" * 32, b"m" * 1952, source)
+        v2 = fn_verify.signed_preimage(2, b"p" * 32, b"e" * 32, b"m" * 1952, source)
+        self.assertEqual(v1[:29], v2[:29])
+        self.assertNotEqual(v1[29], v2[29])
+        self.assertEqual(len(v2) - len(v1), 2)
+
     def test_usage_error_never_reads_as_disagreement(self):
         code, _ = run_verifier("not-a-msgid", "--node", "x", "--plain",
                                "--keyring", self.keyring)
@@ -272,7 +338,10 @@ WIDTHS = {
     "*fn-hsig-ed25519-signature-octets*": fn_verify.ED_SIG,
     "*fn-hsig-ml-dsa-65-public-key-octets*": fn_verify.ML_PK,
     "*fn-hsig-ml-dsa-65-signature-octets*": fn_verify.ML_SIG,
-    "*fn-article-max-octets*": fn_verify.ARTICLE_MAX,
+    "*fn-hsig-v1-max-source*": fn_verify.SOURCE_MAX_V1,
+    "*fn-hsig-v2-max-source*": fn_verify.SOURCE_MAX_V2,
+    "*fn-hsig-version*": 1,
+    "*fn-hsig-v2-version*": 2,
     "*fn-hc-max-field-octets*": fn_verify.CARRIER_FIELD_MAX,
     "*fn-hc-max-binary-octets*": fn_verify.CARRIER_BINARY_MAX,
 }
@@ -315,13 +384,25 @@ def spec_book_problems(section, names, consts):
     problems = []
     cited = set(re.findall(r"`(\*?fn-[a-z0-9-]+\*?)`", section))
     cited.discard(fn_verify.DOMAIN_TAG.decode("ascii"))  # a string, not a name
+    cited.discard(fn_verify.DOMAIN_TAG_V2.decode("ascii"))
+    cited -= {"fn-hybrid-v1", "fn-hybrid-v2"}             # evidence tags, likewise
     for name in sorted(cited - names):
         problems.append("the spec cites `{}`, which no book defines".format(name))
-    tag = const_value(consts, "*fn-hsig-domain-tag*")
-    if tag != fn_verify.DOMAIN_TAG:
-        problems.append("the book's domain tag is not the verifier's")
-    if tag.decode("ascii") not in section:
-        problems.append("the spec does not state the domain tag")
+    for name, restated in (("*fn-hsig-domain-tag*", fn_verify.DOMAIN_TAG),
+                           ("*fn-hsig-v2-domain-tag*", fn_verify.DOMAIN_TAG_V2)):
+        tag = const_value(consts, name)
+        if tag != restated or fn_verify.VERSIONS[
+                1 if name == "*fn-hsig-domain-tag*" else 2][0] != tag:
+            problems.append("the book's {} is not the verifier's".format(name))
+        if tag.decode("ascii") not in section:
+            problems.append("the spec does not state {}".format(name))
+    for name, restated in (("*fn-hsig-profile-tag*", b"fn-hybrid-v1"),
+                           ("*fn-stxe-profile-hybrid-v2*", b"fn-hybrid-v2")):
+        if const_value(consts, name) != restated:
+            problems.append("the book's {} is not {}".format(name, restated))
+        if restated.decode("ascii") not in section:
+            problems.append("the spec does not state the evidence tag {}".format(
+                restated.decode("ascii")))
     for name, restated in WIDTHS.items():
         value = const_value(consts, name)
         if value != restated:
@@ -366,6 +447,17 @@ class SpecBookTieTests(unittest.TestCase):
         consts["*fn-hsig-ml-dsa-65-signature-octets*"] = "3293)"
         problems = spec_book_problems(self.section, self.names, consts)
         self.assertTrue(any("3293 in the book" in p for p in problems), problems)
+
+    def test_a_changed_v2_tag_or_width_is_caught(self):
+        consts = dict(self.consts)
+        consts["*fn-hsig-v2-domain-tag*"] = consts["*fn-hsig-domain-tag*"]
+        consts["*fn-hsig-v2-max-source*"] = "65535)"
+        problems = " ".join(spec_book_problems(self.section, self.names, consts))
+        self.assertIn("*fn-hsig-v2-domain-tag* is not the verifier's", problems)
+        self.assertIn("65535 in the book, 4294967295 in the verifier", problems)
+        drifted = self.section.replace("fn-authored-source-hybrid-v2", "fn-v2")
+        self.assertIn("the spec does not state *fn-hsig-v2-domain-tag*", " ".join(
+            spec_book_problems(drifted, self.names, self.consts)))
 
     def test_a_field_the_spec_forgets_to_drop_is_caught(self):
         drifted = self.section.replace("`Xref`,", "")
