@@ -3104,7 +3104,9 @@
         "host/native/owner.lisp",
         "tests/native_peer_authored_accept_raw.lisp",
         "planning/evidence/control-c1-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260925T024843Z-3628885.json"
+        "planning/evidence/manifests/certify-20260925T024843Z-3628885.json",
+        "planning/evidence/manifests/certify-20260925T033259Z-4063610.json",
+        "planning/evidence/manifests/certify-20260925T033411Z-2433640.json"
       ],
       "progress_note": "Lane control-c1 (2026-09-25), packet C1 of planning/design-2026-09-25-control-messages.md. Teeth in tests/acl2/control-tests.lisp: reachable witnesses (a cancel naming fn.test with control.cancel configured is filed in control.cancel; without it, refused; a cmsg Subject article and a .ctl/Also-Control article keep fn.test), must-fail per hypothesis (an ordinary article is filed outside control; a Control field or a Supersedes field inserted changes the classification; a signed control article is not filed). In progress: a signed control article is refused :control-signed until the hybrid-store binding names the filing group.",
       "events": [
