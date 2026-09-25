@@ -267,6 +267,96 @@
                                    fn-hl-current-for-principal)))))
 
 ;; ---------------------------------------------------------------------------
+;; SPIKE (spike/peering): the opaque-carriage resource policy (review
+;; 2026-09-24, gpt-6 direction).  A boundary that carries principals this node
+;; has not enrolled holds their articles against a byte budget and an
+;; obligation count of its own; exhausted, the carried arm is refused by name.
+;; A boundary with a carried-source list and no budget carries nothing.
+;; USAGE is (octets count) of the carried records already stored for this
+;; boundary.  Defers to dev: USAGE as an owner-state counter derived from the
+;; carried composites' release evidence at replay, with its preservation
+;; theorem; the spike host keeps it (host/native/owner.lisp).
+
+(defun fn-pa-decimal-value (chars acc)
+  (declare (xargs :guard t))
+  (if (consp chars)
+      (if (and (characterp (car chars))
+               (char<= #\0 (car chars)) (char<= (car chars) #\9))
+          (fn-pa-decimal-value (cdr chars)
+                               (+ (* 10 (nfix acc))
+                                  (- (char-code (car chars)) 48)))
+        nil)
+    acc))
+
+(defun fn-pa-budget-slot (slot rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (equal (fn-cfg-row-b (car rows)) slot)
+               (stringp (fn-cfg-row-c (car rows)))
+               (consp (coerce (fn-cfg-row-c (car rows)) 'list)))
+          (fn-pa-decimal-value (coerce (fn-cfg-row-c (car rows)) 'list) 0)
+        (fn-pa-budget-slot slot (cdr rows)))
+    nil))
+
+(defun fn-pa-peer-carried-budget (peer peers)
+  (declare (xargs :guard t))
+  (let ((rows (fn-cfg-rows-with-key peers peer)))
+    (list (fn-pa-budget-slot "carried-budget-octets" rows)
+          (fn-pa-budget-slot "carried-budget-count" rows))))
+
+(defun fn-pa-carried-budget-decision (budget usage charge)
+  (declare (xargs :guard t))
+  (let ((octets (and (consp budget) (car budget)))
+        (count (and (consp budget) (consp (cdr budget)) (cadr budget)))
+        (used-octets (if (and (consp usage) (natp (car usage))) (car usage) 0))
+        (used-count (if (and (consp usage) (consp (cdr usage)) (natp (cadr usage)))
+                        (cadr usage) 0)))
+    (cond ((not (and (natp octets) (natp count)))
+           (list :refused :carried-budget-unset))
+          ((not (natp charge)) (list :refused :carried-octets-exhausted))
+          ((< count (+ 1 used-count)) (list :refused :carried-count-exhausted))
+          ((< octets (+ charge used-octets))
+           (list :refused :carried-octets-exhausted))
+          (t :within))))
+
+; The budget never admits past either bound.
+(defthm fn-pa-carried-budget-decision-bounds
+  (implies (and (equal (fn-pa-carried-budget-decision budget usage charge) :within)
+                (natp (car usage)) (natp (cadr usage)))
+           (and (<= (+ charge (car usage)) (car budget))
+                (<= (+ 1 (cadr usage)) (cadr budget)))))
+
+;; SPIKE (spike/peering): three outcomes for a signed article that is not
+;; verified here, kept apart inside the decision rather than only on a
+;; reader badge (review 2026-09-24): no local binding for the author, an
+;; unsupported signature profile, and a signature that was checked and
+;; failed.  The host names the transit refusal with this class; none of them
+;; is `verified' and none is relabelled unsigned (fn-pa-carrier-form never
+;; returns :absent for a present field).  OBSERVED is :failed when the host
+;; checked the primitives and they refused.  Defers to dev: recording the
+;; class in a durable :unverified verdict for held articles, and the keystone
+;; that the class is a function of the carrier and the snapshots alone.
+(defun fn-pa-signed-refusal-class (received snapshots carried observed)
+  (declare (xargs :guard t))
+  (let ((parsed (fn-hc-received-plan received))
+        (plan (fn-pa-current-plan received snapshots carried)))
+    (cond ((equal plan :absent) nil)
+          ((equal observed :failed) :signature-failed)
+          ((and (consp parsed) (equal (car parsed) :unverified)
+                (consp (cdr parsed)) (equal (cadr parsed) :profile))
+           :unsupported-profile)
+          ((and (consp plan) (equal (car plan) :refused)
+                (consp (cdr plan)) (equal (cadr plan) :local-enrollment))
+           :no-local-binding)
+          ((and (consp plan) (equal (car plan) :refused)) :malformed)
+          (t nil))))
+
+(defthm fn-pa-signed-refusal-class-of-absent-is-nil
+  (implies (equal (fn-pa-current-plan received snapshots carried) :absent)
+           (equal (fn-pa-signed-refusal-class received snapshots carried observed)
+                  nil)))
+
+;; ---------------------------------------------------------------------------
 ;; D23 keystones over fn-pa-current-plan, the function
 ;; host/owner-host.lisp fn-owner-peer-carrier-plan calls for every present
 ;; carrier (served POST, bound submission and transit).

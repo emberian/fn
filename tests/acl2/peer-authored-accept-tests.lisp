@@ -249,3 +249,37 @@
    '("fn.test") *pat-obligation* *pat-subject* "gateway-peer-evidence"
    (fn-charge-for-payload (len *pat-relayed*))
    *pat-snapshots* (fn-clock-observation 1 841000000000 0 t))))
+
+;; SPIKE (spike/peering): the opaque-carriage budget and the refusal class.
+(defconst *pat-budget-rows*
+  (append *pat-peer-rows*
+          (list (list "relay" "carried-budget-octets" "1000" 0)
+                (list "relay" "carried-budget-count" "2" 0))))
+(assert-event (equal (fn-pa-peer-carried-budget "relay" *pat-budget-rows*)
+                     (list 1000 2)))
+(assert-event (equal (fn-pa-peer-carried-budget "relay" *pat-peer-rows*)
+                     (list nil nil)))
+(assert-event (equal (fn-pa-carried-budget-decision (list 1000 2) (list 0 0) 400)
+                     :within))
+(assert-event (equal (fn-pa-carried-budget-decision (list 1000 2) (list 400 1) 600)
+                     :within))
+; Teeth: each bound refuses by its own name, and no budget carries nothing.
+(assert-event (equal (fn-pa-carried-budget-decision (list 1000 2) (list 400 1) 601)
+                     (list :refused :carried-octets-exhausted)))
+(assert-event (equal (fn-pa-carried-budget-decision (list 1000 2) (list 400 2) 1)
+                     (list :refused :carried-count-exhausted)))
+(assert-event (equal (fn-pa-carried-budget-decision (list nil nil) (list 0 0) 1)
+                     (list :refused :carried-budget-unset)))
+(must-fail
+ (assert-event (equal (fn-pa-carried-budget-decision (list 1000 2) (list 400 1) 601)
+                      :within)))
+; The three unverified outcomes stay distinct in the decision.
+(assert-event (equal (fn-pa-signed-refusal-class *pat-relayed* nil nil nil)
+                     :no-local-binding))
+(assert-event (equal (fn-pa-signed-refusal-class *pat-relayed* *pat-snapshots* nil
+                                                 :failed)
+                     :signature-failed))
+(assert-event (equal (fn-pa-signed-refusal-class *pat-malformed* nil nil nil)
+                     :malformed))
+(assert-event (null (fn-pa-signed-refusal-class *tha-root-source* nil nil :failed)))
+(assert-event (null (fn-pa-signed-refusal-class *pat-relayed* *pat-snapshots* nil nil)))
