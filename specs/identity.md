@@ -367,6 +367,74 @@ it (a stronger fn choice: authorship is not reduced to a content-id).
 Both must verify, and `fn-hsig-authorize-at` at the source's version decides. Neither signature alone
 authorizes.
 
+## A login bound to a signing principal (2026-09-25)
+
+A `verified` verdict says which principal signed; it says nothing about which
+AUTHINFO login posted. The reader spike measured it (deferral 1 of
+`planning/evidence/spike-reader-2026-09-25.md`): login `ember` POSTed an
+article signed with guest's key and the node answered `verified` for guest's
+principal. That is a correct signature claim. An operator who wants a login
+to post only as its own principal now says so, per node.
+
+NNT-013: on a node whose `posting-policy` is `bound-logins`, a served POST
+from a login bound to a signing principal is accepted only when it carries
+an FN-Authorship carrier naming that principal, and an accepted one carries
+it; every other login, and every login on a node without the policy, posts
+as before.
+
+The parts:
+
+- **The binding** is the `signing` field of the login's table in the
+  credential file (`<store>/auth.toml`), the 32-octet principal in lowercase
+  hex, written by `fn principal bind LOGIN PRINCIPAL-HEX` and removed by
+  `fn principal unbind LOGIN` (`fn-native-auth-admin-bind`,
+  books/native-auth-admin.lisp, through the same writer lock and replacement
+  machine as `set-password`, which keeps every binding). A malformed
+  `signing` value refuses the whole profile. `principal list` prints
+  `signing=HEX` for a bound login. The credential record
+  (`fn-auth-cred`) is unchanged; the table is
+  `fn-native-auth-load-bindings` (books/native-auth-profile.lisp), read at
+  start-up like the credentials.
+- **The policy** is the durable configuration record `posting-policy`,
+  `fn policy set posting-policy bound-logins` (or `open`, the default),
+  applied live through the owner like `path-identity`.
+- **The gate** (`fn-lb-owner-gate`, books/login-binding.lisp) runs first on a
+  served POST's Store attempt (host/native/owner.lisp
+  `fnn-owner-attempt-served` through host/owner-host.lisp
+  `fn-owner-login-gate`), over the owner's in-flight submission (its
+  connection's authenticated login), the live configuration and the binding
+  table. Under the policy, for a bound login: no FN-Authorship carrier is
+  refused `441 posting failed; this login posts only articles signed by its
+  bound principal` (`:login-unsigned`); a carrier naming another principal
+  is refused `441 posting failed; the login is not bound to this signing
+  principal` (`:login-not-bound`). Everything else continues into the
+  unchanged attempt, whose plan (`fn-pa-current-plan`) verifies the carrier
+  against this node's enrollment. An unbound login, an unauthenticated
+  connection, a local or BP submission and a node without the policy are
+  decided exactly as before.
+- **The verdict names the login**: `(:pass LOGIN BOUND)` or `(:refused
+  REASON LOGIN)`, rendered into the service log as `post login=NAME
+  bound=HEX`, `post login=NAME unbound` or `post login=NAME refused REASON`.
+  The Store's kind-4 verdict record still names the principal and keyring
+  generation, not the login.
+
+Proved over the function the host calls, composed with the plan it calls
+next (books/login-binding.lisp):
+`fn-lb-bound-login-accepted-signed-article-carries-its-principal` (under the
+policy, a bound login's article that passes the gate and that the plan
+accepts under this node's enrollment carries the bound principal: the plan's
+principal, which the `verified` verdict names, is the binding);
+`fn-lb-bound-login-unsigned-article-is-refused`;
+`fn-lb-bound-login-other-principal-is-refused`;
+`fn-lb-policy-off-never-refuses` and `fn-lb-unbound-login-never-refuses`
+(the gate passes, and the host continues exactly as before);
+`fn-lb-verdict-names-the-login`. Teeth: `tests/acl2/login-binding-tests.lisp`.
+
+Not claimed: that the login's secret is the author's (a login is a password,
+not a key); that the carrier's signature is checked by the gate (the plan
+checks it after); the live reload of a binding (a restart applies it, as
+for any credential change).
+
 ## What a `:fn-verified` line binds
 
 `HDR :fn-verified` ([substrate transport §5](substrate-transport.md#5-the-agent-angle); RFC

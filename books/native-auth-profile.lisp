@@ -2,7 +2,10 @@
 ;
 ; The deployed credential file is a deliberately small TOML subset emitted by
 ; `fn principal set-password`: comments/blank lines and repeated
-; [login."NAME"] tables with principal, salt, digest and posting fields.
+; [login."NAME"] tables with principal, salt, digest and posting fields, and
+; an optional `signing' field, the login's binding to a signing principal
+; (`fn principal bind', books/native-auth-admin.lisp; the posting policy that
+; reads it is books/login-binding.lisp).
 ; This book owns every interpretation.  The raw native host supplies bounded
 ; file octets and the policy bits already normalized by books/native-config;
 ; it never decodes hex, builds a verifier, assigns posting permission or
@@ -101,7 +104,7 @@
                      (fn-ncfg-trim (fn-ncfg-second split)))))
         (if (and (fn-ncfg-identp key-octets)
                  (member-equal key '("principal" "salt" "digest" "posting"
-                                     "secret"))
+                                     "signing" "secret"))
                  (not (equal value :bad)))
             (list key value)
           :bad)))))
@@ -144,7 +147,14 @@
              (salt (fn-native-auth-hex salt-text 16))
              (digest (fn-native-auth-hex digest-text 32)))
         (if (or (equal principal :bad) (equal salt :bad) (equal digest :bad)
-                (equal posting :bad))
+                (equal posting :bad)
+                ; The optional login binding (`fn principal bind'): when the
+                ; table carries one it is a 32-octet principal in lowercase
+                ; hex, or the whole profile is refused; never ignored.
+                (and (fn-native-auth-assoc "signing" fields)
+                     (equal (fn-native-auth-hex
+                             (fn-native-auth-string-field "signing" fields) 32)
+                            :bad)))
             (list :refused :credential-shape)
           (let ((cred (fn-auth-make-cred
                        name principal (fn-authsec-verifier salt digest) posting)))
@@ -246,6 +256,51 @@
   (if (and (consp result) (consp (cdr result))
            (equal (fn-ncfg-first result) :accepted))
       (fn-ncfg-second result) (fn-auth-open-config)))
+
+;; ---------------------------------------------------------------------------
+;; Login bindings.  A table's `signing' field binds that login to a signing
+;; principal: (NAME . PRINCIPAL), PRINCIPAL the 32 octets.  Read only from a
+;; file fn-native-auth-load accepts, so every signing value here has already
+;; passed the 32-octet hex check in fn-native-auth-finish; the credential
+;; record (books/nntp-auth.lisp fn-auth-cred) is unchanged, and a profile
+;; without a signing line has no bindings.
+
+(defun fn-native-auth-binding-lines (lines name acc)
+  (declare (xargs :guard t :measure (acl2-count lines)))
+  (if (consp lines)
+      (let ((line (fn-ncfg-trim (car lines))))
+        (cond
+         ((or (null line) (equal (car line) 35))
+          (fn-native-auth-binding-lines (cdr lines) name acc))
+         ((equal (car line) 91)
+          (let ((next (fn-native-auth-table-name line)))
+            (fn-native-auth-binding-lines (cdr lines)
+                                          (if (equal next :bad) nil next)
+                                          acc)))
+         (t
+          (let ((field (fn-native-auth-field line)))
+            (if (and name (not (equal field :bad))
+                     (equal (fn-ncfg-first field) "signing")
+                     (equal (fn-ncfg-first (fn-ncfg-second field)) :string))
+                (let ((principal (fn-native-auth-hex
+                                  (fn-ncfg-second (fn-ncfg-second field)) 32)))
+                  (fn-native-auth-binding-lines
+                   (cdr lines) name
+                   (if (equal principal :bad) acc
+                     (cons (cons name principal) acc))))
+              (fn-native-auth-binding-lines (cdr lines) name acc))))))
+    (fn-ncfg-reverse acc)))
+
+(defun fn-native-auth-load-bindings (octets presentp)
+  ; The host-called subject for the binding table: nil unless the very
+  ; profile fn-native-auth-load accepts.
+  (declare (xargs :guard t))
+  (if (and presentp
+           (equal (fn-native-auth-result-status
+                   (fn-native-auth-load octets presentp nil nil nil))
+                  :accepted))
+      (fn-native-auth-binding-lines (fn-ncfg-lines octets) nil nil)
+    nil))
 
 (defthm fn-native-auth-load-protected-without-tls-refuses
   (equal (fn-native-auth-load octets presentp requiredp t nil)

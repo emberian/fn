@@ -1067,6 +1067,27 @@ not set it on a node that is also taking a feed until that is decided
 Restart the service after changing either the policy or the credential
 file: both are read once at start-up.
 
+### Bind a login to its signing principal
+
+A signed POST is `verified` for whichever principal signed it, whatever
+login posted it. To make a login post only as its own principal:
+
+```
+fn --config /etc/fn/fn.toml principal bind alice 9261767a...(64 hex)
+fn --config /etc/fn/fn.toml policy set posting-policy bound-logins
+```
+
+`bind` writes a `signing` field into alice's table of `auth.toml` (restart to
+apply, like any credential change; `principal list` shows `signing=HEX`;
+`principal unbind alice` removes it). The policy is a durable configuration
+record, applied live. Under it, alice's unsigned article is answered `441
+posting failed; this login posts only articles signed by its bound
+principal`, and one signed by another principal `441 posting failed; the
+login is not bound to this signing principal`. A login without a binding,
+and every login on a node whose policy is `open` (the default: `policy set
+posting-policy open`), posts as before. The service log names the login of
+each decision (`post login=alice bound=...`).
+
 ## Add a group
 
 ```

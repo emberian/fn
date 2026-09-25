@@ -62,6 +62,7 @@
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
+(include-book "../books/login-binding")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -1334,6 +1335,36 @@
   (if (and transitp (boundp-global 'fn-owner-transit-carried state))
       (f-get-global 'fn-owner-transit-carried state)
     nil))
+
+;; The login-binding table the native auth profile loaded
+;; (books/native-auth-profile.lisp fn-native-auth-load-bindings), installed
+;; beside the auth configuration before the listener opens.  Transport only:
+;; ACL2 built it, and fn-lb-owner-gate is the only reader.
+(defun fn-owner-set-login-bindings (bindings state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-login-bindings bindings state)))
+    (value :ok)))
+
+(defun fn-owner-login-bindings (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-login-bindings state)
+      (f-get-global 'fn-owner-login-bindings state)
+    nil))
+
+;; The posting policy's gate for the served submission in flight
+;; (books/login-binding.lisp fn-lb-owner-gate over the owner, its LIVE
+;; configuration and the binding table), called by host/native/owner.lisp
+;; fnn-owner-attempt-served before the transit attempt.  The verdict's
+;; service-log line is left in fn-owner-login-log-line (nil: no login).
+(defun fn-owner-login-gate (received state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((verdict (fn-lb-owner-gate (fn-owner-core state)
+                                    (fn-ocfg-config (fn-owner-ocfg state))
+                                    (fn-owner-login-bindings state)
+                                    received))
+         (state (f-put-global 'fn-owner-login-log-line
+                              (fn-lb-verdict-line verdict) state)))
+    (value verdict)))
 
 (defun fn-owner-peer-carrier-plan (received transitp state)
   (declare (xargs :stobjs state :mode :program))

@@ -943,11 +943,26 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 ;;; ACL2 (fn-pa-served-word): a present carrier the plan refused carries the
 ;;; plan's reason to its own 441 line, and a carrier-absent article is the
 ;;; unsigned arm, fnn-owner-attempt, with its word unchanged.
+;;;
+;;; First, the posting policy's login gate (books/login-binding.lisp
+;;; fn-lb-owner-gate through host/owner-host.lisp fn-owner-login-gate): under
+;;; `posting-policy bound-logins' a bound login's article that is unsigned, or
+;;; signed by another principal, is refused with the gate's reason
+;;; (:login-unsigned, :login-not-bound) before any Store call; every other
+;;; verdict continues into the unchanged attempt.  The verdict's log line
+;;; names the login.
 (defun fnn-owner-attempt-served (service msgid payload groups evidence)
   (setq *fnn-owner-transit-detail* nil)
-  (let ((word (fnn-owner-attempt-transit service msgid payload groups evidence)))
-    (fnn-owner-core 'fn-owner-served-carried-word word
-                    *fnn-owner-transit-detail*)))
+  (let ((gate (fnn-owner-core 'fn-owner-login-gate (fnn-octet-list payload))))
+    (unless (and (consp gate) (member (first gate) '(:pass :refused)))
+      (fnn-fault "owner returned malformed login gate ~a" gate))
+    (fnn-owner-log 'fn-owner-login-log-line t)
+    (let ((word (if (eq (first gate) :refused)
+                    (fnn-owner-transit-refused gate)
+                  (fnn-owner-attempt-transit service msgid payload groups
+                                             evidence))))
+      (fnn-owner-core 'fn-owner-served-carried-word word
+                      *fnn-owner-transit-detail*))))
 
 (defun fnn-owner-retention-commit (service event)
   "Publish one ACL2-authored retention event through the normal Store path."

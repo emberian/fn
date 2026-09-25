@@ -573,6 +573,13 @@ availability from the successfully loaded context; configured path text alone
 does not establish it. Credentials and the TLS context are startup-pinned;
 live reload/generation switching remains open.
 
+**Login binding 2026-09-25**: `principal bind LOGIN PRINCIPAL-HEX` and
+`principal unbind LOGIN` write or remove the login's `signing` field through
+the same replacement machine; `policy set posting-policy bound-logins` turns
+on the served POST gate that refuses a bound login's article unless it is
+signed by the bound principal (`:login-unsigned`, `:login-not-bound`, each its
+own 441 line). specs/identity.md, "A login bound to a signing principal".
+
 **Native administration component 2026-09-21**:
 `books/native-auth-admin.lisp` owns the bounded `principal list` and
 `principal set-password` tail grammar, login and principal validation, prompt
