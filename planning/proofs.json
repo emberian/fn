@@ -3602,7 +3602,11 @@
       "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. The owner pages from a string buffer rendered once per request (fn-nls-page); the renderer and the FNLS frames are still octet lists (their D27 twin is open). The open= line names each process's own open, the offline orphan listing is the reader's own observation, and the checkpoint-file line is each answering process's lstat at the request. The words (the history-marker word, checkpoint-file, open-cost) are tests, not theorems; the live and offline reports share them through fn-nls-report.",
       "events": [
         "fn-nls-live-report-is-the-offline-report",
-        "fn-nls-client-step-of-owner-reply"
+        "fn-nls-client-step-of-owner-reply",
+        "fn-nls-page-of-buffer-is-reply",
+        "fn-nls-client-step-of-owner-page",
+        "fn-nls-cached-buffer-of-put",
+        "fn-nls-nat-is-the-decimal-digits"
       ]
     },
     {
