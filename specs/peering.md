@@ -1386,7 +1386,7 @@ documents. The shape is the spike's (`spike/peering`,
 ACL2's (`books/peer-invite.lisp`) and the host does I/O only
 (`host/native/peer-invite.lisp`).
 
-NNT-016: an invitation enrols its inviter only when its carrier verifies
+NNT-017: an invitation enrols its inviter only when its carrier verifies
 under the key set its body names, and a node enrols an acceptor only for an
 acceptance that consumed, exactly once, a pending invitation this node issued
 

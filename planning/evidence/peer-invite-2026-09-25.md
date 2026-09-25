@@ -4,7 +4,7 @@ Dev lane `lane/peer-invite` from `dev` `1b2619ec`, theorem 1 of
 [the spike record](spike-peering-2026-09-25.md) ("Invitation binding"),
 re-implemented in `:logic` mode with guards. The spike is the specification;
 no spike code is carried. Spec: [peering §9](../../specs/peering.md#9-peering-invitations-issue-accept-confirm-prf-097);
-requirement NNT-016; scenario SCN-055.
+requirement NNT-017; scenario SCN-057.
 
 ## What was built
 
