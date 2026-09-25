@@ -82,6 +82,107 @@
         (fn-hm-admittedp (cons 3 (bskm-obs run 7 t)))
         (fn-hm-admittedp (fn-hm-run '((:burn) (:uncertain nil)) (cons 3 (bskm-obs run 9 nil)))))))
 
+;; marker-replaced (fn-bs-k0-marker-replaced-cut-relation): the second run's
+;; replaced pair, a present marker (count 2) under a pending rename to count 3.
+;; Two images: every pending operation lands, and every one lands except the
+;; rename's root entry.  The first is the crash of the landed (marker-durable)
+;; state and observes the new marker; the second is the crash of the state
+;; with the rename dropped and observes the old one; the choices for the other
+;; operations are the same (fn-bs-k0m-drop-marker-choices).
+(defun bskm-marker-opp (op)
+  (and (consp op) (equal (car op) :set-entry) (equal (nth 1 op) :root)
+       (equal (nth 2 op) *fn-bs-history-marker-name*)))
+(defun bskm-all-land-but-marker (ops unit)
+  (if (atom ops) nil
+    (cons (cond ((equal (car (car ops)) :write)
+                 (fn-bs-all-new (fn-bs-unit-count (nth 2 (car ops)) (len (nth 3 (car ops))) unit)))
+                ((bskm-marker-opp (car ops)) :drop)
+                (t :apply))
+          (bskm-all-land-but-marker (cdr ops) unit))))
+(defun bskm-landed (b)
+  (mv-let (r landed) (fn-bs-fsync-dir b :root :ok) (declare (ignore r)) landed))
+(defun bskm-replaced-images-ok (b ks landed-image)
+  ;; the commutation, on one byte state and one choice list
+  (let* ((choices (if landed-image
+                      (bskm-all-land (fn-bs-pending b) (fn-bs-unit b))
+                    (bskm-all-land-but-marker (fn-bs-pending b) (fn-bs-unit b))))
+         (dropped (fn-bs-marker-rename-dropped b))
+         (landed (bskm-landed b))
+         (target (if landed-image landed dropped)))
+    (and (fn-bs-crash-choicesp choices (fn-bs-pending b) (fn-bs-unit b))
+         (equal (fn-bs-crash b choices)
+                (fn-bs-crash target (fn-bs-k0m-drop-marker-choices (fn-bs-pending b) choices)))
+         (fn-bs-store-relation target ks))))
+(assert-event
+ (let* ((run (bskm-second)) (b (car (nth 7 run))) (ks (cdr (nth 7 run)))
+        (all (bskm-all-land (fn-bs-pending b) (fn-bs-unit b)))
+        (but (bskm-all-land-but-marker (fn-bs-pending b) (fn-bs-unit b)))
+        (old (list :present (fn-hm-after-commit 1)))
+        (new (list :present (fn-hm-after-commit 2))))
+   (and (fn-bs-k0m-root-marker-onlyp (fn-bs-pending b) (fn-bs-next-ino (car (nth 9 (bskm-good)))))
+        (consp (assoc-equal :root (fn-bs-dirs b)))
+        (fn-bs-k0m-has-root-marker (fn-bs-crash-select (fn-bs-pending b) all (fn-bs-unit b)))
+        (not (fn-bs-k0m-has-root-marker (fn-bs-crash-select (fn-bs-pending b) but (fn-bs-unit b))))
+        (bskm-replaced-images-ok b ks t)
+        (bskm-replaced-images-ok b ks nil)
+        (equal (fn-bs-hm-observation (fn-bs-crash b all)) new)
+        (equal (fn-bs-hm-observation (fn-bs-crash b but)) old)
+        (not (equal (fn-bs-crash b all) (fn-bs-crash b but)))
+        (equal (bskm-landed b) (car (nth 9 run))))))
+
+;; Teeth for the commutation (fn-bs-k0m-crash-of-pending-marker-rename), one
+;; per hypothesis.
+;; Drop "every pending root entry is this rename": a second pending entry for
+;; the marker name (another writer's rename, onto the config inode) lands
+;; alone.  Its image holds a third marker, neither the old one nor this
+;; rename's, and is not the crash of either resolution.
+(defun bskm-replaced-busy ()
+  (let ((b (car (nth 7 (bskm-second)))))
+    (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
+                (cons (list :set-entry :root *fn-bs-history-marker-name*
+                            (fn-bs-durable-entry b :root *fn-bs-scan-config-name*))
+                      (fn-bs-pending b))
+                (fn-bs-next-ino b))))
+(defun bskm-busy-choices () (list :apply))
+(assert-event
+ (let ((b (bskm-replaced-busy)) (c (bskm-busy-choices)))
+   (and (not (fn-bs-k0m-root-marker-onlyp (fn-bs-pending b) (fn-bs-next-ino (car (nth 9 (bskm-good))))))
+        (consp (assoc-equal :root (fn-bs-dirs b)))
+        (fn-bs-crash-choicesp c (fn-bs-pending b) (fn-bs-unit b))
+        (not (member-equal (fn-bs-hm-observation (fn-bs-crash b c))
+                           (list (list :present (fn-hm-after-commit 1))
+                                 (list :present (fn-hm-after-commit 2))))))))
+(must-fail
+ (assert-event
+  (let* ((b (bskm-replaced-busy)) (c (bskm-busy-choices))
+         (dropped (fn-bs-marker-rename-dropped b)))
+    (equal (fn-bs-crash b c)
+           (fn-bs-crash (if (fn-bs-k0m-has-root-marker (fn-bs-crash-select (fn-bs-pending b) c (fn-bs-unit b)))
+                            (fn-bs-k0m-with-root-entry dropped *fn-bs-history-marker-name*
+                                                       (fn-bs-next-ino (car (nth 9 (bskm-good)))))
+                          dropped)
+                        (fn-bs-k0m-drop-marker-choices (fn-bs-pending b) c))))))
+;; Drop "the root directory exists": directories are an ordered table, and a
+;; rename into a root directory that is absent creates it after an entry
+;; operation on another absent directory issued before it, while the landed
+;; resolution holds it first.
+(defun bskm-rootless ()
+  (fn-bs-make 1 (list (cons 0 '(1))) nil
+              (list (list :set-entry :staging "s" 0)
+                    (list :set-entry :root *fn-bs-history-marker-name* 0))
+              1))
+(assert-event
+ (and (fn-bs-k0m-root-marker-onlyp (fn-bs-pending (bskm-rootless)) 0)
+      (not (consp (assoc-equal :root (fn-bs-dirs (bskm-rootless)))))))
+(must-fail
+ (assert-event
+  (let* ((b (bskm-rootless)) (c (list :apply :apply)) (dropped (fn-bs-marker-rename-dropped b)))
+    (equal (fn-bs-crash b c)
+           (fn-bs-crash (if (fn-bs-k0m-has-root-marker (fn-bs-crash-select (fn-bs-pending b) c (fn-bs-unit b)))
+                            (fn-bs-k0m-with-root-entry dropped *fn-bs-history-marker-name* 0)
+                          dropped)
+                        (fn-bs-k0m-drop-marker-choices (fn-bs-pending b) c))))))
+
 ; ---------------------------------------------------------------------------
 ; Teeth for fn-bs-k0-marker-cuts-relation, one per hypothesis.
 
