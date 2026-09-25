@@ -1343,6 +1343,30 @@
         "tests/acl2/bp-route-tests.lisp",
         "planning/evidence/bp-routing-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-043",
+      "title": "Open reads the newest verified checkpoint and replays only the suffix; a damaged or absent checkpoint falls back to full replay",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-011"
+      ],
+      "steps": [
+        "On a scale-profile store holding N records run `operator store checkpoint`, then post k more records and open the store (`status`, `recover`).",
+        "Corrupt one segment of store-checkpoint.fnsc and open again; remove the file and open again.",
+        "Kill the checkpoint publication at each of its five cuts (kill and EIO) and open after each."
+      ],
+      "expected": [
+        "status prints open=checkpoint:S suffix=k; the recovered state equals the full-replay state (the keystone fn-sn-recover-from-checkpoint-equals-full-recover); the open wall is bounded by the suffix, not N.",
+        "status prints open=full-replay reason=R for the damaged and the absent checkpoint and the recovered state is unchanged.",
+        "Each reopen reads the old checkpoint before the rename and the new one at and after it; never a torn file."
+      ],
+      "evidence": [
+        "tests/test_native_state_checkpoint.py",
+        "tests/acl2/store-checkpoint-open-tests.lisp",
+        "planning/evidence/bounds-p3-2026-09-25.md"
+      ]
     }
   ]
 }
