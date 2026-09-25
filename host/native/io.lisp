@@ -978,12 +978,13 @@ which `fn-store-sn-prepare' then refuses."
 
 (defun fnn-subject-id-buffer ()
   "FNN-SUBJECT-ID of the payload in the octet buffer, digested in place.
-host/owner-host.lisp `fn-owner-subject-id-buffer' calls books/sha256-buffer.lisp
-`fn-shb-subject-id': the subject preimage's fixed head is a short list and
-the payload is read from the buffer by index, so no octet list of the
-payload is built for the digest (D27 wave C; the served POST,
-host/native/owner.lisp fnn-owner-attempt)."
-  (fnn-as-octets (fnn-core-buffer-state 'fn-owner-subject-id-buffer)))
+books/sha256-buffer.lisp `fn-shb-subject-id-bounded', guard-verified with
+guard T, so the call runs the compiled stobj code and ACL2 raises no
+invariant-risk warning on standard output (qual-e747dbcc A4): the subject
+preimage's fixed head is a short list and the payload is read from the
+buffer by index, so no octet list of the payload is built for the digest
+(D27 wave C; the served POST, host/native/owner.lisp fnn-owner-attempt)."
+  (fnn-as-octets (fnn-core 'fn-shb-subject-id-bounded (fnn-live-octets))))
 
 (defun fnn-obligation-id (msgid subject)
   "Obligation identity v1, preimage and digest both ACL2's.  See FNN-SUBJECT-ID."
@@ -2309,9 +2310,10 @@ Reads config.json only (no lock, no replay); prints the verdict word."
 
 (defun fnn-command-rollback-check (root old-path)
   "Whether reinstating the kept config.json at OLD-PATH is sound: ACL2's
-fn-profile-rollback-verdict over the kept profile and the octet lengths of the
-store's committed transaction files.  The host reads and measures; it
-decides nothing."
+fn-profile-rollback-verdict over the kept profile, the store's own config.json
+profile (a kept profile that drops its history-marker requirement is refused
+by name) and the octet lengths of the store's committed transaction files.
+The host reads and measures; it decides nothing."
   (let ((store (make-fnn-store root)))
     (fnn-load-config store)
     (let* ((old (fnn-core 'fn-store-metadata-config-decode
@@ -2321,7 +2323,8 @@ decides nothing."
                                 (unless st (fnn-fault "transaction file vanished"))
                                 (sb-posix:stat-size st)))
                             (fnn-transaction-files store)))
-           (verdict (fnn-core 'fn-profile-rollback-verdict old lengths)))
+           (verdict (fnn-core 'fn-profile-rollback-verdict old
+                                    (fnn-store-config store) lengths)))
       (unless (and (consp verdict) (member (first verdict) '(:sound :refused)))
         (fnn-fault "ACL2 returned a malformed rollback verdict"))
       (if (eq (first verdict) :sound)

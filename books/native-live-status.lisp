@@ -350,7 +350,7 @@ freed-octets=N'."
           *fn-nls-lf*
           (fn-nls-connection-lines pins)))
 
-(defconst *fn-nls-kinds* '(:status :pins :peers :obligations))
+(defconst *fn-nls-kinds* '(:status :pins :peers :obligations :control))
 
 (defun fn-nls-report (kind profile s bytes cfg pins obs)
   "The octets `operator CONFIG KIND' prints.
@@ -362,6 +362,8 @@ configuration pins (nil with no owner), OBS the host's open observation."
   (cond
    ((equal kind :peers)
     (fn-native-admin-peer-report (fn-cfg-peers (fn-cfg-value cfg))))
+   ((equal kind :control)
+    (fn-native-admin-control-report (fn-cfg-authorities (fn-cfg-value cfg))))
    ((equal kind :pins) (fn-nls-pins-line s pins))
    ((equal kind :obligations)
     (append (fn-nls-text "obligations=")
@@ -437,6 +439,22 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
                             (pins (fn-ocfg-pins oc))))
            :in-theory '(fn-nls-live-report fn-nls-offline-report))))
 
+; KEYSTONE (qual-e747dbcc A3: `control list' printed no grant).  The kind
+; the host hands the status path for an accepted configuration query is
+; ACL2's (`fn-native-admin-result-report-kind'; host/native/operator.lisp
+; fnn-operator-execute-admin passes it to fnn-operator-status-once, whose
+; live arm is `fn-nls-live-report' and offline arm `fn-nls-offline-report'),
+; and the report of that kind is the plan's own query report over the same
+; configuration: for `control list' the rendered authority rows
+; (`fn-cfg-authorities', the eighth slot), for `peer list' the peers.  The
+; host no longer names a report kind for a query.
+(defthm fn-nls-report-of-query-kind-is-query-report
+  (equal (fn-nls-report (fn-native-admin-result-report-kind plan)
+                        profile s bytes cfg pins obs)
+         (fn-native-admin-query-report plan (fn-cfg-value cfg)))
+  :hints (("Goal" :in-theory '(fn-nls-report fn-native-admin-result-report-kind
+                               fn-native-admin-query-report))))
+
 ; -----------------------------------------------------------------------------
 ; The exchange: FNLS frames on the owner's control socket
 ;
@@ -463,12 +481,14 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 (defun fn-nls-kind-code (kind)
   (declare (xargs :guard t))
   (cond ((equal kind :status) 1) ((equal kind :pins) 2)
-        ((equal kind :peers) 3) ((equal kind :obligations) 4) (t 0)))
+        ((equal kind :peers) 3) ((equal kind :obligations) 4)
+        ((equal kind :control) 5) (t 0)))
 
 (defun fn-nls-code-kind (code)
   (declare (xargs :guard t))
   (cond ((equal code 1) :status) ((equal code 2) :pins)
-        ((equal code 3) :peers) ((equal code 4) :obligations) (t nil)))
+        ((equal code 3) :peers) ((equal code 4) :obligations)
+        ((equal code 5) :control) (t nil)))
 
 (defun fn-nls-seal (kind payload)
   (declare (xargs :guard t))
