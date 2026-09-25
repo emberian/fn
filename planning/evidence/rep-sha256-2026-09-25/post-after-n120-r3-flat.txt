@@ -1,0 +1,55 @@
+
+Number of samples:   113
+Sample interval:     0.001 seconds
+Total sampling time: 0.113 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2559988 "fn-sprof" RUNNING {120F5D85C3}> (1680/1048576 bytes, 13 hash buckets)
+   #<THREAD tid=2559991 "fn owner client" RUNNING {120FB9D163}> (19880/1048576 bytes, 79 hash buckets)
+   #<THREAD tid=2559989 "fn outbound feed" RUNNING {120FA33303}> (488/1048576 bytes, 4 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     12  10.6     12  10.6     12  10.6        -  foreign function fsync
+   4      9   8.0      9   8.0     21  18.6        -  foreign function rename
+   6      7   6.2      7   6.2     28  24.8        -  foreign function __write
+   8      4   3.5      4   3.5     32  28.3        -  foreign function __close
+  10      2   1.8      5   4.4     34  30.1        -  FN-ARTICLE-PARSE-LINES
+  12      2   1.8      4   3.5     36  31.9        -  FN-RECORD-STRING-OCTETS-AUX
+  14      2   1.8      4   3.5     38  33.6        -  FN-ID-HEX-OCTETS
+  16      2   1.8      3   2.7     40  35.4        -  FN-RECORD-STRING-OCTETS
+  18      2   1.8      2   1.8     42  37.2        -  foreign function fstatat
+  20      2   1.8      2   1.8     44  38.9        -  foreign function clock_nanosleep
+  22      2   1.8      2   1.8     46  40.7        -  FN-RECORD-UINT32P
+  24      2   1.8      2   1.8     48  42.5        -  FN-AG-CAR
+  26      2   1.8      2   1.8     50  44.2        -  foreign function syscall
+  28      2   1.8      2   1.8     52  46.0        -  SB-IMPL::GET3
+  30      2   1.8      2   1.8     54  47.8        -  foreign function __open64
+  32      2   1.8      2   1.8     56  49.6        -  foreign function pthread_sigmask
+  34      2   1.8      2   1.8     58  51.3        -  foreign function unlink
+  36      1   0.9     37  32.7     59  52.2        -  FNN-CORE-STATE
+  38      1   0.9     26  23.0     60  53.1        -  FNN-ADVANCE-FRONTIER
+  40      1   0.9     18  15.9     61  54.0        -  FNN-PUBLISH
+  42      1   0.9     11   9.7     62  54.9        -  SB-IMPL::QUERY-FILE-SYSTEM
+  44      1   0.9      6   5.3     63  55.8        -  PATHNAME
+  46      1   0.9      6   5.3     64  56.6        -  FN-OWN-STORE-STEP
+  48      1   0.9      5   4.4     65  57.5        -  PARSE-NAMESTRING
+  50      1   0.9      3   2.7     66  58.4        -  foreign function sb_nanosleep
+  52      1   0.9      3   2.7     67  59.3        -  FN-SHS-DIGEST-LIST
+  54      1   0.9      3   2.7     68  60.2        -  CONCATENATE
+  56      1   0.9      3   2.7     69  61.1        -  FNN-COUNTERPART
+  58      1   0.9      2   1.8     70  61.9        -  SB-IMPL::INTERN-PATHNAME
+  60      1   0.9      2   1.8     71  62.8        -  FN-ARTICLE-ASCII-DOWNCASE
+  62      1   0.9      2   1.8     72  63.7        -  SB-IMPL::%OUTPUT-INTEGER-IN-BASE
+  64      1   0.9      2   1.8     73  64.6        -  FN-INDEX-ENTRY
+  66      1   0.9      2   1.8     74  65.5        -  FN-RECORD-PAYLOADP
+  68      1   0.9      2   1.8     75  66.4        -  SB-IMPL::%LOOKUP-SYMBOL
+  70      1   0.9      2   1.8     76  67.3        -  GET-GLOBAL
+  72      1   0.9      1   0.9     77  68.1        -  SB-VM::SIMD-CMP-8-32
+  74      1   0.9      1   0.9     78  69.0        -  SB-IMPL::PARSE-POTENTIAL-LOGICAL-HOST
+  76      1   0.9      1   0.9     79  69.9        -  GET-OUTPUT-STREAM-STRING
+  78      1   0.9      1   0.9     80  70.8        -  SB-IMPL::EXTRACT-NAME-TYPE-AND-VERSION
+  80      1   0.9      1   0.9     81  71.7        -  TRANSLATE-LOGICAL-PATHNAME
+------------------------------------------------------------------------
+          4   3.5                                     elsewhere

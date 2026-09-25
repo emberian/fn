@@ -1,0 +1,55 @@
+
+Number of samples:   119
+Sample interval:     0.001 seconds
+Total sampling time: 0.11900000000000001 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2557080 "fn-sprof" RUNNING {120F5D85C3}> (1520/1048576 bytes, 12 hash buckets)
+   #<THREAD tid=2557083 "fn owner client" RUNNING {120FB9D163}> (22232/1048576 bytes, 80 hash buckets)
+   #<THREAD tid=2557081 "fn outbound feed" RUNNING {120FA33303}> (288/1048576 bytes, 2 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     11   9.2     11   9.2     11   9.2        -  foreign function fsync
+   4      8   6.7      8   6.7     19  16.0        -  foreign function rename
+   6      7   5.9      7   5.9     26  21.8        -  foreign function __open64
+   8      6   5.0     12  10.1     32  26.9        -  FN-RECORD-STRING-OCTETS-AUX
+  10      6   5.0      6   5.0     38  31.9        -  foreign function __write
+  12      5   4.2      5   4.2     43  36.1        -  foreign function fstatat
+  14      3   2.5      3   2.5     46  38.7        -  foreign function clock_nanosleep
+  16      3   2.5      3   2.5     49  41.2        -  foreign function __close
+  18      3   2.5      3   2.5     52  43.7        -  FN-AG-CAR
+  20      3   2.5      3   2.5     55  46.2        -  SB-IMPL::%LOOKUP-SYMBOL
+  22      2   1.7      3   2.5     57  47.9        -  FN-CBOR-OCTET-LISTP
+  24      2   1.7      2   1.7     59  49.6        -  WILD-PATHNAME-P
+  26      2   1.7      2   1.7     61  51.3        -  FN-AG-CDR
+  28      2   1.7      2   1.7     63  52.9        -  FN-CBOR-AG-CDR
+  30      2   1.7      2   1.7     65  54.6        -  FN-GIDX-PUT
+  32      2   1.7      2   1.7     67  56.3        -  FN-RECORD-STRING-OCTETS
+  34      2   1.7      2   1.7     69  58.0        -  foreign function unlink
+  36      1   0.8     14  11.8     70  58.8        -  SB-IMPL::QUERY-FILE-SYSTEM
+  38      1   0.8      5   4.2     71  59.7        -  FN-SHS-DIGEST-LIST
+  40      1   0.8      4   3.4     72  60.5        -  PARSE-NAMESTRING
+  42      1   0.8      4   3.4     73  61.3        -  FNN-CLOSE
+  44      1   0.8      3   2.5     74  62.2        -  FN-SHS-LOAD-LIST-BLOCK
+  46      1   0.8      2   1.7     75  63.0        -  FN-CFG-STAMPP
+  48      1   0.8      2   1.7     76  63.9        -  FN-RETAIN-OBLIGATION-IDS
+  50      1   0.8      2   1.7     77  64.7        -  FN-SERVED-CONN-GROUP-INDEX
+  52      1   0.8      2   1.7     78  65.5        -  FN-SF-BARRIERS
+  54      1   0.8      2   1.7     79  66.4        -  FN-SHS-LOAD-LIST-WORD
+  56      1   0.8      2   1.7     80  67.2        -  APPEND
+  58      1   0.8      1   0.8     81  68.1        -  foreign function lstat
+  60      1   0.8      1   0.8     82  68.9        -  (FLET F :IN FN-NATIVE-ENTRY)
+  62      1   0.8      1   0.8     83  69.7        -  SB-IMPL::HASH-PATHNAME-PIECE
+  64      1   0.8      1   0.8     84  70.6        -  GENERIC-+
+  66      1   0.8      1   0.8     85  71.4        -  SB-IMPL::UNPARSE-NATIVE-UNIX-NAMESTRING
+  68      1   0.8      1   0.8     86  72.3        -  SB-KERNEL:%FIND-POSITION
+  70      1   0.8      1   0.8     87  73.1        -  FN-STX-FIELD
+  72      1   0.8      1   0.8     88  73.9        -  (SB-VM::OPTIMIZED-DATA-VECTOR-SET (UNSIGNED-BYTE 8))
+  74      1   0.8      1   0.8     89  74.8        -  FN-AF-DOT-ATOM-TEXTP
+  76      1   0.8      1   0.8     90  75.6        -  SB-KERNEL:TWO-ARG-<=
+  78      1   0.8      1   0.8     91  76.5        -  FNN-RANDOM-HEX
+  80      1   0.8      1   0.8     92  77.3        -  FN-CFG-AG-CAR
+------------------------------------------------------------------------
+          1   0.8                                     elsewhere
