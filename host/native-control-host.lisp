@@ -32,9 +32,11 @@
   (declare (xargs :mode :program))
   *fn-nctrl-max-frame*)
 
+; The widest article an FNCT request can carry (its blob field); the owner
+; applies the profile's bound to what it decodes.
 (defun fn-native-control-host-max-article ()
   (declare (xargs :mode :program))
-  *fn-article-max-octets*)
+  *fn-frame-max-blob*)
 
 (defun fn-native-control-host-max-active-clients ()
   (declare (xargs :mode :program))

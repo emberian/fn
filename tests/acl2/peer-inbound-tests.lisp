@@ -26,7 +26,8 @@
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" ".inn" '(:nntp "h" 1) nil nil '(:principal "p")))))
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:tcp "h" 1) nil nil '(:principal "p")))))
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) '("fn.*" 0 1) nil '(:principal "p")))))
-(assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) '("fn.*" 32769 1) nil '(:principal "p")))))
+; A peer's inbound article bound above the record codec's payload ceiling (D27).
+(assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) (list "fn.*" (1+ *fn-record-max-payload*) 1) nil '(:principal "p")))))
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) nil '("fn.*" 2 1 0) '(:principal "p")))))
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) nil nil '(:password "p")))))
 (assert-event

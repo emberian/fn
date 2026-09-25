@@ -53,17 +53,18 @@
 
 ; The v1 carrier's signed-source bound.  Its length field is a u16
 ; (fn-hsig-subject-body), so this is a codec bound, not the article ceiling
-; (books/article.lisp, now the record payload width): packet P4 raises it to
-; 65535 and adds the u32 v2 carrier (design 2026-09-25-bounds §2.3).  The
-; value is the one v1 was proved at.
-(defconst *fn-hsig-max-source* 32768)
+; (books/article.lisp, now the record payload width).  The value is the one
+; v1 was proved at; packet P4 (lane/bounds-p4-carrier) defines the same
+; name at the u16's 65535 with the u32 v2 carrier beside it, and on merge
+; its definition replaces this one (design 2026-09-25-bounds §2.3).
+(defconst *fn-hsig-v1-max-source* 32768)
 
 (defun fn-hsig-subject-p (principal keys source)
   (declare (xargs :guard t))
   (and (fn-hsig-exact-octets-p principal 32)
        (fn-hsig-keyset-p keys)
        (fn-cbor-octet-listp source)
-       (<= (len source) *fn-hsig-max-source*)))
+       (<= (len source) *fn-hsig-v1-max-source*)))
 
 (defun fn-hsig-subject-body (principal keys source)
   (declare (xargs :guard (fn-hsig-subject-p principal keys source)))

@@ -7,7 +7,8 @@
 ;   newsgroup-name = component *( "." component )
 ;   component      = 1*component-char
 ;   component-char = ALPHA / DIGIT / "+" / "-" / "_"
-; The 128-octet bound is local fn policy.  The keystone
+; The octet bound is the NNTP wire's group argument, 460 octets
+; (books/nntp-syntax.lisp; RFC 3977 s3.1); RFC 5536 sets none.  The keystone
 ; `fn-record-group-namep-is-the-rfc-5536-grammar' equates the one-pass
 ; recognizer with the component-at-a-time grammar; each rejection theorem
 ; below has one `must-fail' per hypothesis and a ground witness showing the
@@ -28,9 +29,10 @@
     "_x.+y.-z.123.ABC" "de.soc.recht.misc" "a.b.c.d.e.f.g.h"))
 
 (defconst *rst-max-name*
-  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+  (coerce (make-list *fn-record-max-group-name* :initial-element #\a) 'string))
 (defconst *rst-overlong-name*
-  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+  (coerce (make-list (+ 1 *fn-record-max-group-name*) :initial-element #\a)
+          'string))
 (assert-event (equal (length *rst-max-name*) *fn-record-max-group-name*))
 (assert-event (equal (length *rst-overlong-name*)
                      (+ 1 *fn-record-max-group-name*)))
@@ -49,7 +51,7 @@
 (assert-event (fn-record-group-namep *rst-max-name*))
 
 ; Rejected names, one or more per violation class.  Every one of these is an
-; ASCII string of 1..128 octets, so the old recognizer admitted it.
+; ASCII string within the octet bound, so the old recognizer admitted it.
 (defconst *rst-invalid-names*
   '("Not A Group"          ; space (the native-subsets finding)
     "fn test" "fn.test "   ; space inside and trailing
@@ -99,7 +101,7 @@
 ; The article parser's Newsgroups grammar (books/article-fields.lisp) is the
 ; same RFC 5536 s3.1.4 production written independently over octets.  The two
 ; agree on every octet list, so a name an accepted article carries and a name
-; the store admits differ only by the local 128-octet bound.
+; the store admits differ only by the wire's octet bound.
 (defthm rst-record-group-syntax-is-the-article-newsgroup-syntax
   (equal (fn-record-group-name-octets-aux xs need)
          (fn-af-newsgroup-name-aux xs need))
