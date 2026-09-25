@@ -1532,6 +1532,29 @@
       "evidence": [
         "planning/evidence/bounds-profile-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-054",
+      "title": "a carrying boundary holds articles only within its budget, and a refused present carrier is named by its class",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-015"
+      ],
+      "steps": [
+        "Relay R adds peer A with no carried list, then `peer carries A HEX` and `peer budget A OCTETS 1`; A posts two signed articles by a principal R never enrolled.",
+        "Without `peer budget`, A's signed article reaches R.",
+        "From A's address, offer R by IHAVE an article whose FN-Authorship items name suite 2, and one by a principal R never enrolled and does not carry."
+      ],
+      "expected": [
+        "R stores the first with a carried verdict and refuses the second with detail=carried-count-exhausted.",
+        "R refuses it with detail=carried-budget-unset.",
+        "R answers 437 to each, logging detail=unsupported-profile and detail=no-local-binding."
+      ],
+      "evidence": [
+        "planning/evidence/peer-carriage-2026-09-25.md",
+        "tests/test_native_hybrid_author.py"
+      ]
     }
   ]
 }

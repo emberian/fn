@@ -2078,6 +2078,11 @@
           "name": "fn-bs-k0a-drop-dir-preserves-relation",
           "note": "Dropping every pending entry operation of one directory from a related state outside the recovery window keeps the relation: the durable projections are unchanged, the pending shape loses entries, and the pending authority targets become a sublist. The dropped half of the authority-barrier error keystone.",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0m-marker-rename-crash-is-a-resolution-crash",
+          "note": "For any byte state whose every pending root entry operation is the rename of inode INO onto committed-history.json and whose directory table holds the root directory: every crash image of it is a crash image of the state with that rename's root entry dropped from the pending list, or of that state with the entry durable. Under the same choices for every other pending operation (fn-bs-k0m-crash-of-pending-marker-rename)."
         }
       ]
     },
@@ -3798,6 +3803,71 @@
         {
           "kind": "theorem",
           "name": "fn-profile-upgrade-keeps-namespace-counts"
+        }
+      ]
+    },
+    {
+      "id": "PRF-099",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-carried-usage-is-the-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-extended-cache-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-cache-valid-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-carried-history-within-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-carried-event-keeps-history-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-no-budget-history-carries-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-names-count-exhaustion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-names-octet-exhaustion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-without-a-budget-admits-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-peer-budget-after-extend-delta"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-budget-after-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-present-carrier-not-accepted-has-a-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-refused-carrier-is-never-signature-failed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-absent-carrier-has-no-class"
         }
       ]
     }

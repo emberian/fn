@@ -244,6 +244,9 @@
                (stringp (caddr words))
                (not (equal (caddr words) "")))
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
+         ((and (consp (cdr words))
+               (member-equal (cadr words) '("budget" "carries")))
+          (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ((and (consp words) (equal (car words) "control"))
         (fn-native-admin-control-plan words argv))
@@ -309,6 +312,28 @@
                     name
                     (fn-record-octets-string (fn-native-admin-result-peer plan)))))
             (t nil)))))
+
+; PRF-099: the deltas over the live peer table.  An :extend-peer plan
+; (`peer carries', `peer budget') extends the named boundary's rows as the
+; table holds them now (fn-pcb-extend-delta); every other plan is
+; fn-native-admin-plan-deltas unchanged.  Host: host/native-admin-host.lisp
+; fn-native-admin-host-owner-reconfigure (the live owner's table) and
+; fn-native-admin-host-apply (the replayed store's table).
+(defun fn-native-admin-plan-deltas-over (plan peers)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-admin-result-status plan) :accepted)
+           (equal (fn-native-admin-result-kind plan) :extend-peer))
+      (let ((delta (fn-pcb-extend-delta
+                    (fn-record-octets-string (fn-native-admin-result-name plan))
+                    (fn-native-admin-result-value plan)
+                    peers)))
+        (if delta (list delta) nil))
+    (fn-native-admin-plan-deltas plan)))
+
+(defthm fn-native-admin-plan-deltas-over-other-plans-by-definition
+  (implies (not (equal (fn-native-admin-result-kind plan) :extend-peer))
+           (equal (fn-native-admin-plan-deltas-over plan peers)
+                  (fn-native-admin-plan-deltas plan))))
 
 (encapsulate ()
 (local (defthm kind-of-result

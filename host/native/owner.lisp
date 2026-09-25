@@ -829,6 +829,17 @@ follows is justified only by this line."
           detail))
   :refused)
 
+;;; PRF-099: on NNTP transit, a refusal of a present carrier is named by
+;;; ACL2's class (books/peer-carriage.lisp fn-pcb-refusal-class through
+;;; fn-owner-transit-refusal-class): no-local-binding, unsupported-profile,
+;;; signature-failed or malformed.  ED and ML are the primitive outcomes
+;;; when they were observed.  Other ingresses keep ACL2's plan reason.
+(defun fnn-owner-transit-class (plan payload nntp-transit-p ed ml)
+  (if (not nntp-transit-p) plan
+    (let ((class (fnn-owner-core 'fn-owner-transit-refusal-class
+                                 (fnn-octet-list payload) t ed ml)))
+      (if (keywordp class) (list :refused class) plan))))
+
 (defun fnn-owner-attempt-transit (service msgid payload groups evidence
                                   &optional nntp-transit-p)
   "One ingress decision for both NNTP and BP transit under the caller's
@@ -864,7 +875,8 @@ reason before any Store call.  An ordinary article's groups are unchanged."
       ((eq form :absent)
        (fnn-owner-attempt service msgid payload groups evidence))
       ((not (and (consp form) (eq (first form) :ok)))
-       (fnn-owner-transit-refused form))
+       (fnn-owner-transit-refused
+        (fnn-owner-transit-class form payload nntp-transit-p nil nil)))
       (t
        (fnn-owner-attempt-handlers (fnn-owner-service-store service)
            (let* ((store (fnn-owner-service-store service))
@@ -903,6 +915,12 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                              codes (fnn-octet-list obligation)
                              (fnn-octet-list subject) (fnn-octet-list evidence)
                              charge)))
+                     ;; PRF-099: the boundary's opaque-carriage budget,
+                     ;; decided inside the event constructor over the
+                     ;; owner-carried usage; a refusal names its bound.
+                     (when (and (consp event) (eq (first event) :refused))
+                       (return-from fnn-owner-attempt-transit
+                         (fnn-owner-transit-refused event)))
                      (let ((boundary (fnn-owner-core
                                       'fn-owner-signed-event-boundary event)))
                        (unless (eq boundary :ok)
@@ -915,7 +933,9 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                        (fnn-owner-identity-commit service event)))))
                (unless (and (consp plan) (eq (first plan) :ok))
                  (return-from fnn-owner-attempt-transit
-                   (fnn-owner-transit-refused plan)))
+                   (fnn-owner-transit-refused
+                    (fnn-owner-transit-class plan payload nntp-transit-p
+                                             nil nil))))
              (unless (eq (fnn-owner-advance-clock) :observed)
                (return-from fnn-owner-attempt-transit :clock-unusable))
              (let* ((source (second plan))
@@ -938,7 +958,11 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                             (eq (first observations) :verified)
                             (eq (first ml-observation) :verified))
                  (return-from fnn-owner-attempt-transit
-                   (fnn-owner-transit-refused :signature)))
+                   (fnn-owner-transit-refused
+                    (fnn-owner-transit-class
+                     (list :refused :signature) payload nntp-transit-p
+                     (first observations)
+                     (and observed-ml-key (first ml-observation))))))
                (multiple-value-bind (obligation subject ignored)
                    (fnn-metadata msgid payload)
                  (declare (ignore ignored))
