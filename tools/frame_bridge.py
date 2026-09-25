@@ -86,6 +86,21 @@ def _octets(data: bytes) -> str:
     return "'(" + " ".join(str(byte) for byte in data) + ")"
 
 
+def _lisp_literal(value) -> str:
+    """A decoded ACL2 value (nested lists of naturals) as its Lisp text."""
+    if isinstance(value, bool):
+        raise BridgeError("profile value is not data")
+    if isinstance(value, int):
+        if value < 0:
+            raise BridgeError("profile value is not a natural")
+        return str(value)
+    if isinstance(value, (bytes, bytearray)):
+        return "(" + " ".join(str(b) for b in value) + ")"
+    if isinstance(value, (list, tuple)):
+        return "(" + " ".join(_lisp_literal(v) for v in value) + ")"
+    raise BridgeError("profile value is not data")
+
+
 def _as_bytes(value) -> bytes:
     if not isinstance(value, list) or any(
             not isinstance(item, int) or not 0 <= item <= 255 for item in value):
@@ -234,16 +249,24 @@ class FrameSession:
         return _as_bytes(value)
 
     def metadata_config_decode(self, framed: bytes):
-        """Return ACL2's fixed profile fields, or reject malformed metadata."""
+        """Return ACL2's decoded profile values (opaque), or reject malformed
+        metadata.  Every field is read back through `profile_summary`."""
         value = self.call("(fn-store-metadata-config-decode {})".format(
             _octets(framed)))
-        if not isinstance(value, list) or len(value) != 6:
+        if not isinstance(value, list) or not value:
             raise BridgeError("ACL2 rejected durable configuration")
-        if (not isinstance(value[1], int) or not isinstance(value[2], int)
-                or not isinstance(value[3], int) or not isinstance(value[4], int)):
-            raise BridgeError("ACL2 returned malformed configuration")
-        return (_as_bytes(value[0]), value[1], value[2], value[3], value[4],
-                _as_bytes(value[5]))
+        return value
+
+    def profile_summary(self, values):
+        """(format, T, H, R, A) of the profile a store runs under, ACL2's."""
+        summary = self.call("(fn-store-profile-summary '{})".format(
+            _lisp_literal(values)))
+        if (not isinstance(summary, list) or len(summary) != 5
+                or not all(isinstance(n, int) and not isinstance(n, bool)
+                           for n in summary)
+                or summary[0] not in (7, 8)):
+            raise BridgeError("ACL2 returned a malformed profile summary")
+        return tuple(summary)
 
     def metadata_frontier_frame(self, next_txid: int) -> bytes:
         if not isinstance(next_txid, int) or isinstance(next_txid, bool):
@@ -417,14 +440,10 @@ class FrameSession:
                       group_count: int, charge: int) -> str:
         """The whole POST admission boundary, decided once in ACL2.
 
-        `profile` is the six values `metadata_config_decode` returned at
+        `profile` is the values `metadata_config_decode` returned at
         open, handed back unchanged; the payload bound is ACL2's reading of
         it (`fn-sbud-post-boundary`)."""
-        format_id, capacity, max_payload, max_recovery, max_transactions, frontier = profile
-        literal = "'(({}) {} {} {} {} ({}))".format(
-            " ".join(str(byte) for byte in format_id), int(capacity),
-            int(max_payload), int(max_recovery), int(max_transactions),
-            " ".join(str(byte) for byte in frontier))
+        literal = "'" + _lisp_literal(profile)
         value = self.call(
             "(fn-store-post-boundary {} {} {} {} {})".format(
                 literal, _octets(msgid), int(payload_length), int(group_count),

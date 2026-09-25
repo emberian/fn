@@ -34,6 +34,7 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        durable_post, exit_code_for, group_codes, metadata,
                        validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
+from tools import frame_bridge  # noqa: E402  (the profile's Lisp literal)
 from feed_wire import Journal, Session, discover_journal_peers  # FNFD layout/client
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -138,11 +139,7 @@ class Acl2Owner(Acl2Store):
     def install_profile(self, config):
         # The store's persisted profile, handed back as the values ACL2
         # decoded at open; ACL2 derives the transaction budget from it.
-        values = "({} {} {} {} {} {})".format(
-            self.literal(config["format"].encode("ascii")), config["capacity"],
-            config["max_payload_bytes"], config["max_recovery_record_bytes"],
-            config["max_transactions"],
-            self.literal(config["allocation_frontier_format"].encode("ascii")))
+        values = frame_bridge._lisp_literal(config["profile"])
         return self._symbol("(fn-owner-install-profile '{} state)".format(values))
 
     def io(self, operation, result="ok"):
