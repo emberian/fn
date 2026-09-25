@@ -3785,11 +3785,13 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-own-read-archive-command-is-the-pinned-dispatcher"
+          "name": "fn-own-read-archive-command-is-the-pinned-dispatcher",
+          "pending_subject": "Not certified: books/owner-control-read and books/owner-invariants were red at control-c3e's run budget (planning/evidence/control-c3e-2026-09-25.md, run-20260925T210939Z-35c4)."
         },
         {
           "kind": "theorem",
-          "name": "fn-own-related-conn-control"
+          "name": "fn-own-related-conn-control",
+          "pending_subject": "Not certified: books/owner-control-read and books/owner-invariants were red at control-c3e's run budget (planning/evidence/control-c3e-2026-09-25.md, run-20260925T210939Z-35c4)."
         },
         {
           "kind": "theorem",
