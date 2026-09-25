@@ -11,7 +11,8 @@ FN_P5_N (default 20000) sets the size of the scale store and FN_P5_CUT_N
 reached) the size of the cut and EIO campaigns' store.  FN_P5_TIMEOUT (default 1800 s)
 bounds each native call; a 20,000-record open costs minutes
 (planning/evidence/bounds-p5-2026-09-25.md).  Articles are 2 KiB: the
-profile's max-article-octets, which the in-process `probe' commits.
+profile's max-article-octets, which the in-process `probe N article' commits
+as well-formed articles the served reader frames.
 """
 import os
 from pathlib import Path
@@ -81,7 +82,7 @@ class NativePackChainTests(unittest.TestCase):
         config, port = self.owner_config(store, name)
         init = self.native("operator", config, "init", *PROFILE_FLAGS, "fn.letters", "fn.test")
         self.assertIn("accepted operator init", init.stderr)
-        self.native("store", store, "probe", str(n))
+        self.native("store", store, "probe", str(n), "article")
         return store, config, port
 
     def chain(self, store):
