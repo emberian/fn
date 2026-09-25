@@ -1512,12 +1512,12 @@
       ]
     },
     {
-      "id": "SCN-052",
+      "id": "SCN-055",
       "title": "Two nodes that share no key peer by invitation; tampered, replayed, foreign and repeated documents are refused, and a crash between consumption and enrolment enrols once",
       "milestone": "M3",
       "status": "specified",
       "requirements": [
-        "NNT-014"
+        "NNT-016"
       ],
       "steps": [
         "On A and B run `peer genesis` over fresh key directories; start both owners.",
