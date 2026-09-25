@@ -17,7 +17,10 @@
 
 (defconst *fn-bpn-machine-max-jobs* 64)
 (defconst *fn-bpn-machine-max-octets* 16777216)
-(defconst *fn-bpn-machine-max-job-octets* *fn-frame-max-blob*)
+; One job's bundle image: the BP machine's own bound (design 2026-09-25-bounds
+; §1.3, packet P5), no longer the frame blob width, which is now the u32 codec
+; ceiling (books/frame-octets.lisp).  The value is the one it had.
+(defconst *fn-bpn-machine-max-job-octets* 131072)
 (defconst *fn-bpn-machine-max-records* 4096)
 
 (defun fn-bpn-machine-u64p (x)

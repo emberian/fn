@@ -25,12 +25,40 @@
 
 (defconst *fn-record-magic* '(102 110 45 114))
 (defconst *fn-record-schema-version* 1)
+; Bounds (D27, planning/decisions.md; design 2026-09-25-bounds §2.3).  None
+; of these is a policy on the data a store holds: the operator's bounds are
+; the store profile's, and every served path applies the profile's bound
+; before it builds a record.  What is here is either an RFC requirement or
+; the widest value the record encoding can carry (a codec ceiling), chosen so
+; that no profile the operator can write is capped by the codec.
+;
+; RFC 5536 §3.1.3: a Message-ID is at most 250 octets.
 (defconst *fn-record-max-msgid* 250)
-(defconst *fn-record-max-payload* 32768)
-(defconst *fn-record-max-group-name* 128)
-(defconst *fn-record-max-groups* 16)
+; Codec ceiling: the whole encoded record is one FNST payload, whose LENGTH
+; field is a u32 (books/frame-octets.lisp).  The item codec
+; (books/records.lisp `fn-record-item-encode') writes byte strings up to this
+; width with the canonical u32 CBOR head.
+(defconst *fn-record-max-octets* 4294967295)
+; Codec ceiling: a group name is at most the NNTP wire's group argument,
+; 460 octets (books/nntp-syntax.lisp; RFC 3977 §3.1 line length).
+(defconst *fn-record-max-group-name* 460)
+; Codec ceiling: the group count.  Chosen with the payload ceiling below so
+; that the worst-case record fits the record width
+; (`fn-record-encoded-octets-ceiling-within-record-width').  The profile's
+; per-article group bound sits below it.
+(defconst *fn-record-max-groups* 65535)
+; Node-generated: the obligation id, subject and evidence strings are built
+; by the node (books/provenance-codec.lisp), bounded by construction.
 (defconst *fn-record-max-metadata* 256)
-(defconst *fn-record-max-octets* 65538)
+; Codec ceiling: the record width less 2^25 octets reserved for every other
+; field at its own ceiling (1 083 fixed octets and 465 per group).  The
+; profile's article bound sits below it.
+(defconst *fn-record-max-payload* 4261412864)
+; The encoded octets every field other than the payload and the groups can
+; take at their ceilings: magic 5, schema, sequence, txid, generation, group
+; count, charge and stamp 5 each (a CBOR uint head is at most 5 octets),
+; Message-ID 5 + 250, payload head 5, three metadata strings 3 * (5 + 256).
+(defconst *fn-record-fixed-overhead-octets* 1083)
 ;
 ; The five octets every accepted record begins with: the CBOR byte-string
 ; head of length 4 (h'44') and "fn-r".  The sixth octet is the schema
@@ -93,6 +121,22 @@
        (fn-record-nonempty-at-mostp (fn-record-string-octets text)
                                     *fn-record-max-msgid*)))
 
+; The worst-case encoded length of a record with PAYLOAD-OCTETS of payload
+; and GROUP-COUNT groups: what a profile's per-record bound must admit for an
+; article of that size (`fn-record-encode-length-bound', records-seam).
+(defun fn-record-encoded-octets-ceiling (payload-octets group-count)
+  (declare (xargs :guard (and (natp payload-octets) (natp group-count))))
+  (+ payload-octets
+     (* (+ 5 *fn-record-max-group-name*) group-count)
+     *fn-record-fixed-overhead-octets*))
+
+(defthm fn-record-encoded-octets-ceiling-within-record-width
+  (implies (and (natp payload-octets) (<= payload-octets *fn-record-max-payload*)
+                (natp group-count) (<= group-count *fn-record-max-groups*))
+           (<= (fn-record-encoded-octets-ceiling payload-octets group-count)
+               *fn-record-max-octets*))
+  :rule-classes :linear)
+
 (defun fn-record-payloadp (octets)
   (and (fn-cbor-octet-listp octets)
        (<= (len octets) *fn-record-max-payload*)))
@@ -111,7 +155,8 @@
 ;; books/native-admin.lisp decides them
 ;; (fn-native-admin-group-name-reservedp,
 ;; fn-native-admin-group-name-special-purposep), not this book.  The octet bound
-;; `*fn-record-max-group-name*' is a local fn policy: the RFC sets none.
+;; `*fn-record-max-group-name*' is the NNTP wire's group bound (RFC 3977 §3.1
+;; line length, books/nntp-syntax.lisp); RFC 5536 sets none.
 (defun fn-record-group-component-octetp (x)
   (declare (xargs :guard t))
   (and (integerp x)
@@ -219,7 +264,7 @@
            :expand ((fn-record-group-name-grammarp (cdr xs))))))
 
 ;; Keystone: the recognizer the host calls admits a string exactly when it
-;; is ASCII, 1 to *fn-record-max-group-name* octets long (local policy), and
+;; is ASCII, 1 to *fn-record-max-group-name* octets long (the wire bound), and
 ;; its octets are an RFC 5536 s3.1.4 <newsgroup-name>.
 (defthm fn-record-group-namep-is-the-rfc-5536-grammar
   (equal (fn-record-group-namep text)
@@ -273,7 +318,7 @@
                                       fn-record-group-name-octets-aux-when-need
                                       fn-record-group-name-octets-aux-after-component))))
 
-;; The local octet bound, by definition (no RFC bound exists).
+;; The wire octet bound, by definition (RFC 5536 sets none).
 (defthm fn-record-group-namep-bounds-length-by-definition
   (implies (< *fn-record-max-group-name* (len (fn-record-string-octets text)))
            (not (fn-record-group-namep text)))

@@ -19,7 +19,7 @@
        (<= *fn-bpa-max-octets* *fn-bpf-max-length*)
        (<= (+ *fn-bpa-max-octets* 65534)
            *fn-bpn-machine-max-job-octets*)
-       (equal *fn-bpn-machine-max-job-octets* *fn-frame-max-blob*)
+       (<= *fn-bpn-machine-max-job-octets* *fn-frame-max-blob*)
        (<= (+ *fn-bpn-machine-max-job-octets* 3072)
            *fn-bpn-lifecycle-max-payload*)
        (<= (* *fn-bpf-max-fragments*

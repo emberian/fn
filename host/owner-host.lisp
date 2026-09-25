@@ -134,22 +134,6 @@
   (let ((oc (f-get-global 'fn-owner state)))
     (fn-owner-install-ocfg (fn-ocfg-with-owner oc owner) state)))
 
-; Native operator startup supplies the one posting-policy bit after recovery.
-; Preserve the agent, served groups and payload ceiling ACL2 already installed;
-; this changes the same fn-own-config value read by served POST and control.
-(defun fn-owner-posting-configure (allow state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (fn-owner-core state))
-         (cfg (fn-own-config owner))
-         (next (fn-inj-make-config (and allow t)
-                                   (fn-inj-config-agent cfg)
-                                   (fn-inj-config-groups cfg)
-                                   (fn-inj-config-max-octets cfg))))
-    (if (not (fn-inj-configp next))
-        (value :refused)
-      (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
-        (value :configured)))))
-
 (defun fn-owner-state (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-core state)))
@@ -242,6 +226,35 @@
       (f-get-global 'fn-owner-store-profile state)
     nil))
 
+(defun fn-owner-served-post-bound (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((bound (fn-sbud-payload-bound (fn-owner-store-profile state))))
+    (if (posp bound) bound *fn-record-max-payload*)))
+
+; The served POST bound (D27): the carried Store profile's payload bound
+; (`fn-sbud-payload-bound', books/store-budget-naming, which never exceeds the
+; record codec's payload ceiling: `fn-sbud-payload-bound-within-record-codec'),
+; so the wire reads at most what the operator's profile admits.  Before a
+; profile is installed (recovery, where nothing is served and the budget is 0)
+; it is the codec ceiling `*fn-record-max-payload*'.
+;
+; Native operator startup supplies the one posting-policy bit after recovery
+; and after `fn-owner-install-profile'.  Preserve the agent and served groups
+; ACL2 already installed and set the served bound from the profile; this
+; changes the same fn-own-config value read by served POST and control.
+(defun fn-owner-posting-configure (allow state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (cfg (fn-own-config owner))
+         (next (fn-inj-make-config (and allow t)
+                                   (fn-inj-config-agent cfg)
+                                   (fn-inj-config-groups cfg)
+                                   (fn-owner-served-post-bound state))))
+    (if (not (fn-inj-configp next))
+        (value :refused)
+      (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
+        (value :configured)))))
+
 ; The owner's verdict on one more record of KIND: its budget from the carried
 ; profile against the count of the Store it carries.
 (defun fn-owner-publication-verdict (kind state)
@@ -321,7 +334,8 @@
   ; installed now, so the host installs it unconditionally and decides nothing.
   (declare (xargs :stobjs state :mode :program))
   (mv-let (verdict next)
-    (fn-ocl-publish (fn-owner-ocfg state) generation *fn-record-max-payload*)
+    (fn-ocl-publish (fn-owner-ocfg state) generation
+                    (fn-owner-served-post-bound state))
     (let ((state (fn-owner-install-ocfg next state)))
       (value verdict))))
 

@@ -29,7 +29,10 @@
 ;                                            an accepted input's sixth octet is the schema octet
 ;                                            its record needs (`fn-record-schema-octet',
 ;                                            records-shape: 0 at schema 0)
-; Every other exported theorem in this book is derived from those six
+;   fn-record-encode-length-bound            a record encodes to at most
+;                                            `fn-record-encoded-octets-ceiling' of its payload
+;                                            length and group count (records-shape)
+; Every other exported theorem in this book is derived from those seven
 ; below the `encapsulate'.  The header is two constraints, not one six-octet
 ; constraint, so that the acceptance stamp (specs/acceptance-stamp.md §2.1)
 ; widens the grammar behind the seam -- schema 1, whose version octet is 1
@@ -93,6 +96,14 @@
              (equal (take 5 octets) *fn-record-magic-octets*))
     :hints (("Goal" :use fn-record-impl-accepted-input-magic))
     :rule-classes nil)
+
+  (defthm fn-record-encode-length-bound
+    (<= (len (fn-record-encode record))
+        (fn-record-encoded-octets-ceiling
+         (len (fn-record-payload record))
+         (len (fn-record-groups record))))
+    :hints (("Goal" :use fn-record-impl-encode-length-bound))
+    :rule-classes :linear)
 
   (defthm fn-record-accepted-schema-is-the-stamp-kind
     (implies (fn-record-result-okp (fn-record-decode-exact octets))
