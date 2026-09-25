@@ -1,0 +1,102 @@
+memo build rc=1 certs.UnreadableBook: books/article-stobj.lisp: missing
+after r1 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 53559, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.0633953670039773, "load_seconds": 0.24190738890320063, "rss_after_load_kib": 387084, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387276}
+post_all median 1.867 ms  p95 2.408 ms  max 4.411 ms
+post_first_quarter median 2.246 ms  p95 2.614 ms  max 2.708 ms
+post_last_quarter median 1.849 ms  p95 1.989 ms  max 2.092 ms
+stat_present median 0.081 ms  p95 0.086 ms  max 0.103 ms
+article_present median 2.321 ms  p95 2.470 ms  max 2.498 ms
+over_present median 0.289 ms  p95 0.387 ms  max 0.388 ms
+memo r1 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 50595, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06443366128951311, "load_seconds": 0.2455882988870144, "rss_after_load_kib": 386784, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387168}
+post_all median 1.903 ms  p95 2.417 ms  max 4.582 ms
+post_first_quarter median 2.208 ms  p95 2.574 ms  max 3.191 ms
+post_last_quarter median 1.864 ms  p95 1.953 ms  max 1.964 ms
+stat_present median 0.081 ms  p95 0.088 ms  max 0.103 ms
+article_present median 2.327 ms  p95 2.425 ms  max 2.439 ms
+over_present median 0.298 ms  p95 0.327 ms  max 0.344 ms
+after r1 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 34719, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06622695457190275, "load_seconds": 2.837342173792422, "rss_after_load_kib": 453304, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 460216}
+post_all median 22.814 ms  p95 26.944 ms  max 34.722 ms
+post_first_quarter median 22.937 ms  p95 28.205 ms  max 34.722 ms
+post_last_quarter median 22.811 ms  p95 25.122 ms  max 26.399 ms
+stat_present median 0.104 ms  p95 0.113 ms  max 0.116 ms
+article_present median 35.009 ms  p95 39.452 ms  max 40.173 ms
+over_present median 1.591 ms  p95 1.752 ms  max 1.856 ms
+memo r1 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 58791, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06388827692717314, "load_seconds": 2.829031167551875, "rss_after_load_kib": 453828, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 460548}
+post_all median 22.765 ms  p95 27.019 ms  max 35.123 ms
+post_first_quarter median 22.744 ms  p95 27.594 ms  max 35.123 ms
+post_last_quarter median 22.896 ms  p95 25.946 ms  max 26.085 ms
+stat_present median 0.081 ms  p95 0.156 ms  max 0.179 ms
+article_present median 34.356 ms  p95 36.422 ms  max 38.794 ms
+over_present median 1.450 ms  p95 1.603 ms  max 1.655 ms
+after r2 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 37977, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06428524106740952, "load_seconds": 0.24767835531383753, "rss_after_load_kib": 386928, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387120}
+post_all median 1.887 ms  p95 2.421 ms  max 4.303 ms
+post_first_quarter median 2.229 ms  p95 2.653 ms  max 3.779 ms
+post_last_quarter median 1.872 ms  p95 1.922 ms  max 2.118 ms
+stat_present median 0.108 ms  p95 0.114 ms  max 0.115 ms
+article_present median 2.478 ms  p95 2.545 ms  max 2.588 ms
+over_present median 0.308 ms  p95 0.422 ms  max 0.444 ms
+memo r2 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 42619, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06066783610731363, "load_seconds": 0.2500667879357934, "rss_after_load_kib": 387348, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387540}
+post_all median 1.856 ms  p95 3.091 ms  max 4.426 ms
+post_first_quarter median 2.323 ms  p95 3.522 ms  max 3.588 ms
+post_last_quarter median 1.828 ms  p95 1.882 ms  max 1.950 ms
+stat_present median 0.081 ms  p95 0.105 ms  max 0.106 ms
+article_present median 2.339 ms  p95 2.378 ms  max 2.494 ms
+over_present median 0.295 ms  p95 0.326 ms  max 0.417 ms
+after r2 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 51429, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06011891644448042, "load_seconds": 2.8396988213062286, "rss_after_load_kib": 454164, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 460884}
+post_all median 23.005 ms  p95 26.313 ms  max 34.118 ms
+post_first_quarter median 23.206 ms  p95 26.878 ms  max 34.118 ms
+post_last_quarter median 22.941 ms  p95 25.141 ms  max 26.261 ms
+stat_present median 0.086 ms  p95 0.171 ms  max 0.172 ms
+article_present median 34.183 ms  p95 35.625 ms  max 38.197 ms
+over_present median 1.429 ms  p95 1.469 ms  max 1.595 ms
+memo r2 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 49737, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06329843495041132, "load_seconds": 2.8214752534404397, "rss_after_load_kib": 454240, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 460960}
+post_all median 22.733 ms  p95 27.036 ms  max 35.417 ms
+post_first_quarter median 23.204 ms  p95 27.388 ms  max 35.417 ms
+post_last_quarter median 22.669 ms  p95 24.711 ms  max 25.899 ms
+stat_present median 0.169 ms  p95 0.243 ms  max 0.283 ms
+article_present median 33.599 ms  p95 35.482 ms  max 38.095 ms
+over_present median 1.550 ms  p95 1.700 ms  max 1.735 ms
+after r3 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 53251, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06281157955527306, "load_seconds": 0.23890420235693455, "rss_after_load_kib": 387460, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387652}
+post_all median 1.829 ms  p95 2.243 ms  max 4.392 ms
+post_first_quarter median 2.121 ms  p95 3.185 ms  max 3.469 ms
+post_last_quarter median 1.813 ms  p95 1.878 ms  max 1.891 ms
+stat_present median 0.082 ms  p95 0.087 ms  max 0.087 ms
+article_present median 2.256 ms  p95 2.279 ms  max 2.280 ms
+over_present median 0.289 ms  p95 0.324 ms  max 0.363 ms
+memo r3 n=120 o=2048 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 2048, "article0_octets": 2027, "samples": 16, "port": 51455, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06600005831569433, "load_seconds": 0.2562415059655905, "rss_after_load_kib": 387284, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 33710, "rss_after_reads_kib": 387668}
+post_all median 1.970 ms  p95 2.975 ms  max 4.173 ms
+post_first_quarter median 2.243 ms  p95 2.671 ms  max 3.649 ms
+post_last_quarter median 1.885 ms  p95 2.920 ms  max 2.975 ms
+stat_present median 0.103 ms  p95 0.115 ms  max 0.154 ms
+article_present median 2.356 ms  p95 2.394 ms  max 2.399 ms
+over_present median 0.298 ms  p95 0.394 ms  max 0.408 ms
+after r3 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 39971, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.062133883126080036, "load_seconds": 2.7589066345244646, "rss_after_load_kib": 454136, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 460664}
+post_all median 22.338 ms  p95 26.183 ms  max 33.508 ms
+post_first_quarter median 21.743 ms  p95 27.168 ms  max 33.508 ms
+post_last_quarter median 22.300 ms  p95 25.459 ms  max 25.867 ms
+stat_present median 0.079 ms  p95 0.169 ms  max 0.181 ms
+article_present median 33.956 ms  p95 35.341 ms  max 38.024 ms
+over_present median 1.611 ms  p95 1.679 ms  max 1.803 ms
+memo r3 n=120 o=32768 rc=0
+{"image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer", "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa", "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8", "articles": 120, "octets": 32768, "article0_octets": 32759, "samples": 16, "port": 60643, "init": "init --profile default --max-article-octets 65536 fn.test", "first_open_seconds": 0.06322704534977674, "load_seconds": 2.7740994449704885, "rss_after_load_kib": 454104, "group_reply": "211 120 1 120 fn.test", "article_octets_read": 525422, "rss_after_reads_kib": 460824}
+post_all median 22.616 ms  p95 26.276 ms  max 33.496 ms
+post_first_quarter median 23.432 ms  p95 27.499 ms  max 33.496 ms
+post_last_quarter median 22.766 ms  p95 25.318 ms  max 26.127 ms
+stat_present median 0.104 ms  p95 0.108 ms  max 0.109 ms
+article_present median 34.235 ms  p95 35.850 ms  max 38.543 ms
+over_present median 1.582 ms  p95 1.671 ms  max 1.762 ms
+MEMO-120-DONE
+after r1 n=120 o=32768 rc=0 stats 48 seconds 1.1578635107725859 per_ms 24.122156474428873
+memo r1 n=120 o=32768 rc=0 stats 48 seconds 1.1062444001436234 per_ms 23.046758336325485
+MEMO-PROF-DONE
+ROUNDS3-DONE

@@ -1,0 +1,10 @@
+## base-cert.log (tail)
+From the cache: installed 242 of 323 books (87 of 135 roots); certifying 81
+Installed from the cache: 242 books
+ACL2 certification passed: books/config-records, books/peer-inbound, books/nntp-auth, books/served, books/bp-native-app, books/bp-session-admission, books/bp-app-handoff, books/bp-app-handoff-time, books/bp-channel-ingress, books/bp-report-deletion, books/bp-fnbs-deletion-codec, books/bp-node-fragment-expiry, books/bp-fnbs-family-codec, books/bp-node-fragment-replacement, books/bp-forward-image, b
+Certification evidence: build/acl2/certify-20260925T083523Z-2922069
+## after-cert.log (tail)
+From the cache: installed 320 of 323 books (132 of 135 roots); certifying 3
+Installed from the cache: 320 books
+ACL2 certification passed: books/octets-stobj, books/frame-stobj, books/records-stobj
+Certification evidence: build/acl2/certify-20260925T085252Z-2964603

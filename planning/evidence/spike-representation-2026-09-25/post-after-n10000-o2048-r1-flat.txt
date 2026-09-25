@@ -1,0 +1,56 @@
+
+Number of samples:   1209
+Sample interval:     0.001 seconds
+Total sampling time: 1.209 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=3507315 "fn-sprof" RUNNING {120FB10723}> (168/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=3507318 "fn owner client" RUNNING {12100DCF13}> (237560/1048576 bytes, 679 hash buckets)
+   #<THREAD tid=3507317 "fn local control accept" RUNNING {121003B403}> (136/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=3507316 "fn outbound feed" RUNNING {120FF73303}> (176/1048576 bytes, 1 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2    208  17.2    208  17.2    208  17.2        -  FN-AG-CAR
+   4     62   5.1    112   9.3    270  22.3        -  FN-GIDX-PUT
+   6     57   4.7    401  33.2    327  27.0        -  FN-INDEX-BUILD
+   8     54   4.5     54   4.5    381  31.5        -  FN-AG-CDR
+  10     52   4.3     53   4.4    433  35.8        -  SB-IMPL::APPEND2
+  12     47   3.9     48   4.0    480  39.7        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  14     43   3.6     77   6.4    523  43.3        -  FN-CBOR-OCTET-LISTP
+  16     42   3.5     42   3.5    565  46.7        -  FN-CBOR-OCTETP
+  18     40   3.3    207  17.1    605  50.0        -  FN-GIDX-BUILD-ENTRIES
+  20     38   3.1     88   7.3    643  53.2        -  FN-RETAIN-OBLIGATION-IDS
+  22     36   3.0     36   3.0    679  56.2        -  SB-KERNEL:STRING=*
+  24     31   2.6     56   4.6    710  58.7        -  FN-CCAR-SEEK
+  26     28   2.3     99   8.2    738  61.0        -  FN-RECORD-PAYLOADP
+  28     25   2.1    187  15.5    763  63.1        -  FN-INDEX-MEMBERSHIP-ENTRIES
+  30     21   1.7     21   1.7    784  64.8        -  foreign function pthread_sigmask
+  32     21   1.7     21   1.7    805  66.6        -  FN-WIRE-AG-CDR
+  34     15   1.2     15   1.2    820  67.8        -  FN-SHS-ROUNDS
+  36     14   1.2     49   4.1    834  69.0        -  FN-INDEX-ARTICLE-ENTRIES
+  38     13   1.1     13   1.1    847  70.1        -  FN-OWN-COMPLETION-CONSUMEDP
+  40     12   1.0     30   2.5    859  71.1        -  FN-OWN-REFRESH
+  42     12   1.0     12   1.0    871  72.0        -  FN-ACAR-NNTP-PROJECTIONP
+  44     11   0.9     11   0.9    882  73.0        -  FN-INDEX-ENTRY
+  46      9   0.7     47   3.9    891  73.7        -  FN-WIRE-FEED-BYTE
+  48      9   0.7      9   0.7    900  74.4        -  FN-WIRE-AG-CAR
+  50      8   0.7     85   7.0    908  75.1        -  FN-SCAR-FEED-BYTE
+  52      7   0.6     49   4.1    915  75.7        -  FN-FIND-ARTICLE
+  54      7   0.6      9   0.7    922  76.3        -  FN-SHS-LIST-BYTE
+  56      7   0.6      7   0.6    929  76.8        -  foreign function __write
+  58      6   0.5     20   1.7    935  77.3        -  FN-ARTICLE-MEMBERSHIPS
+  60      6   0.5      6   0.5    941  77.8        -  FN-SHS-EXTEND
+  62      6   0.5      6   0.5    947  78.3        -  FN-INDEX-ENTRY-GROUP
+  64      6   0.5      6   0.5    953  78.8        -  GENERIC-<
+  66      5   0.4     26   2.2    958  79.2        -  FN-ACCEPTEDP
+  68      5   0.4     10   0.8    963  79.7        -  FN-RECORD-STRING-OCTETS-AUX
+  70      4   0.3      4   0.3    967  80.0        -  SB-IMPL::%LOOKUP-SYMBOL
+  72      4   0.3      4   0.3    971  80.3        -  FN-ARTICLE-BODY-CRLFP
+  74      4   0.3      4   0.3    975  80.6        -  FN-CBOR-AT-MOSTP
+  76      3   0.2     91   7.5    978  80.9        -  SB-KERNEL:%MEMBER-TEST
+  78      3   0.2      6   0.5    981  81.1        -  FN-PCAR-NEXT-LOWER
+  80      3   0.2      6   0.5    984  81.4        -  FN-WIRE-LIST-LENGTH
+------------------------------------------------------------------------
+         65   5.4                                     elsewhere

@@ -1,0 +1,57 @@
+
+Number of samples:   1090
+Sample interval:     0.001 seconds
+Total sampling time: 1.09 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=3515819 "fn-sprof" RUNNING {120FB10723}> (280/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=3515818 "finalizer" RUNNING {120FA8D813}> (120/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=3515822 "fn owner client" RUNNING {12100DCF13}> (323488/1048576 bytes, 873 hash buckets)
+   #<THREAD tid=3515821 "fn local control accept" RUNNING {121003B403}> (136/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=3515820 "fn outbound feed" RUNNING {120FF73303}> (304/1048576 bytes, 2 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2    142  13.0    142  13.0    142  13.0        -  FN-CBOR-OCTETP
+   4    138  12.7    260  23.9    280  25.7        -  FN-CBOR-OCTET-LISTP
+   6    123  11.3    336  30.8    403  37.0        -  FN-RECORD-PAYLOADP
+   8     76   7.0     76   7.0    479  43.9        -  FN-AG-CDR
+  10     46   4.2     46   4.2    525  48.2        -  FN-WIRE-AG-CDR
+  12     30   2.8     30   2.8    555  50.9        -  FN-SHS-ROUNDS
+  14     25   2.3     25   2.3    580  53.2        -  FN-AG-CAR
+  16     23   2.1    334  30.6    603  55.3        -  FN-SCAR-FEED-BYTE
+  18     23   2.1    143  13.1    626  57.4        -  FN-WIRE-FEED-BYTE
+  20     23   2.1     23   2.1    649  59.5        -  FN-WIRE-AG-CAR
+  22     21   1.9    483  44.3    670  61.5        -  FN-SCAR-FEED-COUNTED
+  24     20   1.8     42   3.9    690  63.3        -  FN-WIRE-LIST-LENGTH
+  26     19   1.7     19   1.7    709  65.0        -  FN-ARTICLE-BODY-CRLFP
+  28     15   1.4     28   2.6    724  66.4        -  FN-INJ-APPEND
+  30     12   1.1     23   2.1    736  67.5        -  FN-SERVED-CONN-INDEX
+  32     11   1.0     23   2.1    747  68.5        -  FN-SERVED-CONN-GROUP-INDEX
+  34     11   1.0     23   2.1    758  69.5        -  FN-WIRE-STATE-LINE-LIMIT
+  36     11   1.0     20   1.8    769  70.6        -  FN-SERVED-CONN-INJECTION
+  38     11   1.0     18   1.7    780  71.6        -  FN-SHS-LOAD-LIST-WORD
+  40     11   1.0     15   1.4    791  72.6        -  FN-INJ-NTH
+  42     10   0.9     10   0.9    801  73.5        -  FN-SHS-EXTEND
+  44     10   0.9     10   0.9    811  74.4        -  LENGTH
+  46      9   0.8     21   1.9    820  75.2        -  FN-SERVED-CONN-VERDICTS
+  48      9   0.8     12   1.1    829  76.1        -  FN-WIRE-STATE-LINE-LEN
+  50      8   0.7      8   0.7    837  76.8        -  foreign function pthread_sigmask
+  52      8   0.7      8   0.7    845  77.5        -  FN-ID-SUBJECT-PREIMAGE
+  54      8   0.7      8   0.7    853  78.3        -  FN-SHS-LIST-BYTE
+  56      7   0.6      7   0.6    860  78.9        -  FN-SERVED-MAKE-CONN-GROUP-INDEXED
+  58      7   0.6      7   0.6    867  79.5        -  FN-OCTETP
+  60      6   0.6     15   1.4    873  80.1        -  FN-SERVED-CONN-OBSERVATION
+  62      6   0.6     11   1.0    879  80.6        -  FN-WIRE-STATE-BODY-SIZE
+  64      6   0.6      6   0.6    885  81.2        -  FN-CBOR-AT-MOSTP
+  66      6   0.6      6   0.6    891  81.7        -  GENERIC--
+  68      5   0.5     57   5.2    896  82.2        -  FN-SHS-DIGEST-LIST
+  70      5   0.5     20   1.8    901  82.7        -  FN-WIRE-STATE-BODY-LIMIT
+  72      5   0.5      5   0.5    906  83.1        -  foreign function poll
+  74      5   0.5      5   0.5    911  83.6        -  REVAPPEND
+  76      5   0.5      5   0.5    916  84.0        -  FN-WIRE-MAKE-STATE
+  78      5   0.5      5   0.5    921  84.5        -  GENERIC-+
+  80      4   0.4     70   6.4    925  84.9        -  FN-OWNER-PREPARE
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere
