@@ -117,6 +117,7 @@ the profile's widths and the observations as inputs:
 | run | host | scope | result |
 | --- | --- | --- | --- |
 | `run-20260925T105044Z-4572`, manifest `certify-20260925T105118Z-4150165` | persvati, 2 jobs, 300 s, w25 | `--affected-by` config, hybrid-lifecycle, native-operator, peer-invite: 530 books, 299 certified | 295 passed, 4 failed, none of them this lane's: `books/store-reclaim` (`fn-pb-path-agent` called with one argument, arity changed on dev by the D32 Path change), `tests/acl2/store-reclaim-tests` (its dependent), `books/poster-bytes-buffer` (`fn-pbb-source-index-is-inj-source-of`) and `tests/acl2/octets-stobj-tests`; no changed book is in their include closure's changed set beyond config/lifecycle, and each fails in an event this lane does not touch |
+| `run-20260925T183338Z-5639`, manifest `certify-20260925T183424Z-3570225` | hbox, 2 jobs, 300 s, w28 | the same roots, 289 certified | 285 passed, the same 4 unrelated reds; `books/peer-invite` 3.9 s, `tests/acl2/peer-invite-tests` 5.0 s, `books/native-operator` 6.4 s |
 
 Proof cost at 2 jobs on persvati (same run): `books/peer-invite` 4.6 s,
 `tests/acl2/peer-invite-tests` 5.9 s, `books/config` 1.2 s,
@@ -125,6 +126,22 @@ wall, 5.5 s of it `include-book native-admin`; a WARNING, not over the
 ratchet). The run's other slow books (byte-store-k0*, bp-node-*) are
 unchanged by this lane and were measured on a loaded box.
 
+
+## Native run: NOT done (blocked on dev's red)
+
+The developer image cannot be built from certified bytes: `books/poster-bytes-buffer`
+is in the image closure and is red on dev itself (dev `2c4dbf3d`/`e78e511e`: the D32
+join defect, fix lane pbb-d32), so `tools/proof_artifacts.py acquire --profile default`
+on hbox answers "no complete current artifact set" (tree synced to
+`/tank/fn/scratch/peer-invite/tree`). No image was built from uncertified books.
+The native witness is written and waits for that fix:
+`tests/test_native_peer_invite.py` (three cases: invite/accept/confirm with the
+refusals already-enrolled, unverified (tampered), already-confirmed,
+invitation-consumed, document-kind; an invitation this node never issued; the
+crash between consumption and enrolment on a developer image with
+`FN_PEER_TEST_STOP_AFTER_CONSUME`), driven by
+`planning/evidence/peer-invite-2026-09-25-image.sh` on hbox. The host file
+`host/native/peer-invite.lisp` has therefore not been compiled into an image yet.
 
 ## Not done, and why
 
