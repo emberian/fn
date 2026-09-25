@@ -30,6 +30,29 @@ Record: planning/evidence/reclaim-host-2026-09-25.md.
 - inherited make-check errors fixed: STO-014 spec anchor line, statuses.
 
 ## Certification
-- r1 run-20260925T100702Z-292c (manifest certify-20260925T100724Z-3668605):
-  store-reclaim-buffer failed (one lemma), fixed in REPL.
-- r2 run-20260925T103332Z-559f: running.
+- r1 run-20260925T100702Z-292c (certify-20260925T100724Z-3668605): buffer lemma failed; fixed.
+- D32 join fix: lane/reclaim-d32fix 0915bac2 (+ manifest 50f1340e), persvati
+  run-20260925T183420Z-c5c7, certify-20260925T183440Z-4046016, passed
+  (store-reclaim 8.0 s, store-reclaim-tests 2.4 s). Merged by the deputy (f20ea7ae).
+- r2 run-20260925T103332Z-559f (certify-20260925T103408Z-3975153): four proof
+  failures (indexed-lines correspondence, std/lists books not certified on
+  persvati, holders keystone, a stobj call in a test); all fixed.
+- r3 run-20260925T183827Z-4dd7 (certify-20260925T183859Z-4091844), after merging
+  dev: 265 roots; every book this lane changed PASSES (nntp-responses,
+  nntp-range-indexed(+invariants, tests), nntp-newnews(+tests), nntp-reclaimed,
+  store-reclaim-tests 3.4 s, native-live-status 6.5 s (+tests 5.1 s),
+  store-reclaim-holders 2.0 s) EXCEPT the buffer family: poster-bytes-buffer
+  fails on dev for D32 (pbb-d32 lane owns it), so store-reclaim-buffer,
+  its tests and octets-stobj-tests fail behind it. store-reclaim-buffer must be
+  re-stated over the D32 fn-pbb-path-agent once pbb-d32 lands.
+  Over 10 s in r3: owner-invariants 16.7 s (known, see reclaim-d13), and
+  config-owner-live, native-admin, native-admin-peer, provenance-owner at 10.4-11.0 s
+  on a shared box.
+- r4-r6 (holders tests only, decoupled from the buffer tests): the keystone
+  witness and all three must-fail teeth pass; the COUNT witness
+  `(fn-rcl-store-counts rule 0 caught)` fails (certify-20260925T185623Z-65311).
+  Likely cause: the counts pass the store's own verdict list (fn-sn-verdicts),
+  and the owner fixture's article probably carries an authorship verdict
+  (:verdict-needs-payload), which the per-article witness (verdicts nil) does not
+  see. Not established; next step: evaluate the verdict list in a REPL and
+  state the witness over it. Stopped at the run budget instead of a blind 7th run.

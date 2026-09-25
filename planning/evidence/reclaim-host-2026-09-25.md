@@ -178,3 +178,27 @@ so only the peer/feed paths are in question.
 
 No hbox run: there is no `store reclaim` verb to exercise (section 2). The
 N=5,000 run, disk bytes before and after and the cut campaign wait on it.
+
+## Certification
+
+All persvati, ACL2 8.7 w25 `acl2-literal`, 2 jobs, 300 s, cache
+`/home/ember/fn-certcache`. Manifests under planning/evidence/manifests/.
+
+- `run-20260925T183827Z-4dd7`, manifest `certify-20260925T183859Z-4091844`,
+  after merging dev, `--affected-by` nntp-responses, nntp-newnews,
+  nntp-range-indexed, nntp-reclaimed, native-live-status,
+  store-reclaim-holders, store-reclaim-buffer (265 roots). Every book this lane
+  changed certified: nntp-reclaimed 1.5 s, nntp-range-indexed-invariants
+  2.0 s, nntp-newnews 1.8 s, native-live-status 6.5 s and its tests 5.1 s,
+  store-reclaim-tests 3.4 s, store-reclaim-holders 2.0 s. Failed:
+  books/poster-bytes-buffer (red on dev for D32; lane pbb-d32 owns it) and
+  what includes it: store-reclaim-buffer, its tests, octets-stobj-tests. The
+  buffer twin has to be restated over D32's `fn-pbb-path-agent` when that
+  lands; its proof (section 1) was admitted before D32 in run
+  `run-20260925T100702Z-292c` and in a REPL.
+- The D32 join fix to store-reclaim (branch lane/reclaim-d32fix, 0915bac2):
+  `run-20260925T183420Z-c5c7`, `certify-20260925T183440Z-4046016`, passed.
+- store-reclaim-holders-tests (`certify-20260925T185623Z-65311`): the
+  keystone's witness and its three `must-fail` teeth pass; the status-count
+  witness fails. It is open (LANEDUMP names the probable cause: the
+  fixture's verdict list).
