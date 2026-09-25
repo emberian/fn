@@ -471,7 +471,8 @@
         "PRF-072",
         "PRF-004",
         "PRF-080",
-        "PRF-083"
+        "PRF-083",
+        "PRF-110"
       ],
       "verification": [
         "proof",
@@ -2081,6 +2082,30 @@
         "planning/evidence/path-and-login-2026-09-25.md"
       ],
       "implementation_note": "Local policy, not an RFC requirement (RFC 4643 relates a login to nothing beyond the server's own authorization). `fn principal bind LOGIN HEX` writes the login's `signing` field into the credential file (fn-native-auth-admin-bind; set-password keeps bindings; a malformed value refuses the profile); `fn policy set posting-policy bound-logins|open` is a durable configuration record applied live. host/native/owner.lisp fnn-owner-attempt-served calls fn-lb-owner-gate (through host/owner-host.lisp fn-owner-login-gate) before the transit attempt: under the policy a bound login's unsigned article is :login-unsigned and one whose carrier names another principal :login-not-bound, each its own 441 line; unbound logins, unauthenticated connections, local and BP submissions and policy-off nodes are unchanged. The verdict and its service-log line name the login; the Store's kind-4 verdict record does not."
+    },
+    {
+      "id": "NNT-014",
+      "title": "XPAT is listed in the capability block and answers RFC 2980 section 2.9 on the served reader step",
+      "specification": "specs/nntp.md#legacy-spellings-rfc-2980",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-110"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/nntp-xpat.lisp",
+        "books/nntp-responses.lisp",
+        "tests/acl2/nntp-xpat-tests.lisp",
+        "tests/acl2/nntp-legacy-tests.lisp",
+        "tools/fn_web.py",
+        "tests/test_fn_web.py",
+        "planning/evidence/reader-surface-2026-09-25.md"
+      ],
+      "implementation_note": "RFC 2980 section 2.9 is the rule: additional pattern arguments are joined by one SP into one pattern (as INN does); the comma is the alternative (RFC 3977 section 4.2); matching is case-sensitive (RFC 3977 section 4.2). The label is a private-extension label (RFC 3977 section 3.3.3). The web reader passes the reader's wildmat verbatim."
     }
   ]
 }
