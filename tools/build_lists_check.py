@@ -92,7 +92,7 @@ DTN_RAW_REACH: dict[tuple[str, str], str] = {
        "live-owner admin arm; build-dtn.lisp names :nntp-service and :control in "
        "*fnn-image-omitted-surfaces*, so the operator refuses `run` and `post` "
        "(exit 5) and never takes the live arm"
-       for name in ("fnn-control-admin", "fnn-control-owner-run-normalized",
+       for name in ("fnn-control-admin", "fnn-control-live-status", "fnn-control-owner-run-normalized",
                     "fnn-control-socket-path-p", "fnn-control-submit",
                     "fnn-feed-service-close", "fnn-feed-service-start",
                     "fnn-feed-service-wake", "fnn-native-auth-startup-hook")},
