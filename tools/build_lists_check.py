@@ -88,6 +88,10 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
          for name in ("fn-native-control-host-status-class",
                       "fn-native-control-host-status-exit-code",
                       "fn-native-control-host-refusal-status")}),
+    "host/peer-invite-host.lisp": (
+        "peering invitations (PRF-097); used only by host/native/peer-invite.lisp, "
+        "which build-dtn.lisp does not load: the operator refuses `peer "
+        "genesis|invite|accept|confirm` on an image that omits :control", {}),
     "host/native-hybrid-control-host.lisp": (
         "hybrid authoring control; used by control.lisp and hybrid-control.lisp, not loaded", {}),
     "host/topic-history-metadata-host.lisp": (
@@ -108,6 +112,11 @@ DTN_RAW_REACH: dict[tuple[str, str], str] = {
                     "fnn-control-socket-path-p", "fnn-control-submit",
                     "fnn-feed-service-close", "fnn-feed-service-start",
                     "fnn-feed-service-wake", "fnn-native-auth-startup-hook")},
+    ("host/native/operator.lisp", "fnn-pinv-execute"):
+        "operator.lisp's peering executor; fnn-operator-dispatch-plan maps :peering "
+        "to the :control surface, which build-dtn.lisp names in "
+        "*fnn-image-omitted-surfaces*, so the DTN operator refuses it (the usage exit) "
+        "before this call",
     ("host/native/operator.lisp", "fnn-native-auth-admin-execute"):
         "operator.lisp's `principal` executor; build-dtn.lisp names :credentials in "
         "*fnn-image-omitted-surfaces*, so the operator refuses it (exit 5)",

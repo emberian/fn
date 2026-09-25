@@ -410,7 +410,10 @@ configuration usage result."
       (let ((action (fnn-core 'fn-native-operator-host-result-native-action result)))
         (let ((omitted (case action
                          ((:run :post) :nntp-service)
-                         (:principal :credentials))))
+                         (:principal :credentials)
+                         ;; peer genesis|invite|accept|confirm reach the owner
+                         ;; as control requests 9 to 11 (host/native/peer-invite.lisp).
+                         (:peering :control))))
           (when (and (eq action :compact) (null *fnn-compact-callback*))
             (fnn-operator-emit-status
              :usage "action" "compact needs the checkpoint surface, which this image omits")
