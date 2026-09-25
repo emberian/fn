@@ -3510,6 +3510,47 @@
           "name": "fn-icar-submission-targets-is-submission-targets"
         }
       ]
+    },
+    {
+      "id": "PRF-087",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "create-fn-octets{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-get{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-put{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-append-octet{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-list{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-from-list{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oct-slice-list-is-take-nthcdr"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oct-prefix-equalp-is-list-prefixp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oct-suffix-equalp-is-equal"
+        }
+      ]
     }
   ]
 }
