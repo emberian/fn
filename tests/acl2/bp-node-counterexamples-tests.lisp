@@ -15,6 +15,7 @@
 (include-book "../../books/bp-fnbs-conflict-publication")
 (include-book "../../books/bp-node-progress-selection-invariants")
 (include-book "../../books/bp-node-receive-boundary")
+(include-book "../../books/bp-node-rotation")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -957,7 +958,8 @@
 
 ;; ---------------------------------------------------------------------
 ;; Coverage of spec 11.1 over this machine (each row names its subject).
-;; Present here: N05, N06 (machine half), N07 (the seven-field recovery
+;; Present here: N16 (rotation: the :rotate transition, the credit reset
+;; on the durable selection, recovery from the checkpoint), N05, N06 (machine half), N07 (the seven-field recovery
 ;; event, which the host builds at bp-service.lisp fnn-bps-open with the
 ;; decision fnn-bps-clock-domain-gate returns; the six-field form stays
 ;; ungated for callers that pass no decision), N08, N11 (both halves, and
@@ -977,7 +979,7 @@
 ;;   N10: machine-level reassembly order (slice C2).
 ;;   N12, BP-R10: TCPCL segment/END ACK machine (tcpcl books).
 ;;   N14: Store pin release join (bp-release).
-;;   N16, BP-R21: journal rotation (slice E), no generation transition.
+;;   BP-R21: journal exhaustion at scale (slice E), measured natively only.
 ;;   N17, BP-R23: codec seam / cross-implementation vectors, not a trace.
 ;;   N18, BP-R24: owner-progress monitor and bounded service turn (slice B).
 ;;   BP-R01: FNWF scheduler persistence (scheduler, no native caller).
@@ -985,3 +987,180 @@
 ;;   BP-R14: route change against historical replay (no route in replay
 ;;     input; the replay half needs the ordered-row scan, not a fixture).
 ;;   BP-R18, R20: local report processing and reverse relay routing.
+
+;; ---------------------------------------------------------------------
+;; N16: rotation.  A recovered node holding bundle A rotates its journal:
+;; ACL2 checkpoints the replay the recovery event carried, fn-bpnp-step
+;; proposes its publication, and only the durable answer resets the record
+;; count.  Recovery from the checkpoint equals recovery over the whole
+;; history; after it, new work takes a later arrival and a later epoch, and
+;; a stale completion from the rotating epoch matches nothing.
+(defconst *bpcx-n16-replay*
+  (list :ready (fn-bpnf-held-list *bpcx-s1*) nil '(1 . 0) 1))
+(defconst *bpcx-n16-event*
+  (list :recover-fnbs 2 nil :ready *bpcx-n16-replay* 1))
+(defconst *bpcx-n16-q*
+  (fn-bpnf-answer-state (fn-bpnp-step *bpcx-raw-s0* *bpcx-n16-event*)))
+(defconst *bpcx-n16-ck* (fn-bpnr-checkpoint-of-event *bpcx-n16-event* 1))
+(defconst *bpcx-n16-budget*
+  (fn-bpnr-depth-budget (fn-bpn-machine-state-max-jobs (fn-bpnf-base *bpcx-n16-q*))))
+(defconst *bpcx-n16-octets* (fn-bpnr-checkpoint-octets *bpcx-n16-ck* *bpcx-n16-budget*))
+(defconst *bpcx-n16-rotate* (fn-bpnp-step *bpcx-n16-q* (list :rotate 1 *bpcx-n16-ck*)))
+(defconst *bpcx-n16-r* (fn-bpnf-answer-state *bpcx-n16-rotate*))
+(defconst *bpcx-n16-selected*
+  (fn-bpnp-step *bpcx-n16-r* '(:persist-result 2 0 :durable)))
+(defconst *bpcx-n16-plan*
+  (fn-bpnr-selection-plan t *bpcx-n16-octets* *bpcx-n16-budget*))
+(defconst *bpcx-n16-reopen*
+  (fn-bpnr-recover-auto-event *bpcx-raw-s0* nil :ready nil *bpcx-n16-plan*))
+(defconst *bpcx-n16-o*
+  (fn-bpnf-answer-state (fn-bpnp-step *bpcx-raw-s0* *bpcx-n16-reopen*)))
+(defconst *bpcx-n16-b*
+  (fn-bpn-send-bundle *bpcx-sender-config* *bpcx-dest* '(9 9) 11 *bpcx-obs*))
+(defconst *bpcx-n16-new*
+  (fn-bpnp-step *bpcx-n16-o* (bpcx-receive-event (fn-bpb-encode *bpcx-n16-b*))))
+(assert-event
+ (and (equal (len (fn-bpnf-held-list *bpcx-n16-q*)) 1)
+      (equal (fn-bpnp-used *bpcx-n16-q*) 1)
+      (consp *bpcx-n16-octets*)
+      (equal (fn-bpnr-checkpoint-decode *bpcx-n16-octets* *bpcx-n16-budget*)
+             *bpcx-n16-ck*)
+      (fn-bpnp-host-eventp (list :rotate 1 *bpcx-n16-ck*))
+      (equal (fn-bpnf-answer-effects *bpcx-n16-rotate*)
+             '((:persist-checkpoint 2 0 1)))
+      ;; Proposed, not yet durable: the count is unchanged.
+      (equal (fn-bpnp-used *bpcx-n16-r*) 1)
+      (equal (fn-bpnf-answer-effects *bpcx-n16-selected*)
+             '((:generation-selected 1)))
+      (equal (fn-bpnp-used (fn-bpnf-answer-state *bpcx-n16-selected*)) 0)
+      (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpcx-n16-selected*))
+             (fn-bpnf-held-list *bpcx-n16-q*))
+      ;; Reopen from the checkpoint alone: the same event but the row count.
+      (equal (car *bpcx-n16-plan*) :selected)
+      (equal *bpcx-n16-reopen* (update-nth 5 0 *bpcx-n16-event*))
+      (equal (fn-bpnf-held-list *bpcx-n16-o*) (fn-bpnf-held-list *bpcx-n16-q*))
+      (equal (fn-bpnp-used *bpcx-n16-o*) 0)
+      ;; New work: a later arrival, and an operation in a later epoch.
+      (equal (car (car (fn-bpnf-answer-effects *bpcx-n16-new*))) :persist)
+      (equal (fn-bpn-nth 3 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *bpcx-n16-new*))))
+             1)
+      (< 2 (fn-bpn-nth 1 (car (fn-bpnf-answer-effects *bpcx-n16-new*))))
+      ;; The stale completion of the rotating epoch matches nothing.
+      (null (fn-bpnf-answer-effects
+             (fn-bpnp-step (fn-bpnf-answer-state *bpcx-n16-new*)
+                           '(:persist-result 2 0 :durable))))))
+
+;; Teeth of fn-bpnp-step-rotate-proposes-only-own-projection: the proposal
+;; needs a quiescent state and the state's own projection.
+;; Not quiescent: an operation was allocated after recovery.
+(defconst *bpcx-n16-busy*
+  (fn-bpnf-answer-state
+   (fn-bpnp-step *bpcx-n16-q* (bpcx-receive-event (fn-bpb-encode *bpcx-n16-b*)))))
+(assert-event
+ (equal (fn-bpnf-answer-effects
+         (fn-bpnp-step *bpcx-n16-busy* (list :rotate 1 *bpcx-n16-ck*)))
+        '((:rotation-refused 1))))
+(must-fail
+ (assert-event
+  (equal (car (car (fn-bpnf-answer-effects
+                    (fn-bpnp-step *bpcx-n16-busy* (list :rotate 1 *bpcx-n16-ck*)))))
+         :persist-checkpoint)))
+;; Not the projection: a checkpoint without the held row.
+(defconst *bpcx-n16-empty-ck* (update-nth 2 nil *bpcx-n16-ck*))
+(assert-event
+ (and (fn-bpnr-checkpointp *bpcx-n16-empty-ck*)
+      (equal (fn-bpnf-answer-effects
+              (fn-bpnp-step *bpcx-n16-q* (list :rotate 1 *bpcx-n16-empty-ck*)))
+             '((:rotation-refused 1)))))
+;; Not the projection: a checkpoint whose credit disagrees.
+(assert-event
+ (equal (fn-bpnf-answer-effects
+         (fn-bpnp-step *bpcx-n16-q* (list :rotate 1 (update-nth 6 0 *bpcx-n16-ck*))))
+        '((:rotation-refused 1))))
+
+;; Teeth of fn-bpnp-step-rotation-resets-credit-only-on-durable: a refused
+;; or uncertain answer, or a stale operation id, leaves the count.
+(assert-event
+ (and (equal (fn-bpnp-used (fn-bpnf-answer-state
+                            (fn-bpnp-step *bpcx-n16-r* '(:persist-result 2 0 :refused))))
+             1)
+      (equal (fn-bpnf-answer-effects
+              (fn-bpnp-step *bpcx-n16-r* '(:persist-result 2 0 :refused)))
+             '((:rotation-refused 1)))
+      (equal (fn-bpnp-used (fn-bpnf-answer-state
+                            (fn-bpnp-step *bpcx-n16-r* '(:persist-result 2 0 :uncertain))))
+             1)
+      (equal (fn-bpnp-used (fn-bpnf-answer-state
+                            (fn-bpnp-step *bpcx-n16-r* '(:persist-result 1 0 :durable))))
+             1)
+      ;; Uncertain fences: a later durable answer is inert.
+      (null (fn-bpnf-answer-effects
+             (fn-bpnp-step (fn-bpnf-answer-state
+                            (fn-bpnp-step *bpcx-n16-r* '(:persist-result 2 0 :uncertain)))
+                           '(:persist-result 2 0 :durable))))))
+(must-fail
+ (assert-event
+  (equal (fn-bpnp-used (fn-bpnf-answer-state
+                        (fn-bpnp-step *bpcx-n16-r* '(:persist-result 2 0 :refused))))
+         0)))
+
+;; Teeth of fn-bpnr-recover-from-checkpoint-equals-full-recover, one per
+;; hypothesis.  Witness: *bpcx-n16-reopen* above (plan0 (:none) over the
+;; kind-5 row of A would be the full history; the model replay stands in).
+;; A damaged plan0: full recovery faults, the checkpoint does not.
+(defconst *bpcx-n16-full-ok*
+  (fn-bpnr-recover-auto-event *bpcx-raw-s0* nil :ready nil '(:none)))
+(defconst *bpcx-n16-ck0*
+  (fn-bpnr-checkpoint-of-replay 1 (fn-bpnr-replay-from nil nil (fn-bpnf-base *bpcx-raw-s0*)) 0))
+(defconst *bpcx-n16-oct0* (fn-bpnr-checkpoint-octets *bpcx-n16-ck0* *bpcx-n16-budget*))
+(assert-event
+ (and (equal (car (fn-bpn-nth 4 *bpcx-n16-full-ok*)) :ready)
+      (equal (car (fn-bpn-nth 4 (fn-bpnr-recover-auto-event
+                                 *bpcx-raw-s0* nil :ready nil '(:damaged))))
+             :fault)))
+(must-fail
+ (assert-event
+  (equal (fn-bpnr-recover-auto-event
+          *bpcx-raw-s0* nil :ready nil
+          (fn-bpnr-selection-plan t *bpcx-n16-oct0* *bpcx-n16-budget*))
+         (update-nth 5 0 (fn-bpnr-recover-auto-event
+                          *bpcx-raw-s0* nil :ready nil '(:damaged))))))
+;; Octets absent (a budget the value does not fit): the selection is
+;; damaged and recovery faults where full recovery is ready.
+(assert-event (null (fn-bpnr-checkpoint-octets *bpcx-n16-ck* 2)))
+(must-fail
+ (assert-event
+  (equal (fn-bpnr-recover-auto-event
+          *bpcx-raw-s0* nil :ready nil
+          (fn-bpnr-selection-plan t (fn-bpnr-checkpoint-octets *bpcx-n16-ck* 2) 2))
+         *bpcx-n16-full-ok*)))
+;; A prefix whose replay is not ready: an improper row faults the full
+;; replay, while the checkpoint of that fault is not what full recovery
+;; computes.
+(defconst *bpcx-n16-bad-rows* '(("x" (1 2 3))))
+(defconst *bpcx-n16-bad-ck*
+  (fn-bpnr-checkpoint-of-replay
+   1 (fn-bpnr-replay-from nil *bpcx-n16-bad-rows* (fn-bpnf-base *bpcx-raw-s0*)) 0))
+(assert-event
+ (equal (car (fn-bpnr-replay-from nil *bpcx-n16-bad-rows* (fn-bpnf-base *bpcx-raw-s0*)))
+        :fault))
+(must-fail
+ (assert-event
+  (equal (fn-bpnr-recover-auto-event
+          *bpcx-raw-s0* nil :ready nil
+          (fn-bpnr-selection-plan
+           t (fn-bpnr-checkpoint-octets *bpcx-n16-bad-ck* *bpcx-n16-budget*)
+           *bpcx-n16-budget*))
+         (update-nth 5 0 (fn-bpnr-recover-auto-event
+                          *bpcx-raw-s0* nil :ready *bpcx-n16-bad-rows* '(:none))))))
+
+;; Teeth of fn-bpnr-rotation-crash-recovers-old-or-new: before the rename
+;; may have been issued, the new file is never visible.
+(assert-event
+ (and (equal (fn-bpnr-crash-visible :marker-staged nil *bpcx-n16-octets* :new) nil)
+      (equal (fn-bpnr-crash-visible :marker-attempted nil *bpcx-n16-octets* :new)
+             *bpcx-n16-octets*)))
+(must-fail
+ (assert-event
+  (equal (fn-bpnr-crash-visible :directory nil *bpcx-n16-octets* :new)
+         *bpcx-n16-octets*)))
