@@ -204,6 +204,17 @@
              (fn-path-identityp (cadddr argv)))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
+       ; The served POST posting policy (books/login-binding.lisp):
+       ; `bound-logins' refuses a bound login's article unless it is signed
+       ; by the login's bound principal; `open' is the default behaviour.
+       ; A durable `:set-policy' record like path-identity, applied live.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) "posting-policy")
+             (member-equal (cadddr words) '("bound-logins" "open")))
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two
@@ -233,6 +244,9 @@
                (stringp (caddr words))
                (not (equal (caddr words) "")))
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
+         ((and (consp (cdr words))
+               (member-equal (cadr words) '("budget" "carries")))
+          (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ((and (consp words) (equal (car words) "control"))
         (fn-native-admin-control-plan words argv))
@@ -298,6 +312,28 @@
                     name
                     (fn-record-octets-string (fn-native-admin-result-peer plan)))))
             (t nil)))))
+
+; PRF-099: the deltas over the live peer table.  An :extend-peer plan
+; (`peer carries', `peer budget') extends the named boundary's rows as the
+; table holds them now (fn-pcb-extend-delta); every other plan is
+; fn-native-admin-plan-deltas unchanged.  Host: host/native-admin-host.lisp
+; fn-native-admin-host-owner-reconfigure (the live owner's table) and
+; fn-native-admin-host-apply (the replayed store's table).
+(defun fn-native-admin-plan-deltas-over (plan peers)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-admin-result-status plan) :accepted)
+           (equal (fn-native-admin-result-kind plan) :extend-peer))
+      (let ((delta (fn-pcb-extend-delta
+                    (fn-record-octets-string (fn-native-admin-result-name plan))
+                    (fn-native-admin-result-value plan)
+                    peers)))
+        (if delta (list delta) nil))
+    (fn-native-admin-plan-deltas plan)))
+
+(defthm fn-native-admin-plan-deltas-over-other-plans-by-definition
+  (implies (not (equal (fn-native-admin-result-kind plan) :extend-peer))
+           (equal (fn-native-admin-plan-deltas-over plan peers)
+                  (fn-native-admin-plan-deltas plan))))
 
 (encapsulate ()
 (local (defthm kind-of-result
@@ -560,11 +596,16 @@ to Common Lisp's guarded APPEND."
     (list record)))
 
 (defun fn-native-admin-publication-authorize
-    (records frontier config-records record lock-owned observed-names)
+    (records frontier config-records record lock-owned observed-names
+             max-generations)
   "Authorize this exact final configuration name once.  LOCK-OWNED and
 OBSERVED-NAMES are raw physical observations.  ACL2 binds them to the record's
 generation, the candidate replay/open check, the fixed filename, and the
-shared immutable publication state before raw Lisp may execute an I/O action."
+shared immutable publication state before raw Lisp may execute an I/O action.
+MAX-GENERATIONS is the operator's bound, the store profile's
+`max-config-generations' (D27, PRF-102): a generation above it is refused
+`:max-config-generations', so the namespace never outgrows the listing bound
+recovery observes it under (`fn-nco-observe')."
   (declare (xargs :guard t))
   (if (not lock-owned)
       (fn-native-admin-publication-result :refused :lock nil nil nil)
@@ -586,6 +627,9 @@ shared immutable publication state before raw Lisp may execute an I/O action."
                                  (fn-cfg-generation current)))
                      (not (equal (fn-cfg-record-generation record) generation)))
                  (fn-native-admin-publication-result :refused :generation nil nil nil))
+                ((< (nfix max-generations) generation)
+                 (fn-native-admin-publication-result
+                  :refused :max-config-generations nil nil nil))
                 ((null name)
                  (fn-native-admin-publication-result :refused :generation-name nil nil nil))
                 ((fn-native-admin-name-memberp name observed-names)
@@ -617,11 +661,36 @@ shared immutable publication state before raw Lisp may execute an I/O action."
 ;; Teeth: tests/acl2/native-admin-tests.lisp.
 (defthm fn-native-admin-publication-is-authorized-only-under-the-lock
   (let ((result (fn-native-admin-publication-authorize
-                 records frontier config-records record lock-owned observed-names)))
+                 records frontier config-records record lock-owned observed-names
+                 max-generations)))
     (and (implies (equal (fn-native-admin-publication-status result) :accepted)
                   lock-owned)
          (implies (fn-native-admin-publication-jpub result)
                   lock-owned)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
+                                  (fn-cnode-config-replay fn-native-admin-candidate-openp
+                                   fn-native-admin-config-name fn-cfg-recordp)))))
+
+;; KEYSTONE (D27, PRF-102: the writer refuses exactly past the operator's
+;; bound).  An accepted publication names a natural generation within
+;; MAX-GENERATIONS, the profile's `max-config-generations' the host reads
+;; from the store it opened (host/native/admin.lisp `fnn-admin-authorize' ->
+;; host/store-node-host.lisp `fn-store-cfg-native-admin-authorize', which
+;; computes it with `fn-bs-profile-max-config-generations'); and a record
+;; that every other gate admits is refused `:max-config-generations' exactly
+;; when its generation is above that bound.  Generations are contiguous from
+;; 1 (`fn-nco-canonical-contiguousp'), so the namespace after an accepted
+;; publication holds GENERATION entries, which `fn-nco-observe' admits under
+;; the same field (`fn-nco-observe-refuses-exactly-past-the-operator-bound').
+(defthm fn-native-admin-publication-within-the-operator-bound
+  (let ((result (fn-native-admin-publication-authorize
+                 records frontier config-records record lock-owned observed-names
+                 max-generations)))
+    (implies (equal (fn-native-admin-publication-status result) :accepted)
+             (and (natp (fn-native-admin-publication-generation result))
+                  (<= (fn-native-admin-publication-generation result)
+                      (nfix max-generations)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
                                   (fn-cnode-config-replay fn-native-admin-candidate-openp

@@ -829,6 +829,17 @@ follows is justified only by this line."
           detail))
   :refused)
 
+;;; PRF-099: on NNTP transit, a refusal of a present carrier is named by
+;;; ACL2's class (books/peer-carriage.lisp fn-pcb-refusal-class through
+;;; fn-owner-transit-refusal-class): no-local-binding, unsupported-profile,
+;;; signature-failed or malformed.  ED and ML are the primitive outcomes
+;;; when they were observed.  Other ingresses keep ACL2's plan reason.
+(defun fnn-owner-transit-class (plan payload nntp-transit-p ed ml)
+  (if (not nntp-transit-p) plan
+    (let ((class (fnn-owner-core 'fn-owner-transit-refusal-class
+                                 (fnn-octet-list payload) t ed ml)))
+      (if (keywordp class) (list :refused class) plan))))
+
 (defun fnn-owner-attempt-transit (service msgid payload groups evidence
                                   &optional nntp-transit-p)
   "One ingress decision for both NNTP and BP transit under the caller's
@@ -864,7 +875,8 @@ reason before any Store call.  An ordinary article's groups are unchanged."
       ((eq form :absent)
        (fnn-owner-attempt service msgid payload groups evidence))
       ((not (and (consp form) (eq (first form) :ok)))
-       (fnn-owner-transit-refused form))
+       (fnn-owner-transit-refused
+        (fnn-owner-transit-class form payload nntp-transit-p nil nil)))
       (t
        (fnn-owner-attempt-handlers (fnn-owner-service-store service)
            (let* ((store (fnn-owner-service-store service))
@@ -903,6 +915,12 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                              codes (fnn-octet-list obligation)
                              (fnn-octet-list subject) (fnn-octet-list evidence)
                              charge)))
+                     ;; PRF-099: the boundary's opaque-carriage budget,
+                     ;; decided inside the event constructor over the
+                     ;; owner-carried usage; a refusal names its bound.
+                     (when (and (consp event) (eq (first event) :refused))
+                       (return-from fnn-owner-attempt-transit
+                         (fnn-owner-transit-refused event)))
                      (let ((boundary (fnn-owner-core
                                       'fn-owner-signed-event-boundary event)))
                        (unless (eq boundary :ok)
@@ -915,7 +933,9 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                        (fnn-owner-identity-commit service event)))))
                (unless (and (consp plan) (eq (first plan) :ok))
                  (return-from fnn-owner-attempt-transit
-                   (fnn-owner-transit-refused plan)))
+                   (fnn-owner-transit-refused
+                    (fnn-owner-transit-class plan payload nntp-transit-p
+                                             nil nil))))
              (unless (eq (fnn-owner-advance-clock) :observed)
                (return-from fnn-owner-attempt-transit :clock-unusable))
              (let* ((source (second plan))
@@ -938,7 +958,11 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                             (eq (first observations) :verified)
                             (eq (first ml-observation) :verified))
                  (return-from fnn-owner-attempt-transit
-                   (fnn-owner-transit-refused :signature)))
+                   (fnn-owner-transit-refused
+                    (fnn-owner-transit-class
+                     (list :refused :signature) payload nntp-transit-p
+                     (first observations)
+                     (and observed-ml-key (first ml-observation))))))
                (multiple-value-bind (obligation subject ignored)
                    (fnn-metadata msgid payload)
                  (declare (ignore ignored))
@@ -969,11 +993,26 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 ;;; ACL2 (fn-pa-served-word): a present carrier the plan refused carries the
 ;;; plan's reason to its own 441 line, and a carrier-absent article is the
 ;;; unsigned arm, fnn-owner-attempt, with its word unchanged.
+;;;
+;;; First, the posting policy's login gate (books/login-binding.lisp
+;;; fn-lb-owner-gate through host/owner-host.lisp fn-owner-login-gate): under
+;;; `posting-policy bound-logins' a bound login's article that is unsigned, or
+;;; signed by another principal, is refused with the gate's reason
+;;; (:login-unsigned, :login-not-bound) before any Store call; every other
+;;; verdict continues into the unchanged attempt.  The verdict's log line
+;;; names the login.
 (defun fnn-owner-attempt-served (service msgid payload groups evidence)
   (setq *fnn-owner-transit-detail* nil)
-  (let ((word (fnn-owner-attempt-transit service msgid payload groups evidence)))
-    (fnn-owner-core 'fn-owner-served-carried-word word
-                    *fnn-owner-transit-detail*)))
+  (let ((gate (fnn-owner-core 'fn-owner-login-gate (fnn-octet-list payload))))
+    (unless (and (consp gate) (member (first gate) '(:pass :refused)))
+      (fnn-fault "owner returned malformed login gate ~a" gate))
+    (fnn-owner-log 'fn-owner-login-log-line t)
+    (let ((word (if (eq (first gate) :refused)
+                    (fnn-owner-transit-refused gate)
+                  (fnn-owner-attempt-transit service msgid payload groups
+                                             evidence))))
+      (fnn-owner-core 'fn-owner-served-carried-word word
+                      *fnn-owner-transit-detail*))))
 
 (defun fnn-owner-retention-commit (service event)
   "Publish one ACL2-authored retention event through the normal Store path."
@@ -1505,10 +1544,17 @@ refused, not injected under a stale time (D10-a)."
                           (fnn-owner-complete-bound-submission
                            service
                            (lambda ()
-                             (fnn-owner-action 'fn-owner-operator-submit
-                                               (fnn-octet-list msgid)
-                                               (mapcar #'fnn-octet-list groups)
-                                               (fnn-octet-list payload)))
+                             (let ((submitted
+                                     (fnn-owner-action 'fn-owner-operator-submit
+                                                       (fnn-octet-list msgid)
+                                                       (mapcar #'fnn-octet-list groups)
+                                                       (fnn-octet-list payload))))
+                               ;; An article refused at admission never
+                               ;; reaches an outcome line: ACL2 rendered its
+                               ;; refusal line with the submit
+                               ;; (fn-olog-control-refusal-line), NIL otherwise.
+                               (fnn-owner-log 'fn-owner-log-line t)
+                               submitted))
                            msgid :injected groups evidence generation txid)))
                     ;; A refusal carries ACL2's reason to the operator: the
                     ;; injection decision's reason, mapped to the control
@@ -1546,6 +1592,13 @@ EPIPE and the client saw a bare close)."
      (unless (eq (fnn-owner-action 'fn-owner-chunk cid
                                    (fnn-octet-list incoming)) :ok)
        (fnn-refuse "owner no longer knows connection ~d" cid))
+     ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp
+     ;; fn-olog-served-refusal-lines): a POST refused before it became a
+     ;; submission has no outcome line of its own.
+     (let ((lines (fnn-global 'fn-owner-refusal-lines)))
+       (unless (and (listp lines) (every #'fnn-octet-list-p lines))
+         (fnn-fault "owner returned malformed refusal log lines"))
+       (dolist (line lines) (fnn-log-line line)))
      (let ((reply (fnn-owner-octets-global 'fn-owner-output))
            (closing (fnn-owner-bool-global 'fn-owner-closep))
            (starttls (fnn-owner-bool-global 'fn-owner-starttlsp))

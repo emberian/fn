@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-auth-profile")
 (include-book "../../books/codec-attach")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; These are the executable subjects the saved image reaches through the host
 ; wrapper.  Admission without Common Lisp compliance would not be deployment
@@ -38,7 +39,7 @@
          "posting = false")))
 
 (defconst *fn-native-auth-test-result*
-  (fn-native-auth-load *fn-native-auth-test-file* t t nil nil))
+  (fn-native-auth-load *fn-native-auth-test-file* t t nil nil 128))
 (defconst *fn-native-auth-test-config*
   (fn-native-auth-result-config *fn-native-auth-test-result*))
 
@@ -61,18 +62,18 @@
   (equal
    (fn-auth-config-requiredp
     (fn-native-auth-result-config
-     (fn-native-auth-load *fn-native-auth-test-file* t t t nil)))
+     (fn-native-auth-load *fn-native-auth-test-file* t t t nil 128)))
    t)))
 
 ; Missing is an explicit observation and preserves the policy with no creds.
 (assert-event
- (equal (fn-native-auth-load nil nil t nil nil)
+ (equal (fn-native-auth-load nil nil t nil nil 128)
         (list :accepted (fn-auth-make-config t nil nil nil))))
 
 ; Protected-only cannot become live until a real native TLS facility can
 ; deliver :tls-established.  File contents cannot weaken that prerequisite.
 (assert-event
- (equal (fn-native-auth-load *fn-native-auth-test-file* t t t nil)
+ (equal (fn-native-auth-load *fn-native-auth-test-file* t t t nil 128)
         '(:refused :protected-transport-unavailable)))
 
 ; Legacy cleartext is refused by name rather than read or migrated.
@@ -85,7 +86,7 @@
              "salt = \"00000000000000000000000000000000\""
              "digest = \"1111111111111111111111111111111111111111111111111111111111111111\""
              "posting = true"))
-          t nil nil nil))
+          t nil nil nil 128))
         :cleartext-credential))
 
 ; Each name and field has one meaning.  A later table/value never wins.
@@ -93,14 +94,14 @@
  (equal (fn-native-auth-result-reason
          (fn-native-auth-load
           (append *fn-native-auth-test-file* *fn-native-auth-test-file*)
-          t nil nil nil))
+          t nil nil nil 128))
         :duplicate-login))
 (assert-event
  (equal (fn-native-auth-result-reason
          (fn-native-auth-load
           (fn-native-auth-test-lines
            '("[login.\"reader\"]" "posting = true" "posting = false"))
-          t nil nil nil))
+          t nil nil nil 128))
         :duplicate-field))
 
 ; Widths are ACL2's.  A short salt never reaches the served verifier.
@@ -113,7 +114,7 @@
              "salt = \"00\""
              "digest = \"1111111111111111111111111111111111111111111111111111111111111111\""
              "posting = true"))
-          t nil nil nil))
+          t nil nil nil 128))
         :credential-shape))
 
 ; The table key is the exact unescaped canonical writer subset.  Quote and
@@ -129,7 +130,7 @@
                  (concatenate 'string "salt = \"" *fn-native-auth-test-salt* "\"")
                  (concatenate 'string "digest = \"" *fn-native-auth-test-digest* "\"")
                  "posting = false"))
-          t nil nil nil))
+          t nil nil nil 128))
         :table))
 (assert-event
  (equal (fn-native-auth-result-reason
@@ -140,7 +141,7 @@
                  (concatenate 'string "salt = \"" *fn-native-auth-test-salt* "\"")
                  (concatenate 'string "digest = \"" *fn-native-auth-test-digest* "\"")
                  "posting = false"))
-          t nil nil nil))
+          t nil nil nil 128))
         :table))
 (assert-event
  (fn-native-auth-login-namep '(33 126)))
@@ -151,12 +152,62 @@
 (assert-event
  (equal (fn-native-auth-result-status
          (fn-native-auth-load
-          (make-list *fn-native-auth-max-lines* :initial-element 10)
-          t nil nil nil))
+          (make-list (fn-native-auth-max-lines 128) :initial-element 10)
+          t nil nil nil 128))
         :accepted))
 (assert-event
  (equal (fn-native-auth-result-reason
          (fn-native-auth-load
-          (make-list (1+ *fn-native-auth-max-lines*) :initial-element 10)
-          t nil nil nil))
+          (make-list (1+ (fn-native-auth-max-lines 128)) :initial-element 10)
+          t nil nil nil 128))
         :bounds-or-encoding))
+
+; D27, PRF-102: the credential count is the operator's.  K distinct
+; canonical credentials, "u1" .. "uK".
+(defun fn-native-auth-test-creds (k)
+  (declare (xargs :mode :program))
+  (if (zp k) nil
+    (append (fn-native-auth-test-creds (1- k))
+            (list (concatenate 'string "[login.\"u"
+                               (coerce (explode-nonnegative-integer k 10 nil) 'string)
+                               "\"]")
+                  (concatenate 'string "principal = \"" *fn-native-auth-test-principal* "\"")
+                  (concatenate 'string "salt = \"" *fn-native-auth-test-salt* "\"")
+                  (concatenate 'string "digest = \"" *fn-native-auth-test-digest* "\"")
+                  "posting = false"
+                  ""))))
+(defconst *fn-native-auth-test-129*
+  (fn-native-auth-test-lines (fn-native-auth-test-creds 129)))
+; Above the old cap: 129 credentials load under a profile of 129 (or the
+; default 2^20), and are refused by name under 128, the pre-D27 figure.
+(assert-event
+ (equal (len (fn-auth-config-creds
+              (fn-native-auth-result-config
+               (fn-native-auth-load *fn-native-auth-test-129* t nil nil nil 129))))
+        129))
+(assert-event
+ (equal (fn-native-auth-result-status
+         (fn-native-auth-load *fn-native-auth-test-129* t nil nil nil 1048576))
+        :accepted))
+(assert-event
+ (equal (fn-native-auth-result-reason
+         (fn-native-auth-load *fn-native-auth-test-129* t nil nil nil 128))
+        :too-many-credentials))
+; Exactly at the bound: two credentials under 2 accepted, under 1 refused.
+(assert-event
+ (equal (fn-native-auth-result-status
+         (fn-native-auth-load (fn-native-auth-test-lines (fn-native-auth-test-creds 2))
+                              t nil nil nil 2))
+        :accepted))
+(assert-event
+ (equal (fn-native-auth-result-reason
+         (fn-native-auth-load (fn-native-auth-test-lines (fn-native-auth-test-creds 2))
+                              t nil nil nil 1))
+        :too-many-credentials))
+; The parser keystone's hypothesis on the credentials already collected is
+; needed: two collected, bound 1, no more lines -- accepted with two.
+(must-fail
+ (defthm fn-native-auth-test-parse-without-collected-bound
+   (<= (len (fn-ncfg-second (fn-native-auth-parse-lines nil nil nil '(a b) 1)))
+       1)
+   :rule-classes nil))

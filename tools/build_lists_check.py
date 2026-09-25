@@ -29,10 +29,22 @@ the difference explicit instead:
               DTN_RAW_REACH gives the reason the call cannot run there.  The
               first fix for the store-init failure loaded checkpoint-host and
               the image then failed on `fnn-checkpoint-name-result`, which
-              io.lisp called and only checkpoint.lisp defined.
+              io.lisp called and only checkpoint.lisp defined;
+  included    every `fn-` name a host file in build-dtn.lisp's `ld` closure
+              calls or names in `:stobjs` that a book defines is defined in a
+              book the DTN image has included by the time that file is `ld`ed
+              (build-dtn.lisp's includes before the `ld`, the includes of the
+              host files `ld`ed so far and the file's own, each closed over
+              the books' non-local includes).  At 32842f50 build.lisp included
+              books/octets-stobj and books/poster-bytes-buffer for
+              host/owner-host.lisp's fn-owner-prepare-buffer and
+              build-dtn.lisp did not, so the DTN image failed to build.
 
 Static, no ACL2.  It does not follow the books an omitted host file includes,
-and it cannot see a counterpart name computed at run time.
+and it cannot see a counterpart name computed at run time.  `included` reads
+definitions by pattern (defun, define, defstobj, defabsstobj and kin), so a
+name a macro defines is invisible to it, and it skips names some book the
+image has included already defines.
 """
 
 from __future__ import annotations
@@ -212,6 +224,113 @@ def findings(root: Path = ROOT, default_text: str | None = None,
                                f"which {DTN_BUILD} does not load")
     out.extend(raw_findings(root, default_text, dtn_text,
                             DTN_RAW_REACH if reach is None else reach))
+    out.extend(include_findings(root, dtn_text))
+    return out
+
+
+INCLUDE = re.compile(r'\(include-book\s+"([^"]+)"([^)]*)\)', re.I)
+LOCAL_INCLUDE = re.compile(r'\(local\s+\(include-book\s+"([^"]+)"', re.I)
+BOOK_DEF = re.compile(r"\((?:defun|defund|defun-sk|define|defmacro|defabbrev|defconst|"
+                      r"defstobj|defabsstobj|defun-inline|defund-inline|defun-nx|"
+                      r"defund-nx|defstub|encapsulate\s+\(\s*\()\s*\(?([^\s()]+)", re.I)
+HOST_CALL = re.compile(r"\((fn-[^\s()'`,]+)", re.I)
+HOST_STOBJS = re.compile(r":stobjs\s+(\([^)]*\)|[^\s()]+)", re.I)
+ORDER = re.compile(r'^\s*\((include-book|ld)\s+"([^"]+)"([^\n]*)', re.M)
+
+
+class BookIndex:
+    """Non-local include closures and definitions of the repository's books."""
+
+    def __init__(self, root: Path):
+        self.root = root
+        self._includes: dict[str, list[str]] = {}
+        self._defs: dict[str, set[str]] = {}
+        self.owner: dict[str, set[str]] = {}
+        for path in sorted((root / "books").rglob("*.lisp")):
+            rel = path.relative_to(root).as_posix()
+            for name in self.defs(rel):
+                self.owner.setdefault(name, set()).add(rel)
+
+    def _code(self, rel: str) -> str:
+        return strip_code_keep_strings((self.root / rel).read_text(encoding="utf-8"))
+
+    def includes(self, rel: str) -> list[str]:
+        if rel not in self._includes:
+            out: list[str] = []
+            if (self.root / rel).exists():
+                text = self._code(rel)
+                text = LOCAL_INCLUDE.sub("", text)
+                for target, rest in INCLUDE.findall(text):
+                    if ":dir" in rest.lower():
+                        continue
+                    out.append(os.path.normpath(os.path.join(os.path.dirname(rel), target))
+                               + ".lisp")
+            self._includes[rel] = out
+        return self._includes[rel]
+
+    def defs(self, rel: str) -> set[str]:
+        if rel not in self._defs:
+            self._defs[rel] = {n.lower() for n in BOOK_DEF.findall(self._code(rel))}
+        return self._defs[rel]
+
+    def close(self, books: set[str], start: list[str]) -> None:
+        stack = list(start)
+        while stack:
+            book = stack.pop()
+            if book in books:
+                continue
+            books.add(book)
+            stack.extend(self.includes(book))
+
+
+def strip_code_keep_strings(text: str) -> str:
+    """Lisp without comments or #| |# blocks; string literals kept (include targets)."""
+    text = re.sub(r"#\|.*?\|#", "", text, flags=re.S)
+    return re.sub(r';[^\n]*', "", text)
+
+
+def host_uses(text: str) -> set[str]:
+    code = strip_code(text)
+    names = {n.lower() for n in HOST_CALL.findall(code)}
+    for group in HOST_STOBJS.findall(code):
+        names.update(n.lower() for n in re.findall(r"[^\s()]+", group))
+    return names
+
+
+def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None) -> list[str]:
+    index = index or BookIndex(root)
+    available: set[str] = set()
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def visit(text: str, base: str) -> None:
+        for kind, target, rest in ORDER.findall(strip_code_keep_strings(text)):
+            if kind.lower() == "include-book":
+                if ":dir" not in rest.lower():
+                    index.close(available, [os.path.normpath(os.path.join(base, target))
+                                            + ".lisp"])
+                continue
+            path = os.path.normpath(os.path.join(base, target))
+            if path in seen:
+                continue
+            seen.add(path)
+            host_text = (root / path).read_text(encoding="utf-8")
+            host_dir = os.path.dirname(path)
+            index.close(available, [os.path.normpath(os.path.join(host_dir, t)) + ".lisp"
+                                    for t, r in INCLUDE.findall(
+                                        LOCAL_INCLUDE.sub("", strip_code_keep_strings(host_text)))
+                                    if ":dir" not in r.lower()])
+            local = {n.lower() for n in DEF.findall(strip_comments(host_text))}
+            defined_so_far = set().union(*(index.defs(b) for b in available if (root / b).exists()))
+            for name in sorted(host_uses(host_text) - local - defined_so_far):
+                books = index.owner.get(name)
+                if books:
+                    out.append(f"included: {path} uses {name}, defined in "
+                               f"{', '.join(sorted(books))}, which {DTN_BUILD} has not "
+                               f"included when it loads {path}")
+            visit(host_text, host_dir)
+
+    visit(dtn_text, ".")
     return out
 
 

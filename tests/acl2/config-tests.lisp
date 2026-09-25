@@ -508,3 +508,26 @@
                    (equal (length *cfgt-name-256*) *fn-cfg-max-label*)))
 (assert-event (not (fn-cfg-labelp
                     (coerce (make-list 257 :initial-element #\a) 'string))))
+
+; fn-cfg-set-policy-sets-the-policy (books/config-invariants.lisp): a policy
+; slot holds the value set last.  bound-logins then open reads open, and
+; open then bound-logins reads bound-logins; the old fold (upsert keyed on
+; slot and value) kept the first value in force.
+(defconst *cft-policy-v0* (fn-cfg-value (fn-cfg-initial)))
+(defconst *cft-policy-v1*
+  (fn-cfg-apply-delta *cft-policy-v0* 1 0 (fn-cfg-set-policy "posting-policy" "bound-logins")))
+(defconst *cft-policy-v2*
+  (fn-cfg-apply-delta *cft-policy-v1* 2 0 (fn-cfg-set-policy "posting-policy" "open")))
+(defconst *cft-policy-v3*
+  (fn-cfg-apply-delta *cft-policy-v2* 3 0 (fn-cfg-set-policy "posting-policy" "bound-logins")))
+(assert-event (equal (fn-cfg-policy *cft-policy-v1* "posting-policy") "bound-logins"))
+(assert-event (equal (fn-cfg-policy *cft-policy-v2* "posting-policy") "open"))
+(assert-event (equal (fn-cfg-policy *cft-policy-v3* "posting-policy") "bound-logins"))
+(assert-event (equal (len (fn-cfg-policies *cft-policy-v3*)) 1))
+; The old fold, for contrast: upsert keyed on (slot, value) keeps the first.
+(assert-event (equal (fn-cfg-policy-id
+                      (fn-cfg-row-lookup
+                       (fn-cfg-row-upsert (fn-cfg-policies *cft-policy-v1*)
+                                          (fn-cfg-row-make "posting-policy" "open" "" 0))
+                       "posting-policy"))
+                     "bound-logins"))

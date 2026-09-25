@@ -51,6 +51,23 @@ The write is the byte program `fn-bs-profile-program`
 (books/byte-store-profile-program.lisp), whose crash images name the old frame or
 the new one at every cut. This is a local-policy choice of fn; no RFC governs it.
 
+STO-015: a namespace the store holds is bounded by the operator's profile,
+never by a constant (D27). Configuration generations and AUTHINFO
+credentials are bounded by the profile's `max-config-generations` and
+`max-credentials` (format 8 fields 11 and 12, read through
+books/store-profile-namespace.lisp). The writer refuses exactly past the
+bound, by name (`:max-config-generations`, `:too-many-credentials`), and
+the reader admits every namespace within it: the configuration listing
+(`fn-nco-observe`) and the credential loader (`fn-native-auth-load`). An
+upgrade never lowers a count (`fn-profile-upgrade-keeps-namespace-counts`),
+so a namespace written under the old profile is admitted under the new one.
+The credential file's octet and line bounds follow its count: 512 octets and
+8 lines per credential, plus one unit for the header, a work bound per
+credential. fn.toml's size bounds stay constants. They bound the work of
+reading a fixed-schema file that names the store, and the file holds no
+collection. Consumers, BP rows and policy members are not yet read from the
+profile (planning/evidence/bounds-profile-2026-09-25.md).
+
 STO-002: acceptance publishes one transaction containing the source references,
 duplicate-history effects, all local group allocations, and any obligations or
 reservations accepted in that operation. No partially committed cross-post or
@@ -410,7 +427,7 @@ witness written after the commit:
 
 ### Content reclamation under D13 (STO-014)
 
-STO-014: Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs
+STO-014: Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs.
 
 Status: decision, tombstone and served projection proved (PRF-088); the
 host asks the tombstone-aware D25 verdict at every site; OVER, XOVER and
