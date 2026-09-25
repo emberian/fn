@@ -3434,6 +3434,11 @@
           "kind": "theorem",
           "name": "fn-nls-cached-buffer-of-put",
           "note": "A later page of one request reads the buffer its first page stored. Teeth: witness with another kind's buffer present; must-fail at offset 0 (a request from 0 renders anew)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-nat-is-the-decimal-digits",
+          "note": "KEYSTONE (PKT-156). Every natural renders as its decimal digits: nonempty, digits only, and fn-nntp-decimal-value reads back the natural. The old renderer (fn-nntp-decimal-field) answered 0 past ten digits, so status printed 0 for H >= 2^34. Teeth: 2^40 and 2^64-1 render in full; must-fail at -5 (not a natural renders 0)."
         }
       ]
     },
