@@ -23,10 +23,16 @@
 (assert-event (equal (fn-frame-split-acc 2 '(1 2 3) nil) '((1 2) 3)))
 (assert-event (equal (fn-frame-split-acc 4 '(1 2 3) nil) nil))
 (assert-event (equal (fn-frame-split-acc 0 '(1 2 3) nil) '(nil 1 2 3)))
-(assert-event (equal (fn-frame-split-acc -1 '(1 2) nil)
-                     (fn-frame-split -1 '(1 2))))
-(assert-event (equal (fn-frame-split-acc 1 '(1 . 2) nil)
-                     (fn-frame-split 1 '(1 . 2))))
+; Off the guard (a negative count, an improper list) the two still agree:
+; the keystone has no hypothesis.  Proved, not evaluated, since evaluation
+; would check the guard.
+(defthm fn-frame-test-split-acc-off-guard
+  (and (equal (fn-frame-split-acc -1 '(1 2) nil)
+              (fn-frame-split -1 '(1 2)))
+       (equal (fn-frame-split-acc 1 '(1 . 2) nil)
+              (fn-frame-split 1 '(1 . 2)))
+       (equal (fn-frame-split-acc 2 '(1 . 2) nil) nil))
+  :rule-classes nil)
 
 ; The accumulator matters: at ACC = (9) the twin answers ((9 5)), not ((5)).
 (assert-event (not (equal (fn-frame-split-acc 1 '(5) '(9))
@@ -45,7 +51,9 @@
 (assert-event (equal (fn-ag-append-exec nil '(3)) '(3)))
 ; A non-list tail is dropped, as `append' drops it.
 (assert-event (equal (fn-ag-append-exec '(1 2 . 7) '(3)) '(1 2 3)))
-(assert-event (equal (fn-ag-append-exec '(1 2 . 7) '(3)) (append '(1 2 . 7) '(3))))
+(defthm fn-ag-test-append-exec-improper
+  (equal (fn-ag-append-exec '(1 2 . 7) '(3)) (append '(1 2 . 7) '(3)))
+  :rule-classes nil)
 (assert-event (equal (fn-ag-append-exec 7 8) 8))
 
 ; The accumulator matters: onto (9), the reversal carries 9 in front.
