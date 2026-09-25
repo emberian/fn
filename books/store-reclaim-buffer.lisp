@@ -42,6 +42,10 @@
    :hints (("Goal" :in-theory (enable fn-octets-p)))))
 
 (local
+ (defthm fn-rclb-take-all
+   (implies (true-listp x) (equal (take (len x) x) x))))
+
+(local
  (defthm fn-rclb-take-len-nthcdr
    (implies (and (true-listp x) (natp i) (<= i (len x)))
             (equal (take (- (len x) i) (nthcdr i x)) (nthcdr i x)))))
@@ -117,9 +121,22 @@
   (implies (fn-octets-p fn-octets)
            (equal (fn-rclb-existing-action msgid fn-octets groups s)
                   (fn-rcl-existing-action msgid fn-octets groups s)))
-  :hints (("Goal" :in-theory (e/d (fn-rcl-existing-action)
+  :hints (("Goal" :in-theory (e/d (fn-rcl-existing-action fn-rclb-existing-action
+                                   fn-rclb-same-articlep fn-rcl-same-articlep)
                                   (fn-rclb-same-as-tombstonep fn-rcl-same-as-tombstonep
-                                   fn-rcl-tombstonep)))))
+                                   fn-rcl-tombstonep fn-pbb-same-articlep fn-pb-same-articlep
+                                   fn-octets-p))
+           :use ((:instance fn-pbb-same-articlep-is-pb-same-articlep
+                            (msgid (fn-record-string-octets msgid))
+                            (held-payload (fn-article-payload
+                                           (fn-find-article msgid (fn-state-articles
+                                                                   (fn-node-acceptance (fn-sn-node s)))))))
+                 (:instance fn-rclb-same-as-tombstonep-is-rcl
+                            (msgid (fn-record-string-octets msgid))
+                            (tomb (fn-article-payload
+                                   (fn-find-article msgid (fn-state-articles
+                                                           (fn-node-acceptance (fn-sn-node s)))))))
+                 fn-rclb-octets-true-listp))))
 
 (in-theory (disable fn-rclb-existing-action fn-rclb-same-articlep
                     fn-rclb-same-as-tombstonep fn-rclb-desc-digest))

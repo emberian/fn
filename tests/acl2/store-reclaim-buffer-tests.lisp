@@ -87,3 +87,28 @@
  (defthm rbt-t-existing-action-without-octets-p
    (equal (fn-rclb-existing-action *ost-msgid* *rbt-improper* *ost-groups* *rbt-s*)
           (fn-rcl-existing-action *ost-msgid* *rbt-improper* *ost-groups* *rbt-s*))))
+
+; -----------------------------------------------------------------------------
+; D32, recipe v3 (octets-stobj-tests' tin fixture): the held source is the
+; description (K A B) with a real cut, so the tombstone's source digest is
+; compared against the digest of the two ranges.  The tin article injected
+; at clock A, reclaimed, and the same article injected at clock B resent:
+; different octets, the same source, so the same article; one octet more in
+; the body is another source.
+(defun rbt-same-as-tomb (msgid payload tomb)
+  (declare (xargs :guard (fn-cbor-octet-listp payload) :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (r fn-octets)
+      (let ((fn-octets (fn-octets-from-list payload fn-octets)))
+        (mv (fn-rclb-same-as-tombstonep msgid fn-octets tomb) fn-octets))
+      r)))
+(defconst *rbt-v3-tomb* (fn-rcl-tombstone-of *ost-v3-held* *ost-v3-msgid-octets*))
+(defconst *rbt-v3-changed* (append *ost-v3-resend* '(120)))
+(assert-event
+ (and (fn-rcl-tombstonep *rbt-v3-tomb*) (fn-rcl-tomb-sourcep *rbt-v3-tomb*)
+      (not (equal *ost-v3-resend* *ost-v3-held*))
+      (< (cadr *ost-v3-desc*) (caddr *ost-v3-desc*))
+      (fn-rcl-same-as-tombstonep *ost-v3-msgid-octets* *ost-v3-resend* *rbt-v3-tomb*)
+      (rbt-same-as-tomb *ost-v3-msgid-octets* *ost-v3-resend* *rbt-v3-tomb*)
+      (not (fn-rcl-same-as-tombstonep *ost-v3-msgid-octets* *rbt-v3-changed* *rbt-v3-tomb*))
+      (not (rbt-same-as-tomb *ost-v3-msgid-octets* *rbt-v3-changed* *rbt-v3-tomb*))))
