@@ -1388,7 +1388,9 @@
       ],
       "evidence": [
         "tests/acl2/control-authority-tests.lisp",
-        "tests/test_native_control_authority.py"
+        "tests/test_native_control_authority.py",
+        "tests/acl2/control-visible-tests.lisp",
+        "tests/test_native_control_filing.py"
       ]
     },
     {

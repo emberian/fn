@@ -1204,10 +1204,13 @@ and succession are decided. What the node does:
   authority decision `fn-ctl-authorize` (paragraph "Authority" below).
 - *C3, the decision implemented, the served withdrawal open:* the
   withdrawal record, its effect on the target and the visible article list
-  are ACL2 definitions with keystones (paragraph "Cancel" below); the
-  served view does not yet apply them, a signed control article is still
-  refused `:control-signed`, and Supersedes is not handled. Until those
-  land, a filed cancel withdraws nothing.
+  are ACL2 definitions with keystones (paragraph "Cancel" below), and a
+  signed control article is filed in `control.<verb>` (its Store record's
+  binding names the filing group, `fn-hsig-source-filed-groups`), so a
+  cancel can now be verified here. The visible list has an incremental form
+  with a correspondence theorem (`books/control-visible.lisp`), but the
+  served view does not yet apply it, and Supersedes is not handled. Until
+  those land, a filed cancel withdraws nothing.
 
 **The rule.** A control article (RFC 5536 §3.2.3; RFC 5537 §5) is
 executed only when all of these hold:
@@ -1282,9 +1285,9 @@ nor outputs of these functions.
 *Open (C3):* (1) the served view: `fn-ctl-visible-articles` applied where the
 committed view is refreshed (`fn-own-refresh`), with K1
 (`fn-own-read-is-served-step-on-pinned-prefix`) restated over it, 430 and
-423 `withdrawn`, the listings, and `HDR :fn-control`; (2) the signed filing
-below (`:control-signed`), without which no cancel is ever verified; (3)
-the host calling `fn-ctl-cancel-plan` at commit and
+423 `withdrawn`, the listings, and `HDR :fn-control`, carrying the visible
+list incrementally (`fn-ctl-visible-extend`, `fn-ctl-visible-extend-is-visible`);
+(2) done 2026-09-25: the signed filing below; (3) the host calling `fn-ctl-cancel-plan` at commit and
 `fn-ctl-journal-withdrawals` at recovery; (4) Supersedes as a cancel plus
 the replacement; (5) feed suppression, a later transition by D29.
 
@@ -1328,19 +1331,27 @@ kept as a requirement; `fn-ctl-control-article-is-filed-only-in-control`).
 Otherwise it is refused with a distinct reason, and nothing is stored:
 `:control-not-filed` (the group is not configured), `:control-malformed`
 (two `Control` fields, `Control` beside `Supersedes`, or a command outside
-the `verb *( 1*WSP argument )` grammar) or `:control-signed`. A served POST
+the `verb *( 1*WSP argument )` grammar). A served POST
 answers each with its own 441 line; transit answers its ordinary refusal
 code and the service log line names the reason. The stored bytes are the
 received bytes, `Newsgroups` included; the feed still offers the article by
 the groups its `Newsgroups` field names.
 
-*Open (C1):* a control article carrying an `FN-Authorship` carrier is
-refused `:control-signed`, because a signed article's Store record must list
-exactly its source's `Newsgroups` (`books/hybrid-store.lisp`, the event
-constructors and the replay binding), so it cannot yet be recorded under
-`control.<verb>`. Filing it needs that binding to name the filing group,
-which recertifies everything above `hybrid-store`; C2 needs it, since only a
-verified (signed) control article can ever execute.
+*Signed control articles (C3 prerequisite, 2026-09-25).* A control
+article carrying an `FN-Authorship` carrier is filed exactly as an unsigned
+one. A signed article's Store record must list the groups
+`fn-hsig-source-filed-groups` (`books/hybrid-store.lisp`) derives from the
+exact signed source: the filing group for a control article, the source's
+`Newsgroups` otherwise, and nothing for a malformed control article. Every
+signed constructor and replay's binding (`fn-hsig-carried-record-metadatap`)
+test it; `fn-hsig-signed-control-record-lists-its-filing-group` and
+`fn-hsig-malformed-control-binds-no-record` are the keystones. The binding
+classifies the signed source and the filing plan the received carrier;
+where they disagree no event is built and the attempt is refused, never
+filed elsewhere. A signed control article stored under its `Newsgroups`
+before C1 (2026-09-25 morning, when every ingress began filing or refusing
+control articles) would no longer replay: its record binds no filing group.
+Whether any deployed store holds one has not been checked.
 
 **Per verb.**
 

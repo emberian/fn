@@ -369,3 +369,106 @@
        (source (make-list 70000 :initial-element 65)))
    (and (fn-hsig-subject-at-p 2 (make-list 32 :initial-element 3) keys source)
         (<= (len source) *fn-stxa-max-authored-source*))))
+
+; -----------------------------------------------------------------------------
+; C3 prerequisite (2026-09-25): the signed record binding names the filing
+; group.  fn-hsig-signed-control-record-lists-its-filing-group,
+; fn-hsig-malformed-control-binds-no-record.
+
+(defconst *hst-cancel-source*
+  (append (hst-line "From: author@example.invalid")
+          (hst-line "Date: Wed, 23 Sep 2026 12:00:00 +0000")
+          (hst-line "Newsgroups: example")
+          (hst-line "Subject: cmsg cancel <hybrid@example.invalid>")
+          (hst-line "Control: cancel <hybrid@example.invalid>")
+          (hst-line "Message-ID: <cancel@example.invalid>")
+          '(13 10 98 111 100 121 13 10)))
+(defconst *hst-malformed-source*
+  (append (hst-line "From: author@example.invalid")
+          (hst-line "Date: Wed, 23 Sep 2026 12:00:00 +0000")
+          (hst-line "Newsgroups: example")
+          (hst-line "Subject: two controls")
+          (hst-line "Control: cancel <a@example.invalid>")
+          (hst-line "Control: cancel <b@example.invalid>")
+          (hst-line "Message-ID: <cancel@example.invalid>")
+          '(13 10 98 111 100 121 13 10)))
+(assert-equal (car (fn-ctl-classify-octets *hst-cancel-source*)) :control)
+(assert-equal (car (fn-ctl-classify-octets *hst-malformed-source*)) :malformed)
+(assert-equal (fn-ctl-classify-octets *hst-authored-source*) :ordinary)
+(make-event `(defconst *hst-cancel-received*
+               ',(fn-hc-render-at-most *fn-article-max-octets*
+                                       *hst-cancel-source* *hst-principal*
+                                       *hst-keys* *hst-signatures*)))
+(assert! *hst-cancel-received*)
+(make-event `(defconst *hst-cancel-subject-id*
+               ',(fn-id-subject-of-payload *hst-cancel-received*)))
+(make-event `(defconst *hst-cancel-obligation*
+               ',(fn-record-octets-string
+                  (fn-id-text
+                   (fn-id-obligation-of
+                    (fn-record-string-octets "<cancel@example.invalid>")
+                    *hst-cancel-subject-id*)))))
+(defun hst-cancel-record (groups)
+  (fn-record-make 2 3 4 "<cancel@example.invalid>" *hst-cancel-received*
+                  groups *hst-cancel-obligation*
+                  (fn-record-octets-string (fn-id-text *hst-cancel-subject-id*))
+                  "release" (fn-charge-for-payload (len *hst-cancel-received*))
+                  (fn-record-stamp-of-observation
+                   (fn-clock-observation 1 841000000000 0 t))))
+(defun hst-cancel-event (groups)
+  (fn-hsig-authorized-carried-submission-event
+   2 3 4 4 *hst-snapshot* "<cancel@example.invalid>"
+   *hst-cancel-source* *hst-cancel-received* groups
+   *hst-cancel-obligation*
+   (fn-record-octets-string (fn-id-text *hst-cancel-subject-id*)) "release"
+   (fn-charge-for-payload (len *hst-cancel-received*))
+   *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+   :verified :verified (fn-clock-observation 1 841000000000 0 t)))
+
+; Reachable witness: the signed cancel's record in control.cancel binds, the
+; native constructor builds its composite, replay's schema-1 binding admits
+; it against the enrolled snapshot, and its record lists control.cancel.
+(assert! (fn-hsig-carried-record-metadatap
+          *hst-cancel-source* *hst-cancel-received*
+          (hst-cancel-record '("control.cancel"))))
+(assert! (fn-stxa-p (hst-cancel-event '("control.cancel"))))
+(assert! (fn-hsig-article-event-snapshot-bindsp
+          (hst-cancel-event '("control.cancel"))
+          (fn-hsig-keyring-event 1 2 3 4 *hst-principal* *hst-keys*)))
+(assert-equal (fn-record-groups
+               (fn-record-result-record
+                (fn-record-decode-exact
+                 (fn-stxa-article-record (hst-cancel-event '("control.cancel"))))))
+              '("control.cancel"))
+; Teeth, the binding hypothesis: a record of the same signed cancel listing
+; its Newsgroups (the pre-C3 binding) is not admitted, and the constructor
+; builds no composite for it; the conclusion fails for that record.
+(assert! (not (fn-hsig-carried-record-metadatap
+               *hst-cancel-source* *hst-cancel-received*
+               (hst-cancel-record '("example")))))
+(assert-equal (hst-cancel-event '("example")) nil)
+(must-fail
+ (assert! (equal (fn-record-groups (hst-cancel-record '("example")))
+                 (list (fn-ctl-filing-group
+                        (cadr (fn-ctl-classify-octets *hst-cancel-source*)))))))
+; Teeth, the classification hypothesis: an ordinary signed article binds
+; under its Newsgroups, which is not a filing group.
+(assert! (fn-hsig-article-event-snapshot-bindsp
+          *hst-carried-event*
+          (fn-hsig-keyring-event 1 2 3 4 *hst-principal* *hst-keys*)))
+(must-fail
+ (assert! (equal (fn-record-groups
+                  (fn-record-result-record
+                   (fn-record-decode-exact
+                    (fn-stxa-article-record *hst-carried-event*))))
+                 (list (fn-ctl-filing-group
+                        (cadr (fn-ctl-classify-octets *hst-authored-source*)))))))
+; fn-hsig-malformed-control-binds-no-record.  Witness: two Control fields
+; bind under neither group list.  Teeth (the malformed hypothesis): the
+; ordinary source binds (the witness above).
+(assert! (not (fn-hsig-carried-record-metadatap
+               *hst-malformed-source* *hst-cancel-received*
+               (hst-cancel-record '("example")))))
+(assert! (not (fn-hsig-carried-record-metadatap
+               *hst-malformed-source* *hst-cancel-received*
+               (hst-cancel-record '("control.cancel")))))
