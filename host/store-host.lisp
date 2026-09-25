@@ -409,6 +409,17 @@
 (defun fn-store-publication-kind-ceiling (kind)
   (fn-store-publication-ceiling kind))
 
+;; The open's per-file read bound under the persisted PROFILE: one FNST frame
+;; whose payload is at most the profile's per-record ceiling.  Every committed
+;; transaction file was published under `fn-bs-publication-admissiblep' (its
+;; record at most `fn-bs-profile-record-ceiling', asserted on the actual bytes
+;; by host/native/io.lisp `fnn-publish'), and an upgrade never lowers that
+;; ceiling (`fn-profile-upgradep'), so no committed file exceeds this bound.
+;; A profile that is not valid yields the frame overhead alone, and the open
+;; refuses every file.
+(defun fn-store-profile-read-bound (profile)
+  (+ *fn-frame-overhead-octets* (fn-bs-profile-record-ceiling profile)))
+
 
 (defun fn-store-group-codes (name-octets domain-octets)
   ; Distinct group names, as octet lists, become their codes in the replayed

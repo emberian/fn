@@ -441,13 +441,15 @@
 ; the create and retire assertions above.  One violating value per
 ; hypothesis.
 ;
-; Hypothesis 1, the plan was accepted: a refused `group create' (a 200-octet
-; name, over the 128-octet group-name bound) stages nothing, so the
+; Hypothesis 1, the plan was accepted: a refused `group create' (a name one
+; octet over the group-name bound, 256 since D27) stages nothing, so the
 ; conclusion's `consp' fails.
 (defconst *fn-na-create-overlong*
   (fn-native-admin-plan
    (fn-na-test-argv (list "group" "create"
-                          (coerce (make-list 200 :initial-element #\g) 'string)))))
+                          (coerce (make-list (1+ *fn-record-max-group-name*)
+                                             :initial-element #\g)
+                                  'string)))))
 (assert-event (member-equal (fn-native-admin-result-kind *fn-na-create-overlong*)
                             '(nil)))
 (assert-event (not (equal (fn-native-admin-result-status *fn-na-create-overlong*) :accepted)))

@@ -90,7 +90,7 @@
   (declare (xargs :guard t))
   (if (not (and (fn-record-uint32p keyring-generation)
                 (fn-cbor-octet-listp source)
-                (consp source) (<= (len source) *fn-article-max-octets*)
+                (consp source) (<= (len source) *fn-hsig-v1-max-source*)
                 (fn-hsig-exact-octets-p ed-signature 64)
                 (fn-hsig-exact-octets-p ml-signature 3309))) :bad
     (fn-nhctrl-seal
@@ -104,7 +104,7 @@
     (if (and (true-listp v)
              (equal (len v) 5)
              (fn-record-uint32p (nth 0 v))
-             (fn-cbor-at-mostp (nth 1 v) *fn-article-max-octets*)
+             (fn-cbor-at-mostp (nth 1 v) *fn-hsig-v1-max-source*)
              (consp (nth 1 v))
              (fn-hsig-exact-octets-p (nth 2 v) 64)
              (fn-hsig-exact-octets-p (nth 3 v) 3309))

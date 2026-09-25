@@ -394,7 +394,9 @@
                                               (fn-nop-test-argv '("init"))))
                      5))
 ; `fn-record-group-namep` bounds a name at *fn-record-max-group-name* octets.
-(defconst *fn-nop-overlong-group* "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")
+(defconst *fn-nop-overlong-group*
+  (coerce (make-list (+ 1 *fn-record-max-group-name*) :initial-element #\g)
+          'string))
 (assert-event (equal (length *fn-nop-overlong-group*)
                      (+ 1 *fn-record-max-group-name*)))
 (assert-event (not (fn-record-group-namep *fn-nop-overlong-group*)))
@@ -409,14 +411,27 @@
                        *fn-nop-minimal-config*
                        (fn-nop-test-argv '("init" "fn.test" "fn.test"))))
                      :usage))
+; D27: seventeen groups (over the pre-D27 16) are no longer a usage error;
+; the group count's codec ceiling (65 535) is above what one argv can name,
+; so what refuses a long `init' is the argv work bound
+; (`*fn-nop-max-arguments*', 32 words).
+(defconst *fn-nop-17-groups*
+  '("g01" "g02" "g03" "g04" "g05" "g06" "g07" "g08"
+    "g09" "g10" "g11" "g12" "g13" "g14" "g15" "g16" "g17"))
+(assert-event (not (equal (fn-native-operator-result-status
+                           (fn-native-operator-run
+                            *fn-nop-minimal-config*
+                            (fn-nop-test-argv (cons "init" *fn-nop-17-groups*))))
+                          :usage)))
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run
                        *fn-nop-minimal-config*
                        (fn-nop-test-argv
                         (cons "init"
-                              '("g01" "g02" "g03" "g04" "g05" "g06" "g07" "g08"
-                                "g09" "g10" "g11" "g12" "g13" "g14" "g15" "g16"
-                                "g17")))))
+                              (append *fn-nop-17-groups*
+                                      '("g18" "g19" "g20" "g21" "g22" "g23"
+                                        "g24" "g25" "g26" "g27" "g28" "g29"
+                                        "g30" "g31" "g32"))))))
                      :usage))
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run

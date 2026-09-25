@@ -254,11 +254,12 @@
         :fault))
 
 ; A limit above its format ceiling is refused, so no configuration can name a
-; bound the codec cannot represent.
+; bound the codec cannot represent.  The ceiling is the record codec's payload
+; width (D27), no longer the pre-D27 32 768.
 (assert-event
  (equal (fn-cfg-admissible-reason
          (fn-cfg-value *cfg-t-g3*) 4 *cfg-t-stamp* 0 510
-         (list (fn-cfg-set-limit "max-payload" 32769)))
+         (list (fn-cfg-set-limit "max-payload" (1+ *fn-record-max-payload*))))
         :limit-above-ceiling))
 
 ; -----------------------------------------------------------------------------
