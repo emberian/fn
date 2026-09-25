@@ -173,6 +173,10 @@
         {
           "kind": "theorem",
           "name": "fn-own-served-local-number-is-never-reassigned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-raw-local-number-is-never-reassigned"
         }
       ]
     },
@@ -3642,6 +3646,14 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-visible-extend-is-visible"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-refresh-visible-is-visible"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-visible-state-statep"
         }
       ]
     },

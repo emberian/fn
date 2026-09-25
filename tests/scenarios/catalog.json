@@ -1379,12 +1379,14 @@
       "steps": [
         "On a running owner run `control grant P cancel fn.mod.*` and `control grant Q cancel fn.test`; then grants with a reserved namespace, a malformed principal, the verb newgroup and a malformed pattern.",
         "Stop the owner and run `control list`; restart, revoke P's grant, revoke it again, stop and list.",
-        "(Open, C3 served view.) With control.cancel created, an authority's signed cancel of an unsigned fn.mod.a article on two nodes; a reader pinned before it and a fresh reader; an unauthorized cancel; a cross-post outside the grant; the cancel before its target, with a kill between the two arrivals."
+        "(Open, C3 served view.) With control.cancel created, an authority's signed cancel of an unsigned fn.mod.a article on two nodes; a reader pinned before it and a fresh reader; an unauthorized cancel; a cross-post outside the grant; the cancel before its target, with a kill between the two arrivals.",
+        "(Run, control-c3b/c3c, hbox developer image 5c873f21.) One node, one signing principal P: P's signed T; a reader pinned before; P's signed cancel of T; a fresh reader; P's cancel of a not-yet-arrived L, then L; an unsigned U posted over NNTP and P's cancel of it (no grant); restart."
       ],
       "expected": [
         "The two grants are accepted; the four are refused by name (reserved-group-name, principal, verb-not-grantable, namespace-pattern) and the owner keeps serving.",
         "`control list` shows both grants after the restart, then only Q's; the second revoke is refused (no-such-grant).",
-        "(Open.) The fresh reader answers 430 by Message-ID and 423 `withdrawn` by number and the target is absent from listings; the pinned reader still reads it until it advances; the unauthorized cancel and the cross-post withdraw nothing; the early-cancelled target never appears, across the kill."
+        "(Open.) The fresh reader answers 430 by Message-ID and 423 `withdrawn` by number and the target is absent from listings; the pinned reader still reads it until it advances; the unauthorized cancel and the cross-post withdraw nothing; the early-cancelled target never appears, across the kill.",
+        "(control-c3b, passed natively: planning/evidence/control-c3b-2026-09-25/native-control-filing-a541e90f.log) The fresh reader answers 430 for T and for L; U stays 220; LISTGROUP fn.test lists only U (number 3); after the restart the same; the pinned reader answers 220 for T after the cancel (its pinned view)."
       ],
       "evidence": [
         "tests/acl2/control-authority-tests.lisp",
