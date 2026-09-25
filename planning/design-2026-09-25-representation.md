@@ -151,28 +151,319 @@ edit. A second risk is measurement: the shares are stable across runs and
 the absolute milliseconds are not; every before/after figure is quoted as a
 share of samples and as milliseconds on the same box in the same session.
 
-## 5. The boundaries, ranked by measured share divided by dependents touched
+## 5. The plan: every boundary the host calls, in the order of measured share
 
-"Dependents touched" counts the books whose bytes change (the twin book,
-the carried books that call it, their tests) plus the roots `--affected-by`
-selects. A leaf `mbe` touches the leaf's whole closure and is listed with
-that count.
+Mandate (D27, `planning/decisions.md`; AGENTS.md): octet lists are not an
+acceptable runtime representation. This section is the launch list. Each
+boundary names its concrete representation, the correspondence theorem's
+statement, the files the lane owns, the dependents its bytes touch (direct
+includers, from `include-book` lines, with the closure where it matters),
+the memory per article after it, and whether it runs in parallel. Shares
+are from the hbox after image of the first boundary
+(`representation-2026-09-25/post-after-n120-r*-graph.txt`, N = 120) unless
+another record is named. No lane widens a data cap (another lane owns the
+profile fields and codec widths under D27); every twin keeps its reference's
+`at-most` bounds and work counters, and a twin of a bounded parser restates
+the work theorem over the twin with a correspondence to the list parser's
+work value.
 
-| Rank | Boundary | Share of POST CPU | Books touched | Ratio | Form |
-| ---: | --- | ---: | ---: | ---: | --- |
-| 1 | **The record recognizer's strings** (this lane): `fn-rcon-record-p` reads the strings in place; twins of the four dispatchers, the pair, the binding test, the two projection steps; `owner-commit-carried` and `owner-prepare-carried` call them | 17 to 20% (the recognizer minus its payload and group walks) | 2 changed carried books + 1 new book + 1 test, 4 dependents (`owner-advance-carried`, `owner-commit-ocl`, `owner-offer-indexed`, the two carried tests) | ~2.5% per book | hypothesis-free correspondence, landed |
-| 2 | **The intent identity computed once.** `fn-own-feed-intent-id` is SHA-256 of the payload three times per POST; the value is a function of the submission's octets and Message-ID, both fixed at `fn-owner-take`. Carry it in the submission record (a field set at take) and prove the carried value is the digest | 17% | `owner` (fn-own-sub-* record, ~60 includers) or a carried twin of `fn-own-submission-intent-result`/`-records`/`-resolution-records` in a new book that `owner-host` calls (3 host lines) | ~4% per book as a carried twin | a carry, not a representation change: `fn-*car-intent-records-is-reference` under "the held submission's cached id is its digest", carried from take |
-| 3 | **SHA-256 on a word stobj** | 33% of POST CPU (all digests), and every frame trailer, every identity, every receipt on every path | 1 (crypto-attach: `defattach fn-frame-digest`/`fn-digest` to the stobj-backed function; the constraint stays) | high, but the proof is the whole compression function's correspondence, round by round: a lane of its own | `fn-sha256-stobj-is-sha256-of-octets`: the attached function equals the list specification on every octet list. The attachment mechanism (books/crypto-attach.lisp) makes the switch one line once the theorem exists; without the theorem the attachment would silently change what the host computes, which is exactly the claim this project refuses to make |
-| 4 | **The payload as a stobj array** (`fn-record-payloadp`, `fn-id-subject-preimage`, `fn-frame-protected`, the host's `fnn-octet-list` at io.lisp:838) | 3% today (small articles); O(L) per recognition and per frame at the maximum payload, plus the 16 L memory | records-shape's closure if by `mbe` (freeze); or an abstract stobj with twins of `fn-record-p`, the codec's byte-string encoder and the frame encoder up to the host (10 to 15 books) | low today, first at large payloads | abstract stobj; the memory figure is the reason, not the CPU |
-| 5 | **Group names by index** (`fn-record-group-namep` → `fn-record-group-name-octetsp`: converts, then the one-pass grammar) | 1% | records-shape (freeze) or a twin in `records-concrete` with the grammar restated over an index, proved equal to `fn-record-group-name-grammarp` through the existing keystone | ~1% per book | correspondence with the RFC 5536 grammar keystone kept |
-| 6 | **The archive body as a string** (`fn-articlep`'s `fn-octet-listp`, the trie's `fn-midx-key-chars` on the Message-ID) | 0% on POST after the carries; O(N·L) wherever `fn-article-listp` runs (`fn-statep`, the peer arms' `fn-node-statep` that ember left untouched) | acceptance (the root of the tree) | not a lane; a freeze decision | the leaf `mbe` at `fn-octet-listp`'s callers, or a string body in the logical article: the latter changes statements and is not a representation move |
-| 7 | **Frame assembly without the copy** (`fn-frame-encode`'s `append` of the protected prefix and the digest; the host's `write-sequence` of a list) | 2 to 4% | frame-fields, frame-trailer, host io.lisp:950 | ~1% per book | with the payload stobj (rank 4), the frame becomes a header write, a payload write and a trailer write on the host: `fn-frame-encode-is-seal` already separates the digest from the bytes |
+Two facts shape the order. First, on the POST path the octet-list cost is
+now the digests (43 to 46%) and the transient path from the socket to the
+record (recognise, encode, frame, write); the long-lived copies of an
+article (the store record's payload and the node's article body) are
+fields of the logical state and are 16 bytes per octet in every image until
+the state itself has a concrete representation (boundary 10). Second, an
+abstract stobj (`defabsstobj`) is the only ACL2 8.7 form in which a
+concrete array is the executable and the octet list stays the logical view
+with the correspondence proved once, so the payload boundaries (6 to 9)
+share one stobj book that lands first.
 
-The first boundary is rank 1 because it is the largest a single lane can
-close with hypothesis-free correspondence proofs, in books the host already
-calls, without recertifying the tree. Rank 2 is the next lane: it removes
-more CPU than rank 1 and is one carried book. Rank 3 is the largest share
-and the largest proof; it should be planned as a lane with the compression
-function's round structure written for the proof (word stobj, a per-round
-lemma, a per-block lemma, the padding lemma) and measured on the frame
-journal and the identities separately.
+### Wave A: now, in parallel (each owns disjoint files)
+
+**Boundary 1, landed: the record recognizer's strings** (`lane/representation`,
+`planning/evidence/representation-2026-09-25.md`). 21 to 22% of POST CPU
+to 4 to 6% list recognitions + 2.6 to 3.1% concrete. Memory per article
+unchanged (the conversions were transient).
+
+**Boundary 2: the intent identity computed once** (`lane/intent-carried`).
+- Share: `fn-own-feed-intent-id` 22 to 24% after boundary 1 (131 to 142
+  samples per 48 POSTs), four SHA-256 digests of the payload per POST:
+  `fn-own-submission-intent-result` directly and again inside
+  `fn-own-submission-intent-records`, which digests once more itself
+  (both in one host call, `host/owner-host.lisp` `fn-owner-submission-intent`
+  lines 1016 to 1017), and `fn-own-submission-resolution-records`
+  (`fn-owner-submission-resolution`, line 1029).
+- Representation: not a representation move; the value carried. Step (a),
+  the lane: `fn-icar-submission-intent`, one function returning the pair
+  the host builds from the two calls, digesting once. Step (b), a freeze
+  item: the digest as a field of the in-flight submission (`fn-own-sub-*`,
+  books/owner.lisp, 9 direct includers, closure the whole owner half) set
+  at `fn-owner-take`, so the resolution's digest is a read; then four
+  digests become one, which is the identity itself.
+- Theorem: `(equal (fn-icar-submission-intent o evidence generation txid)
+  (cons (fn-own-submission-intent-result o evidence generation txid)
+  (fn-own-submission-intent-records o evidence generation txid)))`, no
+  hypothesis. For (b): `(implies (fn-own-relation o) (equal
+  (fn-own-sub-intent-id (fn-own-inflight o)) (fn-own-feed-intent-id
+  (fn-own-sub-msgid (fn-own-inflight o)) (fn-own-sub-octets (fn-own-inflight o)))))`,
+  carried from take by `fn-own-step-preserves-relation`.
+- Owns: `books/owner-intent-carried.lisp`, `tests/acl2/owner-intent-carried-tests.lisp`,
+  `host/owner-host.lisp` lines 1016 to 1017 (the two calls become one).
+  Dependents touched: none beyond the new roots and the host.
+- Memory after: unchanged ((b) adds 32 octets per in-flight submission).
+- Parallel: yes, with every other lane; its host lines are its own.
+- Expected: two of the four digests gone with (a), about −11% of POST CPU;
+  three of four with (b), about −17%.
+
+**Boundary 3: SHA-256 on a word stobj** (`lane/sha256-words`).
+- Share: all of `fn-frame-digest`, 43 to 46% after boundary 1 (254 to 278
+  samples per 48 POSTs, unchanged by boundary 1), of which the intent
+  identity is boundary 2's part; the rest is the host-direct subject and
+  obligation identities (`fn-id-subject-of-payload`, `fn-id-obligation-of`,
+  books/identity.lisp:201, :207) and the frame trailers (`fn-frame-trailer`,
+  `host/owner-host.lisp` line 1894, `host/native/io.lisp` line 950). The
+  list cost is `fn-sha256-pad`'s copy, `fn-sha256-firstn`/`-nthcdrx`
+  slicing per block, the consed and twice-reversed schedule (about four
+  conses per octet), and generic arithmetic on undeclared words (`ASH`,
+  `SB-KERNEL:TWO-ARG-IOR`/`-XOR` in every flat profile).
+- Representation: `(defstobj fn-shw (h :type (array (unsigned-byte 32) (8)))
+  (w :type (array (unsigned-byte 32) (64))) (blk :type (array (unsigned-byte 8) (64))))`
+  used under `with-local-stobj`: the message stays the octet list and is
+  consumed by `cdr` into `blk` (no slicing, no padded copy: the final one or
+  two blocks are emitted from the length), the schedule and the working
+  variables are `(unsigned-byte 32)` array cells with `(the (unsigned-byte 32) ...)`
+  from the guards, so SBCL compiles fixnum arithmetic. `fn-shw-sha256` has
+  `fn-sha256`'s signature (octet list to 32-octet list), so it attaches.
+- Theorem: `(equal (fn-shw-sha256 m) (fn-sha256 m))` for every `m`, through
+  `fn-shw-compress-is-compress` (one block: the array rounds equal
+  `fn-sha256-rounds` on the list schedule, by a per-round lemma indexed by
+  t), `fn-shw-schedule-is-schedule` (`(nth t w)` equals `(nth t
+  (fn-sha256-schedule ws16))`), and `fn-shw-final-blocks-are-pad` (the
+  emitted tail equals the tail of `fn-sha256-pad`). Then
+  `books/crypto-attach.lisp` re-proves its three `satisfies` theorems from
+  the equation and attaches `fn-shw-sha256` to `fn-digest` and
+  `fn-frame-digest` (lines 85 to 86); no constraint moves.
+- Owns: `books/sha256-words.lisp`, `tests/acl2/sha256-words-tests.lisp`
+  (the FIPS 180-4 vectors sha256's tests already use, the correspondence on
+  them, a `must-fail` on a one-round-short twin), `books/crypto-attach.lisp`
+  (the attachment). Dependents touched: crypto-attach's 4 direct includers
+  and the host image; `books/sha256.lisp` (1 includer) unchanged.
+- Memory after: unchanged (transient); the four conses per digested octet
+  gone.
+- Parallel: yes, with 2, 4, 5. Boundaries 6 to 9 need its stobj entry
+  `fn-shw-sha256-of-buffer` (digest straight from the payload stobj) added
+  after it lands; that entry is a second theorem in the same book.
+- Expected: most of the digest's 43 to 46%; the honest figure is measured,
+  because the generic-arithmetic share is not separable in the profile.
+
+**Boundary 4: the remaining list recognitions** (`lane/records-concrete-2`).
+- Share: 4 to 6% after boundary 1: the store event encoder's kind dispatch
+  and the codec's guard check (`fn-store-event-encode`,
+  books/store-events.lisp:160; `fn-record-encode-impl`, books/records.lisp:73,
+  through the seam), `fn-sf-record-dir-result` (books/store-files.lisp:501),
+  `fn-sbud-pending-sequence` (books/store-budget-naming.lisp:34), the host
+  bridge wrappers `fn-store-record-sequence`/`-txid` (`host/native/io.lisp`
+  lines 710 to 712, `host/store-node-host.lisp`), and recovery
+  (`fn-store-sn-recover`, io.lisp:722, which decodes every record from a
+  freshly consed list).
+- Representation: the twins of boundary 1 extended to these callers; for
+  the encoder, a twin of the dispatch whose kind test is `fn-rcon-record-p`
+  and whose codec call is the seam's `fn-record-encode` unchanged.
+- Theorem: for each, `(equal (fn-rcon-X args) (fn-X args))`, no
+  hypothesis, as in boundary 1.
+- Owns: `books/records-concrete.lisp` (extend), `tests/acl2/records-concrete-tests.lisp`,
+  `host/store-node-host.lisp` (the bridge entries), `host/owner-host.lisp`
+  `fn-owner-pending-sequence`. Dependents touched: records-concrete's
+  includers (owner-commit-carried, owner-prepare-carried and the 12 roots
+  the second farm run selected).
+- Memory after: unchanged.
+- Parallel: yes; nobody else edits records-concrete. Coordinate the host
+  file with boundary 2 (different functions).
+
+**Boundary 5: the Message-ID trie by index** (`lane/msgid-index-concrete`).
+- Share: not on the POST profile beyond `fn-midx-refresh` inside
+  `fn-own-refresh` (2% of the commit); on every reader and peer lookup
+  `fn-midx-lookup` (books/msgid-index.lisp:69) converts the Message-ID to a
+  character list (`fn-midx-key-chars`, :48) and `fn-midx-get-chars` walks it:
+  one transient list per command. Served medians at N = 120 are 0.09 to
+  0.8 ms (`representation-2026-09-25/shm-*.json`), so the share is a
+  fraction of a small number.
+- Representation: the walk by string index, `fn-mxc-get msgid i trie`;
+  insert by index at refresh.
+- Theorem: `(implies (stringp msgid) (equal (fn-mxc-lookup msgid trie)
+  (fn-midx-lookup msgid trie)))` and `(equal (fn-mxc-extend article trie)
+  (fn-midx-extend article trie))`, so `fn-midx-correspondencep` (the trie
+  invariant `fn-own-relation` carries) is unchanged.
+- Owns: `books/msgid-index-concrete.lisp`, its tests, and the reroute:
+  the served retrieval arm reaches the lookup through
+  `fn-nntp-msgid-retrieval-indexed` (books/nntp-responses.lisp:2279, in the
+  served half's closure), so the executable switch is a twin arm in
+  `books/owner-served-carried.lisp` (`fn-scar-*`, the chain the host calls
+  at `fn-owner-chunk`) or a leaf `mbe` in `fn-midx-lookup` at a freeze
+  (msgid-index: 4 direct includers).
+- Memory after: the transient key list per command gone; the trie's nodes
+  unchanged.
+- Parallel: yes. Lowest share of wave A; launch if a lane is free.
+
+**Boundary M: the heap census** (`lane/heap-census`, measurement only).
+The 2.0 MiB per article RSS slope (§1, §3) is not the octet lists.
+Take `(room)` and a per-type census on a loaded owner at N = 16, 50, 120
+after `(sb-ext:gc :full t)`, on the profiling twin. Owns nothing in
+`books/`; writes `planning/evidence/heap-census-2026-09-25.md`. Its result
+decides the size of boundary 10. Parallel: yes.
+
+### Wave B: after boundary 3 lands; parallel among themselves once 6 lands
+
+**Boundary 6: the octet buffer, an abstract stobj** (`lane/octets-stobj`).
+- Share: on this profile `fn-record-payloadp` 1.5 to 2.7%, the host's
+  `fnn-octet-list` under 1%, frame assembly 2 to 4%; at the payload
+  maximum every per-octet cost on the transient path scales with it, and
+  this is the representation the other wave-B lanes build on.
+- Representation: `(defabsstobj fn-octets ...)`: logical view the octet
+  list `(fn-octets-list st)`, executable a resizable `(unsigned-byte 8)`
+  array with a fill pointer; exports `fn-octets-len`, `fn-octets-get`,
+  `fn-octets-put`, `fn-octets-append-octet`, `fn-octets-clear`,
+  `fn-octets-to-list` (the escape hatch for a caller not yet rewritten) and
+  `fn-octets-from-list` (the escape hatch the other way). The host fills the
+  array from the socket buffer in raw Lisp (`fnn-octets-fill`, one
+  `replace`), and passes the stobj to the ACL2 entry.
+- Theorem: the abstract stobj's `{:logic,:exec}` preservation for each
+  export, proved once (`fn-octets-get{:logic}` is `nth`, `-put{:logic}` is
+  `update-nth`, `-append{:logic}` is `append`, each `{:exec}` on the array
+  corresponds under `fn-octets-corr`); then, for the first consumer,
+  `(equal (fn-rcon-payloadp-of-buffer st) (fn-record-payloadp (fn-octets-list st)))`
+  with the bound `*fn-record-max-payload*` kept.
+- Owns: `books/octets-stobj.lisp`, `tests/acl2/octets-stobj-tests.lisp`,
+  `host/native/io.lisp` (`fnn-octet-list` and its callers at lines 838 to
+  844: the store prepare entries), `host/owner-host.lisp` `fn-owner-prepare`
+  (line 346, the `payload` argument). Dependents touched: none in `books/`
+  until a consumer includes it; the host image.
+- Memory after: the transient copies on the POST path gone (the socket
+  buffer to the stobj is one array); the long-lived copies unchanged (32 L)
+  until boundary 10.
+- Parallel: no, it is the base of 7, 8, 9; one lane, then the three.
+
+**Boundary 7: the record codec over the buffer** (`lane/records-stobj`).
+- Share: the encoder's `append` of CBOR items and the decoder's
+  `take`/`nthcdr` slicing at recovery (`fn-record-encode-impl`,
+  `fn-record-decode-exact-impl`, books/records.lisp; the CBOR primitives in
+  books/cbor.lisp); on this profile inside `fn-owner-pending-octets`
+  (0.7%) and the frame write; at recovery every record.
+- Representation: encoder writing into the stobj at an offset, decoder
+  reading from it by index with the same self-delimiting grammar and the
+  same bound checks before traversal (`*fn-record-max-octets*`,
+  `*fn-cbor-max-input*`).
+- Theorem: `(equal (fn-octets-list (fn-rcs-encode-into record st)) (append
+  (fn-octets-list st) (fn-record-encode record)))` and `(equal
+  (fn-rcs-decode-exact st) (fn-record-decode-exact (fn-octets-list st)))`,
+  stated against the seam's constrained names (books/records-seam.lisp), so
+  nothing above the seam moves; the host calls the twins where it now
+  calls the seam.
+- Owns: `books/records-stobj.lisp`, `tests/acl2/records-stobj-tests.lisp`
+  (the schema-0 and schema-1 golden octets of records.lisp re-run through
+  the buffer), `host/store-node-host.lisp` and `host/native/io.lisp`
+  (record write and recovery decode, lines 710 to 723). Dependents
+  touched: records-attach (1 includer) unchanged; the host.
+- Memory after: the encoder's output list per record gone (transient).
+- Parallel: yes with 8 and 9 after 6.
+
+**Boundary 8: the frame codec over the buffer** (`lane/frame-stobj`).
+- Share: `fn-frame-protected`/`fn-frame-encode` (books/frame-fields.lisp:306,
+  :317) copy the payload into the frame (`fn-ag-append`, 2 to 4%), and the
+  host writes the frame as a list (`fn-frame-trailer`, io.lisp:950;
+  `fn-frame-store-protected`, books/frame.lisp:151).
+- Representation: the frame as three writes on the host, header, payload
+  (already in the buffer) and trailer, with the trailer computed by
+  boundary 3's `fn-shw-sha256-of-buffer` over the protected range.
+- Theorem: `(equal (fn-octets-list (fn-frs-seal-into magic version kind st))
+  (fn-frame-seal magic version kind (fn-octets-list st)))` (stated against
+  the constrained `fn-frame-digest`, as `fn-frame-encode-is-seal` is), and
+  the decoder `(equal (fn-frs-decode st digest max) (fn-frame-decode
+  (fn-octets-list st) digest max))`.
+- Owns: `books/frame-stobj.lisp`, `tests/acl2/frame-stobj-tests.lisp`,
+  `host/native/io.lisp` line 950 and the frame write path,
+  `host/owner-host.lisp` line 1894. Dependents touched: frame (8
+  includers) and frame-fields (2) unchanged; the host.
+- Memory after: the frame's copy of the payload gone (transient).
+- Parallel: yes with 7 and 9 after 6 and 3.
+
+**Boundary 9: the article parser over the buffer** (`lane/article-stobj`).
+- Share: `fn-article-parse` (books/article.lisp:324) and the header field
+  parsers over the posted octets (inside `fn-owner-chunk`, 4.8%, and
+  `fn-owner-io`, 3.3%), O(L) with conses per field.
+- Representation: the parser by index over the buffer, with the same work
+  counters: the PRF-016 theorems (`fn-article-parse-work-value`,
+  `-input-bound`, `-profile-bound`) restated over the twin through a
+  correspondence of the work value.
+- Theorem: `(equal (fn-ars-parse st) (fn-article-parse (fn-octets-list st)))`
+  and `(equal (fn-ars-parse-work st) (fn-article-parse-work
+  (fn-octets-list st)))`.
+- Owns: `books/article-stobj.lisp`, `tests/acl2/article-stobj-tests.lisp`,
+  `host/owner-host.lisp` `fn-owner-chunk` (line 1414) and the injection
+  path. Dependents touched: article-fields (9 includers) and article
+  unchanged; the host.
+- Memory after: the parsed field lists become string fields (the
+  recognizers of boundary 1 already read strings).
+- Parallel: yes with 7 and 8 after 6.
+
+### Wave C: the state, and the freeze
+
+**Boundary 10: the owner state as an abstract stobj** (`lane/owner-stobj`,
+after wave B and the heap census).
+- Share: this is the memory boundary. The two long-lived copies of every
+  article, the store record's payload and the node's article body, are
+  fields of the logical owner and are octet lists in every image until the
+  owner has a concrete representation. 32 L bytes per article today: 1 MiB
+  at the payload maximum, 4 GiB at N = 4096 (§3).
+- Representation: `(defabsstobj fn-owner ...)` whose logical view is the
+  owner value the theorems are about (`fn-own-*`) and whose executable is
+  a struct holding the history and the archive with payloads as
+  `(unsigned-byte 8)` arrays; exports are the host-called entries
+  (`fn-owner-prepare`'s `fn-pcar-sbud-prepare`, `fn-ccar-own-finish`,
+  `fn-acar-own-outcome`, the served read, the recovery open), each with a
+  `:logic` the existing function and an `:exec` twin over the struct.
+- Theorem: per export, the abstract stobj's correspondence `(fn-owner-corr
+  st o)` preserved and the export's `{:logic}` equal to the current
+  host-called function; the carried premises (`fn-ocl-relation`,
+  `fn-sn-statep`) become part of `fn-owner-corr`, which is the "carry the
+  invariant in state" AGENTS.md asks for.
+- Owns: `books/owner-stobj.lisp` and one book per export
+  (`owner-stobj-prepare`, `-commit`, `-outcome`, `-read`, `-recover`),
+  their tests, and every host entry in `host/owner-host.lisp`. Dependents
+  touched: none of the logical books; the whole host.
+- Memory after: 2 (L + 16) per article plus the record's strings: 64 KiB
+  at the maximum payload, 256 MiB at N = 4096.
+- Parallel: the stobj book is one lane; the exports can then be one lane
+  each (they own disjoint books and disjoint host entries).
+
+**Freeze items** (the coordinator's batch, not lanes; each is a leaf `mbe`
+whose `:logic` is the current definition and whose guard obligation is the
+correspondence, and each recertifies its closure): `fn-record-octet-stringp`
+and `fn-record-metadata-bytes-p` (records-shape; then boundary 1's twins
+become redundant and boundary 4's callers need no reroute),
+`fn-record-payloadp` over the buffer (records-shape, with boundary 6),
+`fn-octet-listp` (acceptance-alloc, 6 includers, root of the tree),
+`fn-midx-lookup` (msgid-index), the `fn-own-sub-*` intent field (owner).
+One freeze with all of them is 1:44 at 16 jobs on hbox
+(`fn-freeze-recipe`), the same as one.
+
+### Not on this profile: measure first
+
+The BP and TCPCL codecs (`fn-bpn-receive`, books/bp-node.lisp:446, the
+`fn-bpa-*`/`fn-tcl-*` codecs), the feed and peer wire
+(`fn-peer-relayed-octets`, books/peer-inbound.lisp:243, the `fn-feed-*`
+input step) take octets from the host as lists on their own paths. Their
+shares are in their own records (`planning/evidence/bp-*`,
+`m4-*`, `d23-*`), not in a POST profile. They follow the wave-B pattern
+over the same buffer stobj (boundary 6) once a profile of their path names
+the share; a lane for each is `lane/bp-stobj` and `lane/feed-stobj`, owning
+`books/bp-octets.lisp` and `books/feed-octets.lisp` with their host files
+(`host/native/bp*.lisp`, the feed thread), after boundary 6.
+
+### The order, in one line
+
+Now, in parallel: 2 (intent), 3 (SHA-256 words), 4 (remaining
+recognitions), 5 (trie, if a lane is free), M (heap census). After 3: 6
+(the buffer). After 6, in parallel: 7 (record codec), 8 (frame), 9
+(parser). After the census and wave B: 10 (the owner stobj), then its
+exports in parallel. The freeze items go in the coordinator's next freeze.
