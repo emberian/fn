@@ -22,6 +22,9 @@
 (include-book "../books/store-checkpoint-codec")
 ; fn-bs-scp-program: the checkpoint file name is its rename target.
 (include-book "../books/byte-store-state-checkpoint-program")
+; fn-rcl-existing-action: the duplicate-versus-tombstone decision
+; fn-store-sn-prepare and the retention prepare call.
+(include-book "../books/store-reclaim")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-host.lisp defines, so a session that loads this file alone

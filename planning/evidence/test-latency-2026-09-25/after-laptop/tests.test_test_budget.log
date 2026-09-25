@@ -1,0 +1,15 @@
+test_a_failing_module_is_failed_not_over_budget (tests.test_test_budget.TestBudgetRunner.test_a_failing_module_is_failed_not_over_budget) ... ok
+test_a_module_past_its_budget_is_terminated_and_reported_over (tests.test_test_budget.TestBudgetRunner.test_a_module_past_its_budget_is_terminated_and_reported_over) ... ok
+test_a_passing_module_reports_its_time_and_tests (tests.test_test_budget.TestBudgetRunner.test_a_passing_module_reports_its_time_and_tests) ... ok
+test_exit_codes_keep_failure_and_budget_apart (tests.test_test_budget.TestBudgetRunner.test_exit_codes_keep_failure_and_budget_apart) ... ok
+test_the_budget_can_be_lowered_never_raised (tests.test_test_budget.TestBudgetRunner.test_the_budget_can_be_lowered_never_raised) ... usage: test_budget.py [-h] [--discover] [--budget BUDGET] [--slowest SLOWEST]
+                      [--logs LOGS] [--json JSON]
+                      [modules ...]
+test_budget.py: error: --budget may not exceed 300 s
+ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 6.778s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_test_budget", "tests": 5, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_test_budget.TestBudgetRunner.test_a_failing_module_is_failed_not_over_budget", 0.111], ["tests.test_test_budget.TestBudgetRunner.test_a_module_past_its_budget_is_terminated_and_reported_over", 2.046], ["tests.test_test_budget.TestBudgetRunner.test_a_passing_module_reports_its_time_and_tests", 0.114], ["tests.test_test_budget.TestBudgetRunner.test_exit_codes_keep_failure_and_budget_apart", 4.504], ["tests.test_test_budget.TestBudgetRunner.test_the_budget_can_be_lowered_never_raised", 0.003]]}

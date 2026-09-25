@@ -1,0 +1,35 @@
+test_a_bundle_without_an_identity_is_a_usage_error (tests.test_media.MediaCommandLineTests.test_a_bundle_without_an_identity_is_a_usage_error) ... media: usage --bundle wants <transport-id>=<path>
+ok
+test_a_damaged_copy_is_refused_by_verify_with_no_store_touched (tests.test_media.MediaCommandLineTests.test_a_damaged_copy_is_refused_by_verify_with_no_store_touched) ... media: refused media item disagrees with its copy digest: fdddbace45406c3db685e3fe0d84fb0bc24e64d1bd72660bfdb18a32f99685bc.bp
+ok
+test_a_missing_volume_is_refused_not_a_fault (tests.test_media.MediaCommandLineTests.test_a_missing_volume_is_refused_not_a_fault) ... media: refused media item is absent or not a regular file: manifest.json
+ok
+test_a_second_export_over_a_written_volume_is_refused (tests.test_media.MediaCommandLineTests.test_a_second_export_over_a_written_volume_is_refused) ... media: refused /var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/fn-media-cli-ci0eiogk/vol already exists
+ok
+test_an_adu_without_its_bundle_octets_is_a_usage_error (tests.test_media.MediaCommandLineTests.test_an_adu_without_its_bundle_octets_is_a_usage_error) ... media: usage every --bundle needs one --bp-bundle for the same transport identity
+ok
+test_export_then_verify_reports_accepted (tests.test_media.MediaCommandLineTests.test_export_then_verify_reports_accepted) ... ok
+test_uncertain_dominates_refused_in_a_volume_exit_code (tests.test_media.MediaCommandLineTests.test_uncertain_dominates_refused_in_a_volume_exit_code) ... ok
+test_a_corrupted_file_is_refused_before_anything_is_staged (tests.test_media.MediaImportTests.test_a_corrupted_file_is_refused_before_anything_is_staged) ... ok
+test_an_uncertain_staging_cut_is_reported_uncertain_not_refused (tests.test_media.MediaImportTests.test_an_uncertain_staging_cut_is_reported_uncertain_not_refused) ... ok
+test_every_reported_outcome_is_one_of_the_four (tests.test_media.MediaImportTests.test_every_reported_outcome_is_one_of_the_four) ... ok
+test_import_accepts_through_the_receiver_and_leaves_the_media_unchanged (tests.test_media.MediaImportTests.test_import_accepts_through_the_receiver_and_leaves_the_media_unchanged) ... ok
+test_partial_copy_accepts_the_whole_item_and_refuses_the_truncated_one (tests.test_media.MediaImportTests.test_partial_copy_accepts_the_whole_item_and_refuses_the_truncated_one) ... ok
+test_quota_exhaustion_refuses_without_charging_or_promising (tests.test_media.MediaImportTests.test_quota_exhaustion_refuses_without_charging_or_promising) ... ok
+test_reimport_of_the_same_media_is_a_duplicate_with_the_same_receipt (tests.test_media.MediaImportTests.test_reimport_of_the_same_media_is_a_duplicate_with_the_same_receipt) ... ok
+test_export_refuses_a_repeated_bundle_identity (tests.test_media.MediaManifestTests.test_export_refuses_a_repeated_bundle_identity) ... ok
+test_exported_media_is_written_read_only (tests.test_media.MediaManifestTests.test_exported_media_is_written_read_only) ... ok
+test_manifest_boundaries_are_refused (tests.test_media.MediaManifestTests.test_manifest_boundaries_are_refused) ... ok
+test_manifest_names_identity_size_and_digest_of_every_bundle (tests.test_media.MediaManifestTests.test_manifest_names_identity_size_and_digest_of_every_bundle) ... ok
+test_partial_copy_is_absent_from_the_inventory_rather_than_short (tests.test_media.MediaManifestTests.test_partial_copy_is_absent_from_the_inventory_rather_than_short) ... ok
+test_same_length_damage_is_caught_by_the_copy_digest (tests.test_media.MediaManifestTests.test_same_length_damage_is_caught_by_the_copy_digest) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 20.163s
+
+OK
+accepted /var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/fn-media-cli-16kr8xuk/vol media-id=cli-1 items=1 manifest=baf0412c818a2b85dca5919e87ce0a8f3e652e55218f3f6fb04ea1c237a35c89
+accepted /var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/fn-media-cli-ci0eiogk/vol media-id=cli-1 items=1 manifest=baf0412c818a2b85dca5919e87ce0a8f3e652e55218f3f6fb04ea1c237a35c89
+accepted /var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/fn-media-cli-_65g7taq/vol media-id=cli-1 items=1 manifest=baf0412c818a2b85dca5919e87ce0a8f3e652e55218f3f6fb04ea1c237a35c89
+accepted /var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/fn-media-cli-_65g7taq/vol items=1 manifest=baf0412c818a2b85dca5919e87ce0a8f3e652e55218f3f6fb04ea1c237a35c89
+FN_TEST_BUDGET_RESULT {"module": "tests.test_media", "tests": 20, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_media.MediaCommandLineTests.test_a_bundle_without_an_identity_is_a_usage_error", 0.002], ["tests.test_media.MediaCommandLineTests.test_a_damaged_copy_is_refused_by_verify_with_no_store_touched", 0.024], ["tests.test_media.MediaCommandLineTests.test_a_missing_volume_is_refused_not_a_fault", 0.001], ["tests.test_media.MediaCommandLineTests.test_a_second_export_over_a_written_volume_is_refused", 0.021], ["tests.test_media.MediaCommandLineTests.test_an_adu_without_its_bundle_octets_is_a_usage_error", 0.001], ["tests.test_media.MediaCommandLineTests.test_export_then_verify_reports_accepted", 0.025], ["tests.test_media.MediaCommandLineTests.test_uncertain_dominates_refused_in_a_volume_exit_code", 0.001], ["tests.test_media.MediaImportTests.test_a_corrupted_file_is_refused_before_anything_is_staged", 1.79], ["tests.test_media.MediaImportTests.test_an_uncertain_staging_cut_is_reported_uncertain_not_refused", 0.842], ["tests.test_media.MediaImportTests.test_every_reported_outcome_is_one_of_the_four", 2.694], ["tests.test_media.MediaImportTests.test_import_accepts_through_the_receiver_and_leaves_the_media_unchanged", 3.111], ["tests.test_media.MediaImportTests.test_partial_copy_accepts_the_whole_item_and_refuses_the_truncated_one", 2.007], ["tests.test_media.MediaImportTests.test_quota_exhaustion_refuses_without_charging_or_promising", 2.637], ["tests.test_media.MediaImportTests.test_reimport_of_the_same_media_is_a_duplicate_with_the_same_receipt", 5.522], ["tests.test_media.MediaManifestTests.test_export_refuses_a_repeated_bundle_identity", 0.04], ["tests.test_media.MediaManifestTests.test_exported_media_is_written_read_only", 0.024], ["tests.test_media.MediaManifestTests.test_manifest_boundaries_are_refused", 0.033], ["tests.test_media.MediaManifestTests.test_manifest_names_identity_size_and_digest_of_every_bundle", 0.028], ["tests.test_media.MediaManifestTests.test_partial_copy_is_absent_from_the_inventory_rather_than_short", 0.032], ["tests.test_media.MediaManifestTests.test_same_length_damage_is_caught_by_the_copy_digest", 0.039]]}

@@ -1,0 +1,200 @@
+test_acl2_owns_the_delegation_window (tests.test_anchor.Acl2OwnsTheSignedOctets.test_acl2_owns_the_delegation_window)
+The window is applied inside the entry, not by the host's verdict. ... ok
+test_reconstruction_matches_the_captured_response (tests.test_anchor.Acl2OwnsTheSignedOctets.test_reconstruction_matches_the_captured_response) ... ok
+test_the_model_orders_the_three_captures (tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_model_orders_the_three_captures) ... ok
+test_the_real_batched_capture_is_uncertain_not_accepted (tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_real_batched_capture_is_uncertain_not_accepted)
+The fix, at the surface, on the vector that provoked it. ... ok
+test_the_tree_shape_alone_decides_it (tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_tree_shape_alone_decides_it)
+Same ten fields, different Merkle shape: accepted, then uncertain. ... ok
+test_the_verdict_is_over_the_octets_acl2_produced (tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_verdict_is_over_the_octets_acl2_produced) ... ok
+test_absent_library_is_not_a_verdict (tests.test_anchor.CryptoSeam.test_absent_library_is_not_a_verdict)
+Whatever the environment, no path answers True without Ed25519. ... ok
+test_no_other_module_imports_cryptography (tests.test_anchor.CryptoSeam.test_no_other_module_imports_cryptography)
+`tools/crypto_host.py` is the only importer of `cryptography`. ... FAIL
+test_round_trip_and_rejection (tests.test_anchor.CryptoSeam.test_round_trip_and_rejection) ... ok
+test_a_batched_response_does_not_cover_one_nonce (tests.test_anchor.RoughtimeClient.test_a_batched_response_does_not_cover_one_nonce)
+A PATH of even one node is a tree `books/anchor.lisp` cannot fold. ... ok
+test_a_different_pinned_key_does_not_verify (tests.test_anchor.RoughtimeClient.test_a_different_pinned_key_does_not_verify) ... ok
+test_a_foreign_nonce_is_not_in_the_tree (tests.test_anchor.RoughtimeClient.test_a_foreign_nonce_is_not_in_the_tree)
+The Merkle proof is what binds the response to this client. ... ok
+test_captured_response_verifies_under_the_pinned_key (tests.test_anchor.RoughtimeClient.test_captured_response_verifies_under_the_pinned_key) ... ok
+test_merkle_root_folds_the_path (tests.test_anchor.RoughtimeClient.test_merkle_root_folds_the_path) ... ok
+test_one_flipped_octet_breaks_the_response (tests.test_anchor.RoughtimeClient.test_one_flipped_octet_breaks_the_response) ... ok
+test_pinned_key_is_the_one_in_the_server_file (tests.test_anchor.RoughtimeClient.test_pinned_key_is_the_one_in_the_server_file) ... ok
+test_request_is_padded_to_the_minimum (tests.test_anchor.RoughtimeClient.test_request_is_padded_to_the_minimum) ... ok
+test_the_root_is_the_tenth_field (tests.test_anchor.RoughtimeClient.test_the_root_is_the_tenth_field) ... ok
+test_two_captures_cover_one_nonce_and_the_third_is_batched (tests.test_anchor.RoughtimeClient.test_two_captures_cover_one_nonce_and_the_third_is_batched)
+int08h batches, and one of fn's own vectors is proof of it. ... ok
+test_a_batched_anchor_is_uncertain_at_both_commands (tests.test_anchor.StoreAnchorCommands.test_a_batched_anchor_is_uncertain_at_both_commands)
+Three outcomes, to the exit code, on a real batched capture. ... FAIL
+test_a_store_that_never_anchored_recovers_as_before (tests.test_anchor.StoreAnchorCommands.test_a_store_that_never_anchored_recovers_as_before) ... ok
+test_anchor_records_then_refuses_a_replay (tests.test_anchor.StoreAnchorCommands.test_anchor_records_then_refuses_a_replay) ... FAIL
+test_no_anchor_obtainable_is_uncertain_not_refused (tests.test_anchor.StoreAnchorCommands.test_no_anchor_obtainable_is_uncertain_not_refused) ... FAIL
+test_restoring_an_older_snapshot_is_refused (tests.test_anchor.StoreAnchorCommands.test_restoring_an_older_snapshot_is_refused)
+FLR-003: the image is intact and every checksum matches. ... FAIL
+test_restoring_with_a_fresh_anchor_succeeds (tests.test_anchor.StoreAnchorCommands.test_restoring_with_a_fresh_anchor_succeeds) ... FAIL
+
+======================================================================
+FAIL: test_no_other_module_imports_cryptography (tests.test_anchor.CryptoSeam.test_no_other_module_imports_cryptography)
+`tools/crypto_host.py` is the only importer of `cryptography`.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tests/test_anchor.py", line 78, in test_no_other_module_imports_cryptography
+    self.assertEqual(offenders, [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['fn_verify.py', 'v0_matrix.py'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'fn_verify.py'
+
+- ['fn_verify.py', 'v0_matrix.py']
++ []
+
+======================================================================
+FAIL: test_a_batched_anchor_is_uncertain_at_both_commands (tests.test_anchor.StoreAnchorCommands.test_a_batched_anchor_is_uncertain_at_both_commands)
+Three outcomes, to the exit code, on a real batched capture.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tests/test_anchor.py", line 356, in test_a_batched_anchor_is_uncertain_at_both_commands
+    self.assertEqual(code, run_store.EXIT_OK, output)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2420, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2397, in main
+    return {"init": command_init, "post": command_post, "recover": command_recover,
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ...<5 lines>...
+            "policy": command_policy,
+            ~~~~~~~~~~~~~~~~~~~~~~~~~
+            "config": command_config}[args.command](args)
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2155, in command_anchor
+    anchor, reason = obtain_anchor(args)
+                     ~~~~~~~~~~~~~^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2096, in obtain_anchor
+    record = json.loads(Path(vector).read_bytes())
+             ^^^^
+NameError: name 'json' is not defined. Did you forget to import 'json'?
+
+
+======================================================================
+FAIL: test_anchor_records_then_refuses_a_replay (tests.test_anchor.StoreAnchorCommands.test_anchor_records_then_refuses_a_replay)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tests/test_anchor.py", line 313, in test_anchor_records_then_refuses_a_replay
+    self.assertEqual(code, run_store.EXIT_OK, output)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2420, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2397, in main
+    return {"init": command_init, "post": command_post, "recover": command_recover,
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ...<5 lines>...
+            "policy": command_policy,
+            ~~~~~~~~~~~~~~~~~~~~~~~~~
+            "config": command_config}[args.command](args)
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2155, in command_anchor
+    anchor, reason = obtain_anchor(args)
+                     ~~~~~~~~~~~~~^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2096, in obtain_anchor
+    record = json.loads(Path(vector).read_bytes())
+             ^^^^
+NameError: name 'json' is not defined. Did you forget to import 'json'?
+
+
+======================================================================
+FAIL: test_no_anchor_obtainable_is_uncertain_not_refused (tests.test_anchor.StoreAnchorCommands.test_no_anchor_obtainable_is_uncertain_not_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tests/test_anchor.py", line 369, in test_no_anchor_obtainable_is_uncertain_not_refused
+    self.assertEqual(code, run_store.EXIT_OK, output)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2420, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2397, in main
+    return {"init": command_init, "post": command_post, "recover": command_recover,
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ...<5 lines>...
+            "policy": command_policy,
+            ~~~~~~~~~~~~~~~~~~~~~~~~~
+            "config": command_config}[args.command](args)
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2155, in command_anchor
+    anchor, reason = obtain_anchor(args)
+                     ~~~~~~~~~~~~~^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2096, in obtain_anchor
+    record = json.loads(Path(vector).read_bytes())
+             ^^^^
+NameError: name 'json' is not defined. Did you forget to import 'json'?
+
+
+======================================================================
+FAIL: test_restoring_an_older_snapshot_is_refused (tests.test_anchor.StoreAnchorCommands.test_restoring_an_older_snapshot_is_refused)
+FLR-003: the image is intact and every checksum matches.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tests/test_anchor.py", line 329, in test_restoring_an_older_snapshot_is_refused
+    self.assertEqual(code, run_store.EXIT_OK, output)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2420, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2397, in main
+    return {"init": command_init, "post": command_post, "recover": command_recover,
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ...<5 lines>...
+            "policy": command_policy,
+            ~~~~~~~~~~~~~~~~~~~~~~~~~
+            "config": command_config}[args.command](args)
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2155, in command_anchor
+    anchor, reason = obtain_anchor(args)
+                     ~~~~~~~~~~~~~^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2096, in obtain_anchor
+    record = json.loads(Path(vector).read_bytes())
+             ^^^^
+NameError: name 'json' is not defined. Did you forget to import 'json'?
+
+
+======================================================================
+FAIL: test_restoring_with_a_fresh_anchor_succeeds (tests.test_anchor.StoreAnchorCommands.test_restoring_with_a_fresh_anchor_succeeds)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tests/test_anchor.py", line 339, in test_restoring_with_a_fresh_anchor_succeeds
+    self.assertEqual(code, run_store.EXIT_OK, output)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2420, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2397, in main
+    return {"init": command_init, "post": command_post, "recover": command_recover,
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ...<5 lines>...
+            "policy": command_policy,
+            ~~~~~~~~~~~~~~~~~~~~~~~~~
+            "config": command_config}[args.command](args)
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2155, in command_anchor
+    anchor, reason = obtain_anchor(args)
+                     ~~~~~~~~~~~~~^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/test-latency/tools/run_store.py", line 2096, in obtain_anchor
+    record = json.loads(Path(vector).read_bytes())
+             ^^^^
+NameError: name 'json' is not defined. Did you forget to import 'json'?
+
+
+----------------------------------------------------------------------
+Ran 25 tests in 3.801s
+
+FAILED (failures=6)
+FN_TEST_BUDGET_RESULT {"module": "tests.test_anchor", "tests": 25, "failures": 6, "errors": 0, "skipped": 0, "timings": [["tests.test_anchor.Acl2OwnsTheSignedOctets.test_acl2_owns_the_delegation_window", 0.004], ["tests.test_anchor.Acl2OwnsTheSignedOctets.test_reconstruction_matches_the_captured_response", 0.001], ["tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_model_orders_the_three_captures", 0.002], ["tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_real_batched_capture_is_uncertain_not_accepted", 0.002], ["tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_tree_shape_alone_decides_it", 0.003], ["tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_verdict_is_over_the_octets_acl2_produced", 0.001], ["tests.test_anchor.CryptoSeam.test_absent_library_is_not_a_verdict", 0.0], ["tests.test_anchor.CryptoSeam.test_no_other_module_imports_cryptography", 0.009], ["tests.test_anchor.CryptoSeam.test_round_trip_and_rejection", 0.001], ["tests.test_anchor.RoughtimeClient.test_a_batched_response_does_not_cover_one_nonce", 0.001], ["tests.test_anchor.RoughtimeClient.test_a_different_pinned_key_does_not_verify", 0.0], ["tests.test_anchor.RoughtimeClient.test_a_foreign_nonce_is_not_in_the_tree", 0.0], ["tests.test_anchor.RoughtimeClient.test_captured_response_verifies_under_the_pinned_key", 0.0], ["tests.test_anchor.RoughtimeClient.test_merkle_root_folds_the_path", 0.0], ["tests.test_anchor.RoughtimeClient.test_one_flipped_octet_breaks_the_response", 0.0], ["tests.test_anchor.RoughtimeClient.test_pinned_key_is_the_one_in_the_server_file", 0.0], ["tests.test_anchor.RoughtimeClient.test_request_is_padded_to_the_minimum", 0.0], ["tests.test_anchor.RoughtimeClient.test_the_root_is_the_tenth_field", 0.0], ["tests.test_anchor.RoughtimeClient.test_two_captures_cover_one_nonce_and_the_third_is_batched", 0.001], ["tests.test_anchor.StoreAnchorCommands.test_a_batched_anchor_is_uncertain_at_both_commands", 0.603], ["tests.test_anchor.StoreAnchorCommands.test_a_store_that_never_anchored_recovers_as_before", 0.568], ["tests.test_anchor.StoreAnchorCommands.test_anchor_records_then_refuses_a_replay", 0.613], ["tests.test_anchor.StoreAnchorCommands.test_no_anchor_obtainable_is_uncertain_not_refused", 0.586], ["tests.test_anchor.StoreAnchorCommands.test_restoring_an_older_snapshot_is_refused", 0.624], ["tests.test_anchor.StoreAnchorCommands.test_restoring_with_a_fresh_anchor_succeeds", 0.6]]}
