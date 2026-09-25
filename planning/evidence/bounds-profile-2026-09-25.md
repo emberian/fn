@@ -2,7 +2,7 @@
 
 Lane `bounds-profile`, branch `lane/bounds-profile` from dev `534a68d3`, part 1
 of bounds-p5 (D27: a constant that bounds data moves into the store profile).
-PRF-102, STO-015, SCN-050. Commits: see the LANEDUMP.
+PRF-102, STO-015, SCN-052. Commits: see the LANEDUMP.
 
 ## What changed
 
@@ -132,7 +132,7 @@ hbox, developer image built at b2d8f624 from
 launcher 0f40c674…; `planning/evidence/bounds-profile/image.sha256`). Runs
 under `systemd-run --user --scope -p MemoryMax=24G`.
 
-- `tests/test_native_profile_namespace.py` (SCN-050): 1 test, OK. Log
+- `tests/test_native_profile_namespace.py` (SCN-052): 1 test, OK. Log
   `planning/evidence/bounds-profile/native-namespace.log`, sha256 75484e33….
   It asserts the image's exit codes.
 - The same sequence by hand, with the outputs:
