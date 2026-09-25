@@ -30,6 +30,10 @@
 ; the seams call the constrained encoders and decoders, and this is what makes
 ; them evaluate here.  It changes no theorem.
 (include-book "books/codec-attach")
+;; The record encoder's attachment over the concrete recognizer
+;; (books/records-attach-concrete.lisp): fn-rcon-record-encode-impl, equal to
+;; fn-record-encode-impl on every input.
+(include-book "books/records-attach-concrete")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")
@@ -96,6 +100,9 @@
 ;; The committed-history boundary: io.lisp fnn-mark-committed and
 ;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
 (include-book "books/store-history-marker")
+;; The store bridge's record dispatchers (host/store-host.lisp,
+;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
+(include-book "books/records-concrete")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
