@@ -273,6 +273,7 @@
   (let ((bound (fn-sbud-payload-bound (fn-owner-store-profile state))))
     (if (posp bound) bound *fn-record-max-payload*)))
 
+
 ;; The owner's publication (books/owner-checkpoint-open.lisp).  These read
 ;; the owner and write only the four fn-owner-sco-* globals: the served
 ;; owner `fn-owner' is never written here.
