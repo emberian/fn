@@ -11,7 +11,11 @@ about whether fn signs what the specification says.
 
 `NativeVerifyTests` (FN_RUN_VERIFY_E2E=1, FN_NATIVE_HOST, FN_ACL2,
 FN_TEST_OPENSSL) runs a scratch owner from a saved image with STARTTLS and a
-required login.  The article is signed by the image's own
+required login.  FN_VERIFY_LARGE=1 adds a 60 KiB v1 and a 200 KiB v2 signed
+POST and a tampered v2 one (the image's article bound must admit them), and
+FN_VERIFY_OLD_HOST names an image from before carrier v2 that signs, POSTs
+and stores one v1 article in the same Store before the image under test
+opens it.  The article is signed by the image's own
 `hybrid-sign-carrier` (libsodium and OpenSSL) and POSTed over NNTP; the
 verifier checks it with the other libraries.  That is the independent half.
 A proxy that holds a real login and rewrites what the node said is the
@@ -473,6 +477,8 @@ OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 # books/auth-secret, so it runs from a tree whose certificates exist (a
 # gate tree, read-only); by default this one.
 AUTH_TREE = Path(os.environ.get("FN_VERIFY_AUTH_TREE", ROOT))
+OLD_IMAGE = os.environ.get("FN_VERIFY_OLD_HOST")
+LARGE = os.environ.get("FN_VERIFY_LARGE") == "1"
 
 
 class LyingProxy:
@@ -526,8 +532,8 @@ class NativeVerifyTests(unittest.TestCase):
     USER, PASSWORD = "verify-reader", "correct-horse-verify"
 
     @classmethod
-    def invoke(cls, *args, timeout=180):
-        result = subprocess.run([str(IMAGE), "--fn", *map(str, args)], cwd=ROOT,
+    def invoke(cls, *args, timeout=180, image=IMAGE):
+        result = subprocess.run([str(image), "--fn", *map(str, args)], cwd=ROOT,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 timeout=timeout, check=False)
         if result.returncode != 0:
@@ -537,7 +543,7 @@ class NativeVerifyTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from tests.native_process import wait_for_announcement
+        from tests.native_process import stop_and_diagnostics, wait_for_announcement
         cls.temp = tempfile.TemporaryDirectory(prefix="fn-verify-native-")
         root = cls.root = Path(cls.temp.name)
         store, control, auth = root / "store", root / "control.sock", root / "auth.toml"
@@ -589,28 +595,52 @@ class NativeVerifyTests(unittest.TestCase):
         cls.keyring.write_text(json.dumps({"format": "fn-verify-keyring-v1",
                                            "principals": [json.loads(entry.stdout)]}))
 
+        cls.replies = {}
+        if OLD_IMAGE:
+            # A v1 record written by an image from before carrier v2.
+            old = subprocess.Popen([OLD_IMAGE, "--fn", "operator", str(cls.config), "run"],
+                                   cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            try:
+                line = wait_for_announcement(old, b"LISTENING ")
+                assert line.startswith(b"LISTENING "), line
+                cls.invoke("hybrid-enroll", control, "1", cls.principal, cls.ed_public,
+                           cls.ml_public, image=OLD_IMAGE)
+                cls.replies["verify-old-v1"] = cls.post(
+                    cls.sign("verify-old-v1", source_for("<verify-old-v1@example.invalid>"),
+                             image=OLD_IMAGE))
+            finally:
+                stop_and_diagnostics(old, timeout=60)
+
         cls.owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(cls.config), "run"],
                                      cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         line = wait_for_announcement(cls.owner, b"LISTENING ")
         assert line.startswith(b"LISTENING "), line
-        cls.invoke("hybrid-enroll", control, "1", cls.principal, cls.ed_public, cls.ml_public)
+        if not OLD_IMAGE:
+            cls.invoke("hybrid-enroll", control, "1", cls.principal, cls.ed_public,
+                       cls.ml_public)
 
-        cls.replies = {}
-        for stem, tamper, signed in (("verify-signed", False, True),
-                                     ("verify-tampered", True, True),
-                                     ("verify-unsigned", False, False)):
-            source = root / (stem + ".eml")
-            source.write_bytes(source_for("<{}@example.invalid>".format(stem)))
-            if signed:
-                carried = root / (stem + "-carried.eml")
-                cls.invoke("hybrid-sign-carrier", cls.principal, cls.ed_public,
-                           cls.ed_secret, cls.ml_public, cls.ml_private, source, carried)
-                octets = carried.read_bytes()
-            else:
-                octets = source.read_bytes()
+        cases = [("verify-signed", False, True, b"exact post source\r\n"),
+                 ("verify-tampered", True, True, b"exact post source\r\n"),
+                 ("verify-unsigned", False, False, b"exact post source\r\n")]
+        if LARGE:
+            cases += [("verify-v1-60k", False, True, big_body(60 * 1024)),
+                      ("verify-v2-200k", False, True, big_body(200 * 1024)),
+                      ("verify-v2-tampered", True, True, big_body(200 * 1024))]
+        for stem, tamper, signed, body in cases:
+            source = source_for("<{}@example.invalid>".format(stem), body=body)
+            octets = cls.sign(stem, source) if signed else source
             if tamper:
                 octets = octets.replace(b"exact post source", b"Exact post source", 1)
+                octets = octets.replace(b"line 00100 ", b"LINE 00100 ", 1)
             cls.replies[stem] = cls.post(octets)
+
+    @classmethod
+    def sign(cls, stem, source_octets, image=IMAGE):
+        source, carried = cls.root / (stem + ".eml"), cls.root / (stem + "-carried.eml")
+        source.write_bytes(source_octets)
+        cls.invoke("hybrid-sign-carrier", cls.principal, cls.ed_public, cls.ed_secret,
+                   cls.ml_public, cls.ml_private, source, carried, image=image)
+        return carried.read_bytes()
 
     @classmethod
     def upstream(cls):
@@ -676,6 +706,34 @@ class NativeVerifyTests(unittest.TestCase):
             proxy.close()
         self.assertEqual((code, report["independent"]["reason"]), (2, "signature"), report)
         print("\ntampered-in-flight:", report["node-hdr"], "|", report["detail"])
+
+    @unittest.skipUnless(LARGE, "set FN_VERIFY_LARGE=1 on an image whose article bound admits 200 KiB")
+    def test_large_signed_posts_verify_under_their_version_0(self):
+        for stem, version, low in (("verify-v1-60k", 1, 32768), ("verify-v2-200k", 2, 65535)):
+            self.assertTrue(self.replies[stem].startswith("240"), (stem, self.replies[stem]))
+            code, report = self.verify("<{}@example.invalid>".format(stem))
+            self.assertEqual(code, 0, report)
+            self.assertEqual(report["node"]["outcome"], "verified", report)
+            self.assertEqual(report["independent"]["carrier-version"], version)
+            self.assertGreater(report["independent"]["source-octets"], low)
+            print("\n{}: {} | source-octets {} carrier-version {}".format(
+                stem, report["node-hdr"], report["independent"]["source-octets"], version))
+
+    @unittest.skipUnless(LARGE, "set FN_VERIFY_LARGE=1 on an image whose article bound admits 200 KiB")
+    def test_tampered_v2_post_is_refused_and_not_stored_3(self):
+        self.assertEqual(self.replies["verify-v2-tampered"],
+                         "441 posting failed; the author signature does not verify")
+        code, report = self.verify("<verify-v2-tampered@example.invalid>")
+        self.assertEqual(code, 3, report)
+
+    @unittest.skipUnless(OLD_IMAGE, "set FN_VERIFY_OLD_HOST to an image from before carrier v2")
+    def test_a_v1_record_from_before_v2_is_still_verified_0(self):
+        self.assertTrue(self.replies["verify-old-v1"].startswith("240"), self.replies)
+        code, report = self.verify("<verify-old-v1@example.invalid>")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["node"]["outcome"], "verified", report)
+        self.assertEqual(report["independent"]["carrier-version"], 1)
+        print("\nold v1 record:", report["node-hdr"])
 
     def test_fabricated_hdr_answers_are_2(self):
         forged = b"0 verified " + b"55" * 32 + b" keyring 1\r\n"
