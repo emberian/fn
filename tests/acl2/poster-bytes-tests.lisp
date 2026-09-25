@@ -81,7 +81,8 @@
 (assert-event (equal (fn-pb-subject (pbt-octets *pbt-dateless* *pbt-b*) *pbt-agent*
                                     *pbt-msgid-octets*)
                      (cons :source *pbt-dateless*)))
-(assert-event (equal (fn-pb-path-agent (pbt-octets *pbt-dateless* *pbt-b*)) *pbt-agent*))
+(assert-event (equal (fn-pb-path-agent (pbt-octets *pbt-dateless* *pbt-b*) *pbt-msgid-octets*)
+                     *pbt-agent*))
 
 ; Keystone fn-pb-one-source-at-two-clocks-is-one-article, both Date cases.
 (assert-event (fn-pb-same-articlep *pbt-msgid-octets* (pbt-octets *pbt-dateless* *pbt-b*)
@@ -338,3 +339,61 @@
 (assert-event (equal (fn-sn-existing-action *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-a*)
                                             *pbt-groups* *pbt-store*)
                      :duplicate))
+
+; -----------------------------------------------------------------------------
+; D32: a supplied Path is part of the poster's source.  tin sends
+; `Path: not-for-mail' first; the held article is that source, Date-less,
+; injected at A (recipe v3: the block without a Path line, then the source
+; with "hbox.ember.software!" inserted in its Path).
+(defun pbt-with-path (path source)
+  (append (pbt-text "Path: ") (pbt-text path) '(13 10) source))
+(defconst *pbt-tin* (pbt-with-path "not-for-mail" *pbt-dateless*))
+(defconst *pbt-tin-other-path* (pbt-with-path "example.org!hbox" *pbt-dateless*))
+(assert-event (fn-inj-injectedp (fn-inj-decide *pbt-tin* *pbt-config* *pbt-a*)))
+(assert-event (fn-inj-supplies-pathp *pbt-tin*))
+; The Date is generated, so the two clocks inject different octets.
+(assert-event (not (equal (pbt-octets *pbt-tin* *pbt-a*) (pbt-octets *pbt-tin* *pbt-b*))))
+; The agent is read from the block (fn-pb-path-agent-of-an-injection, v3 arm).
+(assert-event (equal (fn-pb-path-agent (pbt-octets *pbt-tin* *pbt-b*) *pbt-msgid-octets*)
+                     *pbt-agent*))
+(assert-event (equal (fn-pb-subject (pbt-octets *pbt-tin* *pbt-b*) *pbt-agent*
+                                    *pbt-msgid-octets*)
+                     (cons :source *pbt-tin*)))
+; Keystones fn-pb-one-source-at-two-clocks-is-one-article and
+; fn-pb-two-sources-are-two-articles over v3 records.
+(assert-event (fn-pb-same-articlep *pbt-msgid-octets* (pbt-octets *pbt-tin* *pbt-b*)
+                                   (pbt-octets *pbt-tin* *pbt-a*)))
+(assert-event (not (fn-pb-same-articlep *pbt-msgid-octets*
+                                        (pbt-octets *pbt-tin-other-path* *pbt-b*)
+                                        (pbt-octets *pbt-tin* *pbt-a*))))
+; A Path added to an otherwise identical source is a different source.
+(assert-event (not (fn-pb-same-articlep *pbt-msgid-octets* (pbt-octets *pbt-tin* *pbt-b*)
+                                        (pbt-octets *pbt-dateless* *pbt-a*))))
+
+; Through the real Store: the tin article held, then resent.
+(defconst *pbt-tin-record*
+  (fn-record-make 0 0 0 *pbt-msgid* (pbt-octets *pbt-tin* *pbt-a*) *pbt-groups*
+                  "pbt-pin" "pbt-subject" "pbt-release" 2 841000000))
+(defconst *pbt-tin-store*
+  (fn-sn-finish
+   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-prepare *pbt-reserved* *pbt-tin-record*)
+                                 :record-file :ok)
+                       :record-link :ok)
+             :record-directory :ok)))
+(assert-event (fn-sn-statep *pbt-tin-store*))
+; The byte decision it replaces calls the resend a conflict; D25 over the
+; recovered source calls it a duplicate.  A changed supplied Path is the
+; conflict line.
+(assert-event (equal (fn-sn-existing-action *pbt-msgid* (pbt-octets *pbt-tin* *pbt-b*)
+                                            *pbt-groups* *pbt-tin-store*)
+                     :conflict))
+(assert-event (equal (fn-pb-existing-action *pbt-msgid* (pbt-octets *pbt-tin* *pbt-b*)
+                                            *pbt-groups* *pbt-tin-store*)
+                     :duplicate))
+(assert-event (equal (fn-pb-existing-action *pbt-msgid*
+                                            (pbt-octets *pbt-tin-other-path* *pbt-b*)
+                                            *pbt-groups* *pbt-tin-store*)
+                     :conflict))
+(assert-event (equal (fn-pb-existing-action *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-b*)
+                                            *pbt-groups* *pbt-tin-store*)
+                     :conflict))
