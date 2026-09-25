@@ -193,7 +193,8 @@ class NativeControlExecLab(unittest.TestCase):
         result = self.invoke("hybrid-author", self.nodes[node]["control"], generation,
                              article, ed_path, ml_path, public)
         lab("author", node, who, stem, "rc=%d" % result.returncode,
-            result.stdout.decode().strip()[:120])
+            result.stdout.decode().strip()[:120],
+            result.stderr.decode("utf-8", "replace").strip()[-300:])
         return result
 
     def reader(self, node):
@@ -301,22 +302,22 @@ class NativeControlExecLab(unittest.TestCase):
         # newgroup / rmgroup by P, ordered by the signed serial.
         approved = b"Approved: p@example.invalid\r\n"
         self.assertEqual(self.author(
-            "a", "p", "g-new-1", newsgroups=b"fn.created,fn.test",
+            "a", "p", "g-new-1", newsgroups=b"fn.test",
             extra=b"Control: newgroup fn.created\r\n" + approved +
             b"FN-Control-Serial: 1\r\n").returncode, 0)
         for node in ("a", "b"):
             self.until("newgroup %s" % node, lambda: self.group(node, "fn.created"), "211")
             lab("decision", node, self.control(node, "g-new-1"))
         self.assertEqual(self.author(
-            "a", "q", "g-stranger", newsgroups=b"fn.bad,fn.test",
+            "a", "q", "g-stranger", newsgroups=b"fn.test",
             extra=b"Control: newgroup fn.bad\r\n" + approved +
             b"FN-Control-Serial: 1\r\n").returncode, 0)
         self.assertEqual(self.author(
-            "a", "p", "g-rm-2", newsgroups=b"fn.created,fn.test",
+            "a", "p", "g-rm-2", newsgroups=b"fn.test",
             extra=b"Control: rmgroup fn.created\r\n" + approved +
             b"FN-Control-Serial: 2\r\n").returncode, 0)
         self.assertEqual(self.author(
-            "a", "p", "g-new-1-replay", newsgroups=b"fn.created,fn.test",
+            "a", "p", "g-new-1-replay", newsgroups=b"fn.test",
             extra=b"Control: newgroup fn.created\r\n" + approved +
             b"FN-Control-Serial: 1\r\n").returncode, 0)
         for node in ("a", "b"):
