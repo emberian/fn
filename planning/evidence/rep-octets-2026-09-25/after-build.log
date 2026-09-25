@@ -1,0 +1,14 @@
+attempt 7e0920be76e1f068 composed: loaded
+profile=default image=build/fn-host artifact-set=7e0920be76e1f06825e7ded45bd59747cfe6e4881132f3a16ceae34366512fa8 origin=composed books=325 source=1358afc4975f9323db9bd771acce65e13bbec4451c5376bf4976a890433332fa toolchain=d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0 rejected=0
+profile=default image=build/fn-host roots=137 result=loaded
+built build/fn-host-developer profile=developer (127M core)
+built build/fn-host-developer-prof profile=developer (127M core)
+22b8be967231825546dafafb5b096b0f9478dd2f9d06558ecb37b989029e339b  build/fn-host-developer
+54b7579e5752bd01952d0d3faeff201083b5bae57b3429cb9741d27af0ac9ac2  build/fn-host-developer-prof
+fbb2ff859bf64d4b89723e65d1fbbb2a7c123f5ed1bb7ed169025be7c09baa48  build/fn-host-developer-prof.core
+a3aa20d0e2b88ce48c353a39bfa0295cfc4484a540422fd99c37a6b6b18e810d  build/fn-host-developer.core
+7a89ed954d0095849e46a7fd3ef7978cadf476aa8284e58df483179df01dc913  build/freeze/native-build-developer.log
+062b9f19c06ae2cf1eb9d5b3ea08566a5ee4b712ab120a9305c5d3dc8e127a2f  build/freeze/native-build-prof.log
+b1651819f1548d7a2cd657fe7db2183fd84a942aa8c1f3ac66ce6a0fc5a96e7b  build/freeze/acquire-default.txt
+10683a9f67e0717aab8ad5c1f7f3c252b40f4afe3e9d7af25eadae358a85b840  build/freeze/validate-default.txt
+BUILD-OK

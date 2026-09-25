@@ -25,9 +25,14 @@
   (declare (xargs :guard t))
   (let ((carrier (fn-hc-render-at-most *fn-article-max-octets*
                                       source principal keys signatures)))
-    (if carrier
-        (fn-inj-decide carrier config observation)
-      (fn-inj-refuse :carrier))))
+    (cond ((not carrier) (fn-inj-refuse :carrier))
+          ; D32 accepts a supplied Path on a served POST and prefixes it in
+          ; place.  This route keeps refusing one, as every route did before:
+          ; its received bytes carry the exact signed source as a suffix
+          ; (books/hybrid-store-invariants.lisp), which a prefixed Path would
+          ; not be.
+          ((fn-inj-supplies-pathp carrier) (fn-inj-refuse :path-present))
+          (t (fn-inj-decide carrier config observation)))))
 
 (defun fn-hsig-injected-carrier-octets
     (source principal keys signatures config observation)

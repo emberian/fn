@@ -4,24 +4,143 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
+    "books/bp-fnbs-dispatch-publication": {
+      "seconds": 10.134,
+      "run": "certify-20260925T103652Z-3170879",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/bp-node-forward-lower-guards": {
+      "seconds": 13.642,
+      "run": "certify-20260925T103652Z-3170879",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/bp-node-progress-premises": {
+      "seconds": 10.689,
+      "run": "certify-20260925T103652Z-3170879",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/bp-report-guards": {
+      "seconds": 12.087,
+      "run": "certify-20260925T103652Z-3170879",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/bp-request-plan": {
+      "seconds": 11.485,
+      "run": "certify-20260925T093812Z-3053804",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
     "books/byte-store-scan": {
-      "seconds": 11.038,
-      "run": "certify-20260925T060646Z-2636887",
+      "seconds": 14.21,
+      "run": "certify-20260925T100705Z-3116225",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/checkpoint-codec": {
+      "seconds": 13.443,
+      "run": "certify-20260925T100705Z-3116225",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/config-owner-live": {
+      "seconds": 10.283,
+      "run": "certify-20260925T082521Z-2581698",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/consumer-store-invariants": {
+      "seconds": 12.841,
+      "run": "certify-20260925T090038Z-2952748",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/consumer-store-projection": {
+      "seconds": 12.761,
+      "run": "certify-20260925T100705Z-3116225",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/native-admin": {
+      "seconds": 11.235,
+      "run": "certify-20260925T103652Z-3170879",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/native-admin-peer": {
+      "seconds": 13.188,
+      "run": "certify-20260925T103652Z-3170879",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/native-live-status": {
+      "seconds": 10.036,
+      "run": "certify-20260925T103652Z-3170879",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/owner-invariants": {
-      "seconds": 10.182,
-      "run": "certify-20260925T054927Z-1178625",
-      "host": "persvati",
+      "seconds": 16.402,
+      "run": "certify-20260925T093339Z-3045962",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/store-files-invariants": {
+      "seconds": 10.237,
+      "run": "certify-20260925T100705Z-3116225",
+      "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/store-node-invariants": {
-      "seconds": 13.648,
-      "run": "certify-20260925T060646Z-2636887",
+      "seconds": 20.554,
+      "run": "certify-20260925T100705Z-3116225",
       "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/store-node-resolution": {
+      "seconds": 10.097,
+      "run": "certify-20260925T100705Z-3116225",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/store-node-traces": {
+      "seconds": 12.052,
+      "run": "certify-20260925T100705Z-3116225",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/store-node-traces-prepare": {
+      "seconds": 17.569,
+      "run": "certify-20260925T100705Z-3116225",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "tests/acl2/nntp-list-counts-tests": {
+      "seconds": 11.039,
+      "run": "certify-20260925T090038Z-2952748",
+      "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     }

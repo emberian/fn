@@ -1,0 +1,6 @@
+test_the_operator_raises_credentials_and_generations (tests.test_native_profile_namespace.NativeProfileNamespaceTests.test_the_operator_raises_credentials_and_generations) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.522s
+
+OK

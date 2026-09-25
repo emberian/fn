@@ -1,0 +1,19 @@
+test_operator_post_carries_up_to_a_and_names_one_octet_past (tests.test_native_bounds_blob.OperatorPostAboveTheOldBlobTests.test_operator_post_carries_up_to_a_and_names_one_octet_past) ... operator post 131073 4  fault operator post store file exceeds bound: /tank/fn/scratch/bounds-blob/fn-native-verbs-ae6utvyf/blob-131073
+operator post 290000 4  fault operator post store file exceeds bound: /tank/fn/scratch/bounds-blob/fn-native-verbs-ae6utvyf/blob-290000
+operator post 300001 4  fault operator post store file exceeds bound: /tank/fn/scratch/bounds-blob/fn-native-verbs-ae6utvyf/blob-300001
+reread {131073: False, 290000: False}
+FAIL
+
+======================================================================
+FAIL: test_operator_post_carries_up_to_a_and_names_one_octet_past (tests.test_native_bounds_blob.OperatorPostAboveTheOldBlobTests.test_operator_post_carries_up_to_a_and_names_one_octet_past)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/bounds-blob-r3/tests/test_native_bounds_blob.py", line 54, in test_operator_post_carries_up_to_a_and_names_one_octet_past
+    self.assertEqual(served[n].returncode, EXIT_OK, served[n].stderr.decode())
+AssertionError: 4 != 0 : fault operator post store file exceeds bound: /tank/fn/scratch/bounds-blob/fn-native-verbs-ae6utvyf/blob-131073
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.457s
+
+FAILED (failures=1)

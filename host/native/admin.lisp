@@ -63,7 +63,10 @@ set, exact record, candidate replay/open result and generated final name."
                  (mapcar #'fnn-octet-list records) (fnn-store-frontier store)
                  (mapcar #'fnn-octet-list config-records) (fnn-octet-list record)
                  (fnn-admin-lock-observation store) (mapcar (lambda (name) (fnn-octet-list (fnn-string-octets name)))
-                           observed-names))))
+                           observed-names)
+                 ;; The profile the store opened; ACL2 reads its
+                 ;; max-config-generations (D27, PRF-102).
+                 (fnn-store-config store))))
     (if (eq (fnn-core 'fn-native-admin-host-publication-status result) :accepted)
         result
       (fnn-refuse "ACL2 refused administrative publication: ~a"
@@ -203,9 +206,9 @@ this path can neither mutate the configuration nor take the lock from it."
   (multiple-value-bind (store ignored-records) (fnn-open-live-store root nil)
     (declare (ignore ignored-records))
     (unwind-protect
-         (let ((report (fnn-core-state 'fn-native-admin-host-peer-report)))
+         (let ((report (fnn-core-state 'fn-native-admin-host-query-report plan)))
            (unless (fnn-octet-list-p report)
-             (fnn-fault "ACL2 returned a malformed peer listing"))
+             (fnn-fault "ACL2 returned a malformed configuration listing"))
            (when report
              (write-sequence (fnn-octets report) *fnn-stdout*)
              (finish-output *fnn-stdout*))

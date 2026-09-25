@@ -1,0 +1,9 @@
+test_dropped_receipt_contact_is_reoffered_by_the_next_pass (tests.test_bp_node_native.NativeBpNodeTests.test_dropped_receipt_contact_is_reoffered_by_the_next_pass)
+Spec 4.3.2: an uncertain receipt transfer is connection-local. ... ok
+test_death_after_durable_outbox_does_not_allocate_second_sequence (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_durable_outbox_does_not_allocate_second_sequence) ... ok
+test_deletion_report_intent_recovers_and_observation_does_not_release (tests.test_bp_node_native.NativeBpNodeTests.test_deletion_report_intent_recovers_and_observation_does_not_release) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 173.135s
+
+OK

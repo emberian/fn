@@ -151,6 +151,32 @@
                     (fn-cfg-limit-ceiling (fn-cfg-limit-slot row))))
            (fn-cfg-limits-withinp (fn-cfg-row-upsert rows row))))
 
+(defthm fn-cfg-row-replace-key-preserves-row-listp
+  (implies (and (fn-cfg-row-listp rows) (fn-cfg-rowp row))
+           (fn-cfg-row-listp (fn-cfg-row-replace-key rows row))))
+
+(defthm fn-cfg-row-replace-key-looks-up-the-row
+  (equal (fn-cfg-row-lookup (fn-cfg-row-replace-key rows row) (fn-cfg-row-a row))
+         row)
+  :hints (("Goal" :in-theory (enable fn-cfg-row-replace-key fn-cfg-row-lookup))))
+
+; KEYSTONE (a policy slot holds the value set last).  Over
+; fn-cfg-apply-delta, the configuration fold every policy record goes
+; through: after a :set-policy delta for SLOT with value ID, the policy read
+; for SLOT is ID, whatever was set before.  Teeth: tests/acl2/config-tests.lisp
+; (bound-logins then open reads open; upsert, the old fold, reads the first).
+; It has no hypothesis, so it has no must-fail.
+(defthm fn-cfg-set-policy-sets-the-policy
+  (equal (fn-cfg-policy (fn-cfg-apply-delta v gen stamp (fn-cfg-set-policy slot id))
+                        slot)
+         id)
+  :hints (("Goal" :in-theory (e/d (fn-cfg-apply-delta fn-cfg-set-policy fn-cfg-policy)
+                                  (fn-cfg-row-replace-key-looks-up-the-row
+                                   fn-cfg-row-replace-key fn-cfg-row-lookup))
+           :use ((:instance fn-cfg-row-replace-key-looks-up-the-row
+                            (rows (fn-cfg-policies v))
+                            (row (fn-cfg-row-make slot id "" 0)))))))
+
 ; The two peer arms (:set-peer, :remove-peer) rebuild the peers slot from a
 ; keyed selection and the delta's rows; both stay row lists.  Local: no
 ; `append'-backchaining rule leaves this book.
@@ -160,6 +186,21 @@
 (local (defthm fn-cfg-row-listp-of-append
   (implies (and (fn-cfg-row-listp a) (fn-cfg-row-listp b))
            (fn-cfg-row-listp (append a b)))))
+
+;; C2: the authorities slot stays a row list under a grant and a revoke.
+(local (defthm fn-cfg-rows-without-pair-is-row-listp
+  (implies (fn-cfg-row-listp rows)
+           (fn-cfg-row-listp (fn-cfg-rows-without-pair rows a b)))
+  :hints (("Goal" :in-theory (enable fn-cfg-rows-without-pair)))))
+(local (defthm fn-cfg-grant-verb-is-a-label
+  (implies (and (fn-cfg-row-listp rows) (consp rows))
+           (fn-cfg-labelp (fn-cfg-grant-verb rows)))
+  :hints (("Goal" :in-theory (enable fn-cfg-grant-verb fn-cfg-ag-car)))))
+(local (defthm fn-cfg-grant-verb-of-nil-is-nil
+  (implies (not (consp rows))
+           (equal (fn-cfg-grant-verb rows) nil))
+  :hints (("Goal" :in-theory (enable fn-cfg-grant-verb fn-cfg-ag-car
+                                     fn-cfg-row-c)))))
 
 (defthm fn-cfg-apply-delta-preserves-valuep
   ; `fn-record-uint32p' is opened for the `:set-limit' arm (`nfix' of a
@@ -339,6 +380,7 @@
     fn-cfg-groups-retire-preserves-no-duplicates
     fn-cfg-row-upsert-preserves-row-listp
     fn-cfg-row-upsert-preserves-limits-withinp
+    fn-cfg-row-replace-key-preserves-row-listp
     fn-cfg-apply-delta-preserves-valuep
     fn-cfg-groups-retire-keeps-the-names
     fn-cfg-groups-create-keeps-the-names-or-adds-one
@@ -353,6 +395,7 @@
              fn-cfg-groups-retire-preserves-no-duplicates
              fn-cfg-row-upsert-preserves-row-listp
              fn-cfg-row-upsert-preserves-limits-withinp
+             fn-cfg-row-replace-key-preserves-row-listp
              fn-cfg-apply-delta-preserves-valuep
              fn-cfg-groups-retire-keeps-the-names
              fn-cfg-groups-create-keeps-the-names-or-adds-one

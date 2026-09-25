@@ -26,6 +26,8 @@
 (include-book "native-admin-peer")
 ; `bp-route add|remove', the BP route table (books/bp-route.lisp).
 (include-book "bp-route")
+; D13: `retention set RULE [DAYS]' (books/reclaim-rule).
+(include-book "reclaim-rule")
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is
@@ -111,6 +113,52 @@
   (and (fn-record-group-namep text)
        (not (fn-native-admin-group-name-reservedp text))))
 
+;; Control authority (D29, packet C2): `control grant PRINCIPAL VERB
+;; NAMESPACE-PATTERN' and `control revoke PRINCIPAL VERB NAMESPACE-PATTERN'.
+;; The plan carries the namespace as NAME, the principal as PEER and the
+;; verb as VALUE, each the octets the operator typed; the delta's structural
+;; admissibility is `fn-cfg-delta-reason' (books/config.lisp).  A reserved
+;; namespace (RFC 5536 section 3.1.4, the first component of the pattern) is
+;; refused here by name.
+(defun fn-native-admin-arg (n xs)
+  (declare (xargs :guard t :measure (nfix n)))
+  (if (consp xs)
+      (if (zp (nfix n)) (car xs) (fn-native-admin-arg (1- (nfix n)) (cdr xs)))
+    nil))
+
+(defun fn-native-admin-control-plan (words argv)
+  (declare (xargs :guard t))
+  (let ((op (fn-native-admin-arg 1 words))
+        (principal (fn-native-admin-arg 2 words))
+        (verb (fn-native-admin-arg 3 words))
+        (ns (fn-native-admin-arg 4 words)))
+    (cond ((and (equal (len words) 2) (equal op "list"))
+           (fn-native-admin-result :accepted nil :list-control nil 0 nil nil))
+          ((not (and (equal (len words) 5)
+                     (member-equal op '("grant" "revoke"))))
+           (fn-native-admin-result :refused :syntax nil nil nil nil nil))
+          ((fn-native-admin-group-name-reservedp ns)
+           (fn-native-admin-result :refused :reserved-group-name nil nil 0 nil nil))
+          ((not (fn-cfg-namespace-patternp ns))
+           (fn-native-admin-result :refused :namespace-pattern nil nil 0 nil nil))
+          ((not (fn-cfg-principal-hexp principal))
+           (fn-native-admin-result :refused :principal nil nil 0 nil nil))
+          ((not (member-equal verb *fn-cfg-control-verbs*))
+           (fn-native-admin-result :refused :verb-not-grantable nil nil 0 nil nil))
+          (t (fn-native-admin-result
+              :accepted nil
+              (if (equal op "grant") :grant-control :revoke-control)
+              (fn-native-admin-arg 4 argv) 0 (fn-native-admin-arg 2 argv)
+              (fn-native-admin-arg 3 argv))))))
+
+; The DAYS of `retention set release-after DAYS', or nil.
+(defun fn-native-admin-retention-days (words)
+  (declare (xargs :guard t))
+  (and (true-listp words)
+       (equal (len words) 4)
+       (fn-native-admin-decimalp (cadddr words))
+       (fn-native-admin-decimal-value (coerce (cadddr words) 'list))))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t))
@@ -156,8 +204,33 @@
              (fn-path-identityp (cadddr argv)))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
+       ; The served POST posting policy (books/login-binding.lisp):
+       ; `bound-logins' refuses a bound login's article unless it is signed
+       ; by the login's bound principal; `open' is the default behaviour.
+       ; A durable `:set-policy' record like path-identity, applied live.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) "posting-policy")
+             (member-equal (cadddr words) '("bound-logins" "open")))
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
+       ; D13 (STO-014): the operator's content-retention rule.  Two
+       ; `:set-limit' rows (books/reclaim-rule), staged, published and
+       ; replayed as every other configuration record.  The default, with
+       ; no row, is keep-forever.
+       ((and (member-equal (len words) '(3 4))
+             (equal (car words) "retention")
+             (equal (cadr words) "set")
+             (fn-rcl-rule-of-words (caddr words)
+                                   (fn-native-admin-retention-days words)))
+        (fn-native-admin-result :accepted nil :set-retention (caddr argv)
+                                (nfix (fn-native-admin-retention-days words))
+                                nil nil))
+       ((and (consp words) (equal (car words) "retention"))
+        (fn-native-admin-result :refused :retention nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "peer"))
         (cond
          ; `peer list' is the table's read side.  It carries no name, no
@@ -171,7 +244,12 @@
                (stringp (caddr words))
                (not (equal (caddr words) "")))
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
+         ((and (consp (cdr words))
+               (member-equal (cadr words) '("budget" "carries")))
+          (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
+       ((and (consp words) (equal (car words) "control"))
+        (fn-native-admin-control-plan words argv))
        ((and (consp words) (equal (car words) "bp-boundary"))
         (fn-native-admin-bp-boundary-plan words))
        ((and (consp words) (equal (car words) "bp-route"))
@@ -213,11 +291,49 @@
              (list (fn-cfg-remove-group name)))
             ((equal kind :set-capacity)
              (list (fn-cfg-set-capacity (fn-native-admin-result-capacity plan))))
+            ((equal kind :set-retention)
+             (fn-rcl-rule-deltas
+              (fn-rcl-rule-of-words
+               name
+               (if (equal name "release-after")
+                   (fn-native-admin-result-capacity plan)
+                 nil))))
             ((equal kind :set-policy)
              (list (fn-cfg-set-policy
                     name
                     (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            ((equal kind :grant-control)
+             (list (fn-cfg-grant-control
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-peer plan))
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            ((equal kind :revoke-control)
+             (list (fn-cfg-revoke-control
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-peer plan)))))
             (t nil)))))
+
+; PRF-099: the deltas over the live peer table.  An :extend-peer plan
+; (`peer carries', `peer budget') extends the named boundary's rows as the
+; table holds them now (fn-pcb-extend-delta); every other plan is
+; fn-native-admin-plan-deltas unchanged.  Host: host/native-admin-host.lisp
+; fn-native-admin-host-owner-reconfigure (the live owner's table) and
+; fn-native-admin-host-apply (the replayed store's table).
+(defun fn-native-admin-plan-deltas-over (plan peers)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-admin-result-status plan) :accepted)
+           (equal (fn-native-admin-result-kind plan) :extend-peer))
+      (let ((delta (fn-pcb-extend-delta
+                    (fn-record-octets-string (fn-native-admin-result-name plan))
+                    (fn-native-admin-result-value plan)
+                    peers)))
+        (if delta (list delta) nil))
+    (fn-native-admin-plan-deltas plan)))
+
+(defthm fn-native-admin-plan-deltas-over-other-plans-by-definition
+  (implies (not (equal (fn-native-admin-result-kind plan) :extend-peer))
+           (equal (fn-native-admin-plan-deltas-over plan peers)
+                  (fn-native-admin-plan-deltas plan))))
 
 (encapsulate ()
 (local (defthm kind-of-result
@@ -310,7 +426,31 @@ serialized reconfiguration.  The host asks this question rather than deciding
 for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
-       (equal (fn-native-admin-result-kind result) :list-peers)))
+       (member-equal (fn-native-admin-result-kind result)
+                     '(:list-peers :list-control))
+       t))
+
+;; `control list': one line per grant row of the replayed configuration,
+;; "grant PRINCIPAL VERB NAMESPACE", in row order.
+(defun fn-native-admin-control-report (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (append (fn-record-string-octets "grant ")
+              (fn-record-string-octets (fn-cfg-row-b (car rows)))
+              (list 32)
+              (fn-record-string-octets (fn-cfg-row-c (car rows)))
+              (list 32)
+              (fn-record-string-octets (fn-cfg-row-a (car rows)))
+              (list 10)
+              (fn-native-admin-control-report (cdr rows)))
+    nil))
+
+;; The report a query plan asks for, over a replayed configuration value.
+(defun fn-native-admin-query-report (plan value)
+  (declare (xargs :guard t))
+  (if (equal (fn-native-admin-result-kind plan) :list-control)
+      (fn-native-admin-control-report (fn-cfg-authorities value))
+    (fn-native-admin-peer-report (fn-cfg-peers value))))
 
 (encapsulate ()
 (local (in-theory (disable fn-bp-eid-shapep)))
@@ -456,11 +596,16 @@ to Common Lisp's guarded APPEND."
     (list record)))
 
 (defun fn-native-admin-publication-authorize
-    (records frontier config-records record lock-owned observed-names)
+    (records frontier config-records record lock-owned observed-names
+             max-generations)
   "Authorize this exact final configuration name once.  LOCK-OWNED and
 OBSERVED-NAMES are raw physical observations.  ACL2 binds them to the record's
 generation, the candidate replay/open check, the fixed filename, and the
-shared immutable publication state before raw Lisp may execute an I/O action."
+shared immutable publication state before raw Lisp may execute an I/O action.
+MAX-GENERATIONS is the operator's bound, the store profile's
+`max-config-generations' (D27, PRF-102): a generation above it is refused
+`:max-config-generations', so the namespace never outgrows the listing bound
+recovery observes it under (`fn-nco-observe')."
   (declare (xargs :guard t))
   (if (not lock-owned)
       (fn-native-admin-publication-result :refused :lock nil nil nil)
@@ -482,6 +627,9 @@ shared immutable publication state before raw Lisp may execute an I/O action."
                                  (fn-cfg-generation current)))
                      (not (equal (fn-cfg-record-generation record) generation)))
                  (fn-native-admin-publication-result :refused :generation nil nil nil))
+                ((< (nfix max-generations) generation)
+                 (fn-native-admin-publication-result
+                  :refused :max-config-generations nil nil nil))
                 ((null name)
                  (fn-native-admin-publication-result :refused :generation-name nil nil nil))
                 ((fn-native-admin-name-memberp name observed-names)
@@ -513,11 +661,36 @@ shared immutable publication state before raw Lisp may execute an I/O action."
 ;; Teeth: tests/acl2/native-admin-tests.lisp.
 (defthm fn-native-admin-publication-is-authorized-only-under-the-lock
   (let ((result (fn-native-admin-publication-authorize
-                 records frontier config-records record lock-owned observed-names)))
+                 records frontier config-records record lock-owned observed-names
+                 max-generations)))
     (and (implies (equal (fn-native-admin-publication-status result) :accepted)
                   lock-owned)
          (implies (fn-native-admin-publication-jpub result)
                   lock-owned)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
+                                  (fn-cnode-config-replay fn-native-admin-candidate-openp
+                                   fn-native-admin-config-name fn-cfg-recordp)))))
+
+;; KEYSTONE (D27, PRF-102: the writer refuses exactly past the operator's
+;; bound).  An accepted publication names a natural generation within
+;; MAX-GENERATIONS, the profile's `max-config-generations' the host reads
+;; from the store it opened (host/native/admin.lisp `fnn-admin-authorize' ->
+;; host/store-node-host.lisp `fn-store-cfg-native-admin-authorize', which
+;; computes it with `fn-bs-profile-max-config-generations'); and a record
+;; that every other gate admits is refused `:max-config-generations' exactly
+;; when its generation is above that bound.  Generations are contiguous from
+;; 1 (`fn-nco-canonical-contiguousp'), so the namespace after an accepted
+;; publication holds GENERATION entries, which `fn-nco-observe' admits under
+;; the same field (`fn-nco-observe-refuses-exactly-past-the-operator-bound').
+(defthm fn-native-admin-publication-within-the-operator-bound
+  (let ((result (fn-native-admin-publication-authorize
+                 records frontier config-records record lock-owned observed-names
+                 max-generations)))
+    (implies (equal (fn-native-admin-publication-status result) :accepted)
+             (and (natp (fn-native-admin-publication-generation result))
+                  (<= (fn-native-admin-publication-generation result)
+                      (nfix max-generations)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
                                   (fn-cnode-config-replay fn-native-admin-candidate-openp

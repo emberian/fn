@@ -1,0 +1,54 @@
+
+Number of samples:   33
+Sample interval:     0.001 seconds
+Total sampling time: 0.033 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=3043828 "fn-sprof" RUNNING {120FB90593}> (152/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=3043831 "fn owner client" RUNNING {121015CF13}> (8704/1048576 bytes, 32 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2      3   9.1      3   9.1      3   9.1        -  SB-IMPL::LIST-REVERSE
+   4      2   6.1      2   6.1      5  15.2        -  foreign function __write
+   6      1   3.0      2   6.1      6  18.2        -  FN-CBOR-OCTET-LISTP
+   8      1   3.0      2   6.1      7  21.2        -  SB-KERNEL:%CONCATENATE-TO-VECTOR
+  10      1   3.0      2   6.1      8  24.2        -  FN-NNTP-STRING-OCTETS-AUX
+  12      1   3.0      2   6.1      9  27.3        -  FN-GIDX-BUILD-ENTRIES
+  14      1   3.0      2   6.1     10  30.3        -  FN-OLOG-VISIBLE-AUX
+  16      1   3.0      2   6.1     11  33.3        -  FN-RECORD-STRING-OCTETS-AUX
+  18      1   3.0      1   3.0     12  36.4        -  PATHNAME-TYPE
+  20      1   3.0      1   3.0     13  39.4        -  foreign function __close
+  22      1   3.0      1   3.0     14  42.4        -  FN-OCT-BUF-LIST-DOWN
+  24      1   3.0      1   3.0     15  45.5        -  FN-CBOR-OCTETP
+  26      1   3.0      1   3.0     16  48.5        -  %DATA-VECTOR-AND-INDEX
+  28      1   3.0      1   3.0     17  51.5        -  FN-INJ-NTH
+  30      1   3.0      1   3.0     18  54.5        -  foreign function __open64
+  32      1   3.0      1   3.0     19  57.6        -  foreign function pthread_sigmask
+  34      1   3.0      1   3.0     20  60.6        -  FN-SERVED-MAKE-RESULT
+  36      1   3.0      1   3.0     21  63.6        -  FN-RCON-ASCII-FROM
+  38      1   3.0      1   3.0     22  66.7        -  FN-INJ-CAR
+  40      1   3.0      1   3.0     23  69.7        -  foreign function rename
+  42      1   3.0      1   3.0     24  72.7        -  FNN-REPLACE
+  44      1   3.0      1   3.0     25  75.8        -  FN-AF-MESSAGE-IDP
+  46      1   3.0      1   3.0     26  78.8        -  FN-AG-REV-ONTO
+  48      1   3.0      1   3.0     27  81.8        -  FN-SHS-ROUNDS
+  50      1   3.0      1   3.0     28  84.8        -  FN-ARTICLE-NEW-FIELD
+  52      1   3.0      1   3.0     29  87.9        -  FN-RECORD-STRING-OCTETS
+  54      1   3.0      1   3.0     30  90.9        -  FN-ID-OBLIGATION-PREIMAGE
+  56      1   3.0      1   3.0     31  93.9        -  SB-KERNEL:%MAP-FOR-EFFECT-ARITY-1
+  58      1   3.0      1   3.0     32  97.0        -  FN-CLOCK-LATER-OBSERVATIONP
+  60      0   0.0     33 100.0     32  97.0        -  (FLET SB-UNIX::BODY :IN SB-THREAD::RUN)
+  62      0   0.0     33 100.0     32  97.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN)
+  64      0   0.0     33 100.0     32  97.0        -  SB-THREAD::RUN
+  66      0   0.0     33 100.0     32  97.0        -  foreign function call_into_lisp_
+  68      0   0.0     33 100.0     32  97.0        -  foreign function funcall1
+  70      0   0.0     33 100.0     32  97.0        -  foreign function new_thread_trampoline
+  72      0   0.0     32  97.0     32  97.0        -  (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK)
+  74      0   0.0     32  97.0     32  97.0        -  FNN-OWNER-SHARED-ACTION-LOCKED
+  76      0   0.0     32  97.0     32  97.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX)
+  78      0   0.0     32  97.0     32  97.0        -  SB-THREAD::FAST-CALL-WITH-MUTEX
+  80      0   0.0     32  97.0     32  97.0        -  FNN-OWNER-SERIALIZED
+------------------------------------------------------------------------
+          1   3.0                                     elsewhere

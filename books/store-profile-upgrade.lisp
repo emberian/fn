@@ -11,7 +11,9 @@
 ;   * `fn-profile-upgradep' OLD NEW: OLD is a profile a store runs under
 ;     (format 8, or format 7 through its translation), NEW is a valid
 ;     format-8 profile (`fn-bs-profile-validp', the relations, not a table),
-;     NEW is not OLD, and none of its twelve fields is smaller.  The format 7
+;     NEW is not OLD, and none of its thirteen fields is smaller (the last is
+;     the committed-history requirement, which only goes from `unmarked' to
+;     `required'; its store-state gate is books/store-history-required.lisp).  The format 7
 ;     to 8 step is the case NEW = the translation of OLD.
 ;   * `fn-profile-upgrade-verdict' CURRENT TARGET: what the operator verb
 ;     (host/native/io.lisp `fnn-command-upgrade-profile') does, decided here:
@@ -49,7 +51,7 @@
 ; The upgrade relation
 
 (defun fn-profile-bound (n values)
-  "Field N of the profile a store runs under, as a natural (2..13)."
+  "Field N of the profile a store runs under, as a natural (2..14)."
   (declare (xargs :guard (natp n)))
   (fn-bs-profile-field n values))
 
@@ -75,7 +77,9 @@
        (<= (fn-profile-bound 10 old) (fn-profile-bound 10 new))
        (<= (fn-profile-bound 11 old) (fn-profile-bound 11 new))
        (<= (fn-profile-bound 12 old) (fn-profile-bound 12 new))
-       (<= (fn-profile-bound 13 old) (fn-profile-bound 13 new))))
+       (<= (fn-profile-bound 13 old) (fn-profile-bound 13 new))
+       ; D31: `unmarked' (0) may become `required' (1), never back.
+       (<= (fn-profile-bound 14 old) (fn-profile-bound 14 new))))
 
 ; The first field NEW makes smaller than OLD, by its operator name, or NIL.
 (defun fn-profile-shrunk-field (old new names)
@@ -436,3 +440,95 @@
 (in-theory (disable fn-profile-upgradep fn-profile-txn-observation
                     fn-profile-replay-within-boundp fn-profile-upgrade-verdict
                     fn-profile-upgrade-target))
+
+; -----------------------------------------------------------------------------
+; `store needs-upgrade' and the rollback check (PKT-099)
+;
+; The spike's upgrade decided whether a store needed `store upgrade-profile'
+; by initialising a scratch store with the new image and comparing its
+; `format=' with the store's.  The answer is now the verb's own verdict: the
+; no-argument `store upgrade-profile' (request (:current nil), the pure format
+; step) over the profile ACL2 decoded from the store's config.json
+; (host/native/io.lisp fnn-command-needs-upgrade), so no second computation
+; of "needs an upgrade" exists:
+;   :needs-upgrade   that step would write a frame;
+;   :current         it would write nothing;
+;   :invalid-current-profile  the store's profile is not one it may be opened under.
+(defun fn-profile-needs-upgrade-verdict (current)
+  (declare (xargs :guard t))
+  (cond ((not (fn-bs-profile-admittedp current)) :invalid-current-profile)
+        ((equal (car (fn-profile-upgrade-verdict current '(:current nil))) :upgrade)
+         :needs-upgrade)
+        (t :current)))
+
+; KEYSTONE.  Every admitted format-7 store (the deployed node's) needs the
+; step, and the step keeps every kind's budget (fn-profile-upgrade-format-7-to-8).
+(defthm fn-profile-format-7-store-needs-upgrade
+  (implies (and (fn-bs-profile-admittedp current)
+                (fn-bs-meta-format-7-valuesp current))
+           (equal (fn-profile-needs-upgrade-verdict current) :needs-upgrade))
+  :hints (("Goal" :use ((:instance fn-profile-upgrade-format-7-to-8 (kind :article)))
+           :in-theory (disable fn-bs-profile-admittedp fn-bs-meta-format-7-valuesp))))
+
+; Rollback to the image before an upgrade reinstates the kept config.json
+; (planning/evidence/bounds-join-2026-09-25.md section 5, step 7).  It is
+; sound only while no committed record exceeds the record bound the older
+; image reads every record under at open (fn-profile-rollback-record-bound).  OLD is the
+; profile ACL2 decoded from the kept file; LENGTHS the octet lengths of the
+; store's committed transaction files, in sequence order, observed by the
+; host (fnn-command-rollback-check).
+;   (:sound)
+;   (:refused :invalid-rollback-profile)
+;   (:refused :record-exceeds-rollback-profile INDEX LENGTH BOUND)
+(defun fn-profile-rollback-first-over (lengths bound index)
+  (declare (xargs :guard (natp index)))
+  (if (consp lengths)
+      (if (and (natp (car lengths)) (<= (car lengths) (nfix bound)))
+          (fn-profile-rollback-first-over (cdr lengths) bound (+ 1 index))
+        (list index (car lengths)))
+    nil))
+
+; The record bound the older image reads under OLD: R for a format-8
+; profile; for a format-7 tuple, the ceiling format 7 derived, H / T (the
+; translation's R is the larger of that and the article record, so it is not
+; what the format-7 image enforced).
+(defun fn-profile-rollback-record-bound (old)
+  (declare (xargs :guard t))
+  (if (fn-bs-profile-validp old)
+      (fn-bs-profile-max-record-octets old)
+    (let ((h (nfix (fn-bs-meta-nth 3 old)))
+          (tx (nfix (fn-bs-meta-nth 4 old))))
+      (if (zp tx) 0 (floor h tx)))))
+
+(defun fn-profile-rollback-verdict (old lengths)
+  (declare (xargs :guard t))
+  (let ((bound (fn-profile-rollback-record-bound old)))
+    (cond ((not (fn-bs-profile-admittedp old))
+           (list :refused :invalid-rollback-profile))
+          ((fn-profile-rollback-first-over lengths bound 0)
+           (let ((over (fn-profile-rollback-first-over lengths bound 0)))
+             (list :refused :record-exceeds-rollback-profile
+                   (car over) (cadr over) bound)))
+          (t (list :sound)))))
+
+(defun fn-profile-all-within (lengths bound)
+  (declare (xargs :guard t))
+  (if (consp lengths)
+      (and (natp (car lengths)) (<= (car lengths) (nfix bound))
+           (fn-profile-all-within (cdr lengths) bound))
+    t))
+
+(local
+ (defthm fn-profile-rollback-first-over-nil-iff-all-within
+   (iff (fn-profile-rollback-first-over lengths bound index)
+        (not (fn-profile-all-within lengths bound)))))
+
+; KEYSTONE.  The check says :sound exactly when the kept profile is admitted
+; and every committed record is within the older image's record bound.
+(defthm fn-profile-rollback-sound-iff-records-within
+  (equal (equal (car (fn-profile-rollback-verdict old lengths)) :sound)
+         (and (fn-bs-profile-admittedp old)
+              (fn-profile-all-within lengths
+                                     (fn-profile-rollback-record-bound old))))
+  :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp
+                                      fn-profile-rollback-record-bound))))

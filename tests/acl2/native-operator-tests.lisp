@@ -258,7 +258,7 @@
 (assert-event (equal (fn-native-operator-command-preflight
                       (fn-nop-test-argv '("help" "status")))
                      '(:accepted :plan "help" nil
-                       (:help "status" "usage: fn operator CONFIG status"))))
+                       (:help "status" "usage: fn operator CONFIG status [--watch SECONDS] (asks the running owner over its control socket; offline, reads the store)"))))
 (assert-event (fn-native-operator-preflight-needs-config-p
                (fn-native-operator-command-preflight
                 (fn-nop-test-argv '("status")))))
@@ -340,6 +340,23 @@
                                            "--max-transactions" "100000"
                                            "--max-article-octets" "20000"))))
                      '(:current ((2 . 100000) (5 . 20000)))))
+; D31: the history requirement takes a word, never a decimal.
+(assert-event (equal (fn-native-operator-result-upgrade-profile
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("store" "upgrade-profile"
+                                           "--history-marker" "required"))))
+                     '(:current ((14 . 1)))))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "upgrade-profile"
+                                                                  "--history-marker" "1"))))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "upgrade-profile"
+                                                                  "--max-transactions" "required"))))
+                     5))
 ; A repeated field, a value that is not a decimal frame natural, and an
 ; unknown flag are usage errors.
 (assert-event (equal (fn-native-operator-exit-code
@@ -816,3 +833,85 @@
                                     fn-nop-argvp fn-native-config-load
                                     fn-ncfg-ascii-octetsp
                                     fn-native-config-operator-availablep))))))
+
+; The status report's grammar (books/native-live-status.lisp renders it):
+; `status --watch N' carries N, `pins' and `obligations' are status actions
+; of their own kind, and each carries the control socket the owner answers on.
+(defconst *fn-nop-watch*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("status" "--watch" "5"))))
+(assert-event (equal (fn-native-operator-result-arguments *fn-nop-watch*)
+                     '(:status :watch 5)))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-watch*) :status))
+(assert-event (equal (fn-native-operator-result-status-watch *fn-nop-watch*) 5))
+(assert-event (equal (fn-native-operator-result-status-kind *fn-nop-watch*) :status))
+(assert-event (consp (fn-native-operator-result-status-control-path-octets *fn-nop-watch*)))
+(assert-event (null (fn-native-operator-result-status-watch
+                     (fn-native-operator-run *fn-nop-minimal-config*
+                                             (fn-nop-test-argv '("status"))))))
+(defconst *fn-nop-pins*
+  (fn-native-operator-run *fn-nop-minimal-config* (fn-nop-test-argv '("pins"))))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-pins*) :status))
+(assert-event (equal (fn-native-operator-result-status-kind *fn-nop-pins*) :pins))
+(assert-event (equal (fn-native-operator-result-status-kind
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("obligations"))))
+                     :obligations))
+; A zero, a day and a second, and a word that is no number are usage (5).
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("status" "--watch" "0"))))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("status" "--watch" "86401"))))
+                     5))
+(assert-event (equal (fn-native-operator-result-status-watch
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("status" "--watch" "86400"))))
+                     86400))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("pins" "x"))))
+                     5))
+
+; -----------------------------------------------------------------------------
+; The developer `store ROOT init' (PKT-103): fn-nop-developer-init, which
+; host/native/io.lisp fnn-command-developer-init calls with the argv words.
+
+; The words that became two groups on the large-article lane's store now set
+; the profile field; without a base the development base applies.
+(assert-event
+ (equal (fn-nop-developer-init '("--profile" "default" "--max-article-octets" "65536"
+                                 "fn.test"))
+        '(:init ("fn.test") (:default ((5 . 65536))))))
+(assert-event (equal (fn-nop-developer-init nil) '(:init nil (:development nil))))
+(assert-event
+ (equal (fn-nop-developer-init '("fn.test" "fn.other"))
+        '(:init ("fn.test" "fn.other") (:development nil))))
+; An unknown flag is refused, not created as a group; a field past the base's
+; relations is refused by the relation's name.
+(assert-event
+ (equal (fn-nop-developer-init '("--no-such-flag" "fn.test"))
+        '(:refused :flag-word-as-group)))
+(assert-event
+ (equal (fn-nop-developer-init '("fn.test" "--max-article-octets"))
+        '(:refused :flag-word-as-group)))
+(assert-event
+ (equal (fn-nop-developer-init '("--max-article-octets" "65536" "fn.test"))
+        '(:refused :max-record-octets-below-the-article-record)))
+; The operator's init refuses the same word.
+(assert-event
+ (equal (fn-native-operator-result-status (fn-nop-parse-init '("--bogus" "fn.test") nil))
+        :usage))
+(assert-event
+ (equal (fn-native-operator-result-reason (fn-nop-parse-init '("--bogus" "fn.test") nil))
+        :flag-word-as-group))
+; Teeth: without the :init hypothesis the statement fails (a refused plan's
+; second element is its reason, not a group list, and the refusal was made
+; because a group word was flag-shaped).
+(must-fail
+ (defthm nopt-developer-init-groups-are-not-flags-without-init
+   (not (fn-nop-some-flag-wordp (cadr (fn-nop-developer-init words))))
+   :hints (("Goal" :in-theory (disable fn-nop-parse-profile-flags
+                                       fn-bs-profile-resolve)))))

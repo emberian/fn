@@ -17,11 +17,11 @@
         (fn-cfg-row-make "peer" "bp-boundary-originators"
                          "all-co-resident" 0)))
 (defconst *bpat-cfg*
-  (fn-cfg-make 7 (fn-cfg-value-make nil 0 nil nil nil *bpat-rows* nil)))
+  (fn-cfg-make 7 (fn-cfg-value-make nil 0 nil nil nil *bpat-rows* nil nil)))
 (defconst *bpat-no-trust*
   (fn-cfg-make 7 (fn-cfg-value-make nil 0 nil nil nil
                                   (append (take 3 *bpat-rows*)
-                                          (cddddr *bpat-rows*)) nil)))
+                                          (cddddr *bpat-rows*)) nil nil)))
 
 (assert-event (fn-cfgp *bpat-cfg*))
 (assert-event (fn-bpp-eidp *bpat-eid*))
@@ -41,7 +41,7 @@
          (fn-bpaj-session-principal
           (fn-cfg-make 7
             (fn-cfg-value-make nil 0 nil nil nil
-              (cddr *bpat-rows*) nil))
+              (cddr *bpat-rows*) nil nil))
           *bpat-channel* *bpat-eid*))
         nil))
 (assert-event
@@ -56,7 +56,7 @@
           (fn-cfg-make 7
             (fn-cfg-value-make nil 0 nil nil nil
               (cons (fn-cfg-row-make "peer" "bp-trust" "network" 0)
-                    *bpat-rows*) nil))
+                    *bpat-rows*) nil nil))
           *bpat-channel* *bpat-eid*))
         nil))
 ; An announced EID cannot disambiguate two profiles on one observed channel.
@@ -79,7 +79,7 @@
                       (fn-cfg-row-make "other" "bp-boundary-translation"
                                        "none" 0)
                       (fn-cfg-row-make "other" "bp-boundary-originators"
-                                       "all-co-resident" 0))) nil))
+                                       "all-co-resident" 0))) nil nil))
           *bpat-channel* *bpat-eid*))
         nil))
 (assert-event
@@ -101,7 +101,7 @@
                       (fn-cfg-row-make "other" "bp-boundary-translation"
                                        "none" 0)
                       (fn-cfg-row-make "other" "bp-boundary-originators"
-                                       "all-co-resident" 0))) nil))
+                                       "all-co-resident" 0))) nil nil))
           *bpat-channel* *bpat-eid*))
         nil))
 
@@ -120,7 +120,7 @@
 (defconst *bpat-carries-x*
   (list (fn-cfg-row-make "peer" "bp-boundary-carries" "dtn://x/" 0)))
 (defun bpat-cfg (rows)
-  (fn-cfg-make 7 (fn-cfg-value-make nil 0 nil nil nil rows nil)))
+  (fn-cfg-make 7 (fn-cfg-value-make nil 0 nil nil nil rows nil nil)))
 (defconst *bpat-carried-cfg*
   (bpat-cfg (append *bpat-rows* *bpat-carries-x* *bpat-x-rows*)))
 (defconst *bpat-unenrolled-cfg* (bpat-cfg (append *bpat-rows* *bpat-carries-x*)))
@@ -196,7 +196,7 @@
 (must-fail (assert-event   ; not a configuration
             (bpat-unenrolledp
              (fn-cfg-make 7 (fn-cfg-value-make '(junk) 0 nil nil nil
-                              (append *bpat-rows* *bpat-carries-x*) nil))
+                              (append *bpat-rows* *bpat-carries-x*) nil nil))
              *bpat-p* 7)))
 (must-fail (assert-event (bpat-unenrolledp *bpat-unenrolled-cfg* *bpat-p* 8)))
 (must-fail (assert-event (bpat-unenrolledp *bpat-uncarried-cfg* *bpat-p* 7)))
@@ -297,5 +297,5 @@
          (fn-bpaj-carried-source-decision
           (fn-cfg-make 7 (fn-cfg-value-make '(junk) 0 nil nil nil
                            (append *bpat-rows* *bpat-carries-x*
-                                   *bpat-x-rows*) nil))
+                                   *bpat-x-rows*) nil nil))
           *bpat-p* 7 "dtn://x/"))))

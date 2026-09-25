@@ -457,3 +457,13 @@ evidence; it is never treated as an absent history or a replayable prefix.
 This is a configuration-namespace recovery boundary only.  It does not claim
 that all existing/retry initialization paths, later durable barriers, or
 platform crash persistence correspond to the ACL2 model.
+
+## Status while the owner runs
+
+HST-006: The operator's status, pins, obligations and peers answer while the
+owner runs, in the offline words: the running owner renders the same ACL2
+report (`fn-nls-report`, books/native-live-status.lisp) of the state it
+carries that the offline command renders from the Store, and answering changes
+no state. The operator guide's
+[status section](../docs/operator.md#status-while-the-owner-runs) describes the
+verbs.

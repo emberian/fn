@@ -199,7 +199,8 @@
 (local (in-theory (disable fn-frame-len-2-conses fn-frame-len-4-conses
                            fn-frame-len-8-conses fn-frame-not-consp-when-len-zero
                            fn-cbor-u16-bytes fn-cbor-u32-bytes fn-frame-u64-bytes
-                           fn-frame-textp fn-frame-blobp)))
+                           fn-frame-textp fn-frame-blobp
+                           fn-frame-blob-withinp)))
 (defthm fn-frame-item-of-enum-index
   (implies (not (equal (fn-frame-enum-index value keys) 0))
            (equal (fn-frame-item (- (fn-frame-enum-index value keys) 1) keys)
@@ -258,6 +259,20 @@
   (implies (fn-frame-blobp value) (<= (len value) *fn-frame-max-blob*))
   :rule-classes :forward-chaining
   :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-blobp))))
+
+(defthm fn-frame-blob-withinp-is-octets
+  (implies (fn-frame-blob-withinp value width) (fn-cbor-octet-listp value))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-blob-withinp))))
+(defthm fn-frame-blob-withinp-is-consp
+  (implies (fn-frame-blob-withinp value width) (consp value))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-blob-withinp))))
+(defthm fn-frame-blob-withinp-len-bound
+  (implies (and (fn-frame-blob-withinp value width) (natp width))
+           (<= (len value) width))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-blob-withinp))))
 
 ; List and splitter helpers, each proved in a minimal theory.
 (local
@@ -413,6 +428,32 @@
                          nfix natp (:type-prescription len)
                          car-cons cdr-cons)))))
 
+(defthm fn-frame-field-parse-of-octets-wide-blob
+  (implies (and (fn-frame-wide-blob-specp spec)
+                (fn-frame-blob-withinp value (cdr spec))
+                (fn-cbor-octet-listp rest))
+           (equal (fn-frame-field-parse
+                   spec (append (fn-frame-field-octets spec value) rest))
+                  (fn-frame-parse-ok value rest)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-frame-blob-withinp-is-octets (width (cdr spec)))
+                 (:instance fn-frame-blob-withinp-is-consp (width (cdr spec)))
+                 (:instance fn-frame-blob-withinp-len-bound (width (cdr spec))))
+           :in-theory (union-theories
+                       (theory 'minimal-theory)
+                       '(fn-frame-field-parse fn-frame-field-octets
+                         fn-frame-wide-blob-specp
+                         fn-frame-append-assoc fn-frame-split-of-append
+                         fn-frame-u32-bytes-len fn-frame-u32-bytes-true-listp
+                         fn-cbor-u32-from-u32-bytes
+                         fn-frame-parse-counted-of-append
+                         fn-frame-blob-withinp-is-octets
+                         fn-frame-blob-withinp-is-consp
+                         fn-frame-blob-withinp-len-bound
+                         fn-frame-octet-listp-true-listp
+                         posp nfix natp (:type-prescription len)
+                         car-cons cdr-cons)))))
+
 (defthm fn-frame-field-parse-of-octets-nat
   (implies (and (fn-frame-natp value)
                 (fn-cbor-octet-listp rest))
@@ -441,7 +482,8 @@
            :in-theory (union-theories
                        (theory 'minimal-theory)
                        '(fn-frame-field-parse fn-frame-field-octets
-                         fn-frame-enum-specp binary-append
+                         fn-frame-enum-specp fn-frame-wide-blob-specp
+                         binary-append
                          fn-frame-enum-index-natp fn-frame-enum-index-bound
                          fn-frame-item-of-enum-index
                          posp natp (:type-prescription len)
@@ -461,6 +503,7 @@
                          fn-frame-field-parse-of-octets-text
                          fn-frame-field-parse-of-octets-blob
                          fn-frame-field-parse-of-octets-nat
+                         fn-frame-field-parse-of-octets-wide-blob
                          fn-frame-field-parse-of-octets-enum)))))
 
 
@@ -481,7 +524,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-frame-field-parse fn-frame-field-octets
                             fn-frame-parse-counted fn-frame-specp
-                            fn-frame-enum-specp)
+                            fn-frame-enum-specp fn-frame-wide-blob-specp)
                            (fn-cbor-u16-from fn-cbor-u32-from
                             fn-frame-u64-from floor mod)))))
 
@@ -494,7 +537,8 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-frame-field-parse fn-frame-field-okp
                             fn-frame-parse-counted fn-frame-specp
-                            fn-frame-enum-specp fn-frame-blobp fn-frame-natp)
+                            fn-frame-enum-specp fn-frame-blobp fn-frame-natp
+                            fn-frame-wide-blob-specp fn-frame-blob-withinp)
                            (fn-cbor-u16-from fn-cbor-u32-from
                             fn-frame-u64-from floor mod)))))
 
@@ -964,6 +1008,8 @@
     fn-frame-textp-is-octets fn-frame-textp-is-consp
     fn-frame-textp-len-bound fn-frame-blobp-is-octets
     fn-frame-blobp-is-consp fn-frame-blobp-len-bound
+    fn-frame-blob-withinp-is-octets fn-frame-blob-withinp-is-consp
+    fn-frame-blob-withinp-len-bound
     fn-frame-parse-okp-of-parse-ok fn-frame-parse-okp-of-parse-error
     fn-frame-parse-value-of-parse-ok fn-frame-parse-rest-of-parse-ok
     fn-frame-parse-counted-of-append fn-frame-field-parse-of-octets-text
@@ -989,6 +1035,8 @@
              fn-frame-textp-is-octets fn-frame-textp-is-consp
              fn-frame-textp-len-bound fn-frame-blobp-is-octets
              fn-frame-blobp-is-consp fn-frame-blobp-len-bound
+             fn-frame-blob-withinp-is-octets fn-frame-blob-withinp-is-consp
+             fn-frame-blob-withinp-len-bound
              fn-frame-parse-okp-of-parse-ok
              fn-frame-parse-okp-of-parse-error
              fn-frame-parse-value-of-parse-ok

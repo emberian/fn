@@ -1,0 +1,36 @@
+$ fn operator CONFIG init --max-credentials 128 --max-config-generations 2 fn.test
+initialized /tank/fn/scratch/bounds-profile/work/store
+accepted operator init
+exit=0
+profile format=8 max-transactions=4294967295 max-history-octets=0 max-record-octets=67108864 max-article-octets=16777216 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=2 max-credentials=128 max-policy-members=1048576 history-marker=0
+$ fn operator CONFIG group create fn.two
+configured generation=2 record=00000002.cfg verification=VERIFIED
+accepted operator group
+exit=0
+$ fn operator CONFIG group create fn.three
+refused operator group ACL2 refused administrative publication: MAX-CONFIG-GENERATIONS
+exit=0
+$ printf pw | fn operator CONFIG principal set-password u129
+Password: Confirm password: refused operator principal set-password too-many-credentials
+exit=1
+$ fn operator CONFIG store upgrade-profile --max-credentials 200 --max-config-generations 9000
+upgraded profile=current transactions-used=0 transactions-budget=4294967295 previous-budget=4294967295
+profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=16777216 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=9000 max-credentials=200 max-policy-members=1048576 history-marker=unmarked
+accepted operator upgrade-profile
+exit=0
+profile format=8 max-transactions=4294967295 max-history-octets=0 max-record-octets=67108864 max-article-octets=16777216 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=9000 max-credentials=200 max-policy-members=1048576 history-marker=0
+$ printf pw | fn operator CONFIG principal set-password u129
+Password: Confirm password: u129 principal=0376e6f5a683b7a87e5fa44c13c28d2b0fd6b0a0326e68e5f78c0cea818959f9 posting=false
+accepted operator principal set-password restart-required
+exit=0
+$ fn operator CONFIG principal list | wc -l
+accepted operator principal list
+129
+$ fn operator CONFIG group create fn.three
+configured generation=3 record=00000003.cfg verification=VERIFIED
+accepted operator group
+exit=0
+$ fn operator CONFIG store upgrade-profile --max-credentials 150
+refused operator upgrade-profile store profile upgrade refused: not-an-upgrade max-credentials
+exit=0
+profile format=8 max-transactions=4294967295 max-history-octets=0 max-record-octets=67108864 max-article-octets=16777216 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=9000 max-credentials=200 max-policy-members=1048576 history-marker=0

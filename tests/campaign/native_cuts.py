@@ -396,9 +396,14 @@ def verify_recovery_order() -> None:
     recover = host_function(source, "fnn-recover")
     order = [recover.index("(fnn-at store :recover-replayed)"),
              recover.index('(fnn-at store (intern (format nil "RECOVER-BARRIER-~d" ordinal) :keyword))'),
-             recover.index("(fnn-sweep-staging store)")]
+             recover.index("(fnn-sweep-staging store)"),
+             # D31: the marker catch-up (fn-bs-marker-program, the same
+             # host cuts as a commit's) after the barriers and the sweep,
+             # before the open returns.
+             recover.index("(fnn-mark-committed store nil frame)"),
+             recover.index("(setf (fnn-store-fenced store) nil)")]
     if order != sorted(order):
-        raise AssertionError("fnn-recover no longer sweeps after its barriers")
+        raise AssertionError("fnn-recover no longer sweeps and catches up after its barriers")
     sweep = host_function(source, "fnn-sweep-staging")
     if sweep.index("(fnn-unlink ") > sweep.index("(fnn-at store :recovery-stage-unlinked)"):
         raise AssertionError("recovery-stage-unlinked precedes its unlink")

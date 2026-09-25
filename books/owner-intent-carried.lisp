@@ -11,10 +11,13 @@
 ; payload per POST, 17 percent of POST CPU at N = 120
 ; (planning/evidence/representation-2026-09-25.md).
 ;
-; The carry is the pair (SUB . ID).  fn-icar-carry-of builds it from the
+; The carry is (SUB ID . PATH): the submission, its identity and its Path
+; (fn-own-feed-path-of, the parse of the article the feed targets filter by;
+; carried since lane carry-kind, PKT-113).  fn-icar-carry-of builds it from the
 ; submission fn-owner-take (host/owner-host.lisp) just took, and that is the
 ; host's only writer of the global that holds it.  fn-icar-carryp says the
-; pair's ID is fn-own-feed-intent-id of the pair's own submission; it does
+; carry's ID is fn-own-feed-intent-id of its own submission and its PATH that
+; submission's parsed Path; it does
 ; not mention the owner, so no owner step can falsify it, and
 ; fn-icar-carryp-of-carry-of discharges it for every value the writer
 ; produces (nil, the global's value before the first take, satisfies it too).
@@ -37,15 +40,19 @@
 
 (defun fn-icar-carry-of (sub)
   (declare (xargs :guard t))
-  (cons sub (fn-own-feed-intent-id (fn-own-sub-msgid sub)
-                                   (fn-own-sub-octets sub))))
+  (list* sub
+         (fn-own-feed-intent-id (fn-own-sub-msgid sub) (fn-own-sub-octets sub))
+         (fn-own-feed-path-of (fn-own-sub-octets sub))))
 
 (defun fn-icar-carryp (carry)
   (declare (xargs :guard t))
   (or (atom carry)
-      (equal (cdr carry)
-             (fn-own-feed-intent-id (fn-own-sub-msgid (car carry))
-                                    (fn-own-sub-octets (car carry))))))
+      (and (consp (cdr carry))
+           (equal (cadr carry)
+                  (fn-own-feed-intent-id (fn-own-sub-msgid (car carry))
+                                         (fn-own-sub-octets (car carry))))
+           (equal (cddr carry)
+                  (fn-own-feed-path-of (fn-own-sub-octets (car carry)))))))
 
 (defthm fn-icar-carryp-of-carry-of
   (fn-icar-carryp (fn-icar-carry-of sub)))
@@ -53,10 +60,15 @@
 (defthm fn-icar-carryp-when-atom
   (implies (atom carry) (fn-icar-carryp carry)))
 
+; The carry's parts are read only for the submission it was built from.
+(defun fn-icar-carries-p (sub carry)
+  (declare (xargs :guard t))
+  (and (consp carry) (consp (cdr carry)) (equal (car carry) sub)))
+
 (defun fn-icar-intent-id (sub carry)
   (declare (xargs :guard t))
-  (if (and (consp carry) (equal (car carry) sub))
-      (cdr carry)
+  (if (fn-icar-carries-p sub carry)
+      (cadr carry)
     (fn-own-feed-intent-id (fn-own-sub-msgid sub) (fn-own-sub-octets sub))))
 
 ; The keystone: at every use, the carried identity is the digest of the
@@ -67,7 +79,48 @@
                   (fn-own-feed-intent-id (fn-own-sub-msgid sub)
                                          (fn-own-sub-octets sub)))))
 
-(in-theory (disable fn-icar-carry-of fn-icar-carryp fn-icar-intent-id))
+; The submission's Path (fn-own-feed-path-of parses the article), carried the
+; same way (PKT-113, lane carry-kind): parsed once at take, where the
+; reference parsed it at the intent and again at the resolution.
+(defun fn-icar-path (sub carry)
+  (declare (xargs :guard t))
+  (if (fn-icar-carries-p sub carry)
+      (cddr carry)
+    (fn-own-feed-path-of (fn-own-sub-octets sub))))
+
+; KEYSTONE: at every use, the carried Path is the parse of the submission it
+; is used for.
+(defthm fn-icar-path-is-path-of
+  (implies (fn-icar-carryp carry)
+           (equal (fn-icar-path sub carry)
+                  (fn-own-feed-path-of (fn-own-sub-octets sub)))))
+
+; fn-own-submission-targets (books/owner.lisp) with the carried Path.
+(defun fn-icar-submission-targets (o carry)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (if (null sub)
+        nil
+      (let* ((tbl (fn-own-feeds o))
+             (msgid (fn-own-sub-msgid sub))
+             (targets (fn-own-feed-targets
+                       tbl (fn-own-sub-origin sub)
+                       (fn-own-sub-feed-groups sub)
+                       (fn-icar-path sub carry))))
+        (fn-own-feed-new-targets targets tbl msgid)))))
+
+(defthm fn-icar-submission-targets-is-submission-targets
+  (implies (fn-icar-carryp carry)
+           (equal (fn-icar-submission-targets o carry)
+                  (fn-own-submission-targets o)))
+  :hints (("Goal" :in-theory (e/d (fn-own-submission-targets)
+                                  (fn-icar-path fn-icar-carryp
+                                   fn-own-feed-targets
+                                   fn-own-feed-new-targets
+                                   fn-own-feed-path-of)))))
+
+(in-theory (disable fn-icar-carry-of fn-icar-carryp fn-icar-carries-p fn-icar-intent-id
+                    fn-icar-path fn-icar-submission-targets))
 
 ; -----------------------------------------------------------------------------
 ; The readers.
@@ -79,7 +132,7 @@
   (declare (xargs :guard t))
   (let* ((sub (fn-own-inflight o))
          (identity (and sub (fn-icar-intent-id sub carry)))
-         (targets (fn-own-submission-targets o))
+         (targets (fn-icar-submission-targets o carry))
          (result
           (cond ((null sub) :absent)
                 ((or (not (fn-feed-namep identity))
@@ -120,7 +173,7 @@
     (if (or (null sub) (null kind))
         nil
       (fn-own-feed-resolution-records
-       kind (fn-own-submission-targets o) (fn-own-sub-msgid sub)
+       kind (fn-icar-submission-targets o carry) (fn-own-sub-msgid sub)
        (fn-icar-intent-id sub carry)
        evidence generation txid (fn-own-feed-stamp o)))))
 

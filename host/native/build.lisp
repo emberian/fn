@@ -22,6 +22,7 @@
 (include-book "books/identity")
 (include-book "books/hybrid-store-injected")
 (include-book "books/peer-authored-accept")
+(include-book "books/login-binding")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")
@@ -48,6 +49,11 @@
 (include-book "books/owner-prepare-carried")
 ;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io.
 (include-book "books/records-concrete-owner")
+;; The octet buffer (D27 boundary 6) and the existing-article test over it:
+;; fn-owner-existing-action-buffer and fn-owner-prepare-buffer
+;; (host/owner-host.lisp) call fn-pbb-existing-action.
+(include-book "books/octets-stobj")
+(include-book "books/poster-bytes-buffer")
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-intent-carried")
 (include-book "books/owner-commit-ocl")
@@ -110,6 +116,7 @@
 (include-book "books/bp-fnbs-family-publication")
 (include-book "books/bp-fnbs-dispatch-publication")
 (include-book "books/bp-fnbs-forward-publication")
+(include-book "books/bp-node-receipt-send")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")
@@ -128,6 +135,10 @@
 ;; The committed-history boundary: io.lisp fnn-mark-committed and
 ;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
 (include-book "books/store-history-marker")
+;; D31: the history requirement and the recovery catch-up: io.lisp
+;; fnn-check-history-marker, fnn-recover and fnn-command-upgrade-profile call
+;; fn-hmr-open-verdict, fn-hmr-catch-up and fn-hmr-upgrade-verdict.
+(include-book "books/store-history-required")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
@@ -148,6 +159,8 @@
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
 (ld "host/native-operator-host.lisp" :ld-error-action :error)
+; The status report, offline and from the running owner.
+(ld "host/native-live-status-host.lisp" :ld-error-action :error)
 (ld "host/native-control-host.lisp" :ld-error-action :error)
 (ld "host/native-hybrid-control-host.lisp" :ld-error-action :error)
 (ld "host/hybrid-signature-host.lisp" :ld-error-action :error)

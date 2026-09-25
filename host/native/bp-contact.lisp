@@ -20,13 +20,19 @@
         while effects do (fnn-bps-drive-effects service effects)))
 
 (defun fnn-bpc-drive-contact (service event)
+  ; One contact offers queued jobs until the first transfer that is not
+  ; :accepted (its job is requeued by ACL2 and waits for the next contact)
+  ; or the first outcome that is not :accepted.
+  (setf (fnn-bps-transfer service) nil)
   (if (third event)
       (progn
         (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
               for effects = (fnn-bps-step service event)
               while effects
               do (fnn-bps-drive-effects service effects)
-              when (not (eq (fnn-bps-outcome service) :accepted))
+              when (or (not (eq (fnn-bps-outcome service) :accepted))
+                       (and (fnn-bps-transfer service)
+                            (not (eq (fnn-bps-transfer service) :accepted))))
                 do (loop-finish))
         (fnn-bps-drive-effects
          service (fnn-bps-step service (list :contact (second event) nil))))
@@ -53,6 +59,11 @@
                                      window peer obs ready)))
                (unless event (fnn-fault "bp-contact: ACL2 rejected contact event"))
                (format t "BP contact ~(~a~) peer=~a~%" decision peer-id)
+               ;; The service keeps :process transfer scope: the caller of this
+               ;; one-shot verb asked for the transfer, so an uncertain one is
+               ;; its answer (exit 3) and a refused one exit 2, although ACL2
+               ;; has requeued the job exactly as it does under bp-node serve
+               ;; (spec bp-node-machine 4.3.2).
                (fnn-bpc-drive-contact service event)
                (fnn-bps-exit-code service)))
         (fnn-bps-release service)))))

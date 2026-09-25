@@ -10,6 +10,15 @@
 (defstruct fnn-bps
   root lifecycle tally state spool-lock lock-fd (stages nil)
   (next-session 0) (outcome :accepted)
+  ;; The last base transfer's reading in the contact being driven, and
+  ;; whose outcome it is.  :process (a one-shot verb that was asked for the
+  ;; transfer: bp-contact tick, bp-service run) folds a refused or uncertain
+  ;; transfer into the exit code.  :connection (bp-node serve and dispatch,
+  ;; fnn-bpnode-send-receipts) does not: ACL2 has already requeued the job
+  ;; by its own identity (fn-bpn-forward-result-step's :requeued record,
+  ;; fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed), so the reading
+  ;; costs only that connection, as spec bp-node-machine 4.3.2 states.
+  (transfer nil) (transfer-scope :process)
   ;; ACL2's reading of the generation selection file, and the recovery
   ;; event built from it (spec bp-node-machine 3.6; N16).
   (plan (list :none)) (recovery-event nil))
@@ -467,11 +476,16 @@ its outcome, which is the refusal to the offering ingress."
           (when socket (fnn-socket-shut socket)))
       (fnn-store-fault (e) (error e))
       ((or fnn-os-error sb-bsd-sockets:socket-error fnn-store-error) ()
-        (setq outcome :uncertain)))
-    (when (eq outcome :uncertain) (setf (fnn-bps-outcome service) :uncertain))
-    (when (eq outcome :refused)
-      (unless (eq (fnn-bps-outcome service) :uncertain)
-        (setf (fnn-bps-outcome service) :refused)))
+        ;; A connect that never produced a socket sent no octet: the
+        ;; transfer certainly did not happen (:failed, requeued by ACL2).
+        ;; Any failure after the connection exists stays :uncertain.
+        (setq outcome (if socket :uncertain :failed))))
+    (setf (fnn-bps-transfer service) outcome)
+    (when (eq (fnn-bps-transfer-scope service) :process)
+      (when (eq outcome :uncertain) (setf (fnn-bps-outcome service) :uncertain))
+      (when (eq outcome :refused)
+        (unless (eq (fnn-bps-outcome service) :uncertain)
+          (setf (fnn-bps-outcome service) :refused))))
     (fnn-bps-drive-effects service
                            (fnn-bps-step service (list :forward-result key outcome)))))
 
@@ -569,7 +583,7 @@ its outcome, which is the refusal to the offering ingress."
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
-      ((:persist-attempt :persist-forward-result)
+      ((:persist-attempt :persist-forward-result :persist-deferral)
        (unless (= (length effect) 4)
          (fnn-indeterminate "bp-service: malformed forward publication effect"))
        (let* ((epoch (second effect))
@@ -648,10 +662,27 @@ its outcome, which is the refusal to the offering ingress."
        (fnn-out "BP node delivery deferred busy=~d after=~d"
                 (third effect) (fourth effect)))
       (:delivery-stranded
-       ;; BP-R17 at the kind-8 retry bound: still held, never refused; not
-       ;; offered again until recovery clears the volatile wait.
-       (fnn-out "BP node delivery stranded busy=~d (held; recovery re-offers it)"
-                (third effect)))
+       ;; BP-R17 at the configured retry budget: still held, never refused.
+       ;; The count is durable (kind 20): a restart does not re-arm it; ACL2
+       ;; reports it on every progress event that selects nothing else.
+       ;; The arrival an operator names to `bp-node resume' is the held
+       ;; row's own (ACL2's lookup of the effect's key).
+       (let ((row (fnn-core 'fn-bpnf-find-held (second effect)
+                            (fnn-core 'fn-bpnf-held-list
+                                      (fnn-bps-state service)))))
+         (fnn-out "BP node delivery stranded busy=~d arrival=~a (held; bp-node resume re-arms it)"
+                  (third effect) (fnn-core 'fn-bpn-nth 3 row))))
+      (:delivery-resumed
+       (fnn-out "BP node delivery resumed (busy count cleared)"))
+      (:deferral-answer
+       (case (second effect)
+         (:refused
+          (unless (eq (fnn-bps-outcome service) :uncertain)
+            (setf (fnn-bps-outcome service) :refused))
+          (fnn-out "BP node busy count publication refused"))
+         (otherwise
+          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-indeterminate "bp-service: busy count publication uncertain"))))
       (:bundle-queue-accepted
        (fnn-out "BP queue accepted work=~a attempt=~a generation=~d status=~(~a~)"
                 (fnn-octets-string (fnn-octets (second effect)))

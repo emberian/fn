@@ -1,0 +1,47 @@
+test_the_host_calls_acl2s_decisions_at_every_publish_site (tests.test_native_history_marker.HistoryMarkerSourceTests.test_the_host_calls_acl2s_decisions_at_every_publish_site) ... ok
+test_a_burned_reservation_is_not_a_lost_record (tests.test_native_history_marker.NativeHistoryMarkerTests.test_a_burned_reservation_is_not_a_lost_record) ... ok
+test_a_frontier_frame_is_not_a_marker (tests.test_native_history_marker.NativeHistoryMarkerTests.test_a_frontier_frame_is_not_a_marker) ... ok
+test_a_lost_newest_transaction_file_is_refused_with_the_reason (tests.test_native_history_marker.NativeHistoryMarkerTests.test_a_lost_newest_transaction_file_is_refused_with_the_reason) ... ok
+test_a_store_without_a_marker_opens_and_the_open_marks_it (tests.test_native_history_marker.NativeHistoryMarkerTests.test_a_store_without_a_marker_opens_and_the_open_marks_it) ... ok
+test_every_marker_cut_recovers_and_keeps_detecting (tests.test_native_history_marker.NativeHistoryMarkerTests.test_every_marker_cut_recovers_and_keeps_detecting) ... ok
+test_the_host_calls_acl2s_decisions (tests.test_native_history_required.HistoryRequiredSourceTests.test_the_host_calls_acl2s_decisions) ... ok
+test_every_migration_cut_reopens_consistently (tests.test_native_history_required.MigrationTests.test_every_migration_cut_reopens_consistently) ... ok
+test_migrate_then_absence_and_loss_are_damage (tests.test_native_history_required.MigrationTests.test_migrate_then_absence_and_loss_are_damage) ... ok
+test_the_catch_up_cuts (tests.test_native_history_required.RetryResolutionTests.test_the_catch_up_cuts) ... ok
+test_the_developer_entry_at_every_marker_cut (tests.test_native_history_required.RetryResolutionTests.test_the_developer_entry_at_every_marker_cut) ... ok
+test_the_served_owner_at_every_marker_cut (tests.test_native_history_required.RetryResolutionTests.test_the_served_owner_at_every_marker_cut) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 54.494s
+
+OK
+migration cut marker-created kill -9 unmarked
+migration cut marker-created eio 3 unmarked
+migration cut marker-written kill -9 unmarked
+migration cut marker-written eio 3 unmarked
+migration cut marker-staged-durable kill -9 unmarked
+migration cut marker-staged-durable eio 3 unmarked
+migration cut marker-replaced kill -9 unmarked
+migration cut marker-replaced eio 3 unmarked
+migration cut marker-durable kill -9 unmarked
+migration cut marker-durable eio 3 unmarked
+migration cut profile-created kill -9 unmarked
+migration cut profile-created eio 1 unmarked
+migration cut profile-written kill -9 unmarked
+migration cut profile-written eio 1 unmarked
+migration cut profile-staged-durable kill -9 unmarked
+migration cut profile-staged-durable eio 1 unmarked
+migration cut profile-replaced kill -9 required
+migration cut profile-replaced eio 3 required
+migration cut profile-durable kill -9 required
+migration cut profile-durable eio 3 required
+served retry marker-created kill 0  accepted operator post DUPLICATE
+served retry marker-created eio 0  accepted operator post DUPLICATE
+served retry marker-written kill 0  accepted operator post DUPLICATE
+served retry marker-written eio 0  accepted operator post DUPLICATE
+served retry marker-staged-durable kill 0  accepted operator post DUPLICATE
+served retry marker-staged-durable eio 0  accepted operator post DUPLICATE
+served retry marker-replaced kill 0  accepted operator post DUPLICATE
+served retry marker-replaced eio 0  accepted operator post DUPLICATE
+served retry marker-durable kill 0  accepted operator post DUPLICATE
+served retry marker-durable eio 0  accepted operator post DUPLICATE

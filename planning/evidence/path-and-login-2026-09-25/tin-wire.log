@@ -1,0 +1,283 @@
+1790329741.233 1 --- connection
+1790329741.234 1 S: 201 fn-nntp experimental reader ready
+1790329741.234 1 C: CAPABILITIES
+1790329741.234 1 S: 101 capability list follows
+1790329741.234 1 S: VERSION 2
+1790329741.234 1 S: READER
+1790329741.235 1 S: OVER MSGID
+1790329741.235 1 S: HDR
+1790329741.235 1 S: NEWNEWS
+1790329741.235 1 S: LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT
+1790329741.235 1 S: IMPLEMENTATION fn-nntp-lab
+1790329741.235 1 S: STARTTLS
+1790329741.235 1 S: AUTHINFO USER
+1790329741.235 1 S: .
+1790329741.235 1 C: AUTHINFO USER ember
+1790329741.235 1 S: 381 password required
+1790329741.235 1 C: AUTHINFO PASS [password]
+1790329741.235 1 S: 281 authentication accepted
+1790329743.237 1 C: CAPABILITIES
+1790329743.238 1 S: 101 capability list follows
+1790329743.238 1 S: VERSION 2
+1790329743.238 1 S: READER
+1790329743.238 1 S: POST
+1790329743.238 1 S: OVER MSGID
+1790329743.238 1 S: HDR
+1790329743.238 1 S: NEWNEWS
+1790329743.238 1 S: LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT
+1790329743.238 1 S: IMPLEMENTATION fn-nntp-lab
+1790329743.238 1 S: STARTTLS
+1790329743.238 1 S: .
+1790329743.326 1 C: LIST OVERVIEW.FMT
+1790329743.327 1 S: 215 order of fields in overview database
+1790329743.327 1 S: Subject:
+1790329743.327 1 S: From:
+1790329743.327 1 S: Date:
+1790329743.327 1 S: Message-ID:
+1790329743.327 1 S: References:
+1790329743.327 1 S: :bytes
+1790329743.327 1 S: :lines
+1790329743.327 1 S: .
+1790329745.384 1 C: LIST COUNTS
+1790329745.384 1 S: 215 list of newsgroups follows
+1790329745.384 1 S: fn.agents 0 1 0 y
+1790329745.384 1 S: fn.test 17 1 17 y
+1790329745.384 1 S: control.cancel 0 1 0 y
+1790329745.384 1 S: .
+1790329745.385 1 C: NEWGROUPS 260925 052822
+1790329745.385 1 S: 231 list of new newsgroups follows
+1790329745.385 1 S: .
+1790329745.407 1 C: LIST NEWSGROUPS
+1790329745.407 1 S: 215 list of newsgroups follows
+1790329745.407 1 S: fn.agents	(no description)
+1790329745.407 1 S: fn.test	(no description)
+1790329745.407 1 S: control.cancel	(no description)
+1790329745.407 1 S: .
+1790329749.092 1 C: LISTGROUP fn.test
+1790329749.093 1 S: 211 17 1 17 fn.test list follows
+1790329749.093 1 S: 1
+1790329749.093 1 S: 2
+1790329749.093 1 S: 3
+1790329749.093 1 S: 4
+1790329749.093 1 S: 5
+1790329749.093 1 S: 6
+1790329749.093 1 S: 7
+1790329749.093 1 S: 8
+1790329749.093 1 S: 9
+1790329749.093 1 S: 10
+1790329749.093 1 S: 11
+1790329749.093 1 S: 12
+1790329749.093 1 S: 13
+1790329749.093 1 S: 14
+1790329749.093 1 S: 15
+1790329749.093 1 S: 16
+1790329749.093 1 S: 17
+1790329749.093 1 S: .
+1790329749.093 1 C: OVER 1-17
+1790329749.105 1 S: 224 overview information follows
+1790329749.105 1 S: 1	resend with a supplied Path	ember <ember@example.org>	Fri, 25 Sep 2026 10:00:00 +0000	<pl-resend-052746@example.org>		258	1
+1790329749.105 1 S: 2	dateless resend	ember <ember@example.org>	Fri, 25 Sep 2026 09:27:48 +0000	<pl-dateless-052746@example.org>		297	1
+1790329749.105 1 S: 3	signed with a supplied Path	ember <ember@example.org>	Fri, 25 Sep 2026 09:27:51 +0000	<fn-client.20260925T092751Z.23e263c7@ember.invalid>		7811	1
+1790329749.105 1 S: 4	A new post from tin on path-and-login	<hbox@example.org>	Fri, 25 Sep 2026 09:28:57 +0000	<00000000843643737952.00000000000000080077.fn@fn.example.invalid>		467	2
+1790329749.105 1 S: 5	Re: dateless resend	<hbox@example.org>	Fri, 25 Sep 2026 09:30:13 +0000	<00000000843643813192.00000000000000155317.fn@fn.example.invalid>	<pl-dateless-052746@example.org>	535	3
+1790329749.105 1 S: 6	tin run two, to be cancelled	<hbox@example.org>	Fri, 25 Sep 2026 09:30:32 +0000	<00000000843643832229.00000000000000174353.fn@fn.example.invalid>		458	2
+1790329749.105 1 S: 7	tin run four cancel me	ember <ember@example.org>	Fri, 25 Sep 2026 09:32:46 +0000	<00000000843643966528.00000000000000308653.fn@fn.example.invalid>		459	2
+1790329749.105 1 S: 8	B1-ember-signs-as-ember	ember <ember@example.org>	Fri, 25 Sep 2026 09:37:14 +0000	<fn-client.20260925T093714Z.58e289ae@ember.invalid>		7826	1
+1790329749.105 1 S: 9	B4-guest-unsigned	guest <guest@example.org>	Fri, 25 Sep 2026 09:37:15 +0000	<fn-client.20260925T093715Z.7d696d2d@guest.invalid>		340	1
+1790329749.105 1 S: 10	B5-guest-signs-as-guest	guest <guest@example.org>	Fri, 25 Sep 2026 09:37:18 +0000	<fn-client.20260925T093718Z.4981ede7@guest.invalid>		7826	1
+1790329749.105 1 S: 11	O1-ember-signs-as-guest	ember <ember@example.org>	Fri, 25 Sep 2026 09:48:48 +0000	<fn-client.20260925T094848Z.7872476f@ember.invalid>		7826	1
+1790329749.105 1 S: 12	O2-ember-unsigned	ember <ember@example.org>	Fri, 25 Sep 2026 09:48:49 +0000	<fn-client.20260925T094849Z.e295e0b3@ember.invalid>		340	1
+1790329749.105 1 S: 13	B1-ember-signs-as-ember	ember <ember@example.org>	Fri, 25 Sep 2026 09:48:49 +0000	<fn-client.20260925T094849Z.26cdd05a@ember.invalid>		7826	1
+1790329749.105 1 S: 14	B4-guest-unsigned	guest <guest@example.org>	Fri, 25 Sep 2026 09:48:50 +0000	<fn-client.20260925T094850Z.8f6065d0@guest.invalid>		340	1
+1790329749.105 1 S: 15	B5-guest-signs-as-guest	guest <guest@example.org>	Fri, 25 Sep 2026 09:48:50 +0000	<fn-client.20260925T094850Z.9c790304@guest.invalid>		7826	1
+1790329749.105 1 S: 16	O1-ember-signs-as-guest	ember <ember@example.org>	Fri, 25 Sep 2026 09:48:51 +0000	<fn-client.20260925T094851Z.10c45d98@ember.invalid>		7826	1
+1790329749.105 1 S: 17	O2-ember-unsigned	ember <ember@example.org>	Fri, 25 Sep 2026 09:48:51 +0000	<fn-client.20260925T094851Z.ce987bf7@ember.invalid>		340	1
+1790329749.105 1 S: .
+1790329749.105 1 C: LIST HEADERS RANGE
+1790329749.105 1 S: 215 field list follows
+1790329749.105 1 S: :
+1790329749.105 1 S: :bytes
+1790329749.105 1 S: :lines
+1790329749.105 1 S: .
+1790329749.105 1 C: HDR XREF 1-17
+1790329749.116 1 S: 225 headers follow
+1790329749.116 1 S: 1 
+1790329749.116 1 S: 2 
+1790329749.116 1 S: 3 
+1790329749.116 1 S: 4 
+1790329749.116 1 S: 5 
+1790329749.116 1 S: 6 
+1790329749.116 1 S: 7 
+1790329749.116 1 S: 8 
+1790329749.116 1 S: 9 
+1790329749.116 1 S: 10 
+1790329749.116 1 S: 11 
+1790329749.116 1 S: 12 
+1790329749.116 1 S: 13 
+1790329749.116 1 S: 14 
+1790329749.116 1 S: 15 
+1790329749.116 1 S: 16 
+1790329749.116 1 S: 17 
+1790329749.116 1 S: .
+1790329752.097 1 C: ARTICLE 7
+1790329752.097 1 S: 220 7 <00000000843643966528.00000000000000308653.fn@fn.example.invalid> article follows
+1790329752.097 1 S: Injection-Date: Fri, 25 Sep 2026 09:32:46 +0000
+1790329752.097 1 S: Message-ID: <00000000843643966528.00000000000000308653.fn@fn.example.invalid>
+1790329752.097 1 S: Date: Fri, 25 Sep 2026 09:32:46 +0000
+1790329752.097 1 S: Injection-Info: fn.example.invalid
+1790329752.097 1 S: Path: fn.example.invalid!not-for-mail
+1790329752.097 1 S: From: ember <ember@example.org>
+1790329752.097 1 S: Subject: tin run four cancel me
+1790329752.097 1 S: Newsgroups: fn.test
+1790329752.097 1 S: User-Agent: tin/2.6.2-20221225 ("Pittyvaich") (Linux/6.11.0-29-generic (x86_64))
+1790329752.097 1 S: 
+1790329752.097 1 S: 
+1790329752.097 1 S: a line from tin on the path-and-login lane
+1790329752.097 1 S: .
+1790329755.103 1 C: ARTICLE 2
+1790329755.103 1 S: 220 2 <pl-dateless-052746@example.org> article follows
+1790329755.103 1 S: Injection-Date: Fri, 25 Sep 2026 09:27:48 +0000
+1790329755.103 1 S: Date: Fri, 25 Sep 2026 09:27:48 +0000
+1790329755.103 1 S: Injection-Info: fn.example.invalid
+1790329755.103 1 S: Path: fn.example.invalid!not-for-mail
+1790329755.103 1 S: From: ember <ember@example.org>
+1790329755.103 1 S: Newsgroups: fn.test
+1790329755.103 1 S: Subject: dateless resend
+1790329755.103 1 S: Message-ID: <pl-dateless-052746@example.org>
+1790329755.103 1 S: 
+1790329755.103 1 S: body
+1790329755.103 1 S: .
+1790329764.115 1 C: POST
+1790329764.116 1 S: 340 send article to be posted
+1790329764.116 1 C: Path: not-for-mail
+1790329764.116 1 C: From: ember <ember@example.org>
+1790329764.116 1 C: Subject: Re: dateless resend
+1790329764.116 1 C: Newsgroups: fn.test
+1790329764.116 1 C: References: <pl-dateless-052746@example.org>
+1790329764.116 1 C: User-Agent: tin/2.6.2-20221225 ("Pittyvaich") (Linux/6.11.0-29-generic (x86_64))
+1790329764.116 1 C: 
+1790329764.116 1 C: ember <ember@example.org> wrote:
+1790329764.116 1 C: > body
+1790329764.116 1 C: a line from tin on the path-and-login lane
+1790329764.116 1 C: .
+1790329764.220 1 S: 240 article received OK
+1790329783.145 1 C: POST
+1790329783.145 1 S: 340 send article to be posted
+1790329783.145 1 C: Path: not-for-mail
+1790329783.145 1 C: From: ember <ember@example.org>
+1790329783.145 1 C: Subject: tin run five zqx
+1790329783.145 1 C: Newsgroups: fn.test
+1790329783.145 1 C: User-Agent: tin/2.6.2-20221225 ("Pittyvaich") (Linux/6.11.0-29-generic (x86_64))
+1790329783.145 1 C: 
+1790329783.145 1 C: 
+1790329783.145 1 C: a line from tin on the path-and-login lane
+1790329783.145 1 C: .
+1790329783.204 1 S: 240 article received OK
+1790329792.157 1 C: LISTGROUP fn.test
+1790329792.157 1 S: 211 19 1 19 fn.test list follows
+1790329792.157 1 S: 1
+1790329792.157 1 S: 2
+1790329792.157 1 S: 3
+1790329792.157 1 S: 4
+1790329792.157 1 S: 5
+1790329792.157 1 S: 6
+1790329792.157 1 S: 7
+1790329792.157 1 S: 8
+1790329792.157 1 S: 9
+1790329792.157 1 S: 10
+1790329792.157 1 S: 11
+1790329792.157 1 S: 12
+1790329792.157 1 S: 13
+1790329792.157 1 S: 14
+1790329792.157 1 S: 15
+1790329792.157 1 S: 16
+1790329792.157 1 S: 17
+1790329792.157 1 S: 18
+1790329792.157 1 S: 19
+1790329792.157 1 S: .
+1790329792.157 1 C: OVER 1-19
+1790329792.172 1 S: 224 overview information follows
+1790329792.172 1 S: 1	resend with a supplied Path	ember <ember@example.org>	Fri, 25 Sep 2026 10:00:00 +0000	<pl-resend-052746@example.org>		258	1
+1790329792.172 1 S: 2	dateless resend	ember <ember@example.org>	Fri, 25 Sep 2026 09:27:48 +0000	<pl-dateless-052746@example.org>		297	1
+1790329792.172 1 S: 3	signed with a supplied Path	ember <ember@example.org>	Fri, 25 Sep 2026 09:27:51 +0000	<fn-client.20260925T092751Z.23e263c7@ember.invalid>		7811	1
+1790329792.172 1 S: 4	A new post from tin on path-and-login	<hbox@example.org>	Fri, 25 Sep 2026 09:28:57 +0000	<00000000843643737952.00000000000000080077.fn@fn.example.invalid>		467	2
+1790329792.172 1 S: 5	Re: dateless resend	<hbox@example.org>	Fri, 25 Sep 2026 09:30:13 +0000	<00000000843643813192.00000000000000155317.fn@fn.example.invalid>	<pl-dateless-052746@example.org>	535	3
+1790329792.172 1 S: 6	tin run two, to be cancelled	<hbox@example.org>	Fri, 25 Sep 2026 09:30:32 +0000	<00000000843643832229.00000000000000174353.fn@fn.example.invalid>		458	2
+1790329792.172 1 S: 7	tin run four cancel me	ember <ember@example.org>	Fri, 25 Sep 2026 09:32:46 +0000	<00000000843643966528.00000000000000308653.fn@fn.example.invalid>		459	2
+1790329792.172 1 S: 8	B1-ember-signs-as-ember	ember <ember@example.org>	Fri, 25 Sep 2026 09:37:14 +0000	<fn-client.20260925T093714Z.58e289ae@ember.invalid>		7826	1
+1790329792.172 1 S: 9	B4-guest-unsigned	guest <guest@example.org>	Fri, 25 Sep 2026 09:37:15 +0000	<fn-client.20260925T093715Z.7d696d2d@guest.invalid>		340	1
+1790329792.172 1 S: 10	B5-guest-signs-as-guest	guest <guest@example.org>	Fri, 25 Sep 2026 09:37:18 +0000	<fn-client.20260925T093718Z.4981ede7@guest.invalid>		7826	1
+1790329792.172 1 S: 11	O1-ember-signs-as-guest	ember <ember@example.org>	Fri, 25 Sep 2026 09:48:48 +0000	<fn-client.20260925T094848Z.7872476f@ember.invalid>		7826	1
+1790329792.172 1 S: 12	O2-ember-unsigned	ember <ember@example.org>	Fri, 25 Sep 2026 09:48:49 +0000	<fn-client.20260925T094849Z.e295e0b3@ember.invalid>		340	1
+1790329792.172 1 S: 13	B1-ember-signs-as-ember	ember <ember@example.org>	Fri, 25 Sep 2026 09:48:49 +0000	<fn-client.20260925T094849Z.26cdd05a@ember.invalid>		7826	1
+1790329792.172 1 S: 14	B4-guest-unsigned	guest <guest@example.org>	Fri, 25 Sep 2026 09:48:50 +0000	<fn-client.20260925T094850Z.8f6065d0@guest.invalid>		340	1
+1790329792.172 1 S: 15	B5-guest-signs-as-guest	guest <guest@example.org>	Fri, 25 Sep 2026 09:48:50 +0000	<fn-client.20260925T094850Z.9c790304@guest.invalid>		7826	1
+1790329792.172 1 S: 16	O1-ember-signs-as-guest	ember <ember@example.org>	Fri, 25 Sep 2026 09:48:51 +0000	<fn-client.20260925T094851Z.10c45d98@ember.invalid>		7826	1
+1790329792.172 1 S: 17	O2-ember-unsigned	ember <ember@example.org>	Fri, 25 Sep 2026 09:48:51 +0000	<fn-client.20260925T094851Z.ce987bf7@ember.invalid>		340	1
+1790329792.172 1 S: 18	Re: dateless resend	ember <ember@example.org>	Fri, 25 Sep 2026 09:49:24 +0000	<00000000843644964115.00000000000000037599.fn@fn.example.invalid>	<pl-dateless-052746@example.org>	542	3
+1790329792.172 1 S: 19	tin run five zqx	ember <ember@example.org>	Fri, 25 Sep 2026 09:49:43 +0000	<00000000843644983145.00000000000000056629.fn@fn.example.invalid>		453	2
+1790329792.172 1 S: .
+1790329792.172 1 C: HDR XREF 1-19
+1790329792.185 1 S: 225 headers follow
+1790329792.185 1 S: 1 
+1790329792.185 1 S: 2 
+1790329792.185 1 S: 3 
+1790329792.185 1 S: 4 
+1790329792.185 1 S: 5 
+1790329792.185 1 S: 6 
+1790329792.185 1 S: 7 
+1790329792.185 1 S: 8 
+1790329792.185 1 S: 9 
+1790329792.185 1 S: 10 
+1790329792.185 1 S: 11 
+1790329792.185 1 S: 12 
+1790329792.185 1 S: 13 
+1790329792.185 1 S: 14 
+1790329792.185 1 S: 15 
+1790329792.185 1 S: 16 
+1790329792.185 1 S: 17 
+1790329792.185 1 S: 18 
+1790329792.185 1 S: 19 
+1790329792.185 1 S: .
+1790329802.180 1 C: ARTICLE 19
+1790329802.180 1 S: 220 19 <00000000843644983145.00000000000000056629.fn@fn.example.invalid> article follows
+1790329802.180 1 S: Injection-Date: Fri, 25 Sep 2026 09:49:43 +0000
+1790329802.180 1 S: Message-ID: <00000000843644983145.00000000000000056629.fn@fn.example.invalid>
+1790329802.180 1 S: Date: Fri, 25 Sep 2026 09:49:43 +0000
+1790329802.180 1 S: Injection-Info: fn.example.invalid
+1790329802.180 1 S: Path: fn.example.invalid!not-for-mail
+1790329802.180 1 S: From: ember <ember@example.org>
+1790329802.180 1 S: Subject: tin run five zqx
+1790329802.180 1 S: Newsgroups: fn.test
+1790329802.180 1 S: User-Agent: tin/2.6.2-20221225 ("Pittyvaich") (Linux/6.11.0-29-generic (x86_64))
+1790329802.180 1 S: 
+1790329802.180 1 S: 
+1790329802.180 1 S: a line from tin on the path-and-login lane
+1790329802.180 1 S: .
+1790329813.198 1 C: POST
+1790329813.198 1 S: 340 send article to be posted
+1790329813.198 1 C: Path: not-for-mail
+1790329813.198 1 C: From: ember <ember@example.org>
+1790329813.198 1 C: Subject: cmsg cancel <00000000843644983145.00000000000000056629.fn@fn.example.invalid>
+1790329813.198 1 C: Newsgroups: fn.test
+1790329813.198 1 C: Control: cancel <00000000843644983145.00000000000000056629.fn@fn.example.invalid>
+1790329813.199 1 C: User-Agent: tin/2.6.2-20221225 ("Pittyvaich") (Linux/6.11.0-29-generic (x86_64))
+1790329813.199 1 C: 
+1790329813.199 1 C: Article cancelled by author.
+1790329813.199 1 C: .
+1790329813.452 1 S: 240 article received OK
+1790329818.202 1 C: ARTICLE 2
+1790329818.203 1 S: 220 2 <pl-dateless-052746@example.org> article follows
+1790329818.203 1 S: Injection-Date: Fri, 25 Sep 2026 09:27:48 +0000
+1790329818.203 1 S: Date: Fri, 25 Sep 2026 09:27:48 +0000
+1790329818.203 1 S: Injection-Info: fn.example.invalid
+1790329818.203 1 S: Path: fn.example.invalid!not-for-mail
+1790329818.203 1 S: From: ember <ember@example.org>
+1790329818.203 1 S: Newsgroups: fn.test
+1790329818.203 1 S: Subject: dateless resend
+1790329818.203 1 S: Message-ID: <pl-dateless-052746@example.org>
+1790329818.203 1 S: 
+1790329818.203 1 S: body
+1790329818.203 1 S: .
+1790329821.210 1 C: QUIT
+1790329821.211 1 S: 205 closing connection

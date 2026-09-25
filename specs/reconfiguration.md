@@ -188,6 +188,8 @@ bump, and no state ever holds the intermediate value.
 | listeners | `(:set-listeners endpoints)` | replaces the listener list |
 | peers | `(:set-peers peers)` | replaces the peer/contact-plan list |
 | limit | `(:set-limit slot n)` | upserts a resource limit |
+| grant control | `(:grant-control namespace principal-hex 0 ((namespace principal-hex verb 0)))`, code 11 | upserts the row on (namespace, principal) in the eighth slot `authorities` (D29, packet C2; [peering §8](peering.md#8-control-messages-filing-and-authority-implemented-cancel-decided-served-withdrawal-open-group-control-deferred)); admissible iff the namespace is a pattern, the principal 64 lowercase hex characters and the verb `cancel` (`fn-cfg-grant-control-admissible-iff`) |
+| revoke control | `(:revoke-control namespace principal-hex)`, code 12 | removes that row; `:no-such-grant` when absent |
 
 ```lisp
 (defun fn-cfg-apply-delta (v gen stamp delta) ...)   ; value, total

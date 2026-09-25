@@ -291,7 +291,8 @@
        (natp (fn-bpn-nth 1 x)) (natp (fn-bpn-nth 2 x))
        (member-equal (fn-bpn-nth 3 x)
                      '(:store :deliver :attempt :forward-result :discard
-                       :handoff :family :delete :dispatch :conflict))
+                       :handoff :family :delete :dispatch :conflict
+                       :deferral))
        (member-equal (fn-bpn-nth 5 x) '(:pending :uncertain))))
 
 (defun fn-bpnf-operation-matchp (issued epoch operation-id)
