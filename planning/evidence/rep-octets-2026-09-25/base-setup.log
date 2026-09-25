@@ -1,0 +1,8 @@
+cert rc=0
+Installed from the cache: 322 books
+ACL2 certification passed: books/native-operator
+Certification evidence: build/acl2/certify-20260925T092116Z-3016494
+build rc=0
+2040c005ba3c58eff14eb7a103d0380bfb29d09b304835bc574e2dea3d9d59e9  build/freeze/acquire-default.txt
+dd436198f3b9c51ad71f05d5b0cab3ec369df96c89079fa5cff6b17c29dfd28e  build/freeze/validate-default.txt
+BUILD-OK

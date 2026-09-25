@@ -1,0 +1,8 @@
+cert rc=0
+Installed from the cache: 322 books
+ACL2 certification passed: books/native-operator, books/octets-stobj, books/poster-bytes-buffer
+Certification evidence: build/acl2/certify-20260925T092928Z-3039230
+build rc=0
+b1651819f1548d7a2cd657fe7db2183fd84a942aa8c1f3ac66ce6a0fc5a96e7b  build/freeze/acquire-default.txt
+10683a9f67e0717aab8ad5c1f7f3c252b40f4afe3e9d7af25eadae358a85b840  build/freeze/validate-default.txt
+BUILD-OK

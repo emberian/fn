@@ -779,9 +779,15 @@ follows is justified only by this line."
           (fnn-validate-post-boundary
            (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
                            (length payload) (length codes) charge))
-          (case (fnn-owner-action 'fn-owner-existing-action
-                                  (fnn-octet-list msgid)
-                                  (fnn-octet-list payload) codes)
+          ;; The payload goes to the core in the octet buffer
+          ;; (books/octets-stobj.lisp): filled once here from the byte
+          ;; vector, read in place by the existing-article test and the
+          ;; prepare (host/owner-host.lisp fn-owner-existing-action-buffer,
+          ;; fn-owner-prepare-buffer).  Nothing between the fill and the
+          ;; prepare touches the buffer; both run under the service mutex.
+          (fnn-octets-fill payload)
+          (case (fnn-action (fnn-core-buffer-state 'fn-owner-existing-action-buffer
+                                                   (fnn-octet-list msgid) codes))
             (:duplicate (return-from fnn-owner-attempt :duplicate))
             (:conflict (return-from fnn-owner-attempt :conflict)))
           (let ((*fnn-observe-callback* #'fnn-owner-observe)
@@ -792,11 +798,11 @@ follows is justified only by this line."
                 (fnn-metadata msgid payload)
               (declare (ignore ignored))
               (let ((prepared
-                      (fnn-owner-action
-                       'fn-owner-prepare (fnn-octet-list msgid)
-                       (fnn-octet-list payload) codes
-                       (fnn-octet-list obligation) (fnn-octet-list subject)
-                       (fnn-octet-list evidence) charge)))
+                      (fnn-action
+                       (fnn-core-buffer-state
+                        'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
+                        (fnn-octet-list obligation) (fnn-octet-list subject)
+                        (fnn-octet-list evidence) charge))))
                 (unless (eq prepared :prepared)
                   (setf (fnn-store-fenced store) t)
                   (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)
