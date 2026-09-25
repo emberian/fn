@@ -172,3 +172,36 @@ list. Runner: `native.sh` (in the scratch directory), 01:54:59Z to 02:00:43Z.
    branch (the D25 duplicate wording; qual-c3420013 F2 class), unchanged.
 4. The probe (`native_nntp_post_probe`) now covers the five marker cuts
    through its derivation (`uncertain`), but was not run here.
+
+## Finding 1 closed (lane k0-marker-replaced)
+
+`books/byte-store-k0-marker.lisp`:
+- `fn-bs-k0m-crash-of-pending-marker-rename`: if every pending root entry
+  operation of a byte state is `(:set-entry :root "committed-history.json"
+  INO)` and its directory table holds `:root`, then the crash under CHOICES
+  is the crash, under `fn-bs-k0m-drop-marker-choices` (the same choices with
+  the rename's own removed), of the state with that entry dropped from the
+  pending list when the rename's choice is not `:apply`, and of that state
+  with the entry durable when it is.
+- `fn-bs-k0m-marker-rename-crash-is-a-resolution-crash`: the same over
+  `fn-bs-crash-imagep`.
+- `fn-bs-k0-marker-replaced-cut-relation`: under the hypotheses of
+  `fn-bs-k0-marker-cuts-relation`, at pair 7 of the marker program the
+  rename-dropped state and the root barrier's state are both related to the
+  pair's kernel, and every crash image of the pair's byte state is a crash
+  image of one of them.
+
+Teeth (`tests/acl2/byte-store-k0-marker-tests.lisp`): the second marker run's
+replaced pair, two images (every operation lands; every one but the rename's
+root entry), each equal to its resolution's crash, observing new and old
+marker; `must-fail` for each hypothesis of the commutation (a second
+pending marker entry lands a third marker; a table without `:root` orders
+the created root after another directory). Finding 2's two premises stay
+tests.
+
+Certification: persvati `run-20260925T022624Z-ce2c`, manifest
+[certify-20260925T022639Z-3425101](manifests/certify-20260925T022639Z-3425101.json),
+passed, ACL2 8.7 w25 `acl2-literal`, 2 jobs, 300 s, source `65b1ae40`,
+roots and `--affected-by books/byte-store-k0-marker` (no other root includes
+it): `books/byte-store-k0-marker` 7.5 s, `tests/acl2/byte-store-k0-marker-tests`
+4.6 s.
