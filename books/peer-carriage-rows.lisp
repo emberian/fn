@@ -72,9 +72,16 @@
 ; budget rows when it carries a budget slot, and appends every row not
 ; already present; nothing else of the peer's group changes.
 
+; The peer's NEWNEWS pull interval in seconds (PRF-100, books/peer-pull.lisp;
+; `peer pull NAME SECONDS').  Single-valued like the budget rows, so a new
+; interval supersedes the old one on extension.
+(defconst *fn-pcb-pull-interval-slot* "pull-interval")
+
 (defun fn-pcb-budget-slotp (slot)
+  ; The single-valued slots: a new row replaces the old one on extension.
   (declare (xargs :guard t))
-  (or (equal slot *fn-pcb-charge-slot*) (equal slot *fn-pcb-count-slot*)))
+  (or (equal slot *fn-pcb-charge-slot*) (equal slot *fn-pcb-count-slot*)
+      (equal slot *fn-pcb-pull-interval-slot*)))
 
 (defun fn-pcb-slot-memberp (slot rows)
   (declare (xargs :guard t))

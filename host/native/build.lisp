@@ -248,6 +248,8 @@
         ; public operator activates it; the developer-only low-level owner
         ; entry retains its separate diagnostic surface.
         (load "host/native/feed-service.lisp")
+        ; The NEWNEWS pull feed, the same owner's other lifecycle extension.
+        (load "host/native/pull-service.lisp")
         (load "host/native/control.lisp")
         (load "host/native/topic-local.lisp")
         (load "host/native/consumer-local.lisp")
