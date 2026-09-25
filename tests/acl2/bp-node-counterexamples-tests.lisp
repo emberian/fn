@@ -1141,6 +1141,56 @@
        (fn-bpnp-step (fn-bpnf-answer-state (bpcx-n16-new))
                      '(:persist-result 2 0 :durable)))))
 
+;; N16-F1 REPAIRED (spike/bp): the host publishes fn-bpnr-rotation-checkpoint,
+;; whose operation frontier is the rotation's own id (2 . 0).  Reopen from it
+;; takes epoch 3, keeps the held row, and the first new operation is (3 0);
+;; a stale (:persist-result 2 0 :durable) completes nothing.  The block above
+;; still holds of fn-bpnr-checkpoint-of-event: it is the finding's witness,
+;; the one this repair separates from.
+(defun bpcx-n16-rck () (fn-bpnr-rotation-checkpoint *bpcx-n16-event* 1))
+(defun bpcx-n16-rplan ()
+  (fn-bpnr-selection-plan
+   t (fn-bpnr-checkpoint-octets (bpcx-n16-rck) *bpcx-n16-budget*) *bpcx-n16-budget*))
+(defun bpcx-n16-rreopen ()
+  (fn-bpnr-recover-auto-event *bpcx-raw-s0* nil :ready nil (bpcx-n16-rplan)))
+(defun bpcx-n16-ro ()
+  (fn-bpnf-answer-state (fn-bpnp-step *bpcx-raw-s0* (bpcx-n16-rreopen))))
+(defun bpcx-n16-rnew ()
+  (fn-bpnp-step (bpcx-n16-ro) (bpcx-receive-event (fn-bpb-encode *bpcx-n16-b*))))
+(assert-event
+ (and (equal (fn-bpnr-checkpoint-prior (bpcx-n16-rck)) '(2 . 0))
+      (equal (car (bpcx-n16-rplan)) :selected)
+      (equal (fn-bpn-nth 1 (bpcx-n16-rreopen)) 3)
+      (equal (fn-bpnf-held-list (bpcx-n16-ro)) (fn-bpnf-held-list *bpcx-n16-q*))
+      (equal (car (car (fn-bpnf-answer-effects (bpcx-n16-rnew)))) :persist)
+      (equal (fn-bpn-nth 1 (car (fn-bpnf-answer-effects (bpcx-n16-rnew)))) 3)
+      (null (fn-bpnf-answer-effects
+             (fn-bpnp-step (fn-bpnf-answer-state (bpcx-n16-rnew))
+                           '(:persist-result 2 0 :durable))))))
+;; Teeth: the unrepaired checkpoint reopens at the rotating epoch 2.
+(must-fail
+ (assert-event
+  (equal (fn-bpn-nth 1 (bpcx-n16-reopen)) 3)))
+
+;; Retirement (spike/bp): after generation 2 is selected, generation 0 and 1
+;; and a stray stage are retired; generation 2, its lock and anything else
+;; are kept.  Before any selection (0) nothing is retired.
+(assert-event
+ (let ((names (list "lifecycle" (fn-bpnr-generation-directory 1)
+                    (fn-bpnr-generation-directory 2) ".bp-generation-77-abcdef"
+                    "lifecycle.lock" "sequence")))
+   (and (equal (fn-bpnr-retired-names names 2)
+               (list "lifecycle" (fn-bpnr-generation-directory 1)
+                     ".bp-generation-77-abcdef"))
+        (not (member-equal (fn-bpnr-generation-directory 1)
+                           (fn-bpnr-retired-names names 1)))
+        (null (fn-bpnr-retired-names names 0)))))
+(must-fail
+ (assert-event
+  (member-equal (fn-bpnr-generation-directory 2)
+                (fn-bpnr-retired-names
+                 (list (fn-bpnr-generation-directory 2)) 2))))
+
 ;; Teeth of fn-bpnp-rotate-step-proposes-only-own-projection: the proposal
 ;; needs a quiescent state and the state's own projection.
 ;; Not quiescent: an operation was allocated after recovery.

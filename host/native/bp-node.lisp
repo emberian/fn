@@ -591,13 +591,15 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
                       (sequence (fnn-bp-reserve-sequence (fnn-bps-tally bp)))
                       (observation (fnn-bp-observation wall wall-error))
                       (route
-                        (list :route
-                              (fnn-octet-list
-                               (fnn-string-octets contact-host))
-                              contact-port
-                              (fnn-octet-list (fnn-string-octets node-id))
-                              +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
-                              transfer-mru)))
+                        (fnn-bps-queue-route
+                         (fifth view)
+                         (list :route
+                               (fnn-octet-list
+                                (fnn-string-octets contact-host))
+                               contact-port
+                               (fnn-octet-list (fnn-string-octets node-id))
+                               +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
+                               transfer-mru))))
                  (fnn-bps-drive-effects
                   bp (fnn-bps-step
                       bp (list :enqueue work attempt generation sequence
@@ -677,12 +679,14 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
       (return-from fnn-bpnode-queue-report :already-queued))
     (let* ((sequence (fnn-bp-reserve-sequence (fnn-bps-tally bp)))
            (observation (fnn-bp-observation wall wall-error))
-           (route (list :route
-                        (fnn-octet-list (fnn-string-octets contact-host))
-                        contact-port
-                        (fnn-octet-list (fnn-string-octets node-id))
-                        +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
-                        transfer-mru)))
+           (route (fnn-bps-queue-route
+                   peer-id
+                   (list :route
+                         (fnn-octet-list (fnn-string-octets contact-host))
+                         contact-port
+                         (fnn-octet-list (fnn-string-octets node-id))
+                         +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
+                         transfer-mru))))
       (fnn-bps-drive-effects
        bp (fnn-bps-foundation-step
            bp (list :queue-report (second view) sequence route observation)))
@@ -767,6 +771,9 @@ refused transfer stays in (fnn-bps-outcome bp) for the exit code."
     (unwind-protect
          (progn
            (setq owner (fnn-owner-install store-root 1))
+           ;; Queued jobs are routed by the live configuration's table.
+           (setq *fnn-bps-route-source*
+                 (lambda () (fnn-owner-core 'fn-owner-bp-route-table)))
            (fnn-bpc-advance-clock bp (fnn-bp-observation wall wall-error))
            (fnn-bpnode-delete-expired bp reports-enabled)
            (fnn-bpnode-observe-reports bp node-id)
