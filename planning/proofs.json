@@ -1422,7 +1422,8 @@
         "planning/evidence/manifests/certify-20260925T103038Z-3156842.json",
         "planning/evidence/manifests/certify-20260925T101146Z-3714036.json",
         "planning/evidence/manifests/certify-20260925T110203Z-65756.json",
-        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json"
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
+        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json"
       ]
     },
     {
@@ -1976,7 +1977,8 @@
         "planning/evidence/manifests/certify-20260925T093812Z-3053804.json",
         "planning/evidence/manifests/certify-20260925T103038Z-3156842.json",
         "planning/evidence/manifests/certify-20260925T110203Z-65756.json",
-        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json"
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
+        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json"
       ],
       "progress_note": "certify-20260921T062242Z-1643977 certified an older books/feed-journal digest; certify-20260924T070931Z-1040432 (hbox) records books/feed-journal and tests/acl2/feed-journal-tests passed at their current digests and include closures. Actual subject calls: host/owner-host.lisp fn-owner-feed-journal-scan calls fn-feed-journal-scan; tools/run_owner.py Acl2Owner.feed_journal_step calls fn-feed-journal-phase-step for Journal._step. The finite phase theorem extends that same step through arbitrary observations. Physical torn-suffix repair, barriers and the global owner fence have scoped live-scanner and host-method tests in tests/test_feed_journal_live.py and tests/test_feed_fence.py; those tests do not run the combined owner/NNTP path. This target does not prove physical byte-image survival, general K5 live/replay correspondence, acceptance/feed atomicity, detection of whole-prefix rollback, bounded total journal growth, or hardware durability."
     },
@@ -2362,7 +2364,8 @@
         "planning/evidence/manifests/certify-20260925T103038Z-3156842.json",
         "planning/evidence/manifests/certify-20260925T100705Z-3116225.json",
         "planning/evidence/manifests/certify-20260925T102606Z-3884875.json",
-        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json"
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
+        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json"
       ],
       "events": [
         "fn-nntp-newnews-candidate-is-projectable",
@@ -4039,7 +4042,8 @@
         "tests/acl2/sha256-buffer-tests.lisp",
         "planning/evidence/rep-wave-c-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T103038Z-3935155.json",
-        "planning/evidence/manifests/certify-20260925T103519Z-3987534.json"
+        "planning/evidence/manifests/certify-20260925T103519Z-3987534.json",
+        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json"
       ],
       "progress_note": "Lane rep-wave-c (D27 wave C, 2026-09-25). Teeth in tests/acl2/sha256-buffer-tests.lisp: the FIPS 180-4 vectors through the buffer reader on a live local buffer with the prefix/buffer split varied, the padding boundaries and a 3,000-octet buffer (past the array's first 1024 cells) against fn-sha256-stobj, non-degeneracy, and the subject identity equal to fn-id-subject-of-payload under the attachment and to the theorem's right-hand side on a 160-octet article, the empty payload and a 3,000-octet payload; both keystones have no hypothesis, so no must-fail case exists; the octets instance's hypotheses are proof support (as sha256-stobj's instance). NOT done here: the owner's chunk read (fn-owner-chunk) and the accumulated body are still octet lists (the owner state's representation, wave C boundary 10); the record encoder, the frame and the article parser over the buffer (boundaries 7 to 9); the obligation identity and the frame trailer still digest short lists."
     },
