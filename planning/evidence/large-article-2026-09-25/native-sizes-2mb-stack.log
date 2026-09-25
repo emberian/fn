@@ -1,0 +1,13 @@
+{"size": 4193280, "reply": "240 article received OK\r\n", "wall_s": 3.96, "owner_vmhwm": "894880 kB", "alive_after": true, "inspect_rc": 0, "inspect_len": 4193443}
+---- owner stderr tail
+accepted reader connection=0 time=2026-09-25T06:26:17Z
+accepted post path=served connection=0 message-id=<candidate@campaign.invalid> agent=fn.example.invalid time=2026-09-25T06:26:18Z
+accepted operator run
+
+---- inspect stderr
+
+{"size": 4193280, "article_status": "220 0 <candidate@campaign.invalid> article follows", "article_len": 4193443, "reread_identical_to_inspect": true, "source_is_suffix": true, "stored_sha256": "69a85e6d3743672a5b4f701979b6d3e197308b8674a5662cf65216249b39c392"}
+---- restarted owner stderr tail
+accepted reader connection=0 time=2026-09-25T06:26:25Z
+accepted operator run
+

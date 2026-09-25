@@ -1,0 +1,97 @@
+test_a_carried_article_is_undecided_3_never_0_or_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_carried_article_is_undecided_3_never_0_or_1) ... ok
+test_a_lying_node_is_2 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_lying_node_is_2) ... ok
+test_agreement_on_a_valid_signature_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_on_a_valid_signature_is_0) ... ok
+test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1) ... ok
+test_carrier_v1_now_carries_up_to_65535_octets (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v1_now_carries_up_to_65535_octets) ... ok
+test_carrier_v2_tampered_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_tampered_is_1) ... ok
+test_carrier_v2_valid_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_valid_is_0) ... ok
+test_carrier_wrong_version_byte_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_wrong_version_byte_is_refused) ... ok
+test_noncanonical_carrier_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_noncanonical_carrier_is_refused) ... ok
+test_the_versions_sign_disjoint_preimages (tests.test_fn_verify.FakeNodeVerifyTests.test_the_versions_sign_disjoint_preimages) ... ok
+test_usage_error_never_reads_as_disagreement (tests.test_fn_verify.FakeNodeVerifyTests.test_usage_error_never_reads_as_disagreement) ... ok
+test_what_cannot_be_decided_is_3 (tests.test_fn_verify.FakeNodeVerifyTests.test_what_cannot_be_decided_is_3) ... ok
+POST verify-signed 7717
+  -> 240 article received OK
+POST verify-tampered 7719
+  -> 441 posting failed; the author signature does not verify
+POST verify-unsigned 194
+  -> 240 article received OK
+POST verify-v1-60k 70040
+  -> 441 posting failed; the article was refused
+POST verify-v2-200k 215384
+owner stderr:
+accepted reader connection=0 time=2026-09-25T06:14:51Z
+SURVEY served word=:DURABLE detail=NIL octets=7792
+accepted post path=served connection=0 message-id=<verify-signed@example.invalid> agent=fn.example.invalid time=2026-09-25T06:14:51Z
+accepted reader connection=1 time=2026-09-25T06:14:51Z
+SURVEY served word=:REFUSED detail=:SIGNATURE octets=7794
+refused post path=served connection=1 message-id=<verify-tampered@example.invalid> agent=fn.example.invalid time=2026-09-25T06:14:51Z
+accepted reader connection=2 time=2026-09-25T06:14:51Z
+SURVEY served word=:DURABLE detail=NIL octets=269
+accepted post path=served connection=2 message-id=<verify-unsigned@example.invalid> agent=fn.example.invalid time=2026-09-25T06:14:51Z
+accepted reader connection=3 time=2026-09-25T06:15:05Z
+SURVEY served word=:REFUSED detail=:EVENT octets=70115
+refused post path=served connection=3 message-id=<verify-v1-60k@example.invalid> agent=fn.example.invalid time=2026-09-25T06:15:05Z
+accepted reader connection=4 time=2026-09-25T06:17:30Z
+SURVEY served word=:REFUSED detail=:EVENT octets=215459
+refused post path=served connection=4 message-id=<verify-v2-200k@example.invalid> agent=fn.example.invalid time=2026-09-25T06:17:30Z
+accepted operator run
+
+setUpClass (tests.test_fn_verify.NativeVerifyTests) ... ERROR
+/usr/lib/python3.12/socket.py:791: ResourceWarning: unclosed <ssl.SSLSocket fd=4, family=2, type=1, proto=6, laddr=('127.0.0.1', 57206)>
+  self._sock = None
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+test_a_changed_v2_tag_or_width_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_changed_v2_tag_or_width_is_caught) ... ok
+test_a_changed_width_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_changed_width_is_caught) ... ok
+test_a_field_the_spec_forgets_to_drop_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_field_the_spec_forgets_to_drop_is_caught) ... ok
+test_a_renamed_function_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_renamed_function_is_caught) ... ok
+test_the_spec_the_books_and_the_verifier_agree (tests.test_fn_verify.SpecBookTieTests.test_the_spec_the_books_and_the_verifier_agree) ... ok
+
+======================================================================
+ERROR: setUpClass (tests.test_fn_verify.NativeVerifyTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/large-article/tree/tests/test_fn_verify.py", line 679, in post
+    return node.line()
+           ^^^^^^^^^^^
+  File "/tank/fn/scratch/large-article/tree/tools/fn_verify.py", line 431, in line
+    raw = self.reader.readline(MAX_LINE + 2)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socket.py", line 720, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/ssl.py", line 1251, in recv_into
+    return self.read(nbytes, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/ssl.py", line 1103, in read
+    return self._sslobj.read(len, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tank/fn/scratch/large-article/tree/tests/test_fn_verify.py", line 624, in setUpClass
+    cls.start(control)
+  File "/tank/fn/scratch/large-article/tree/tests/test_fn_verify.py", line 656, in start
+    cls.replies[stem] = cls.post(octets)
+                        ^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/large-article/tree/tests/test_fn_verify.py", line 681, in post
+    node.close()
+  File "/tank/fn/scratch/large-article/tree/tools/fn_verify.py", line 464, in close
+    self.command("QUIT")
+  File "/tank/fn/scratch/large-article/tree/tools/fn_verify.py", line 444, in command
+    return self.line()
+           ^^^^^^^^^^^
+  File "/tank/fn/scratch/large-article/tree/tools/fn_verify.py", line 431, in line
+    raw = self.reader.readline(MAX_LINE + 2)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socket.py", line 717, in readinto
+    raise OSError("cannot read from timed out object")
+OSError: cannot read from timed out object
+
+----------------------------------------------------------------------
+Ran 17 tests in 209.373s
+
+FAILED (errors=1)
+rc=1

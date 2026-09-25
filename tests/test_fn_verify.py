@@ -31,6 +31,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -547,11 +548,6 @@ class NativeVerifyTests(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory(prefix="fn-verify-native-")
         root = cls.root = Path(cls.temp.name)
         store, control, auth = root / "store", root / "control.sock", root / "auth.toml"
-        # D27: the store's profile is the operator's.  FN_VERIFY_INIT_FLAGS
-        # (e.g. "--max-article-octets 4194304") gives the large cases an
-        # article bound that admits them.
-        cls.invoke("store", store, "init",
-                   *os.environ.get("FN_VERIFY_INIT_FLAGS", "").split(), "fn.test")
         cls.cert, key = root / "node-cert.pem", root / "node-key.pem"
         subprocess.run([OPENSSL, "req", "-x509", "-newkey", "rsa:2048", "-keyout", str(key),
                         "-out", str(cls.cert), "-sha256", "-days", "1", "-nodes",
@@ -567,6 +563,19 @@ class NativeVerifyTests(unittest.TestCase):
             'tls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n'
             '[auth]\nrequired = true\nprotected_only = true\npath = "{}"\n'
             .format(store, cls.port, cls.cert, key, control, auth), encoding="ascii")
+        # D27: the store's profile is the operator's.  FN_VERIFY_INIT_FLAGS
+        # (e.g. "--max-article-octets 4194304") gives the large cases an
+        # article bound that admits them.  `operator CFG init` is the verb
+        # that reads profile fields; the developer `store ROOT init` takes
+        # every word as a group name, so it made groups named
+        # "--max-article-octets" and "4194304" and kept the 32,768 default.
+        cls.invoke("operator", cls.config, "init",
+                   *os.environ.get("FN_VERIFY_INIT_FLAGS", "").split(), "fn.test")
+        # The store profile's article field, as `status' reports it (the
+        # operator's default profile when no flag was given).  Read before
+        # the owner holds the store lock.
+        status = cls.invoke("operator", cls.config, "status").stdout.decode()
+        cls.article_bound = int(re.search(r"max-article-octets=(\d+)", status).group(1))
         env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
         env.pop("FN_HOST", None)
         enrolled = subprocess.run(
@@ -620,8 +629,10 @@ class NativeVerifyTests(unittest.TestCase):
         try:
             cls.start(control)
         except BaseException:
-            # tearDownClass does not run after a failed setUpClass.
-            stop_and_diagnostics(cls.owner, timeout=60)
+            # tearDownClass does not run after a failed setUpClass.  The
+            # owner's stderr is the only record of why a POST got no reply.
+            print("owner stderr:\n" + stop_and_diagnostics(cls.owner, timeout=60),
+                  flush=True)
             cls.temp.cleanup()
             raise
 
@@ -638,7 +649,8 @@ class NativeVerifyTests(unittest.TestCase):
                  ("verify-tampered", True, True, b"exact post source\r\n"),
                  ("verify-unsigned", False, False, b"exact post source\r\n")]
         if LARGE:
-            cases += [("verify-v1-60k", False, True, big_body(60 * 1024)),
+            cases += [("verify-unsigned-200k", False, False, big_body(200 * 1024)),
+                      ("verify-v1-60k", False, True, big_body(60 * 1024)),
                       ("verify-v2-200k", False, True, big_body(200 * 1024)),
                       ("verify-v2-tampered", True, True, big_body(200 * 1024))]
         for stem, tamper, signed, body in cases:
@@ -660,19 +672,23 @@ class NativeVerifyTests(unittest.TestCase):
         return carried.read_bytes()
 
     @classmethod
-    def upstream(cls):
+    def upstream(cls, timeout=30.0):
         return fn_verify.Node("127.0.0.1", cls.port, cafile=str(cls.cert),
-                              credentials=(cls.USER, cls.PASSWORD))
+                              credentials=(cls.USER, cls.PASSWORD), timeout=timeout)
 
     @classmethod
     def post(cls, octets):
-        node = cls.upstream()
+        # A large POST's reply waits on the node reading the whole article;
+        # the wait is printed, and bounded well above it.
+        node = cls.upstream(timeout=600.0)
+        started = time.monotonic()
         try:
             status = node.command("POST")
             assert status.startswith("340"), status
             node.sock.sendall(dot_stuff(octets) + b".\r\n")
             return node.line()
         finally:
+            print("  POST wall {:.2f} s".format(time.monotonic() - started), flush=True)
             node.close()
 
     @classmethod
@@ -708,6 +724,36 @@ class NativeVerifyTests(unittest.TestCase):
         self.assertEqual(code, 1, report)
         self.assertEqual(report["node"]["outcome"], "absent")
         print("\nunsigned:", report["node-hdr"], "|", report["detail"])
+
+    def test_an_article_past_the_profile_over_tls_is_a_441_and_the_owner_serves_on(self):
+        # large-article, 2026-09-25: on a protected channel an article past
+        # the profile's bound closes the wire mid-article (fn-wire-close ...
+        # :body-overlimit, books/wire.lisp), so the step consumes a prefix of
+        # the read.  The host faulted on that suffix ("protected owner read
+        # left a TLS suffix") and stopped the process: the client saw a
+        # closed socket, and so did every later client.  A refusal is a 441
+        # naming its reason, and the listener stays.
+        bound = self.article_bound
+        body = big_body(bound + 1)
+        octets = source_for("<verify-past-bound@example.invalid>", body=body)
+        self.assertGreater(len(octets), bound)
+        node = self.upstream()
+        try:
+            self.assertTrue(node.command("POST").startswith("340"))
+            try:
+                node.sock.sendall(dot_stuff(octets) + b".\r\n")
+            except OSError:
+                pass  # the refusal arrived while the body was still going out
+            answer = node.line()
+        finally:
+            node.close()
+        self.assertEqual(answer, "441 posting failed; the article exceeds the configured size")
+        self.assertIsNone(self.owner.poll(), "the owner stopped on a refusal")
+        again = self.upstream()
+        try:
+            self.assertTrue(again.command("DATE").startswith("111"))
+        finally:
+            again.close()
 
     def test_tampered_post_is_not_stored_so_nothing_is_decided_3(self):
         code, report = self.verify("<verify-tampered@example.invalid>")

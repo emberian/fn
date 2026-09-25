@@ -34,12 +34,42 @@
                  (if (equal x (car xs)) xs (fn-ag-member x (cdr xs)))
                nil)))
 
+; `fn-ag-append''s executable was a cons around a recursive call, one
+; control-stack frame per element of XS: an ARTICLE reply for a 3 MiB article
+; exhausted the image's stack inside `fn-owner-chunk' (large-article,
+; 2026-09-25).  The twin copies XS once onto an accumulator in a tail call
+; and reverses it onto YS with `revappend', which is iterative; it allocates
+; 2|XS| conses and a constant stack, and accepts any XS as `append' does
+; (a non-list tail is dropped).
+(defun fn-ag-rev-onto (xs acc)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (fn-ag-rev-onto (cdr xs) (cons (car xs) acc))
+    acc))
+
+(defthm fn-ag-rev-onto-true-listp
+  (implies (true-listp acc)
+           (true-listp (fn-ag-rev-onto xs acc))))
+
+(local
+ (defthm fn-ag-revappend-of-rev-onto
+   (equal (revappend (fn-ag-rev-onto xs acc) ys)
+          (revappend acc (append xs ys)))))
+
+(defun fn-ag-append-exec (xs ys)
+  (declare (xargs :guard t))
+  (revappend (fn-ag-rev-onto xs nil) ys))
+
+; Keystone (D27 concrete twin): the iterative append is `append' on every
+; argument.
+(defthm fn-ag-append-exec-is-append
+  (equal (fn-ag-append-exec xs ys)
+         (append xs ys)))
+
 (defun fn-ag-append (xs ys)
   (declare (xargs :guard t))
   (mbe :logic (append xs ys)
-       :exec (if (consp xs)
-                 (cons (car xs) (fn-ag-append (cdr xs) ys))
-               ys)))
+       :exec (fn-ag-append-exec xs ys)))
 
 (defun fn-ag-less (x y)
   (declare (xargs :guard t

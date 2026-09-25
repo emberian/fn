@@ -1,0 +1,51 @@
+{"size": 2097152, "reply": "240 article received OK\r\n", "wall_s": 2.04, "owner_vmhwm": "569236 kB", "alive_after": true, "inspect_rc": 0, "inspect_len": 2097315}
+---- owner stderr tail
+accepted reader connection=0 time=2026-09-25T06:25:45Z
+accepted post path=served connection=0 message-id=<candidate@campaign.invalid> agent=fn.example.invalid time=2026-09-25T06:25:46Z
+accepted operator run
+
+---- inspect stderr
+
+{"size": 2097152, "article_status": "220 0 <candidate@campaign.invalid> article follows", "article_len": 2097315, "reread_identical_to_inspect": true, "source_is_suffix": true, "stored_sha256": "b0ef7ace1fdae29103767d0185acc64d3f5c705df1caddba9e0dea0c52b2d2ae"}
+---- restarted owner stderr tail
+accepted reader connection=0 time=2026-09-25T06:25:49Z
+accepted operator run
+
+{"size": 3145728, "reply": "240 article received OK\r\n", "wall_s": 2.73, "owner_vmhwm": "749228 kB", "alive_after": true, "inspect_rc": 0, "inspect_len": 3145891}
+---- owner stderr tail
+accepted reader connection=0 time=2026-09-25T06:25:51Z
+accepted post path=served connection=0 message-id=<candidate@campaign.invalid> agent=fn.example.invalid time=2026-09-25T06:25:52Z
+accepted operator run
+
+---- inspect stderr
+
+{"size": 3145728, "article_status": "220 0 <candidate@campaign.invalid> article follows", "article_len": 3145891, "reread_identical_to_inspect": true, "source_is_suffix": true, "stored_sha256": "a43dde05278d18be5fe6dd4faff806edeaf9c0d2749089ff5dce0837842e7e0e"}
+---- restarted owner stderr tail
+accepted reader connection=0 time=2026-09-25T06:25:56Z
+accepted operator run
+
+{"size": 4193280, "reply": "240 article received OK\r\n", "wall_s": 3.79, "owner_vmhwm": "895504 kB", "alive_after": true, "inspect_rc": 0, "inspect_len": 4193443}
+---- owner stderr tail
+accepted reader connection=0 time=2026-09-25T06:25:58Z
+accepted post path=served connection=0 message-id=<candidate@campaign.invalid> agent=fn.example.invalid time=2026-09-25T06:25:59Z
+accepted operator run
+
+---- inspect stderr
+
+{"size": 4193280, "article_status": "220 0 <candidate@campaign.invalid> article follows", "article_len": 4193443, "reread_identical_to_inspect": true, "source_is_suffix": true, "stored_sha256": "53500ff114c4cbb39aa715ced46ccbb56817ef31f7fac0366bc98cc106d1be2f"}
+---- restarted owner stderr tail
+accepted reader connection=0 time=2026-09-25T06:26:06Z
+accepted operator run
+
+{"size": 4194304, "reply": "441 posting failed; the article exceeds the configured size\r\n", "wall_s": 1.37, "owner_vmhwm": "500240 kB", "alive_after": true, "inspect_rc": 1, "inspect_len": 0}
+---- owner stderr tail
+accepted reader connection=0 time=2026-09-25T06:26:07Z
+accepted operator run
+
+---- inspect stderr
+
+{"size": 4194304, "article_status": "430 no article with that message-id", "article_len": 0, "reread_identical_to_inspect": false, "source_is_suffix": false, "stored_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+---- restarted owner stderr tail
+accepted reader connection=0 time=2026-09-25T06:26:09Z
+accepted operator run
+
