@@ -529,11 +529,16 @@ to Common Lisp's guarded APPEND."
     (list record)))
 
 (defun fn-native-admin-publication-authorize
-    (records frontier config-records record lock-owned observed-names)
+    (records frontier config-records record lock-owned observed-names
+             max-generations)
   "Authorize this exact final configuration name once.  LOCK-OWNED and
 OBSERVED-NAMES are raw physical observations.  ACL2 binds them to the record's
 generation, the candidate replay/open check, the fixed filename, and the
-shared immutable publication state before raw Lisp may execute an I/O action."
+shared immutable publication state before raw Lisp may execute an I/O action.
+MAX-GENERATIONS is the operator's bound, the store profile's
+`max-config-generations' (D27, PRF-102): a generation above it is refused
+`:max-config-generations', so the namespace never outgrows the listing bound
+recovery observes it under (`fn-nco-observe')."
   (declare (xargs :guard t))
   (if (not lock-owned)
       (fn-native-admin-publication-result :refused :lock nil nil nil)
@@ -555,6 +560,9 @@ shared immutable publication state before raw Lisp may execute an I/O action."
                                  (fn-cfg-generation current)))
                      (not (equal (fn-cfg-record-generation record) generation)))
                  (fn-native-admin-publication-result :refused :generation nil nil nil))
+                ((< (nfix max-generations) generation)
+                 (fn-native-admin-publication-result
+                  :refused :max-config-generations nil nil nil))
                 ((null name)
                  (fn-native-admin-publication-result :refused :generation-name nil nil nil))
                 ((fn-native-admin-name-memberp name observed-names)
@@ -586,11 +594,36 @@ shared immutable publication state before raw Lisp may execute an I/O action."
 ;; Teeth: tests/acl2/native-admin-tests.lisp.
 (defthm fn-native-admin-publication-is-authorized-only-under-the-lock
   (let ((result (fn-native-admin-publication-authorize
-                 records frontier config-records record lock-owned observed-names)))
+                 records frontier config-records record lock-owned observed-names
+                 max-generations)))
     (and (implies (equal (fn-native-admin-publication-status result) :accepted)
                   lock-owned)
          (implies (fn-native-admin-publication-jpub result)
                   lock-owned)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
+                                  (fn-cnode-config-replay fn-native-admin-candidate-openp
+                                   fn-native-admin-config-name fn-cfg-recordp)))))
+
+;; KEYSTONE (D27, PRF-102: the writer refuses exactly past the operator's
+;; bound).  An accepted publication names a natural generation within
+;; MAX-GENERATIONS, the profile's `max-config-generations' the host reads
+;; from the store it opened (host/native/admin.lisp `fnn-admin-authorize' ->
+;; host/store-node-host.lisp `fn-store-cfg-native-admin-authorize', which
+;; computes it with `fn-bs-profile-max-config-generations'); and a record
+;; that every other gate admits is refused `:max-config-generations' exactly
+;; when its generation is above that bound.  Generations are contiguous from
+;; 1 (`fn-nco-canonical-contiguousp'), so the namespace after an accepted
+;; publication holds GENERATION entries, which `fn-nco-observe' admits under
+;; the same field (`fn-nco-observe-refuses-exactly-past-the-operator-bound').
+(defthm fn-native-admin-publication-within-the-operator-bound
+  (let ((result (fn-native-admin-publication-authorize
+                 records frontier config-records record lock-owned observed-names
+                 max-generations)))
+    (implies (equal (fn-native-admin-publication-status result) :accepted)
+             (and (natp (fn-native-admin-publication-generation result))
+                  (<= (fn-native-admin-publication-generation result)
+                      (nfix max-generations)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
                                   (fn-cnode-config-replay fn-native-admin-candidate-openp

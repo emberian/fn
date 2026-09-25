@@ -740,13 +740,17 @@ class Acl2Store:
         return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
 
     def config_publication(self, records, frontier, config_records, record,
-                           lock_owned, observed_names):
-        """ACL2's publication authorization: (status, reason, generation, name)."""
-        form = "(fn-store-cfg-publication '{} {} '{} '{} {} '{})".format(
+                           lock_owned, observed_names, profile):
+        """ACL2's publication authorization: (status, reason, generation, name).
+
+        PROFILE is the store's decoded profile, opaque: ACL2 reads its
+        max-config-generations (D27, PRF-102)."""
+        form = "(fn-store-cfg-publication '{} {} '{} '{} {} '{} '{})".format(
             "(" + " ".join(self.literal(r) for r in records) + ")", int(frontier),
             "(" + " ".join(self.literal(r) for r in config_records) + ")",
             self.literal(record), "t" if lock_owned else "nil",
-            "(" + " ".join(self.literal(n) for n in observed_names) + ")")
+            "(" + " ".join(self.literal(n) for n in observed_names) + ")",
+            frame_bridge._lisp_literal(profile))
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
         value = frame_bridge.read_form(self.call(form, timeout=timeout))
@@ -1249,7 +1253,8 @@ class Store:
                          for entry in os.scandir(self.config_dir))
         status, reason, generation, name = acl2.config_publication(
             self.durable_records(acl2), self.frontier, self.config_records(),
-            bytes(octets), self.lock_fd is not None and self.writable, observed)
+            bytes(octets), self.lock_fd is not None and self.writable, observed,
+            self.config["profile"])
         if status != "accepted":
             print("store: refused configuration record: {}".format(reason),
                   file=sys.stderr)

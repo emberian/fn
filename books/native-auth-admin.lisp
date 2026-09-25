@@ -259,10 +259,12 @@
               (fn-native-auth-admin-public-report (cdr credentials)))
     nil))
 
-(defun fn-native-auth-admin-list (octets presentp)
+(defun fn-native-auth-admin-list (octets presentp max-credentials)
   ; Host-called list subject.  It projects only public credential fields.
+  ; MAX-CREDENTIALS is the store profile's `max-credentials' (D27, PRF-102).
   (declare (xargs :guard t))
-  (let ((loaded (fn-native-auth-load octets presentp nil nil nil)))
+  (let ((loaded (fn-native-auth-load octets presentp nil nil nil
+                                     max-credentials)))
     (if (not (equal (fn-native-auth-result-status loaded) :accepted))
       (list :refused (fn-native-auth-result-reason loaded))
       (list :accepted nil
@@ -273,9 +275,12 @@
 
 (defun fn-native-auth-admin-set-password
   (octets presentp name secret confirmation salt
-          principal-text principal-presentp postingp)
+          principal-text principal-presentp postingp max-credentials)
   ; Host-called mutation subject.  SALT is an observation, not an ACL2 claim
   ; about OS entropy.  The output contains the derived verifier, never SECRET.
+  ; MAX-CREDENTIALS is the store profile's `max-credentials' (D27, PRF-102):
+  ; a new login past it is refused `:too-many-credentials', so the file this
+  ; writes is one the owner's loader admits under the same field.
   (declare (xargs :guard t))
   (cond
    ((not (fn-native-auth-login-namep name))
@@ -289,7 +294,8 @@
    (t
     (let* ((principal (fn-native-auth-admin-principal
                        name principal-text principal-presentp))
-           (loaded (fn-native-auth-load octets presentp nil nil nil)))
+           (loaded (fn-native-auth-load octets presentp nil nil nil
+                                        max-credentials)))
       (cond
        ((equal principal :bad) (list :refused :principal))
        ((not (equal (fn-native-auth-result-status loaded) :accepted))
@@ -298,7 +304,7 @@
         (let* ((old (fn-auth-config-creds
                      (fn-native-auth-result-config loaded)))
                (newp (not (fn-native-auth-name-memberp name old))))
-          (if (and newp (<= *fn-native-auth-max-credentials* (len old)))
+          (if (and newp (<= (nfix max-credentials) (len old)))
               (list :refused :too-many-credentials)
             (let* ((credential
                     (fn-auth-make-cred name principal
@@ -310,7 +316,8 @@
                    (serialized (fn-native-auth-admin-serialize credentials)))
               (if (or (not (fn-auth-credp credential))
                       (not (fn-ncfg-ascii-octetsp serialized))
-                      (< *fn-native-auth-max-octets* (len serialized)))
+                      (< (fn-native-auth-max-octets max-credentials)
+                         (len serialized)))
                   (list :fault :serialized-profile)
                 (list :accepted serialized
                       (fn-native-auth-admin-public-row credential))))))))))))

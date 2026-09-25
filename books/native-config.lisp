@@ -10,6 +10,14 @@
 (in-package "ACL2")
 (include-book "records")
 
+; Work bounds, not data bounds (D27 classification, PRF-102).  fn.toml has a
+; fixed schema: eight tables and sixteen keys, each admitted at most once
+; (`fn-ncfg-pair-seenp', `fn-ncfg-table-seenp'), with no repeated table, so it
+; names no collection the store holds -- groups, peers, credentials and
+; policy live in the store and its profile.  These two bound the work of one
+; read of that fixed-size file (its values are at most 16 x 512 octets).  The
+; store profile cannot bound it in any case: fn.toml is read before the store
+; is opened, and names the store (`[store] path').
 (defconst *fn-ncfg-max-octets* 16384)
 (defconst *fn-ncfg-max-lines* 128)
 (defconst *fn-ncfg-max-path* 512)

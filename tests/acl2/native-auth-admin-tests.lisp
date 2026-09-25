@@ -77,7 +77,7 @@
   '(fn-native-auth-admin-set-password
     nil nil *fn-naa-test-name* *fn-naa-test-secret* *fn-naa-test-secret*
     *fn-naa-test-salt*
-    nil nil t))
+    nil nil t 128))
 
 (assert-event (equal (fn-native-auth-admin-result-status (fn-naa-test-set))
                      :accepted))
@@ -91,7 +91,7 @@
 ; attached SHA-256 octets, and rejects a concrete different secret.
 (defmacro fn-naa-test-reopened ()
   '(fn-native-auth-load
-    (fn-native-auth-admin-result-octets (fn-naa-test-set)) t nil nil nil))
+    (fn-native-auth-admin-result-octets (fn-naa-test-set)) t nil nil nil 128))
 (defmacro fn-naa-test-credential ()
   '(car (fn-auth-config-creds
          (fn-native-auth-result-config (fn-naa-test-reopened)))))
@@ -133,7 +133,7 @@
 (assert-event
  (equal (fn-native-auth-admin-result-report
          (fn-native-auth-admin-list
-          (fn-native-auth-admin-result-octets (fn-naa-test-set)) t))
+          (fn-native-auth-admin-result-octets (fn-naa-test-set)) t 128))
         (fn-native-auth-admin-public-report
          (list (fn-naa-test-credential)))))
 
@@ -155,21 +155,21 @@
   (fn-native-auth-admin-result-status
    (fn-native-auth-admin-set-password
     nil nil *fn-naa-test-name* *fn-naa-test-secret* *fn-naa-test-secret*
-    '(0 1) nil nil t))
+    '(0 1) nil nil t 128))
   :fault))
 (assert-event
  (equal
   (fn-native-auth-admin-result-reason
    (fn-native-auth-admin-set-password
     nil nil *fn-naa-test-name* *fn-naa-test-secret* *fn-naa-test-other-secret*
-    *fn-naa-test-salt* nil nil t))
+    *fn-naa-test-salt* nil nil t 128))
   :secret-confirmation))
 (assert-event
  (equal
   (fn-native-auth-admin-result-reason
    (fn-native-auth-admin-set-password
     nil nil '(34) *fn-naa-test-secret* *fn-naa-test-secret*
-    *fn-naa-test-salt* nil nil t))
+    *fn-naa-test-salt* nil nil t 128))
   :name))
 (assert-event
  (equal
@@ -179,7 +179,7 @@
             (fn-record-string-octets "secret = \"do-not-read\"") (list 10))
     t *fn-naa-test-name* *fn-naa-test-secret* *fn-naa-test-secret*
     *fn-naa-test-salt*
-    nil nil t))
+    nil nil t 128))
   :cleartext-credential))
 
 ; The host-called wrapper over the shared replacement machine reaches durable
@@ -288,3 +288,28 @@
           (fn-native-auth-admin-recovery-start nil nil)
           '(:recovery-directory-result :ok)))
         :recovered))
+
+; D27, PRF-102: the writer refuses a new login exactly past the operator's
+; max-credentials.  Over the one-credential file the witness above wrote, a
+; second login is accepted under 2 and refused by name under 1; re-setting
+; the existing login is not a new one and is accepted under 1.
+(defconst *fn-naa-test-one* (fn-native-auth-admin-result-octets (fn-naa-test-set)))
+(defconst *fn-naa-test-other-name* (fn-record-string-octets "second-reader"))
+(assert-event
+ (equal (fn-native-auth-admin-result-status
+         (fn-native-auth-admin-set-password
+          *fn-naa-test-one* t *fn-naa-test-other-name* *fn-naa-test-secret*
+          *fn-naa-test-secret* *fn-naa-test-salt* nil nil t 2))
+        :accepted))
+(assert-event
+ (equal (fn-native-auth-admin-result-reason
+         (fn-native-auth-admin-set-password
+          *fn-naa-test-one* t *fn-naa-test-other-name* *fn-naa-test-secret*
+          *fn-naa-test-secret* *fn-naa-test-salt* nil nil t 1))
+        :too-many-credentials))
+(assert-event
+ (equal (fn-native-auth-admin-result-status
+         (fn-native-auth-admin-set-password
+          *fn-naa-test-one* t *fn-naa-test-name* *fn-naa-test-secret*
+          *fn-naa-test-secret* *fn-naa-test-salt* nil nil t 1))
+        :accepted))
