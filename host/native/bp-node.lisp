@@ -188,6 +188,43 @@ observations back.  Nil when there is nothing to observe."
                   :receipt-refused :request-refused)
               '(0)))))
 
+;;; The operator's budgets (spec bp-node-machine 2.1, 4.2, 4.3.1): optional
+;;; rows `owner-backoff N' and `retry-budget N' in JOURNAL/bp-node-budgets.
+;;; The host bounds the text; ACL2 supplies the defaults and validates
+;;; (fn-bpnp-configured-budgets).  Every event that decides with them
+;;; carries them as its last field.
+(defvar *fnn-bpnode-budgets* nil)
+
+(defun fnn-bpnode-read-budgets (journal-root)
+  (let* ((path (concatenate 'string journal-root "/bp-node-budgets"))
+         (backoff nil) (retries nil))
+    (when (probe-file path)
+      (let ((text (fnn-octets-string (fnn-read-regular-bounded path 256))))
+        (dolist (line (loop with start = 0
+                            for end = (position #\Newline text :start start)
+                            collect (subseq text start (or end (length text)))
+                            while end do (setq start (1+ end))))
+          (let* ((space (position #\Space line))
+                 (key (and space (subseq line 0 space)))
+                 (value (and space (subseq line (1+ space)))))
+            (cond ((zerop (length line)))
+                  ((not (and key (<= 1 (length value) 20)
+                             (every #'digit-char-p value)))
+                   (fnn-refuse "bp-node: malformed budget row"))
+                  ((string= key "owner-backoff")
+                   (setq backoff (parse-integer value)))
+                  ((string= key "retry-budget")
+                   (setq retries (parse-integer value)))
+                  (t (fnn-refuse "bp-node: unknown budget row")))))))
+    (let ((budgets (fnn-core 'fn-bpnp-configured-budgets backoff retries)))
+      (unless budgets (fnn-refuse "bp-node: ACL2 refused the budget rows"))
+      (fnn-out "BP node budgets owner-backoff=~d retry-budget=~d"
+               (second budgets) (third budgets))
+      budgets)))
+
+(defun fnn-bpnode-budgeted (event)
+  (if *fnn-bpnode-budgets* (append event (list *fnn-bpnode-budgets*)) event))
+
 (defun fnn-bpnode-dispatch-one
     (bp owner receipt-root workflow-root destination policy issuer node-id
      configured-peer)
@@ -200,11 +237,17 @@ observations back.  Nil when there is nothing to observe."
       (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
     (let ((effects
             (fnn-bps-foundation-step
-             bp (list :progress node observation
-                      (fnn-core 'fn-bpnp-single-peer-routes
-                                (fnn-bp-eid configured-peer))
-                      0))))
+             bp (fnn-bpnode-budgeted
+                 (list :progress node observation
+                       (fnn-core 'fn-bpnp-single-peer-routes
+                                 (fnn-bp-eid configured-peer))
+                       0)))))
       (unless effects (return-from fnn-bpnode-dispatch-one nil))
+      (when (and (= (length effects) 1)
+                 (eq (first (first effects)) :delivery-stranded))
+        ;; Reported on every tick while stranded; nothing else to do.
+        (fnn-bps-drive-effects bp effects)
+        (return-from fnn-bpnode-dispatch-one nil))
       (when (and (= (length effects) 1)
                  (eq (first (first effects)) :progress-wait))
         (fnn-out "BP node progress waiting reason=~(~a~)"
@@ -244,11 +287,12 @@ observations back.  Nil when there is nothing to observe."
                    bp (if (eq status :busy)
                           ;; BP-R17: the seven-field busy event carries the
                           ;; observation ACL2 dates the deferral from.
-                          (list :deliver-result (second effect) (third effect)
-                                key :busy detail
-                                (fnn-bp-observation
-                                 (fnn-bp-tally-wall tally)
-                                 (fnn-bp-tally-wall-error tally)))
+                          (fnn-bpnode-budgeted
+                           (list :deliver-result (second effect) (third effect)
+                                 key :busy detail
+                                 (fnn-bp-observation
+                                  (fnn-bp-tally-wall tally)
+                                  (fnn-bp-tally-wall-error tally))))
                         (list :deliver-result (second effect) (third effect)
                               key status detail)))))
             (fnn-bps-drive-effects bp result)
@@ -319,7 +363,8 @@ observations back.  Nil when there is nothing to observe."
                                     (obs (fnn-bp-observation wall wall-error)))
                                (fnn-bps-drive-effects
                                 bp (fnn-bps-foundation-step
-                                    bp (list :session peer session-id t mru obs)))
+                                    bp (fnn-bpnode-budgeted
+                                        (list :session peer session-id t mru obs))))
                                (when sent
                                  (setf (fnn-tclc-pending connection)
                                        (cons "bp-node-forward" (seventh sent)))
@@ -393,10 +438,12 @@ observations back.  Nil when there is nothing to observe."
   (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
                                 +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
          (bp (fnn-bps-open journal-root config wall wall-error)))
+    (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
     (unwind-protect
          (progn
            (fnn-bps-drive-effects
-            bp (fnn-bps-foundation-step bp (list :operator-resume arrival)))
+            bp (fnn-bps-foundation-step
+                bp (fnn-bpnode-budgeted (list :operator-resume arrival))))
            (fnn-bps-exit-code bp))
       (fnn-bps-release bp))))
 (defvar *fnn-bpnode-receipt-signer* nil
@@ -634,6 +681,23 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
              (setq after (second observation))))
   bp)
 
+(defun fnn-bpnode-send-receipts (bp peer-id)
+  "Send the owed receipts `fnn-bpnode-queue-outboxes' queued for PEER-ID on
+this node's own base contact, so `bp-contact tick' is not the only path
+(spec bp-node-machine 9.4).  ACL2 decides whether a contact opens
+(fn-bpnp-receipt-contact-event: a queued job for the peer, nothing issued,
+fenced or pending); the offer is the lower machine's, on the job's route.
+The send drives the same effects as `bp-contact tick', so an uncertain or
+refused transfer stays in (fnn-bps-outcome bp) for the exit code."
+  (when (eq (fnn-bps-outcome bp) :uncertain)
+    (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
+  (let ((event (fnn-core 'fn-bpnp-receipt-contact-event
+                         (fnn-bps-state bp) (fnn-bp-eid peer-id))))
+    (when event
+      (fnn-out "BP node receipt contact peer=~a" peer-id)
+      (fnn-bpc-drive-contact bp event))
+    bp))
+
 (defun fnn-command-bp-node
     (listen-port once journal-root store-root receipt-root workflow-root
      node-id peer-id destination policy issuer contact-host contact-port
@@ -649,6 +713,7 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
          (owner nil)
          (listener nil)
          (code +fnn-exit-ok+))
+    (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
     (unwind-protect
          (progn
            (setq owner (fnn-owner-install store-root 1))
@@ -664,6 +729,7 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
            (fnn-bpnode-queue-outboxes
             bp owner receipt-root destination policy issuer node-id peer-id
             contact-host contact-port transfer-mru wall wall-error)
+           (fnn-bpnode-send-receipts bp peer-id)
            (fnn-bpnode-queue-reports
             bp peer-id node-id contact-host contact-port transfer-mru
             wall wall-error)
@@ -728,6 +794,7 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
                 (fnn-bpnode-queue-outboxes
                  bp owner receipt-root destination policy issuer node-id peer-id
                  contact-host contact-port transfer-mru wall wall-error)
+                (fnn-bpnode-send-receipts bp peer-id)
                 (fnn-bpnode-queue-reports
                  bp peer-id node-id contact-host contact-port transfer-mru
                  wall wall-error))
