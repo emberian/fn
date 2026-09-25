@@ -3824,7 +3824,10 @@
         "host/native/peer-invite.lisp",
         "host/peer-invite-host.lisp",
         "books/native-operator.lisp",
-        "planning/evidence/peer-invite-2026-09-25.md"
+        "planning/evidence/peer-invite-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T105118Z-4150165.json",
+        "planning/evidence/manifests/certify-20260925T183424Z-3570225.json",
+        "tests/test_native_peer_invite.py"
       ]
     }
   ]
