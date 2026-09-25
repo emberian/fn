@@ -225,6 +225,14 @@ class NativeControlExecLab(unittest.TestCase):
         finally:
             r.close()
 
+    def active(self, node, name):
+        r = self.reader(node)
+        try:
+            status = r.cmd("LIST ACTIVE " + name)
+            return [l.split()[0] for l in r.block()] if status.startswith("215") else status
+        finally:
+            r.close()
+
     def listgroup(self, node, name):
         r = self.reader(node)
         try:
@@ -307,6 +315,7 @@ class NativeControlExecLab(unittest.TestCase):
             b"FN-Control-Serial: 1\r\n").returncode, 0)
         for node in ("a", "b"):
             self.until("newgroup %s" % node, lambda: self.group(node, "fn.created"), "211")
+            lab("active after newgroup", node, self.active(node, "fn.created"))
             lab("decision", node, self.control(node, "g-new-1"))
         self.assertEqual(self.author(
             "a", "q", "g-stranger", newsgroups=b"fn.test",
@@ -324,7 +333,15 @@ class NativeControlExecLab(unittest.TestCase):
             self.until("decision %s g-stranger" % node,
                        lambda: self.control(node, "g-stranger"), "declined no-grant")
             self.assertEqual(self.group(node, "fn.bad"), "411")
-            self.until("rmgroup %s" % node, lambda: self.group(node, "fn.created"), "411")
+            # rmgroup retires (the group's articles stay retained and served
+            # below its retiring generation), so the check is the decision and
+            # the active list, not GROUP.
+            self.until("rmgroup decision %s" % node,
+                       lambda: self.control(node, "g-rm-2"),
+                       lambda seen: isinstance(seen, str)
+                       and seen.startswith("executed reconfigure group rmgroup fn.created 2"))
+            lab("active after rmgroup", node, self.active(node, "fn.created"),
+                "GROUP", self.group(node, "fn.created"))
             self.until("decision %s g-new-1-replay" % node,
                        lambda: self.control(node, "g-new-1-replay"),
                        "declined stale-serial")
