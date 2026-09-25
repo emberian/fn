@@ -423,6 +423,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-rotation-codec \
 	books/bp-node-rotation \
 	books/bp-node-rotation-step \
+	books/bp-node-retire \
+	tests/acl2/bp-node-retire-tests \
 	tests/acl2/bp-node-counterexamples-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
@@ -487,6 +489,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \
 	tests/acl2/bp-limits-tests \
+	books/bp-fragment-send \
+	tests/acl2/bp-fragment-send-tests \
 	books/clock \
 	books/clock-invariants \
 	tests/acl2/clock-tests \

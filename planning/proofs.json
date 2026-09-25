@@ -3383,7 +3383,7 @@
     {
       "id": "PRF-081",
       "title": "BP journal rotation: recovery from a selected held-row checkpoint equals recovery over the whole history, and every publication cut leaves one authority",
-      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover: for every authority plan0 that is not damaged and whose ordered received-final rows replay :ready, and the checkpoint ck1 of that replay at any generation for which fn-bpnr-checkpoint-octets produces octets, fn-bpnr-recover-auto-event (the event host/native/bp-service.lisp fnn-bps-open passes to fn-bpnp-step) over (fn-bpnr-selection-plan t octets budget) and any later rows equals the event over plan0 and the concatenated rows with field 5 (the row count) set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows equals the old authority's recovery with its row count 0. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19/20, the :quiesce event, cleanup of old generations and the empty new-generation premise are not modelled; the codec runs on octet lists (no D27 concrete twin); a reopened node's epoch is the rotating epoch (finding N16-F1).",
+      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover (restated for N16-F1, lane bp-n16-prod): for every authority plan0 that is not damaged, whose ordered received-final rows replay :ready, the projection ck1 of that replay (a checkpoint), E the epoch field of the recovery event over plan0 and the rows, and the file of the checkpoint the rotation publishes, fn-bpnr-rotation-checkpoint ck1 E (operation frontier (E . 0), the rotation's own id; what fn-bpnp-rotate-step's effect carries and host/native/bp-service.lisp fnn-bps-publish-generation writes): fn-bpnr-recover-auto-event (the event fnn-bps-open passes to fn-bpnp-step) over that file with no later rows names epoch E + 1 with the old replay at frontier (E . 0) and row count 0, so no operation after the reopen reuses the rotation's id; over later rows that start after (E . 0) it equals the event over plan0 and the concatenated rows with field 5 set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows is the reopen event above. fn-bpnp-rotate-step-proposes-only-own-projection: a proposal carries fn-bpnr-rotation-checkpoint of the state's own projection, from a quiescent state, and its file exists. fn-bpnr-retirement-cut-keeps-open-view: when the root's selection file selects G and no other name the open reads is retired, the open's view (selection plan, selected directory, the other names) after any prefix of fn-bpnr-retire-ops (the removal program host/native/bp-service.lisp fnn-bps-retire-generations runs step by step: older generation directories and killed rotations' staged selections) equals the view before it; fn-bpnr-retired-names-never-the-selected-directory. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19 plus a manifest kind, the :quiesce event and the empty new-generation premise are not modelled; the removal model is a name-to-entry alist, not K0's byte store; the codec runs on octet lists (no D27 concrete twin); a killed rotation's unselected new-generation directory is kept (never reused).",
       "milestone": "M4",
       "requirements": [
         "REP-005",
@@ -3410,9 +3410,14 @@
         "planning/evidence/n16-rotation-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T044200Z-2512543.json",
         "planning/evidence/manifests/certify-20260925T050242Z-2546955.json",
-        "planning/evidence/manifests/certify-20260925T051550Z-2568662.json"
+        "planning/evidence/manifests/certify-20260925T051550Z-2568662.json",
+        "books/bp-node-retire.lisp",
+        "tests/acl2/bp-node-retire-tests.lisp",
+        "planning/evidence/bp-n16-prod-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T190512Z-3605421.json",
+        "planning/evidence/manifests/certify-20260925T191828Z-3623771.json"
       ],
-      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2.",
+      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2. Lane bp-n16-prod (2026-09-25): N16-F1 repaired (the published checkpoint's frontier is the rotation's own id; the recovery keystone restated with the event's epoch), and old generations retired by an ACL2 program whose every prefix is a model crash point; teeth in tests/acl2/bp-node-counterexamples-tests (N16 section, over real kind-5 rows) and tests/acl2/bp-node-retire-tests.",
       "events": [
         "fn-bpnr-recover-from-checkpoint-equals-full-recover",
         "fn-bpnr-rotation-crash-recovers-old-or-new",
@@ -4352,6 +4357,39 @@
       ],
       "statement": "fn-native-config-show-round-trip: for every configuration C that fn-native-config-show-wfp admits, fn-native-config-load -- the loader fn-native-operator-run (host/native-operator-host.lisp:19) reads fn.toml through -- of fn-native-config-show-octets C, the text `operator CONFIG show' prints and a mission writes, is (:accepted C); the [alerts] and [ops] rows are part of C. fn-native-config-load-renderable: every configuration fn-native-config-load accepts satisfies fn-native-config-show-wfp (the parser's values are parsed-shaped and each field's normalization keeps its bound), so fn-native-config-show carries no run-time check; with the round trip, fn-native-config-loaded-show-round-trip: the rendering of every loaded configuration loads back as itself. fn-native-mission-profiles-valid and fn-native-mission-store-opens-with-its-profile: for each of small-community, relay and archive, the mission's profile request resolves to an admitted profile, and the frame `init' writes for it (fn-bs-config-frame-for-profile, host/store-host.lisp fn-store-metadata-config-frame) decodes at every later open to exactly that profile (under A-CRYPTO through fn-bs-config-decode-of-encode). fn-native-operator-run-init-under-a-mission: under a configuration naming a mission, an accepted init plan's profile is the mission's request. fn-olr-reopen-iff-requested: fn-olr-decide, which host/owner-host.lisp fn-owner-log-reopen answers host/native/owner.lisp fnn-owner-maybe-reopen-log with, reopens exactly when a log path is configured and a SIGHUP arrived since the last one handled, and every counted request is then handled. fn-obc-commit-only-after-filing: fn-obc-commit-gate, which fnn-owner-complete-bound-submission asks (through fn-owner-bound-commit-gate) before any commit callback, answers :commit only when fn-pa-filing-plan files the article in exactly the committed groups; with C1's keystone a control article then commits only in its filing group (fn-obc-control-commits-only-in-its-filing-group). Covered scope: that the host calls the callback only on :commit, and swaps the log descriptor under the log mutex, is host code measured natively, not proved.",
       "progress_note": "Lane operator-config, 2026-09-25: PKT-096, PKT-097, PKT-101, PKT-069."
+    },
+    {
+      "id": "PRF-114",
+      "title": "BP outbound fragmentation: every fragment the send plan answers fits the peer's Transfer MRU, reassembles exactly to the parent's payload with no data cap, and restores the parent",
+      "statement": "The subject is fn-bpfs-plan WIRE MRU (books/bp-fragment-send.lisp, logic mode, guard-verified), which host/native/bp-service.lisp fnn-bps-send-effect calls after SESS_INIT with the session's negotiated Transfer MTU (fn-tcl-negotiated-transfer-mtu). fn-bpfs-plan-fragments-fit-mru: when the plan answers (:fragments W1 ... Wn), every Wi is at most MRU octets (the chunk is MRU minus 8 minus the encoded length of the empty fragment at the largest offset; fn-bpfs-fragment-length-bound over fn-bpfs-fragment-primary-length-shift and the payload block's exact length). fn-bpfs-plan-fragments-reassemble-exactly: the decoded views of the Wi draw the decoded parent's payload exactly on the reassembly canvas fn-bpf-canvas at the parent's ADU offset (0 for a whole parent, its own offset for a fragment parent) and all carry the parent's total, for every payload length and fragment count (no data cap). fn-bpfs-plan-fragments-restore-parent: every Wi decodes to a bundle with the parent's extension blocks and ADU key and the fragment flag, and a whole parent's fragment primary unfragments to the parent's primary. fn-bpfs-plan-fragments-reassemble-within-caps: for a whole parent of at most *fn-bpf-max-length* (65538) octets cut into at most *fn-bpf-max-fragments* (64) pieces, the receiver's executable reassembler fn-bpf-reassemble answers (:ok payload). Covered scope: the sender's base-job send path (bp-service run and the bp-node send of queued jobs through fnn-bps-send-effect); held-transit forwarding (the :session arm's MRU wait) does not fragment; the receiver's reassembler and held-row recognizers keep the 65538 x 64 caps; one job attempt covers all fragments (no per-fragment custody records); the plan runs on octet lists (no D27 concrete twin).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008",
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-046"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-fragment-send.lisp",
+        "tests/acl2/bp-fragment-send-tests.lisp",
+        "host/native/bp-service.lisp",
+        "tests/test_bp_node_native.py",
+        "planning/evidence/bp-n16-prod-2026-09-25.md"
+      ],
+      "progress_note": "Lane bp-n16-prod-2 (2026-09-25), PKT-061. Productionizes spike/bp's :program fn-bpfs-plan. Teeth in tests/acl2/bp-fragment-send-tests: witnesses at MRU 300 and 400 over a real 1000-octet bundle, a fragment parent at ADU offset 500 of 3000, a 70000-octet ADU (above the receiver cap) and a 100-fragment cut (above the fragment cap); must-fails for dropping the 8-octet head reserve, for each keystone without :fragments, and for each cap hypothesis of the within-caps corollary.",
+      "events": [
+        "fn-bpfs-plan-fragments-fit-mru",
+        "fn-bpfs-plan-fragments-reassemble-exactly",
+        "fn-bpfs-plan-fragments-restore-parent",
+        "fn-bpfs-plan-fragments-reassemble-within-caps",
+        "fn-bpfs-fragment-length-bound",
+        "fn-bpfs-fragment-primary-length-shift",
+        "fn-bpfs-canvas-of-extents",
+        "fn-bpfs-views-of-cut"
+      ]
     }
   ]
 }

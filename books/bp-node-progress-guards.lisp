@@ -211,6 +211,8 @@
                        (theory 'minimal-theory)))))
 (verify-guards fn-bpnp-busy-resume-step)
 (verify-guards fn-bpnr-checkpoint-of-statep)
+(verify-guards fn-bpnr-checkpoint)
+(verify-guards fn-bpnr-rotation-checkpoint)
 (verify-guards fn-bpnp-rotation-quiescentp)
 (verify-guards fn-bpnp-rotate-step)
 (verify-guards fn-bpnp-rotation-persist-step)

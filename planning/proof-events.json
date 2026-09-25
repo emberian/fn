@@ -3408,6 +3408,18 @@
         {
           "kind": "theorem",
           "name": "fn-bpnr-family-replay-aux-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-rotate-step-proposes-only-own-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-retirement-cut-keeps-open-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-retired-names-never-the-selected-directory"
         }
       ]
     },
@@ -4512,6 +4524,43 @@
         {
           "kind": "theorem",
           "name": "fn-sched-pull-finished-waits-its-interval"
+        }
+      ]
+    },
+    {
+      "id": "PRF-114",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-fit-mru"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-reassemble-exactly"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-restore-parent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-reassemble-within-caps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-fragment-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-fragment-primary-length-shift"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-canvas-of-extents"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-views-of-cut"
         }
       ]
     }
