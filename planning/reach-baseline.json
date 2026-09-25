@@ -47,7 +47,8 @@
     "PRF-084:fn-ctl-target-is-never-visible-beside-its-cancel": "recorded when tools/reach_check.py was introduced; no host line reaches this subject and no one has said why that is right",
     "PRF-084:fn-ctl-visible-add-is-visible": "recorded when tools/reach_check.py was introduced; no host line reaches this subject and no one has said why that is right",
     "PRF-084:fn-ctl-visible-extend-is-visible": "recorded when tools/reach_check.py was introduced; no host line reaches this subject and no one has said why that is right",
-    "PRF-084:fn-ctl-visible-is-arrival-order-independent": "recorded when tools/reach_check.py was introduced; no host line reaches this subject and no one has said why that is right"
+    "PRF-084:fn-ctl-visible-is-arrival-order-independent": "recorded when tools/reach_check.py was introduced; no host line reaches this subject and no one has said why that is right",
+    "PRF-088:fn-rcl-reclaim-keeps-the-numbering": "recorded when tools/reach_check.py was introduced; no host line reaches this subject and no one has said why that is right"
   },
   "note": "Registry events whose subject no host line reaches, that the tree accepts for now.  tools/reach_check.py --strict fails on any orphan NOT listed here, so the number can shrink and cannot grow silently.  Remove an entry by hosting the subject, not by editing this file."
 }
