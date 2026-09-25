@@ -1075,6 +1075,49 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(unrelated.returncode, 0, unrelated.stderr)
         self.assertIn(b"pinned=yes", unrelated.stdout)
 
+    def test_dropped_receipt_contact_is_reoffered_by_the_next_pass(self):
+        """Spec 4.3.2: an uncertain receipt transfer is connection-local.
+
+        The receiver's own `serve' pass sends the owed receipt; the relay
+        severs that connection after 80 client octets, after the TCPCL
+        session is up and the transfer has started.  ACL2 reads it as
+        :uncertain and requeues the job under its own identity; the pass
+        logs it and exits 0.  The next `dispatch' pass, over an intact
+        relay, offers the same job again and the sender accepts it.
+        """
+        sender, sender_port = self.start_node(False, once=False)
+        self.relay.route(sender_port, cut_after=80)
+        receiver, port = self.start_node(True)
+        sent = self.send_request(port, "carrier-drop")
+        out, err = receiver.communicate(timeout=120)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(receiver.returncode, 0, out + err)
+        self.assertIn(b"BP node receipt queued", out)
+        self.assertIn(b"BP node receipt contact peer=dtn://sender/", out)
+        self.assertIn(b"BP node receipt transfer uncertain", out)
+        dropped = [x for x in out.splitlines()
+                   if x.startswith(b"BP transport work=")]
+        self.assertEqual(len(dropped), 1, out)
+        self.assertIn(b"status=attempted", dropped[0])
+        work = dropped[0].split(b"work=")[1].split()[0]
+
+        self.relay.route(sender_port)
+        again = self.dispatch_receiver()
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn(b"BP node receipt contact peer=dtn://sender/", again.stdout)
+        self.assertNotIn(b"BP node receipt transfer", again.stdout)
+        delivered = [x for x in again.stdout.splitlines()
+                     if x.startswith(b"BP transport work=")]
+        self.assertEqual(len(delivered), 1, again.stdout)
+        self.assertEqual(delivered[0].split(b"work=")[1].split()[0], work)
+        self.assertIn(b"status=forwarded", delivered[0])
+        self.wait_for_output(
+            sender, b"BP node delivery receipt-accepted", timeout=120)
+        self.stop_process(sender)
+        after = self.sender_status()
+        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertIn(b"pinned=no", after.stdout)
+
     def test_absent_bp_trust_keeps_custody_but_refuses_request_application(self):
         receiver, port = self.start_node(True, trust=False)
         sent = self.send_request(port, "untrusted-request")
