@@ -3686,6 +3686,55 @@
           "name": "fn-nntp-number-retrieval-answers-reclaimed"
         }
       ]
+    },
+    {
+      "id": "PRF-095",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osb-install-serves-the-profile-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osb-install-keeps-the-posting-configuration"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osb-install-keeps-configp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-served-refusal-lines-one-per-441"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-post-refusal-reason-names-the-sent-reason"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-served-refusal-line-is-one-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-control-refusal-line-says-refused-iff-submit-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-control-refusal-line-is-one-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-auth-admin-effect-word-restart-unless-no-owner"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-format-7-store-needs-upgrade"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-rollback-sound-iff-records-within"
+        }
+      ]
     }
   ]
 }
