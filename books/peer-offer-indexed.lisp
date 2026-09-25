@@ -34,12 +34,21 @@
 (defun fn-pix-history-hasp (msgid node trie arts)
   (declare (xargs :guard t))
   (if (and (stringp msgid)
-           (consp (fn-midx-key-chars msgid))
+           ; Non-empty, by length: no character list is built
+           ; (fn-pix-nonempty-key-is-positive-length).
+           (< 0 (length msgid))
            (equal (fn-state-articles (fn-node-acceptance node)) arts))
       ; The trie walked by index (fn-midx-concrete-lookup-is-lookup: equal
       ; to fn-midx-lookup for every Message-ID and trie).
       (if (fn-mxc-lookup msgid trie) t nil)
     (fn-peer-history-hasp msgid node)))
+
+; A string's character list is non-empty exactly when its length is positive.
+(local (defthm fn-pix-nonempty-key-is-positive-length
+  (implies (stringp msgid)
+           (equal (consp (fn-midx-key-chars msgid)) (< 0 (length msgid))))
+  :hints (("Goal" :in-theory (enable fn-midx-key-chars length)
+           :expand ((len (coerce msgid 'list)))))))
 
 (local (defthm fn-pix-binding-found-is-member
   (implies (consp (fn-node-find-binding m bs))
@@ -99,7 +108,8 @@
                   (fn-peer-history-hasp msgid node)))
   :hints (("Goal" :in-theory (e/d (fn-pix-history-hasp
                                    fn-midx-correspondencep
-                                   fn-midx-concrete-lookup-is-lookup)
+                                   fn-midx-concrete-lookup-is-lookup
+                                   fn-pix-nonempty-key-is-positive-length)
                                   (fn-peer-history-hasp fn-node-statep
                                    fn-midx-lookup fn-midx-build
                                    fn-midx-key-chars))
