@@ -189,6 +189,77 @@ max_groups_per_article field G, or 0 when PROFILE is not admitted."
   :hints (("Goal" :in-theory (disable fn-sbud-payload-bound fn-sbud-group-bound
                                       fn-af-message-idp))))
 
+; -----------------------------------------------------------------------------
+; The signed article's record bound (D27)
+;
+; A signed POST is stored as one kind-4 composite: its article record, its
+; exact authored source and their verdict (books/stx-accept-records).  The
+; article is held to the profile's A at `fn-sbud-post-boundary' like any
+; other; the composite, which carries the article and its source, is held to
+; the profile's record field R here, over the octets the Store frames
+; (`fn-store-event-encode').  host/native/owner.lisp
+; `fnn-owner-attempt-transit' asks this (through host/owner-host.lisp
+; `fn-owner-signed-event-boundary') for every event `fn-pa-authorized-event'
+; or `fn-pa-carried-event' builds, before `fnn-owner-identity-commit', and
+; sends the refusal word to the poster: `:event' when no composite was
+; formed, `:signed-record' past R (books/nntp-post.lisp names both).
+(defun fn-sbud-signed-event-boundary (profile event)
+  (declare (xargs :guard t))
+  (cond ((not (fn-stxa-p event)) :event)
+        ((< (fn-bs-profile-max-record-octets profile)
+            (len (fn-stxa-encode event)))
+         :signed-record)
+        (t :ok)))
+
+; The octets it measures are the ones the Store frames: a composite is no
+; other event kind, so `fn-store-event-encode' is its own encoding.
+(defthm fn-sbud-store-event-encode-of-composite
+  (implies (fn-stxa-p event)
+           (equal (fn-store-event-encode event) (fn-stxa-encode event)))
+  :hints (("Goal" :in-theory (enable fn-store-event-encode
+                                     fn-store-retention-event-p
+                                     fn-store-event-nth
+                                     fn-stxa-p fn-stxa-shapep
+                                     fn-record-p fn-record-shapep
+                                     fn-stxe-p fn-stxe-shapep
+                                     fn-stxk-p fn-stxk-shapep
+                                     fn-stxa-sequence fn-record-uint32p))))
+
+; KEYSTONE (the signed composite the boundary admits is one the publish gate
+; admits).  An :ok composite, under an admitted profile with a transaction
+; left, satisfies `fn-bs-publication-admissiblep' at its own framed length:
+; the count and single-record gate the Store publication checks.
+(defthm fn-sbud-signed-event-boundary-ok-is-publishable
+  (implies (and (equal (fn-sbud-signed-event-boundary profile event) :ok)
+                (fn-bs-profile-admittedp profile)
+                (natp count)
+                (< count (fn-bs-profile-max-transactions profile)))
+           (fn-bs-publication-admissiblep
+            profile count (len (fn-store-event-encode event))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bs-publication-admissiblep
+                                   fn-bs-profile-record-ceiling
+                                   fn-sbud-store-event-encode-of-composite)
+                                  (fn-store-event-encode fn-stxa-encode
+                                   fn-bs-profile-max-record-octets
+                                   fn-bs-profile-max-transactions
+                                   fn-bs-profile-admittedp fn-stxa-p)))))
+
+; KEYSTONE (the record bound is the profile's, and exactly it).  For every
+; composite, the boundary refuses exactly the ones whose framed octets exceed
+; the profile's R, with `:signed-record'; no constant of the codec enters.
+(defthm fn-sbud-signed-event-boundary-refuses-exactly-past-the-record-field
+  (implies (fn-stxa-p event)
+           (equal (fn-sbud-signed-event-boundary profile event)
+                  (if (<= (len (fn-store-event-encode event))
+                          (fn-bs-profile-max-record-octets profile))
+                      :ok
+                    :signed-record)))
+  :hints (("Goal" :in-theory (e/d (fn-sbud-store-event-encode-of-composite)
+                                  (fn-store-event-encode fn-stxa-encode
+                                   fn-bs-profile-max-record-octets
+                                   fn-stxa-p)))))
+
 (in-theory (disable fn-sbud-pending-sequence fn-sbud-txn-name
                     fn-sbud-payload-bound fn-sbud-group-bound
-                    fn-sbud-post-boundary))
+                    fn-sbud-post-boundary fn-sbud-signed-event-boundary))

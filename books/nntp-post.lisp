@@ -295,6 +295,11 @@
                        ;; the plan's reason, or the signature observation.
                        :article :carrier :carrier-shape :local-enrollment
                        :signature
+                       ;; A verified signed article whose kind-4 composite
+                       ;; was not formed, or exceeds the profile's record
+                       ;; field (books/store-budget-naming.lisp
+                       ;; fn-sbud-signed-event-boundary).
+                       :event :signed-record
                        ;; A control article the filing plan refused
                        ;; (books/peer-authored-accept.lisp fn-pa-filing-plan).
                        :control-not-filed :control-malformed :control-signed))
@@ -327,6 +332,10 @@
     "the signer has no current enrollment here (local-enrollment)")
    ((equal kind :signature)
     "the author signature does not verify")
+   ((equal kind :event)
+    "the signed article did not form a Store event (event)")
+   ((equal kind :signed-record)
+    "the signed article with its authored source exceeds the configured record size (signed-record)")
    ((equal kind :control-not-filed)
     "control message not filed: its control group is not configured here (control-not-filed)")
    ((equal kind :control-malformed)

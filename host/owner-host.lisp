@@ -1405,6 +1405,13 @@
         ;; (the 9c344d1d image build, native-build-production.log:8292).
         (fn-own-clock (fn-owner-core state)))))))
 
+;; D27: the signed composite against the profile the owner was handed at
+;; open (books/store-budget-naming.lisp fn-sbud-signed-event-boundary):
+;; :ok, :event (no composite formed) or :signed-record (past its R).
+(defun fn-owner-signed-event-boundary (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sbud-signed-event-boundary (fn-owner-store-profile state) event)))
+
 (defun fn-owner-article-count (state)
   (declare (xargs :stobjs state :mode :program))
   (value (len (fn-state-articles (fn-node-acceptance (fn-owner-node state))))))

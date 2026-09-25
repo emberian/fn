@@ -218,3 +218,94 @@
    (implies (and (fn-af-message-idp m) (natp n) (posp g)
                  (<= g *fn-record-max-groups*) (posp c))
             (sbnt-bound-conclusion p m n g c))))
+
+; -----------------------------------------------------------------------------
+; The signed composite's record bound (D27, signed-path 2026-09-25):
+; fn-sbud-signed-event-boundary-refuses-exactly-past-the-record-field and
+; fn-sbud-signed-event-boundary-ok-is-publishable.
+
+; A composite past every old data cap: its article record (300,000) is past
+; 65,538, its source (220,000) past 32,768, its encoding past 196,608.
+(defconst *sbnt-composite*
+  (fn-stxa-make-carried 4 9 12 3 '(112) '(115)
+                        (make-list 300000 :initial-element 1)
+                        (make-list *fn-stxe-max-octets* :initial-element 2)
+                        (make-list 220000 :initial-element 5)
+                        '(115 1 2 3)))
+(defconst *sbnt-composite-octets* (len (fn-stxa-encode *sbnt-composite*)))
+(assert-event (fn-stxa-p *sbnt-composite*))
+(assert-event (< 196608 *sbnt-composite-octets*))
+; The operator's R decides, one octet either side of the composite.
+(defconst *sbnt-r-at* (fn-bs-profile-set-fields
+                       *fn-bs-profile-defaults*
+                       (list (cons 4 *sbnt-composite-octets*)
+                             (cons 5 65536) (cons 6 1) (cons 7 64))))
+(defconst *sbnt-r-below* (fn-bs-profile-set-fields
+                          *fn-bs-profile-defaults*
+                          (list (cons 4 (1- *sbnt-composite-octets*))
+                                (cons 5 65536) (cons 6 1) (cons 7 64))))
+(assert-event (fn-bs-profile-admittedp *sbnt-r-at*))
+(assert-event (fn-bs-profile-admittedp *sbnt-r-below*))
+(assert-event (equal (fn-sbud-signed-event-boundary *sbnt-r-at* *sbnt-composite*)
+                     :ok))
+(assert-event (equal (fn-sbud-signed-event-boundary *sbnt-r-below* *sbnt-composite*)
+                     :signed-record))
+(assert-event (equal (fn-sbud-signed-event-boundary *fn-bs-profile-defaults*
+                                                    *sbnt-composite*)
+                     :ok))
+; No composite: nil, as a builder returns when a binding fails.
+(assert-event (equal (fn-sbud-signed-event-boundary *sbnt-r-at* nil) :event))
+; Both words are named on the wire, and differently.
+(assert-event (equal (fn-post-store-refusal-line :signed-record)
+                     "441 posting failed; the signed article with its authored source exceeds the configured record size (signed-record)"))
+(assert-event (equal (fn-post-store-refusal-line :event)
+                     "441 posting failed; the signed article did not form a Store event (event)"))
+; The publish gate admits the :ok composite at its framed length.
+(assert-event (fn-bs-publication-admissiblep
+               *sbnt-r-at* 0 (len (fn-store-event-encode *sbnt-composite*))))
+(assert-event (not (fn-bs-publication-admissiblep
+                    *sbnt-r-below* 0
+                    (len (fn-store-event-encode *sbnt-composite*)))))
+
+(must-fail
+ (defthm sbnt-exactly-without-a-composite
+   (equal (fn-sbud-signed-event-boundary profile event)
+          (if (<= (len (fn-store-event-encode event))
+                  (fn-bs-profile-max-record-octets profile))
+              :ok :signed-record))))
+(must-fail
+ (defthm sbnt-publishable-without-ok
+   (implies (and (fn-bs-profile-admittedp profile) (natp count)
+                 (< count (fn-bs-profile-max-transactions profile)))
+            (fn-bs-publication-admissiblep
+             profile count (len (fn-store-event-encode event))))))
+(must-fail
+ (defthm sbnt-publishable-without-admitted-profile
+   (implies (and (equal (fn-sbud-signed-event-boundary profile event) :ok)
+                 (natp count)
+                 (< count (fn-bs-profile-max-transactions profile)))
+            (fn-bs-publication-admissiblep
+             profile count (len (fn-store-event-encode event))))))
+(must-fail
+ (defthm sbnt-publishable-without-natural-count
+   (implies (and (equal (fn-sbud-signed-event-boundary profile event) :ok)
+                 (fn-bs-profile-admittedp profile)
+                 (< count (fn-bs-profile-max-transactions profile)))
+            (fn-bs-publication-admissiblep
+             profile count (len (fn-store-event-encode event))))))
+(must-fail
+ (defthm sbnt-publishable-without-a-transaction-left
+   (implies (and (equal (fn-sbud-signed-event-boundary profile event) :ok)
+                 (fn-bs-profile-admittedp profile)
+                 (natp count))
+            (fn-bs-publication-admissiblep
+             profile count (len (fn-store-event-encode event))))))
+; Evaluated counterexamples for the same hypotheses.
+(assert-event (not (equal (fn-sbud-signed-event-boundary *sbnt-r-at* nil) :ok)))
+(assert-event (not (fn-bs-publication-admissiblep
+                    '(1 2 3) 0 (len (fn-store-event-encode *sbnt-composite*)))))
+(assert-event (not (fn-bs-publication-admissiblep
+                    *sbnt-r-at* -1 (len (fn-store-event-encode *sbnt-composite*)))))
+(assert-event (not (fn-bs-publication-admissiblep
+                    *sbnt-r-at* (fn-bs-profile-max-transactions *sbnt-r-at*)
+                    (len (fn-store-event-encode *sbnt-composite*)))))
