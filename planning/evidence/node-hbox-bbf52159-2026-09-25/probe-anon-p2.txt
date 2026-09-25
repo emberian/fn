@@ -1,0 +1,6 @@
+> (greeting) | 201 fn-nntp experimental reader ready
+> GROUP fn.agents | 480 authentication required
+> STARTTLS | 382 continue with TLS negotiation
+  tls TLSv1.3
+> GROUP fn.agents | 480 authentication required
+> QUIT | 205 closing connection

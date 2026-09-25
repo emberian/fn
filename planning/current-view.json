@@ -33,16 +33,27 @@
         "host/native/bp-service.lisp": "fafade31dec50cfebdcb796f9a0cab0627f12353e1647cc56efc5db0e93af514",
         "host/owner-host.lisp": "cb7298a30e57e3b378e6803737a599d5ee6de0bd872836ec321f81318d4ea5f1"
       }
+    },
+    "bbf52159": {
+      "source": "bbf52159dcab19228bd6cd0b855b99dd6d68758d",
+      "qualification": "planning/evidence/qual-bbf52159-2026-09-25.md",
+      "closure_manifest": "certify-20260925T211549Z-3867068",
+      "host_sha256": {
+        "host/bp-native-app-host.lisp": "4f8d3795cbc693ef56b0ded8ef2d946d75ab066a7fa78489ccf0be55110ba560",
+        "host/checkpoint-host.lisp": "5a9adefc0cf84f7f0c216ec8e1b46814360b8f81f00ea3f7230f08e30c8aa64d",
+        "host/native/bp-service.lisp": "6125110a01a22e3e6ee44d9a1355afa62f9321f540f4eaec96e7de1c14b66e69",
+        "host/owner-host.lisp": "c258a29b02c7635c6f9a1a410bc0659f984ec86947aa2455f9b980436dbdb582"
+      }
     }
   },
   "deployment": {
     "where": "hbox `/tank/fn/node`",
-    "image": "c3420013",
-    "record": "planning/evidence/node-hbox-c3420013-2026-09-25.md",
+    "image": "bbf52159",
+    "record": "planning/evidence/node-hbox-bbf52159-2026-09-25.md",
     "profiles": [
       "default"
     ],
-    "profile_text": "production default image, store profile scale (4096 transactions) with the committed-history marker, LAN-only, no peers configured, DTN profile not deployed; four earlier releases kept for rollback"
+    "profile_text": "production default image, store profile scale (4096 transactions) at format 8 with the committed-history marker unmarked (config.json.format-7 and a pre-upgrade snapshot kept), LAN-only, no peers configured, DTN profile not deployed; six earlier releases kept for rollback"
   },
   "superseded": [
     "planning/evidence/node-hbox-47bdb9a4-2026-09-24.md",
@@ -134,7 +145,7 @@
       },
       "profile": "default",
       "latest": "a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).",
-      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review \u00a7D25) is open.",
+      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review §D25) is open.",
       "next": "the shared qualification of an image carrying D25, with the transit duplicate rows and K1's died-present resubmissions answered duplicate."
     },
     {
