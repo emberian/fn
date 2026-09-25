@@ -35,9 +35,11 @@ IMAGE = verbs.IMAGE
 DEVELOPER = verbs.DEVELOPER
 EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs.EXIT_UNCERTAIN
 
-# The two metadata frames `init` writes (planning/evidence/m5-capacity-2026-09-24.md).
-DEVELOPMENT_FRAME = "dcbd90d34e72bd7271891f7ada6fccd39a03dd66e76111f07e4f25dab189e9fc"
-SCALE_FRAME = "bf6e6df94c6dbf75704366a84ad09229f42f80cc2e10a8dfccc432e4c93ba1b9"
+# The two preset frames `init --profile development|scale` writes in format 8
+# (planning/evidence/bounds-p1-2026-09-25.md); the format-7 frames of the same
+# presets are in planning/evidence/m5-capacity-2026-09-24.md.
+DEVELOPMENT_FRAME = "ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364"
+SCALE_FRAME = "267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3"
 BUDGET = {"old": {128}, "new": {4096}, "either": {128, 4096}}
 FRAME = {128: DEVELOPMENT_FRAME, 4096: SCALE_FRAME}
 
@@ -238,25 +240,55 @@ class OperatorFieldsTests(ProfileUpgradeFixture):
                 return {k: int(v) for k, v in (w.split("=", 1) for w in line.split()[1:])}
         self.fail(status.stdout.decode())
 
+    def article(self, message_id, total):
+        """An authored article of exactly TOTAL octets."""
+        head = ("From: p1@example.invalid\r\nNewsgroups: fn.test\r\n"
+                "Subject: p1 bound\r\nMessage-ID: {}\r\n\r\n").format(message_id).encode("ascii")
+        body = b"x" * (total - len(head) - 2) + b"\r\n"
+        data = head + body
+        self.assertEqual(len(data), total)
+        return data
+
     def test_the_payload_bound_is_the_operators_field(self):
         created = self.op("init", "--max-article-octets", "20000", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertEqual(self.profile_line()["max-article-octets"], 20000)
-        owner = self.start_owner(self.image)
+        # The Store's POST boundary (developer `store post', the payload as
+        # given): P-1 and P accepted, P+1 refused by the operator's bound.
         outcomes = {}
         for n in (19999, 20000, 20001):
+            msgid = "<p1-{}@example.invalid>".format(n)
             path = self.root / "payload-{}".format(n)
-            path.write_bytes(b"x" * n)
-            posted = self.op("post", "--message-id", "<p1-{}@example.invalid>".format(n),
-                             "--payload", str(path), "--group", "fn.test")
+            path.write_bytes(self.article(msgid, n))
+            posted = subprocess.run(
+                [str(DEVELOPER), "--fn", "store", str(self.store), "post", msgid,
+                 str(path), "-", "-", "fn.test"],
+                cwd=ROOT, env=verbs.environment(), stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=180, check=False)
             outcomes[n] = posted
-            print("post", n, posted.returncode, posted.stdout.decode().strip(),
+            print("store post", n, posted.returncode, posted.stdout.decode().strip(),
                   posted.stderr.decode().strip())
-        self.stop(owner)
         self.assertEqual(outcomes[19999].returncode, EXIT_OK, outcomes[19999].stderr.decode())
         self.assertEqual(outcomes[20000].returncode, EXIT_OK, outcomes[20000].stderr.decode())
         self.assertEqual(outcomes[20001].returncode, EXIT_REFUSED, outcomes[20001].stderr.decode())
+        self.assertIn(b"payload exceeds the modelled bound", outcomes[20001].stderr)
         self.assertEqual(self.headroom()["transactions-used"], 2)
+        # The served owner (operator post over the control socket) refuses an
+        # article past A by the same bound and accepts a small one.
+        owner = self.start_owner(self.image)
+        served = {}
+        for n in (1000, 20001):
+            msgid = "<p1-served-{}@example.invalid>".format(n)
+            path = self.root / "served-{}".format(n)
+            path.write_bytes(self.article(msgid, n))
+            served[n] = self.op("post", "--message-id", msgid, "--payload", str(path),
+                                "--group", "fn.test")
+            print("operator post", n, served[n].returncode, served[n].stdout.decode().strip(),
+                  served[n].stderr.decode().strip())
+        self.stop(owner)
+        self.assertEqual(served[1000].returncode, EXIT_OK, served[1000].stderr.decode())
+        self.assertEqual(served[20001].returncode, EXIT_REFUSED, served[20001].stderr.decode())
+        self.assertEqual(self.headroom()["transactions-used"], 3)
 
     def test_a_raise_of_any_field_and_a_shrink_refused_by_name(self):
         self.init()
