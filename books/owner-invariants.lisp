@@ -1464,8 +1464,11 @@
                             fn-own-refresh-preserves-relation fn-own-refresh
                             fn-own-prefix-archive)))))
 
-; host/owner-host.lisp, fn-owner-recover: the owner is started over the
-; state fn-sn-open-observed returned for the image on disk.
+; The owner started over the state fn-sn-open-observed returned for the
+; image on disk.  host/owner-host.lisp fn-owner-recover starts it over
+; fn-cpo-open-observed's state instead, which this theorem does not name
+; (fn-orec-recover-installs-ocl-relation, books/owner-recover-ocl.lisp, is
+; over the called open).
 (defthm fn-own-open-observed-start-relation
   (implies (and (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
                 (natp max-conns))

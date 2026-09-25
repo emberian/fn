@@ -713,9 +713,10 @@ execution-boundary fault, never a claim that the core refused an input."
 (defun fnn-bridge-recover (records frontier config-records)
   "Replay the configuration history and then the article history.
 
-The core replays `config-records' first (`fn-cnode-config-replay'), takes the
-allocation domain and the capacity from the configured node, and only then
-opens the observed store; a store with no configuration record never reaches
+The core (host/store-node-host.lisp `fn-store-sn-recover') replays
+`config-records' with the article records through `fn-cpr-replay', takes the
+allocation domain and the capacity from the configured node, and opens the
+observed store through `fn-cpo-open-observed'; a store with no configuration record never reaches
 here.  The host supplies octets and decides nothing about them."
   (fnn-action (fnn-core-state 'fn-store-sn-recover
                               (mapcar #'fnn-octet-list records) frontier

@@ -14,7 +14,8 @@
 ; unreachable-in-composition where it appears.  Result values that the host
 ; never reports (an uncertain refusal, a lost or rejected core completion
 ; reply) are not transitions here: the host fences on its own side and reopens
-; through fn-sn-open-observed instead of reporting them.
+; through fn-cpo-open-observed (books/config-observed.lisp) instead of
+; reporting them.
 ;
 ; Crash points.  A crash choice is live from the moment the corresponding
 ; namespace syscall may have been issued, not from the moment its result was
