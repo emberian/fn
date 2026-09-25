@@ -76,62 +76,31 @@
   (fn-nntp-effectsp (fn-nntp-result-effects (fn-nntp-withdrawn-reply session msgidp)))
   :hints (("Goal" :in-theory (enable fn-nntp-withdrawn-reply))))
 
+(defthm fn-nntp-control-line-is-block-text
+  (implies (fn-nov-clean-fieldp item)
+           (fn-nntp-block-textp
+            (list (fn-nntp-hdr-line (fn-nntp-decimal-field 0) item))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-nntp-hdr-line-is-a-clean-field
+                            (label (fn-nntp-decimal-field 0)) (content item))
+                 (:instance fn-nntp-clean-field-is-response-text
+                            (bytes (fn-nntp-hdr-line (fn-nntp-decimal-field 0) item))))
+           :in-theory (e/d (fn-nntp-block-textp fn-nov-decimal-field-is-clean)
+                           (fn-nntp-hdr-line)))))
+
 (defthm fn-nntp-control-hdr-response-effects
   (fn-nntp-effectsp
    (fn-nntp-result-effects
     (fn-nntp-control-hdr-response session archive index verdicts args)))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response fn-nntp-block-textp
-                                   fn-nov-decimal-field-is-clean)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response)
                                   (fn-nntp-single fn-nntp-hdr-line
                                    fn-ctl-control-item fn-ctl-served-status
-                                   fn-ctl-served-held fn-nntp-string-octets))
-           :use ((:instance fn-nntp-hdr-line-is-a-clean-field
-                            (label (fn-nntp-decimal-field 0))
-                            (content (fn-nntp-string-octets
-                                      (fn-ctl-control-item
-                                       (fn-ctl-served-status
-                                        (fn-ctl-served-held
-                                         (fn-nntp-token-string (cadr args))
-                                         (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive)
-                                         (fn-ctl-pin-withdrawn (fn-gidx-pin-control index)))
-                                        (fn-gidx-pin-trie index)
-                                        (fn-state-articles archive)
-                                        (fn-ctl-pin-withdrawn (fn-gidx-pin-control index))
-                                        (fn-ctl-pin-ws (fn-gidx-pin-control index))
-                                        verdicts)
-                                       (fn-ctl-target-octets
-                                        (fn-article-payload
-                                         (fn-ctl-served-held
-                                          (fn-nntp-token-string (cadr args))
-                                          (fn-gidx-pin-trie index)
-                                          (fn-state-articles archive)
-                                          (fn-ctl-pin-withdrawn
-                                           (fn-gidx-pin-control index))))))))))
-                 (:instance fn-nntp-clean-field-is-response-text
-                            (bytes (fn-nntp-hdr-line
-                                    (fn-nntp-decimal-field 0)
-                                    (fn-nntp-string-octets
-                                     (fn-ctl-control-item
-                                      (fn-ctl-served-status
-                                       (fn-ctl-served-held
-                                        (fn-nntp-token-string (cadr args))
-                                        (fn-gidx-pin-trie index)
-                                        (fn-state-articles archive)
-                                        (fn-ctl-pin-withdrawn (fn-gidx-pin-control index)))
-                                       (fn-gidx-pin-trie index)
-                                       (fn-state-articles archive)
-                                       (fn-ctl-pin-withdrawn (fn-gidx-pin-control index))
-                                       (fn-ctl-pin-ws (fn-gidx-pin-control index))
-                                       verdicts)
-                                      (fn-ctl-target-octets
-                                       (fn-article-payload
-                                        (fn-ctl-served-held
-                                         (fn-nntp-token-string (cadr args))
-                                         (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive)
-                                         (fn-ctl-pin-withdrawn
-                                          (fn-gidx-pin-control index))))))))))))))
+                                   fn-ctl-served-held fn-nntp-string-octets
+                                   fn-nntp-decimal-field fn-nntp-message-id-tokenp
+                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-ctl-pin-withdrawn fn-ctl-pin-ws
+                                   fn-nntp-token-string fn-ctl-target-octets
+                                   fn-octet-listp)))))
 
 (defthm fn-nntp-archive-command-pinned-effects-well-formed
   (implies (and (fn-nntp-projectionp archive)
