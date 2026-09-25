@@ -732,7 +732,9 @@ its outcome, which is the refusal to the offering ingress."
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
       (:generation-selected
-       (fnn-out "BP journal generation selected generation=~d" (second effect)))
+       (fnn-out "BP journal generation selected generation=~d" (second effect))
+       ;; The selection is durable: retire what no recovery reads again.
+       (fnn-bps-retire-generations service (second effect)))
       (:rotation-refused
        (unless (eq (fnn-bps-outcome service) :uncertain)
          (setf (fnn-bps-outcome service) :refused))
@@ -751,6 +753,57 @@ so a test can kill it there (N16)."
     (fnn-out "BP journal rotation stopped at=~a" point)
     (finish-output)
     (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop)))
+
+(defun fnn-bps-retire-generations (service generation)
+  "Remove the names ACL2 retires after GENERATION's selection is durable
+(fn-bpnr-retired-names: older generation directories and a killed rotation's
+staged selection files) by running ACL2's program fn-bpnr-retire-ops one
+step at a time: each retired directory's files, the directory, then one root
+barrier.  Every prefix of the program is a crash point of the model
+(books/bp-node-retire.lisp fn-bpnr-retirement-cut-keeps-open-view): the
+selection file, the selected directory and the other names the open reads
+are unchanged at every cut, so a death or a failed step changes no recovery
+and the next run (the next `bp-node checkpoint') finishes the removal.  A
+failed step stops the program; the selection is already durable."
+  (let* ((root (fnn-bps-root service))
+         (limit (fnn-core 'fn-bpnf-namespace-max-entries))
+         (names (fnn-list-directory-bounded root limit "bp journal root"))
+         (retired (fnn-core 'fn-bpnr-retired-names names generation))
+         (listings
+           (loop for name in retired
+                 for path = (fnn-join root name)
+                 for st = (fnn-lstat path)
+                 when (and st (not (fnn-symlink-p st)) (fnn-directory-p st))
+                   collect (cons name (fnn-list-directory-bounded path limit name))))
+         (ops (fnn-core 'fn-bpnr-retire-ops names listings generation))
+         (step 0))
+    (when retired
+      (handler-case
+          (dolist (op ops)
+            (let ((kind (first op)))
+              (case kind
+                (:unlink-in
+                 (let ((file (fnn-join (fnn-join root (second op)) (third op))))
+                   (fnn-check-regular file)
+                   (fnn-unlink file)))
+                (:rmdir
+                 (let ((dir (fnn-join root (second op))))
+                   (fnn-fsync-dir dir)
+                   (fnn-posix (dir) (sb-posix:rmdir dir))
+                   (fnn-out "BP journal generation retired name=~a" (second op))))
+                (:unlink
+                 (let ((file (fnn-join root (second op))))
+                   (fnn-check-regular file)
+                   (fnn-unlink file)
+                   (fnn-out "BP journal generation retired name=~a" (second op))))
+                (:barrier (fnn-fsync-dir root))
+                (otherwise
+                 (fnn-fault "ACL2 returned an invalid retirement step"))))
+            (incf step)
+            (fnn-bps-rotation-test-stop (format nil "retire-~d" step)))
+        (fnn-os-error (e)
+          (fnn-out "BP journal generation retirement incomplete step=~d: ~a"
+                   (1+ step) e))))))
 
 (defun fnn-bps-publish-generation (service generation ck)
   "Publish CK, the checkpoint fn-bpnp-rotate-step proposed, as GENERATION's

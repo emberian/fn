@@ -428,7 +428,11 @@ class NativeBpNodeTests(unittest.TestCase):
         authority (the old selection before the rename, either after it);
         every reopen recovers the held row.  A completed rotation starts a
         generation with no records; new work lands there, arrival order kept,
-        and a second rotation carries both rows."""
+        and a second rotation carries both rows.  Retirement (PKT-059): a
+        kill after the second step of the removal program leaves a partly
+        removed old generation and the same recovery; the next rotation
+        removes every older generation directory and the killed rotation's
+        stray staged selection, keeping only the selected generation."""
         receiver, port = self.start_node(True, once=False)
         sent = self.send_transit(port, self.unrouted_transit_bundle(), "r1")
         self.assertEqual(sent.returncode, 0, sent.stderr)
@@ -452,15 +456,27 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(len(generations), 3, generations)
         selected = journal / generations[-1]
         self.assertEqual(sorted(p.name for p in selected.glob("*.fnb")), [])
-        # The old generation stays as evidence, untouched.
+        # The rename cut killed the program before retirement: the old
+        # generation and the killed "stage" cut's staged file are still there.
         self.assertEqual(
             sorted(p.name for p in (journal / "lifecycle").glob("*.fnb")),
             old_records)
-        # A clean rotation from the selected generation.
+        self.assertTrue(list(journal.glob(".bp-generation-*")))
+        # Killed inside the retirement program (after its second step, a
+        # partly emptied "lifecycle"): recovery is unchanged.
+        self.rotate_receiver("retire-2")
+        self.assertEqual(self.recovered_held(), 1)
+        # A clean rotation from the selected generation finishes the
+        # retirement first, then retires generation 3 after selecting 4.
         code, out, err = self.rotate_receiver()
         self.assertEqual(code, 0, (out, err))
         self.assertIn(b"BP journal generation selected generation=4", out)
+        self.assertIn(b"BP journal generation retired name=lifecycle", out)
         self.assertEqual(self.recovered_held(), 1)
+        self.assertFalse((journal / "lifecycle").exists())
+        self.assertEqual(sorted(p.name for p in journal.glob("lifecycle-g*")),
+                         ["lifecycle-g00000000000000000004"])
+        self.assertEqual(list(journal.glob(".bp-generation-*")), [])
         # New work lands in the new generation, after the checkpointed row.
         current = journal / "lifecycle-g00000000000000000004"
         receiver, port = self.start_node(True, once=False)
@@ -474,6 +490,8 @@ class NativeBpNodeTests(unittest.TestCase):
         code, out, err = self.rotate_receiver()
         self.assertEqual(code, 0, (out, err))
         self.assertEqual(self.recovered_held(), 2)
+        self.assertEqual(sorted(p.name for p in journal.glob("lifecycle-g*")),
+                         ["lifecycle-g00000000000000000005"])
 
     def conflicting_transit_bundle_free(self):
         """A second unrouted transit with its own identity."""
