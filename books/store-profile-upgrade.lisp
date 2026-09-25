@@ -500,11 +500,24 @@
           (tx (nfix (fn-bs-meta-nth 4 old))))
       (if (zp tx) 0 (floor h tx)))))
 
-(defun fn-profile-rollback-verdict (old lengths)
+; A kept profile that does not require the committed-history marker, over a
+; store whose current profile does (`store upgrade-profile --history-marker
+; required', D31), would undo the requirement by a file copy: the older
+; image's open would treat an absent marker as legacy again.  The verdict
+; refuses that by name, (:refused :history-marker-required-dropped), before
+; it measures any record (qual-e747dbcc U1).
+(defun fn-profile-rollback-drops-markerp (old current)
+  (declare (xargs :guard t))
+  (and (fn-bs-profile-marker-requiredp current)
+       (not (fn-bs-profile-marker-requiredp old))))
+
+(defun fn-profile-rollback-verdict (old current lengths)
   (declare (xargs :guard t))
   (let ((bound (fn-profile-rollback-record-bound old)))
     (cond ((not (fn-bs-profile-admittedp old))
            (list :refused :invalid-rollback-profile))
+          ((fn-profile-rollback-drops-markerp old current)
+           (list :refused :history-marker-required-dropped))
           ((fn-profile-rollback-first-over lengths bound 0)
            (let ((over (fn-profile-rollback-first-over lengths bound 0)))
              (list :refused :record-exceeds-rollback-profile
@@ -523,12 +536,29 @@
    (iff (fn-profile-rollback-first-over lengths bound index)
         (not (fn-profile-all-within lengths bound)))))
 
-; KEYSTONE.  The check says :sound exactly when the kept profile is admitted
-; and every committed record is within the older image's record bound.
+; KEYSTONE.  The check says :sound exactly when the kept profile is admitted,
+; keeps the current profile's committed-history requirement, and every
+; committed record is within the older image's record bound.
 (defthm fn-profile-rollback-sound-iff-records-within
-  (equal (equal (car (fn-profile-rollback-verdict old lengths)) :sound)
+  (equal (equal (car (fn-profile-rollback-verdict old current lengths)) :sound)
          (and (fn-bs-profile-admittedp old)
+              (not (fn-profile-rollback-drops-markerp old current))
               (fn-profile-all-within lengths
                                      (fn-profile-rollback-record-bound old))))
   :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp
+                                      fn-profile-rollback-drops-markerp
                                       fn-profile-rollback-record-bound))))
+
+; KEYSTONE (qual-e747dbcc U1).  A rollback the check calls sound over a store
+; whose profile requires the committed-history marker reinstates a profile
+; that requires it too: the requirement is never undone by the kept file.
+; host/native/io.lisp fnn-command-rollback-check calls the verdict with the
+; store's own config.json profile as CURRENT.
+(defthm fn-profile-rollback-keeps-a-required-marker
+  (implies (and (fn-bs-profile-marker-requiredp current)
+                (equal (car (fn-profile-rollback-verdict old current lengths))
+                       :sound))
+           (fn-bs-profile-marker-requiredp old))
+  :hints (("Goal" :in-theory '(fn-profile-rollback-verdict
+                               fn-profile-rollback-drops-markerp
+                               car-cons))))

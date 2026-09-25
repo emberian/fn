@@ -1849,21 +1849,10 @@
                      (fn-owner-store state))))
         (value (if action action :absent))))))
 
-; The subject identity of the payload in the octet buffer.  fn-shb-subject-id
-; (books/sha256-buffer.lisp) digests the subject preimage straight from the
-; buffer (the fixed head for the buffer's length as a list, the payload by
-; index), so the served POST hands the digest no octet list
-; (host/native/owner.lisp fnn-owner-attempt through fnn-metadata-buffer,
-; host/native/io.lisp).  fn-shb-subject-id-is-id-subject-of-sha256-preimage:
-; it is fn-id-subject of fn-sha256 over fn-id-subject-preimage, which is
-; fn-id-subject-of-payload (host/store-host.lisp fn-store-subject-id-of-payload,
-; the list entry) under books/crypto-attach.lisp.  The length test is the
-; list entry's.
-(defun fn-owner-subject-id-buffer (fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (value (if (<= (fn-octets-len fn-octets) *fn-cbor-max-uint*)
-             (fn-shb-subject-id fn-octets)
-           nil)))
+; The subject identity of the payload in the octet buffer is
+; books/sha256-buffer.lisp fn-shb-subject-id-bounded, which host/native/io.lisp
+; fnn-subject-id-buffer calls directly: a guard-verified entry, so no :program
+; wrapper here reaches the digest's local stobj updaters (qual-e747dbcc A4).
 
 ; -----------------------------------------------------------------------------
 ; Connections

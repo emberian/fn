@@ -290,27 +290,73 @@
 ; Rollback: the format-7 scale tuple's image read records up to H / T =
 ; 196,608 octets; the format-8 scale preset's R is its own.
 (assert-event (equal (fn-profile-rollback-record-bound *sput-7scale*) 196608))
-(assert-event (equal (fn-profile-rollback-verdict *sput-7scale* '(900 196608)) '(:sound)))
+(assert-event (equal (fn-profile-rollback-verdict *sput-7scale* *sput-scale* '(900 196608)) '(:sound)))
 (assert-event
- (equal (fn-profile-rollback-verdict *sput-7scale* '(900 196609 12))
+ (equal (fn-profile-rollback-verdict *sput-7scale* *sput-scale* '(900 196609 12))
         '(:refused :record-exceeds-rollback-profile 1 196609 196608)))
 (assert-event
- (equal (fn-profile-rollback-verdict nil '(1)) '(:refused :invalid-rollback-profile)))
+ (equal (fn-profile-rollback-verdict nil *sput-scale* '(1)) '(:refused :invalid-rollback-profile)))
 (assert-event
- (equal (fn-profile-rollback-verdict *sput-scale* nil) '(:sound)))
+ (equal (fn-profile-rollback-verdict *sput-scale* *sput-scale* nil) '(:sound)))
 ; Teeth: soundness does not follow from admission alone, nor from the
 ; lengths alone.
 (must-fail
  (defthm sput-rollback-sound-by-admission
    (implies (fn-bs-profile-admittedp old)
-            (equal (car (fn-profile-rollback-verdict old lengths)) :sound))
+            (equal (car (fn-profile-rollback-verdict old current lengths)) :sound))
    :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp
+                                       fn-profile-rollback-drops-markerp
                                        fn-profile-rollback-record-bound
                                        fn-profile-rollback-first-over)))))
 (must-fail
  (defthm sput-rollback-sound-by-lengths
    (implies (fn-profile-all-within lengths (fn-profile-rollback-record-bound old))
-            (equal (car (fn-profile-rollback-verdict old lengths)) :sound))
+            (equal (car (fn-profile-rollback-verdict old current lengths)) :sound))
    :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp
+                                       fn-profile-rollback-drops-markerp
                                        fn-profile-rollback-record-bound
                                        fn-profile-rollback-first-over)))))
+
+
+; Rollback over a store that requires the committed-history marker
+; (qual-e747dbcc U1): fn-profile-rollback-keeps-a-required-marker.  The
+; witness is the deployed shape: the kept format-7 scale tuple over the
+; scale preset migrated to `--history-marker required'; the check refuses by
+; name.  A kept profile that also requires the marker is sound, and an
+; unmarked current store keeps the old answer.
+(defconst *sput-scale-required* (fn-bs-profile-put 14 1 *sput-scale*))
+(assert-event (fn-bs-profile-validp *sput-scale-required*))
+(assert-event (fn-bs-profile-marker-requiredp *sput-scale-required*))
+(assert-event (not (fn-bs-profile-marker-requiredp *sput-7scale*)))
+(assert-event
+ (equal (fn-profile-rollback-verdict *sput-7scale* *sput-scale-required* '(900 196608))
+        '(:refused :history-marker-required-dropped)))
+(assert-event
+ (equal (fn-profile-rollback-verdict *sput-scale* *sput-scale-required* '(900))
+        '(:refused :history-marker-required-dropped)))
+(assert-event
+ (equal (fn-profile-rollback-verdict *sput-scale-required* *sput-scale-required* '(900))
+        '(:sound)))
+; The marker refusal precedes the record measure: a record over the bound
+; still reports the dropped requirement first.
+(assert-event
+ (equal (fn-profile-rollback-verdict *sput-7scale* *sput-scale-required* '(196609))
+        '(:refused :history-marker-required-dropped)))
+; Teeth: without the current requirement the conclusion fails (the kept
+; format-7 tuple over an unmarked store is sound and does not require the
+; marker); without the :sound verdict it fails (the refused witness above).
+(must-fail
+ (defthm sput-rollback-keeps-marker-without-current-required
+   (implies (equal (car (fn-profile-rollback-verdict old current lengths)) :sound)
+            (fn-bs-profile-marker-requiredp old))
+   :hints (("Goal" :in-theory (disable fn-profile-rollback-verdict
+                                       fn-bs-profile-marker-requiredp
+                                       fn-bs-profile-admittedp
+                                       fn-profile-rollback-drops-markerp
+                                       fn-profile-all-within
+                                       fn-profile-rollback-record-bound)))))
+(must-fail
+ (defthm sput-rollback-keeps-marker-without-sound
+   (implies (fn-bs-profile-marker-requiredp current)
+            (fn-bs-profile-marker-requiredp old))
+   :hints (("Goal" :in-theory (disable fn-bs-profile-marker-requiredp)))))

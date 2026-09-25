@@ -321,12 +321,15 @@ observation into the outcome and this function only carries it out."
                    ;; nothing to send the live owner and nothing to serialize
                    ;; behind its mutex: the read-only executor is the only
                    ;; one, live socket or not.
+                   ;; The report kind is the plan's
+                   ;; (fn-native-admin-result-report-kind): `control list'
+                   ;; reports the authority rows, `peer list' the peers.
                    ((and queryp (fnn-admin-plan-acceptedp plan))
                     (fnn-operator-status-once
                      root (and (fnn-octet-list-p control-path-list)
                                (consp control-path-list)
                                (fnn-octets control-path-list))
-                     :peers))
+                     (fnn-core 'fn-native-admin-host-report-kind plan)))
                    (queryp (fnn-admin-query root plan))
                    (livep
                     (fnn-core 'fn-native-control-host-status-exit-code
