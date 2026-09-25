@@ -72,30 +72,6 @@
 ; -----------------------------------------------------------------------------
 ; The readers.
 
-(defun fn-icar-submission-intent-result (o carry evidence generation txid)
-  (declare (xargs :guard t))
-  (let* ((sub (fn-own-inflight o))
-         (identity (and sub (fn-icar-intent-id sub carry)))
-         (targets (fn-own-submission-targets o)))
-    (cond ((null sub) :absent)
-          ((or (not (fn-feed-namep identity))
-               (not (fn-feed-namep evidence))
-               (not (natp generation)) (not (natp txid)))
-           :refused)
-          ((not (fn-own-feed-target-capacityp
-                 targets (fn-own-feeds o) (fn-own-sub-msgid sub)))
-           :capacity)
-          (t :ready))))
-
-(defthm fn-icar-submission-intent-result-is-reference
-  (implies (fn-icar-carryp carry)
-           (equal (fn-icar-submission-intent-result o carry evidence generation txid)
-                  (fn-own-submission-intent-result o evidence generation txid)))
-  :hints (("Goal" :in-theory (e/d (fn-own-submission-intent-result)
-                                  (fn-own-submission-targets
-                                   fn-own-feed-target-capacityp
-                                   fn-feed-namep fn-own-feed-intent-id)))))
-
 ; The intent: the result and its records in one call, one identity and one
 ; target computation between them.  The reference computes the result twice
 ; (fn-own-submission-intent-records calls it) and the identity three times.

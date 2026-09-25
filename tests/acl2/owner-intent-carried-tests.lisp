@@ -36,10 +36,6 @@
                      (cons (fn-own-submission-intent-result
                             *own-control-fed-taken* *own-control-evidence* 1 3)
                            (own-control-intents))))
-(assert-event (equal (fn-icar-submission-intent-result
-                      *own-control-fed-taken* (icar-t-carry)
-                      *own-control-evidence* 1 3)
-                     :ready))
 
 ; The resolution over the same carry: commit after the consumed completion,
 ; abort on a known duplicate, nothing on an uncertain outcome.  The in-flight
@@ -106,10 +102,6 @@
    (equal (fn-icar-submission-intent o carry evidence generation txid)
           (cons (fn-own-submission-intent-result o evidence generation txid)
                 (fn-own-submission-intent-records o evidence generation txid)))))
-(must-fail
- (defthm icar-t-intent-result-without-carryp
-   (equal (fn-icar-submission-intent-result o carry evidence generation txid)
-          (fn-own-submission-intent-result o evidence generation txid))))
 (must-fail
  (defthm icar-t-resolution-without-carryp
    (equal (fn-icar-submission-resolution-records
