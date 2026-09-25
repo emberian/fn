@@ -1,0 +1,242 @@
+"""Native witness for peering invitations (PRF-097, specs/peering.md section 9).
+
+`fn operator CONFIG peer genesis|invite|accept|confirm` on running owners:
+the operator plan is books/native-operator.lisp's; the three live verbs reach
+the owner as hybrid control requests 9, 10 and 11 (host/native/peer-invite.lisp),
+whose decisions are books/peer-invite.lisp's `fn-pinv-issue-plan`,
+`fn-pinv-accept-step`, `fn-pinv-confirm-plan` and `fn-pinv-confirm-step`.
+Every node is a fresh store; key directories are generated with OpenSSL
+(`FN_OPENSSL`, 3.5 or later for ML-DSA-65) and their principals by `peer
+genesis`.  The crash case needs a developer image (the
+FN_PEER_TEST_STOP_AFTER_CONSUME selector).
+
+Run: FN_NATIVE_HOST=<launcher> FN_OPENSSL=<openssl> \
+     python3 -m unittest -v tests.test_native_peer_invite
+"""
+
+import os
+from pathlib import Path
+import select
+import shutil
+import signal
+import subprocess
+import tempfile
+import unittest
+
+from tests import test_native_live_reconfiguration as live
+
+ROOT = live.ROOT
+IMAGE = live.IMAGE
+EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = 0, 1, 3
+OPENSSL = os.environ.get("FN_OPENSSL", "openssl")
+
+
+def openssl(*args):
+    subprocess.run([OPENSSL, *args], check=True, stdout=subprocess.PIPE,
+                   stderr=subprocess.PIPE)
+
+
+def keygen(directory):
+    directory.mkdir(parents=True)
+    der, pub = directory / "ed-private.der", directory / "ed-public.der"
+    openssl("genpkey", "-algorithm", "ED25519", "-outform", "DER", "-out", str(der))
+    openssl("pkey", "-inform", "DER", "-in", str(der), "-pubout", "-outform", "DER",
+            "-out", str(pub))
+    seed, public = der.read_bytes()[-32:], pub.read_bytes()[-32:]
+    (directory / "ed-public.bin").write_bytes(public)
+    (directory / "ed-secret.bin").write_bytes(seed + public)
+    der.unlink()
+    pub.unlink()
+    openssl("genpkey", "-algorithm", "ML-DSA-65", "-out", str(directory / "ml-private.pem"))
+    openssl("pkey", "-in", str(directory / "ml-private.pem"), "-pubout", "-out",
+            str(directory / "ml-public.pem"))
+    return directory
+
+
+def out(result):
+    return (result.stdout + result.stderr).decode("utf-8", "replace").strip()
+
+
+class Node:
+    def __init__(self, test, root, name, env=None):
+        self.test, self.name = test, name
+        self.root = root / name
+        self.root.mkdir()
+        self.store = self.root / "store"
+        self.control = self.root / "control.sock"
+        self.port = live.free_port()
+        self.config = self.root / "fn.toml"
+        self.config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
+            encoding="ascii")
+        self.env = dict(live.environment(), **(env or {}))
+        self.process = None
+        test.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
+
+    def operator(self, *words, timeout=240):
+        return subprocess.run([str(IMAGE), "--fn", "operator", str(self.config), *words],
+                              cwd=ROOT, env=live.environment(), stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, timeout=timeout, check=False)
+
+    def start(self, env=None):
+        self.process = subprocess.Popen(
+            [str(IMAGE), "--fn", "operator", str(self.config), "run"], cwd=ROOT,
+            env=dict(self.env, **(env or {})), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, bufsize=0)
+        self.test.addCleanup(self.reap)
+        for _ in range(4):
+            self.test.assertTrue(select.select([self.process.stdout], [], [], 240)[0],
+                                 "owner {} did not become ready".format(self.name))
+            if self.process.stdout.readline().startswith(b"LISTENING "):
+                return self
+            if self.process.poll() is not None:
+                self.test.fail("owner {} failed: {}".format(
+                    self.name, self.process.stderr.read().decode("utf-8", "replace")))
+        self.test.fail("owner {} readiness output was malformed".format(self.name))
+
+    def stop(self):
+        self.process.send_signal(signal.SIGTERM)
+        self.test.assertEqual(self.process.wait(timeout=60), EXIT_OK)
+        self.reap()
+
+    def reap(self):
+        process, self.process = self.process, None
+        if process is None:
+            return
+        if process.poll() is None:
+            process.send_signal(signal.SIGKILL)
+            process.wait(timeout=10)
+        for stream in (process.stdout, process.stderr):
+            if stream and not stream.closed:
+                stream.close()
+
+    def key_history(self):
+        result = subprocess.run([str(IMAGE), "--fn", "hybrid-key-history", str(self.store)],
+                                cwd=ROOT, env=live.environment(), stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, timeout=240, check=False)
+        self.test.assertEqual(result.returncode, EXIT_OK, out(result))
+        return result.stdout.decode("ascii").splitlines()
+
+
+@unittest.skipUnless(live.executable(IMAGE) and shutil.which(OPENSSL),
+                     "set FN_NATIVE_HOST to a native launcher and FN_OPENSSL to openssl 3.5")
+class NativePeerInviteTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="fn-peer-invite-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    def keys(self, name, node):
+        directory = keygen(self.root / ("keys-" + name))
+        result = node.operator("peer", "genesis", str(directory))
+        self.assertEqual(result.returncode, EXIT_OK, out(result))
+        principal = (directory / "principal.bin").read_bytes().hex()
+        print("NATIVE-PEER-INVITE genesis", name, principal)
+        return directory, principal
+
+    def run_ok(self, node, *words):
+        result = node.operator(*words)
+        print("NATIVE-PEER-INVITE", node.name, " ".join(words[:2]), "->", result.returncode)
+        self.assertEqual(result.returncode, EXIT_OK, out(result))
+        return result
+
+    def refused(self, node, words, reason):
+        result = node.operator(*words)
+        print("NATIVE-PEER-INVITE", node.name, " ".join(words[:2]), "->",
+              result.returncode, "expected", reason)
+        self.assertEqual(result.returncode, EXIT_REFUSED, out(result))
+        return result
+
+    def owner_log(self, node):
+        return node.process.stderr.read().decode("utf-8", "replace")
+
+    def test_invite_accept_confirm_and_the_refusals(self):
+        a, b, c = (Node(self, self.root, n) for n in ("A", "B", "C"))
+        keys_a, pa = self.keys("a", a)
+        keys_b, pb = self.keys("b", b)
+        keys_c, pc = self.keys("c", c)
+        for node in (a, b, c):
+            node.start()
+        inv = self.root / "inv1"
+        self.run_ok(a, "peer", "invite", "nodeB", "fn.*", "127.0.0.1", str(b.port),
+                    "a.example", str(keys_a), str(inv))
+        acc = self.root / "acc1"
+        self.run_ok(b, "peer", "accept", str(inv), str(keys_b), "b.example", "-", str(acc))
+        # The same invitation again at B: A is already B's current enrolment.
+        self.refused(b, ("peer", "accept", str(inv), str(keys_b), "b.example", "-",
+                         str(self.root / "acc1-again")), "already-enrolled")
+        # A tampered acceptance: one octet of the signed body changed.
+        tampered = self.root / "acc1-tampered"
+        data = acc.read_bytes()
+        at = data.index(b"Acceptor-Path: b.example")
+        tampered.write_bytes(data[:at + 15] + b"c" + data[at + 16:])
+        self.refused(a, ("peer", "confirm", str(tampered)), "unverified")
+        self.run_ok(a, "peer", "confirm", str(acc))
+        # A second confirm of the same acceptance.
+        self.refused(a, ("peer", "confirm", str(acc)), "already-confirmed")
+        # A replayed nonce: C accepts the consumed invitation (C enrols A),
+        # and A refuses C's acceptance.
+        acc_c = self.root / "acc-c"
+        self.run_ok(c, "peer", "accept", str(inv), str(keys_c), "c.example", "-", str(acc_c))
+        self.refused(a, ("peer", "confirm", str(acc_c)), "invitation-consumed")
+        # An invitation presented to confirm is not an acceptance.
+        self.refused(a, ("peer", "confirm", str(inv)), "document-kind")
+        for node in (a, b, c):
+            node.stop()
+        history_a, history_b = a.key_history(), b.key_history()
+        print("NATIVE-PEER-INVITE A key history:", history_a)
+        print("NATIVE-PEER-INVITE B key history:", history_b)
+        self.assertEqual([line for line in history_a if pb in line],
+                         ["generation=1 state=active principal={}".format(pb)])
+        self.assertFalse([line for line in history_a if pc in line])
+        self.assertEqual([line for line in history_b if pa in line],
+                         ["generation=1 state=active principal={}".format(pa)])
+
+    def test_an_acceptance_of_an_invitation_this_node_never_issued(self):
+        a, d, e = (Node(self, self.root, n) for n in ("A", "D", "E"))
+        keys_a, _ = self.keys("a", a)
+        keys_f, _ = self.keys("f", d)
+        keys_e, _ = self.keys("e", e)
+        for node in (a, d, e):
+            node.start()
+        # D invites under A's own keys; A never recorded that nonce.
+        foreign = self.root / "inv-d"
+        self.run_ok(d, "peer", "invite", "nodeE", "fn.*", "127.0.0.1", str(e.port),
+                    "d.example", str(keys_a), str(foreign))
+        acc_e = self.root / "acc-e"
+        self.run_ok(e, "peer", "accept", str(foreign), str(keys_e), "e.example", "-",
+                    str(acc_e))
+        self.refused(a, ("peer", "confirm", str(acc_e)), "no-such-invitation")
+        for node in (a, d, e):
+            node.stop()
+
+    def test_a_crash_between_consumption_and_enrolment_enrols_once(self):
+        a2, b2 = Node(self, self.root, "A2"), Node(self, self.root, "B2")
+        keys_g, _ = self.keys("g", a2)
+        keys_h, ph = self.keys("h", b2)
+        a2.start(env={"FN_PEER_TEST_STOP_AFTER_CONSUME": "1"})
+        b2.start()
+        inv = self.root / "inv-crash"
+        self.run_ok(a2, "peer", "invite", "nodeB2", "fn.*", "127.0.0.1", str(b2.port),
+                    "a2.example", str(keys_g), str(inv))
+        acc = self.root / "acc-crash"
+        self.run_ok(b2, "peer", "accept", str(inv), str(keys_h), "b2.example", "-", str(acc))
+        died = a2.operator("peer", "confirm", str(acc))
+        print("NATIVE-PEER-INVITE A2 confirm with the stop ->", died.returncode)
+        self.assertNotEqual(died.returncode, EXIT_OK, out(died))
+        self.assertEqual(a2.process.wait(timeout=60), 137)
+        a2.reap()
+        self.assertFalse([line for line in a2.key_history() if ph in line])
+        a2.start()
+        self.run_ok(a2, "peer", "confirm", str(acc))
+        self.refused(a2, ("peer", "confirm", str(acc)), "already-confirmed")
+        a2.stop()
+        b2.stop()
+        history = a2.key_history()
+        print("NATIVE-PEER-INVITE A2 key history:", history)
+        self.assertEqual(len([line for line in history if ph in line]), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()
