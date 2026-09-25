@@ -906,8 +906,7 @@
         "fn-article-parse-work-input-bound",
         "fn-article-parse-work-profile-bound",
         "fn-served-feed-steps-bounded-by-chunk-length",
-        "fn-served-step-nntp-steps-is-bounded",
-        "fn-sbud-signed-event-boundary-refuses-exactly-past-the-record-field"
+        "fn-served-step-nntp-steps-is-bounded"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -1177,9 +1176,7 @@
         "fn-osp-reader-after-signed-post-reports-its-verdict",
         "fn-osp-served-refusal-renders-its-reason",
         "fn-osp-transit-refusal-renders-its-reason",
-        "fn-osp-plan-refusal-is-a-served-reason",
-        "fn-sbud-signed-event-boundary-refuses-exactly-past-the-record-field",
-        "fn-sbud-signed-event-boundary-ok-is-publishable"
+        "fn-osp-plan-refusal-is-a-served-reason"
       ],
       "progress_note": "Bounds P4 (2026-09-25): a verdict over a v2 carrier records the evidence tag fn-hybrid-v2, which fn-stxe-keyring-profile maps to the one D09 keyring profile so kind-4 replay and the schema-1 binding accept it (fn-hsig-keyring-profile-of-evidence-tag); verdicts recorded under fn-hybrid-v1 keep their meaning and a v1 record stored by a pre-v2 image reads verified on the P4 image (planning/evidence/bounds-p4-2026-09-25.md). This adds no PRF-026 event. Signed-path (2026-09-25, D27): the kind-4 composite's literal caps (32,768 source, 65,538 record, 196,608 composite) are codec ceilings; a served signed POST's composite is held to the store profile's record field R by fn-sbud-signed-event-boundary, which host/native/owner.lisp fnn-owner-attempt-transit asks through fn-owner-signed-event-boundary before the identity commit, and a composite not formed or past R is refused with its own 441 line (:event, :signed-record); an :ok composite satisfies the publish gate's fn-bs-publication-admissiblep at its framed length. Native: a 60 KiB v1 and a 200 KiB v2 signed POST are accepted, HDR verified and fn_verify exit 0; a tampered v2 is refused by name."
     },
@@ -2168,8 +2165,7 @@
       "progress_note": "host/native/signatures.lisp calls fn-hsig-host-authorize, whose body calls fn-hsig-authorize. The framing keystones prove that equal valid subject bodies, and equal tagged signing preimages, determine the same principal, ordered Ed25519/ML-DSA-65 key set and exact authored source. Projection witnesses are non-degenerate and each theorem has one must-fail event per hypothesis. Reachable tests cover both-valid, each bad component, absent ML-DSA, unknown/unsupported ML-DSA, stripping, component order/profile confusion, source changes and enrolled-key changes. Native component evidence covers libsodium Ed25519 and OpenSSL 3.6.4 ML-DSA-65. These are byte-framing results, not cryptographic injectivity: primitive security, RNG, ABI and library correctness remain trusted assumptions; key custody, recovery authority and durable article/verdict composition remain open. The byte-framing injectivity book and its hypothesis counterexamples certified on hbox in certify-20260921T181329Z-2345431; the complete selected closure source digests match the integrated source. This does not certify live author submission or either signature primitive. Bounds P4 (2026-09-25, D27): the v1 source bound is the u16's 65535, not the article constant, and carrier v2 (item 1 = 2, tag fn-authored-source-hybrid-v2, u32 length) signs sources above it; the host calls fn-hsig-authorize-at and fn-hsig-signed-preimage-at through fn-hsig-host-authorize and fn-hsig-host-preimage (host/hybrid-signature-host.lisp) with fn-hsig-source-version. The two -by-definition events are the v1 correspondence, not keystones; the keystones are the per-version injectivity, the cross-version disjointness and the versioned injectivity, each with one must-fail per hypothesis in its test book. Certified with every dependent in certify-20260925T025612Z-3717718; native and verifier results in planning/evidence/bounds-p4-2026-09-25.md. Signed-path (2026-09-25): every source a carrier version admits (fn-hsig-subject-at-p) is within the kind-4 composite's authored-source bound, which is the v2 carrier's u32 width, so the Store never refuses a signable source by a data cap. The native signature copy (host/native/crypto.lisp fnn-crypto-octets) read the preimage list by ELT, quadratic in the source (99.6% of a 215 KB signed POST, 99.9% of signing); it is one pass now: signing 200 KiB 145.29 s to under 5 s, the signed POST 47.45 s to 0.76 s (unsigned 0.34 s).",
       "events": [
         "fn-hsig-subject-body-injective",
-        "fn-hsig-signed-preimage-injective",
-        "fn-stxa-holds-every-signable-source"
+        "fn-hsig-signed-preimage-injective"
       ]
     },
     {
