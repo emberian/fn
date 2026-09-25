@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/stx-evidence-records")
 (include-book "../../books/codec-attach")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *stxe-profile-unknown* '(117 110 107 110 111 119 110 45 118 49))
 (defconst *stxe-evidence*
