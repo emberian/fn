@@ -36,7 +36,7 @@
         '(88 4 102 110 45 114 0)                                 ; :noncanonical
         '(68 102 110 45 115 0)                                   ; :magic
         '(68 102 110 45 114 2)                                   ; :unknown-version
-        '(68 102 110 45 114 0 1 2 3 65 97 64 17)                 ; :groups-limit
+        '(68 102 110 45 114 0 1 2 3 65 97 64 26 0 1 0 0)         ; :groups-limit
         '(68 102 110 45 114 0 65 97)                             ; :field-type
         (append *fn-record-schema0-golden-octets* '(0))          ; :trailing
         (take 15 *fn-record-schema0-golden-octets*)              ; :truncated
