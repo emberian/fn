@@ -3398,7 +3398,7 @@
         "tests/test_native_bounds_blob.py",
         "planning/evidence/bounds-blob-2026-09-25.md"
       ],
-      "progress_note": "Open: the FNRJ receipt blobs and app-journal counts (PKT-010 remainder) and the pre-reservation figures (PKT-011, blocked by fn-profile-upgrade-keeps-verdict); see the record's deferrals.",
+      "progress_note": "Certified: runs 22ae (538 passed) and 2f56 (exit 0) on persvati, e8e4 on hbox (image closure, 198 passed); native operator post of 131 073 and 290 000 octets under A = 300 000 accepted, 300 001 refused by name (planning/evidence/bounds-blob-2026-09-25.md). Open: the FNRJ receipt blobs and app-journal counts (PKT-010 remainder), the pre-reservation figures (PKT-011, blocked by fn-profile-upgrade-keeps-verdict, PRF-072), and the octet lists at runtime on this path (D27 representation).",
       "events": [
         "fn-native-control-request-within-profile-frame",
         "fn-native-control-request-within-read-bound",
