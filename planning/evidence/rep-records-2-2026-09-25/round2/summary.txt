@@ -1,0 +1,51 @@
+# python3 an.py (13 alternated rounds, 48 POSTs each, N=120)
+base2: rounds 13 samples/48POST min 121 median 192 max 611 total 3560
+   FN-RECORD-P                    total  190   5.34%  per-round median 10
+   FN-RCON-RECORD-P               total  100   2.81%  per-round median 6
+   FN-RECORD-STRING-OCTETS-AUX    total  230   6.46%  per-round median 14
+   FN-RECORD-ENCODE-IMPL          total   33   0.93%  per-round median 2
+   FN-RCON-RECORD-ENCODE-IMPL     total    0   0.00%  per-round median 0
+   FN-PCAR-SPC-PREPARE            total  116   3.26%  per-round median 6
+   FN-SN-RECORD-BINDSP            total   12   0.34%  per-round median 1
+   FN-CPE-PROJECTION-STEP         total   31   0.87%  per-round median 2
+   FN-STORE-EVENT-TXID            total   34   0.96%  per-round median 2
+   FN-OWNER-PENDING-OCTETS        total   47   1.32%  per-round median 3
+   FN-OWNER-IO                    total  168   4.72%  per-round median 8
+   FN-FRAME-DIGEST                total 1492  41.91%  per-round median 76
+   wall per POST under sprof ms: median 175.7 min 85.4 max 231.6
+after: rounds 13 samples/48POST min 116 median 146 max 637 total 3138
+   FN-RECORD-P                    total   77   2.45%  per-round median 4
+   FN-RCON-RECORD-P               total  101   3.22%  per-round median 5
+   FN-RECORD-STRING-OCTETS-AUX    total  127   4.05%  per-round median 6
+   FN-RECORD-ENCODE-IMPL          total   29   0.92%  per-round median 1
+   FN-RCON-RECORD-ENCODE-IMPL     total    0   0.00%  per-round median 0
+   FN-PCAR-SPC-PREPARE            total  109   3.47%  per-round median 5
+   FN-SN-RECORD-BINDSP            total    8   0.25%  per-round median 0
+   FN-CPE-PROJECTION-STEP         total   29   0.92%  per-round median 1
+   FN-STORE-EVENT-TXID            total   12   0.38%  per-round median 1
+   FN-OWNER-PENDING-OCTETS        total   30   0.96%  per-round median 1
+   FN-OWNER-IO                    total   93   2.96%  per-round median 5
+   FN-FRAME-DIGEST                total 1299  41.40%  per-round median 61
+   wall per POST under sprof ms: median 180.5 min 89.9 max 243.4
+after2: rounds 13 samples/48POST min 124 median 130 max 544 total 2223
+   FN-RECORD-P                    total    0   0.00%  per-round median 0
+   FN-RCON-RECORD-P               total   92   4.14%  per-round median 6
+   FN-RECORD-STRING-OCTETS-AUX    total   18   0.81%  per-round median 1
+   FN-RECORD-ENCODE-IMPL          total    0   0.00%  per-round median 0
+   FN-RCON-RECORD-ENCODE-IMPL     total   16   0.72%  per-round median 1
+   FN-PCAR-SPC-PREPARE            total   39   1.75%  per-round median 3
+   FN-SN-RECORD-BINDSP            total    0   0.00%  per-round median 0
+   FN-CPE-PROJECTION-STEP         total    0   0.00%  per-round median 0
+   FN-STORE-EVENT-TXID            total    0   0.00%  per-round median 0
+   FN-OWNER-PENDING-OCTETS        total   17   0.76%  per-round median 1
+   FN-OWNER-IO                    total   61   2.74%  per-round median 4
+   FN-FRAME-DIGEST                total  961  43.23%  per-round median 57
+   wall per POST under sprof ms: median 143.7 min 81.1 max 242.8
+
+# callers (python3 callers.py NAME p2-LABEL-n120-r*-graph.txt), summed over 13 rounds
+base2 FN-RECORD-P [('FN-STORE-EVENT-SEQUENCE', 87), ('FN-STORE-EVENT-TXID', 34), ('FN-RECORD-ENCODE-IMPL', 17), ('FN-PCAR-SPC-PREPARE', 16), ('FN-STORE-EVENT-ENCODE', 13), ('FN-STORE-EVENT-P', 13), ('FN-SN-RECORD-BINDSP', 10)]
+base2 FN-RCON-RECORD-P [('FN-RCON-STORE-EVENT-SEQUENCE', 40), ('FN-RCON-STORE-EVENT-TXID', 38), ('FN-RCON-STORE-EVENT-P', 14), ('FN-RCON-SN-RECORD-BINDSP', 4), ('FN-RCON-STORE-EVENT-GENERATION', 2), ('FN-RCON-RECORD-P', 1), ('FN-CCAR-COMPLETION-NAMES-SUBMISSION-P', 1)]
+base2 FN-RECORD-STRING-OCTETS-AUX [('FN-RECORD-STRING-OCTETS-AUX', 103), ('SB-SPROF::UNAVAILABLE-FRAMES', 54), ('FN-RECORD-METADATA-BYTES-P', 32), ('FN-RECORD-OCTET-STRINGP', 30), ('FN-RECORD-GROUP-NAMEP', 18), ('FN-RECORD-ASCII-STRINGP', 8), ('FN-RECORD-ENCODE-IMPL', 4), ('FN-RECORD-MSGIDP', 3), ('FN-PROV-STRUCTURED-OCTETS', 3), ('FN-CFG-LABELP', 2), ('FN-OLOG-SERVED-POST-LINE', 1), ('FN-PROV-TEXTP', 1)]
+after2 FN-RECORD-P []
+after2 FN-RCON-RECORD-P [('FN-RCON-STORE-EVENT-SEQUENCE', 40), ('FN-RCON-STORE-EVENT-TXID', 27), ('FN-RCON-STORE-EVENT-P', 13), ('FN-RCON-SN-RECORD-BINDSP', 4), ('FN-PCAR-SPC-PREPARE', 4), ('FN-RCON-STORE-EVENT-GENERATION', 3), ('FN-RCON-RECORD-P', 1), ('FN-RCON-STORE-EVENT-ENCODE', 1)]
+after2 FN-RECORD-STRING-OCTETS-AUX [('FN-RECORD-STRING-OCTETS-AUX', 8), ('FN-RECORD-GROUP-NAMEP', 4), ('FN-CFG-LABELP', 2), ('FN-RCON-RECORD-ENCODE-IMPL', 2), ('FN-OLOG-SERVED-POST-LINE', 1), ('FN-RECORD-OCTET-STRINGP', 1)]
