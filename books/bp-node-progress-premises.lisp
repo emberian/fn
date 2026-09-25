@@ -402,7 +402,11 @@
  (defthm fn-bpnpp-true-listp-of-deferral-replace
    (implies (true-listp held)
             (true-listp (fn-bpnp-deferral-replace arrival count held)))
-   :hints (("Goal" :in-theory (enable fn-bpnp-deferral-replace)))))
+   :hints (("Goal" :induct (fn-bpnp-deferral-replace arrival count held)
+            :in-theory (union-theories
+                        '(fn-bpnp-deferral-replace true-listp car-cons cdr-cons
+                          (:induction fn-bpnp-deferral-replace))
+                        (theory 'minimal-theory))))))
 
 ; The kind-20 persist arm writes the held list (slot 2) whole.
 (local
@@ -410,7 +414,8 @@
    (implies (true-listp h)
             (equal (fn-bpnp-step-guard-premisesp (update-nth 2 h st))
                    (and (fn-bpn-machine-invariantp (fn-bpnf-base st))
-                        (fn-bpnp-session-listp (fn-bpnp-sessions st)))))
+                        (fn-bpnp-session-listp (fn-bpnp-sessions st))
+                        (true-listp h))))
    :hints (("Goal" :in-theory (union-theories
                                '(fn-bpnp-step-guard-premisesp
                                  fn-bpnf-base fn-bpnp-sessions
