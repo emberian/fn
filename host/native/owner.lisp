@@ -1205,8 +1205,15 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
             (fnn-owner-action 'fn-owner-fault cid)
             (return-from fnn-owner-drain-one
               (values cid (fnn-owner-octets-global 'fn-owner-output) t)))
+          ;; The identities here serve the transfer decision only (the
+          ;; obligation and subject fn-owner-transit-decide takes below); a
+          ;; served POST derives them once, from the octet buffer, inside
+          ;; fnn-owner-attempt (fnn-metadata-buffer), so the payload is not
+          ;; converted and digested a second time per POST.
           (multiple-value-bind (obligation subject ignored)
-              (fnn-metadata msgid payload)
+              (if (eq taken :taken-transit)
+                  (fnn-metadata msgid payload)
+                (values nil nil nil))
             (declare (ignore ignored))
             (let* ((transitp (eq taken :taken-transit))
                    (transit-kind
