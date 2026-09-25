@@ -67,7 +67,7 @@
     (if (equal records :bad)
         (value :bad)
       (let ((captured (fn-checkpoint-capture (fn-store-sn-domain state)
-                                             *fn-store-capacity*
+                                             (fn-store-sn-capacity state)
                                              records frontier)))
         (if (not (equal (car captured) :ok))
             (value captured)
@@ -227,7 +227,7 @@
 (defun fn-store-checkpoint-decode (octets digest max-frontier max-sequence state)
   (declare (xargs :stobjs state :mode :program))
   (let ((decoded (fn-cpc-frame-decode octets digest (fn-store-sn-domain state)
-                                      *fn-store-capacity* max-frontier
+                                      (fn-store-sn-capacity state) max-frontier
                                       max-sequence)))
     (if (not (fn-cpc-result-okp decoded))
         (value decoded)
@@ -247,7 +247,7 @@
         (value (list :error :suffix-octets))
       (let ((restored (fn-checkpoint-restore
                        (f-get-global 'fn-store-checkpoint state)
-                       (fn-store-sn-domain state) *fn-store-capacity*
+                       (fn-store-sn-domain state) (fn-store-sn-capacity state)
                        suffix frontier)))
         (if (not (equal (car restored) :ok))
             (value restored)
