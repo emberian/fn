@@ -583,6 +583,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octets-stobj \
 	books/frame-stobj \
 	books/records-stobj \
+	books/article-stobj \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
