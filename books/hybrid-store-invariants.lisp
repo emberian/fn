@@ -2,7 +2,7 @@
 ; applied to the portable carrier.  It adds trace fields before the exact
 ; signed source; neither the host nor the peer re-signs the source.
 (in-package "ACL2")
-(include-book "hybrid-store")
+(include-book "hybrid-store-injected")
 (include-book "injection-invariants")
 
 (local
