@@ -603,6 +603,8 @@ so malformed argv and help syntax remain ACL2-owned before any host file I/O."
 
 ; The host's lstat of the configuration path: an existing file is refused;
 ; a mission writes a new node only.
+(in-theory (disable fn-native-operator-mission-run))
+
 (defun fn-native-operator-mission-outcome (result existsp)
   (declare (xargs :guard t))
   (if (and (equal (fn-native-operator-result-status result) :accepted) existsp)
