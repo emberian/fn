@@ -126,7 +126,7 @@
 ;; tools/build_lists_check.py `included` checks this now.
 (include-book "books/octets-stobj")
 (include-book "books/poster-bytes-buffer")
-;; fn-owner-subject-id-buffer (host/owner-host.lisp) calls fn-shb-subject-id, as in build.lisp.
+;; host/native/io.lisp fnn-subject-id-buffer calls fn-shb-subject-id-bounded, as in build.lisp.
 (include-book "books/sha256-buffer")
 ;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call

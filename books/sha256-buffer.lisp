@@ -511,6 +511,27 @@
          (fn-id-subject (fn-sha256 (fn-id-subject-preimage fn-octets))))
   :hints (("Goal" :in-theory (enable fn-id-subject-preimage))))
 
+;; The entry the served POST calls (host/native/io.lisp fnn-subject-id-buffer
+;; through fnn-core): the digest when the buffer's length is in the CBOR uint
+;; domain, else NIL.  It is guard-verified with guard T, so the host's call runs
+;; the compiled stobj code directly.  Its :program predecessor in
+;; host/owner-host.lisp (fn-owner-subject-id-buffer) reached the local fn-shs
+;; updaters from an unverified caller, which ACL2 reports as invariant risk on
+;; standard output at every first POST (qual-e747dbcc A4).
+(defun fn-shb-subject-id-bounded (fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t))
+  (if (<= (fn-octets-len fn-octets) *fn-cbor-max-uint*)
+      (fn-shb-subject-id fn-octets)
+    nil))
+
+(defthm fn-shb-subject-id-bounded-unfolds
+  (equal (fn-shb-subject-id-bounded fn-octets)
+         (if (<= (fn-octets-len fn-octets) *fn-cbor-max-uint*)
+             (fn-id-subject (fn-sha256 (fn-id-subject-preimage fn-octets)))
+           nil))
+  :hints (("Goal" :in-theory '(fn-shb-subject-id-bounded
+                               fn-shb-subject-id-is-id-subject-of-sha256-preimage))))
+
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2): the stobj functions are the
 ; executable path; what leaves is the correspondence.  Only `:definition'

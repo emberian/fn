@@ -384,3 +384,50 @@ open-cost replay-records=")
  (defthm nlst-cached-buffer-without-positive-offset
    (equal (fn-nls-cached-buffer :status 0 (fn-nls-cache-put :status :b nil)) :b)
    :rule-classes nil))
+
+; ---------------------------------------------------------------------------
+; `control list' (qual-e747dbcc A3): fn-nls-report-of-query-kind-is-query-report
+; and fn-native-admin-control-report-empty-iff-no-rows.  The witness is the
+; defect's shape: one durable grant (cancel over fn.mod.*) in the replayed
+; configuration.  The report of the kind ACL2 names for the `control list'
+; plan is the grant line; the kind the host used to name (:peers) prints
+; nothing over the same configuration, which is the defect the keystone
+; excludes (the unconditional equality has no hypothesis to remove).
+(defun nlst-argv (words)
+  (if (consp words)
+      (cons (fn-record-string-octets (car words)) (nlst-argv (cdr words)))
+    nil))
+(defconst *nlst-p-hex*
+  "1111111111111111111111111111111111111111111111111111111111111111")
+(defconst *nlst-granted-config*
+  (fn-cfg-make 1 (fn-cfg-apply-delta (fn-cfg-value *nlst-config*) 1 0
+                                     (fn-cfg-grant-control "fn.mod.*" *nlst-p-hex*
+                                                           "cancel"))))
+(defconst *nlst-control-list* (fn-native-admin-plan (nlst-argv '("control" "list"))))
+(assert-event (fn-native-admin-result-queryp *nlst-control-list*))
+(assert-event (equal (fn-native-admin-result-report-kind *nlst-control-list*) :control))
+(assert-event (consp (fn-cfg-authorities (fn-cfg-value *nlst-granted-config*))))
+(assert-event
+ (equal (fn-nls-report (fn-native-admin-result-report-kind *nlst-control-list*)
+                       *nlst-profile* *nlst-s* 0 *nlst-granted-config* nil *nlst-obs*)
+        (fn-record-string-octets
+         (concatenate 'string "grant " *nlst-p-hex* " cancel fn.mod.*"
+                      (coerce (list (code-char 10)) 'string)))))
+(assert-event
+ (equal (fn-nls-report :peers *nlst-profile* *nlst-s* 0 *nlst-granted-config*
+                       nil *nlst-obs*)
+        nil))
+; `peer list' still names the peers.
+(assert-event
+ (equal (fn-native-admin-result-report-kind
+         (fn-native-admin-plan (nlst-argv '("peer" "list"))))
+        :peers))
+; The live request carries the new kind and the owner decodes it back.
+(assert-event (equal (fn-nls-code-kind (fn-nls-kind-code :control)) :control))
+; Without the plan's own kind the equality fails: the host's old :peers.
+(must-fail
+ (defthm nlst-peers-kind-is-query-report
+   (equal (fn-nls-report :peers profile s bytes cfg pins obs)
+          (fn-native-admin-query-report plan (fn-cfg-value cfg)))
+   :hints (("Goal" :in-theory (disable fn-native-admin-control-report
+                                       fn-native-admin-peer-report)))))
