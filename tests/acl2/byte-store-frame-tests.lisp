@@ -35,14 +35,30 @@
 (assert-event (equal (fn-bs-profile-max-transactions *fn-bs-profile-development*)
                      128))
 (assert-event (equal (fn-bs-profile-max-transactions *fn-bs-profile-scale*) 4096))
+; The defaults read P2's ceilings: R 64 MiB, A 16 MiB, G 4096, names 256 (the
+; D27 figure 460 capped at the label width).  The presets keep the format-7
+; figures, 16 groups of 128 octets.
+(assert-event (equal (fn-bs-profile-max-record-octets *fn-bs-profile-defaults*)
+                     67108864))
+(assert-event (equal (fn-bs-profile-max-article-octets *fn-bs-profile-defaults*)
+                     16777216))
+(assert-event (equal (fn-bs-profile-max-groups-per-article *fn-bs-profile-defaults*)
+                     4096))
+(assert-event (equal (fn-bs-profile-max-group-name-octets *fn-bs-profile-defaults*)
+                     256))
+(assert-event (equal (fn-record-encoded-octets-ceiling 16777216 4096) 17847355))
+(assert-event (equal (fn-bs-profile-max-groups-per-article *fn-bs-profile-scale*)
+                     16))
+(assert-event (equal (fn-bs-profile-max-group-name-octets *fn-bs-profile-development*)
+                     128))
 
 ; A free-field profile no preset equals (T = 1000, A = 20000, K = 1000):
 ; valid, admitted, round-trips through the frame, and gates publication at
-; its own T and R.  R stays 196608: on this tree the largest Store event
-; kind's ceiling (the accepted statement's) equals the FNST store payload
-; codec ceiling, so R has exactly one valid value until P2 raises the codec.
+; its own T and R.  R is the defaults' 64 MiB: the largest Store event kind's
+; ceiling (the accepted statement's) is 196608 and the FNST store payload
+; codec ceiling is now the u32 width, so R is free between them.
 (assert-event (equal *fn-bs-profile-min-record-octets* 196608))
-(assert-event (equal *fn-bs-profile-record-ceiling-codec* 196608))
+(assert-event (equal *fn-bs-profile-record-ceiling-codec* 4294967295))
 (defconst *bsft-free*
   (fn-bs-profile-set-fields *fn-bs-profile-defaults*
                             '((2 . 1000) (5 . 20000) (8 . 1000))))
@@ -53,9 +69,9 @@
                                        *fn-bs-profile-defaults*))))
 (assert-event (equal (fn-bs-config-decode (fn-bs-config-encode *bsft-free*))
                      *bsft-free*))
-(assert-event (fn-bs-publication-admissiblep *bsft-free* 999 196608))
+(assert-event (fn-bs-publication-admissiblep *bsft-free* 999 67108864))
 (assert-event (not (fn-bs-publication-admissiblep *bsft-free* 1000 196608)))
-(assert-event (not (fn-bs-publication-admissiblep *bsft-free* 0 196609)))
+(assert-event (not (fn-bs-publication-admissiblep *bsft-free* 0 67108865)))
 (assert-event (fn-bs-history-admissiblep
                *bsft-free* (- (fn-bs-profile-max-history-octets *bsft-free*) 10) 10))
 (assert-event (not (fn-bs-history-admissiblep
@@ -82,13 +98,23 @@
 (bsft-refuses ((2 . 4294967296) (8 . 1000)) :max-transactions-outside-txid-width)
 (bsft-refuses ((3 . 196607)) :max-history-octets-below-max-record-octets)
 (bsft-refuses ((4 . 100) (3 . 100)) :max-record-octets-below-an-event-kind)
-(bsft-refuses ((4 . 196609)) :max-record-octets-above-codec)
+(bsft-refuses ((4 . 4294967296) (3 . 4294967296)) :max-record-octets-above-codec)
 (bsft-refuses ((5 . 0)) :max-article-octets-outside-codec)
-(bsft-refuses ((5 . 32769)) :max-article-octets-outside-codec)
+(bsft-refuses ((5 . 4261412865)) :max-article-octets-outside-codec)
 (bsft-refuses ((6 . 0)) :max-groups-per-article-outside-codec)
-(bsft-refuses ((6 . 17)) :max-groups-per-article-outside-codec)
+(bsft-refuses ((6 . 65536)) :max-groups-per-article-outside-codec)
 (bsft-refuses ((7 . 0)) :max-group-name-octets-outside-codec)
-(bsft-refuses ((7 . 129)) :max-group-name-octets-outside-codec)
+(bsft-refuses ((7 . 257)) :max-group-name-octets-outside-codec)
+; The article relation: R must hold the worst-case record of an article of A
+; octets in G groups, `fn-record-encoded-octets-ceiling' 20000 4096 =
+; 1 090 139.  One octet below it is refused by name; at it the profile is
+; valid.  A 16 MiB article under 4096 groups needs 17 847 355.
+(assert-event (equal (fn-record-encoded-octets-ceiling 20000 4096) 1090139))
+(bsft-refuses ((4 . 1090138)) :max-record-octets-below-the-article-record)
+(assert-event (fn-bs-profile-validp
+               (fn-bs-profile-set-fields *bsft-free* '((4 . 1090139)))))
+(bsft-refuses ((4 . 1090139) (5 . 20001)) :max-record-octets-below-the-article-record)
+(bsft-refuses ((4 . 1090139) (6 . 4097)) :max-record-octets-below-the-article-record)
 (bsft-refuses ((8 . 0)) :max-open-suffix-outside-transactions)
 (bsft-refuses ((8 . 1001)) :max-open-suffix-outside-transactions)
 (bsft-refuses ((9 . 0)) :namespace-count-outside-width)
@@ -112,6 +138,72 @@
                        (fn-bs-profile-max-record-octets '(1 2 3)))))
 (assert-event (not (<= 1 (fn-bs-profile-max-article-octets '(1 2 3)))))
 (assert-event (not (<= 1 (fn-bs-profile-max-groups-per-article '(1 2 3)))))
+
+;  Teeth for fn-bs-profile-admits-every-article-record.  Non-degenerate: the
+; free profile's R is exactly the article record of its (A, G), so the bound
+; is tight at the witness.  Each hypothesis dropped admits a counterexample;
+; ACL2 cannot prove any of the three weakened statements.
+(defconst *bsft-tight* (fn-bs-profile-set-fields *bsft-free* '((4 . 1090139))))
+(assert-event (fn-bs-profile-admittedp *bsft-tight*))
+(assert-event (equal (fn-bs-profile-max-record-octets *bsft-tight*)
+                     (fn-record-encoded-octets-ceiling
+                      (fn-bs-profile-max-article-octets *bsft-tight*)
+                      (fn-bs-profile-max-groups-per-article *bsft-tight*))))
+;  Concrete counterexamples for the two bound hypotheses, under a profile
+; whose R is exactly the article record of (A, G) = (195 264, 1): a record one
+; octet past R (so past A) in one group, and a record at A in six 256-octet groups, each
+; encode past R.  A record at A in one 256-octet group is within R.
+(defconst *bsft-g1* (fn-bs-profile-set-fields *bsft-free*
+                                              '((4 . 196608) (5 . 195264) (6 . 1))))
+(assert-event (fn-bs-profile-admittedp *bsft-g1*))
+(defun bsft-name (c) (coerce (make-list 256 :initial-element c) 'string))
+(defun bsft-record (payload-octets groups)
+  (fn-record-make 1 2 3 "<bsft@example.invalid>"
+                  (make-list payload-octets :initial-element 65)
+                  groups "archive-a" "content-a" "release-a" 4 841000000))
+(assert-event
+ (let ((r (bsft-record 195264 (list (bsft-name #\a)))))
+   (and (fn-record-p r)
+        (< 195264 (len (fn-record-encode r)))
+        (<= (len (fn-record-encode r)) 196608))))
+(assert-event
+ (let ((r (bsft-record 196609 (list "g"))))
+   (and (fn-record-p r)
+        (< 195264 (len (fn-record-payload r)))
+        (<= (len (fn-record-groups r)) 1)
+        (< 196608 (len (fn-record-encode r))))))
+(assert-event
+ (let ((r (bsft-record 195264 (list (bsft-name #\a) (bsft-name #\b)
+                                    (bsft-name #\c) (bsft-name #\d)
+                                    (bsft-name #\e) (bsft-name #\f)))))
+   (and (fn-record-p r)
+        (<= (len (fn-record-payload r)) 195264)
+        (< 196608 (len (fn-record-encode r))))))
+(must-fail
+ (defthm bsft-article-record-without-admitted
+   (implies (and (<= (len (fn-record-payload record))
+                     (fn-bs-profile-max-article-octets values))
+                 (<= (len (fn-record-groups record))
+                     (fn-bs-profile-max-groups-per-article values)))
+            (<= (len (fn-record-encode record))
+                (fn-bs-profile-max-record-octets values)))
+   :hints (("Goal" :in-theory (disable fn-bs-profile-max-record-octets)))))
+(must-fail
+ (defthm bsft-article-record-without-article-bound
+   (implies (and (fn-bs-profile-admittedp values)
+                 (<= (len (fn-record-groups record))
+                     (fn-bs-profile-max-groups-per-article values)))
+            (<= (len (fn-record-encode record))
+                (fn-bs-profile-max-record-octets values)))
+   :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp)))))
+(must-fail
+ (defthm bsft-article-record-without-group-bound
+   (implies (and (fn-bs-profile-admittedp values)
+                 (<= (len (fn-record-payload record))
+                     (fn-bs-profile-max-article-octets values)))
+            (<= (len (fn-record-encode record))
+                (fn-bs-profile-max-record-octets values)))
+   :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp)))))
 
 ; -----------------------------------------------------------------------------
 ; Format 7 is still decoded and served under its translation; format 6 is not
