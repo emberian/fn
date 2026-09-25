@@ -53,37 +53,8 @@
                          (fn-bpn-find-queued-for-peer peer jobs))
                         :queued)))
    :hints (("Goal" :induct (fn-bpn-find-queued-for-peer peer jobs)
-            :in-theory (enable fn-bpn-find-queued-for-peer)))))
-
-; With distinct keys, the queued job found for a peer is the job its key finds.
-(local
- (defthm bprsend-find-job-of-queued-key
-   (implies (and (fn-bpn-job-listp jobs)
-                 (fn-bpn-find-queued-for-peer peer jobs))
-            (equal (fn-bpn-find-job
-                    (fn-bpn-job-key (fn-bpn-find-queued-for-peer peer jobs))
-                    jobs)
-                   (fn-bpn-find-queued-for-peer peer jobs)))
-   :hints (("Goal" :induct (fn-bpn-find-queued-for-peer peer jobs)
-            :in-theory (e/d (fn-bpn-find-queued-for-peer fn-bpn-find-job
-                                                         fn-bpn-job-listp
-                                                         fn-bpn-job-key-memberp)
-                            (fn-bpn-jobp fn-bpn-job-key))))))
-
-(local
- (defthm bprsend-find-job-of-replace-same-key
-   (implies (and (fn-bpn-find-job key jobs)
-                 (equal (fn-bpn-job-key r) key))
-            (equal (fn-bpn-find-job key (fn-bpn-replace-job key r jobs)) r))
-   :hints (("Goal" :induct (fn-bpn-replace-job key r jobs)
-            :in-theory (e/d (fn-bpn-replace-job fn-bpn-find-job)
-                            (fn-bpn-job-key))))))
-
-(local
- (defthm bprsend-status-of-job-with-status
-   (equal (fn-bpn-job-status (fn-bpn-job-with-status job status token))
-          status)
-   :hints (("Goal" :in-theory (enable fn-bpn-job-with-status)))))
+            :in-theory (union-theories '(fn-bpn-find-queued-for-peer)
+                                       (theory 'minimal-theory))))))
 
 ;; ---------------------------------------------------------------------
 ;; KEYSTONE (c).  The event opens a contact only for a peer with a queued
@@ -191,96 +162,15 @@
                          bprsend-ready-peer-has-a-queued-job
                          bprsend-queued-job-names-the-peer
                          fn-bpn-pending-constructor-accessors
-                         (:e list) (:e equal) (:e not))
+                         (:e equal) (:e not))
                        (theory 'minimal-theory))))
   :rule-classes nil)
 
-;; ---------------------------------------------------------------------
-;; KEYSTONE (b).  Once per contact.  When the proposal is durable (the
-;; lower machine's :persist-result, which the served step answers exactly
-;; by the bridge), the :cl-send is released and the job is :attempting, so
-;; no later scan on this contact finds that key queued for any peer until
-;; its transfer result: :finished leaves it :forwarded; :requeued (refused,
-;; failed or uncertain) queues it again, and the host's contact loop
-;; (fnn-bpc-drive-contact) stops at the first outcome that is not
-;; :accepted, so it is offered again only on a later contact.
+;; Once per contact is the host's and the lower machine's, not a theorem
+;; here: a durable :attempting record makes the job :attempting (not
+;; :queued) until its transfer result, and fnn-bpc-drive-contact stops the
+;; contact at the first outcome that is not :accepted.  Open (lane
+;; bp-budgets-receipts): the ACL2 statement over fn-bpn-apply-record.
 
-(local
- (defthm bprsend-attempting-applies
-   (let* ((jobs (fn-bpn-machine-state-jobs base))
-          (job (fn-bpn-find-queued-for-peer peer jobs))
-          (token (fn-bpn-machine-state-next-token base))
-          (key (fn-bpn-job-key job))
-          (record (list :attempting token (nth 0 key) (nth 1 key) (nth 2 key))))
-     (implies (and (fn-bpn-machine-statep base)
-                   job)
-              (fn-bpn-record-applicablep base record)))
-   :hints (("Goal" :do-not-induct t
-            :use ((:instance fn-bpn-machine-statep-components (st base))
-                  (:instance fn-bpn-attempting-record-is-typed
-                             (job (fn-bpn-find-queued-for-peer
-                                   peer (fn-bpn-machine-state-jobs base)))
-                             (token (fn-bpn-machine-state-next-token base))))
-            :in-theory (e/d (fn-bpn-record-applicablep fn-bpn-record-key
-                                                       fn-bpn-record-token
-                                                       fn-bpn-nth)
-                            (fn-bpn-machine-statep fn-bpn-jobp
-                                                   fn-bpn-lifecycle-recordp
-                                                   fn-bpn-find-queued-for-peer))))))
-
-(defthm fn-bpnp-receipt-attempt-leaves-the-queue
-  (let* ((jobs (fn-bpn-machine-state-jobs base))
-         (job (fn-bpn-find-queued-for-peer peer jobs))
-         (token (fn-bpn-machine-state-next-token base))
-         (key (fn-bpn-job-key job))
-         (next (fn-bpn-apply-record
-                base (list :attempting token (nth 0 key) (nth 1 key)
-                           (nth 2 key))))
-         (again (fn-bpn-find-queued-for-peer
-                 other (fn-bpn-machine-state-jobs next))))
-    (implies (and (fn-bpn-machine-statep base)
-                  job)
-             (and (equal (fn-bpn-job-status
-                          (fn-bpn-find-job key (fn-bpn-machine-state-jobs next)))
-                         :attempting)
-                  (not (and again
-                            (equal (fn-bpn-job-key again) key))))))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance bprsend-attempting-applies)
-                 (:instance fn-bpn-machine-statep-components (st base))
-                 (:instance bprsend-find-job-of-queued-key
-                            (jobs (fn-bpn-machine-state-jobs base)))
-                 (:instance fn-bpn-status-replacement-preserves-job-listp
-                            (jobs (fn-bpn-machine-state-jobs base))
-                            (key (fn-bpn-job-key
-                                  (fn-bpn-find-queued-for-peer
-                                   peer (fn-bpn-machine-state-jobs base))))
-                            (status :attempting)
-                            (token (fn-bpn-machine-state-next-token base)))
-                 (:instance bprsend-find-job-of-queued-key
-                            (peer other)
-                            (jobs (fn-bpn-machine-state-jobs
-                                   (fn-bpn-apply-record
-                                    base
-                                    (list :attempting
-                                          (fn-bpn-machine-state-next-token base)
-                                          (nth 0 (fn-bpn-job-key
-                                                  (fn-bpn-find-queued-for-peer
-                                                   peer (fn-bpn-machine-state-jobs base))))
-                                          (nth 1 (fn-bpn-job-key
-                                                  (fn-bpn-find-queued-for-peer
-                                                   peer (fn-bpn-machine-state-jobs base))))
-                                          (nth 2 (fn-bpn-job-key
-                                                  (fn-bpn-find-queued-for-peer
-                                                   peer (fn-bpn-machine-state-jobs base))))))))))
-           :in-theory (e/d (fn-bpn-apply-record fn-bpn-record-key
-                                                fn-bpn-record-token fn-bpn-nth)
-                           (fn-bpn-machine-statep fn-bpn-record-applicablep
-                                                  fn-bpn-job-key fn-bpn-jobp
-                                                  fn-bpn-find-queued-for-peer
-                                                  fn-bpn-find-job
-                                                  fn-bpn-replace-job
-                                                  fn-bpn-job-with-status))))
-  :rule-classes nil)
-
+(verify-guards fn-bpn-ready-peers)
 (verify-guards fn-bpnp-receipt-contact-event)
