@@ -3880,6 +3880,7 @@ else echo NONE; fi
         tin = getattr(self, "clients", {}).get("tin", "tin")
         user, secret = self.credential()
         home = "{}/tin-home".format(self.run)
+        self.sh("tin home", "mkdir -p {}".format(home))
         if user:
             self.push_file("{} {} {}\n".format("127.0.0.1", secret, user),
                            "{}/.newsauth".format(home), mode="600")

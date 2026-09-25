@@ -788,6 +788,10 @@ class InnLab(deploy_gate.DeployGate):
         "fn-post-from-invalid-441": (
             "a POST whose From names no address (`From: yue`) draws 441 from fn "
             "and is not served (RFC 5536 3.1.2)", ("",)),
+        "fn-post-supplied-path-240": (
+            "a POST that supplies `Path: not-for-mail`, as tin sends, draws 240 and "
+            "reads back (D32; RFC 5537 3.4.1 and 3.2.1: the injecting agent "
+            "prefixes its identity)", ("",)),
         "inn-transfer-235": ("a hand-made IHAVE into innd draws 335 then 235", ("",)),
         "inn-duplicate-435": (
             "a second IHAVE of an article innd holds draws 435", ("", "fn-article")),
