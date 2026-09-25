@@ -118,6 +118,8 @@ the profile's widths and the observations as inputs:
 | --- | --- | --- | --- |
 | `run-20260925T105044Z-4572`, manifest `certify-20260925T105118Z-4150165` | persvati, 2 jobs, 300 s, w25 | `--affected-by` config, hybrid-lifecycle, native-operator, peer-invite: 530 books, 299 certified | 295 passed, 4 failed, none of them this lane's: `books/store-reclaim` (`fn-pb-path-agent` called with one argument, arity changed on dev by the D32 Path change), `tests/acl2/store-reclaim-tests` (its dependent), `books/poster-bytes-buffer` (`fn-pbb-source-index-is-inj-source-of`) and `tests/acl2/octets-stobj-tests`; no changed book is in their include closure's changed set beyond config/lifecycle, and each fails in an event this lane does not touch |
 | `run-20260925T183338Z-5639`, manifest `certify-20260925T183424Z-3570225` | hbox, 2 jobs, 300 s, w28 | the same roots, 289 certified | 285 passed, the same 4 unrelated reds; `books/peer-invite` 3.9 s, `tests/acl2/peer-invite-tests` 5.0 s, `books/native-operator` 6.4 s |
+| `run-20260925T191559Z-1966`, manifest `certify-20260925T191649Z-264718` | persvati, 2 jobs, 300 s, w25 | after merging dev (`8c85e3e9`): `--affected-by` config, peer-invite, hybrid-lifecycle, native-operator, native-admin-tests, peer-carriage-tests; 539 books, 298 certified | passed, no failures; `books/peer-invite` 2.8 s, `tests/acl2/peer-invite-tests` 3.2 s; slowest `books/owner-invariants` 12.8 s (dev's book, not touched here) |
+| `run-20260925T192658Z-eabd`, manifest `certify-20260925T192740Z-3639310` | hbox, 2 jobs, 300 s, w28 | the same roots at `8c85e3e9`, 316 certified (fills hbox's cache for the image) | passed, no failures; `books/peer-invite` 4.4 s, `tests/acl2/peer-invite-tests` 5.6 s; over 10 s, all dev's books untouched by this lane: owner-invariants 16.5, native-admin 12.1, native-admin-peer 11.8, store-reclaim 11.7, topic-history-store-invariants 11.4 |
 
 Proof cost at 2 jobs on persvati (same run): `books/peer-invite` 4.6 s,
 `tests/acl2/peer-invite-tests` 5.9 s, `books/config` 1.2 s,
@@ -127,21 +129,31 @@ ratchet). The run's other slow books (byte-store-k0*, bp-node-*) are
 unchanged by this lane and were measured on a loaded box.
 
 
-## Native run: NOT done (blocked on dev's red)
+## Native run (hbox, tree `8c85e3e9` exported to `/tank/fn/scratch/peer-invite/tree2`)
 
-The developer image cannot be built from certified bytes: `books/poster-bytes-buffer`
-is in the image closure and is red on dev itself (dev `2c4dbf3d`/`e78e511e`: the D32
-join defect, fix lane pbb-d32), so `tools/proof_artifacts.py acquire --profile default`
-on hbox answers "no complete current artifact set" (tree synced to
-`/tank/fn/scratch/peer-invite/tree`). No image was built from uncertified books.
-The native witness is written and waits for that fix:
-`tests/test_native_peer_invite.py` (three cases: invite/accept/confirm with the
-refusals already-enrolled, unverified (tampered), already-confirmed,
-invitation-consumed, document-kind; an invitation this node never issued; the
-crash between consumption and enrolment on a developer image with
-`FN_PEER_TEST_STOP_AFTER_CONSUME`), driven by
-`planning/evidence/peer-invite-2026-09-25-image.sh` on hbox. The host file
-`host/native/peer-invite.lisp` has therefore not been compiled into an image yet.
+`planning/evidence/peer-invite-2026-09-25-image.sh` with the w28 toolchain and
+OpenSSL 3.5.8 (`FN_OPENSSL_PREFIX`, `LD_LIBRARY_PATH` exported):
+`proof_artifacts.py acquire` then `validate` (profile default, 148 roots,
+`result=loaded`), developer image built under `swarm-build` (0 undefined
+lines), then `python3 -m unittest -v tests.test_native_peer_invite` under a
+24 GB scope: 3 tests, OK (rc 0). `host/native/peer-invite.lisp` is now
+compiled into an image.
+
+- the invite/accept/confirm flow with the refusals already-enrolled,
+  unverified (tampered), already-confirmed, invitation-consumed and
+  document-kind: ok
+- an acceptance of an invitation this node never issued (`no-such-invitation`): ok
+- a crash between consumption and enrolment (`FN_PEER_TEST_STOP_AFTER_CONSUME`,
+  confirm exits 3, the retry enrols once, a third confirm is already-confirmed): ok
+
+| file | SHA-256 |
+| --- | --- |
+| `build/fn-host-developer` | `92bb8d8f67a9ba12fcd0ddadecadd1312d3d1a527b1be1763bb3cdf6d0c7571a` |
+| `build/fn-host-developer.core` | `b9f4a6b446c6aa25ce587dc8e2b6a5acf4df82207ccaa6b1c7a37a29a501e900` |
+| `build/lane/native-build-developer.log` | `9824b96a395639736d96473bc1e837347d07967528718222a6e2e2132f5d710c` |
+| `build/lane/native-peer-invite.log` | `273c689b6bddfe5fe18e2a6706af8ec88d06be9f8f5045ce050ad08daf67c90a` |
+
+Only the developer image was built; the default (release) image was not.
 
 ## Not done, and why
 
