@@ -166,11 +166,15 @@ The bigger lever is the book's own wall, the critical path. It grew from 5.7 s (
 
 ### 2c. Summary for the three hot books
 
-| book | dependents today | after the proposed split | edit-to-verdict today (measured) | after (estimated) |
-|---|---:|---:|---|---|
-| records-shape | 619 | 555 for a recognizer change; 18 for a spec or theorem change | 889.8 s (persvati, 628 books), 999.6 s (hbox, 560 books) | 861 s; 34 s |
-| injection | 423 | 216 | 770.7 s (persvati, 429 books, 2 jobs) | 456 s |
-| native-admin | 16 | 5 | 42.1 to 52.8 s | 21 s plus about 10 to 20 s of run overhead |
+| book | dependents today | after the proposed split | after (landed, dry run) | edit-to-verdict today (measured) | after (estimated) |
+|---|---:|---:|---:|---|---|
+| records-shape | 619 | 555 for a recognizer change; 18 for a spec or theorem change | not done | 889.8 s (persvati, 628 books), 999.6 s (hbox, 560 books) | 861 s; 34 s |
+| injection | 423 | 216 | 204 | 770.7 s (persvati, 429 books, 2 jobs) | 456 s |
+| native-admin | 16 | 5 | 5 (book wall 9.8 s -> 5.1 s) | 42.1 to 52.8 s | 21 s plus about 10 to 20 s of run overhead |
+| owner (packet 2) | 158 | 78 | 78 | | |
+| node-config (packet 2) | 213 | 87 | 80 | | |
+
+After-numbers: lane `lane/fanin-packets`, persvati `certify-20260925T021807Z-3342179` (427 roots, 446 books, 806.3 s, all passed); see [the packet record](evidence/fanin-packets-2026-09-25.md) for the six includes that the static scan missed.
 
 ## Ranked packets
 
