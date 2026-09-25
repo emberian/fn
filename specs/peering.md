@@ -1218,6 +1218,11 @@ RFC 5537 §5.1 leaves authentication to "local authorization policy". The
 rule above is fn's policy, and signature verification over the exact
 authored source is its "other means".
 
+NNT-010: a control article is filed only in its control group
+(`control.<verb>`, or `control` for an obsolete or unknown verb) when the
+operator created that group, and is otherwise refused with a distinct
+reason; it is never stored in the groups its `Newsgroups` field names.
+
 **Filing (implemented, C1).** `fn-ctl-classify`
 (`books/control-classify.lisp`) reads only the `Control` field, and the
 `Supersedes` field RFC 5536 §3.2.3 forbids beside it
