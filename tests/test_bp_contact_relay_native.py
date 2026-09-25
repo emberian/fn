@@ -30,14 +30,18 @@ class ByteRelay:
         self.port = self.listener.getsockname()[1]
         self.target = None
         self.cut_next = False
+        self.cut_after = None
         self.stopped = threading.Event()
         self.workers = []
         self.thread = threading.Thread(target=self._accept, daemon=True)
         self.thread.start()
 
-    def route(self, port, cut_next=False):
+    def route(self, port, cut_next=False, cut_after=None):
         self.target = port
         self.cut_next = cut_next
+        # Forward both ways, but sever both sides once the client has sent
+        # CUT_AFTER octets: a transfer that started and never finished.
+        self.cut_after = cut_after
 
     def _accept(self):
         while not self.stopped.is_set():
@@ -47,16 +51,17 @@ class ByteRelay:
                 continue
             except OSError:
                 break
-            target, cut = self.target, self.cut_next
+            target, cut, limit = self.target, self.cut_next, self.cut_after
             self.cut_next = False
             worker = threading.Thread(
-                target=self._exchange, args=(client, target, cut), daemon=True
+                target=self._exchange, args=(client, target, cut, limit),
+                daemon=True
             )
             self.workers.append(worker)
             worker.start()
 
     @staticmethod
-    def _exchange(client, target, cut):
+    def _exchange(client, target, cut, limit=None):
         with client:
             if target is None:
                 return
@@ -77,6 +82,7 @@ class ByteRelay:
                         pass
                     return
                 sockets = (client, upstream)
+                forwarded = 0
                 for connection in sockets:
                     connection.setblocking(False)
                 deadline = time.monotonic() + 35
@@ -90,6 +96,14 @@ class ByteRelay:
                         if not data:
                             return
                         destination = upstream if source is client else client
+                        if limit is not None and source is client:
+                            if forwarded + len(data) >= limit:
+                                try:
+                                    destination.sendall(data[:limit - forwarded])
+                                except OSError:
+                                    pass
+                                return
+                            forwarded += len(data)
                         try:
                             destination.sendall(data)
                         except OSError:
