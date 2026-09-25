@@ -547,7 +547,11 @@ class NativeVerifyTests(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory(prefix="fn-verify-native-")
         root = cls.root = Path(cls.temp.name)
         store, control, auth = root / "store", root / "control.sock", root / "auth.toml"
-        cls.invoke("store", store, "init", "fn.test")
+        # D27: the store's profile is the operator's.  FN_VERIFY_INIT_FLAGS
+        # (e.g. "--max-article-octets 4194304") gives the large cases an
+        # article bound that admits them.
+        cls.invoke("store", store, "init",
+                   *os.environ.get("FN_VERIFY_INIT_FLAGS", "").split(), "fn.test")
         cls.cert, key = root / "node-cert.pem", root / "node-key.pem"
         subprocess.run([OPENSSL, "req", "-x509", "-newkey", "rsa:2048", "-keyout", str(key),
                         "-out", str(cls.cert), "-sha256", "-days", "1", "-nodes",

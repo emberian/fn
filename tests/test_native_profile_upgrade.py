@@ -288,6 +288,8 @@ class OperatorFieldsTests(ProfileUpgradeFixture):
         self.stop(owner)
         self.assertEqual(served[1000].returncode, EXIT_OK, served[1000].stderr.decode())
         self.assertEqual(served[20001].returncode, EXIT_REFUSED, served[20001].stderr.decode())
+        # The owner's reason crosses the control socket (the bounds join).
+        self.assertIn(b"ARTICLE-EXCEEDS-PROFILE-BOUND", served[20001].stderr)
         self.assertEqual(self.headroom()["transactions-used"], 3)
 
     def test_a_raise_of_any_field_and_a_shrink_refused_by_name(self):
