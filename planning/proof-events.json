@@ -1879,12 +1879,12 @@
         {
           "kind": "theorem",
           "name": "fn-bs-step-preserves-k0-coverage",
-          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check). The per-cut corollaries are in byte-store-k0-step-bridge (planning/evidence/k0-corollaries-2026-09-25.md)."
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check). The per-cut corollaries are in byte-store-k0-step-bridge-prefix, -bridge and -bridge-frontier (planning/evidence/k0-corollaries-2026-09-25.md, k0-cuts-2026-09-25.md)."
         },
         {
           "kind": "theorem",
           "name": "fn-bs-k0-covered-crash-image-is-a-related-image",
-          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check). The per-cut corollaries are in byte-store-k0-step-bridge (planning/evidence/k0-corollaries-2026-09-25.md)."
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check). The per-cut corollaries are in byte-store-k0-step-bridge-prefix, -bridge and -bridge-frontier (planning/evidence/k0-corollaries-2026-09-25.md, k0-cuts-2026-09-25.md)."
         },
         {
           "kind": "theorem",
@@ -1919,7 +1919,7 @@
         {
           "kind": "theorem",
           "name": "fn-bs-k0-frontier-replaced-cut-relation-by-step",
-          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-replaced-cut-relation, which stays the cited per-cut event.",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-replaced-cut-relation, which stays the cited per-cut event. Its predecessor is fn-bs-k0-frontier-staged-durable-cut-relation-by-step (lane k0-cuts).",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
         },
         {
@@ -1931,13 +1931,13 @@
         {
           "kind": "theorem",
           "name": "fn-bs-k0-frontier-reserved-cut-relation-by-step",
-          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-reserved-cut-relation, which stays the cited per-cut event. Its predecessor pair's relation is fn-bs-k0-frontier-durable-cut-relation: the root barrier over a pending frontier rename is not a step-input kind.",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-frontier.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-reserved-cut-relation, which stays the cited per-cut event. Its predecessor is fn-bs-k0-frontier-durable-cut-relation-by-step, so the frontier chain is derived from the entry pair by the keystone (lane k0-cuts).",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
         },
         {
           "kind": "theorem",
           "name": "fn-bs-k0-record-attempted-cut-relation-by-step",
-          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-attempted-cut-establishes-relation, which stays the cited per-cut event. Its predecessor is fn-bs-k0-record-linked-cut-relation.",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-attempted-cut-establishes-relation, which stays the cited per-cut event. Its predecessor is fn-bs-k0-record-linked-cut-relation-by-step (lane k0-cuts).",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
         },
         {
@@ -1956,6 +1956,60 @@
           "kind": "theorem",
           "name": "fn-bs-k0-record-cleanup-cut-relation-by-step",
           "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-marker.lisp or -bridge.lisp): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-cleanup-cut-relation, which stays the cited per-cut event.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0s-root-fence-preserves-relation",
+          "note": "The root barrier with :ok from any related state outside the recovery window (a pending frontier rename, or a quiet root) keeps the relation with the same kernel (books/byte-store-k0-step-root-fence.lisp). It is the :ok arm of the root barrier in fn-bs-k0-step-inputp, so the keystone covers the frontier program's pair 12 (run_store.py:891). The recovery-window hypothesis has no must-fail (tests/acl2/byte-store-k0-cuts-tests.lisp).",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0p-stage-pairs-by-step",
+          "note": "The stage prefix every frontier and record run begins with -- create, write-all, fsync-file on a fresh staging name -- keeps the relation at each of its three states, derived from the entry pair by the keystone fn-bs-step-preserves-k0-coverage alone; hypotheses: related, outside the recovery window, root and transaction directories quiet, a name, the stage absent, typed octets. The quiet-directory and recovery-window hypotheses are the keystone's step-input guards and have no must-fail.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0p-record-link-inputs",
+          "note": "At the record program's pair 6 the link step's fn-bs-k0-step-inputp holds and the link returns :ok: the next transaction name is the candidate's sequence, the source is fenced, allocated and reads as the candidate, the destination is absent, the durable record list is the kernel's.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-created-and-written-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-prefix.lisp, lane k0-cuts): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-created-and-written-cut-relation, which stays the cited per-cut event. Pairs 2 and 4, from fn-bs-k0p-stage-pairs-by-step after the start observation.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-staged-durable-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-prefix.lisp, lane k0-cuts): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-staged-durable-cut-relation, which stays the cited per-cut event. Pair 7: the (:frontier-file :ok) observation after the stage prefix.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-frontier-durable-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-prefix.lisp, lane k0-cuts): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-frontier-durable-cut-relation, which stays the cited per-cut event. Pair 13, from the attempted corollary; the root barrier over the pending frontier rename is the :ok arm backed by fn-bs-k0s-root-fence-preserves-relation (books/byte-store-k0-step-bridge-frontier.lisp).",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-created-and-written-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-prefix.lisp, lane k0-cuts): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-created-and-written-cut-relation, which stays the cited per-cut event. Pairs 1 and 3, from fn-bs-k0p-stage-pairs-by-step.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-staged-durable-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-prefix.lisp, lane k0-cuts): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-staged-durable-cut-relation, which stays the cited per-cut event. Pair 6: the (:record-file :ok) observation after the stage prefix.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-record-linked-cut-relation-by-step",
+          "note": "Corollary of the keystone fn-bs-step-preserves-k0-coverage (books/byte-store-k0-step-bridge-prefix.lisp, lane k0-cuts): the step before the cut is discharged against fn-bs-k0-step-inputp and the keystone instantiated; restates fn-bs-k0-record-linked-cut-relation, which stays the cited per-cut event. Pair 8: the link's inputs at pair 6 are fn-bs-k0p-record-link-inputs.",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
         }
       ]
