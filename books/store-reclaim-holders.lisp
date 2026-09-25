@@ -114,3 +114,22 @@
         (articles (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
     (append (fn-rcl-summary rule now h verdicts articles)
             (list (fn-rcl-held-count rule now h verdicts articles)))))
+
+; -----------------------------------------------------------------------------
+; Why an :absent verdict holds nothing (`fn-rcl-verdict-heldp',
+; books/store-reclaim).  The statement index is re-derived from the stored
+; payloads at open (`fn-stx-index-of-store' over `fn-stx-delta' of each
+; payload, under the keyring of that open).  The verdict the Store recorded
+; for an article is `fn-stx-verdict-of-octets' of its payload under the
+; keyring of its acceptance (`fn-sn-finish-records-the-acceptance-verdict',
+; books/store-node-invariants).  When that verdict is :absent the payload
+; contributes nothing to the index under EVERY keyring, so reclaiming it
+; cannot change the index any later open derives from the payload.
+(defthm fn-rcl-absent-verdict-contributes-nothing
+  (implies (equal (fn-stx-verdict-token (fn-stx-verdict-of-octets payload k1 g))
+                  :absent)
+           (equal (fn-stx-delta payload k2) nil))
+  :hints (("Goal" :in-theory (enable (:d fn-stx-verdict-of-octets) (:d fn-stx-verdict)
+                                     (:d fn-stx-delta) (:d fn-stx-verifiedp)
+                                     (:d fn-stx-statement-of) fn-prin-verifiedp
+                                     fn-stx-make-verdict fn-stx-verdict-token))))
