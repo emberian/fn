@@ -852,7 +852,7 @@
     "books": 861,
     "books_in_root_closure": 857,
     "roots": 845,
-    "theorems": 11818,
+    "theorems": 11824,
     "functions": 8269,
     "assert_events": 12605,
     "must_fails": 1297,
@@ -8556,7 +8556,7 @@
       "book": "books/native-admin-peer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 33,
+      "theorems": 34,
       "functions": 49,
       "guards": {
         "verified": 0,
@@ -8616,7 +8616,7 @@
       "book": "books/native-admin.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 26,
       "functions": 30,
       "guards": {
         "verified": 0,
@@ -24733,7 +24733,7 @@
     {
       "theorem": "fn-sn-composite-delta-of-typed-article",
       "book": "books/store-node-invariants.lisp",
-      "line": 1446,
+      "line": 1458,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-composite-delta and the conclusion is that branch's value"
       ]
@@ -24741,7 +24741,7 @@
     {
       "theorem": "fn-sn-finish-disabled-is-no-op",
       "book": "books/store-node-invariants.lisp",
-      "line": 581,
+      "line": 593,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value"
       ]
@@ -24879,7 +24879,7 @@
     {
       "theorem": "list-octets-of-atom",
       "book": "books/native-admin-peer.lisp",
-      "line": 777,
+      "line": 792,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-native-admin-peer-list-octets and the conclusion is that branch's value"
       ]
@@ -25250,7 +25250,7 @@
       {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
-        "line": 744,
+        "line": 771,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
