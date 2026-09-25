@@ -2269,6 +2269,27 @@
         "planning/evidence/peer-invite-2026-09-25.md"
       ],
       "implementation_note": "A stronger fn guarantee over RFC 3977/5537, which say nothing about how peers agree: the spike's JSON invitation state is a configuration slot (delta kinds 13 and 14) with once-only consumption, and every decision is ACL2's. The peer record stays `peer add`; the owner's key-statement executor and succession-era invitations are other lanes' (PRF-098)."
+    },
+    {
+      "id": "NNT-018",
+      "title": "A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node",
+      "specification": "specs/peering.md#128-the-newnews-pull-feed",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-100"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-pull.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "planning/evidence/peer-pull-2026-09-25.md",
+        "tests/test_native_peer_pull.py"
+      ],
+      "implementation_note": "fn guarantee, not an RFC requirement: RFC 3977 7.4 defines NEWNEWS; the ack-bounded cursor and its FNPL journal are fn's. `fn operator CONFIG peer pull NAME SECONDS` sets the interval row; the owner's pull worker (host/native/pull-service.lisp) offers each listed id on a logical transit connection of that peer, so the local answer is the served IHAVE's."
     }
   ]
 }
