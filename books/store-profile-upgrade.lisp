@@ -11,7 +11,9 @@
 ;   * `fn-profile-upgradep' OLD NEW: OLD is a profile a store runs under
 ;     (format 8, or format 7 through its translation), NEW is a valid
 ;     format-8 profile (`fn-bs-profile-validp', the relations, not a table),
-;     NEW is not OLD, and none of its twelve fields is smaller.  The format 7
+;     NEW is not OLD, and none of its thirteen fields is smaller (the last is
+;     the committed-history requirement, which only goes from `unmarked' to
+;     `required'; its store-state gate is books/store-history-required.lisp).  The format 7
 ;     to 8 step is the case NEW = the translation of OLD.
 ;   * `fn-profile-upgrade-verdict' CURRENT TARGET: what the operator verb
 ;     (host/native/io.lisp `fnn-command-upgrade-profile') does, decided here:
@@ -49,7 +51,7 @@
 ; The upgrade relation
 
 (defun fn-profile-bound (n values)
-  "Field N of the profile a store runs under, as a natural (2..13)."
+  "Field N of the profile a store runs under, as a natural (2..14)."
   (declare (xargs :guard (natp n)))
   (fn-bs-profile-field n values))
 
@@ -75,7 +77,9 @@
        (<= (fn-profile-bound 10 old) (fn-profile-bound 10 new))
        (<= (fn-profile-bound 11 old) (fn-profile-bound 11 new))
        (<= (fn-profile-bound 12 old) (fn-profile-bound 12 new))
-       (<= (fn-profile-bound 13 old) (fn-profile-bound 13 new))))
+       (<= (fn-profile-bound 13 old) (fn-profile-bound 13 new))
+       ; D31: `unmarked' (0) may become `required' (1), never back.
+       (<= (fn-profile-bound 14 old) (fn-profile-bound 14 new))))
 
 ; The first field NEW makes smaller than OLD, by its operator name, or NIL.
 (defun fn-profile-shrunk-field (old new names)
