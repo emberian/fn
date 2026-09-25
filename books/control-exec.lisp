@@ -12,7 +12,7 @@
 ;   "ctl-grant NS P"   verbs | "revoked"     the operator's grant (native-admin)
 ;   "ctl-d MSGID"      the decision for the control article MSGID, one of
 ;                        "declined REASON"
-;                        "cancel TARGET P NS|-"      (a withdrawal record)
+;                        "cancel TARGET P NS|- GEN"  (a withdrawal record)
 ;                        "group newgroup|rmgroup NAME SERIAL P"
 ;                        "report SERIAL SCOPE +a +b -c ..."
 ;   "ctl-hw NAME"      the highest executed FN-Control-Serial for group NAME
@@ -244,7 +244,7 @@
                 "declined record-width")))
     (fn-cfg-set-policy (concatenate 'string "ctl-d " msgid) text)))
 
-(defun fn-ctl-cancel-decision (msgid args signer grants)
+(defun fn-ctl-cancel-decision (msgid args signer grants gen)
   ; RFC 5537 section 5.3: `cancel <msg-id>'.  An author's cancel needs no
   ; grant: whether it withdraws is decided against the target's own
   ; historical verdict when the view is built (fn-ctl-withdrawal-effect), so
@@ -261,7 +261,8 @@
                   (ns (let ((g (fn-ctl-grants-for p "cancel" grants)))
                         (if g g "-"))))
              (list (fn-ctl-decision-row
-                    msgid (fn-ctl-join (list "cancel" (car args) p ns))))))))
+                    msgid (fn-ctl-join (list "cancel" (car args) p ns
+                                             (fn-ctl-nat-string gen)))))))))
 
 (defun fn-ctl-group-decision (msgid verb args signer payload grants cfg)
   ; newgroup NAME [moderated] / rmgroup NAME, ordered by the authority's
@@ -432,7 +433,8 @@
             (args (caddr classified)))
         (cond
          ((equal verb "cancel")
-          (fn-ctl-cancel-decision msgid (fn-ctl-octet-strings args) signer grants))
+          (fn-ctl-cancel-decision msgid (fn-ctl-octet-strings args) signer grants
+                                  (fn-cfg-generation cfg)))
          ((member-equal verb '("newgroup" "rmgroup"))
           (fn-ctl-group-decision msgid verb (fn-ctl-octet-strings args) signer
                                  payload grants cfg))
@@ -495,7 +497,7 @@
            (rest (fn-ctl-cancel-records (cdr rows))))
       (if (and (fn-ctl-prefixp "ctl-d " a) (fn-ctl-prefixp "cancel " b))
           (let ((w (fn-ctl-split b)))
-            (if (equal (len w) 4)
+            (if (equal (len w) 5)
                 (cons (list (fn-ctl-after "ctl-d " a) (cadr w) (caddr w) (cadddr w))
                       rest)
               rest))
