@@ -174,7 +174,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "status" "recover" "store" "group" "capacity" "peer" "bp-boundary" "policy" "principal")))
+  (member-equal subject '("help" "init" "run" "post" "status" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "principal")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -194,12 +194,14 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME | peer list")
         ((equal subject "bp-boundary")
          "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...] (IPv4 loopback; the short form grants no inbound articles; carries lists the source EIDs this neighbour may relay, each judged under its own enrollment here)")
+        ((equal subject "bp-route")
+         "usage: fn operator CONFIG bp-route {add PATTERN BOUNDARY [PRIORITY] | remove PATTERN BOUNDARY} (PATTERN is a BP EID, or one ending in * for every EID with that prefix; the next hop of held transit, spec bp-node-machine 4.7)")
         ((equal subject "policy")
          "usage: fn operator CONFIG policy set path-identity IDENTITY")
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list|set-password NAME [--principal HEX] [--posting|--no-posting]}")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|status|recover|store|group|capacity|peer|bp-boundary|policy|principal}")))
+        (t "usage: fn operator CONFIG {help|init|run|post|status|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|principal}")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -260,7 +262,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "store") (fn-nop-parse-store rest config))
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
-                 (equal command "policy"))
+                 (equal command "bp-route") (equal command "policy"))
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
@@ -556,6 +558,7 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "capacity")
            (equal (fn-native-operator-result-command result) "peer")
            (equal (fn-native-operator-result-command result) "bp-boundary")
+           (equal (fn-native-operator-result-command result) "bp-route")
            (equal (fn-native-operator-result-command result) "policy"))))
 
 (defun fn-native-operator-result-admin-plan (result)
@@ -618,6 +621,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "capacity")
                (equal (fn-native-operator-result-command result) "peer")
                (equal (fn-native-operator-result-command result) "bp-boundary")
+               (equal (fn-native-operator-result-command result) "bp-route")
                (equal (fn-native-operator-result-command result) "policy")) :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           (t :owner-required))))
