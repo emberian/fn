@@ -14,7 +14,7 @@ planning/evidence/k0-rest-2026-09-25.md.
   fn-bs-k0-profile-cuts-relation-by-step and the any-outcome step theorems
   at their pairs. Farm run-20260925T100549Z-fdd9 passed (manifest
   certify-20260925T100619Z-3650007).
-- (next commit) PKT-086: books/byte-store-k0-authority-error,
+- eb3ff4f9 PKT-086: books/byte-store-k0-authority-error,
   fn-bs-k0a-authority-fsync-error-preserves-relation. It covers the
   :root/:transactions barriers' error outcomes (the K7 pair-11 EIO for any
   related state, and root EIO over a pending frontier rename) as a new
