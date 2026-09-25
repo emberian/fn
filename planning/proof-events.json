@@ -3917,6 +3917,14 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-native-config-load-renderable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-loaded-show-round-trip"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-native-mission-profiles-valid"
         },
         {
