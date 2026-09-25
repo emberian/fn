@@ -502,7 +502,7 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-pb-existing-action msgid payload groups s)))
+             (existing (fn-rcl-existing-action msgid payload groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -580,7 +580,7 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-pbb-existing-action msgid fn-octets groups s)))
+             (existing (fn-rclb-existing-action msgid fn-octets groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -1599,7 +1599,7 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-pb-existing-action
+      (let ((action (fn-rcl-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
@@ -1621,7 +1621,7 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-pbb-existing-action
+      (let ((action (fn-rclb-existing-action
                      (fn-store-octets->string msgid-octets) fn-octets groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
