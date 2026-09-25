@@ -36,6 +36,8 @@
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
   store lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
   (workers nil) (clients nil) tls-context
+  ;; The checkpoint publication's thread while one runs (fnn-owner-maybe-publish).
+  (publisher nil)
   (start-hooks nil) (stop-hooks nil) (close-hooks nil)
   ;; Private executable-test injection.  Production instances leave this NIL;
   ;; the value names a real connection envelope, not a second fault decision.
@@ -457,24 +459,19 @@ completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
         (t (fnn-fault "unexpected feed reconciliation: ~a" resolution))))))
 
 (defun fnn-owner-recover-core (store records max-connections)
-  "Install the owner from the Store open's result.  When the open verified the
-state checkpoint (open-mode (:checkpoint S k)), the owner opens from that
-checkpoint over the K records after S (fn-owner-recover-from-checkpoint);
-otherwise it replays the whole history (fn-owner-recover).  Both install
-through fn-ock-recover-extended; the keystone
-fn-owner-recover-from-checkpoint-equals-full-recover says they install the
-same owner.  Returns the checkpoint's S, or NIL."
+  "Install the owner from the Store open this process just ran.  The open
+(full replay, or the verified state checkpoint over the records after it) left
+its extended checkpoint E and ACL2's (fn-sco-store-open E ...) in the global
+`fn-store-sco-open'; fn-owner-recover-from-store-open installs from them with
+fn-ock-install, which is fn-ock-recover-extended of E
+(fn-ock-install-of-store-open-by-definition), so the keystone
+fn-owner-recover-from-checkpoint-equals-full-recover says both paths install
+the full open's owner, and nothing is replayed a second time.  Returns the
+checkpoint's S, or NIL."
+  (declare (ignore records))
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
-         (configs (mapcar #'fnn-octet-list (fnn-config-records store)))
-         (result
-           (if s
-               (fnn-owner-core 'fn-owner-recover-from-checkpoint
-                               (mapcar #'fnn-octet-list (nthcdr s records))
-                               (fnn-store-frontier store) configs max-connections)
-               (fnn-owner-core 'fn-owner-recover
-                               (mapcar #'fnn-octet-list records)
-                               (fnn-store-frontier store) configs max-connections))))
+         (result (fnn-owner-core 'fn-owner-recover-from-store-open max-connections)))
     (unless (eq result :recovering)
       (fnn-fault "owner rejected committed history"))
     (unless (eq (fnn-owner-core 'fn-owner-sco-note-durable s) :noted)
@@ -536,6 +533,7 @@ same owner.  Returns the checkpoint's S, or NIL."
                     (unless (and (integerp count) (>= count 0))
                       (fnn-fault "owner returned malformed feed restart count")))
                   (fnn-owner-feed-flush service)))
+              (fnn-owner-key-statement-recover service records)
               service))
         (error (e)
           (when service (fnn-owner-feed-close-all service))
@@ -783,8 +781,10 @@ follows is justified only by this line."
           ;; (books/octets-stobj.lisp): filled once here from the byte
           ;; vector, read in place by the existing-article test and the
           ;; prepare (host/owner-host.lisp fn-owner-existing-action-buffer,
-          ;; fn-owner-prepare-buffer).  Nothing between the fill and the
-          ;; prepare touches the buffer; both run under the service mutex.
+          ;; fn-owner-prepare-buffer), and the subject identity is digested
+          ;; from it in place (fnn-metadata-buffer, fn-owner-subject-id-buffer;
+          ;; books/sha256-buffer.lisp).  Nothing between the fill and the
+          ;; prepare writes the buffer; all of it runs under the service mutex.
           (fnn-octets-fill payload)
           (case (fnn-action (fnn-core-buffer-state 'fn-owner-existing-action-buffer
                                                    (fnn-octet-list msgid) codes))
@@ -795,7 +795,7 @@ follows is justified only by this line."
             (fnn-advance-frontier store
                                   (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
             (multiple-value-bind (obligation subject ignored)
-                (fnn-metadata msgid payload)
+                (fnn-metadata-buffer msgid)
               (declare (ignore ignored))
               (let ((prepared
                       (fnn-action
@@ -930,8 +930,13 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                      ;; record's token, not an input to any decision.
                      (setq *fnn-owner-transit-detail* :carried)
                      (return-from fnn-owner-attempt-transit
-                       (fnn-owner-identity-commit service event)))))
-               (unless (and (consp plan) (eq (first plan) :ok))
+                       (fnn-owner-statement-committed
+                        service event
+                        (fnn-owner-identity-commit service event))))))
+               ;; PRF-098: the :revoked arm (NNTP transit only) takes the
+               ;; same two primitive observations as :ok, over the carrier's
+               ;; keys, and commits fn-pa-revoked-event's composite.
+               (unless (and (consp plan) (member (first plan) '(:ok :revoked)))
                  (return-from fnn-owner-attempt-transit
                    (fnn-owner-transit-refused
                     (fnn-owner-transit-class plan payload nntp-transit-p
@@ -970,7 +975,10 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                           (fnn-owner-core 'fn-owner-next-store-coordinates))
                         (event
                           (fnn-owner-core
-                           'fn-owner-peer-carried-event coordinates
+                           (if (eq (first plan) :revoked)
+                               'fn-owner-peer-revoked-event
+                             'fn-owner-peer-carried-event)
+                           coordinates
                            (fnn-octet-list msgid) (fnn-octet-list payload)
                            codes (fnn-octet-list obligation)
                            (fnn-octet-list subject) (fnn-octet-list evidence)
@@ -983,7 +991,102 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                      (unless (eq boundary :ok)
                        (return-from fnn-owner-attempt-transit
                          (fnn-owner-transit-refused boundary))))
-                   (fnn-owner-identity-commit service event)))))))))))
+                   (when (eq (first plan) :revoked)
+                     ;; A log detail only: the Store record's token.
+                     (setq *fnn-owner-transit-detail* :revoked))
+                   (fnn-owner-statement-committed
+                    service event
+                    (fnn-owner-identity-commit service event))))))))))))
+
+;;; PRF-098: the key-statement executor, run by the owner right after it
+;;; committed a kind-4 composite (books/key-statements.lisp, through
+;;; host/owner-host.lisp), whatever its verdict: ACL2 declines every
+;;; composite whose stored verdict is not :verified
+;;; (fn-ks-carried-or-revoked-statement-never-changes-a-keyring).  ACL2 names
+;;; the one primitive observation (the proof of possession's D09 subject) or
+;;; none, decides from the stored verdict, the live authorities rows and the
+;;; Store's snapshots, and builds the kind-3 event at its own next
+;;; generation; the host observes, commits and logs.  A composite that is no
+;;; statement decides nothing.
+;;;
+;;; The answer is the key change's own outcome: :committed, :refused (the
+;;; Store refused the kind-3 event; the statement article stays accepted),
+;;; or nil (no change was attempted).  An uncertain kind-3 commit is not
+;;; answered here: its condition propagates like any uncertain Store
+;;; outcome and the open's recovery (fnn-owner-key-statement-recover)
+;;; decides the statement again.
+(defun fnn-owner-key-statement (service event &optional at-open)
+  (let* ((request (fnn-owner-core 'fn-owner-key-statement-request event))
+         (preimage (and request
+                        (fnn-core 'fn-hsig-host-preimage (first request)
+                                  (second request) (third request))))
+         (observations (and preimage
+                            (fnn-hsig-observe-raw
+                             (cdr (first (second request)))
+                             (cdr (second (second request)))
+                             preimage (fourth request))))
+         (ml-observation (second observations))
+         (observed-ml-key (and (consp ml-observation) (second ml-observation)
+                               (coerce (second ml-observation) 'list)))
+         (ed (first observations))
+         (ml (and (consp ml-observation) (first ml-observation)))
+         (plan (fnn-owner-core 'fn-owner-key-statement-plan event
+                               observed-ml-key ed ml)))
+    (when plan
+      (let* ((acting (and (consp plan) (member (first plan) '(:enroll :revoke))))
+             (coordinates (and acting
+                               (fnn-owner-core 'fn-owner-next-store-coordinates)))
+             (kind3 (and acting
+                         (fnn-owner-core 'fn-owner-key-statement-event event
+                                         observed-ml-key ed ml coordinates)))
+             (outcome
+               (and kind3
+                    (handler-case
+                        (progn (fnn-owner-identity-commit service kind3)
+                               :committed)
+                      (fnn-store-indeterminate (e) (error e))
+                      (fnn-store-fault (e) (error e))
+                      (fnn-store-error () :refused)))))
+        (fnn-log-line (fnn-owner-core 'fn-owner-key-statement-log-line plan
+                                      outcome (and at-open t)))
+        outcome))))
+
+;;; The cut between the statement's commit and its key change's
+;;; (books/key-statements.lisp fn-ks-cut).  A developer image started with
+;;; FN_NATIVE_KEY_STATEMENT_FAULT=statement-committed:kill dies here, after a
+;;; kind-4 composite is durable and before the executor runs; production has
+;;; no injection branch.
+(defun fnn-owner-key-statement-cut ()
+  (let ((raw (fnn-developer-selector "FN_NATIVE_KEY_STATEMENT_FAULT")))
+    (when raw
+      (unless (string= raw "statement-committed:kill")
+        (fnn-fault "invalid FN_NATIVE_KEY_STATEMENT_FAULT (expected statement-committed:kill)"))
+      (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+      (fnn-fault "test SIGKILL did not terminate the process"))))
+
+;;; WORD is the kind-4 commit's outcome.  After a durable composite the
+;;; executor runs; a refused key change leaves WORD (the article is
+;;; accepted) and names the refusal in the transit detail, so the reported
+;;; outcome names both.
+(defun fnn-owner-statement-committed (service event word)
+  (when (eq word :durable)
+    (fnn-owner-key-statement-cut)
+    (when (eq (fnn-owner-key-statement service event) :refused)
+      (setq *fnn-owner-transit-detail* :key-change-refused)))
+  word)
+
+;;; The open's recovery (books/key-statements.lisp fn-ks-recover): the newest
+;;; record the open read, when it is a statement, is executed exactly as at
+;;; acceptance.  A change the cut lost is made; a change already made is the
+;;; newest record, which is no statement; a declined statement declines again
+;;; unless the open's configuration or observations differ, and then it is
+;;; the decision an acceptance now would make.
+(defun fnn-owner-key-statement-recover (service records)
+  (when records
+    (let ((pending (fnn-owner-core 'fn-owner-key-statement-pending
+                                   (fnn-octet-list (car (last records))))))
+      (when pending
+        (fnn-owner-key-statement service pending t)))))
 
 ;;; The served POST's attempt, and the bound local submission's.  The one
 ;;; ingress decision transit uses (fnn-owner-attempt-transit: ACL2's
@@ -1242,8 +1345,15 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
             (fnn-owner-action 'fn-owner-fault cid)
             (return-from fnn-owner-drain-one
               (values cid (fnn-owner-octets-global 'fn-owner-output) t)))
+          ;; The identities here serve the transfer decision only (the
+          ;; obligation and subject fn-owner-transit-decide takes below); a
+          ;; served POST derives them once, from the octet buffer, inside
+          ;; fnn-owner-attempt (fnn-metadata-buffer), so the payload is not
+          ;; converted and digested a second time per POST.
           (multiple-value-bind (obligation subject ignored)
-              (fnn-metadata msgid payload)
+              (if (eq taken :taken-transit)
+                  (fnn-metadata msgid payload)
+                (values nil nil nil))
             (declare (ignore ignored))
             (let* ((transitp (eq taken :taken-transit))
                    (transit-kind
@@ -1880,40 +1990,81 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
       (when (null workers) (return))
       (dolist (worker workers) (sb-thread:join-thread worker)))))
 
+(defun fnn-owner-publish-captured (service captured)
+  "The publication's thread: ACL2's fn-ock-publication over the values captured
+under the owner mutex (the next checkpoint and its file octets), the write
+through fn-bs-scp-program (fnn-state-checkpoint-write), both outside the
+mutex, then fn-owner-sco-publication-done under it.  Served commands run
+meanwhile; the file is the capture of the history at the capture point
+(fn-ock-publication-is-the-capture-at-the-capture-point).  A failed write
+leaves the old checkpoint (or, at and after the rename, the old or the new
+one: the crash keystone) and serving continues."
+  (destructuring-bind (base configs records segment count suffix) captured
+    (declare (ignore count))
+    (let ((started (get-internal-real-time)) (next nil) (durablep nil))
+      (handler-case
+          (let ((answer (fnn-core 'fn-ock-publication base configs records segment)))
+            (unless (and (consp answer) (consp (cdr answer)))
+              (fnn-fault "owner returned a malformed checkpoint publication"))
+            (setq next (first answer))
+            (let ((file (second answer))
+                  (sequence (length records)))
+              (cond
+                ((eq file :unencodable)
+                 (fnn-err "CHECKPOINT auto refused=unencodable"))
+                ((and (fnn-octet-list-p file) file)
+                 (let ((octets (fnn-octets file)))
+                   (handler-case
+                       (progn
+                         (fnn-state-checkpoint-write (fnn-owner-service-store service) octets)
+                         (setq durablep t)
+                         (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d ms=~d"
+                                  sequence suffix (length octets)
+                                  (round (* 1000 (- (get-internal-real-time) started))
+                                         internal-time-units-per-second)))
+                     ((or fnn-store-io-refusal fnn-store-indeterminate) (e)
+                       (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" sequence e)))))
+                (t (fnn-fault "owner returned a malformed checkpoint file")))))
+        (serious-condition (e)
+          (fnn-err "CHECKPOINT auto failed: ~a" e)))
+      (unwind-protect
+           (handler-case
+               (fnn-with-owner (service)
+                 (when next
+                   (let ((done (fnn-owner-core 'fn-owner-sco-publication-done
+                                               next durablep)))
+                     (when (and durablep (not (integerp done)))
+                       (fnn-err "CHECKPOINT auto: owner refused the durable sequence")))))
+             (serious-condition (e)
+               (fnn-err "CHECKPOINT auto failed: ~a" e)))
+        (fnn-with-owner (service)
+          (setf (fnn-owner-service-publisher service) nil
+                (fnn-owner-service-workers service)
+                (delete sb-thread:*current-thread*
+                        (fnn-owner-service-workers service) :test #'eq)))))))
+
 (defun fnn-owner-maybe-publish (service)
   "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts,
 never inside a command: when fn-ock-publication-duep says the suffix since
-the newest durable checkpoint reached half the profile's K, ACL2 extends the
-owner's base checkpoint over the records after it (fn-ock-next-checkpoint)
-and returns the file; the host writes it through fn-bs-scp-program
-(fnn-state-checkpoint-write) under the owner mutex, so no command runs
-against the Store while the checkpoint is staged.  A failed write leaves the
-old checkpoint (or, at and after the rename, the old or the new one: the
-crash keystone) and serving continues; the next attempt waits for another
-commit.  The owner state is only read here."
+the newest durable checkpoint reached half the profile's K, ACL2 records the
+attempt and hands back the values the publication reads (fn-owner-sco-capture)
+under the owner mutex.  The extension, the encoding and the write run on
+their own thread, outside the mutex (fnn-owner-publish-captured), so served
+commands and accepts continue; at most one publication runs at a time, and
+the stop joins it with the client workers.  The owner state is only read
+here, and written only through fn-owner-sco-publication-done."
   (fnn-with-owner (service)
-    (unless (fnn-owner-service-stopping service)
+    (unless (or (fnn-owner-service-stopping service)
+                (fnn-owner-service-publisher service))
       (when (eq (fnn-owner-core 'fn-owner-sco-due) :due)
-        (let ((started (get-internal-real-time))
-              (answer (fnn-owner-core 'fn-owner-sco-publish-octets)))
-          (cond
-            ((eq answer :unencodable)
-             (fnn-err "CHECKPOINT auto refused=unencodable"))
-            ((and (consp answer) (fnn-octet-list-p (first answer)) (first answer)
-                  (integerp (second answer)) (integerp (third answer)))
-             (let ((octets (fnn-octets (first answer))))
-               (handler-case
-                   (progn
-                     (fnn-state-checkpoint-write (fnn-owner-service-store service) octets)
-                     (unless (eq (fnn-owner-core 'fn-owner-sco-published) :published)
-                       (fnn-fault "owner lost the pending checkpoint sequence"))
-                     (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d ms=~d"
-                              (second answer) (third answer) (length octets)
-                              (round (* 1000 (- (get-internal-real-time) started))
-                                     internal-time-units-per-second)))
-                 ((or fnn-store-io-refusal fnn-store-indeterminate) (e)
-                   (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" (second answer) e)))))
-            (t (fnn-fault "owner returned a malformed checkpoint publication"))))))))
+        (let ((captured (fnn-owner-core 'fn-owner-sco-capture)))
+          (unless (and (true-listp captured) (= (length captured) 6))
+            (fnn-fault "owner returned a malformed checkpoint capture"))
+          (let ((thread (sb-thread:make-thread
+                         (lambda () (fnn-owner-publish-captured service captured))
+                         :name "fn owner checkpoint")))
+            (setf (fnn-owner-service-publisher service) thread)
+            (push thread (fnn-owner-service-workers service))))))))
 
 (defun fnn-owner-accept (service listener once)
   ;; Darwin does not reliably wake a blocking accept(2) when another context

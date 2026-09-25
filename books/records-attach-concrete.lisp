@@ -38,7 +38,8 @@
                           fn-record-impl-accepted-input-bounds
                           fn-record-impl-accepted-input-magic
                           fn-record-impl-accepted-schema-is-the-stamp-kind
-                          fn-record-impl-encode-length-bound)
+                          fn-record-impl-encode-length-bound
+                          fn-record-impl-encode-narrow-length-bound)
                     :in-theory (union-theories
                                  '(fn-rcon-record-encode-impl-is-record-encode-impl)
                                  (theory 'minimal-theory)))))

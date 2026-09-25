@@ -1446,6 +1446,81 @@ reconfigure generation <n>`, `owed`, `declined <reason>` or `report
 <serial>`. It is the node's historical claim, like `:fn-verified`, and
 `tools/fn_verify.py` checks only the signature half of it.
 
+## 9. Key statements: succession and revocation (PRF-098)
+
+The spike (`planning/evidence/spike-peering-2026-09-25.md`, theorems 2 and 3)
+is the specification; dev re-implements it in ACL2 with the owner as the
+executor. This is a stronger fn guarantee and local policy: no RFC defines
+key statements.
+
+NNT-014: a key statement (succession or revocation) changes this node's
+keyring only when the owner accepted it with a :verified verdict under its
+principal's current enrollment and a grant of `keys` covers every group it
+names; a succession also needs a proof of possession by the new keys over
+its own Message-ID; after a revocation no article of that principal is
+accepted as :verified, and one delivered by NNTP transit under keys once
+enrolled is stored as :revoked evidence.
+
+**The statement.** An ordinary signed article whose authored source carries
+`FN-Key-Statement: succession-v1|revocation-v1`, `FN-Key-Principal`,
+and for a succession `FN-Key-Old-Ed25519`, `FN-Key-New-Ed25519`,
+`FN-Key-New-ML-DSA-65` and the proof of possession `FN-Key-PoP-Ed25519` /
+`FN-Key-PoP-ML-DSA-65` (lowercase hex, folded; `books/key-statements.lisp`
+`fn-ks-statement`). The proof of possession is the D09 hybrid signature of
+the principal under the NEW key set over `fn-ks-pop-source`: a domain tag,
+the statement's Message-ID and the old Ed25519 key.
+
+**The decision (C2's shape).** `fn-ks-plan`: the stored verdict of the
+statement's kind-4 composite must be `:verified` and `fn-ctl-authorize` with
+the verb `keys` must execute over the statement's Newsgroups; the statement
+names that principal; the verdict's keyring generation is the principal's
+current enrollment; for a succession the old key is that enrollment's
+Ed25519 key, the new key set differs, and both primitive observations of
+the proof of possession verified (the host observes over the preimage ACL2
+names, `fn-ks-pop-request`). `fn-ks-execute` builds the kind-3 event with
+`fn-hl-enroll-event` or `fn-hl-revoke-event` at `fn-hl-next-generation`.
+The owner runs it right after committing any kind-4 composite, carried and
+revoked ones included, which it declines (`host/native/owner.lisp`
+`fnn-owner-statement-committed`, `fnn-owner-key-statement`). The operator
+grants the verb with `operator CONFIG control grant PRINCIPAL keys
+NAMESPACE`; `keys` is grantable beside `cancel`.
+
+**Outcomes.** The article and its key change are two Store transactions,
+and their outcomes are reported apart (D13): a Store refusal of the key
+change leaves the statement accepted (the poster or peer is answered as
+accepted), and the transit log line carries `detail=key-change-refused`
+and the owner log `key-statement enrol-successor refused` (or `revoke
+refused`). An uncertain key-change commit is an uncertain outcome and a
+recovery event, like any other.
+
+**The crash cut.** A process death after the statement's commit and before
+its change's leaves the statement accepted and unexecuted. The model names
+the cut (`fn-ks-cut`) and the open's recovery (`fn-ks-recover`): at open
+the owner executes the newest Store record when it is a statement, exactly
+as at acceptance (`fnn-owner-key-statement-recover`), and logs `...
+at-open`. From the cut this reaches the uninterrupted acceptance under the
+open's configuration and observations (`fn-ks-recover-completes-the-cut`);
+after an acceptance that acted it changes nothing
+(`fn-ks-recover-after-an-acting-acceptance-changes-nothing`); and a
+statement whose change is already the newest snapshot never acts again
+(`fn-ks-execute-is-idempotent`). A statement that declined is still the
+newest record until the next commit, so an open decides it again under the
+open's configuration: a grant added before the restart lets it act then
+(local policy; a decline is not recorded).
+
+**The revoked arm.** `fn-pa-current-plan` takes TRANSITP (t only on NNTP
+transit) and has a fifth outcome `(:revoked ...)`: the principal's newest
+snapshot here is its tombstone at G, that tombstone is the snapshot G names,
+and the carrier's keys were enrolled for the principal before.
+`fn-pa-revoked-event` binds both primitive observations and stores the
+verdict `:revoked` at G (token code 5), rendered `revoked HEX keyring G`,
+never `verified`. Replay admits it exactly when G names a tombstone of that
+principal (`fn-hsig-revoked-tombstone-bindsp`).
+
+**The next generation.** Control request kinds 7 and 8
+(`hybrid-enroll-next`, `hybrid-revoke-next`) name no generation; the owner
+asks `fn-hl-next-generation`. Kinds 4 and 6 keep their explicit generation.
+
 ## What this design does not decide
 
 Peer authentication (A-PEER stands; `(:principal id)` is a reserved slot,

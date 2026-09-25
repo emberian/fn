@@ -135,10 +135,10 @@
 
 (local
  (defthm fn-lb-ok-plan-names-the-carrier-principal
-   (implies (equal (car (fn-pa-current-plan received snapshots carried)) :ok)
+   (implies (equal (car (fn-pa-current-plan received snapshots carried nil)) :ok)
             (and (consp (fn-pa-carrier-form received))
                  (equal (car (fn-pa-carrier-form received)) :ok)
-                 (equal (nth 2 (fn-pa-current-plan received snapshots carried))
+                 (equal (nth 2 (fn-pa-current-plan received snapshots carried nil))
                         (nth 2 (fn-pa-carrier-form received)))))
    :hints (("Goal" :in-theory (e/d (fn-pa-current-plan)
                                    (fn-pa-carrier-form
@@ -156,9 +156,9 @@
                        principal)
                 principal
                 (equal (car (fn-lb-owner-gate o cfg bindings received)) :pass)
-                (equal (car (fn-pa-current-plan received snapshots carried))
+                (equal (car (fn-pa-current-plan received snapshots carried nil))
                        :ok))
-           (equal (nth 2 (fn-pa-current-plan received snapshots carried))
+           (equal (nth 2 (fn-pa-current-plan received snapshots carried nil))
                   principal))
   :hints (("Goal" :in-theory (e/d (fn-lb-gate)
                                   (fn-pa-current-plan fn-pa-carrier-form

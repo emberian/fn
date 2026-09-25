@@ -1,0 +1,56 @@
+{
+ "image": "/tank/fn/scratch/rep-wave-c/base-tree/build/fn-host-developer-prof",
+ "launcher_sha256": "cecba22fc6903cd0e61a35f6c5a348c4c84e26f44566b69766402c9a6bca676b",
+ "core_sha256": "2cdd0d286bdc5701731da0842805f91b150d2a44de464e6dd592bc53ac28f2aa",
+ "profile": "default",
+ "articles": 12,
+ "payload_octets": 2048,
+ "article_octets": 2048,
+ "stats": 4,
+ "count": true,
+ "init_out": "fnp: fnn-metadata-buffer not fbound\nfnp: fnn-subject-id-buffer not fbound\nfnp: fn-store-subject-id-of-buffer not fbound\nfnp: fn-shb-subject-id not fbound\nfnp: fn-sha256-of-prefixed-buffer not fbound\nfnp: counters installed\ninitialized /dev/shm/rwc-smoke/c/store\naccepted operator init\n",
+ "rss_at_quarter_kib": 332092,
+ "stats_seconds": 0.009936591610312462,
+ "load_seconds": 1.0317225102335215,
+ "post_first_quarter": {
+  "n": 3,
+  "min_ms": 2.497553825378418,
+  "median_ms": 3.528788685798645,
+  "p95_ms": 3.840705379843712,
+  "max_ms": 3.840705379843712
+ },
+ "post_last_quarter": {
+  "n": 3,
+  "min_ms": 2.2769514471292496,
+  "median_ms": 2.4284925311803818,
+  "p95_ms": 2.4357829242944717,
+  "max_ms": 2.4357829242944717
+ },
+ "post_all": {
+  "n": 12,
+  "min_ms": 2.0739054307341576,
+  "median_ms": 2.4321377277374268,
+  "p95_ms": 3.528788685798645,
+  "max_ms": 3.840705379843712
+ },
+ "rss_after_load_kib": 346688,
+ "rss_slope_kib_per_article": 1621.7777777777778,
+ "counts": "fn-octets$c-list 4\nfn-owner-chunk 24\nfn-owner-existing-action-buffer 4\nfn-owner-prepare-buffer 4\nfn-pbb-existing-action 8\nfn-sha256-stobj 36\nfnn-frame 4\nfnn-metadata 8\nfnn-obligation-id 8\nfnn-octet-list 120\nfnn-octets-fill 4\nfnn-owner-attempt 4\nfnn-owner-handle-chunk 24\nfnn-subject-id 8\nfnn-trailer 4\n",
+ "counts_per_post": {
+  "fn-octets$c-list": 1.0,
+  "fn-owner-chunk": 6.0,
+  "fn-owner-existing-action-buffer": 1.0,
+  "fn-owner-prepare-buffer": 1.0,
+  "fn-pbb-existing-action": 2.0,
+  "fn-sha256-stobj": 9.0,
+  "fnn-frame": 1.0,
+  "fnn-metadata": 2.0,
+  "fnn-obligation-id": 2.0,
+  "fnn-octet-list": 30.0,
+  "fnn-octets-fill": 1.0,
+  "fnn-owner-attempt": 1.0,
+  "fnn-owner-handle-chunk": 6.0,
+  "fnn-subject-id": 2.0,
+  "fnn-trailer": 1.0
+ }
+}

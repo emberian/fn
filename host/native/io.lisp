@@ -968,6 +968,15 @@ which `fn-store-sn-prepare' then refuses."
   (fnn-as-octets (fnn-core 'fn-store-subject-id-of-payload
                            (fnn-octet-list payload))))
 
+(defun fnn-subject-id-buffer ()
+  "FNN-SUBJECT-ID of the payload in the octet buffer, digested in place.
+host/owner-host.lisp `fn-owner-subject-id-buffer' calls books/sha256-buffer.lisp
+`fn-shb-subject-id': the subject preimage's fixed head is a short list and
+the payload is read from the buffer by index, so no octet list of the
+payload is built for the digest (D27 wave C; the served POST,
+host/native/owner.lisp fnn-owner-attempt)."
+  (fnn-as-octets (fnn-core-buffer-state 'fn-owner-subject-id-buffer)))
+
 (defun fnn-obligation-id (msgid subject)
   "Obligation identity v1, preimage and digest both ACL2's.  See FNN-SUBJECT-ID."
   (fnn-as-octets (fnn-core 'fn-store-obligation-id-of
@@ -2113,6 +2122,20 @@ from the live ACL2 configuration; the native host does not name a provenance."
     (values (fnn-identity-text obligation) (fnn-identity-text subject)
             (fnn-provenance-post))))
 
+(defun fnn-metadata-buffer (msgid)
+  "FNN-METADATA with the payload in the octet buffer (the served POST): the
+subject identity is FNN-SUBJECT-ID-BUFFER, the rest as FNN-METADATA."
+  (let* ((subject (handler-case (fnn-subject-id-buffer)
+                    (fnn-store-indeterminate (e) (error e))
+                    (fnn-store-fault (e) (error e))
+                    (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity"))))
+         (obligation (handler-case (fnn-obligation-id msgid subject)
+                       (fnn-store-indeterminate (e) (error e))
+                       (fnn-store-fault (e) (error e))
+                       (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity")))))
+    (values (fnn-identity-text obligation) (fnn-identity-text subject)
+            (fnn-provenance-post))))
+
 (defun fnn-group-codes-for (store groups)
   (when (null groups) (fnn-refuse "provide one or more distinct configured groups"))
   (fnn-group-codes groups (fnn-store-config-domain store)))
@@ -3211,7 +3234,7 @@ serialized profile when the saved image later starts."
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
     "FN_NATIVE_PROFILE_FAULT" "FN_NATIVE_STATE_CHECKPOINT_FAULT"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
-    "FN_NATIVE_AUTH_ADMIN_FAULT"
+    "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"

@@ -139,7 +139,7 @@ No book this lane edited is over 10 s.
 The hbox developer image of `fe6c8dcf` (`/tank/fn/scratch/reader-surface/`,
 `img.sh`, w28) stopped at certification: `books/poster-bytes-buffer`
 fails at `fn-pbb-source-index-is-inj-source-of` on dev since the D32 merge
-(hbox evidence `build/acl2/certify-20260925T103024Z-3156392` in that tree).
+(hbox evidence `build/acl2/certify-20260925T103024Z-3156392` in that tree; the image script wrote per-book logs and no manifest, so the run id is in planning/evidence/manifests/LOST.txt).
 No image of current dev builds until lane pbb-d32 lands. Therefore NOT done:
 - the XPAT label and the refusal text observed on an image;
 - PKT-111: the tin phase in a matrix run (the phase and the four

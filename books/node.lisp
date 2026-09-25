@@ -79,16 +79,39 @@
             (fn-node-binding-ids (cdr xs)))
     nil))
 
-(defun fn-node-binding-listp (xs)
+; Every element a binding, the list NIL-terminated.
+(defun fn-node-binding-list-shapep (xs)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp xs)
       (and (fn-node-bindingp (car xs))
-           (not (member-equal (fn-node-binding-msgid (car xs))
-                              (fn-node-binding-msgids (cdr xs))))
-           (not (member-equal (fn-node-binding-id (car xs))
-                              (fn-node-binding-ids (cdr xs))))
-           (fn-node-binding-listp (cdr xs)))
+           (fn-node-binding-list-shapep (cdr xs)))
     (null xs)))
+
+; The :logic body is quadratic in the binding count; the :exec path is the
+; shape and two distinctness checks, linear through `fn-no-duplicatesp'
+; (books/acceptance-alloc.lisp).  Equal by
+; `fn-node-binding-listp-is-shape-and-distinct' (checkpoint-cost, PKT-142).
+(defun fn-node-binding-listp (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (and (fn-node-bindingp (car xs))
+                (not (member-equal (fn-node-binding-msgid (car xs))
+                                   (fn-node-binding-msgids (cdr xs))))
+                (not (member-equal (fn-node-binding-id (car xs))
+                                   (fn-node-binding-ids (cdr xs))))
+                (fn-node-binding-listp (cdr xs)))
+         (null xs))
+       :exec
+       (and (fn-node-binding-list-shapep xs)
+            (fn-no-duplicatesp (fn-node-binding-msgids xs))
+            (fn-no-duplicatesp (fn-node-binding-ids xs)))))
+
+(defthmd fn-node-binding-listp-is-shape-and-distinct
+  (equal (fn-node-binding-listp xs)
+         (and (fn-node-binding-list-shapep xs)
+              (fn-no-duplicatesp (fn-node-binding-msgids xs))
+              (fn-no-duplicatesp (fn-node-binding-ids xs)))))
 
 (defun fn-node-find-binding (msgid xs)
   (declare (xargs :guard t :verify-guards nil))
@@ -265,7 +288,9 @@
 (verify-guards fn-node-bindingp)
 (verify-guards fn-node-binding-msgids)
 (verify-guards fn-node-binding-ids)
-(verify-guards fn-node-binding-listp)
+(verify-guards fn-node-binding-list-shapep)
+(verify-guards fn-node-binding-listp
+  :hints (("Goal" :use fn-node-binding-listp-is-shape-and-distinct)))
 (verify-guards fn-node-find-binding)
 (verify-guards fn-node-articles-have-archive-bindingsp)
 (verify-guards fn-node-statep

@@ -66,6 +66,7 @@
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
+(include-book "../books/key-statements")
 (include-book "../books/login-binding")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -174,10 +175,9 @@
 ;; carried served keystones to what is installed here.  The extended value is
 ;; the capture of the whole history; the owner keeps it as the base of its
 ;; next publication (`fn-owner-sco-base').
-(defun fn-owner-recover-extended (extended config-records frontier max-conns state)
+(defun fn-owner-install-extended (oc extended state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((oc (fn-ock-recover-extended extended config-records frontier max-conns)))
-    (if (equal oc :fault)
+  (if (equal oc :fault)
         (value :fault)
       (let* ((state (fn-owner-install-ocfg oc state))
              ; Rebuilt exclusively by successful FNFD scans after
@@ -200,9 +200,33 @@
              ; fn-owner-sco-note-durable), and the count of the last attempt.
              (state (f-put-global 'fn-owner-sco-base extended state))
              (state (f-put-global 'fn-owner-sco-durable nil state))
-             (state (f-put-global 'fn-owner-sco-attempted nil state))
-             (state (f-put-global 'fn-owner-sco-pending nil state)))
-        (value :recovering)))))
+             (state (f-put-global 'fn-owner-sco-attempted nil state)))
+        (value :recovering))))
+
+(defun fn-owner-recover-extended (extended config-records frontier max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-owner-install-extended
+   (fn-ock-recover-extended extended config-records frontier max-conns)
+   extended state))
+
+; The owner from the Store open this process just ran
+; (fn-store-sn-open-extended, host/store-node-host.lisp): its extended
+; checkpoint E and (fn-sco-store-open E ...) = (REPLAYED OPENED), kept in the
+; global `fn-store-sco-open'.  fn-ock-install over that pair is
+; fn-ock-recover-extended of E (fn-ock-install-of-store-open-by-definition),
+; so the keystone fn-owner-recover-from-checkpoint-equals-full-recover and
+; fn-ock-recover-installs-ocl-relation hold of what is installed here, on
+; both paths, with no second extension or finalization.
+(defun fn-owner-recover-from-store-open (max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((opened (and (boundp-global 'fn-store-sco-open state)
+                     (f-get-global 'fn-store-sco-open state))))
+    (if (not (and (consp opened) (consp (cdr opened)) (consp (cddr opened))))
+        (value :fault)
+      (let ((state (f-put-global 'fn-store-sco-open nil state)))
+        (fn-owner-install-extended
+         (fn-ock-install (cadr opened) (caddr opened) max-conns)
+         (car opened) state)))))
 
 (defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
   (declare (xargs :stobjs state :mode :program))
@@ -310,37 +334,44 @@
                      (fn-owner-sco-global 'fn-owner-sco-attempted state)))
                :due :idle))))
 
-; The next checkpoint's file octets: (OCTETS S SUFFIX) or :unencodable.  The
-; attempt is recorded at this count, and the base becomes the new capture
-; (it is the capture of the owner's history whether or not the write
-; succeeds: fn-ock-next-checkpoint-is-the-capture).
-(defun fn-owner-sco-publish-octets (state)
+; The publication in three steps (checkpoint-cost): the capture under the
+; owner mutex, the encoding outside it, the result back under it.
+;
+; fn-owner-sco-capture (under the mutex): the values the publication reads,
+; (BASE CONFIGS RECORDS SEGMENT COUNT SUFFIX), and the attempt is recorded at
+; COUNT.  They are ACL2 values; a later commit makes new ones and changes none
+; of these.
+(defun fn-owner-sco-capture (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (fn-own-store (fn-owner-core state)))
          (records (fn-sf-records (fn-sn-files st)))
-         (configs (fn-sn-config-history st))
          (count (len records))
          (durable (fn-owner-sco-global 'fn-owner-sco-durable state))
-         (next (fn-ock-next-checkpoint (fn-owner-sco-global 'fn-owner-sco-base state)
-                                       configs records))
-         (segment (fn-bs-profile-max-record-octets (fn-owner-store-profile state)))
-         (octets (fn-scc-file-octets next segment))
-         (state (f-put-global 'fn-owner-sco-attempted count state))
-         (state (f-put-global 'fn-owner-sco-base next state)))
-    (if (equal octets :unencodable)
-        (value :unencodable)
-      (let ((state (f-put-global 'fn-owner-sco-pending (fn-sco-sequence next) state)))
-        (value (list octets (fn-sco-sequence next)
-                     (- count (if (natp durable) durable 0))))))))
+         (state (f-put-global 'fn-owner-sco-attempted count state)))
+    (value (list (fn-owner-sco-global 'fn-owner-sco-base state)
+                 (fn-sn-config-history st)
+                 records
+                 (fn-bs-profile-max-record-octets (fn-owner-store-profile state))
+                 count
+                 (- count (if (natp durable) durable 0))))))
 
-; The host wrote the pending checkpoint durably (fn-bs-scp-program's last
-; cut): it is now the newest durable one.
-(defun fn-owner-sco-published (state)
+; Outside the mutex, the host calls `fn-ock-publication' (a state-free ACL2
+; function, books/owner-checkpoint-open.lisp) on the captured values:
+; (NEXT OCTETS), NEXT the capture of the captured history
+; (fn-ock-publication-is-the-capture-at-the-capture-point) and OCTETS its
+; frozen file.  It reads no global and writes none.
+
+; fn-owner-sco-publication-done (under the mutex): NEXT becomes the base,
+; whether or not the write succeeded (it is the capture of a prefix of the
+; owner's history either way), and on a durable write its S is the newest
+; durable checkpoint.  Answers S, or :none.
+(defun fn-owner-sco-publication-done (next durablep state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((pending (fn-owner-sco-global 'fn-owner-sco-pending state))
-         (state (f-put-global 'fn-owner-sco-durable pending state))
-         (state (f-put-global 'fn-owner-sco-pending nil state)))
-    (value (if (natp pending) :published :none))))
+  (let* ((state (f-put-global 'fn-owner-sco-base next state))
+         (state (if durablep
+                    (f-put-global 'fn-owner-sco-durable (fn-sco-sequence next) state)
+                  state)))
+    (value (if durablep (fn-sco-sequence next) :none))))
 
 ; The served POST bound (D27): the carried Store profile's payload bound
 ; (`fn-sbud-payload-bound', books/store-budget-naming, which never exceeds the
@@ -1557,7 +1588,8 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-current-plan
           received (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state))))
+          (fn-owner-transit-carried-list transitp state)
+          (and transitp t))))
 
 ;; C1 (control messages): the filing step every ingress takes first,
 ;; books/peer-authored-accept.lisp fn-pa-filing-plan over the received
@@ -1660,6 +1692,70 @@
         ;; (the 9c344d1d image build, native-build-production.log:8292).
         (fn-own-clock (fn-owner-core state)))))))
 
+;; PRF-098: the revoked arm's kind-4 event (fn-pa-revoked-event), for the
+;; NNTP transit attempt only, with both primitive observations the host made
+;; over the carrier's keys (the keys this node once enrolled for the
+;; principal).
+(defun fn-owner-peer-revoked-event
+    (coordinates msgid received group-codes obligation subject evidence charge
+                 observed-ml-key ed-observation ml-observation state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes
+                  (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
+    (value
+     (if (equal groups :bad) nil
+       (fn-pa-revoked-event
+        (first coordinates) (second coordinates) (third coordinates)
+        (fn-store-octets->string msgid) received groups
+        (fn-store-octets->string obligation)
+        (fn-store-octets->string subject)
+        (fn-store-octets->string evidence) charge
+        (fn-sn-keyring-snapshots s)
+        observed-ml-key ed-observation ml-observation
+        (fn-own-clock (fn-owner-core state)))))))
+
+;; PRF-098: the key-statement executor (books/key-statements.lisp), run by
+;; the owner after it committed a kind-4 statement composite EVENT.  The
+;; request names the primitive observation the host must make (the PoP's
+;; D09 subject), or nil; the plan and event are ACL2's.  ROWS are the live
+;; configuration's authorities rows (C2).
+(defun fn-owner-key-statement-request (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-pop-request event)))
+
+(defun fn-owner-key-statement-plan
+    (event observed-ml-key ed-observation ml-observation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-plan event (fn-sn-keyring-snapshots (fn-owner-store state))
+                     (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                     observed-ml-key ed-observation ml-observation)))
+
+(defun fn-owner-key-statement-event
+    (event observed-ml-key ed-observation ml-observation coordinates state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-execute event (fn-sn-keyring-snapshots (fn-owner-store state))
+                        (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                        observed-ml-key ed-observation ml-observation
+                        (first coordinates) (second coordinates)
+                        (third coordinates))))
+
+(defun fn-owner-key-statement-log-line (plan outcome at-open state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-log-line plan outcome at-open)))
+
+;; PRF-098, the crash cut: the open's recovery (books/key-statements.lisp
+;; fn-ks-recover) executes the newest Store record when it is a statement.
+;; OCTETS are that record as the open read it; the answer is the decoded
+;; event for fnn-owner-key-statement, or nil.
+(defun fn-owner-key-statement-pending (octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((records (fn-store-decode-records (list octets))))
+    (value (if (and (consp records) (null (cdr records)))
+               (fn-ks-pending (car records))
+             nil))))
+
 ;; D27: the signed composite against the profile the owner was handed at
 ;; open (books/store-budget-naming.lisp fn-sbud-signed-event-boundary):
 ;; :ok, :event (no composite formed) or :signed-record (past its R).
@@ -1724,6 +1820,22 @@
                      (fn-store-octets->string msgid-octets) fn-octets groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
+
+; The subject identity of the payload in the octet buffer.  fn-shb-subject-id
+; (books/sha256-buffer.lisp) digests the subject preimage straight from the
+; buffer (the fixed head for the buffer's length as a list, the payload by
+; index), so the served POST hands the digest no octet list
+; (host/native/owner.lisp fnn-owner-attempt through fnn-metadata-buffer,
+; host/native/io.lisp).  fn-shb-subject-id-is-id-subject-of-sha256-preimage:
+; it is fn-id-subject of fn-sha256 over fn-id-subject-preimage, which is
+; fn-id-subject-of-payload (host/store-host.lisp fn-store-subject-id-of-payload,
+; the list entry) under books/crypto-attach.lisp.  The length test is the
+; list entry's.
+(defun fn-owner-subject-id-buffer (fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (value (if (<= (fn-octets-len fn-octets) *fn-cbor-max-uint*)
+             (fn-shb-subject-id fn-octets)
+           nil)))
 
 ; -----------------------------------------------------------------------------
 ; Connections
