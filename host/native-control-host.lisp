@@ -28,15 +28,26 @@
   (declare (xargs :mode :program))
   (fn-thlc-cli-plan command argv))
 
+; The read bound of a control frame that carries no article: every reply a
+; client reads, and every request other than an article submission.
 (defun fn-native-control-host-max-frame ()
   (declare (xargs :mode :program))
-  *fn-nctrl-max-frame*)
+  *fn-nctrl-max-command-frame*)
 
-; The widest article an FNCT request can carry (its blob field); the owner
-; applies the profile's bound to what it decodes.
+; The owner's read bound for one control connection under the carried
+; profile's article bound A and group bound G (`fn-nctrl-read-bound-for';
+; `fn-native-control-request-within-read-bound').
+(defun fn-native-control-host-read-bound (a g)
+  (declare (xargs :mode :program))
+  (fn-nctrl-read-bound-for a g))
+
+; The widest article an FNCT request can carry, its article field's width
+; (the record codec's payload ceiling).  The client does not know the store's
+; profile; the owner applies it: its read bound, then its injection decision,
+; which refuses an article past A as `article-exceeds-profile-bound'.
 (defun fn-native-control-host-max-article ()
   (declare (xargs :mode :program))
-  *fn-frame-max-blob*)
+  *fn-record-max-payload*)
 
 ; The control reply vocabulary, ACL2's (`*fn-nctrl-statuses*'): a client
 ; accepts exactly these words and treats any other reply as no reply.

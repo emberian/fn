@@ -18,6 +18,7 @@
 ; A field specification is one of
 ;   :text          u16 length (1..512) then that many octets, valid UTF-8
 ;   :blob          u32 length (1..131072) then that many octets
+;   (:blob . W)    u32 length (1..W) then that many octets, 1 <= W <= 2^32-1
 ;   :nat           eight octets, big-endian
 ;   (:enum . ks)   one octet, the 1-based position of a keyword in `ks`
 ; and a record payload is a list of specifications with a positional list of
@@ -34,11 +35,24 @@
        (no-duplicatesp-equal (cdr spec))
        (<= (len (cdr spec)) 255)))
 
+; A blob of a schema-chosen width (D27).  `:blob' alone is the 131 072-octet
+; width of the fields the node builds itself (identities, labels, signatures,
+; chunks); a schema whose blob carries operator data, an article or a record,
+; names the codec ceiling of that data as W, and the store profile bounds the
+; data below it.  The width is a codec width, never a policy on data.
+(defun fn-frame-wide-blob-specp (spec)
+  (declare (xargs :guard t))
+  (and (consp spec)
+       (equal (car spec) :blob)
+       (posp (cdr spec))
+       (<= (cdr spec) *fn-cbor-max-uint*)))
+
 (defun fn-frame-specp (spec)
   (declare (xargs :guard t))
   (or (equal spec :text)
       (equal spec :blob)
       (equal spec :nat)
+      (fn-frame-wide-blob-specp spec)
       (fn-frame-enum-specp spec)))
 
 (defun fn-frame-spec-listp (specs)
@@ -60,6 +74,12 @@
 (defun fn-frame-blobp (octets)
   (declare (xargs :guard t))
   (and (fn-cbor-at-mostp octets *fn-frame-max-blob*)
+       (fn-cbor-octet-listp octets)
+       (consp octets)))
+
+(defun fn-frame-blob-withinp (octets width)
+  (declare (xargs :guard (natp width)))
+  (and (fn-cbor-at-mostp octets width)
        (fn-cbor-octet-listp octets)
        (consp octets)))
 
@@ -93,8 +113,10 @@
         (fn-frame-blobp value)
       (if (equal spec :nat)
           (fn-frame-natp value)
-        (and (fn-frame-enum-specp spec)
-             (not (equal (fn-frame-enum-index value (cdr spec)) 0)))))))
+        (if (fn-frame-wide-blob-specp spec)
+            (fn-frame-blob-withinp value (cdr spec))
+          (and (fn-frame-enum-specp spec)
+               (not (equal (fn-frame-enum-index value (cdr spec)) 0))))))))
 
 (verify-guards fn-frame-field-okp)
 
@@ -107,7 +129,9 @@
         (append (fn-cbor-u32-bytes (len value)) value)
       (if (equal spec :nat)
           (fn-frame-u64-bytes value)
-        (list (fn-frame-enum-index value (cdr spec)))))))
+        (if (fn-frame-wide-blob-specp spec)
+            (append (fn-cbor-u32-bytes (len value)) value)
+          (list (fn-frame-enum-index value (cdr spec))))))))
 
 (verify-guards fn-frame-field-octets)
 
@@ -193,13 +217,20 @@
             (if (null head)
                 (fn-frame-parse-error :truncated)
               (fn-frame-parse-ok (fn-frame-u64-from (car head)) (cdr head))))
-        (if (not (consp octets))
-            (fn-frame-parse-error :truncated)
-          (let ((code (car octets)))
-            (if (or (not (posp code)) (< (len (cdr spec)) code))
-                (fn-frame-parse-error :unknown-enumeration)
-              (fn-frame-parse-ok (fn-frame-item (- code 1) (cdr spec))
-                                 (cdr octets)))))))))
+        (if (fn-frame-wide-blob-specp spec)
+            (let ((head (fn-frame-split 4 octets)))
+              (if (null head)
+                  (fn-frame-parse-error :truncated)
+                (fn-frame-parse-counted (cdr head)
+                                        (nfix (fn-cbor-u32-from (car head)))
+                                        (cdr spec))))
+          (if (not (consp octets))
+              (fn-frame-parse-error :truncated)
+            (let ((code (car octets)))
+              (if (or (not (posp code)) (< (len (cdr spec)) code))
+                  (fn-frame-parse-error :unknown-enumeration)
+                (fn-frame-parse-ok (fn-frame-item (- code 1) (cdr spec))
+                                   (cdr octets))))))))))
 
 (verify-guards fn-frame-field-parse
   :hints (("Goal" :in-theory (disable fn-cbor-u16-from fn-cbor-u32-from))))
@@ -237,7 +268,9 @@
   :hints (("Goal" :in-theory (e/d (fn-frame-field-octets fn-frame-field-okp
                                    fn-frame-specp fn-frame-textp
                                    fn-frame-blobp fn-frame-natp
-                                   fn-frame-enum-specp)
+                                   fn-frame-enum-specp
+                                   fn-frame-wide-blob-specp
+                                   fn-frame-blob-withinp)
                                   (floor mod fn-cbor-u16-bytes
                                    fn-cbor-u32-bytes fn-frame-u64-bytes)))))
 
@@ -247,6 +280,42 @@
            (fn-cbor-octet-listp (fn-frame-fields-octets specs values)))
   :hints (("Goal" :induct (fn-frame-values-okp specs values)
            :in-theory (disable fn-frame-field-octets))))
+
+; A schema's width: the most octets one field, and one record of fields, can
+; encode to.  A schema's payload bound is its width, so a schema states its
+; own bound instead of a field count times one blob cap.
+(defun fn-frame-field-width (spec)
+  (declare (xargs :guard t))
+  (cond ((equal spec :text) (+ 2 *fn-frame-max-text*))
+        ((equal spec :blob) (+ 4 *fn-frame-max-blob*))
+        ((equal spec :nat) 8)
+        ((fn-frame-wide-blob-specp spec) (+ 4 (nfix (cdr spec))))
+        (t 1)))
+
+(defun fn-frame-specs-width (specs)
+  (declare (xargs :guard t))
+  (if (consp specs)
+      (+ (fn-frame-field-width (car specs))
+         (fn-frame-specs-width (cdr specs)))
+    0))
+
+(defthm fn-frame-field-octets-within-width
+  (implies (fn-frame-field-okp spec value)
+           (<= (len (fn-frame-field-octets spec value))
+               (fn-frame-field-width spec)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-frame-field-okp fn-frame-field-octets
+                                     fn-frame-textp fn-frame-blobp
+                                     fn-frame-blob-withinp))))
+
+(defthm fn-frame-fields-octets-within-width
+  (implies (fn-frame-values-okp specs values)
+           (<= (len (fn-frame-fields-octets specs values))
+               (fn-frame-specs-width specs)))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-frame-values-okp specs values)
+           :in-theory (disable fn-frame-field-octets fn-frame-field-okp
+                               fn-frame-field-width))))
 
 (defun fn-frame-fields-parse-aux (specs octets)
   (declare (xargs :guard (and (fn-frame-spec-listp specs)
@@ -513,6 +582,9 @@
     fn-frame-field-parse-rest-octets fn-frame-field-octets-are-octets
     fn-frame-fields-octets-are-octets fn-frame-head-fields-shape
     fn-frame-decode-payload-octets))
+
+; The two width facts stay enabled: a schema's guard reads its payload bound
+; off them without opening the grammar.
 
 (in-theory (disable fn-frame-enum-index-natp fn-frame-enum-index-bound
              fn-frame-field-parse-rest-octets
