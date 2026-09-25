@@ -472,3 +472,24 @@
 (assert! (not (fn-hsig-carried-record-metadatap
                *hst-malformed-source* *hst-cancel-received*
                (hst-cancel-record '("control.cancel")))))
+
+; D32: a served POST of a signed carrier with a supplied Path.  The node
+; injects it (recipe v3, "author.example.invalid!" inserted in the Path) and
+; the authored-source projection of the stored article is still exactly the
+; poster's signed source: fn-hc-authored-source drops the Path the poster
+; wrote, before and after the prefix, so the carrier projection is unchanged.
+(defconst *hst-path-carrier*
+  (append (fn-record-string-octets "Path: not-for-mail") '(13 10)
+          *hst-carried-received*))
+(make-event `(defconst *hst-path-injected*
+               ',(fn-inj-decision-octets
+                  (fn-inj-decide *hst-path-carrier* *hst-injection-config*
+                                 *hst-injection-observation*))))
+(assert! (consp *hst-path-injected*))
+(assert! (fn-inj-supplies-pathp *hst-path-carrier*))
+(assert! (not (fn-inj-suffixp *hst-path-carrier* *hst-path-injected*)))
+(assert! (fn-hc-okp (fn-hc-received-plan *hst-path-injected*)))
+(assert-equal (car (fn-hc-value (fn-hc-received-plan *hst-path-injected*)))
+              *hst-authored-source*)
+(assert-equal (car (fn-hc-value (fn-hc-received-plan *hst-path-carrier*)))
+              *hst-authored-source*)

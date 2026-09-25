@@ -204,6 +204,17 @@
              (fn-path-identityp (cadddr argv)))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
+       ; The served POST posting policy (books/login-binding.lisp):
+       ; `bound-logins' refuses a bound login's article unless it is signed
+       ; by the login's bound principal; `open' is the default behaviour.
+       ; A durable `:set-policy' record like path-identity, applied live.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) "posting-policy")
+             (member-equal (cadddr words) '("bound-logins" "open")))
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two

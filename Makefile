@@ -572,6 +572,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-teeth-tests \
 	books/mailbox \
 	books/injection-shape \
+	books/injection-path \
 	books/injection \
 	books/injection-invariants \
 	tests/acl2/injection-tests \
@@ -749,6 +750,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-authority-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
+	books/login-binding \
+	tests/acl2/login-binding-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \

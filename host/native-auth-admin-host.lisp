@@ -31,6 +31,11 @@
 (defun fn-native-auth-admin-host-list (octets presentp)
   (fn-native-auth-admin-list octets presentp))
 
+(defun fn-native-auth-admin-host-action-signing-text (result)
+  (fn-native-auth-admin-action-signing-text result))
+(defun fn-native-auth-admin-host-bind (octets presentp name signing-text)
+  (fn-native-auth-admin-bind octets presentp name signing-text))
+
 (defun fn-native-auth-admin-host-set-password
   (octets presentp name secret confirmation salt
           principal-text principal-presentp postingp)

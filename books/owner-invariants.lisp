@@ -1227,8 +1227,9 @@
 (defthm fn-own-a-reinjection-is-not-absent
   (implies (fn-inj-reinjectionp stored source agent msgid)
            (not (equal stored :absent)))
-  :hints (("Goal" :in-theory (enable fn-inj-reinjectionp fn-inj-strip
-                                     fn-inj-path-line fn-inj-append))))
+  :hints (("Goal" :in-theory (enable fn-inj-reinjectionp)
+           :use ((:instance fn-inj-source-of-an-atom-is-nil
+                            (stored :absent))))))
 
 (defthm fn-own-operator-retry-resubmits-the-stored-injection
   (implies (and (fn-inj-injectedp (fn-inj-decide octets cfg first))
