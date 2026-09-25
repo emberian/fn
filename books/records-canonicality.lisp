@@ -944,21 +944,88 @@
   :rule-classes nil)
 
 ; The worst-case length of an encoded record, in its payload length and group
-; count (design 2026-09-25-bounds §2.1: the relation a profile's record bound
-; must satisfy for its article bound).  Every field is at its ceiling except
-; those two, which are the record's own.
-; No hypothesis: a non-record encodes to nil.
+; count.  Every field is at its ceiling except those two, which are the
+; record's own.  No hypothesis: a non-record encodes to nil.  Any record,
+; wide or not, is within the wide ceiling (every uint head at 9 octets).
 (defthm fn-record-impl-encode-length-bound
   (<= (len (fn-record-encode-impl record))
-      (fn-record-encoded-octets-ceiling
+      (fn-record-wide-encoded-octets-ceiling
        (len (fn-record-payload record))
        (len (fn-record-groups record))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :cases ((fn-record-p record))
            :in-theory (e/d (fn-record-encode-impl
-                            fn-record-encoded-octets-ceiling)
+                            fn-record-wide-encoded-octets-ceiling)
                            (fn-cbor-encode fn-record-item-encode
+                            fn-record-item-encode-is-cbor-encode
+                            fn-record-encode-groups
+                            fn-record-string-octets fn-record-string-octets-aux
+                            fn-cbor-at-mostp
+                            (:type-prescription true-listp-append))))))
+
+; What the narrow bound needs of a record that is not wide, as facts the
+; linear head bounds (records-invariants) read: every integer field and the
+; schema octet within u32, and the group count within the codec ceiling.
+(local
+ (defthm fn-record-group-count-within-ceiling
+   (implies (fn-record-p record)
+            (<= (len (fn-record-groups record)) *fn-record-max-groups*))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-record-groups-validp fn-record-groupsp)))))
+
+(local
+ (defthm fn-record-schema-octet-at-most-2
+   (<= (fn-record-schema-octet record) 2)
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-record-schema-octet)))))
+
+(local
+ (defthm fn-record-narrow-fields-forward
+   (implies (not (fn-record-widep record))
+            (and (natp (fn-record-sequence record))
+                 (<= (fn-record-sequence record) *fn-cbor-max-uint*)
+                 (natp (fn-record-txid record))
+                 (<= (fn-record-txid record) *fn-cbor-max-uint*)
+                 (natp (fn-record-generation record))
+                 (<= (fn-record-generation record) *fn-cbor-max-uint*)
+                 (natp (fn-record-charge record))
+                 (<= (fn-record-charge record) *fn-cbor-max-uint*)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-record-widep fn-record-uint32p)))))
+
+(local
+ (defthm fn-record-narrow-stamp-forward
+   (implies (and (not (fn-record-widep record))
+                 (not (equal (fn-record-stamp record) :legacy)))
+            (and (natp (fn-record-stamp record))
+                 (<= (fn-record-stamp record) *fn-cbor-max-uint*)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-record-widep fn-record-uint32p)))))
+
+; KEYSTONE (the record ceiling at the widths the runtime produces; design
+; 2026-09-25-bounds §2.1: the relation a profile's record bound must satisfy
+; for its article bound).  A record whose integer fields fit u32 encodes
+; within `fn-record-encoded-octets-ceiling', the 1 083-octet overhead a
+; profile's R has been checked against since before packet P6: the five
+; integer heads are narrow, as are the schema octet and the group count.
+(defthm fn-record-impl-encode-narrow-length-bound
+  (implies (not (fn-record-widep record))
+           (<= (len (fn-record-encode-impl record))
+               (fn-record-encoded-octets-ceiling
+                (len (fn-record-payload record))
+                (len (fn-record-groups record)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-record-p record))
+           :in-theory (e/d (fn-record-encode-impl
+                            fn-record-encoded-octets-ceiling)
+                           (fn-record-widep fn-record-uint32p
+                            fn-record-schema-octet fn-record-uint-encode
+                            fn-record-sequence fn-record-txid
+                            fn-record-generation fn-record-charge
+                            fn-record-stamp
+                            fn-cbor-encode fn-record-item-encode
                             fn-record-item-encode-is-cbor-encode
                             fn-record-encode-groups
                             fn-record-string-octets fn-record-string-octets-aux
