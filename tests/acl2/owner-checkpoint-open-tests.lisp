@@ -72,16 +72,20 @@
                                    *ock-t-configs* *ock-t-events*)
                                   *ock-t-configs* 8 nil)
                      (fn-cpo-open-observed *ock-t-configs* 8 *ock-t-events*)))
-; Its hypothesis: over a history that is not an admitted one (an improper
-; list whose proper part extends the prefix) the extension keeps the
-; improper tail and is not the capture.
+; Its hypothesis (an admitted history) has NO must-fail: the identity
+; fold's append lemma takes it, but the fault that fold stops on is
+; absorbing, and these non-admitted histories give the capture too.  The
+; hypothesis is therefore reported untoothed (planning/evidence/
+; owner-checkpoint-open-2026-09-25.md); the owner's history always meets it.
 (defconst *ock-t-improper* (cons (car *ock-t-events*) 'tail))
 (assert-event (not (fn-sn-observed-historyp 8 *ock-t-improper*)))
-(must-fail
- (defthm ock-t-next-without-history
-   (equal (fn-ock-next-checkpoint (fn-sco-capture *ock-t-configs* *ock-t-prefix*)
-                                  *ock-t-configs* *ock-t-improper*)
-          (fn-sco-capture *ock-t-configs* *ock-t-improper*))))
+(assert-event (not (fn-sn-observed-historyp 8 (list 'junk 'junk2))))
+(assert-event (equal (fn-ock-next-checkpoint (fn-sco-capture *ock-t-configs* (list 'junk))
+                                             *ock-t-configs* (list 'junk 'junk2))
+                     (fn-sco-capture *ock-t-configs* (list 'junk 'junk2))))
+(assert-event (equal (fn-ock-next-checkpoint (fn-sco-capture *ock-t-configs* *ock-t-prefix*)
+                                             *ock-t-configs* *ock-t-improper*)
+                     (fn-sco-capture *ock-t-configs* *ock-t-improper*)))
 
 ; The publication policy: not due below K/2, due at K/2, and not again at the
 ; count of a failed attempt.

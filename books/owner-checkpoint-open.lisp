@@ -159,16 +159,10 @@
     t))
 
 (local
- (defthm fn-ock-prefixp-append-nthcdr
-   (implies (fn-ock-prefixp p r)
-            (equal (append p (nthcdr (len p) r))
-                   (append (true-list-fix p) (nthcdr (len p) r))))
-   :hints (("Goal" :in-theory (enable true-list-fix)))))
-
-(local
  (defthm fn-ock-prefixp-splits
    (implies (and (fn-ock-prefixp p r) (true-listp p))
-            (equal (append p (nthcdr (len p) r)) r))))
+            (equal (append p (nthcdr (len p) r)) r))
+   :hints (("Goal" :induct (fn-ock-prefixp p r)))))
 
 ; The next checkpoint: BASE extended over the records after it when BASE's
 ; records are a prefix of the history, else the capture of the whole
@@ -177,7 +171,8 @@
 (defun fn-ock-next-checkpoint (base configs records)
   (declare (xargs :guard t :verify-guards nil))
   (let ((prefix (fn-sco-records base)))
-    (if (and (true-listp prefix) (fn-ock-prefixp prefix records))
+    (if (and (true-listp prefix) (true-listp records)
+             (fn-ock-prefixp prefix records))
         (fn-sco-extend base configs (nthcdr (len prefix) records))
       (fn-sco-capture configs records))))
 
@@ -205,6 +200,15 @@
           (true-list-fix records))
    :hints (("Goal" :in-theory (enable fn-sco-records fn-sco-capture fn-sco-make
                                       fn-sco-at)))))
+
+(local
+ (defthm fn-ock-capture-of-true-list-fix
+   (equal (fn-sco-capture configs (true-list-fix p))
+          (fn-sco-capture configs p))
+   :hints (("Goal" :in-theory (e/d (fn-sco-capture)
+                                   (fn-sco-cpr-prefix fn-replay-identity-loop
+                                    fn-cpe-projection-replay fn-th-prefix-loop
+                                    fn-cei-build-aux))))))
 
 ; KEYSTONE of the publication.  From the capture of any prefix of an
 ; admitted history, the owner publishes the capture of the whole history:
@@ -253,21 +257,18 @@
 
 ; When the owner publishes: the suffix since the newest durable checkpoint
 ; (sequence DURABLE, or none: NIL) has reached half of K, the profile's
-; max-open-suffix, and at least one record; and COUNT differs from the count
+; max-open-suffix (twice the suffix is at least K), and at least one record; and COUNT differs from the count
 ; of the last attempt, so a failed publication is retried only after another
 ; commit.  Half of K leaves the owner the other half of K commits to finish
 ; the publication before a restart would fall back to full replay.
-(defun fn-ock-publication-threshold (k)
-  (declare (xargs :guard t))
-  (max 1 (floor (nfix k) 2)))
-
 (defun fn-ock-publication-duep (durable count k attempted)
   (declare (xargs :guard t))
   (let ((s (if (natp durable) durable 0)))
     (and (natp count)
          (<= s count)
          (not (equal count attempted))
-         (<= (fn-ock-publication-threshold k) (- count s)))))
+         (< s count)
+         (<= (nfix k) (+ (- count s) (- count s))))))
 
 ; Until the owner is due, a restart opens from the durable checkpoint: the
 ; suffix it leaves is within K, so fn-sco-select serves the checkpoint.

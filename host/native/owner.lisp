@@ -456,18 +456,38 @@ completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
            (fnn-fault "owner refused recovered feed resolution")))
         (t (fnn-fault "unexpected feed reconciliation: ~a" resolution))))))
 
+(defun fnn-owner-recover-core (store records max-connections)
+  "Install the owner from the Store open's result.  When the open verified the
+state checkpoint (open-mode (:checkpoint S k)), the owner opens from that
+checkpoint over the K records after S (fn-owner-recover-from-checkpoint);
+otherwise it replays the whole history (fn-owner-recover).  Both install
+through fn-ock-recover-extended; the keystone
+fn-owner-recover-from-checkpoint-equals-full-recover says they install the
+same owner.  Returns the checkpoint's S, or NIL."
+  (let* ((mode (fnn-store-open-mode store))
+         (s (and (eq (first mode) :checkpoint) (second mode)))
+         (configs (mapcar #'fnn-octet-list (fnn-config-records store)))
+         (result
+           (if s
+               (fnn-owner-core 'fn-owner-recover-from-checkpoint
+                               (mapcar #'fnn-octet-list (nthcdr s records))
+                               (fnn-store-frontier store) configs max-connections)
+               (fnn-owner-core 'fn-owner-recover
+                               (mapcar #'fnn-octet-list records)
+                               (fnn-store-frontier store) configs max-connections))))
+    (unless (eq result :recovering)
+      (fnn-fault "owner rejected committed history"))
+    (unless (eq (fnn-owner-core 'fn-owner-sco-note-durable s) :noted)
+      (fnn-fault "owner refused the durable checkpoint sequence"))
+    s))
+
 (defun fnn-owner-install (root max-connections &optional fault)
   (multiple-value-bind (store records) (fnn-open-live-store root t fault)
     (let ((service nil))
       (handler-case
-          (let ((result (fnn-owner-core
-                         'fn-owner-recover
-                         (mapcar #'fnn-octet-list records)
-                         (fnn-store-frontier store)
-                         (mapcar #'fnn-octet-list (fnn-config-records store))
-                         max-connections)))
-            (unless (eq result :recovering)
-              (fnn-fault "owner rejected committed history"))
+          (progn
+            (fnn-owner-recover-core store records max-connections)
+            (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
             (unless (eq (fnn-owner-core 'fn-owner-install-profile
@@ -1795,6 +1815,41 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
       (when (null workers) (return))
       (dolist (worker workers) (sb-thread:join-thread worker)))))
 
+(defun fnn-owner-maybe-publish (service)
+  "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts,
+never inside a command: when fn-ock-publication-duep says the suffix since
+the newest durable checkpoint reached half the profile's K, ACL2 extends the
+owner's base checkpoint over the records after it (fn-ock-next-checkpoint)
+and returns the file; the host writes it through fn-bs-scp-program
+(fnn-state-checkpoint-write) under the owner mutex, so no command runs
+against the Store while the checkpoint is staged.  A failed write leaves the
+old checkpoint (or, at and after the rename, the old or the new one: the
+crash keystone) and serving continues; the next attempt waits for another
+commit.  The owner state is only read here."
+  (fnn-with-owner (service)
+    (unless (fnn-owner-service-stopping service)
+      (when (eq (fnn-owner-core 'fn-owner-sco-due) :due)
+        (let ((started (get-internal-real-time))
+              (answer (fnn-owner-core 'fn-owner-sco-publish-octets)))
+          (cond
+            ((eq answer :unencodable)
+             (fnn-err "CHECKPOINT auto refused=unencodable"))
+            ((and (consp answer) (fnn-octet-list-p (first answer)) (first answer)
+                  (integerp (second answer)) (integerp (third answer)))
+             (let ((octets (fnn-octets (first answer))))
+               (handler-case
+                   (progn
+                     (fnn-state-checkpoint-write (fnn-owner-service-store service) octets)
+                     (unless (eq (fnn-owner-core 'fn-owner-sco-published) :published)
+                       (fnn-fault "owner lost the pending checkpoint sequence"))
+                     (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d ms=~d"
+                              (second answer) (third answer) (length octets)
+                              (round (* 1000 (- (get-internal-real-time) started))
+                                     internal-time-units-per-second)))
+                 ((or fnn-store-io-refusal fnn-store-indeterminate) (e)
+                   (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" (second answer) e)))))
+            (t (fnn-fault "owner returned a malformed checkpoint publication"))))))))
+
 (defun fnn-owner-accept (service listener once)
   ;; Darwin does not reliably wake a blocking accept(2) when another context
   ;; calls shutdown(2) on the listener.  Keep accept itself nonblocking and
@@ -1812,7 +1867,9 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                 (progn
                   (fnn-owner-serve-client service socket)
                   (return))
-              (fnn-owner-launch-client service socket))))
+              (fnn-owner-launch-client service socket)))
+          ;; Before the next accept: the owner's checkpoint publication.
+          (fnn-owner-maybe-publish service))
       (sb-bsd-sockets:socket-error (condition)
         (unless (or *fnn-sigterm-requested*
                     (fnn-owner-service-stopping service))
@@ -1939,8 +1996,11 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
       ;; of the cut table (campaign dabebb84, F1).  The control fault is
       ;; validated here too, before the store opens.
       (fnn-owner-control-test-fault)
+      ;; A developer image may instead arm one of fn-bs-scp-program's five
+      ;; cuts, which only the owner's automatic publication reaches.
       (fnn-owner-run root listener-port oncep max-connections
-                     (fnn-post-entry-fault nil) (fnn-octets address-list)
+                     (or (fnn-post-entry-fault nil) (fnn-state-checkpoint-test-fault))
+                     (fnn-octets address-list)
                      family tls-context))))
 
 (defun fnn-command-owner (command args)
