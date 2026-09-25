@@ -1052,6 +1052,29 @@
                            (fn-own-conns-okp fn-own-view-okp fn-own-conn-make-group-indexed
                             fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
+; The connection `fn-own-advance' re-pins at the view carries the view's
+; control pin, and that pin is okp against the connection's own prefix
+; (the view's): the conn-okp conjunct control-c3e added.
+(defthm fn-own-conn-okp-of-view-pin
+  (implies (and (fn-own-view-okp view groups capacity records)
+                (natp id)
+                (fn-own-conn-boundedp
+                 (fn-own-conn-make-group-indexed
+                  id (fn-own-view-version view) (fn-own-view-frontier view)
+                  wire session (fn-own-view-archive view) config obs
+                  (fn-own-view-verdicts view) (fn-own-view-index view)
+                  (fn-own-view-group-index view) (fn-own-view-control view))
+                 groups))
+           (fn-own-conn-okp
+            (fn-own-conn-make-group-indexed
+             id (fn-own-view-version view) (fn-own-view-frontier view)
+             wire session (fn-own-view-archive view) config obs
+             (fn-own-view-verdicts view) (fn-own-view-index view)
+             (fn-own-view-group-index view) (fn-own-view-control view))
+            groups capacity records))
+  :hints (("Goal" :in-theory (disable fn-own-conn-make-group-indexed
+                                      fn-own-conn-boundedp))))
+
 (defthm fn-own-advance-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (fn-own-advance o id)))
@@ -1068,7 +1091,8 @@
                             (n (fn-own-next-id o))))
            :in-theory (e/d (fn-own-relation)
                            (fn-own-conn-make-group-indexed
-                            fn-own-conn-boundedp fn-own-find-conn-okp)))))
+                            fn-own-conn-boundedp fn-own-find-conn-okp
+                            fn-own-view-okp fn-own-view-group-index)))))
 
 ; `fn-own-advance' returns `o' unchanged when there is no connection at `id',
 ; and otherwise either re-pins it in place (`fn-own-replace-conn', which keeps
