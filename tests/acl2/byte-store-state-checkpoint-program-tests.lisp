@@ -1,6 +1,7 @@
 ; Teeth for books/byte-store-state-checkpoint-program and
 ; books/byte-store-range-read.
 (in-package "ACL2")
+(include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/byte-store-state-checkpoint-program")
 (include-book "../../books/byte-store-range-read")
 
