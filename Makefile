@@ -262,6 +262,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-k0-step-lemmas \
 	books/byte-store-k0-step \
 	tests/acl2/byte-store-k0-step-tests \
+	books/byte-store-k0-step-bridge-marker \
 	books/byte-store-k0-step-bridge \
 	tests/acl2/byte-store-k0-step-bridge-tests \
 	books/checkpoint-auxiliary \
