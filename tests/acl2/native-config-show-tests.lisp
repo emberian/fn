@@ -98,7 +98,25 @@
                      (list :shown (fn-record-string-octets "true"))))
 (assert-event (equal (fn-native-config-show *ncst-min* "alerts" "command") '(:refused :unset)))
 (assert-event (equal (fn-native-config-show *ncst-min* "alerts" "nope") '(:refused :unknown-key)))
-(assert-event (equal (fn-native-config-show *ncst-quoted* nil nil) '(:refused :not-renderable)))
+
+; fn-native-config-load-renderable (PRF-094): what the loader accepts is
+; renderable, so `show' carries no run-time check.  Witnesses: the full and
+; the minimal file load to renderable configurations, and the rendering of
+; the full one comes back (fn-native-config-loaded-show-round-trip).
+(assert-event (equal (car (fn-native-config-load *ncst-full-text*)) :accepted))
+(assert-event (fn-native-config-show-wfp (cadr (fn-native-config-load *ncst-full-text*))))
+(assert-event (fn-native-config-show-wfp
+               (cadr (fn-native-config-load (ncst-lines '("[store]" "path = \"/x\""))))))
+(assert-event (equal (fn-native-config-show *ncst-c* nil nil)
+                     (list :shown (fn-native-config-show-octets *ncst-c*))))
+; Teeth (the one hypothesis, an accepted load): a refused load's payload is
+; not a renderable configuration.
+(must-fail
+ (assert-event (fn-native-config-show-wfp
+                (cadr (ncst-with '("[alerts]" "headroom_min_percent = 101"))))))
+(must-fail
+ (assert-event (fn-native-config-show-wfp
+                (cadr (fn-native-config-load (ncst-lines '("[listener]" "port = 1119")))))))
 
 ; -----------------------------------------------------------------------------
 ; Missions.  Each mission plan is accepted for a node directory, and what it
