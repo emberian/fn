@@ -32,12 +32,23 @@
            (fn-retain-string-listp (cdr xs)))
     (null xs)))
 
+; Quadratic in :logic; linear in :exec through `fn-no-duplicatesp' (a hash
+; set for long lists, books/acceptance-alloc.lisp), equal by
+; `fn-retain-no-duplicatesp-is-no-duplicatesp' (checkpoint-cost, PKT-142).
 (defun fn-retain-no-duplicatesp (xs)
-  (declare (xargs :guard (true-listp xs)))
-  (if (consp xs)
-      (and (not (member-equal (car xs) (cdr xs)))
-           (fn-retain-no-duplicatesp (cdr xs)))
-    t))
+  (declare (xargs :guard (true-listp xs) :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (and (not (member-equal (car xs) (cdr xs)))
+                (fn-retain-no-duplicatesp (cdr xs)))
+         t)
+       :exec (fn-no-duplicatesp xs)))
+
+(defthmd fn-retain-no-duplicatesp-is-no-duplicatesp
+  (equal (fn-retain-no-duplicatesp xs) (fn-no-duplicatesp xs)))
+
+(verify-guards fn-retain-no-duplicatesp
+  :hints (("Goal" :use fn-retain-no-duplicatesp-is-no-duplicatesp)))
 
 ; Obligation: (identity immutable-subject kind required-evidence charge).
 ; A positive charge includes at least one permanent history unit; the remaining

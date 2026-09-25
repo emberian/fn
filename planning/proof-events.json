@@ -173,6 +173,10 @@
         {
           "kind": "theorem",
           "name": "fn-own-served-local-number-is-never-reassigned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-raw-local-number-is-never-reassigned"
         }
       ]
     },
@@ -3585,6 +3589,42 @@
         {
           "kind": "theorem",
           "name": "fn-oct-suffix-equalp-is-equal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-path-scan-is-inj-path-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-unsplice-at-is-inj-unsplice"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-source-index-is-inj-source-of"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-range-match-is-equal-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-desc-equalp-is-equal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-block-agent-is-pb-block-agent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-path-agent-is-pb-path-agent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-same-articlep-is-pb-same-articlep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-existing-action-is-pb-existing-action"
         }
       ]
     },
@@ -3642,6 +3682,14 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-visible-extend-is-visible"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-refresh-visible-is-visible"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-visible-state-statep"
         }
       ]
     },
@@ -3928,6 +3976,113 @@
         {
           "kind": "theorem",
           "name": "fn-sbud-post-boundary-refusals-are-distinct"
+        }
+      ]
+    },
+    {
+      "id": "PRF-086",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-record-v1-bytes-decode-identically"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-v1-bytes-are-their-translation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-decode-prechecked-wide-extends-narrow"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-encode-uint-wide-is-narrow"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-decode-prechecked-wide-of-uint"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-decode-prechecked-wide-uint-reencode-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-impl-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-impl-accepted-input-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-impl-encode-narrow-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-v1-valid-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-v1-valid-stays-valid"
+        }
+      ]
+    },
+    {
+      "id": "PRF-106",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sha256-of-prefixed-buffer-is-sha256"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
+        }
+      ]
+    },
+    {
+      "id": "PRF-104",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sco-store-open-of-extended-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sco-finalize-okp-is-kind-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sco-thaw-of-freeze"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sco-freeze-of-capture-carries-the-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-published-segments-decode-to-the-checkpoint"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-publication-is-the-capture-at-the-capture-point"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-distinctp-is-nodupp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-subsetp-is-subset-logic"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-listp-is-shape-and-distinct-msgids"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-binding-listp-is-shape-and-distinct"
         }
       ]
     },

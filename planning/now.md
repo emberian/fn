@@ -170,6 +170,25 @@ test_store_corruption was interrupted by the coordinator's own mistake and
 not rerun): the lane needs a continuation before it merges. PKT-162: the
 Python bridge starts ACL2 outside the pool and heap cap.
 
+Update 2026-09-25 ~18:55 UTC (deputy): since the reset, merged into dev:
+python-store-f8 (on the deputy's own sequential rerun at the lane head
+dac828e5: test_store_corruption 7/7, test_checkpoint 7/7, test_store 21/21,
+logs in planning/evidence/python-store-f8-2026-09-25/; the coordinator's red
+rerun finished at 14:33 EDT, the minute the deputy merged and removed that
+worktree under it, so its errors are not evidence either way: a third rerun
+at merged dev is running in build/lanes/pyf8-check-a48e9072), reader-surface
+(XPAT, ACL2-rendered POST refusal text; native owed), reclaim-d32fix (the
+store-reclaim join repaired), control-c3b (C3's served withdrawal: 430 to a
+fresh reader, pinned reader keeps it, natively green), bounds-p6 (u64 widths;
+the record ceiling at runtime widths so saved profiles open), rep-wave-c (the
+subject digest from the buffer), checkpoint-cost (open 2 to 4x faster, the
+publication off the mutex). Remaining join defect: poster-bytes-buffer
+(pbb-d32, Fable, running): no image builds until it lands. Merge
+certification run 4 (persvati run-20260925T184414Z-fdae, 651 books) is
+running at the merged head. Held: bounds-p5 (its pack-chain native module;
+continuation running), peer-keys (a crash cut the model lacks; continuation
+running), status-join (native owed after pbb-d32).
+
 Not done tonight: no cut, qualification or deploy (dev never converged: P6
 held, C3's served half and wave C in flight); segmented articles (P6's
 second half) not started; the node is still on c3420013 with a format-7

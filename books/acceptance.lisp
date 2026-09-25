@@ -42,16 +42,43 @@
 
 (verify-guards fn-article-msgids)
 
-(defun fn-article-listp (configured xs)
+; Every element an article, the list NIL-terminated.
+(defun fn-article-list-shapep (configured xs)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp xs)
       (and (fn-articlep configured (car xs))
-           (not (member-equal (fn-article-msgid (car xs))
-                              (fn-article-msgids (cdr xs))))
-           (fn-article-listp configured (cdr xs)))
+           (fn-article-list-shapep configured (cdr xs)))
     (null xs)))
 
-(verify-guards fn-article-listp)
+(verify-guards fn-article-list-shapep)
+
+; The :logic body checks each Message-ID against the rest of the list, which
+; is quadratic in the article count; it runs whenever a whole-node recognizer
+; checks a node decoded from bytes (the Store checkpoint's node at open,
+; books/store-checkpoint-open.lisp).  The :exec path is linear: the shape,
+; then the message IDs distinct through `fn-no-duplicatesp' (a hash set for
+; long lists, books/acceptance-alloc.lisp).  The two are equal by
+; `fn-article-listp-is-shape-and-distinct-msgids' (checkpoint-cost, PKT-142).
+(defun fn-article-listp (configured xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (and (fn-articlep configured (car xs))
+                (not (member-equal (fn-article-msgid (car xs))
+                                   (fn-article-msgids (cdr xs))))
+                (fn-article-listp configured (cdr xs)))
+         (null xs))
+       :exec
+       (and (fn-article-list-shapep configured xs)
+            (fn-no-duplicatesp (fn-article-msgids xs)))))
+
+(defthmd fn-article-listp-is-shape-and-distinct-msgids
+  (equal (fn-article-listp configured xs)
+         (and (fn-article-list-shapep configured xs)
+              (fn-no-duplicatesp (fn-article-msgids xs)))))
+
+(verify-guards fn-article-listp
+  :hints (("Goal" :use fn-article-listp-is-shape-and-distinct-msgids)))
 
 (defun fn-acceptedp (msgid articles)
   (declare (xargs :guard t :verify-guards nil))

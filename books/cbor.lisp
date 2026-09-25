@@ -412,6 +412,114 @@
 
 
 ; -----------------------------------------------------------------------------
+; The wide uint (D27, design 2026-09-25-bounds §2.3, packet P6).
+;
+; RFC 8949 §3 gives a uint an eight-octet argument (additional information
+; 27).  The profile above stops at the four-octet argument, and every existing
+; caller keeps that domain: nothing above changes.  A codec whose integer
+; fields are 64-bit (the transaction record's sequence, transaction ID,
+; generation, charge and stamp) reads them through the wide entry below.  For
+; every value at most 2^32 - 1 the wide encoder writes the narrow encoder's
+; bytes, and the wide decoder returns the narrow decoder's result whenever the
+; narrow one accepts (cbor-invariants: `fn-cbor-encode-uint-wide-is-narrow',
+; `fn-cbor-decode-prechecked-wide-extends-narrow'), so no existing encoding
+; moves.  An eight-octet argument is canonical only above 2^32 - 1 (RFC 8949
+; §4.2.1, shortest form).
+
+(defconst *fn-cbor-max-uint64* 18446744073709551615)
+
+(local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
+
+(local (defthm fn-cbor-u64-floor-bound
+         (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
+                  (<= (floor n 4294967296) *fn-cbor-max-uint*))
+         :rule-classes :linear
+         :hints (("Goal" :use ((:instance floor-bounded-by-/
+                                          (x n) (y 4294967296)))
+                  :in-theory (disable floor-bounded-by-/)))))
+
+(local (defthm fn-cbor-u64-mod-bound
+         (implies (natp n)
+                  (< (mod n 4294967296) 4294967296))
+         :rule-classes :linear
+         :hints (("Goal" :use ((:instance mod-bounded-by-modulus
+                                          (x n) (y 4294967296)))
+                  :in-theory (disable mod-bounded-by-modulus)))))
+
+(local (defthm fn-cbor-u64-halves-natural
+         (implies (natp n)
+                  (and (natp (floor n 4294967296))
+                       (natp (mod n 4294967296))))
+         ))
+
+(defun fn-cbor-u64-bytes (n)
+  (declare (xargs :guard (and (natp n) (<= n *fn-cbor-max-uint64*))
+                  :verify-guards nil))
+  (append (fn-cbor-u32-bytes (floor n 4294967296))
+          (fn-cbor-u32-bytes (mod n 4294967296))))
+
+(defun fn-cbor-u64-from (xs)
+  (declare (xargs :guard (and (fn-cbor-octet-listp xs)
+                              (fn-cbor-at-leastp xs 8))
+                  :verify-guards nil))
+  (+ (* 4294967296 (fn-cbor-u32-from xs))
+     (fn-cbor-u32-from (cdr (cdr (cdr (cdr xs)))))))
+
+(local (defthm fn-cbor-at-leastp-8-shape
+         (implies (fn-cbor-at-leastp xs 8)
+                  (and (consp xs) (consp (cdr xs)) (consp (cddr xs))
+                       (consp (cdddr xs)) (consp (cddddr xs))
+                       (consp (cdr (cddddr xs)))
+                       (consp (cddr (cddddr xs)))
+                       (consp (cdddr (cddddr xs)))))
+         :hints (("Goal" :expand ((fn-cbor-at-leastp xs 8)
+                                  (fn-cbor-at-leastp (cdr xs) 7)
+                                  (fn-cbor-at-leastp (cddr xs) 6)
+                                  (fn-cbor-at-leastp (cdddr xs) 5)
+                                  (fn-cbor-at-leastp (cddddr xs) 4)
+                                  (fn-cbor-at-leastp (cdr (cddddr xs)) 3)
+                                  (fn-cbor-at-leastp (cddr (cddddr xs)) 2)
+                                  (fn-cbor-at-leastp (cdddr (cddddr xs)) 1))))))
+
+(verify-guards fn-cbor-u64-bytes :hints (("Goal" :in-theory (disable floor mod))))
+(verify-guards fn-cbor-u64-from)
+
+(defun fn-cbor-encode-uint-wide (n)
+  (declare (xargs :guard t))
+  (if (and (natp n) (<= n *fn-cbor-max-uint*))
+      (fn-cbor-encode-argument 0 n)
+    (if (and (natp n) (<= n *fn-cbor-max-uint64*))
+        (cons 27 (fn-cbor-u64-bytes n))
+      nil)))
+
+(verify-guards fn-cbor-encode-uint-wide)
+
+(defun fn-cbor-decode-unsigned-wide (additional tail)
+  (declare (xargs :guard (and (natp additional)
+                              (fn-cbor-octet-listp tail))))
+  (if (equal additional 27)
+      (if (fn-cbor-at-leastp tail 8)
+          (let ((n (fn-cbor-u64-from tail)))
+            (if (<= n *fn-cbor-max-uint*)
+                (fn-cbor-error :noncanonical)
+              (fn-cbor-ok (cons :uint n) (nthcdr 8 tail))))
+        (fn-cbor-error :truncated))
+    (fn-cbor-decode-unsigned additional tail)))
+
+(verify-guards fn-cbor-decode-unsigned-wide)
+
+; The one-item decoder with the wide uint.  Byte strings are the narrow
+; decoder's, bounded by the caller's item budget.
+(defun fn-cbor-decode-prechecked-wide (octets item-budget)
+  (declare (xargs :guard (and (fn-cbor-octet-listp octets)
+                              (natp item-budget))))
+  (if (and (consp octets) (< (car octets) 32))
+      (fn-cbor-decode-unsigned-wide (car octets) (cdr octets))
+    (fn-cbor-decode-prechecked octets item-budget)))
+
+(verify-guards fn-cbor-decode-prechecked-wide)
+
+; -----------------------------------------------------------------------------
 ; Export theory.
 ;
 ; What leaves this book enabled: the record lemmas above, the three theorems
@@ -436,7 +544,10 @@
     (:d fn-cbor-decode-prechecked) (:d fn-cbor-decode-bounded)
     (:d fn-cbor-decode) (:d fn-cbor-decode-exact)
     (:d fn-cbor-u16-bytes) (:d fn-cbor-u32-bytes)
-    (:d fn-cbor-u16-from) (:d fn-cbor-u32-from)))
+    (:d fn-cbor-u16-from) (:d fn-cbor-u32-from)
+    (:d fn-cbor-u64-bytes) (:d fn-cbor-u64-from)
+    (:d fn-cbor-encode-uint-wide) (:d fn-cbor-decode-unsigned-wide)
+    (:d fn-cbor-decode-prechecked-wide)))
 
 (in-theory (disable (:d fn-cbor-valuep-bounded) (:d fn-cbor-valuep)
              (:d fn-cbor-canonical-argumentp) (:d
@@ -448,4 +559,6 @@
              (:d fn-cbor-decode) (:d
              fn-cbor-decode-exact) (:d fn-cbor-u16-bytes) (:d
              fn-cbor-u32-bytes) (:d fn-cbor-u16-from) (:d
-             fn-cbor-u32-from)))
+             fn-cbor-u32-from) (:d fn-cbor-u64-bytes) (:d fn-cbor-u64-from)
+             (:d fn-cbor-encode-uint-wide) (:d fn-cbor-decode-unsigned-wide)
+             (:d fn-cbor-decode-prechecked-wide)))

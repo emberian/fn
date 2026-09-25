@@ -74,6 +74,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-stamp \
 	books/records-canonicality \
 	books/records-seam \
+	books/records-schema-v1 \
 	books/records-attach \
 	books/store-events \
 	tests/acl2/store-events-tests \
@@ -91,6 +92,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-poll-projection-tests \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
+	tests/acl2/records-schema-v1-teeth-tests \
 	tests/acl2/records-ceiling-tests \
 	tests/acl2/records-shape-tests \
 	books/provenance-codec \
@@ -184,6 +186,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-checkpoint-open-tests \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
+	tests/acl2/linear-recognizers-tests \
 	books/byte-store-state-checkpoint-program \
 	books/byte-store-range-read \
 	tests/acl2/byte-store-state-checkpoint-program-tests \
@@ -241,6 +244,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-tests \
 	books/byte-store-frame \
 	tests/acl2/byte-store-frame-tests \
+	books/byte-store-profile-v1 \
+	tests/acl2/byte-store-profile-v1-tests \
 	books/byte-store-txn-name \
 	tests/acl2/byte-store-txn-name-tests \
 	books/byte-store-initializer \
@@ -623,6 +628,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octets-stobj \
 	books/poster-bytes-buffer \
 	tests/acl2/octets-stobj-tests \
+	books/sha256-buffer \
+	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
