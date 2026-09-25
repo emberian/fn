@@ -489,8 +489,12 @@ other obligation.
 article with `:reclaimable` or the first reason it stays:
 `already-reclaimed`, `rule-keeps`, `rule-refused`, `too-recent`
 (release-after: stamp plus DAYS × 86,400 s after now; a legacy stamp never
-qualifies), `verdict-needs-payload` (an authorship verdict is re-verified
-at recovery, STO-008), `held-reader-pin`, `held-consumer-cursor` (a
+qualifies), `verdict-needs-payload` (a verdict other than `:absent`: the
+statement index is re-derived from the payloads at open and an
+`:unverified` article may verify under a later keyring, STO-008; an
+`:absent` article, which has no authorship field, contributes nothing under
+any keyring and neither does its tombstone, so it is not held),
+`held-reader-pin`, `held-consumer-cursor` (a
 consumer that acknowledged number A in the group holds every number above
 A), `held-feed` (a live peer not yet delivered it; a retired peer holds
 nothing) and `held-bp-obligation`. The keystone says the executable test is
@@ -507,6 +511,12 @@ the numbers, the group bindings and the content identity stay.
 Acceptance never reads a stored payload, so replaying the record with the
 tombstone reaches the reclaimed state, and every other record's step
 commutes with reclamation (`fn-rcl-prepare-commutes-with-reclaim`).
+A tombstone is never admitted as an article: its first octet is NUL, which
+no article's first header line can open with, and `fn-pa-carrier-form`,
+which every served ingress calls before the Store prepare, refuses it as
+`:article` (`fn-rcl-tombstone-refused-at-carrier-form`,
+`books/reclaim-admission`). The developer image's `store post` has no
+article check and is not a served ingress.
 
 **What stays the same** (the decisions this table lists): the duplicate
 history (`fn-acceptedp` for every Message-ID; a reclaimed ID is refused

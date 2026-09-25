@@ -3796,6 +3796,22 @@
         {
           "kind": "theorem",
           "name": "fn-rcl-store-holders-hold-behind-a-lagging-consumer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-absent-verdict-contributes-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-tombstone-refused-at-carrier-form"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rca-nul-first-octet-is-not-an-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-tombstone-contributes-nothing"
         }
       ]
     },

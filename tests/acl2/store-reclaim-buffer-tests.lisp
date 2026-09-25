@@ -83,10 +83,14 @@
   (equal (fn-rclb-existing-action *ost-msgid* *rbt-improper* *ost-groups* *rbt-s*)
          :duplicate)
   :rule-classes nil)
+; On the reclaimed store both sides digest the same octets (SHA-256 reads a
+; list to its last cons), so the separating store is the live one: the list
+; side compares the improper source by `equal', the buffer side the octets
+; it holds.
 (must-fail
  (defthm rbt-t-existing-action-without-octets-p
-   (equal (fn-rclb-existing-action *ost-msgid* *rbt-improper* *ost-groups* *rbt-s*)
-          (fn-rcl-existing-action *ost-msgid* *rbt-improper* *ost-groups* *rbt-s*))))
+   (equal (fn-rclb-existing-action *ost-msgid* *rbt-improper* *ost-groups* *ost-s*)
+          (fn-rcl-existing-action *ost-msgid* *rbt-improper* *ost-groups* *ost-s*))))
 
 ; -----------------------------------------------------------------------------
 ; D32, recipe v3 (octets-stobj-tests' tin fixture): the held source is the
