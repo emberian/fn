@@ -1073,9 +1073,17 @@ A signed POST is `verified` for whichever principal signed it, whatever
 login posted it. To make a login post only as its own principal:
 
 ```
-fn --config /etc/fn/fn.toml principal bind alice 9261767a...(64 hex)
-fn --config /etc/fn/fn.toml policy set posting-policy bound-logins
+packaging/fn-native operator /etc/fn/fn.toml principal bind alice 9261767a...(64 hex)
+packaging/fn-native operator /etc/fn/fn.toml policy set posting-policy bound-logins
 ```
+
+These are the native operator's verbs (`fn-host --fn operator CONFIG ...`);
+the Python `bin/fn principal` has only `new`, `list` and `set-password`. The
+native operator loads the hybrid-signature library, so it needs OpenSSL 3.5
+(`FN_OPENSSL_PREFIX`), as the node does. A later `policy set posting-policy
+open` takes effect: a policy slot holds the value set last
+(`fn-cfg-set-policy-sets-the-policy`, books/config-invariants.lisp; until
+2026-09-25 the first value set stayed in force).
 
 `bind` writes a `signing` field into alice's table of `auth.toml` (restart to
 apply, like any credential change; `principal list` shows `signing=HEX`;
