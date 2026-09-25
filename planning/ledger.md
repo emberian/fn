@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 792 |
-| Certification roots in the Makefile | 777 |
-| Books inside the root closure | 789 |
-| `defthm` and `defthmd` events | 10672 |
-| `defun` events | 7462 |
-| Functions with verified guards | 2095 |
-| Functions declared `:verify-guards nil` and never verified | 551 |
-| Functions left at the default with an explicit guard | 3735 |
-| Functions left at the default with no guard | 1081 |
-| `assert-event` checks | 11579 |
-| `must-fail` checks | 1056 |
+| Books read | 796 |
+| Certification roots in the Makefile | 781 |
+| Books inside the root closure | 793 |
+| `defthm` and `defthmd` events | 10709 |
+| `defun` events | 7519 |
+| Functions with verified guards | 2117 |
+| Functions declared `:verify-guards nil` and never verified | 553 |
+| Functions left at the default with an explicit guard | 3754 |
+| Functions left at the default with no guard | 1095 |
+| `assert-event` checks | 11593 |
+| `must-fail` checks | 1064 |
 | `encapsulate` events | 43 |
 | Theorems flagged SUSPECT by shape | 94 |
 | Export-hygiene warnings | 134 |
 | Enabled-projection warnings | 42 |
 | Teeth-form warnings | 86 |
-| Include-hygiene warnings | 785 |
-| Host-names warnings | 869 |
+| Include-hygiene warnings | 795 |
+| Host-names warnings | 873 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -141,6 +141,7 @@ that `make certify` requests.
 | `books/bp-fnbs-inspect.lisp` | root | 0 | 3 | 2/0/1/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-namespace.lisp` | root | 0 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-replay-append.lisp` | root | 3 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay.lisp` | root | 1 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/bp-forward-attempt.lisp` | root | 0 | 23 | 0/0/23/0 | 0 | 0 | 0 |
@@ -179,12 +180,15 @@ that `make certify` requests.
 | `books/bp-node-progress-bridge.lisp` | root | 18 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-guards.lisp` | root | 29 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/bp-node-progress-premises.lisp` | root | 45 | 5 | 0/3/0/2 | 0 | 0 | 1 |
+| `books/bp-node-progress-premises.lisp` | root | 46 | 5 | 0/3/0/2 | 0 | 0 | 1 |
 | `books/bp-node-progress-selection-invariants.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-node-progress.lisp` | root | 0 | 78 | 0/6/72/0 | 0 | 0 | 0 |
+| `books/bp-node-progress.lisp` | root | 0 | 82 | 0/6/76/0 | 0 | 0 | 0 |
 | `books/bp-node-receive-boundary.lisp` | root | 1 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-records.lisp` | root | 4 | 13 | 12/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-report-step.lisp` | root | 2 | 4 | 0/3/1/0 | 0 | 0 | 0 |
+| `books/bp-node-rotation-codec.lisp` | root | 19 | 29 | 22/1/5/1 | 0 | 0 | 0 |
+| `books/bp-node-rotation-step.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-node-rotation.lisp` | root | 7 | 11 | 0/1/10/0 | 0 | 0 | 0 |
 | `books/bp-node.lisp` | root | 25 | 32 | 23/0/9/0 | 0 | 0 | 0 |
 | `books/bp-outbound.lisp` | root | 10 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/bp-primary-cbor.lisp` | root | 86 | 16 | 12/0/3/1 | 0 | 0 | 1 |
@@ -599,7 +603,7 @@ that `make certify` requests.
 | `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
-| `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 17 | 0/12/1/4 | 39 | 48 | 0 |
+| `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 29 | 0/12/1/16 | 53 | 56 | 0 |
 | `tests/acl2/bp-node-debt-cache-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 2 | 0 |
 | `tests/acl2/bp-node-debt-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 6 | 4 | 0 |
 | `tests/acl2/bp-node-forward-resume-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 19 | 5 | 0 |
