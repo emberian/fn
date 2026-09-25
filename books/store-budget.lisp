@@ -171,12 +171,12 @@ past its count; a full walk when CACHE is not a (K . SUM) pair within RECORDS."
   (iff (fn-sbud-admitp (fn-sbud-budget profile kind) used)
        (fn-bs-publication-admissiblep
         profile used (fn-store-publication-ceiling kind)))
-  :hints (("Goal" :use ((:instance fn-bs-profile-validp-codecs-accept
-                                   (values profile)))
-           :in-theory (disable fn-bs-profile-admittedp
-                               fn-bs-profile-record-ceiling
-                               fn-bs-profile-max-transactions
-                               fn-store-publication-ceiling))))
+  :hints (("Goal" :in-theory (e/d (fn-sbud-budget fn-sbud-admitp
+                                   fn-bs-publication-admissiblep)
+                                  (fn-bs-profile-admittedp
+                                   fn-bs-profile-record-ceiling
+                                   fn-bs-profile-max-transactions
+                                   fn-store-publication-ceiling)))))
 
 ;  KEYSTONE (the verdict is the profile's two gates).  One more record of
 ; KIND is admissible exactly when the count gate the host asserts at publish
