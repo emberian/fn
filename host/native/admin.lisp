@@ -203,9 +203,9 @@ this path can neither mutate the configuration nor take the lock from it."
   (multiple-value-bind (store ignored-records) (fnn-open-live-store root nil)
     (declare (ignore ignored-records))
     (unwind-protect
-         (let ((report (fnn-core-state 'fn-native-admin-host-peer-report)))
+         (let ((report (fnn-core-state 'fn-native-admin-host-query-report plan)))
            (unless (fnn-octet-list-p report)
-             (fnn-fault "ACL2 returned a malformed peer listing"))
+             (fnn-fault "ACL2 returned a malformed configuration listing"))
            (when report
              (write-sequence (fnn-octets report) *fnn-stdout*)
              (finish-output *fnn-stdout*))
