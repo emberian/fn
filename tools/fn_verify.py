@@ -630,6 +630,9 @@ def verify(args):
                     check.get("reason") or check["outcome"])
         else:
             code, sentence = compare(claim, check)
+        if code in (AGREE_VERIFIED, AGREE_UNVERIFIED) and claim["outcome"] != "revoked":
+            code, sentence = control_report(node, args, article, check, report,
+                                            code, sentence)
     except Undecided as error:
         code, sentence = UNDECIDED, str(error)
     except (OSError, ValueError, KeyError) as error:
@@ -645,6 +648,55 @@ def verify(args):
     else:
         print("{} {} {}".format(word, args.msgid, sentence))
     return code
+
+
+def control_report(node, args, article, check, report, code, sentence):
+    """spike/control: a cancel article's withdrawal, beside the node's claim.
+
+    The node's HDR :fn-control item is its historical claim.  This checks what
+    can be checked independently: the Control line (inside the signed source)
+    names the target the claim names, the target is no longer served, and,
+    given a copy of the target (--target-copy), that its carrier principal is
+    the canceller's when the node says the basis is the author.  The
+    authority basis is this node's configuration and cannot be checked here.
+    """
+    fields, _ = parse_fields(article)
+    controls = [field_value(lines).decode("ascii", "replace")
+                for name, lines in fields if name == b"control"]
+    if len(controls) != 1:
+        return code, sentence
+    words = controls[0].split()
+    if len(words) != 2 or words[0].lower() != "cancel":
+        return code, sentence
+    target = words[1]
+    status = node.command("HDR :fn-control " + args.msgid)
+    if not status.startswith("225"):
+        raise Undecided("HDR :fn-control answered {!r}".format(status))
+    block = node.multiline().decode("utf-8", "replace").splitlines()
+    if len(block) != 1:
+        raise Undecided("HDR :fn-control returned {} lines".format(len(block)))
+    claim = block[0].split(" ", 1)[1] if " " in block[0] else ""
+    report["node-control"] = claim
+    served = not node.command("STAT " + target).startswith("430")
+    report["target-served"] = served
+    cw = claim.split()
+    if cw[:2] == ["executed", "withdrawal"] and len(cw) == 4:
+        if cw[2] != target:
+            return DISAGREE, "the node's withdrawal names {} but the signed Control line names {}".format(
+                cw[2], target)
+        if served:
+            return DISAGREE, "the node claims {} withdrawn but still serves it".format(target)
+        if cw[3] == "author" and args.target_copy:
+            copy = Path(args.target_copy).read_bytes()
+            tcheck = independent_check(copy, target, load_keyring(args.keyring))
+            if tcheck["outcome"] != "verified" or tcheck.get("principal") != check.get("principal"):
+                return DISAGREE, "the node says the author withdrew {}, but the copy's author is {}".format(
+                    target, tcheck.get("principal") or tcheck.get("reason"))
+        return code, sentence + "; withdrawal: {} withdrawn by {} (node's report{})".format(
+            target, cw[3], "" if cw[3] == "author" and args.target_copy else
+            ", basis not independently checkable")
+    return code, sentence + "; control: {} (node's report; target {})".format(
+        claim, "served" if served else "not served")
 
 
 class Parser(argparse.ArgumentParser):
@@ -678,6 +730,8 @@ def main(argv=None):
     parser.add_argument("--credentials", help="mode-0600 file: user password")
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--target-copy",
+                        help="a cancel's target as the caller holds it (spike/control)")
     args = parser.parse_args(argv)
     if not re.fullmatch(r"<[!-;=?-~]+>", args.msgid):
         parser.error("the Message-ID must be <...> printable ASCII")

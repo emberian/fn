@@ -62,3 +62,48 @@
                                     fn-stx-reader-item
                                     fn-stx-reader-verdict-is-the-recorded-verdict
                                     fn-nntp-available-article)))))
+
+; HDR :fn-control (spike/control): the same shape argument as :fn-verified.
+(defthm fn-nntp-control-line-is-block-text
+  (implies (fn-nov-clean-fieldp label)
+           (fn-nntp-block-textp
+            (list (fn-nntp-hdr-line label (fn-nntp-control-item msgid verdicts)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-nntp-hdr-line-is-a-clean-field
+                            (content (fn-nntp-control-item msgid verdicts)))
+                 (:instance fn-nntp-clean-field-is-response-text
+                            (bytes (fn-nntp-hdr-line
+                                    label (fn-nntp-control-item msgid verdicts)))))
+           :in-theory (e/d (fn-nntp-block-textp)
+                           (fn-nntp-hdr-line fn-nntp-control-item)))))
+
+(defthm fn-nntp-control-lookup-line-is-response-text
+  (implies (fn-nov-clean-fieldp label)
+           (fn-nntp-response-textp
+            (fn-nntp-hdr-line label (fn-nntp-control-item msgid verdicts))))
+  :hints (("Goal" :use ((:instance fn-nntp-control-line-is-block-text))
+           :in-theory (e/d (fn-nntp-block-textp)
+                           (fn-nntp-hdr-line fn-nntp-control-item
+                            fn-nntp-control-line-is-block-text)))))
+
+(defthm fn-nntp-control-hdr-lines-are-block-text
+  (fn-nntp-block-textp
+   (fn-nntp-control-hdr-lines group numbers articles verdicts))
+  :hints (("Goal" :induct (fn-nntp-control-hdr-lines
+                            group numbers articles verdicts)
+           :in-theory (e/d (fn-nntp-control-hdr-lines
+                            fn-nntp-block-textp
+                            fn-nov-decimal-field-is-clean)
+                           (fn-nntp-hdr-line fn-nntp-control-item
+                            fn-nntp-available-article)))))
+
+(defthm fn-nntp-control-hdr-response-effects
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-control-hdr-response session archive verdicts args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response
+                                    fn-nov-decimal-field-is-clean)
+                                   (fn-nntp-single fn-nntp-multi
+                                    fn-nntp-control-hdr-lines
+                                    fn-nntp-control-item
+                                    fn-nntp-available-article)))))

@@ -28,6 +28,8 @@
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
+; spike/control: control-message execution (books/control-exec.lisp).
+(include-book "../books/control-exec")
 ; D25: the duplicate-versus-conflict decision keys on the poster's bytes.
 (include-book "../books/poster-bytes")
 (include-book "../books/config-owner-live")
@@ -126,9 +128,65 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-post-config (fn-owner-config state))))
 
+;; spike/control.  Every owner the host installs is installed with its
+;; visible view (books/control-exec.lisp fn-ctl-visible-owner): withdrawn
+;; targets are absent from the archive connections pin, and the HDR
+;; :fn-control items ride in its verdict list.  The recomputation runs only
+;; when the view is fresh from fn-own-refresh (it has no :fn-ctl-base) or
+;; the (view version, configuration generation) key moved.
+;; SPIKE: defers placing the filter inside fn-own-refresh and restating K1
+;; over it (proof owners books/owner.lisp, books/owner-invariants.lisp).
+(defun fn-owner-ctl-filter (oc state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((o (fn-ocfg-owner oc))
+         (cfg (fn-ocfg-config oc))
+         (view (fn-own-view o))
+         (verdicts (fn-own-view-verdicts view))
+         (key (cons (fn-own-view-version view) (fn-cfg-generation cfg)))
+         (based (and (consp verdicts) (consp (car verdicts))
+                     (eq (car (car verdicts)) :fn-ctl-base)))
+         (last (if (boundp-global 'fn-ctl-filter-key state)
+                   (f-get-global 'fn-ctl-filter-key state)
+                 nil)))
+    (if (and based (equal key last))
+        (mv oc state)
+      (let ((state (f-put-global 'fn-ctl-filter-key key state)))
+        (mv (fn-ocfg-with-owner oc (fn-ctl-visible-owner o cfg)) state)))))
+
 (defun fn-owner-install-ocfg (oc state)
   (declare (xargs :stobjs state :mode :program))
-  (f-put-global 'fn-owner oc state))
+  (mv-let (oc state) (fn-owner-ctl-filter oc state)
+    (f-put-global 'fn-owner oc state)))
+
+;; spike/control: the deltas of the first filed control article with no
+;; decision row, decided over the unfiltered base of the committed view and
+;; the live configuration; nil when none is owed.
+(defun fn-owner-ctl-owed-deltas (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((o (fn-owner-core state))
+         (base (fn-ctl-view-base (fn-own-view o))))
+    (value (fn-ctl-owed-deltas (car base) (cadddr base)
+                               (fn-ocfg-config (f-get-global 'fn-owner state))))))
+
+(defun fn-owner-ctl-key (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (cons (fn-own-view-version (fn-own-view (fn-owner-core state)))
+               (fn-cfg-generation (fn-ocfg-config (f-get-global 'fn-owner state))))))
+
+;; The checkgroups apply plan for MSGID (octets): (:ok deltas) or
+;; (:refused reason), over the committed view's base and the live config.
+(defun fn-owner-ctl-apply-checkgroups (msgid state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((o (fn-owner-core state))
+         (base (fn-ctl-view-base (fn-own-view o)))
+         (id (fn-record-octets-string msgid))
+         (article (fn-find-article id (fn-state-articles (car base)))))
+    (value (if (consp article)
+               (fn-ctl-checkgroups-apply-deltas
+                id (fn-article-payload article)
+                (fn-ocfg-config (f-get-global 'fn-owner state)))
+             (list :refused :no-such-article)))))
+
 
 (defun fn-owner-replace-core (owner state)
   (declare (xargs :stobjs state :mode :program))
