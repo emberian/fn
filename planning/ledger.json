@@ -747,22 +747,22 @@
     "books": 751,
     "books_in_root_closure": 749,
     "roots": 740,
-    "theorems": 9983,
-    "functions": 7086,
-    "assert_events": 11033,
-    "must_fails": 957,
+    "theorems": 9998,
+    "functions": 7083,
+    "assert_events": 11065,
+    "must_fails": 956,
     "encapsulates": 31,
     "guards": {
-      "verified": 2085,
+      "verified": 2086,
       "declared-off": 480,
-      "default-guarded": 3527,
-      "default-unguarded": 994
+      "default-guarded": 3522,
+      "default-unguarded": 995
     },
-    "suspect_theorems": 88,
-    "export_hygiene_warnings": 117,
+    "suspect_theorems": 89,
+    "export_hygiene_warnings": 118,
     "enabled_projection_warnings": 37,
-    "teeth_form_warnings": 61,
-    "include_hygiene_warnings": 738,
+    "teeth_form_warnings": 66,
+    "include_hygiene_warnings": 739,
     "host_names_warnings": 853,
     "hand_written_record_warnings": 18
   },
@@ -7186,7 +7186,7 @@
       "book": "books/injection-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 58,
+      "theorems": 76,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -7217,14 +7217,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 11,
-      "functions": 78,
+      "functions": 80,
       "guards": {
-        "verified": 63,
+        "verified": 65,
         "declared-off": 0,
         "default-guarded": 15,
         "default-unguarded": 0
       },
-      "verify_guards_events": 63,
+      "verify_guards_events": 65,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 16,
@@ -9475,7 +9475,7 @@
       "book": "books/poster-bytes-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
+      "theorems": 23,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -9490,31 +9490,32 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "injection-invariants",
         "owner",
         "poster-bytes"
       ],
-      "system_includes": [
-        "arithmetic/top"
+      "system_includes": [],
+      "suspects": [
+        "fn-pb-an-unheld-message-id-is-a-new-article-by-definition"
       ],
-      "suspects": [],
       "read_error": null
     },
     {
       "book": "books/poster-bytes.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
-      "functions": 11,
+      "theorems": 0,
+      "functions": 5,
       "guards": {
-        "verified": 1,
+        "verified": 0,
         "declared-off": 0,
-        "default-guarded": 10,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
-      "verify_guards_events": 1,
+      "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -17163,17 +17164,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 5,
+      "functions": 6,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 5
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 74,
-      "must_fails": 4,
-      "defconsts": 18,
+      "assert_events": 92,
+      "must_fails": 7,
+      "defconsts": 25,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -18357,7 +18358,7 @@
       "verify_guards_events": 0,
       "assert_events": 34,
       "must_fails": 8,
-      "defconsts": 22,
+      "defconsts": 23,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -18887,9 +18888,9 @@
         "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 35,
-      "must_fails": 16,
-      "defconsts": 24,
+      "assert_events": 49,
+      "must_fails": 12,
+      "defconsts": 33,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -21234,7 +21235,7 @@
     {
       "theorem": "fn-inj-instantp-opens",
       "book": "books/injection-invariants.lisp",
-      "line": 278,
+      "line": 294,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp"
       ]
@@ -21370,6 +21371,14 @@
       "reasons": [
         "definition-restated: the conclusion is the body of fn-own-feed-port-tick-peer",
         "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-pb-an-unheld-message-id-is-a-new-article-by-definition",
+      "book": "books/poster-bytes-invariants.lisp",
+      "line": 239,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-pb-existing-action and the conclusion is that branch's value"
       ]
     },
     {
@@ -22062,6 +22071,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-pb-path-agent-of-an-injection",
+        "book": "books/poster-bytes-invariants.lisp",
+        "line": 92,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-served-conn-index-of-fn-served-make-conn-pinned",
         "book": "books/served.lisp",
         "line": 263,
@@ -22447,10 +22462,9 @@
           "books/nntp-legacy.lisp",
           "books/nntp-post.lisp",
           "books/peer-inbound-invariants.lisp",
-          "books/poster-bytes-invariants.lisp",
           "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-value",
@@ -22927,13 +22941,31 @@
       {
         "check": "it-reinjection-without-injection",
         "book": "tests/acl2/injection-tests.lisp",
-        "line": 331,
+        "line": 338,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "it-every-configuration-allows-posting",
         "book": "tests/acl2/injection-tests.lisp",
-        "line": 351,
+        "line": 358,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "it-no-stamp-without-both-supplied",
+        "book": "tests/acl2/injection-tests.lisp",
+        "line": 399,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "it-stamp-always",
+        "book": "tests/acl2/injection-tests.lisp",
+        "line": 414,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "it-inverse-without-injection",
+        "book": "tests/acl2/injection-tests.lisp",
+        "line": 470,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -23005,7 +23037,7 @@
       {
         "check": "opt-decision-without-injection",
         "book": "tests/acl2/owner-operator-tests.lisp",
-        "line": 127,
+        "line": 137,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -23030,6 +23062,18 @@
         "check": "pt-relay-names-a-node-without-an-identity",
         "book": "tests/acl2/peer-inbound-tests.lisp",
         "line": 723,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "pbt-one-article-without-msgid-agreement",
+        "book": "tests/acl2/poster-bytes-tests.lisp",
+        "line": 107,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "pbt-two-articles-without-distinct-sources",
+        "book": "tests/acl2/poster-bytes-tests.lisp",
+        "line": 136,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -24558,7 +24602,7 @@
       },
       {
         "book": "books/injection.lisp",
-        "line": 43,
+        "line": 68,
         "include": "article-fields",
         "included": "books/article-fields.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -24827,6 +24871,13 @@
         "line": 8,
         "include": "poster-bytes",
         "included": "books/poster-bytes.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/poster-bytes-invariants.lisp",
+        "line": 9,
+        "include": "injection-invariants",
+        "included": "books/injection-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -27645,14 +27696,14 @@
       },
       {
         "book": "tests/acl2/poster-bytes-tests.lisp",
-        "line": 13,
+        "line": 15,
         "include": "../../books/poster-bytes-invariants",
         "included": "books/poster-bytes-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/poster-bytes-tests.lisp",
-        "line": 14,
+        "line": 16,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -34288,7 +34339,7 @@
       },
       {
         "book": "books/injection.lisp",
-        "line": 382,
+        "line": 407,
         "shape": "fn-inj-config-shapep",
         "shapes": 2,
         "accessors": 16,
