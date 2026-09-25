@@ -128,19 +128,7 @@
 ;; books/config.lisp); overlapping group-verb grants are admitted.
 (defconst *fn-ctl-grant-verbs* '("cancel" "newgroup" "rmgroup" "checkgroups"))
 
-(defun fn-native-admin-hex-charsp (cs)
-  (declare (xargs :guard t))
-  (if (consp cs)
-      (and (member (car cs) '(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9
-                              #\a #\b #\c #\d #\e #\f))
-           (fn-native-admin-hex-charsp (cdr cs)))
-    t))
-
-(defun fn-native-admin-principal-hexp (text)
-  (declare (xargs :guard t))
-  (and (stringp text)
-       (equal (length text) 64)
-       (fn-native-admin-hex-charsp (coerce text 'list))))
+; The principal spelling is native-admin-peer's fn-native-admin-principal-hexp.
 
 ; A namespace is a creatable group name, or one followed by ".*".
 (defun fn-native-admin-namespace-base (text)
