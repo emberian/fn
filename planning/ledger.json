@@ -897,7 +897,7 @@
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 104,
     "include_hygiene_warnings": 891,
-    "host_names_warnings": 1016,
+    "host_names_warnings": 1014,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -40960,13 +40960,6 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 537,
-        "name": "fn-rcl-existing-action",
-        "source": "books/store-reclaim.lisp",
-        "reason": "defined in books/store-reclaim.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/owner-host.lisp",
         "line": 616,
         "name": "fn-octets-len",
         "source": null,
@@ -41044,49 +41037,42 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 79,
+        "line": 82,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 273,
+        "line": 276,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 314,
+        "line": 317,
         "name": "fn-rcon-store-event-encode",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 534,
+        "line": 537,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 669,
+        "line": 672,
         "name": "fn-rcon-sn-io",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 677,
-        "name": "fn-rcl-existing-action",
-        "source": "books/store-reclaim.lisp",
-        "reason": "defined in books/store-reclaim.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/store-node-host.lisp",
-        "line": 784,
+        "line": 787,
         "name": "fn-rcon-sbud-pending-sequence",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
