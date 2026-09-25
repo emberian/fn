@@ -188,8 +188,8 @@
 ; `:apply-checkgroups' naming the report's Message-ID (live only).
 (defun fn-native-admin-control-plan (words)
   (declare (xargs :guard t))
-  (let ((verb (if (consp (cdr words)) (cadr words) nil))
-        (args (if (consp (cdr words)) (cddr words) nil)))
+  (let ((verb (if (and (consp words) (consp (cdr words))) (cadr words) nil))
+        (args (if (and (consp words) (consp (cdr words))) (cddr words) nil)))
     (cond
      ((and (equal verb "grant") (true-listp args) (<= 3 (len args))
            (fn-native-admin-namespacep (car args))
