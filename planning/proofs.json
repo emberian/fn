@@ -1141,7 +1141,8 @@
         "fn-osp-reader-after-signed-post-reports-its-verdict",
         "fn-osp-served-refusal-renders-its-reason",
         "fn-osp-plan-refusal-is-a-served-reason"
-      ]
+      ],
+      "progress_note": "Bounds P4 (2026-09-25): a verdict over a v2 carrier records the evidence tag fn-hybrid-v2, which fn-stxe-keyring-profile maps to the one D09 keyring profile so kind-4 replay and the schema-1 binding accept it (fn-hsig-keyring-profile-of-evidence-tag); verdicts recorded under fn-hybrid-v1 keep their meaning and a v1 record stored by a pre-v2 image reads verified on the P4 image (planning/evidence/bounds-p4-2026-09-25.md). This adds no PRF-026 event."
     },
     {
       "id": "PRF-027",
@@ -2057,7 +2058,7 @@
     {
       "id": "PRF-048",
       "title": "Mandatory hybrid authored-source profile binding",
-      "statement": "The host-called fn-hsig-authorize authorizes only a canonical version-1 Ed25519-and-ML-DSA-65 profile with exact fixed component widths and two verified primitive observations; its domain-separated, length-delimited signing preimage contains the principal, ordered enrolled key set and exact authored source octets.",
+      "statement": "The host-called fn-hsig-authorize-at, at the version fn-hsig-source-version names (version 1 for an authored source of at most 65535 octets, the u16 length's width; version 2 above, up to the u32's 4294967295), authorizes only a canonical Ed25519-and-ML-DSA-65 profile with exact fixed component widths and two verified primitive observations; each version's domain-separated, length-delimited signing preimage contains the principal, ordered enrolled key set and exact authored source octets. Across both versions equal preimages determine the same version, principal, keys and source (fn-hsig-signed-preimage-at-injective), no v1 preimage equals any v2 preimage (fn-hsig-v1-v2-preimages-disjoint), and on a v1 source the versioned preimage and authorization are the v1 functions (fn-hsig-preimage-at-v1-source-is-v1-preimage-by-definition, fn-hsig-authorize-at-v1-source-is-authorize-by-definition), so every v1 signature keeps its bytes.",
       "milestone": "M3",
       "requirements": [
         "OBJ-003",
@@ -2080,12 +2081,24 @@
         "host/native/signatures.lisp",
         "tests/native_hybrid_signatures.lisp",
         "tests/evidence/2026-09-21-native-hybrid-signatures.md",
-        "planning/evidence/hybrid-injectivity-certification-2026-09-21.md"
+        "planning/evidence/hybrid-injectivity-certification-2026-09-21.md",
+        "books/hybrid-carrier.lisp",
+        "tests/acl2/hybrid-carrier-tests.lisp",
+        "tools/fn_verify.py",
+        "tests/test_fn_verify.py",
+        "planning/evidence/bounds-p4-2026-09-25.md"
       ],
-      "progress_note": "host/native/signatures.lisp calls fn-hsig-host-authorize, whose body calls fn-hsig-authorize. The framing keystones prove that equal valid subject bodies, and equal tagged signing preimages, determine the same principal, ordered Ed25519/ML-DSA-65 key set and exact authored source. Projection witnesses are non-degenerate and each theorem has one must-fail event per hypothesis. Reachable tests cover both-valid, each bad component, absent ML-DSA, unknown/unsupported ML-DSA, stripping, component order/profile confusion, source changes and enrolled-key changes. Native component evidence covers libsodium Ed25519 and OpenSSL 3.6.4 ML-DSA-65. These are byte-framing results, not cryptographic injectivity: primitive security, RNG, ABI and library correctness remain trusted assumptions; key custody, recovery authority and durable article/verdict composition remain open. The byte-framing injectivity book and its hypothesis counterexamples certified on hbox in certify-20260921T181329Z-2345431; the complete selected closure source digests match the integrated source. This does not certify live author submission or either signature primitive.",
+      "progress_note": "host/native/signatures.lisp calls fn-hsig-host-authorize, whose body calls fn-hsig-authorize. The framing keystones prove that equal valid subject bodies, and equal tagged signing preimages, determine the same principal, ordered Ed25519/ML-DSA-65 key set and exact authored source. Projection witnesses are non-degenerate and each theorem has one must-fail event per hypothesis. Reachable tests cover both-valid, each bad component, absent ML-DSA, unknown/unsupported ML-DSA, stripping, component order/profile confusion, source changes and enrolled-key changes. Native component evidence covers libsodium Ed25519 and OpenSSL 3.6.4 ML-DSA-65. These are byte-framing results, not cryptographic injectivity: primitive security, RNG, ABI and library correctness remain trusted assumptions; key custody, recovery authority and durable article/verdict composition remain open. The byte-framing injectivity book and its hypothesis counterexamples certified on hbox in certify-20260921T181329Z-2345431; the complete selected closure source digests match the integrated source. This does not certify live author submission or either signature primitive. Bounds P4 (2026-09-25, D27): the v1 source bound is the u16's 65535, not the article constant, and carrier v2 (item 1 = 2, tag fn-authored-source-hybrid-v2, u32 length) signs sources above it; the host calls fn-hsig-authorize-at and fn-hsig-signed-preimage-at through fn-hsig-host-authorize and fn-hsig-host-preimage (host/hybrid-signature-host.lisp) with fn-hsig-source-version. The two -by-definition events are the v1 correspondence, not keystones; the keystones are the per-version injectivity, the cross-version disjointness and the versioned injectivity, each with one must-fail per hypothesis in its test book. Certified with every dependent in certify-20260925T025612Z-3717718; native and verifier results in planning/evidence/bounds-p4-2026-09-25.md.",
       "events": [
         "fn-hsig-subject-body-injective",
-        "fn-hsig-signed-preimage-injective"
+        "fn-hsig-signed-preimage-injective",
+        "fn-hsig-subject-body-v2-injective",
+        "fn-hsig-signed-preimage-v2-injective",
+        "fn-hsig-v1-v2-preimages-disjoint",
+        "fn-hsig-signed-preimage-at-injective",
+        "fn-hsig-subject-at-p-names-the-source-version",
+        "fn-hc-decode-at-of-encode-at",
+        "fn-hc-decode-at-refuses-another-version"
       ]
     },
     {
