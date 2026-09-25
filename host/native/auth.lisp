@@ -22,13 +22,17 @@
           (fnn-refuse "AUTHINFO credential file exceeds ACL2 bound: ~a" path))
         (values (fnn-octet-list (fnn-read-regular-bounded path maximum)) t)))))
 
-(defun fnn-native-auth-install (path requiredp protected-onlyp tls-availablep)
-  "Load and install the exact ACL2-produced config before any connection opens."
+(defun fnn-native-auth-install (path requiredp protected-onlyp tls-availablep
+                                 max-credentials)
+  "Load and install the exact ACL2-produced config before any connection opens.
+MAX-CREDENTIALS is the store profile's max-credentials (D27, PRF-102)."
   (multiple-value-bind (octets presentp)
-      (fnn-native-auth-read path (fnn-core 'fn-native-auth-host-max-octets))
+      (fnn-native-auth-read path (fnn-core 'fn-native-auth-host-max-octets
+                                           max-credentials))
     (let* ((result
              (fnn-core 'fn-native-auth-host-load octets presentp
-                       requiredp protected-onlyp (and tls-availablep t)))
+                       requiredp protected-onlyp (and tls-availablep t)
+                       max-credentials))
            (status (fnn-core 'fn-native-auth-host-status result)))
       (unless (eq status :accepted)
         (fnn-refuse "AUTHINFO profile refused: ~a"
@@ -40,7 +44,8 @@
       ;; posting policy (books/login-binding.lisp).  ACL2 reads them.
       (unless (eq (fnn-owner-action
                    'fn-owner-set-login-bindings
-                   (fnn-core 'fn-native-auth-host-load-bindings octets presentp))
+                   (fnn-core 'fn-native-auth-host-load-bindings octets presentp
+                             max-credentials))
                   :ok)
         (fnn-fault "owner rejected ACL2-produced login bindings"))
       :accepted)))
@@ -50,4 +55,6 @@
 TLS context loaded; ACL2 still owns the authentication policy decision."
   (lambda (service)
     (fnn-native-auth-install path requiredp protected-onlyp
-                             (fnn-owner-service-tls-context service))))
+                             (fnn-owner-service-tls-context service)
+                             (fnn-profile-nat 'fn-store-profile-max-credentials
+                                              (fnn-owner-service-store service)))))

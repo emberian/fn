@@ -2078,6 +2078,11 @@
           "name": "fn-bs-k0a-drop-dir-preserves-relation",
           "note": "Dropping every pending entry operation of one directory from a related state outside the recovery window keeps the relation: the durable projections are unchanged, the pending shape loses entries, and the pending authority targets become a sublist. The dropped half of the authority-barrier error keystone.",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0m-marker-rename-crash-is-a-resolution-crash",
+          "note": "For any byte state whose every pending root entry operation is the rename of inode INO onto committed-history.json and whose directory table holds the root directory: every crash image of it is a crash image of the state with that rename's root entry dropped from the pending list, or of that state with the entry durable. Under the same choices for every other pending operation (fn-bs-k0m-crash-of-pending-marker-rename)."
         }
       ]
     },
@@ -3769,6 +3774,35 @@
         {
           "kind": "theorem",
           "name": "fn-profile-rollback-sound-iff-records-within"
+        }
+      ]
+    },
+    {
+      "id": "PRF-102",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nco-observe-refuses-exactly-past-the-operator-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-publication-within-the-operator-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-auth-parse-lines-within-the-operator-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-auth-load-within-the-operator-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-namespace-counts-within-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-upgrade-keeps-namespace-counts"
         }
       ]
     }

@@ -1510,6 +1510,28 @@
         "tests/acl2/login-binding-tests.lisp",
         "planning/evidence/path-and-login-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-052",
+      "title": "an operator raises max-credentials and max-config-generations on a format-8 store and a credential file above the pre-D27 cap loads",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-015"
+      ],
+      "steps": [
+        "Copy a format-8 store; run `operator CONFIG store upgrade-profile --max-credentials 200 --max-config-generations 9000`, then `status`.",
+        "Write an auth.toml of 129 credentials with `principal set-password` and start the owner.",
+        "Run `store upgrade-profile --max-credentials 150` on the upgraded store."
+      ],
+      "expected": [
+        "The upgrade exits 0; status prints max-credentials=200 and max-config-generations=9000.",
+        "The 129th login is accepted and the owner starts (the pre-D27 cap was 128); under a profile of 128 the 129th set-password is refused too-many-credentials.",
+        "The shrink is refused (exit 1) naming max-credentials."
+      ],
+      "evidence": [
+        "planning/evidence/bounds-profile-2026-09-25.md"
+      ]
     }
   ]
 }

@@ -286,12 +286,12 @@ production image, which refuses to start with the variable set."
       (fnn-indeterminate "AUTHINFO registry recovery is uncertain"))
     (not (null final-info))))
 
-(defun fnn-native-auth-admin-read-held (final presentp)
+(defun fnn-native-auth-admin-read-held (final presentp max-credentials)
   (if presentp
       (fnn-octet-list
        (fnn-read-regular-bounded
         final (fnn-native-auth-admin-core
-               'fn-native-auth-admin-host-max-octets)))
+               'fn-native-auth-admin-host-max-octets max-credentials)))
     nil))
 
 (defun fnn-native-auth-admin-rp-step (phase event)
@@ -409,13 +409,13 @@ production image, which refuses to start with the variable set."
       +fnn-exit-ok+))))
 
 (defun fnn-native-auth-admin-execute-held (plan-result final stage directory
-                                           octets presentp)
+                                           octets presentp max-credentials)
   (case (fnn-native-auth-admin-core
          'fn-native-auth-admin-host-action-kind plan-result)
     (:list
      (fnn-native-auth-admin-result-code
       (fnn-native-auth-admin-core
-       'fn-native-auth-admin-host-list octets presentp)
+       'fn-native-auth-admin-host-list octets presentp max-credentials)
       :list))
     (:set-password
      (multiple-value-bind (secret confirmation)
@@ -433,7 +433,8 @@ production image, which refuses to start with the variable set."
                  (fnn-native-auth-admin-core
                   'fn-native-auth-admin-host-action-principal-presentp plan-result)
                  (fnn-native-auth-admin-core
-                  'fn-native-auth-admin-host-action-postingp plan-result))))
+                  'fn-native-auth-admin-host-action-postingp plan-result)
+                 max-credentials)))
          (if (not (eq (fnn-native-auth-admin-core
                        'fn-native-auth-admin-host-result-status result)
                       :accepted))
@@ -455,7 +456,8 @@ production image, which refuses to start with the variable set."
               (fnn-native-auth-admin-core
                'fn-native-auth-admin-host-action-name plan-result)
               (fnn-native-auth-admin-core
-               'fn-native-auth-admin-host-action-signing-text plan-result))))
+               'fn-native-auth-admin-host-action-signing-text plan-result)
+              max-credentials)))
        (if (not (eq (fnn-native-auth-admin-core
                      'fn-native-auth-admin-host-result-status result)
                     :accepted))
@@ -468,8 +470,9 @@ production image, which refuses to start with the variable set."
             'fn-native-auth-admin-host-result-octets result))))))
     (t (fnn-fault "ACL2 returned no executable principal action"))))
 
-(defun fnn-native-auth-admin-execute (plan-result auth-path)
-  "Execute one ACL2-produced principal plan against AUTH-PATH."
+(defun fnn-native-auth-admin-execute (plan-result auth-path max-credentials)
+  "Execute one ACL2-produced principal plan against AUTH-PATH.
+MAX-CREDENTIALS is the store profile's max-credentials (D27, PRF-102)."
   (unless (eq (fnn-native-auth-admin-core
                'fn-native-auth-admin-host-plan-status plan-result)
               :accepted)
@@ -488,8 +491,10 @@ production image, which refuses to start with the variable set."
       (unwind-protect
            (let* ((presentp
                     (fnn-native-auth-admin-recover stage final directory))
-                  (octets (fnn-native-auth-admin-read-held final presentp)))
+                  (octets (fnn-native-auth-admin-read-held final presentp
+                                                           max-credentials)))
              (fnn-native-auth-admin-execute-held
-              plan-result final stage directory octets presentp))
+              plan-result final stage directory octets presentp
+              max-credentials))
         (ignore-errors (fnn-flock lock-fd +fnn-lock-un+))
         (fnn-close lock-fd)))))
