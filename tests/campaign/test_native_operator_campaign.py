@@ -55,6 +55,7 @@ class NativeCutTableTests(unittest.TestCase):
         self.assertEqual(set(native_cuts.developer_selectors()), {
             "FN_NATIVE_INIT_FAULT", "FN_NATIVE_RECOVERY_FAULT",
             "FN_NATIVE_POST_FAULT", "FN_NATIVE_PROFILE_FAULT",
+            "FN_NATIVE_STATE_CHECKPOINT_FAULT",
             "FN_NATIVE_CONTROL_FAULT",
             "FN_NATIVE_CONTROL_TEST_STOP", "FN_NATIVE_AUTH_ADMIN_FAULT",
             "FN_NATIVE_OWNER_TEST_SIGTERM", "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP",

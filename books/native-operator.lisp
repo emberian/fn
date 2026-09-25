@@ -237,6 +237,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; `store compact': the offline compaction (books/store-compact-verb.lisp).
 ; It takes no argument; what it does to the store (pack and reclaim, resume a
 ; reclaim, or refuse) is `fn-cverb-decide' at the store, not here.
+; `store checkpoint': publish the exact-state checkpoint (P3,
+; books/store-checkpoint-open.lisp).  It takes no argument.
 (defun fn-nop-parse-store (words config)
   (declare (xargs :guard t))
   (cond ((and (consp words) (equal (car words) "upgrade-profile"))
@@ -251,6 +253,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                             (list :upgrade-profile (car parsed))))))
         ((and (consp words) (equal (car words) "compact") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :compact)))
+        ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
+         (fn-nop-result :accepted :plan "store" config (list :checkpoint)))
         (t (fn-nop-usage :invalid-store-command "store" config words))))
 
 (defun fn-nop-help-subjectp (subject)
@@ -268,7 +272,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "status") "usage: fn operator CONFIG status")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] | compact} (offline; refused while an owner runs; no field may shrink)")
+         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] | compact | checkpoint} (offline; refused while an owner runs; no field may shrink)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "peer")
@@ -695,10 +699,13 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "status") :status)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
           ((equal (fn-native-operator-result-command result) "store")
-           (if (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
-                      :compact)
-               :compact
-             :upgrade-profile))
+           (cond ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :compact)
+                  :compact)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :checkpoint)
+                  :checkpoint)
+                 (t :upgrade-profile)))
           ((or (equal (fn-native-operator-result-command result) "group")
                (equal (fn-native-operator-result-command result) "capacity")
                (equal (fn-native-operator-result-command result) "peer")
@@ -906,5 +913,123 @@ when that store already exists is `fn-native-operator-init-outcome'."
                             (config (fn-ncfg-second (fn-native-config-load config)))
                             (argv argv))
                  (:instance fn-nop-parse-command-compact-action-words
+                            (words (fn-nop-argument-texts argv))
+                            (config nil) (argv argv))))))
+
+; KEYSTONE (P3, the operator entry to the state checkpoint).  The same
+; subject and projection as the compaction keystone above: an accepted
+; `store checkpoint' is the :checkpoint action, and the :checkpoint action
+; arises from that argv and no other, so the raw host reaches
+; `fnn-command-state-checkpoint' only for the bare command.
+(defthm fn-native-operator-run-store-checkpoint-is-the-checkpoint-action
+  (implies (and (equal (fn-nop-argument-texts argv) '("store" "checkpoint"))
+                (equal (fn-native-operator-result-status
+                        (fn-native-operator-run config argv))
+                       :accepted))
+           (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :checkpoint))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-parse-command fn-nop-parse-store
+                                   fn-nop-usage fn-nop-refused fn-nop-result
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-native-operator-result-native-action)
+                                  (fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep)))))
+
+(local
+ (defthm fn-nop-parse-store-checkpoint-words
+   (implies (and (equal (fn-native-operator-result-status (fn-nop-parse-store w c))
+                        :accepted)
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-store w c)))
+                        :checkpoint))
+            (equal w '("checkpoint")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-nop-parse-store fn-nop-usage fn-nop-result
+                                      fn-native-operator-result-status
+                                      fn-native-operator-result-arguments)))))
+
+(local
+ (defthm fn-nop-parse-command-checkpoint-words
+   (implies (and (equal (fn-native-operator-result-status
+                         (fn-nop-parse-command words config argv))
+                        :accepted)
+                 (equal (fn-native-operator-result-command
+                         (fn-nop-parse-command words config argv))
+                        "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments
+                                        (fn-nop-parse-command words config argv)))
+                        :checkpoint))
+            (equal words '("store" "checkpoint")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
+                                   (fn-nop-result
+                                    fn-native-operator-result-status
+                                    fn-native-operator-result-command
+                                    fn-native-operator-result-arguments
+                                    fn-nop-parse-init fn-nop-parse-post
+                                    fn-nop-parse-principal
+                                    fn-nop-parse-administration
+                                    fn-nop-parse-store fn-nop-parse-run
+                                    fn-nop-help-text fn-nop-help-subjectp))
+            :use ((:instance fn-nop-parse-store-checkpoint-words
+                             (w (cdr words)) (c config)))))))
+
+(local
+ (defthm fn-nop-checkpoint-action-shape
+   (implies (equal (fn-native-operator-result-native-action result) :checkpoint)
+            (and (equal (fn-native-operator-result-status result) :accepted)
+                 (equal (fn-native-operator-result-command result) "store")
+                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                        :checkpoint)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+
+(local
+ (defthm fn-nop-parse-command-checkpoint-action-words
+   (implies (equal (fn-native-operator-result-native-action
+                    (fn-nop-parse-command words config argv))
+                   :checkpoint)
+            (equal words '("store" "checkpoint")))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-nop-checkpoint-action-shape
+                                       fn-native-operator-result-native-action
+                                       fn-nop-parse-command)
+            :use ((:instance fn-nop-checkpoint-action-shape
+                             (result (fn-nop-parse-command words config argv)))
+                  fn-nop-parse-command-checkpoint-words)))))
+
+(defthm fn-native-operator-run-checkpoint-action-is-only-store-checkpoint
+  (implies (equal (fn-native-operator-result-native-action
+                   (fn-native-operator-run config argv))
+                  :checkpoint)
+           (equal (fn-nop-argument-texts argv) '("store" "checkpoint")))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
+                                   fn-native-operator-command-preflight
+                                   fn-native-operator-preflight-needs-config-p
+                                   fn-nop-usage)
+                                  (fn-nop-result
+                                   fn-native-operator-result-native-action
+                                   fn-native-operator-result-status
+                                   fn-native-operator-result-command
+                                   fn-native-operator-result-arguments
+                                   fn-nop-parse-command fn-nop-argument-texts
+                                   fn-nop-argvp fn-native-config-load
+                                   fn-ncfg-ascii-octetsp
+                                   fn-native-config-operator-availablep))
+           :use ((:instance fn-nop-parse-command-checkpoint-action-words
+                            (words (fn-nop-argument-texts argv))
+                            (config (fn-ncfg-second (fn-native-config-load config)))
+                            (argv argv))
+                 (:instance fn-nop-parse-command-checkpoint-action-words
                             (words (fn-nop-argument-texts argv))
                             (config nil) (argv argv))))))

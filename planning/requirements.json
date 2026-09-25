@@ -531,7 +531,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-008",
-        "PRF-037"
+        "PRF-037",
+        "PRF-080"
       ],
       "verification": [
         "proof",
@@ -660,6 +661,28 @@
       ],
       "implementation_note": "Packing (P) is implemented and proved (PRF-073). History compaction (H) and content reclamation (C) are not implemented. Each needs D13 and a decision-preserving summary obligation, as the class table states. Today's compaction relieves the transaction-file count and per-file overhead only.",
       "note": "This row is the contract. The open policy cells (release summaries, key-epoch summaries, BP outcome summaries, configuration-generation lifetime, the headroom line) are marked open in the specification. Lane bounds-p1-profile (2026-09-25, D27): admission adds the history gate -- the committed record octets plus the kind's worst case within the profile's max_history_octets (fn-sbud-verdict-is-the-count-and-history-admissibility), the owner carrying the octet sum (fn-sbud-bytes-used-is-kernel-sum); status prints every profile field and bytes-used/history-bound; the budget is raised by any non-shrinking `store upgrade-profile --FIELD N`."
+    },
+    {
+      "id": "STO-011",
+      "title": "Open reads the newest verified exact-state checkpoint and replays at most K records after it, else replays in full and says so",
+      "specification": "specs/storage.md#checkpointing",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-080"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-checkpoint-open.lisp",
+        "books/store-checkpoint-codec.lisp",
+        "books/byte-store-state-checkpoint-program.lisp",
+        "tests/test_native_state_checkpoint.py",
+        "planning/evidence/bounds-p3-2026-09-25.md"
+      ],
+      "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
     },
     {
       "id": "FLR-001",
