@@ -1628,7 +1628,17 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                 (channel
                                  ;; Once protected, no transport suffix may be
                                  ;; reclassified as a second TLS handshake.
-                                 (unless (= consumed (length incoming))
+                                 ;; A step that closes the wire (an article
+                                 ;; over fn-own-body-limit: fn-wire-close
+                                 ;; ... :body-overlimit, books/wire.lisp)
+                                 ;; stops at the octet that closed it, as on
+                                 ;; the plaintext path below: its reply (the
+                                 ;; 441 naming the size) is sent and the
+                                 ;; connection ends with the rest unread.
+                                 ;; Stopping the process there turned one
+                                 ;; client's refusal into every client's
+                                 ;; closed socket (large-article, 2026-09-25).
+                                 (unless (or closing (= consumed (length incoming)))
                                    (fnn-fault "protected owner read left a TLS suffix")))
                                 ((fnn-owner-service-tls-context service)
                                  ;; The worker is the sole socket reader.  A
@@ -1689,10 +1699,20 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                                :ok)
                                      (fnn-fault "owner rejected established TLS")))))
                               (when closing
-                                (unless channel
-                                  (fnn-owner-connection-call
-                                   service :graceful-close
-                                   (lambda () (fnn-graceful-close fd))))
+                                ;; The final reply must reach the client
+                                ;; before the close: a peer still sending
+                                ;; (an oversize article) would otherwise
+                                ;; take a reset that discards the 441 in its
+                                ;; receive queue.  On a protected channel the
+                                ;; TLS close_notify goes first, then the same
+                                ;; bounded drain as plaintext.
+                                (fnn-owner-connection-call
+                                 service :graceful-close
+                                 (lambda ()
+                                   (when channel
+                                     (fnn-tls-close-channel channel)
+                                     (setq channel nil))
+                                   (fnn-graceful-close fd)))
                                 (return))))))))
            (fnn-store-indeterminate (e)
              ;; The shared boundary has already stopped mutation; prevent the

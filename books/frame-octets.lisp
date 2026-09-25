@@ -77,14 +77,49 @@
 ; `n` are present.  It allocates at most `n` conses and examines at most `n`,
 ; so every caller below can put its bound check in front of its split.
 
-(defun fn-frame-split (n xs)
-  (declare (xargs :guard (and (natp n) (true-listp xs))))
+; The executable splitter.  The definition below recurses once per octet of
+; the prefix and is not a tail call, so a split of a stored article record
+; ran one control-stack frame per octet: a 3 MiB record exhausted the image's
+; 64 MB stack in `store inspect' and at owner recovery (large-article,
+; 2026-09-25).  This twin walks the prefix once in a tail call, pushing each
+; octet onto ACC, and reverses ACC once at the end; it allocates 2n conses
+; and a constant stack.  `fn-frame-split-acc-is-split' below is the
+; correspondence, with no hypothesis.
+(defun fn-frame-split-acc (n xs acc)
+  (declare (xargs :guard (and (natp n) (true-listp acc))
+                  :measure (nfix n)))
   (if (zp n)
-      (cons nil xs)
+      (cons (revappend acc nil) xs)
     (if (consp xs)
-        (let ((rest (fn-frame-split (1- n) (cdr xs))))
-          (and rest (cons (cons (car xs) (car rest)) (cdr rest))))
+        (fn-frame-split-acc (1- n) (cdr xs) (cons (car xs) acc))
       nil)))
+
+(defun fn-frame-split (n xs)
+  (declare (xargs :guard (and (natp n) (true-listp xs))
+                  :verify-guards nil))
+  (mbe :logic (if (zp n)
+                  (cons nil xs)
+                (if (consp xs)
+                    (let ((rest (fn-frame-split (1- n) (cdr xs))))
+                      (and rest (cons (cons (car xs) (car rest)) (cdr rest))))
+                  nil))
+       :exec (fn-frame-split-acc n xs nil)))
+
+(local
+ (defthm fn-frame-split-acc-is-split-onto
+   (equal (fn-frame-split-acc n xs acc)
+          (let ((split (fn-frame-split n xs)))
+            (and split (cons (revappend acc (car split)) (cdr split)))))
+   :hints (("Goal" :induct (fn-frame-split-acc n xs acc)))))
+
+; Keystone (D27 concrete twin): the tail-recursive splitter is the list
+; definition on every argument.
+(defthm fn-frame-split-acc-is-split
+  (equal (fn-frame-split-acc n xs nil)
+         (fn-frame-split n xs)))
+
+(verify-guards fn-frame-split
+  :hints (("Goal" :expand ((fn-frame-split n xs)))))
 
 ; A total positional accessor.  Every result record below is read through it,
 ; so no guard obligation anywhere depends on the shape of a value that failed
