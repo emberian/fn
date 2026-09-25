@@ -31,6 +31,10 @@ uncertain) and never inferred from a later step:
   4. the receipt.  B's owed receipt (if any) is queued and forwarded toward
      A by `bp-contact tick`; A's `bp-node serve` matches it against the
      request's obligation (`receipt-accepted`, pin released) or not.
+     `--no-contact-tick` runs no `bp-contact tick` at all: B's own `bp-node
+     serve` sends the queued receipt (fn-bpnp-receipt-contact-event,
+     books/bp-node-receipt-send.lisp), restarted once A listens, and the lab
+     exits 1 unless A answers `receipt-accepted`.
 
 `--native` (M4 native request, 2026-09-24) replaces step 1's bridge-authored
 ADU and `bp-service run` with `bp-obligation request`: A's own workflow
@@ -445,6 +449,9 @@ def main(argv=None):
     ap.add_argument("--flip-signature", action="store_true",
                     help="with --signed-receipts: a proxy between B and the relay "
                          "flips one octet of the receipt's ML-DSA-65 signature")
+    ap.add_argument("--no-contact-tick", action="store_true",
+                    help="step 4 runs no bp-contact tick: B's bp-node serve sends "
+                         "its own owed receipt; exit 1 unless A accepts it")
     args = ap.parse_args(argv)
     if args.relays and not args.dtn7_repo:
         ap.error("--dtn7-repo is required unless --relays 0")
@@ -687,16 +694,28 @@ def main(argv=None):
             SENDER, RECEIVER, SENDER, "native-policy", SENDER,
             "127.0.0.1", first_hop, "0", 3600000, 2, 32, 1048576, lab.wall, 60000)
         lab.wait_log(a_log, r"BP NODE LISTENING", 60)
-        tick = lab.fn("b-4-tick", "bp-contact", "tick", b_fnbs, RECEIVER, SENDER,
-                      0, 60000, 3600000, 2, 32, 1048576, lab.wall, 60000)
-        matched = lab.wait_log(a_log, r"BP node delivery (receipt-\S+)", args.settle)
+        if args.no_contact_tick:
+            # B's own serve sends the receipt it queued; no bp-contact tick.
+            tick = None
+            b_serve, b4_log = start_b("b-4-serve")
+            matched = lab.wait_log(a_log, r"BP node delivery (receipt-\S+)", args.settle)
+            time.sleep(1.0)
+            lab.stop(b_serve)
+            b_tags = ["b-4-serve"]
+        else:
+            tick = lab.fn("b-4-tick", "bp-contact", "tick", b_fnbs, RECEIVER, SENDER,
+                          0, 60000, 3600000, 2, 32, 1048576, lab.wall, 60000)
+            matched = lab.wait_log(a_log, r"BP node delivery (receipt-\S+)", args.settle)
+            b_tags = ["b-4-tick"]
         time.sleep(1.0)
         lab.stop(a_serve)
         status = lab.fn("a-status-4", "bp-obligation", "status", a_store, a_wf, WORK)
         alines = lines_of(a_log)
         step("4 B's receipt carried back and matched at A",
-             matched.group(1) if matched else "no-receipt", ["b-4-tick", "a-serve"],
-             tick_outcome=outcome_of(tick.returncode),
+             matched.group(1) if matched else "no-receipt", b_tags + ["a-serve"],
+             tick_outcome=(outcome_of(tick.returncode) if tick else "no-tick"),
+             b_receipt_contacts=[l for t in b_tags for l in lines_of(lab.logs[t])
+                                 if l.startswith(("BP node receipt contact", "BP contact"))],
              a_receipt_lines=[l for l in alines if l.startswith("BP node delivery")],
              a_source_decisions=[l for l in alines if l.startswith("BP node source")],
              a_release_lines=[l for l in alines if l.startswith("BP node release")],
@@ -706,6 +725,9 @@ def main(argv=None):
                  ("BP accepted", "BP received carrier"))],
              a_obligation=status.stdout.strip())
         report["a_pinned_after"] = status.stdout.strip()
+        report["receipt_without_tick"] = (
+            None if not args.no_contact_tick
+            else bool(matched and matched.group(1) == "receipt-accepted"))
         if args.native:
             control = lab.fn("a-status-control", "bp-obligation", "status", a_store, a_wf,
                              "work-control")
@@ -777,6 +799,8 @@ def main(argv=None):
     out = lab.path("report.json")
     out.write_text(json.dumps(report, indent=2, sort_keys=True))
     print(json.dumps(report, indent=2, sort_keys=True))
+    if args.no_contact_tick and not report.get("receipt_without_tick"):
+        return 1
     return 0
 
 

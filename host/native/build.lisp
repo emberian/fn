@@ -110,6 +110,7 @@
 (include-book "books/bp-fnbs-family-publication")
 (include-book "books/bp-fnbs-dispatch-publication")
 (include-book "books/bp-fnbs-forward-publication")
+(include-book "books/bp-node-receipt-send")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")

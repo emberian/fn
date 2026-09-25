@@ -18,15 +18,28 @@
                             (fn-bpn-nth 0 (list arrival)))
             :in-theory (enable fn-cbor-ag-car)))))
 
+; The two-field event carries no budgets: the defaults.  A row stranded by
+; busy answers takes the kind-20 resume (bp-node-busy-delivery.lisp); every
+; other row this forwarding resume.
 (defthm fn-bpnp-step-operator-resume-is-the-resume-arm
   (equal (fn-bpnp-step st (list :operator-resume arrival))
          (if (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :uncertain)
              (fn-bpnf-answer st nil)
-           (fn-bpnp-operator-resume-step st arrival)))
+           (if (fn-bpnp-busy-strandedp
+                (fn-bpnf-find-arrival arrival (fn-bpnf-held-list st))
+                *fn-bpnp-max-forward-retries*)
+               (fn-bpnp-busy-resume-step st arrival
+                                         *fn-bpnp-max-forward-retries*)
+             (fn-bpnp-operator-resume-step st arrival
+                                           *fn-bpnp-max-forward-retries*))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpnp-step fn-bpnp-domain-recover-eventp
                                 fn-bpnp-conflict-held fn-cbor-ag-car
                                 fn-bpnrs-nth-one-of-event
+                                fn-bpnp-event-budgets len true-listp
+                                (:e fn-bpnp-default-budgets)
+                                (:e fn-bpnp-budget-retries) (:e nfix)
+                                (:e binary-+) (:e equal) (:e len)
                                 car-cons cdr-cons)
                               (theory 'minimal-theory)))))
 
@@ -46,9 +59,9 @@
 (local
  (defthm fn-bpnrs-resume-step-proposal
    (let ((effect (car (fn-bpnf-answer-effects
-                       (fn-bpnp-operator-resume-step st arrival)))))
+                       (fn-bpnp-operator-resume-step st arrival budget)))))
      (implies (equal (car effect) :persist-forward-result)
-              (and (not (fn-bpnp-resume-refusal st arrival))
+              (and (not (fn-bpnp-resume-refusal st arrival budget))
                    (equal (fn-bpn-nth 3 effect)
                           (fn-bpnp-resume-record st arrival)))))
    :hints (("Goal" :in-theory (union-theories
@@ -62,9 +75,9 @@
 (local
  (defthm fn-bpnrs-no-refusal-is-stranded
    (let ((h (fn-bpnf-find-arrival arrival (fn-bpnf-held-list st))))
-     (implies (not (fn-bpnp-resume-refusal st arrival))
+     (implies (not (fn-bpnp-resume-refusal st arrival budget))
               (and (fn-bpnp-stranded-slotp (fn-bpn-nth 13 h) (fn-bpnf-epoch st)
-                                           (fn-bpn-nth 11 h))
+                                           (fn-bpn-nth 11 h) budget)
                    (equal (fn-bpn-nth 12 h) '(:forward-pending)))))
    :hints (("Goal" :in-theory (union-theories
                                '(fn-bpnp-resume-refusal)
@@ -86,6 +99,19 @@
                                  (:e unary--))
                                (theory 'minimal-theory))))))
 
+(local
+ (defthm fn-bpnrs-busy-resume-writes-no-kind-nine
+   (not (equal (car (car (fn-bpnf-answer-effects
+                          (fn-bpnp-busy-resume-step st arrival budget))))
+               :persist-forward-result))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnp-busy-resume-step
+                                 fn-bpnf-answer-effects fn-bpnf-answer
+                                 fn-bpnrs-nth-of-cons car-cons cdr-cons
+                                 (:e zp) (:e binary-+) (:e unary--)
+                                 (:e fn-bpn-nth) (:e car) (:e equal))
+                               (theory 'minimal-theory))))))
+
 (defthm fn-bpnp-step-resume-writes-only-for-a-stranded-row
   (let* ((answer (fn-bpnp-step st (list :operator-resume arrival)))
          (effect (car (fn-bpnf-answer-effects answer)))
@@ -93,7 +119,8 @@
          (record (fn-bpn-nth 3 effect)))
     (implies (equal (car effect) :persist-forward-result)
              (and (fn-bpnp-stranded-slotp (fn-bpn-nth 13 h) (fn-bpnf-epoch st)
-                                          (fn-bpn-nth 11 h))
+                                          (fn-bpn-nth 11 h)
+                                          *fn-bpnp-max-forward-retries*)
                   (equal (fn-bpn-nth 12 h) '(:forward-pending))
                   (equal record (fn-bpnp-resume-record st arrival))
                   (equal (fn-bpn-nth 3 record) arrival)
@@ -103,8 +130,12 @@
                   (equal (fn-bpn-nth 8 record) :resumed))))
   :hints (("Goal"
            :use (fn-bpnp-step-operator-resume-is-the-resume-arm
-                 fn-bpnrs-resume-step-proposal
-                 fn-bpnrs-no-refusal-is-stranded
+                 (:instance fn-bpnrs-resume-step-proposal
+                            (budget *fn-bpnp-max-forward-retries*))
+                 (:instance fn-bpnrs-no-refusal-is-stranded
+                            (budget *fn-bpnp-max-forward-retries*))
+                 (:instance fn-bpnrs-busy-resume-writes-no-kind-nine
+                            (budget *fn-bpnp-max-forward-retries*))
                  fn-bpnrs-resume-record-fields)
            :in-theory (union-theories
                        '(fn-bpnf-answer-effects fn-bpnf-answer
@@ -114,14 +145,22 @@
                        (theory 'minimal-theory)))))
 
 (defthm fn-bpnp-step-resume-refusal-keeps-the-state
-  (let ((reason (fn-bpnp-resume-refusal st arrival)))
+  (let ((reason (fn-bpnp-resume-refusal st arrival
+                                        *fn-bpnp-max-forward-retries*)))
     (implies (and reason
+                  (not (fn-bpnp-busy-strandedp
+                        (fn-bpnf-find-arrival arrival (fn-bpnf-held-list st))
+                        *fn-bpnp-max-forward-retries*))
                   (not (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :uncertain)))
              (equal (fn-bpnp-step st (list :operator-resume arrival))
                     (fn-bpnf-answer
                      st (list (list :resume-refused arrival reason))))))
-  :hints (("Goal" :in-theory (e/d (fn-bpnp-operator-resume-step)
-                                  (fn-bpnp-resume-refusal
+  :hints (("Goal" :use fn-bpnp-step-operator-resume-is-the-resume-arm
+           :in-theory (e/d (fn-bpnp-operator-resume-step)
+                                  (fn-bpnp-resume-refusal fn-bpnp-step
+                                   fn-bpnp-step-operator-resume-is-the-resume-arm
+                                   fn-bpnp-busy-strandedp
+                                   fn-bpnp-busy-resume-step
                                    fn-bpnp-forward-result-apply)))))
 
 ;; KEYSTONE (re-arm).  A :resumed kind 9 that applies (live at
@@ -202,8 +241,8 @@
  (defthm fn-bpnrs-resumed-match
    (implies (and (fn-bpnp-forward-result-matches-heldp record h)
                  (equal (fn-bpn-nth 8 record) :resumed))
-            (and (fn-bpnp-stranded-slotp (fn-bpn-nth 13 h) (fn-bpn-nth 1 record)
-                                         (fn-bpn-nth 11 h))
+            (and (fn-bpnp-uncertain-attemptp (fn-bpn-nth 13 h) (fn-bpn-nth 1 record)
+                                             (fn-bpn-nth 11 h))
                  (equal (fn-bpn-nth 0 h) :bpnf-held)
                  (equal (fn-bpn-nth 3 h) (fn-bpn-nth 3 record))
                  (equal (fn-bpn-nth 12 h) '(:forward-pending))
@@ -220,8 +259,8 @@
     (implies (and (equal (car applied) :ready)
                   (equal (fn-bpn-nth 8 record) :resumed))
              (and (equal (fn-bpn-nth 2 applied) (update-nth 13 nil h))
-                  (fn-bpnp-stranded-slotp (fn-bpn-nth 13 h) (fn-bpn-nth 1 record)
-                                          (fn-bpn-nth 11 h)))))
+                  (fn-bpnp-uncertain-attemptp (fn-bpn-nth 13 h) (fn-bpn-nth 1 record)
+                                              (fn-bpn-nth 11 h)))))
   :hints (("Goal"
            :use (fn-bpnrs-apply-ready
                  (:instance fn-bpnrs-resumed-match
@@ -239,7 +278,7 @@
                   (natp arrival)
                   (equal (fn-bpnp-held-expiry row observation) :live))
              (and (fn-bpnp-forward-candidatep row (fn-bpn-nth 11 h)
-                                              observation epoch)
+                                              observation epoch budget)
                   (equal (fn-bpah-held-primary-identity row)
                          (fn-bpah-held-primary-identity h))
                   (equal (fn-bpn-nth 3 row) arrival)

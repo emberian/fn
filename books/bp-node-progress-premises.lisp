@@ -355,7 +355,10 @@
                                                  fn-bpnp-session)
                             (fn-bpp-eidp fn-bpnp-session-idp
                              fn-clock-observationp fn-bpnf-host-eventp
-                             fn-bpnp-routesp fn-bpnp-forward-outcomep))))))
+                             fn-bpnp-routesp fn-bpnp-forward-outcomep
+                             fn-bpnp-budgeted-lengthp fn-bpnp-session-via
+                             fn-bpnp-session-base-length fn-bprt-viap
+                             fn-bpnp-budgetsp))))))
 
 ;; The host event supplies the delegated arms' own premises.
 (local
@@ -398,7 +401,51 @@
                                  (:e equal))
                                (theory 'minimal-theory))))))
 
+(local
+ (defthm fn-bpnpp-true-listp-of-deferral-replace
+   (implies (true-listp held)
+            (true-listp (fn-bpnp-deferral-replace arrival count held)))
+   :hints (("Goal" :induct (fn-bpnp-deferral-replace arrival count held)
+            :in-theory (union-theories
+                        '(fn-bpnp-deferral-replace true-listp car-cons cdr-cons
+                          (:induction fn-bpnp-deferral-replace))
+                        (theory 'minimal-theory))))))
+
+; The kind-20 persist arm writes the held list (slot 2) whole.
+(local
+ (defthm fn-bpnpp-premises-of-held-write
+   (implies (true-listp h)
+            (equal (fn-bpnp-step-guard-premisesp (update-nth 2 h st))
+                   (and (fn-bpn-machine-invariantp (fn-bpnf-base st))
+                        (fn-bpnp-session-listp (fn-bpnp-sessions st))
+                        (true-listp h))))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnp-step-guard-premisesp
+                                 fn-bpnf-base fn-bpnp-sessions
+                                 fn-bpnf-held-list fn-bpnpp-nth-is-nth
+                                 nth-update-nth (:e natp) (:e nfix)
+                                 (:e equal))
+                               (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnpp-premises-kept-by-held-write
+   (implies (and (fn-bpnp-step-guard-premisesp st) (true-listp h))
+            (fn-bpnp-step-guard-premisesp (update-nth 2 h st)))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnpp-premises-of-held-write
+                                 fn-bpnpp-premises-components)
+                               (theory 'minimal-theory))))))
+
 (local (in-theory (disable fn-bpnpp-nth-is-nth)))
+
+; The kind-20 apply answers (:ready HELD ROW); the arm reads HELD.
+(local
+ (defthm fn-bpnpp-nth-1-of-ready
+   (equal (fn-bpn-nth 1 (cons a (cons b c))) b)
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
+                                 (:e natp) (:e zp) (:e binary-+) (:e unary--))
+                               (theory 'minimal-theory))))))
 
 (local (in-theory (disable fn-bpnp-step-guard-premisesp)))
 
@@ -541,13 +588,20 @@
             :in-theory (union-theories '(fn-bpnp-preserve-runtime-answer)
                                        (theory 'fn-bpnpp-theory))))))
 
+(local
+ (defthm fn-bpnpp-premises-of-next-issued
+   (implies (fn-bpnp-step-guard-premisesp st)
+            (fn-bpnp-step-guard-premisesp (fn-bpnp-with-next-issued st issued)))
+   :hints (("Goal" :in-theory (union-theories '(fn-bpnp-with-next-issued)
+                                              (theory 'fn-bpnpp-theory))))))
+
 (fn-bpnpp-defkeep fn-bpnpp-transit-dispatch-step
   (fn-bpnp-transit-dispatch-step st h peer node)
   (fn-bpnp-transit-dispatch-step))
 
 (fn-bpnpp-defkeep fn-bpnpp-progress-step
   (fn-bpnp-progress-step st node observation routes
-                                          generation)
+                                          generation budget)
   (fn-bpnp-progress-step fn-bpnpp-deliver-step
                            fn-bpnpp-transit-dispatch-step))
 
@@ -591,21 +645,32 @@
   (fn-bpnp-rotation-persist-step fn-bpnpp-premises-of-rotation-slots))
 
 (fn-bpnpp-defkeep fn-bpnpp-busy-delivery-step
-  (fn-bpnp-busy-delivery-step st epoch op key observation)
-  (fn-bpnp-busy-delivery-step fn-bpnpp-premises-of-busy-slots))
+  (fn-bpnp-busy-delivery-step st epoch op key observation budgets)
+  (fn-bpnp-busy-delivery-step fn-bpnpp-premises-of-next-issued
+   fn-bpnpp-premises-of-busy-slots))
+
+(fn-bpnpp-defkeep fn-bpnpp-deferral-persist-step
+  (fn-bpnp-deferral-persist-step st epoch op result)
+  (fn-bpnp-deferral-persist-step fn-bpnp-deferral-apply
+   fn-bpnpp-premises-kept-by-held-write fn-bpnpp-true-listp-of-deferral-replace
+   fn-bpnpp-nth-1-of-ready car-cons))
+
+(fn-bpnpp-defkeep fn-bpnpp-busy-resume-step
+  (fn-bpnp-busy-resume-step st arrival budget)
+  (fn-bpnp-busy-resume-step fn-bpnpp-premises-of-next-issued))
 
 (fn-bpnpp-defkeep fn-bpnpp-conflict-persist-step
   (fn-bpnp-conflict-persist-step st epoch op result)
   (fn-bpnp-conflict-persist-step fn-bpnp-conflict-refusal))
 
 (fn-bpnpp-defkeep fn-bpnpp-start-one
-  (fn-bpnp-start-one st peer session mru observation)
+  (fn-bpnp-start-one st peer session mru observation budget)
   (fn-bpnp-start-one))
 
 ; The routed :session arm (spec 4.6): start-one's answer, or the state
 ; unchanged with a :forward-no-route report.
 (fn-bpnpp-defkeep fn-bpnpp-routed-start
-  (fn-bpnp-routed-start st peer session mru observation via)
+  (fn-bpnp-routed-start st peer session mru observation via budget)
   (fn-bpnp-routed-start fn-bpnpp-start-one))
 
 (fn-bpnpp-defkeep fn-bpnpp-attempt-persist-step
@@ -618,7 +683,7 @@
   (fn-bpnp-forward-result-propose-step))
 
 (fn-bpnpp-defkeep fn-bpnpp-operator-resume-step
-  (fn-bpnp-operator-resume-step st arrival)
+  (fn-bpnp-operator-resume-step st arrival budget)
   (fn-bpnp-operator-resume-step))
 
 (fn-bpnpp-defkeep fn-bpnpp-forward-result-persist-step
@@ -651,6 +716,8 @@
                          fn-bpnpp-conflict-propose-step
                          fn-bpnpp-conflict-persist-step
                          fn-bpnpp-busy-delivery-step
+                         fn-bpnpp-deferral-persist-step
+                         fn-bpnpp-busy-resume-step
                          fn-bpnpp-rotate-step
                          fn-bpnpp-rotation-persist-step
                          fn-bpnpp-delegate-with-credit
