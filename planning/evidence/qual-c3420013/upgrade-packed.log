@@ -1,0 +1,63 @@
+## old image /tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host
+432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505  /tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host
+3411e52b435ae8c31e68a3d64ab84687a04071885b9840ee2c46a989403375ba  /tank/fn/gates/qual-4eca4148-20260924/build/images/4eca4148/fn-host.core
+432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505  /tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host
+7a124c6f70e072dbd0a8ade9b29b756bbdad8b821dc801c1f234826b242a9ec8  /tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host.core
+## 1. store made by 4eca4148: init, three posts through its owner
+initialized /tank/fn/scratch/qual-c3420013/upgrade-packed/orig/store
+init rc=0
+owner old pid=2313448 CONTROL /tank/fn/scratch/qual-c3420013/upgrade-packed/orig/control.sock
+accepted operator post ACCEPTED
+post 1 rc=0
+accepted operator post ACCEPTED
+post 2 rc=0
+accepted operator post ACCEPTED
+post 3 rc=0
+owner exit 0
+compacted steps=pack,select,reclaim,retire records=3 generation=0 reclaimed=3 retired=0
+accepted operator compact
+compact (4eca4148) rc=0
+files: allocation-frontier.json config config.json packs staging transactions writer.lock 
+transactions: 0
+marker: ABSENT
+pack files: packs 
+## 2. copy (cp -a) and open with c3420013 production
+recovered transactions=3 articles=3 staging-orphans=0 anchor=none checkpoint=none
+first open (recover) rc=0
+files: allocation-frontier.json config config.json packs staging transactions writer.lock 
+transactions: 0
+marker: ABSENT
+owner new1 pid=2313510 CONTROL /tank/fn/scratch/qual-c3420013/upgrade-packed/copy/control.sock
+files: allocation-frontier.json config config.json packs staging transactions writer.lock 
+transactions: 0
+marker: ABSENT
+## 3. one post through the c3420013 owner
+accepted operator post ACCEPTED
+post 4 rc=0
+owner exit 0
+files: allocation-frontier.json committed-history.json config config.json packs staging transactions writer.lock 
+transactions: 1
+marker: FNSMµ@EÉUd'GLp¥(mÈı•IBÿp‰≠±ob€≤
+## 4. next open admits it
+recovered transactions=4 articles=4 staging-orphans=0 anchor=none checkpoint=none
+second open (recover) rc=0
+owner new2 pid=2313546 CONTROL /tank/fn/scratch/qual-c3420013/upgrade-packed/copy/control.sock
+200 fn-nntp experimental server ready
+211 4 1 4 fn.letters
+205 closing connection
+owner exit 0
+## 5. newest transaction file deleted
+deleting transactions/00000000000000000003.txn
+files: allocation-frontier.json committed-history.json config config.json packs staging transactions writer.lock 
+transactions: 0
+marker: FNSMµ@EÉUd'GLp¥(mÈı•IBÿp‰≠±ob€≤
+store: committed history refused at open: history-short-of-marker marker=4 records=3
+open after loss (recover) rc=4
+owner after loss exit 4
+owner-lost stdout: 
+owner-lost stderr: fault operator run committed history refused at open: history-short-of-marker marker=4 records=3
+## 6. the original 4eca4148 store is untouched
+files: allocation-frontier.json config config.json packs staging transactions writer.lock 
+transactions: 0
+marker: ABSENT
+UPGRADE-DONE

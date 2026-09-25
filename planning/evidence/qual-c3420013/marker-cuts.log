@@ -1,0 +1,45 @@
+PASS marker-created-kill-store fault_rc=-9 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-created-kill-operator fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-created-eio-store fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-created-eio-operator fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-written-kill-store fault_rc=-9 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-written-kill-operator fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-written-eio-store fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-written-eio-operator fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-staged-durable-kill-store fault_rc=-9 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-staged-durable-kill-operator fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-staged-durable-eio-store fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-staged-durable-eio-operator fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-replaced-kill-store fault_rc=-9 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-replaced-kill-operator fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-replaced-eio-store fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-replaced-eio-operator fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-durable-kill-store fault_rc=-9 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-durable-kill-operator fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-durable-eio-store fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+PASS marker-durable-eio-operator fault_rc=3 tx=2 recover=0 resubmit_dup=True third=0 lost_refused=True
+marker cuts: 20/20 pass
+	Command being timed: "python3 ../marker_cuts.py /tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host-developer /tank/fn/scratch/qual-c3420013/campaign/marker-work /tank/fn/scratch/qual-c3420013/campaign/marker-cuts.json"
+	User time (seconds): 6.62
+	System time (seconds): 7.63
+	Percent of CPU this job got: 40%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:35.45
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 321668
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 2
+	Minor (reclaiming a frame) page faults: 3934539
+	Voluntary context switches: 3396
+	Involuntary context switches: 674
+	Swaps: 0
+	File system inputs: 51608
+	File system outputs: 294
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+rc=0
