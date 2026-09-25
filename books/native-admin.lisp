@@ -241,8 +241,6 @@
                                    fn-native-admin-bp-boundary-split
                                    fn-native-admin-bp-boundary-rows))
            :use ((:instance fn-native-admin-peer-plan-kind
-                            (words (fn-native-admin-words argv)))
-                 (:instance fn-bprt-admin-plan-kind
                             (words (fn-native-admin-words argv)))))))
 )
 
@@ -310,8 +308,6 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
                                    fn-native-admin-decimal-value fn-native-admin-argvp
                                    fn-native-admin-words))
            :use ((:instance fn-native-admin-peer-plan-kind
-                            (words (fn-native-admin-words argv)))
-                 (:instance fn-bprt-admin-plan-kind
                             (words (fn-native-admin-words argv))))))))
 (local (defthm delta-rows-of-set-bp-boundary
   (implies (and (equal (fn-native-admin-result-status plan) :accepted)

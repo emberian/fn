@@ -487,4 +487,17 @@
   :hints (("Goal" :in-theory (e/d (fn-native-admin-result fn-native-admin-result-kind)
                                   (fn-bprt-route-rows fn-bprt-group-name)))))
 
+; The plan's kind is never a group, boundary, policy or capacity kind, as
+; rewrite rules so that fn-native-admin-plan's theorems close the bp-route
+; arm without a case split.
+(defthm fn-bprt-admin-plan-kind-is-no-other-kind
+  (and (not (equal (fn-native-admin-result-kind (fn-bprt-admin-plan words))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind (fn-bprt-admin-plan words))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind (fn-bprt-admin-plan words))
+                   :set-bp-boundary)))
+  :hints (("Goal" :use fn-bprt-admin-plan-kind
+                  :in-theory (disable fn-bprt-admin-plan))))
+
 (in-theory (disable fn-bprt-admin-plan))

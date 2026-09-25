@@ -3114,6 +3114,33 @@
         "fn-ctl-classify-reads-only-the-control-field",
         "fn-ctl-cmsg-subject-is-ordinary"
       ]
+    },
+    {
+      "id": "PRF-079",
+      "title": "A held bundle is offered only to the routed hop, over the step the host calls; unrouted bundles stay held and are reported; the decision is deterministic in the table",
+      "statement": "fn-bpnp-step-offers-only-the-routed-hop: for a routed :session event (:session PEER S t MRU OBS (:via HOP ANNOUNCED TABLE)) to fn-bpnp-step (host/native/bp-service.lisp fnn-bps-foundation-step, from host/native/bp-node.lisp fnn-bpnode-forward-session), a :persist-attempt effect is for the row the arrival-order scan chose, and fn-bprt-next-hop of that row's own destination EID text over TABLE and live set (HOP) is HOP, the route fn-bprt-hop-route is a member of TABLE whose pattern matches the destination and whose boundary is HOP, and ANNOUNCED is the octets of that route's enrolled EID. fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported: if the issued operation is not uncertain, the scan is ready and no route in TABLE matches the chosen row's destination, the step's only effect is (:forward-no-route ARRIVAL HOP :no-route) and the held list is unchanged. fn-bprt-next-hop-deterministic-in-the-table: two tables whose routes matching DEST are the same set give DEST the same answer. fn-bprt-next-hop-names-a-live-matching-route: a boundary answer is the boundary of a live matching route in the table. Covered scope: the 7-field routed :session arm; the 6-field form and :resume are not gated and are not sent open by the host; LIVE is the single session's hop.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-007"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-route.lisp",
+        "books/bp-route-step.lisp",
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-route-tests.lisp",
+        "planning/evidence/bp-routing-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T043045Z-2491547.json"
+      ],
+      "progress_note": "Lane bp-routing (2026-09-25). Teeth in tests/acl2/bp-route-tests.lisp: a reachable witness (the bp-node-forward-retry fixture's held transit to dtn://bp-dest/, routed to relay, proposes the attempt) and must-fail cases for an unlisted hop, a wrong announced EID, a prefix route to another boundary, the route present (no report), and tables whose matching sets differ.",
+      "events": [
+        "fn-bpnp-step-offers-only-the-routed-hop",
+        "fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported",
+        "fn-bprt-next-hop-deterministic-in-the-table",
+        "fn-bprt-next-hop-names-a-live-matching-route"
+      ]
     }
   ]
 }

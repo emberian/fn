@@ -306,6 +306,16 @@
   (fn-bpnp-start-one st peer session mru observation)
   (fn-bpnp-start-one bpnpb-stranded-effects-confined)))
 
+;; The routed :session arm (spec 4.6) answers start-one's effects or one
+;; :forward-no-route report.
+(local
+ (fn-bpnpb-defquiet bpnpb-routed-start
+  (fn-bpnp-routed-start st peer session mru observation via)
+  (fn-bpnp-routed-start bpnpb-start-one fn-bpnpb-effects-confinedp
+   fn-bpn-effect-kind-memberp car-cons cdr-cons
+   (:executable-counterpart equal) (:executable-counterpart not)
+   (:executable-counterpart fn-bpn-effect-kind-memberp))))
+
 (local
  (fn-bpnpb-defquiet bpnpb-attempt-persist-step
   (fn-bpnp-attempt-persist-step st epoch op result)
@@ -338,7 +348,7 @@
   (fn-bpnpb-effects-confinedp (fn-bpnf-answer-effects (fn-bpnp-step st event)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories
-                       '(fn-bpnp-step bpnpb-start-one
+                       '(fn-bpnp-step bpnpb-start-one bpnpb-routed-start
                          bpnpb-forward-result-propose-step bpnpb-progress-step
                          bpnpb-operator-resume-step
                          bpnpb-dispatch-persist-step bpnpb-attempt-persist-step

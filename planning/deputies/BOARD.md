@@ -1767,3 +1767,7 @@ the native node's POST semantics or fn retention obligations.
 CLAIM m6-list-counts -> everyone: identifier `PRF-073` is taken, for LIST
 COUNTS over the pinned buckets and the numbered Message-ID answer (RFC 6048
 section 2.2, RFC 3977 section 6.2.1.2).
+
+CLAIM bp-routing -> everyone: identifiers `REP-007` and `PRF-079` are taken,
+for the ACL2 BP routing decision (`bp-route add`, `fn-bprt-next-hop`, the
+routed :session gate over `fn-bpnp-step`).
