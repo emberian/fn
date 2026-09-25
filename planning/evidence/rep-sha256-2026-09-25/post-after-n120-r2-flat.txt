@@ -1,0 +1,55 @@
+
+Number of samples:   138
+Sample interval:     0.001 seconds
+Total sampling time: 0.138 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2558242 "fn-sprof" RUNNING {120F5D85C3}> (920/1048576 bytes, 7 hash buckets)
+   #<THREAD tid=2558247 "fn owner client" RUNNING {120FB9D163}> (23992/1048576 bytes, 97 hash buckets)
+   #<THREAD tid=2558245 "fn outbound feed" RUNNING {120FA33303}> (488/1048576 bytes, 3 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     14  10.1     14  10.1     14  10.1        -  foreign function fsync
+   4     14  10.1     14  10.1     28  20.3        -  foreign function rename
+   6     12   8.7     12   8.7     40  29.0        -  foreign function __open64
+   8      7   5.1     13   9.4     47  34.1        -  FN-RECORD-STRING-OCTETS-AUX
+  10      5   3.6      5   3.6     52  37.7        -  foreign function __write
+  12      3   2.2      3   2.2     55  39.9        -  foreign function fstatat
+  14      3   2.2      3   2.2     58  42.0        -  foreign function __close
+  16      3   2.2      3   2.2     61  44.2        -  SB-IMPL::%LOOKUP-SYMBOL
+  18      2   1.4      4   2.9     63  45.7        -  SB-KERNEL:VECTOR-TO-LIST
+  20      2   1.4      2   1.4     65  47.1        -  foreign function clock_nanosleep
+  22      2   1.4      2   1.4     67  48.6        -  FN-AG-CAR
+  24      2   1.4      2   1.4     69  50.0        -  SB-IMPL::APPEND2
+  26      2   1.4      2   1.4     71  51.4        -  FN-OCFG-STEP
+  28      2   1.4      2   1.4     73  52.9        -  SYMBOL-PLIST
+  30      2   1.4      2   1.4     75  54.3        -  FN-AG-CDR
+  32      2   1.4      2   1.4     77  55.8        -  FN-RECORD-STRING-OCTETS
+  34      1   0.7     55  39.9     78  56.5        -  FNN-CORE-STATE
+  36      1   0.7     31  22.5     79  57.2        -  FNN-PUBLISH
+  38      1   0.7     12   8.7     80  58.0        -  FNN-OBSERVE
+  40      1   0.7      3   2.2     81  58.7        -  PARSE-NAMESTRING
+  42      1   0.7      3   2.2     82  59.4        -  FN-INDEX-MEMBERSHIP-ENTRIES
+  44      1   0.7      3   2.2     83  60.1        -  FN-SHS-COMPRESS-LIST
+  46      1   0.7      3   2.2     84  60.9        -  SB-IMPL::GET3
+  48      1   0.7      3   2.2     85  61.6        -  FNN-SEND-ALL
+  50      1   0.7      2   1.4     86  62.3        -  CONCATENATE
+  52      1   0.7      2   1.4     87  63.0        -  REPLACE
+  54      1   0.7      2   1.4     88  63.8        -  FN-RECORD-OCTETS-CHARS
+  56      1   0.7      2   1.4     89  64.5        -  FN-RECORD-PAYLOADP
+  58      1   0.7      2   1.4     90  65.2        -  FN-INJ-APPEND
+  60      1   0.7      2   1.4     91  65.9        -  FN-RETAIN-OBLIGATION-IDS
+  62      1   0.7      1   0.7     92  66.7        -  SB-IMPL::PATTERN-HASH
+  64      1   0.7      1   0.7     93  67.4        -  PATHNAME-HOST
+  66      1   0.7      1   0.7     94  68.1        -  FN-SHS-PAD-LEN
+  68      1   0.7      1   0.7     95  68.8        -  FN-INJ-CONFIGP
+  70      1   0.7      1   0.7     96  69.6        -  FN-TH-TOPIC-EVENTP
+  72      1   0.7      1   0.7     97  70.3        -  foreign function link
+  74      1   0.7      1   0.7     98  71.0        -  SB-IMPL::CALC-SYMBOL-NAME-HASH
+  76      1   0.7      1   0.7     99  71.7        -  FN-WIRE-AG-CAR
+  78      1   0.7      1   0.7    100  72.5        -  FN-ARTICLE-WSPP
+  80      1   0.7      1   0.7    101  73.2        -  SB-C::CHECK-DS-LIST/&REST
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere
