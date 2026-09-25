@@ -902,6 +902,10 @@ or (:damaged).  The read bound and decode budget are the profile's."
           (unless (eq (fnn-core 'fn-bpn-machine-invariantp
                                 (fnn-bps-base service)) t)
             (fnn-indeterminate "bp-service: invalid initial machine state"))
+          ;; SPIKE: retire generation directories the durable selection no
+          ;; longer names, and killed rotations' staged files
+          ;; (host/native/spike-storage.lisp, block E).
+          (fnn-spk-bp-cleanup root plan)
           (setf *fnn-bps-lifecycle-enumerations* 0)
           (multiple-value-bind (observed-names plan)
               (fnn-bps-namespace-plan service)
