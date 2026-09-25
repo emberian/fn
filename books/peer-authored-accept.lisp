@@ -183,6 +183,90 @@
           nil)))))
 
 ;; ---------------------------------------------------------------------------
+;; SPIKE (spike/peering): the revoked arm.  Defers to dev: folding it into
+;; fn-pa-current-plan as a fifth outcome with its keystones (the host asks
+;; this plan only after fn-pa-current-plan refused a transit article with
+;; :local-enrollment; host/native/owner.lisp fnn-owner-attempt-transit), and
+;; binding the two primitive observations into the event (the host requires
+;; both verified before it asks for the event, as on the :ok arm).
+;;
+;; (:revoked source principal keys signatures tombstone-generation) when this
+;; node's newest snapshot of the carrier's principal is a revocation
+;; tombstone and the carrier's ordered key set is one this node enrolled for
+;; that principal before; nil otherwise.
+
+(defun fn-pa-enrolled-keys-of-principalp (principal keys snapshots)
+  (declare (xargs :guard t))
+  (if (consp snapshots)
+      (let ((value (fn-hsig-keyring-snapshot-value (car snapshots))))
+        (or (and (true-listp value) (equal (len value) 2)
+                 (equal (car value) principal)
+                 (equal (cadr value) keys))
+            (fn-pa-enrolled-keys-of-principalp principal keys (cdr snapshots))))
+    nil))
+
+(defun fn-pa-revoked-plan (received snapshots)
+  (declare (xargs :guard t))
+  (let ((form (fn-pa-carrier-form received)))
+    (if (not (and (consp form) (eq (car form) :ok))) nil
+      (let* ((principal (nth 2 form))
+             (keys (nth 3 form))
+             (current (fn-hl-current-for-principal principal snapshots)))
+        (if (and (fn-stxk-p current)
+                 (equal (fn-stxk-profile current) *fn-hl-revoked-profile*)
+                 (posp (fn-stxk-keyring-generation current))
+                 (fn-pa-enrolled-keys-of-principalp principal keys snapshots))
+            (list :revoked (nth 1 form) principal keys (nth 4 form)
+                  (fn-stxk-keyring-generation current))
+          nil)))))
+
+(defun fn-pa-revoked-event
+    (sequence txid generation msgid received groups obligation-id
+              content-subject release-evidence charge snapshots
+              clock-observation)
+  (declare (xargs :guard t))
+  (let ((plan (fn-pa-revoked-plan received snapshots)))
+    (if (not (and (consp plan) (eq (car plan) :revoked))) nil
+      (let* ((source (nth 1 plan))
+             (principal (nth 2 plan))
+             (tombstone (nth 5 plan))
+             (fields (fn-hsig-authored-source-fields source))
+             (stamp (fn-record-stamp-of-observation clock-observation))
+             (record (fn-record-make sequence txid generation msgid received
+                                     groups obligation-id content-subject
+                                     release-evidence charge stamp))
+             (source-id (fn-hsig-authored-source-id source)))
+        (if (and (natp stamp) fields source-id
+                 (equal msgid (car fields))
+                 (equal groups (cadr fields))
+                 (equal charge (fn-charge-for-payload (len received)))
+                 (fn-hsig-carried-record-metadatap source received record))
+            (let* ((verdict (fn-stxe-make sequence txid generation msgid
+                                          :revoked principal tombstone
+                                          (fn-hsig-evidence-tag source)))
+                   (event (fn-stxa-make-carried
+                           sequence txid generation tombstone
+                           (fn-hsig-evidence-tag source)
+                           (fn-record-string-octets content-subject)
+                           (fn-record-encode record)
+                           (fn-stxe-encode verdict)
+                           source source-id)))
+              (if (fn-hsig-article-event-revoked-bindsp event) event nil))
+          nil)))))
+
+; The revoked arm is never taken for a principal this node has not revoked.
+(defthm fn-pa-revoked-plan-requires-a-tombstone
+  (implies (fn-pa-revoked-plan received snapshots)
+           (let ((current (fn-hl-current-for-principal
+                           (nth 2 (fn-pa-revoked-plan received snapshots))
+                           snapshots)))
+             (and (fn-stxk-p current)
+                  (equal (fn-stxk-profile current) *fn-hl-revoked-profile*))))
+  :hints (("Goal" :in-theory (e/d (fn-pa-revoked-plan)
+                                  (fn-pa-carrier-form
+                                   fn-hl-current-for-principal)))))
+
+;; ---------------------------------------------------------------------------
 ;; D23 keystones over fn-pa-current-plan, the function
 ;; host/owner-host.lisp fn-owner-peer-carrier-plan calls for every present
 ;; carrier (served POST, bound submission and transit).

@@ -1382,6 +1382,45 @@
         (fn-owner-transit-carried-list t state)
         (fn-own-clock (fn-owner-core state)))))))
 
+;; SPIKE (spike/peering): the revoked arm's plan and kind-4 event
+;; (fn-pa-revoked-plan, fn-pa-revoked-event), for NNTP transit only, asked
+;; after fn-pa-current-plan refused with :local-enrollment.  Defers to dev:
+;; the fifth outcome of fn-pa-current-plan and the observation binding.
+(defun fn-owner-peer-revoked-plan (received state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pa-revoked-plan
+          received (fn-sn-keyring-snapshots (fn-owner-store state)))))
+
+(defun fn-owner-peer-revoked-event
+    (coordinates msgid received group-codes obligation subject evidence charge
+                 state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes
+                  (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
+    (value
+     (if (equal groups :bad) nil
+       (fn-pa-revoked-event
+        (first coordinates) (second coordinates) (third coordinates)
+        (fn-store-octets->string msgid) received groups
+        (fn-store-octets->string obligation)
+        (fn-store-octets->string subject)
+        (fn-store-octets->string evidence) charge
+        (fn-sn-keyring-snapshots s)
+        (fn-own-clock (fn-owner-core state)))))))
+
+;; SPIKE (spike/peering): the next keyring generation, for the control
+;; verbs' "0 = next" convenience (host/native/hybrid-control.lisp).  Defers
+;; to dev: an ACL2-owned "next" request in the hybrid control codec.
+(defun fn-owner-hybrid-next-generation (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((current (fn-hl-current-snapshot
+                  (fn-sn-keyring-snapshots (fn-owner-store state)))))
+    (value (if (fn-stxk-p current)
+               (1+ (fn-stxk-keyring-generation current))
+             1))))
+
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge
                  observed-ml-key ed-observation ml-observation state)

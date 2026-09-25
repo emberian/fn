@@ -8,6 +8,12 @@
      (lambda ()
        (destructuring-bind (sequence txid generation)
            (fnn-owner-core 'fn-owner-next-store-coordinates)
+         ;; SPIKE (spike/peering): generation 0 means "the next one", so a
+         ;; peering tool need not stop the writer to read the history.
+         ;; Defers to dev: an ACL2-owned next-generation request.
+         (when (eql keyring-generation 0)
+           (setq keyring-generation
+                 (fnn-owner-core 'fn-owner-hybrid-next-generation)))
          (let* ((keys (list (cons :ed25519 ed-key) (cons :ml-dsa-65 ml-key)))
                 (snapshots (fnn-owner-core 'fn-owner-hybrid-snapshots))
                 (event (fnn-core 'fn-hl-host-enroll-event
@@ -25,6 +31,9 @@
      (lambda ()
        (destructuring-bind (sequence txid generation)
            (fnn-owner-core 'fn-owner-next-store-coordinates)
+         (when (eql keyring-generation 0) ; SPIKE: as in enroll above
+           (setq keyring-generation
+                 (fnn-owner-core 'fn-owner-hybrid-next-generation)))
          (let* ((snapshots (fnn-owner-core 'fn-owner-hybrid-snapshots))
                 (event (fnn-core 'fn-hl-host-revoke-event
                                  sequence txid generation keyring-generation

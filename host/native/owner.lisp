@@ -885,6 +885,53 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                      (setq *fnn-owner-transit-detail* :carried)
                      (return-from fnn-owner-attempt-transit
                        (fnn-owner-identity-commit service event)))))
+               ;; SPIKE (spike/peering): defers to dev the fifth outcome of
+               ;; fn-pa-current-plan.  On NNTP transit only, a refusal with
+               ;; :local-enrollment asks ACL2's revoked plan: a carrier under
+               ;; keys this node enrolled for a principal it has since
+               ;; revoked is stored with the verdict :revoked, after both
+               ;; primitive observations verify (a host-side requirement the
+               ;; dev event must bind).
+               (when (and nntp-transit-p (consp plan)
+                          (eq (first plan) :refused)
+                          (eq (second plan) :local-enrollment))
+                 (let ((revoked (fnn-owner-core 'fn-owner-peer-revoked-plan
+                                                (fnn-octet-list payload))))
+                   (when (and (consp revoked) (eq (first revoked) :revoked))
+                     (unless (eq (fnn-owner-advance-clock) :observed)
+                       (return-from fnn-owner-attempt-transit :clock-unusable))
+                     (let* ((principal (third revoked))
+                            (keys (fourth revoked))
+                            (preimage (fnn-core 'fn-hsig-host-preimage
+                                                principal keys (second revoked)))
+                            (observations
+                              (and preimage
+                                   (fnn-hsig-observe-raw
+                                    (cdr (first keys)) (cdr (second keys))
+                                    preimage (fifth revoked)))))
+                       (unless (and (eq (first observations) :verified)
+                                    (consp (second observations))
+                                    (eq (first (second observations)) :verified))
+                         (return-from fnn-owner-attempt-transit
+                           (fnn-owner-transit-refused :signature)))
+                       (multiple-value-bind (obligation subject ignored)
+                           (fnn-metadata msgid payload)
+                         (declare (ignore ignored))
+                         (let* ((coordinates
+                                  (fnn-owner-core 'fn-owner-next-store-coordinates))
+                                (event
+                                  (fnn-owner-core
+                                   'fn-owner-peer-revoked-event coordinates
+                                   (fnn-octet-list msgid) (fnn-octet-list payload)
+                                   codes (fnn-octet-list obligation)
+                                   (fnn-octet-list subject)
+                                   (fnn-octet-list evidence) charge)))
+                           (unless event
+                             (return-from fnn-owner-attempt-transit
+                               (fnn-owner-transit-refused :event)))
+                           (setq *fnn-owner-transit-detail* :revoked)
+                           (return-from fnn-owner-attempt-transit
+                             (fnn-owner-identity-commit service event))))))))
                (unless (and (consp plan) (eq (first plan) :ok))
                  (return-from fnn-owner-attempt-transit
                    (fnn-owner-transit-refused plan)))

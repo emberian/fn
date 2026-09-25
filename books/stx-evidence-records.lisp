@@ -26,6 +26,7 @@
         ((equal x :unverified) 2)
         ((equal x :absent) 3)
         ((equal x :carried) 4)
+        ((equal x :revoked) 5) ; SPIKE: defers the dev codec proof of token 5
         (t 0)))
 
 (defun fn-stxe-code-token (x)
@@ -34,6 +35,7 @@
         ((equal x 2) :unverified)
         ((equal x 3) :absent)
         ((equal x 4) :carried)
+        ((equal x 5) :revoked)
         (t nil)))
 
 (defun fn-stxe-bounded-octetsp (x bound)
