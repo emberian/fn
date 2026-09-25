@@ -82,7 +82,7 @@
    (let ((job (fn-bpah-handoff-carrier-job st view)))
      (and (fn-bpn-jobp job)
           (equal (fn-bpn-job-peer job) peer)
-          (equal (fn-bpb-payload (fn-bpn-job-bundle job)) receipt-adu))))
+          (equal (fn-bpsr-adu-octets (fn-bpb-payload (fn-bpn-job-bundle job))) receipt-adu))))
   :hints (("Goal" :do-not-induct t
            :in-theory '(fn-bpah-outbox-job-matchp
                         fn-bpah-handoff-carrier-job)))
@@ -98,7 +98,7 @@
           (equal (fn-bpn-nth 3 handoff) :owed)
           (fn-bpn-jobp job)
           (equal (fn-bpn-job-peer job) peer)
-          (equal (fn-bpb-payload (fn-bpn-job-bundle job)) receipt-adu)
+          (equal (fn-bpsr-adu-octets (fn-bpb-payload (fn-bpn-job-bundle job))) receipt-adu)
           (fn-bpah-handoff-receipt-id-matchesp handoff receipt-adu)
           (equal (fn-bpn-nth 1
                   (fn-bpah-handoff-effective-status
@@ -128,7 +128,7 @@
           (job (fn-bpah-handoff-carrier-job st view)))
      (and (fn-bpn-jobp job)
           (equal (fn-bpn-job-peer job) peer)
-          (equal (fn-bpb-payload (fn-bpn-job-bundle job))
+          (equal (fn-bpsr-adu-octets (fn-bpb-payload (fn-bpn-job-bundle job)))
                  (fn-bpr-receipt-adu (fn-bpaj-receiver fnrj) request)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance
@@ -162,7 +162,7 @@
      (and (equal (fn-bpah-outbox-view-for st handoff) view)
           (fn-bpn-jobp job)
           (equal (fn-bpn-job-peer job) peer)
-          (equal (fn-bpb-payload (fn-bpn-job-bundle job))
+          (equal (fn-bpsr-adu-octets (fn-bpb-payload (fn-bpn-job-bundle job)))
                  (fn-bpr-receipt-adu (fn-bpaj-receiver fnrj) request))
           (fn-bpah-handoff-receipt-id-matchesp handoff receipt-adu))))
   :hints (("Goal" :do-not-induct t
