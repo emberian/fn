@@ -113,6 +113,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-auth-admin-tests \
 	tests/acl2/native-auth-admin-host-tests \
 	books/journal-publish \
+	books/bp-eid-shape \
 	books/native-admin \
 	tests/acl2/native-admin-tests \
 	books/native-config-observation \
