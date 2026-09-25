@@ -160,13 +160,17 @@ max_groups_per_article field G, or 0 when PROFILE is not admitted."
            :in-theory (disable fn-bs-profile-max-article-octets
                                fn-bs-profile-max-groups-per-article))))
 
+; The named presets: A is the format-7 payload, and G is the record codec's
+; group ceiling, which the format-7 translation carries by name
+; (`fn-bs-profile-from-format-7'), so it moves with the codec (65,535 since
+; bounds-p2).
 (defthm fn-sbud-named-profile-payload-bounds
   (and (equal (fn-sbud-payload-bound (fn-bs-config-for-profile :development))
               32768)
        (equal (fn-sbud-payload-bound (fn-bs-config-for-profile :scale))
               32768)
        (equal (fn-sbud-group-bound (fn-bs-config-for-profile :scale))
-              16)))
+              *fn-bs-profile-groups-ceiling-codec*)))
 
 ; The keystone of the bound: with a well-formed Message-ID, a group count
 ; within the profile's G and a charge in range, the boundary admits exactly
