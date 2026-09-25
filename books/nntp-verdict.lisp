@@ -179,12 +179,12 @@
                                             verdicts)))))))
          (t (fn-nntp-single session "501 syntax error")))))))
 
-;; SPIKE: defers the proof (a restatement of the :fn-verified arm's session
-;; lemma; proof owner books/nntp-verdict.lisp).
-(skip-proofs
- (defthm fn-nntp-control-hdr-response-keeps-session
-   (equal (fn-nntp-result-session
-           (fn-nntp-control-hdr-response session archive verdicts args))
-          session)))
+(defthm fn-nntp-control-hdr-response-keeps-session
+  (equal (fn-nntp-result-session
+          (fn-nntp-control-hdr-response session archive verdicts args))
+         session))
 
-(in-theory (disable fn-nntp-control-hdr-response))
+(defthm fn-nntp-control-item-is-printable
+  (fn-stx-printablep (fn-nntp-control-item msgid verdicts)))
+
+(in-theory (disable fn-nntp-control-hdr-response fn-nntp-control-item))
