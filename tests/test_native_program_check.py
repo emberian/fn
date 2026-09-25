@@ -46,7 +46,8 @@ class NativeProgramCheckTests(unittest.TestCase):
         self.assertEqual(set(self.verdicts(report)), named)
         self.assertEqual(named, {"fn-bs-frontier-program", "fn-bs-record-program",
                                  "fn-bs-finish-program", "fn-bs-recover-program",
-                                 "fn-bs-recover-stage-cleanup-program"})
+                                 "fn-bs-recover-stage-cleanup-program",
+                             "fn-bs-marker-program"})
         self.assertTrue(report.ok, npc.render(report))
         for r in report.programs:
             self.assertEqual(r.matched, r.model_steps, r.program)

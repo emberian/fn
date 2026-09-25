@@ -79,13 +79,14 @@ def program_form(program: str, point: str) -> str:
     return "({} {})".format(program, PROGRAM_ARGUMENTS[program]).replace(" )", ")")
 
 
-def cut_index(program: str, point: str, occurrence: int = 1) -> int:
+def cut_index(program: str, point: str, occurrence: int = 1,
+              book: str = "byte-store-programs.lisp") -> int:
     """The index in fn-bs-run's pair list of the cut named POINT.
 
     fn-bs-run returns one pair per step, so the pair after the (:cut NAME)
     step is at the step's own index.
     """
-    text = (ROOT / "books" / "byte-store-programs.lisp").read_text()
+    text = (ROOT / "books" / book).read_text()
     start = text.index("(defun {} ".format(program))
     end = text.find("\n(", start + 1)
     body = text[start:end if end > 0 else len(text)]

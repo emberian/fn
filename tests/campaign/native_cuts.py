@@ -24,6 +24,14 @@ class NativeCut:
     book: str = "byte-store-programs.lisp"
 
 
+# The committed-history marker program (lane p10-marker-model).
+MARKER_BOOK = "byte-store-marker-program.lisp"
+# The programs of one commit, in the order the host runs them: every post
+# cut's coordinate is the earlier programs run to their ends, then its own
+# program up to the cut.
+POST_PROGRAMS = ("fn-bs-frontier-program", "fn-bs-record-program",
+                 "fn-bs-marker-program", "fn-bs-finish-program")
+
 # frontier-created/-written, record-created/-written and record-stage-unlinked
 # were model sites with no host cut until lane p10-k0 (campaign 1a9dd747,
 # "the coverage runs one way only"); host/native/io.lisp now has an `fnn-at'
@@ -45,6 +53,12 @@ POST_CUTS = (
     NativeCut("record-completing", "fn-bs-record-program", "present"),
     NativeCut("record-stage-unlinked", "fn-bs-record-program", "present"),
     NativeCut("record-staging-cleaned", "fn-bs-record-program", "present"),
+    # fnn-mark-committed, run after fnn-publish returned :durable and before
+    # fnn-finish at every commit site (verify_commit_order): the record is
+    # durable at every marker cut.
+    *(NativeCut(name, "fn-bs-marker-program", "present", book=MARKER_BOOK)
+      for name in ("marker-created", "marker-written", "marker-staged-durable",
+                   "marker-replaced", "marker-durable")),
     NativeCut("finish-consumed", "fn-bs-finish-program", "present"),
     NativeCut("finish-durable", "fn-bs-finish-program", "present"),
 )
@@ -206,13 +220,14 @@ def verify_native_cut_map() -> None:
     if tuple(c.name for c in RECOVERY_CUTS) != recovery:
         raise AssertionError("native/model recovery cuts differ")
     for cut in ALL_CUTS:
-        model_names = model_cut_names(cut.program)
+        model_names = model_cut_names(cut.program, cut.book)
         if model_names.count(cut.model_name or cut.name) < cut.occurrence:
             raise AssertionError("{} occurrence {} absent from {}".format(
                 cut.name, cut.occurrence, cut.program))
     verify_recovery_order()
     verify_swallowed_cuts()
     verify_profile_cut_map()
+    verify_marker_cut_map()
 
 
 def verify_profile_cut_map() -> None:
@@ -246,6 +261,74 @@ def verify_profile_cut_map() -> None:
         if cut.candidate != expected:
             raise AssertionError("{}: candidate {} but the program says {}".format(
                 cut.name, cut.candidate, expected))
+
+
+def program_book(program: str) -> str:
+    """The book whose defun holds PROGRAM, from the cut table."""
+    return next((c.book for c in ALL_CUTS + PROFILE_CUTS if c.program == program),
+                "byte-store-programs.lisp")
+
+
+def marker_fate(cut: NativeCut) -> str:
+    """What committed-history.json holds after a death at CUT: the prior
+    post's marker ("old"), this post's ("new"), or "either".
+
+    Derived from the coordinate: a cut of an earlier program leaves the old
+    marker, a later program's the new one; inside fn-bs-marker-program the
+    rename onto the root makes it either and the root barrier new
+    (books/byte-store-marker-program.lisp fn-bs-marker-crash-is-the-history-table).
+    """
+    program = POST_PROGRAMS.index(cut.program)
+    marker = POST_PROGRAMS.index("fn-bs-marker-program")
+    if program != marker:
+        return "old" if program < marker else "new"
+    steps = model_steps(cut.program, cut.book)
+    index = cut_step_index(cut)
+    renamed = any(s.kind == "rename" for s in steps[:index])
+    fenced = any(s.kind == "fsync-dir" for s in steps[:index])
+    return "new" if fenced else ("either" if renamed else "old")
+
+
+def verify_marker_cut_map() -> None:
+    """The marker cuts are ACL2's table, in the program's order, and every
+    commit site runs publish, then the marker, then finish.
+
+    fn-hm-marker-cut-names (books/store-history-marker.lisp) is the table
+    the developer selector validates against; fn-bs-marker-program's cuts are
+    the model's.  fnn-command-post, fnn-command-probe (host/native/io.lisp)
+    and fnn-owner-publish-prepared (host/native/owner.lisp) call fnn-publish,
+    fnn-mark-committed and fnn-finish in that source order, which is the
+    order POST_PROGRAMS gives the model.
+    """
+    declared = tuple(c.name for c in POST_CUTS if c.program == "fn-bs-marker-program")
+    if declared != model_cut_names("fn-bs-marker-program", MARKER_BOOK):
+        raise AssertionError("marker cuts are not fn-bs-marker-program's")
+    book = (ROOT / "books/store-history-marker.lisp").read_text()
+    table = re.findall(r'"([a-z-]+)"', host_function(book, "fn-hm-marker-cut-names"))
+    if tuple(table) != declared:
+        raise AssertionError("marker cuts are not fn-hm-marker-cut-names")
+    if tuple(c.program for c in POST_CUTS) != tuple(sorted(
+            (c.program for c in POST_CUTS), key=POST_PROGRAMS.index)):
+        raise AssertionError("POST_CUTS is out of POST_PROGRAMS order")
+    io = (ROOT / "host/native/io.lisp").read_text()
+    owner = (ROOT / "host/native/owner.lisp").read_text()
+    for source, name in ((io, "fnn-command-post"), (io, "fnn-command-probe"),
+                         (owner, "fnn-owner-publish-prepared")):
+        body = host_function(source, name)
+        order = [body.index("(fnn-publish store"),
+                 body.index("(fnn-mark-committed store"),
+                 body.index("(fnn-finish store)")]
+        if order != sorted(order):
+            raise AssertionError("{} does not publish, mark, then finish".format(name))
+    mark = host_function(io, "fnn-mark-committed")
+    order = [mark.index(":marker-created :marker-written"),
+             mark.index("(fnn-at store :marker-staged-durable)"),
+             mark.index("(fnn-replace stage (fnn-history-marker-path store))"),
+             mark.index("(fnn-at store :marker-replaced)"),
+             mark.index("(fnn-fsync-dir (fnn-store-root store))"),
+             mark.index("(fnn-at store :marker-durable)")]
+    if order != sorted(order):
+        raise AssertionError("fnn-mark-committed is out of the program's order")
 
 
 def host_function(source: str, name: str) -> str:
@@ -362,7 +445,7 @@ def verify_compact_entries(native: str) -> None:
 # `fnn-at' of every such cut, and of no other post cut, lies inside the
 # `ignore-errors' form of fnn-publish.
 def swallowed_cut(cut: NativeCut) -> bool:
-    steps = model_steps(cut.program)
+    steps = model_steps(cut.program, cut.book)
     index = cut_step_index(cut)
     published = [j for j, s in enumerate(steps)
                  if s.kind in ("rename", "link") and s.directory != ":staging"]

@@ -186,6 +186,9 @@ EXIT_UNCERTAIN = 3
 #              the owner log must name the swallowed cleanup error once;
 #   consumed   the program issues no syscall at all (P-FINISH): the record
 #              is durable, so 240 or uncertain, never a refusal;
+#   uncertain  also every cut of a program that begins after the record
+#              program's end (P-MARKER, fnn-mark-committed): the record is
+#              durable and any error there is uncertain, never a refusal;
 #   uncertain  every other cut (at or after the publication attempt).
 #
 # native_cuts.verify_swallowed_cuts checks the host's `ignore-errors' holds
@@ -195,9 +198,12 @@ ARMS = ("refused", "swallowed", "consumed", "uncertain")
 
 
 def post_arm(cut) -> str:
-    steps = native_cuts.model_steps(cut.program)
+    steps = native_cuts.model_steps(cut.program, cut.book)
     if not any(s.kind in native_cuts.SYSCALL_KINDS for s in steps):
         return "consumed"
+    order = native_cuts.POST_PROGRAMS
+    if order.index(cut.program) > order.index("fn-bs-record-program"):
+        return "uncertain"
     index = native_cuts.cut_step_index(cut)
     published = next(j for j, s in enumerate(steps)
                      if s.kind in ("rename", "link") and s.directory != ":staging")
