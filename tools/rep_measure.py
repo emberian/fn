@@ -66,12 +66,12 @@ def timed_multiline(conn, text):
     return time.perf_counter() - started, reply, octets
 
 
-def start_owner(image, config, env, stderr_path):
+def start_owner(image, config, env, stderr_path, timeout=3600):
     stderr = open(stderr_path, "ab")
     started = time.perf_counter()
     proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"],
                             env=env, stdout=subprocess.PIPE, stderr=stderr)
-    wait_for_announcement(proc, b"LISTENING ", timeout=3600)
+    wait_for_announcement(proc, b"LISTENING ", timeout=timeout)
     return proc, time.perf_counter() - started, stderr
 
 
@@ -117,6 +117,8 @@ def main():
     p.add_argument("--census", default=None, help="the rep-heap census.lisp to load (images with the hook)")
     p.add_argument("--profile", default="default")
     p.add_argument("--max-transactions", type=int, default=None)
+    p.add_argument("--skip-reopen", action="store_true", help="do not time the owner's reopen")
+    p.add_argument("--reopen-timeout", type=int, default=3600, help="seconds to wait for the reopened owner's LISTENING line")
     a = p.parse_args()
     image = Path(a.image).resolve()
     work = Path(a.work)
@@ -202,8 +204,17 @@ def main():
         out["rss_after_reads_kib"] = m.rss_kib(proc.pid)
     finally:
         stop_owner(proc, stderr)
+    if a.skip_reopen:
+        Path(a.json).write_text(json.dumps(out, indent=2) + "\n")
+        print(json.dumps({k: v for k, v in out.items() if not isinstance(v, dict)}))
+        for k, v in out.items():
+            if isinstance(v, dict) and "median_ms" in v:
+                print(k, "median %.3f ms  p95 %.3f ms  max %.3f ms" % (v["median_ms"], v["p95_ms"], v["max_ms"]))
+        return
     # The owner's load time at N: a fresh process on the same store.
-    proc, out["reopen_seconds"], stderr = start_owner(image, config, env, work / "owner-reopen.stderr")
+    Path(a.json + ".partial").write_text(json.dumps(out, indent=2) + "\n")
+    proc, out["reopen_seconds"], stderr = start_owner(image, config, env, work / "owner-reopen.stderr",
+                                                      timeout=a.reopen_timeout)
     try:
         out["rss_after_reopen_kib"] = m.rss_kib(proc.pid)
         c = m.Conn(port)
