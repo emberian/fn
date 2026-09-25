@@ -386,7 +386,7 @@ The parts:
 
 - **The binding** is the `signing` field of the login's table in the
   credential file (`<store>/auth.toml`), the 32-octet principal in lowercase
-  hex, written by `fn principal bind LOGIN PRINCIPAL-HEX` and removed by
+  hex, written by `fn-native operator CONFIG principal bind LOGIN PRINCIPAL-HEX` and removed by
   `fn principal unbind LOGIN` (`fn-native-auth-admin-bind`,
   books/native-auth-admin.lisp, through the same writer lock and replacement
   machine as `set-password`, which keeps every binding). A malformed
@@ -396,7 +396,7 @@ The parts:
   `fn-native-auth-load-bindings` (books/native-auth-profile.lisp), read at
   start-up like the credentials.
 - **The policy** is the durable configuration record `posting-policy`,
-  `fn policy set posting-policy bound-logins` (or `open`, the default),
+  `fn-native operator CONFIG policy set posting-policy bound-logins` (or `open`, the default; the value set last is in force, `fn-cfg-set-policy-sets-the-policy`),
   applied live through the owner like `path-identity`.
 - **The gate** (`fn-lb-owner-gate`, books/login-binding.lisp) runs first on a
   served POST's Store attempt (host/native/owner.lisp

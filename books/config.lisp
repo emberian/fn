@@ -190,6 +190,22 @@
         (cons (car rows) (fn-cfg-row-upsert (cdr rows) row)))
     (list row)))
 
+; A policy slot holds one value: replace the first row whose slot (row-a) is
+; this row's, else append.  fn-cfg-policy reads the first row of a slot, so
+; the value set last is the value in force.  Until 2026-09-25 :set-policy
+; used fn-cfg-row-upsert, keyed on (slot, value): a second `policy set' of
+; the same slot with another value appended a row the lookup never reached,
+; so the first value set stayed in force for good (found on hbox by lane
+; path-and-login: `policy set posting-policy open' after `bound-logins' was
+; accepted and changed nothing).
+(defun fn-cfg-row-replace-key (rows row)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (equal (fn-cfg-row-a (car rows)) (fn-cfg-row-a row))
+          (cons row (cdr rows))
+        (cons (car rows) (fn-cfg-row-replace-key (cdr rows) row)))
+    (list row)))
+
 ; The peer table is the peers row list keyed by row-a (the peer name); one
 ; peer is the group of rows sharing that key (specs/peering.md section 1.2,
 ; books/peer-config.lisp decodes the group into the typed record).  Three total
@@ -724,8 +740,8 @@
      ((equal kind :set-policy)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v)
-                         (fn-cfg-row-upsert (fn-cfg-policies v)
-                                            (fn-cfg-row-make a b "" 0))
+                         (fn-cfg-row-replace-key (fn-cfg-policies v)
+                                                 (fn-cfg-row-make a b "" 0))
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-limits v)))
      ((equal kind :set-listeners)
@@ -1358,7 +1374,7 @@
     (:d fn-cfg-endpoint-address) (:d fn-cfg-peer-eid)
     (:d fn-cfg-peer-endpoint) (:d fn-cfg-peer-contact-plan)
     (:d fn-cfg-limit-slot) (:d fn-cfg-limit-value) (:d fn-cfg-row-lookup)
-    (:d fn-cfg-row-upsert) (:d fn-cfg-rows-with-key)
+    (:d fn-cfg-row-upsert) (:d fn-cfg-row-replace-key) (:d fn-cfg-rows-with-key)
     (:d fn-cfg-rows-without-key) (:d fn-cfg-rows-keyed-p)
     (:d fn-cfg-group-entryp) (:d fn-cfg-group-listp)
     (:d fn-cfg-group-all-names) (:d fn-cfg-group-find) (:d fn-cfg-entry-livep)
