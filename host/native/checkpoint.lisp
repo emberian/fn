@@ -68,19 +68,26 @@
         (fnn-checkpoint-corrupt "pack selection marker does not decode"))
       (second answer))))
 
-(defun fnn-pack-publish-generation (store records)
-  "Capture RECORDS into the next pack generation and publish it, unselected."
+(defun fnn-pack-publish-generation (store records &optional chain coverage selected)
+  "Capture the next link of the selected chain (RECORDS above its boundary,
+one quantum) into the next pack generation and publish it, unselected.
+Returns the generation, the sealed frame and the new boundary."
   (fnn-checkpoint-require-mutation-ready store)
   (let ((directory (fnn-pack-directory store)))
     (fnn-safe-directory directory t)
     (let* ((generations (fnn-pack-generations store))
            (generation (fnn-core 'fn-store-checkpoint-pack-next-generation
                                  generations))
-           (captured (fnn-core 'fn-store-checkpoint-compaction-capture
-                               (mapcar #'fnn-octet-list records) (fnn-store-frontier store))))
+           (captured (fnn-core 'fn-store-checkpoint-chain-capture
+                               (mapcar #'fnn-octet-list records)
+                               (if coverage (second coverage) 0)
+                               (if coverage (third coverage) 0)
+                               (or selected 0)
+                               (if chain (third (first chain)) nil))))
       (unless (and (integerp generation) (>= generation 0)
                    (listp captured) (eq (first captured) :ok)
-                   (fnn-octet-list-p (second captured)))
+                   (fnn-octet-list-p (second captured))
+                   (integerp (third captured)))
         (fnn-refuse "ACL2 refused pack capture/publication"))
       (let* ((stage (fnn-join (fnn-staging store)
                               (format nil ".pack-~d-~a" (sb-posix:getpid)
@@ -105,7 +112,7 @@
                       (fnn-refuse "pack generation publication refused"))
             (:uncertain (fnn-indeterminate "pack generation publication is uncertain"))
             (otherwise (fnn-fault "invalid pack publication outcome"))))
-        generation))))
+        (values generation frame (third captured))))))
 
 (defun fnn-pack-select (store generation)
   "Replace the pack selection marker under the ACL2 marker driver."
@@ -122,10 +129,46 @@
       (otherwise (fnn-fault "pack selection marker remained pending")))))
 
 (defun fnn-pack-publish (store records selectp)
-  (let ((generation (fnn-pack-publish-generation store records)))
-    (when selectp (fnn-pack-select store generation))
-    (setf (fnn-store-fenced store) nil)
-    generation))
+  "`checkpoint pack ROOT [select]': with select, extend the selected chain
+until it covers RECORDS; without, publish the next link unselected."
+  (if selectp
+      (nth-value 0 (fnn-pack-extend-chain store records))
+    (multiple-value-bind (chain coverage selected)
+        (fnn-pack-selected-raw-and-coverage store)
+      (let ((generation (fnn-pack-publish-generation store records chain coverage
+                                                     selected)))
+        (setf (fnn-store-fenced store) nil)
+        generation))))
+
+(defun fnn-pack-extend-chain (store records)
+  "Publish and select links, each over the records above the selected chain,
+until the chain covers RECORDS.  Each link is its own publication and
+selection, so a cut leaves the previous chain selected
+(`fn-ccc-publication-crash-walks-old-or-new-chain').  Returns the newest
+generation and the number of links written."
+  (multiple-value-bind (chain coverage selected)
+      (fnn-pack-selected-raw-and-coverage store)
+    (let ((links 0) (generation selected))
+      (loop while (< (if coverage (second coverage) 0) (length records))
+            do (multiple-value-bind (next frame boundary)
+                   (fnn-pack-publish-generation store records chain coverage selected)
+                 (unless (> boundary (if coverage (second coverage) 0))
+                   (fnn-fault "ACL2 captured a link that covers nothing"))
+                 (fnn-pack-select store next)
+                 (fnn-checkpoint-test-stop "pack-chain-link")
+                 (incf links)
+                 (setq generation next selected next
+                       chain (cons (list next (fnn-octet-list frame) (fnn-digest-of frame))
+                                   chain))
+                 (let ((c (fnn-core 'fn-store-checkpoint-chain-coverage
+                                    chain (fnn-config-max-transactions store)
+                                    (fnn-store-frontier store)
+                                    (fnn-pack-link-bound store))))
+                   (unless (and (listp c) (eq (first c) :ok) (= (second c) boundary))
+                     (fnn-fault "ACL2 refused the chain it just extended: ~s" c))
+                   (setq coverage c))))
+      (setf (fnn-store-fenced store) nil)
+      (values generation links))))
 
 (defun fnn-pack-prefix-reclaim (store)
   (fnn-checkpoint-require-mutation-ready store)
@@ -160,20 +203,19 @@
   (fnn-checkpoint-require-mutation-ready store)
   ; This resolves an interrupted marker replacement, checks the selected
   ; generation frame and its coverage, and refuses any missing authority.
-  (multiple-value-bind (raw coverage selected)
+  (multiple-value-bind (chain coverage selected)
       (fnn-pack-selected-raw-and-coverage store)
-    (declare (ignore raw))
     (unless (and coverage (integerp selected) (>= selected 0))
       (fnn-refuse "no selected pack generation to retain"))
     (let* ((generations (fnn-pack-generations store))
-           (plan (fnn-core 'fn-store-checkpoint-pack-retire-plan
-                           generations selected)))
+           (plan (fnn-core 'fn-store-checkpoint-chain-retire-plan
+                           generations chain (fnn-pack-link-bound store))))
       (unless (and (listp plan)
                    (<= (length plan) (length generations))
                    (every (lambda (generation)
                             (and (integerp generation) (>= generation 0)
-                                 (< generation selected)
-                                 (member generation generations)))
+                                 (member generation generations)
+                                 (not (member generation (mapcar #'first chain)))))
                           plan))
         (fnn-fault "ACL2 refused pack generation retirement plan"))
       (when (null plan) (return-from fnn-pack-retire-older-generations nil))
@@ -190,7 +232,44 @@
         (fnn-os-error (e)
           (fnn-indeterminate "pack generation retirement is uncertain: ~a" e))))))
 
+(defun fnn-pack-link-bound (store)
+  (let ((bound (fnn-core 'fn-store-checkpoint-chain-link-bound (fnn-store-config store))))
+    (unless (and (integerp bound) (> bound 0))
+      (fnn-fault "ACL2 returned invalid pack link read bound"))
+    bound))
+
+(defun fnn-pack-walk (store head)
+  "Read the chain from HEAD, newest first, one bounded link read per step.
+ACL2 decodes each link and names its predecessor; the walk is given the
+profile's max-transactions links (every link covers a record)."
+  (let ((bound (fnn-pack-link-bound store))
+        (fuel (fnn-core 'fn-store-checkpoint-chain-walk-bound (fnn-store-config store)))
+        (chain nil)
+        (generation head))
+    (unless (and (integerp fuel) (> fuel 0))
+      (fnn-fault "ACL2 returned invalid pack chain walk bound"))
+    (loop
+      (when (<= fuel 0)
+        (fnn-checkpoint-corrupt "pack chain exceeds the profile's walk bound"))
+      (decf fuel)
+      (let ((path (fnn-pack-generation-path store generation)))
+        (unless (fnn-check-regular path)
+          (fnn-checkpoint-corrupt "pack chain generation ~d is missing" generation))
+        (let* ((raw (fnn-read-regular-bounded path (+ (fnn-constant :trailer) bound)))
+               (octets (fnn-octet-list raw))
+               (digest (fnn-digest-of raw))
+               (step (fnn-core 'fn-store-checkpoint-chain-step octets digest bound)))
+          (unless (and (listp step) (eq (first step) :ok)
+                       (integerp (second step)) (>= (second step) 0)
+                       (integerp (third step)) (>= (third step) 0))
+            (fnn-checkpoint-corrupt "pack chain link ~d does not decode" generation))
+          (push (list generation octets digest) chain)
+          (when (= (second step) 0) (return (nreverse chain)))
+          (setq generation (third step)))))))
+
 (defun fnn-pack-selected-raw-and-coverage (store)
+  "The selected chain (newest first, (GENERATION OCTETS DIGEST) each), its
+coverage (:ok BOUNDARY FRONTIER) and the selected generation."
   ; Resolve any prior process-death window in generation/marker publication
   ; before consulting selected authority.  A barrier error cannot authorize a
   ; zero-start fallback or prefix deletion.
@@ -201,23 +280,16 @@
         (fnn-indeterminate "cannot resolve selected pack namespace: ~a" e))))
   (let ((generation (fnn-pack-selected-generation store)))
     (unless generation (return-from fnn-pack-selected-raw-and-coverage (values nil nil)))
-    (let ((path (fnn-pack-generation-path store generation)))
-      (unless (fnn-check-regular path)
-        (fnn-checkpoint-corrupt "selected pack generation ~d is missing" generation))
-      (let* ((payload-bound
-               (fnn-core 'fn-store-checkpoint-compaction-max-octets))
-             (_ (unless (and (integerp payload-bound) (> payload-bound 0))
-                  (fnn-fault "ACL2 returned invalid compaction read bound")))
-             (raw (fnn-read-regular-bounded
-                   path (+ (fnn-constant :trailer) payload-bound)))
-             (coverage (fnn-core 'fn-store-checkpoint-compaction-coverage
-                                 (fnn-octet-list raw) (fnn-digest-of raw)
-                                 (fnn-config-max-transactions store)
-                                 (fnn-store-frontier store))))
-        (unless (and (listp coverage) (eq (first coverage) :ok)
-                     (integerp (second coverage)) (>= (second coverage) 0))
-          (fnn-checkpoint-corrupt "selected pack coverage is invalid"))
-        (values raw coverage generation)))))
+    (let* ((chain (fnn-pack-walk store generation))
+           (coverage (fnn-core 'fn-store-checkpoint-chain-coverage
+                               chain
+                               (fnn-config-max-transactions store)
+                               (fnn-store-frontier store)
+                               (fnn-pack-link-bound store))))
+      (unless (and (listp coverage) (eq (first coverage) :ok)
+                   (integerp (second coverage)) (>= (second coverage) 0))
+        (fnn-checkpoint-corrupt "selected pack chain coverage is invalid: ~s" coverage))
+      (values chain coverage generation))))
 
 (defun fnn-pack-lower-bound (store)
   (multiple-value-bind (raw coverage) (fnn-pack-selected-raw-and-coverage store)
@@ -225,7 +297,7 @@
     (if coverage (second coverage) 0)))
 
 (defun fnn-pack-recover-records (store records sequences actual-lower)
-  (multiple-value-bind (raw coverage) (fnn-pack-selected-raw-and-coverage store)
+  (multiple-value-bind (chain coverage) (fnn-pack-selected-raw-and-coverage store)
     (unless coverage (return-from fnn-pack-recover-records records))
     (let* ((sequence (second coverage))
            (_ (unless (= actual-lower sequence)
@@ -234,10 +306,10 @@
            (observed (mapcar (lambda (number record)
                                (list number (fnn-octet-list record)))
                              sequences records))
-           (answer (fnn-core 'fn-store-checkpoint-compaction-observe
-                             (fnn-octet-list raw) (fnn-digest-of raw)
-                             observed
-                             (fnn-store-frontier store))))
+           (answer (fnn-core 'fn-store-checkpoint-chain-observe
+                             chain observed
+                             (fnn-store-frontier store)
+                             (fnn-pack-link-bound store))))
       (unless (and (listp answer) (eq (first answer) :ok))
         (fnn-checkpoint-corrupt "selected pack does not reconstruct observed history"))
       (mapcar #'fnn-as-octets (second answer)))))
@@ -615,20 +687,21 @@ selection-* process-death cuts (fn-cpp-marker-step)."
         (fnn-fault "ACL2 returned no compaction decision"))
       (when (eq (first decision) :refused)
         (fnn-refuse "compaction refused: ~(~a~)" (second decision)))
-      (let ((generation nil) (reclaimed nil) (retired nil))
+      (let ((generation nil) (links 0) (reclaimed nil) (retired nil))
         (dolist (step (second decision))
           (case step
-            (:pack (setq generation (fnn-pack-publish-generation store records)))
+            (:pack (multiple-value-setq (generation links)
+                     (fnn-pack-extend-chain store records)))
+            ;; Each link was selected as it was published (fnn-pack-extend-chain).
             (:select
-             (unless generation (fnn-fault "ACL2 selected a pack it did not publish"))
-             (fnn-pack-select store generation))
+             (unless generation (fnn-fault "ACL2 selected a pack it did not publish")))
             (:reclaim (setq reclaimed (fnn-pack-prefix-reclaim store)))
             (:retire (setq retired (fnn-pack-retire-older-generations store)))
             (otherwise (fnn-fault "ACL2 returned an unknown compaction step ~s" step))))
-        (format nil "compacted steps=~{~(~a~)~^,~} records=~d generation=~a reclaimed=~d retired=~d"
+        (format nil "compacted steps=~{~(~a~)~^,~} records=~d generation=~a links=~d reclaimed=~d retired=~d"
                 (second decision) (length records)
                 (or generation (fnn-pack-selected-generation store))
-                (length reclaimed) (length retired))))))
+                links (length reclaimed) (length retired))))))
 
 (defun fnn-command-compact (root)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
