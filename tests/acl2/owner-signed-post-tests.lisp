@@ -56,7 +56,7 @@
 (assert-event (not (equal *ospt-staged* *tha-received*)))
 (defconst *ospt-snapshots* (fn-sn-keyring-snapshots (fn-own-store *ospt-taken*)))
 (assert-event
- (equal (fn-pa-current-plan *ospt-staged* *ospt-snapshots* nil)
+ (equal (fn-pa-current-plan *ospt-staged* *ospt-snapshots* nil nil)
         (list :ok *tha-root-source* *tha-principal* *tha-keys*
               *tha-signatures* *ospt-enrollment* 1)))
 
@@ -99,7 +99,7 @@
     (equal (fn-sn-verdict-lookup (fn-own-store (fn-own-step o '(:complete)))
                                  *ospt-msgid*)
            (fn-stx-make-verdict (fn-stxe-token v) (fn-stxe-detail v)
-                                (nth 6 (fn-pa-current-plan received snapshots nil))))))
+                                (nth 6 (fn-pa-current-plan received snapshots nil nil))))))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *ospt-completing*)))
 (assert-event (equal (fn-sn-completion-record (fn-own-store *ospt-completing*))
                      *ospt-event*))
@@ -209,20 +209,20 @@
 ; ---------------------------------------------------------------------------
 ; The refused arm.  fn-osp-plan-refusal-is-a-served-reason and
 ; fn-osp-served-refusal-renders-its-reason, on a POST in flight.
-(assert-event (equal (fn-pa-current-plan *ospt-staged* nil nil)
+(assert-event (equal (fn-pa-current-plan *ospt-staged* nil nil nil)
                      '(:refused :local-enrollment)))
 (defconst *ospt-malformed*
   (append (tha-line "FN-Authorship: !!!") *tha-root-source*))
-(assert-event (equal (fn-pa-current-plan *ospt-malformed* *ospt-snapshots* nil)
+(assert-event (equal (fn-pa-current-plan *ospt-malformed* *ospt-snapshots* nil nil)
                      '(:refused :carrier)))
 (assert-event (not (equal (fn-pa-carrier-form *ospt-malformed*) :absent)))
 ; Without the refused plan, the plan's second element is not a reason.
 (must-fail
  (assert-event
-  (member-equal (cadr (fn-pa-current-plan *ospt-staged* *ospt-snapshots* nil))
+  (member-equal (cadr (fn-pa-current-plan *ospt-staged* *ospt-snapshots* nil nil))
                 '(:article :carrier :carrier-shape :local-enrollment))))
 ; An absent carrier is the unsigned arm with its word unchanged.
-(assert-event (equal (fn-pa-current-plan *tha-root-source* *ospt-snapshots* nil)
+(assert-event (equal (fn-pa-current-plan *tha-root-source* *ospt-snapshots* nil nil)
                      :absent))
 (assert-event (equal (fn-pa-served-word :durable nil) :durable))
 (assert-event (equal (fn-pa-served-word :refused nil) :refused))
@@ -297,10 +297,10 @@
   (fn-inj-decision-octets
    (fn-own-sub-decision (fn-own-inflight *ospt-bare-taken*))))
 (assert-event (null (fn-sn-keyring-snapshots (fn-own-store *ospt-bare-taken*))))
-(assert-event (equal (fn-pa-current-plan *ospt-bare-staged* nil nil)
+(assert-event (equal (fn-pa-current-plan *ospt-bare-staged* nil nil nil)
                      '(:refused :local-enrollment)))
 (assert-event (equal (car (fn-pa-current-plan *ospt-bare-staged* nil
-                                              *pat-carries*))
+                                              *pat-carries* nil))
                      :carried))
 (defun ospt-carried-event (received carried)
   (let ((s (fn-own-store *ospt-bare-taken*)))
@@ -452,3 +452,41 @@
                 (fn-own-config *ospt-transit*) (fn-own-queue *ospt-transit*)
                 (fn-own-inflight *ospt-transit*) (fn-own-feeds *ospt-transit*))
    *ospt-poster* :want :control-not-filed)))
+
+; ---------------------------------------------------------------------------
+; PRF-098: replay admits the revoked composite exactly at its tombstone
+; (fn-osp-replay-admits-a-revoked-composite-exactly-at-its-tombstone).
+; Witness: a context whose snapshots hold the tombstone at 5.
+(defconst *ospt-revoked-ctx*
+  (fn-stxk-context :ok 2 *pat-after-revocation* nil 5 nil))
+(assert-event
+ (equal (fn-stxk-context-kind
+         (fn-replay-identity-step *ospt-revoked-ctx* *pat-revoked-event*))
+        :ok))
+(assert-event
+ (equal (fn-stxk-context-snapshots
+         (fn-replay-identity-step *ospt-revoked-ctx* *pat-revoked-event*))
+        *pat-after-revocation*))
+(assert-event
+ (equal (fn-replay-verdict-pairs
+         (fn-stxk-context-verdicts
+          (fn-replay-identity-step *ospt-revoked-ctx* *pat-revoked-event*)))
+        (list (cons "<topic-binding@example.invalid>"
+                    (fn-stx-make-verdict :revoked *tha-principal* 5)))))
+; Tooth (the tombstone): the same composite over the history without the
+; revocation faults.
+(must-fail
+ (assert-event
+  (equal (fn-stxk-context-kind
+          (fn-replay-identity-step
+           (fn-stxk-context :ok 2 *pat-snapshots* nil 4 nil)
+           *pat-revoked-event*))
+         :ok)))
+; Tooth (the sequence): at another cursor it faults.
+(must-fail
+ (assert-event
+  (equal (fn-stxk-context-kind
+          (fn-replay-identity-step
+           (fn-stxk-context :ok 3 *pat-after-revocation* nil 5 nil)
+           *pat-revoked-event*))
+         :ok)))
