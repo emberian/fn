@@ -498,6 +498,11 @@
 (defun fn-own-view-control (v)
   (declare (xargs :guard t))
   (fn-ctl-pin (fn-own-view-withdrawn v) (fn-own-view-withdrawals v)))
+(defthm fn-own-view-control-fields
+  (and (equal (fn-ctl-pin-withdrawn (fn-own-view-control v)) (fn-own-view-withdrawn v))
+       (equal (fn-ctl-pin-ws (fn-own-view-control v)) (fn-own-view-withdrawals v))
+       (fn-own-view-control v)))
+(in-theory (disable fn-own-view-control))
 (defun fn-own-view-make-indexed (version frontier archive verdicts index)
   (declare (xargs :guard t))
   (fn-own-view-make-group-indexed version frontier archive verdicts index nil))

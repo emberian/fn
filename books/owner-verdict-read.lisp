@@ -232,6 +232,15 @@
               (fn-served-conn-verdicts conn)))
   :hints (("Goal" :in-theory (enable fn-ovr-with-wire))))
 
+(defthm fn-ovr-pinned-index-of-with-wire
+  (and (equal (fn-served-conn-pinned-index (fn-ovr-with-wire conn w))
+              (fn-served-conn-pinned-index conn))
+       (equal (fn-served-conn-config (fn-ovr-with-wire conn w))
+              (fn-served-conn-config conn))
+       (equal (fn-served-conn-observation (fn-ovr-with-wire conn w))
+              (fn-served-conn-observation conn)))
+  :hints (("Goal" :in-theory (enable fn-ovr-with-wire fn-served-conn-pinned-index))))
+
 (defthm fn-ovr-dispatch-effects-true-listp
   (true-listp (fn-served-result-effects (fn-served-dispatch conn event)))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
@@ -482,6 +491,7 @@
                             fn-own-conn-wire fn-own-conn-archive fn-own-conn-config
                             fn-own-conn-observation fn-own-conn-verdicts
                             fn-own-conn-index fn-own-conn-group-index
+                            fn-own-conn-control
                             fn-own-conn-session fn-own-find-conn
                             fn-wire-feed-byte fn-wire-feed-proper fn-wire-statep
                             fn-nntp-multi fn-stx-reader-item fn-stx-reader-lookup
