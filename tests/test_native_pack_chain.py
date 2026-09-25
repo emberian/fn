@@ -195,5 +195,79 @@ class NativePackChainTests(unittest.TestCase):
                     shutil.rmtree(store)
 
 
+    def test_chain_reclaim_retire_and_suffix_cuts_resume(self):
+        """Interrupted covered-file reclaim across a multi-link chain,
+        interrupted retirement of generations outside the chain, and the
+        uncovered suffix's recovery around both: every cut reopens to the whole
+        history, and the reclaim and retire entries finish the work."""
+        base, _, _ = self.scale_store("life-base", CUT_N)
+        reference = self.base / "life-reference"
+        shutil.copytree(base, reference, symlinks=True)
+        self.native("checkpoint", "pack", reference, "select")
+        whole, _ = self.chain(reference)
+        self.assertGreaterEqual(whole, 2)
+        shutil.rmtree(reference)
+        compact = lambda config: ("operator", config, "store", "compact")
+        # 1. Reclaim of the covered prefix of the whole chain, cut after the
+        #    first, second and last covered unlink and at the directory barrier.
+        for point, occurrence, left in (("pack-reclaim-unlink", 1, CUT_N - 1),
+                                        ("pack-reclaim-unlink", 2, CUT_N - 2),
+                                        ("pack-reclaim-unlink", CUT_N, 0),
+                                        ("pack-reclaim-directory", 1, 0)):
+            with self.subTest(point=point, occurrence=occurrence):
+                name = "life-reclaim-{}-{}".format(point, occurrence)
+                store = self.base / name
+                shutil.copytree(base, store, symlinks=True)
+                config, _ = self.owner_config(store, name)
+                self.stopped_then_killed(compact(config), point, occurrence)
+                self.assertEqual(self.chain(store), (whole, CUT_N))
+                self.assertEqual(len(self.transaction_bytes(store)), left)
+                self.recovered(store, CUT_N)
+                resumed = self.native("checkpoint", "pack-reclaim", store)
+                self.assertIn("reclaimed transaction-prefix={}".format(left),
+                              resumed.stdout)
+                self.assertEqual(self.transaction_bytes(store), {})
+                self.recovered(store, CUT_N)
+                # Nothing is left: the verb refuses before any durable change.
+                refused = self.native(*compact(config), expected=run_store.EXIT_REFUSED)
+                self.assertIn("already-compact", refused.stderr)
+                self.assertEqual(self.chain(store), (whole, CUT_N))
+                shutil.rmtree(store)
+        # 2. The compacted chain and an uncovered suffix of one record.
+        config0, _ = self.owner_config(base, "life-base")
+        self.native(*compact(config0))
+        self.assertEqual(self.chain(base), (whole, CUT_N))
+        self.native("store", base, "post", "<life-suffix@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
+        self.recovered(base, CUT_N + 1)
+        # Two interrupted link publications leave two complete candidates that
+        # were never selected: generations outside the chain.
+        for attempt in (1, 2):
+            self.stopped_then_killed(compact(config0), "selection-file", 1)
+            self.assertEqual(self.chain(base), (whole, CUT_N))
+            self.recovered(base, CUT_N + 1)
+        # 3. Each retirement cut of the next compaction, which packs the
+        #    suffix into a new link and retires the two orphans.
+        for point, occurrence, left in (("pack-retire-unlink", 1, 1),
+                                        ("pack-retire-unlink", 2, 0),
+                                        ("pack-retire-directory", 1, 0)):
+            with self.subTest(point=point, occurrence=occurrence):
+                name = "life-retire-{}-{}".format(point, occurrence)
+                store = self.base / name
+                shutil.copytree(base, store, symlinks=True)
+                config, _ = self.owner_config(store, name)
+                self.stopped_then_killed(compact(config), point, occurrence)
+                self.assertEqual(self.chain(store), (whole + 1, CUT_N + 1))
+                self.assertEqual(self.transaction_bytes(store), {})
+                self.recovered(store, CUT_N + 1)
+                retired = self.native("checkpoint", "pack-retire", store)
+                self.assertIn("retired pack-generations={}".format(left), retired.stdout)
+                self.assertEqual(self.chain(store), (whole + 1, CUT_N + 1))
+                self.recovered(store, CUT_N + 1)
+                refused = self.native(*compact(config), expected=run_store.EXIT_REFUSED)
+                self.assertIn("already-compact", refused.stderr)
+                shutil.rmtree(store)
+
+
 if __name__ == "__main__":
     unittest.main()
