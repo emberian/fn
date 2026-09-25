@@ -700,10 +700,7 @@
         "fn-pcar-sbud-prepare-is-sbud-prepare",
         "fn-pcar-next-lower-is-next-lower",
         "fn-acar-own-outcome-is-reference-under-ocl-relation",
-        "fn-acar-scar-auth-sessionp-of-rebuilt-session",
-        "fn-icar-intent-id-is-intent-id",
-        "fn-icar-submission-intent-is-reference",
-        "fn-icar-submission-resolution-records-is-reference"
+        "fn-acar-scar-auth-sessionp-of-rebuilt-session"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -816,10 +813,7 @@
         "fn-served-run-effects-are-typed",
         "fn-own-240-follows-consumed-completion",
         "fn-ccar-own-finish-is-own-finish",
-        "fn-acar-own-outcome-is-reference-under-ocl-relation",
-        "fn-icar-intent-id-is-intent-id",
-        "fn-icar-submission-intent-is-reference",
-        "fn-icar-submission-resolution-records-is-reference"
+        "fn-acar-own-outcome-is-reference-under-ocl-relation"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",

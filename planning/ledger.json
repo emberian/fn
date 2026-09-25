@@ -560,6 +560,7 @@
     "books/owner-prepare-carried",
     "books/records-concrete",
     "books/owner-advance-carried",
+    "books/owner-intent-carried",
     "books/owner-commit-ocl",
     "books/owner-recover-ocl",
     "tests/acl2/owner-tls-pin-tests",
@@ -593,6 +594,7 @@
     "tests/acl2/owner-prepare-carried-tests",
     "tests/acl2/records-concrete-tests",
     "tests/acl2/owner-advance-carried-tests",
+    "tests/acl2/owner-intent-carried-tests",
     "tests/acl2/owner-recover-ocl-tests",
     "books/config-owner-publish",
     "tests/acl2/config-owner-publish-tests",
@@ -763,25 +765,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 771,
-    "books_in_root_closure": 769,
-    "roots": 759,
-    "theorems": 10234,
-    "functions": 7233,
-    "assert_events": 11207,
-    "must_fails": 1002,
+    "books": 773,
+    "books_in_root_closure": 771,
+    "roots": 761,
+    "theorems": 10241,
+    "functions": 7242,
+    "assert_events": 11228,
+    "must_fails": 1005,
     "encapsulates": 41,
     "guards": {
       "verified": 2085,
       "declared-off": 526,
-      "default-guarded": 3584,
-      "default-unguarded": 1038
+      "default-guarded": 3589,
+      "default-unguarded": 1042
     },
     "suspect_theorems": 91,
     "export_hygiene_warnings": 127,
     "enabled_projection_warnings": 42,
-    "teeth_form_warnings": 66,
-    "include_hygiene_warnings": 763,
+    "teeth_form_warnings": 69,
+    "include_hygiene_warnings": 764,
     "host_names_warnings": 860,
     "hand_written_record_warnings": 18
   },
@@ -9006,6 +9008,31 @@
         "identity-invariants",
         "peer-config",
         "peer-feed-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-intent-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner"
       ],
       "system_includes": [],
       "suspects": [],
@@ -18785,6 +18812,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-intent-carried-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 21,
+      "must_fails": 3,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-intent-carried",
+        "owner-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-log-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -23732,6 +23787,24 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "icar-t-intent-id-without-carryp",
+        "book": "tests/acl2/owner-intent-carried-tests.lisp",
+        "line": 95,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "icar-t-intent-without-carryp",
+        "book": "tests/acl2/owner-intent-carried-tests.lisp",
+        "line": 100,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "icar-t-resolution-without-carryp",
+        "book": "tests/acl2/owner-intent-carried-tests.lisp",
+        "line": 105,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "olt-feed-line-always-classed",
         "book": "tests/acl2/owner-log-tests.lisp",
         "line": 295,
@@ -28330,6 +28403,13 @@
       {
         "book": "tests/acl2/owner-fault-tests.lisp",
         "line": 18,
+        "include": "owner-tests",
+        "included": "tests/acl2/owner-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-intent-carried-tests.lisp",
+        "line": 5,
         "include": "owner-tests",
         "included": "tests/acl2/owner-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -35170,28 +35250,28 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 504,
+        "line": 505,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 504,
+        "line": 505,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 994,
+        "line": 1002,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1544,
+        "line": 1570,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
