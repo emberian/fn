@@ -1411,7 +1411,8 @@
         "planning/evidence/manifests/certify-20260925T054927Z-1178625.json",
         "planning/evidence/manifests/certify-20260925T061129Z-1378198.json",
         "planning/evidence/manifests/certify-20260925T062846Z-1530323.json",
-        "planning/evidence/manifests/certify-20260925T073426Z-2114563.json"
+        "planning/evidence/manifests/certify-20260925T073426Z-2114563.json",
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json"
       ]
     },
     {
@@ -1946,7 +1947,8 @@
         "planning/evidence/manifests/certify-20260925T004450Z-2510809.json",
         "planning/evidence/manifests/certify-20260925T054927Z-1178625.json",
         "planning/evidence/manifests/certify-20260925T062846Z-1530323.json",
-        "planning/evidence/manifests/certify-20260925T073426Z-2114563.json"
+        "planning/evidence/manifests/certify-20260925T073426Z-2114563.json",
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json"
       ],
       "progress_note": "certify-20260921T062242Z-1643977 certified an older books/feed-journal digest; certify-20260924T070931Z-1040432 (hbox) records books/feed-journal and tests/acl2/feed-journal-tests passed at their current digests and include closures. Actual subject calls: host/owner-host.lisp fn-owner-feed-journal-scan calls fn-feed-journal-scan; tools/run_owner.py Acl2Owner.feed_journal_step calls fn-feed-journal-phase-step for Journal._step. The finite phase theorem extends that same step through arbitrary observations. Physical torn-suffix repair, barriers and the global owner fence have scoped live-scanner and host-method tests in tests/test_feed_journal_live.py and tests/test_feed_fence.py; those tests do not run the combined owner/NNTP path. This target does not prove physical byte-image survival, general K5 live/replay correspondence, acceptance/feed atomicity, detection of whole-prefix rollback, bounded total journal growth, or hardware durability."
     },
@@ -2326,7 +2328,8 @@
         "planning/evidence/manifests/certify-20260925T054927Z-1178625.json",
         "planning/evidence/manifests/certify-20260925T042023Z-2484022.json",
         "planning/evidence/manifests/certify-20260925T062846Z-1530323.json",
-        "planning/evidence/manifests/certify-20260925T073426Z-2114563.json"
+        "planning/evidence/manifests/certify-20260925T073426Z-2114563.json",
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json"
       ],
       "events": [
         "fn-nntp-newnews-candidate-is-projectable",
@@ -3589,7 +3592,9 @@
         "books/retention.lisp",
         "tests/acl2/owner-checkpoint-open-tests.lisp",
         "tests/acl2/linear-recognizers-tests.lisp",
-        "planning/evidence/checkpoint-cost-2026-09-25.md"
+        "planning/evidence/checkpoint-cost-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
+        "planning/evidence/manifests/certify-20260925T183348Z-4032007.json"
       ],
       "progress_note": "Open: the Store state still holds the record list (fn-sf-records; a commit appends to it, store-files.lisp), so the kernel does not yet carry a count; fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic in the whole-node recognizer; the covered prefix's octets are still re-encoded for fnn-open-live-store's callers; two hypotheses have no must-fail (the :ok hypothesis of the Store open's replay conjunct and the admitted-history hypothesis of the publication keystone) and the 2^32 bound of fn-sco-freeze-of-capture-carries-the-count has no reachable counterexample.",
       "events": [
