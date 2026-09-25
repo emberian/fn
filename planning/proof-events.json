@@ -3726,6 +3726,43 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-visible-state-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-plan-record-is-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-articles-withdrawals-is-the-journal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-refresh-withdrawals-is-the-journal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-refresh-withdrawn-is-withdrawn",
+          "pending_subject": "Subject is books/control-served.lisp, which no host path calls yet: the owner does not carry the withdrawn list and the served dispatcher has no 423/430 withdrawn arm and no HDR :fn-control arm (planning/evidence/control-c3d-2026-09-25.md, the wiring owed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-number-withdrawn-is-a-withdrawn-holder",
+          "pending_subject": "Subject is books/control-served.lisp, which no host path calls yet: the owner does not carry the withdrawn list and the served dispatcher has no 423/430 withdrawn arm and no HDR :fn-control arm (planning/evidence/control-c3d-2026-09-25.md, the wiring owed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-msgid-withdrawn-is-a-withdrawn-article",
+          "pending_subject": "Subject is books/control-served.lisp, which no host path calls yet: the owner does not carry the withdrawn list and the served dispatcher has no 423/430 withdrawn arm and no HDR :fn-control arm (planning/evidence/control-c3d-2026-09-25.md, the wiring owed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-executed-status-means-withdrawn",
+          "pending_subject": "Subject is books/control-served.lisp, which no host path calls yet: the owner does not carry the withdrawn list and the served dispatcher has no 423/430 withdrawn arm and no HDR :fn-control arm (planning/evidence/control-c3d-2026-09-25.md, the wiring owed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-owed-status-means-not-held",
+          "pending_subject": "Subject is books/control-served.lisp, which no host path calls yet: the owner does not carry the withdrawn list and the served dispatcher has no 423/430 withdrawn arm and no HDR :fn-control arm (planning/evidence/control-c3d-2026-09-25.md, the wiring owed)."
         }
       ]
     },

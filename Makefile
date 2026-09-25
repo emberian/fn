@@ -780,6 +780,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/key-statements-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
+	books/control-served \
+	tests/acl2/control-served-tests \
 	books/login-binding \
 	tests/acl2/login-binding-tests \
 	books/topic-history-metadata \
