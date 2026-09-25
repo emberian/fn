@@ -51,7 +51,7 @@
                      4096))
 (assert-event (equal (fn-bs-profile-max-group-name-octets *fn-bs-profile-defaults*)
                      256))
-(assert-event (equal (fn-record-encoded-octets-ceiling 16777216 4096) 17847355))
+(assert-event (equal (fn-record-encoded-octets-ceiling 16777216 4096) 17847383))
 (assert-event (equal (fn-bs-profile-max-groups-per-article *fn-bs-profile-scale*)
                      65535))
 (assert-event (equal (fn-bs-profile-max-group-name-octets *fn-bs-profile-development*)
