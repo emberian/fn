@@ -1,0 +1,58 @@
+
+Number of samples:   5947
+Sample interval:     0.001 seconds
+Total sampling time: 5.947 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=3507888 "main thread" RUNNING {1200068003}> (480/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=3507892 "fn-sprof" RUNNING {120FA58723}> (920/1048576 bytes, 7 hash buckets)
+   #<THREAD tid=3507891 "finalizer" RUNNING {120F9D57F3}> (248/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=3507895 "fn owner client" RUNNING {1210024F13}> (1033096/1048576 bytes, 2773 hash buckets)
+   #<THREAD tid=3507894 "fn local control accept" RUNNING {120FF83403}> (136/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=3507893 "fn outbound feed" RUNNING {120FEBB303}> (888/1048576 bytes, 6 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2    690  11.6   1218  20.5    690  11.6        -  FN-CBOR-OCTET-LISTP
+   4    623  10.5    623  10.5   1313  22.1        -  FN-CBOR-OCTETP
+   6    577   9.7    577   9.7   1890  31.8        -  FN-AG-CAR
+   8    467   7.9   1436  24.1   2357  39.6        -  FN-RECORD-PAYLOADP
+  10    289   4.9    289   4.9   2646  44.5        -  FN-AG-CDR
+  12    255   4.3    255   4.3   2901  48.8        -  FN-WIRE-AG-CDR
+  14    122   2.1    122   2.1   3023  50.8        -  FN-SHS-ROUNDS
+  16     98   1.6   2050  34.5   3121  52.5        -  FN-SCAR-FEED-COUNTED
+  18     94   1.6   1338  22.5   3215  54.1        -  FN-SCAR-FEED-BYTE
+  20     83   1.4     83   1.4   3298  55.5        -  FN-CBOR-AT-MOSTP
+  22     82   1.4    168   2.8   3380  56.8        -  SB-KERNEL:VECTOR-TO-LIST
+  24     70   1.2    594  10.0   3450  58.0        -  FN-WIRE-FEED-BYTE
+  26     69   1.2     69   1.2   3519  59.2        -  foreign function pthread_sigmask
+  28     68   1.1     68   1.1   3587  60.3        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  30     63   1.1    135   2.3   3650  61.4        -  FN-WIRE-LIST-LENGTH
+  32     62   1.0    233   3.9   3712  62.4        -  FN-GIDX-BUILD-ENTRIES
+  34     58   1.0    102   1.7   3770  63.4        -  FN-SERVED-CONN-INDEX
+  36     58   1.0     61   1.0   3828  64.4        -  SB-IMPL::APPEND2
+  38     57   1.0    104   1.7   3885  65.3        -  FN-GIDX-PUT
+  40     57   1.0     57   1.0   3942  66.3        -  FN-ARTICLE-BODY-CRLFP
+  42     56   0.9     81   1.4   3998  67.2        -  FN-SHS-LOAD-LIST-WORD
+  44     56   0.9     56   0.9   4054  68.2        -  FN-WIRE-AG-CAR
+  46     55   0.9     55   0.9   4109  69.1        -  FN-SHS-EXTEND
+  48     54   0.9     54   0.9   4163  70.0        -  SB-KERNEL:STRING=*
+  50     53   0.9    116   2.0   4216  70.9        -  FN-WIRE-STATE-LINE-LIMIT
+  52     51   0.9     87   1.5   4267  71.8        -  FN-INJ-NTH
+  54     48   0.8     48   0.8   4315  72.6        -  (SB-VM::OPTIMIZED-DATA-VECTOR-REF (UNSIGNED-BYTE 8))
+  56     46   0.8     89   1.5   4361  73.3        -  FN-INJ-APPEND
+  58     40   0.7    662  11.1   4401  74.0        -  FN-INDEX-BUILD
+  60     38   0.6     84   1.4   4439  74.6        -  FN-SERVED-CONN-GROUP-INDEX
+  62     35   0.6     35   0.6   4474  75.2        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-REF/CHECK-BOUNDS
+  64     34   0.6     54   0.9   4508  75.8        -  REPLACE
+  66     33   0.6     33   0.6   4541  76.4        -  FN-INJ-CDR
+  68     32   0.5     35   0.6   4573  76.9        -  FN-SERVED-MAKE-CONN-GROUP-INDEXED
+  70     31   0.5     66   1.1   4604  77.4        -  FN-SERVED-CONN-VERDICTS
+  72     31   0.5     44   0.7   4635  77.9        -  FN-WIRE-STATE-LINE-LEN
+  74     30   0.5     78   1.3   4665  78.4        -  FN-RETAIN-OBLIGATION-IDS
+  76     30   0.5     30   0.5   4695  78.9        -  GENERIC-+
+  78     29   0.5     29   0.5   4724  79.4        -  GENERIC--
+  80     28   0.5     55   0.9   4752  79.9        -  FN-WIRE-STATE-BODY-SIZE
+------------------------------------------------------------------------
+         93   1.6                                     elsewhere

@@ -77,6 +77,15 @@
       (fnn-fault "owner returned non-octets in ~a" name))
     (fnn-octets value)))
 
+(defun fnn-owner-list-global (name)
+  "An octet-list global as the ACL2 list object itself, so a payload the
+core produced goes back to the core without a byte vector and a fresh list
+in between (SPIKE, D28: the served POST payload, four list copies per POST)."
+  (let ((value (fnn-global name)))
+    (unless (fnn-octet-list-p value)
+      (fnn-fault "owner returned non-octets in ~a" name))
+    value))
+
 (defun fnn-owner-bool-global (name)
   (let ((value (fnn-global name)))
     (unless (member value '(t nil))
@@ -461,8 +470,8 @@ completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
     (let ((service nil))
       (handler-case
           (let ((result (fnn-owner-core
-                         'fn-owner-recover
-                         (mapcar #'fnn-octet-list records)
+                         'fn-owner-recover-values
+                         (mapcar #'fnn-record-value records)
                          (fnn-store-frontier store)
                          (mapcar #'fnn-octet-list (fnn-config-records store))
                          max-connections)))
@@ -673,15 +682,25 @@ the current connection."
 (defun fnn-owner-publish-prepared (service label)
   "Publish and finish the one ACL2-prepared owner transaction."
   (let* ((store (fnn-owner-service-store service))
-         (record (fnn-owner-core 'fn-owner-pending-octets))
+         ;; SPIKE (D28): an article record is encoded and sealed by ACL2
+         ;; straight into the octet buffer (host/owner-host.lisp
+         ;; fn-owner-pending-frame, books/records-stobj); the host copies the
+         ;; frame out once and writes it.  SEALED is the record's octet
+         ;; count, or nil for any other pending kind, which takes the list
+         ;; path below as before.
+         (sealed (fnn-core-buffer-state 'fn-owner-pending-frame))
+         (frame (and sealed (fnn-octets-vector)))
+         (record (if sealed nil (fnn-owner-core 'fn-owner-pending-octets)))
          ;; The file is named from the staged record's own sequence, ACL2's
          ;; (fn-sbud-pending-sequence); the host keeps no count of its own.
          (sequence (fnn-pending-sequence
                     (fnn-owner-core 'fn-owner-pending-sequence))))
-    (unless (fnn-octet-list-p record)
+    (unless (or sealed (fnn-octet-list-p record))
       (fnn-fault "owner returned malformed ~a transaction" label))
     (handler-case
-        (fnn-publish store sequence (fnn-octets record))
+        (if sealed
+            (fnn-publish-data store sequence sealed frame)
+          (fnn-publish store sequence (fnn-octets record)))
       (fnn-store-indeterminate (e) (error e))
       (fnn-store-fault (e)
         ; A structural/core fault is never a capacity refusal.  Preserve the
@@ -1300,7 +1319,7 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
         (values nil (fnn-make-octets 0) nil)
         (let* ((cid (fnn-nat (fnn-global 'fn-owner-submit-id)))
                (msgid (fnn-owner-octets-global 'fn-owner-submit-msgid))
-               (payload (fnn-owner-octets-global 'fn-owner-submit-octets)))
+               (payload (fnn-owner-list-global 'fn-owner-submit-octets)))
           (when (eq taken :taken-control)
             (fnn-owner-action 'fn-owner-fault cid)
             (return-from fnn-owner-drain-one
@@ -1322,9 +1341,9 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
                    ;; difference is a core fault, never a store attempt.
                    (transit-checked
                      (when (and transitp (eq transit-kind :want))
-                       (unless (equalp payload
-                                       (fnn-owner-octets-global
-                                        'fn-owner-transit-payload))
+                       (unless (equal payload
+                                      (fnn-owner-list-global
+                                       'fn-owner-transit-payload))
                          (fnn-fault "owner transit payload differs from the staged one"))
                        t))
                    ;; Transit memberships are computed by the ACL2 transfer

@@ -586,6 +586,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-concrete-owner \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
+	books/octets-stobj \
+	books/frame-stobj \
+	books/records-stobj \
+	books/article-stobj \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -621,6 +625,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-carried-tests \
 	tests/acl2/records-concrete-tests \
 	tests/acl2/msgid-index-concrete-tests \
+	tests/acl2/records-stobj-tests \
 	tests/acl2/owner-advance-carried-tests \
 	tests/acl2/owner-intent-carried-tests \
 	tests/acl2/owner-recover-ocl-tests \

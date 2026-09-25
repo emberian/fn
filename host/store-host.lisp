@@ -99,6 +99,53 @@
 ; The record wrappers recognise and dispatch through the concrete twins of
 ; books/records-concrete.lisp (fn-rcon-store-event-p-is-store-event-p,
 ; -sequence-is-, -txid-is-: each equal to its list reference on every input).
+;; SPIKE (D28, lane spike-representation): the store event a transaction
+;; file carries, decoded once in the octet buffer.  The host fills the
+;; buffer with the file (host/native/io.lisp fnn-octets-fill) and asks this;
+;; an article record is decoded in place (books/records-stobj
+;; fn-rcs-unframe-record: the frame checks of fn-frame-store-decode and the
+;; record grammar of fn-record-decode-exact-impl, both deferred
+;; correspondences on the spike); any other event kind is decoded from the
+;; frame's record octets by the list codec, exactly as
+;; fn-store-decode-records does.  (mv :record event) | (mv :bad nil) |
+;; (mv :frame-error reason).
+(defun fn-store-event-value-okp (decoded)
+  (declare (xargs :mode :program))
+  (and (consp decoded) (equal (car decoded) :ok)
+       (consp (cdr decoded)) (fn-rcon-store-event-p (car (cdr decoded)))))
+
+(defun fn-store-frame-value-in-buffer (fn-octets)
+  (declare (xargs :stobjs fn-octets :mode :program))
+  (mv-let (kind value)
+    (fn-rcs-unframe-record fn-octets)
+    (cond ((equal kind :record) (mv :record value))
+          ((equal kind :octets)
+           (let ((decoded (fn-store-event-decode-exact value)))
+             (if (fn-store-event-value-okp decoded)
+                 (mv :record (car (cdr decoded)))
+               (mv :bad nil))))
+          (t (mv :frame-error value)))))
+
+(defun fn-store-event-value-in-buffer (fn-octets)
+  ; The store event whose encoding fills the buffer (a record's octets, not
+  ; a frame): the article codec in place, else the list codec.  :bad when
+  ; neither accepts it.
+  (declare (xargs :stobjs fn-octets :mode :program))
+  (let ((decoded (fn-rcs-decode-exact 0 (fn-octets-len fn-octets) fn-octets)))
+    (if (fn-record-result-okp decoded)
+        (fn-record-result-record decoded)
+      (let ((decoded (fn-store-event-decode-exact (fn-octets-list fn-octets))))
+        (if (fn-store-event-value-okp decoded) (car (cdr decoded)) :bad)))))
+
+(defun fn-store-event-value-sequence (event)
+  ; fn-rcon-store-event-sequence-is-store-event-sequence (books/records-concrete).
+  (declare (xargs :mode :program))
+  (fn-rcon-store-event-sequence event))
+
+(defun fn-store-event-value-txid (event)
+  (declare (xargs :mode :program))
+  (fn-rcon-store-event-txid event))
+
 (defun fn-store-decode-records (octet-records)
   (declare (xargs :mode :program))
   (if (consp octet-records)

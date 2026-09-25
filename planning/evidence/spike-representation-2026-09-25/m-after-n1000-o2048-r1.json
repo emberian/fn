@@ -1,0 +1,71 @@
+{
+  "image": "/tank/fn/scratch/spike-representation/after-tree/build/fn-host-developer",
+  "launcher_sha256": "20bb3cced29977fe7d46a4a0286e549f8857e21b7f7181134bf68aa1905e3aaa",
+  "core_sha256": "24029eaf99d8cf3192c0560359e5411e5bb253e1f71ed804f58b567d83a084b8",
+  "articles": 1000,
+  "octets": 2048,
+  "article0_octets": 2027,
+  "samples": 16,
+  "port": 52843,
+  "init": "init --profile default --max-article-octets 65536 fn.test",
+  "first_open_seconds": 0.10279321670532227,
+  "load_seconds": 2.0523739708587527,
+  "post_all": {
+    "n": 1000,
+    "min_ms": 1.7201025038957596,
+    "median_ms": 1.9860710017383099,
+    "p95_ms": 2.29478906840086,
+    "max_ms": 10.486635379493237
+  },
+  "post_first_quarter": {
+    "n": 250,
+    "min_ms": 1.7201025038957596,
+    "median_ms": 1.8802378326654434,
+    "p95_ms": 2.3756399750709534,
+    "max_ms": 10.486635379493237
+  },
+  "post_last_quarter": {
+    "n": 250,
+    "min_ms": 1.9592801108956337,
+    "median_ms": 2.0525003783404827,
+    "p95_ms": 2.214103937149048,
+    "max_ms": 4.851081408560276
+  },
+  "rss_after_load_kib": 429344,
+  "census_after_load": {
+    "seconds": 1.6013526292517781,
+    "dynamic_usage_after_gc": 292116576
+  },
+  "rss_after_census_kib": 595588,
+  "group_reply": "211 1000 1 1000 fn.test",
+  "stat_present": {
+    "n": 16,
+    "min_ms": 0.08063670247793198,
+    "median_ms": 0.08735805749893188,
+    "p95_ms": 0.11023227125406265,
+    "max_ms": 0.1155482605099678
+  },
+  "article_present": {
+    "n": 16,
+    "min_ms": 2.2007692605257034,
+    "median_ms": 2.2641243413090706,
+    "p95_ms": 2.292337827384472,
+    "max_ms": 2.2960929200053215
+  },
+  "article_octets_read": 33738,
+  "over_present": {
+    "n": 16,
+    "min_ms": 0.3591226413846016,
+    "median_ms": 0.5941800773143768,
+    "p95_ms": 0.8633611723780632,
+    "max_ms": 0.866997055709362
+  },
+  "rss_after_reads_kib": 660100,
+  "reopen_seconds": 485.18843993451446,
+  "rss_after_reopen_kib": 657816,
+  "reopen_last_stat": "223 0 <t17-000999@example.invalid> retrieved",
+  "census_after_reopen": {
+    "seconds": 1.601130222901702,
+    "dynamic_usage_after_gc": 294877984
+  }
+}

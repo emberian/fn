@@ -1,0 +1,17 @@
+## memo
+28bc37d7442fd510fde2331b23cf01fda073d84953c9a0e8f7b786aa71b388d2  build/fn-host-developer
+077f16965125f5c44860e3479ab7f8f0a179eab281399445591ec06150600705  build/fn-host-developer-prof
+f09798b43d3791abcddf120349321321b9c1fc1517a743c4a9191b847be58c69  build/fn-host-developer-prof.core
+8a59eb79649613592472b43181a5e64f3d44b670d00b64162a5025f3aa1f4582  build/fn-host-developer.core
+838f33a3402cbc3b5672bf5bbf728f91000e02e5f4f7b02c59cab7a42fb1cf99  build/freeze/native-build-developer.log
+35f59033e7be68db247648298daa8bcaa0dcc2d072342ee57108e394f9b2ed0a  build/freeze/native-build-prof.log
+91494851e5a995bd0d8b01bb7639b647c2537395bc8dfc5ec9f4cdb983654f9f  build/freeze/acquire-default.txt
+1f6a3c675cbcc0b4cf039b694360eedfe1eac96de865f4e1e54ea57557f9d154  build/freeze/validate-default.txt
+## memo-cert.log (tail)
+Installed from the cache: 322 books
+ACL2 certification passed: books/frame-stobj, books/records-stobj
+Certification evidence: build/acl2/certify-20260925T172846Z-3520350
+## reopen N=10000 2 KiB (round 9)
+-rw-rw-r-- 1 hbox hbox 1725 Sep 25 13:22 m-base-n10000-o2048-r9.json.partial
+2
+Fri Sep 25 05:32:13 PM UTC 2026

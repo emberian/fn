@@ -1,0 +1,59 @@
+{
+  "image": "/tank/fn/scratch/spike-representation/memo-tree/build/fn-host-developer",
+  "launcher_sha256": "28bc37d7442fd510fde2331b23cf01fda073d84953c9a0e8f7b786aa71b388d2",
+  "core_sha256": "8a59eb79649613592472b43181a5e64f3d44b670d00b64162a5025f3aa1f4582",
+  "articles": 120,
+  "octets": 32768,
+  "article0_octets": 32759,
+  "samples": 16,
+  "port": 47435,
+  "init": "init --profile default --max-article-octets 65536 fn.test",
+  "first_open_seconds": 0.05778928101062775,
+  "load_seconds": 2.0285365618765354,
+  "post_all": {
+    "n": 120,
+    "min_ms": 15.210381709039211,
+    "median_ms": 16.035560984164476,
+    "p95_ms": 20.39549872279167,
+    "max_ms": 30.136520974338055
+  },
+  "post_first_quarter": {
+    "n": 30,
+    "min_ms": 15.665607526898384,
+    "median_ms": 16.556899528950453,
+    "p95_ms": 21.10682800412178,
+    "max_ms": 30.136520974338055
+  },
+  "post_last_quarter": {
+    "n": 30,
+    "min_ms": 15.352049842476845,
+    "median_ms": 15.686720609664917,
+    "p95_ms": 18.35404336452484,
+    "max_ms": 19.447050988674164
+  },
+  "rss_after_load_kib": 453924,
+  "group_reply": "211 120 1 120 fn.test",
+  "stat_present": {
+    "n": 16,
+    "min_ms": 0.16634538769721985,
+    "median_ms": 0.21225353702902794,
+    "p95_ms": 0.26036985218524933,
+    "max_ms": 0.3192918375134468
+  },
+  "article_present": {
+    "n": 16,
+    "min_ms": 34.762837924063206,
+    "median_ms": 35.47388315200806,
+    "p95_ms": 37.13368624448776,
+    "max_ms": 39.083088748157024
+  },
+  "article_octets_read": 525422,
+  "over_present": {
+    "n": 16,
+    "min_ms": 1.44118070602417,
+    "median_ms": 1.4960002154111862,
+    "p95_ms": 1.5815012156963348,
+    "max_ms": 1.627076417207718
+  },
+  "rss_after_reads_kib": 460836
+}
