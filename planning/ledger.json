@@ -270,11 +270,15 @@
     "books/byte-store-k0-marker",
     "tests/acl2/byte-store-k0-marker-tests",
     "books/byte-store-k0-step-lemmas",
+    "books/byte-store-k0-step-root-fence",
     "books/byte-store-k0-step",
     "tests/acl2/byte-store-k0-step-tests",
     "books/byte-store-k0-step-bridge-marker",
+    "books/byte-store-k0-step-bridge-prefix",
     "books/byte-store-k0-step-bridge",
     "tests/acl2/byte-store-k0-step-bridge-tests",
+    "books/byte-store-k0-step-bridge-frontier",
+    "tests/acl2/byte-store-k0-cuts-tests",
     "books/checkpoint-auxiliary",
     "tests/acl2/checkpoint-auxiliary-tests",
     "books/hybrid-signature-invariants",
@@ -802,25 +806,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 814,
-    "books_in_root_closure": 810,
-    "roots": 798,
-    "theorems": 11011,
-    "functions": 7774,
-    "assert_events": 11896,
-    "must_fails": 1127,
+    "books": 818,
+    "books_in_root_closure": 814,
+    "roots": 802,
+    "theorems": 11055,
+    "functions": 7789,
+    "assert_events": 11921,
+    "must_fails": 1139,
     "encapsulates": 49,
     "guards": {
       "verified": 2146,
-      "declared-off": 581,
+      "declared-off": 584,
       "default-guarded": 3928,
-      "default-unguarded": 1119
+      "default-unguarded": 1131
     },
     "suspect_theorems": 94,
     "export_hygiene_warnings": 137,
     "enabled_projection_warnings": 42,
     "teeth_form_warnings": 88,
-    "include_hygiene_warnings": 816,
+    "include_hygiene_warnings": 822,
     "host_names_warnings": 892,
     "hand_written_record_warnings": 18
   },
@@ -5049,6 +5053,31 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-k0-step-bridge-frontier.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-k0-step-bridge"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-k0-step-bridge-marker.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5074,10 +5103,35 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-k0-step-bridge-prefix.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 38,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-k0-step-bridge-marker"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-k0-step-bridge.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 32,
+      "theorems": 22,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -5092,7 +5146,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "byte-store-k0-step-bridge-marker"
+        "byte-store-k0-step-bridge-prefix"
       ],
       "system_includes": [],
       "suspects": [],
@@ -5128,6 +5182,31 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-k0-step-root-fence.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-k0-step-lemmas"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-k0-step.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5146,7 +5225,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "byte-store-k0-step-lemmas"
+        "byte-store-k0-step-root-fence"
       ],
       "system_includes": [],
       "suspects": [],
@@ -16421,6 +16500,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/byte-store-k0-cuts-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 12
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 12,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-k0-step-bridge-frontier",
+        "byte-store-k0-step-bridge-tests",
+        "byte-store-k0-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/byte-store-k0-marker-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -26565,6 +26673,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/byte-store-k0-step-bridge-frontier.lisp",
+        "line": 11,
+        "include": "byte-store-k0-step-bridge",
+        "included": "books/byte-store-k0-step-bridge.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/byte-store-k0-step-bridge-marker.lisp",
         "line": 6,
         "include": "byte-store-k0-step",
@@ -26572,10 +26687,17 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/byte-store-k0-step-bridge.lisp",
-        "line": 33,
+        "book": "books/byte-store-k0-step-bridge-prefix.lisp",
+        "line": 28,
         "include": "byte-store-k0-step-bridge-marker",
         "included": "books/byte-store-k0-step-bridge-marker.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/byte-store-k0-step-bridge.lisp",
+        "line": 29,
+        "include": "byte-store-k0-step-bridge-prefix",
+        "included": "books/byte-store-k0-step-bridge-prefix.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -26586,10 +26708,17 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/byte-store-k0-step.lisp",
-        "line": 53,
+        "book": "books/byte-store-k0-step-root-fence.lisp",
+        "line": 19,
         "include": "byte-store-k0-step-lemmas",
         "included": "books/byte-store-k0-step-lemmas.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/byte-store-k0-step.lisp",
+        "line": 55,
+        "include": "byte-store-k0-step-root-fence",
+        "included": "books/byte-store-k0-step-root-fence.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -29110,6 +29239,27 @@
         "line": 6,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-k0-cuts-tests.lisp",
+        "line": 9,
+        "include": "../../books/byte-store-k0-step-bridge-frontier",
+        "included": "books/byte-store-k0-step-bridge-frontier.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-k0-cuts-tests.lisp",
+        "line": 10,
+        "include": "byte-store-k0-tests",
+        "included": "tests/acl2/byte-store-k0-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-k0-cuts-tests.lisp",
+        "line": 11,
+        "include": "byte-store-k0-step-bridge-tests",
+        "included": "tests/acl2/byte-store-k0-step-bridge-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

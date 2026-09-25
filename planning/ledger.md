@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 814 |
-| Certification roots in the Makefile | 798 |
-| Books inside the root closure | 810 |
-| `defthm` and `defthmd` events | 11011 |
-| `defun` events | 7774 |
+| Books read | 818 |
+| Certification roots in the Makefile | 802 |
+| Books inside the root closure | 814 |
+| `defthm` and `defthmd` events | 11055 |
+| `defun` events | 7789 |
 | Functions with verified guards | 2146 |
-| Functions declared `:verify-guards nil` and never verified | 581 |
+| Functions declared `:verify-guards nil` and never verified | 584 |
 | Functions left at the default with an explicit guard | 3928 |
-| Functions left at the default with no guard | 1119 |
-| `assert-event` checks | 11896 |
-| `must-fail` checks | 1127 |
+| Functions left at the default with no guard | 1131 |
+| `assert-event` checks | 11921 |
+| `must-fail` checks | 1139 |
 | `encapsulate` events | 49 |
 | Theorems flagged SUSPECT by shape | 94 |
 | Export-hygiene warnings | 137 |
 | Enabled-projection warnings | 42 |
 | Teeth-form warnings | 88 |
-| Include-hygiene warnings | 816 |
+| Include-hygiene warnings | 822 |
 | Host-names warnings | 892 |
 | Hand-written-record warnings | 18 |
 
@@ -245,9 +245,12 @@ that `make certify` requests.
 | `books/byte-store-k0-marker.lisp` | root | 54 | 9 | 0/9/0/0 | 0 | 0 | 0 |
 | `books/byte-store-k0-recovery.lisp` | root | 51 | 4 | 0/2/0/2 | 0 | 0 | 0 |
 | `books/byte-store-k0-staging.lisp` | root | 73 | 3 | 0/1/0/2 | 0 | 0 | 0 |
+| `books/byte-store-k0-step-bridge-frontier.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-k0-step-bridge-marker.lisp` | root | 22 | 2 | 0/2/0/0 | 0 | 0 | 0 |
-| `books/byte-store-k0-step-bridge.lisp` | root | 32 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/byte-store-k0-step-bridge-prefix.lisp` | root | 38 | 3 | 0/3/0/0 | 0 | 0 | 0 |
+| `books/byte-store-k0-step-bridge.lisp` | root | 22 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-k0-step-lemmas.lisp` | root | 66 | 8 | 0/8/0/0 | 0 | 0 | 1 |
+| `books/byte-store-k0-step-root-fence.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-k0-step.lisp` | root | 12 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/byte-store-k0.lisp` | root | 36 | 5 | 0/3/0/2 | 0 | 0 | 0 |
 | `books/byte-store-keystones.lisp` | root | 35 | 3 | 0/3/0/0 | 0 | 0 | 0 |
@@ -667,6 +670,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-fault-keystones-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 8 | 19 | 0 |
 | `tests/acl2/byte-store-frame-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 67 | 0 | 0 |
 | `tests/acl2/byte-store-initializer-tests.lisp` | root | 0 | 9 | 0/4/0/5 | 12 | 3 | 0 |
+| `tests/acl2/byte-store-k0-cuts-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 25 | 12 | 0 |
 | `tests/acl2/byte-store-k0-marker-tests.lisp` | root | 0 | 19 | 0/0/0/19 | 11 | 9 | 0 |
 | `tests/acl2/byte-store-k0-recovery-tests.lisp` | root | 0 | 20 | 0/0/0/20 | 15 | 9 | 0 |
 | `tests/acl2/byte-store-k0-step-bridge-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 19 | 7 | 0 |
