@@ -13,20 +13,20 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 859 |
 | Certification roots in the Makefile | 843 |
 | Books inside the root closure | 855 |
-| `defthm` and `defthmd` events | 11724 |
-| `defun` events | 8211 |
+| `defthm` and `defthmd` events | 11757 |
+| `defun` events | 8227 |
 | Functions with verified guards | 2167 |
-| Functions declared `:verify-guards nil` and never verified | 618 |
-| Functions left at the default with an explicit guard | 4238 |
-| Functions left at the default with no guard | 1188 |
-| `assert-event` checks | 12538 |
-| `must-fail` checks | 1275 |
+| Functions declared `:verify-guards nil` and never verified | 621 |
+| Functions left at the default with an explicit guard | 4250 |
+| Functions left at the default with no guard | 1189 |
+| `assert-event` checks | 12544 |
+| `must-fail` checks | 1278 |
 | `encapsulate` events | 51 |
 | Theorems flagged SUSPECT by shape | 102 |
 | Export-hygiene warnings | 145 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 103 |
-| Include-hygiene warnings | 860 |
+| Include-hygiene warnings | 861 |
 | Host-names warnings | 918 |
 | Hand-written-record warnings | 18 |
 
@@ -461,7 +461,7 @@ that `make certify` requests.
 | `books/peer-offer-indexed.lisp` | root | 20 | 10 | 9/0/1/0 | 0 | 0 | 1 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 14 | 29 | 1/0/28/0 | 0 | 0 | 0 |
-| `books/poster-bytes-buffer.lisp` | root | 25 | 8 | 0/0/8/0 | 0 | 0 | 0 |
+| `books/poster-bytes-buffer.lisp` | root | 55 | 21 | 0/0/20/1 | 0 | 0 | 0 |
 | `books/poster-bytes-invariants.lisp` | root | 43 | 2 | 0/0/2/0 | 0 | 0 | 1 |
 | `books/poster-bytes.lisp` | root | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -820,7 +820,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/nntp-xpat-tests.lisp` | root | 0 | 6 | 0/2/0/4 | 30 | 1 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
-| `tests/acl2/octets-stobj-tests.lisp` | root | 23 | 6 | 0/1/1/4 | 13 | 14 | 0 |
+| `tests/acl2/octets-stobj-tests.lisp` | root | 26 | 9 | 0/4/1/4 | 19 | 17 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 47 | 11 | 0 |
 | `tests/acl2/owner-agent-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 3 | 0 |
 | `tests/acl2/owner-checkpoint-open-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 45 | 9 | 0 |
