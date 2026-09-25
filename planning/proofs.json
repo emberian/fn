@@ -700,7 +700,10 @@
         "fn-pcar-sbud-prepare-is-sbud-prepare",
         "fn-pcar-next-lower-is-next-lower",
         "fn-acar-own-outcome-is-reference-under-ocl-relation",
-        "fn-acar-scar-auth-sessionp-of-rebuilt-session"
+        "fn-acar-scar-auth-sessionp-of-rebuilt-session",
+        "fn-icar-intent-id-is-intent-id",
+        "fn-icar-submission-intent-is-reference",
+        "fn-icar-submission-resolution-records-is-reference"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -764,9 +767,13 @@
         "books/records-concrete.lisp",
         "tests/acl2/records-concrete-tests.lisp",
         "planning/design-2026-09-25-representation.md",
-        "planning/evidence/representation-2026-09-25.md"
+        "planning/evidence/representation-2026-09-25.md",
+        "books/owner-intent-carried.lisp",
+        "tests/acl2/owner-intent-carried-tests.lisp",
+        "planning/evidence/rep-intent-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T023933Z-3540691.json"
       ],
-      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next)."
+      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next). Representation, second boundary (2026-09-25): fn-icar-intent-id-is-intent-id (books/owner-intent-carried) proves that the intent identity carried from take equals fn-own-feed-intent-id of the Message-ID and octets of the submission it is used for, under fn-icar-carryp (the carry's identity is the digest of the carry's own submission), which mentions no owner and holds for every carry fn-icar-carry-of builds and for nil; host/owner-host.lisp fn-owner-take writes that carry (the global's only writer, an A-HOST discipline), and fn-icar-submission-intent (fn-owner-submission-intent) and fn-icar-submission-resolution-records (fn-owner-submission-resolution) equal their owner.lisp references under it (fn-icar-submission-intent-is-reference, fn-icar-submission-resolution-records-is-reference). Four payload digests per POST become one; owner.lisp and the submission record are unchanged."
     },
     {
       "id": "PRF-015",
@@ -809,7 +816,10 @@
         "fn-served-run-effects-are-typed",
         "fn-own-240-follows-consumed-completion",
         "fn-ccar-own-finish-is-own-finish",
-        "fn-acar-own-outcome-is-reference-under-ocl-relation"
+        "fn-acar-own-outcome-is-reference-under-ocl-relation",
+        "fn-icar-intent-id-is-intent-id",
+        "fn-icar-submission-intent-is-reference",
+        "fn-icar-submission-resolution-records-is-reference"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -834,7 +844,11 @@
         "planning/evidence/manifests/certify-20260924T182731Z-3371907.json",
         "planning/evidence/manifests/certify-20260924T183317Z-3429911.json",
         "planning/evidence/commit-path-2-2026-09-24.md",
-        "planning/evidence/advance-projection-2026-09-24.md"
+        "planning/evidence/advance-projection-2026-09-24.md",
+        "books/owner-intent-carried.lisp",
+        "tests/acl2/owner-intent-carried-tests.lisp",
+        "planning/evidence/rep-intent-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T023933Z-3540691.json"
       ],
       "progress_note": "Actual implemented command/step and arbitrary finite raw event traces preserve session/cursor consistency under a valid archive projection. All dispatcher branches produce typed reply octets/close effects; closed sessions emit none. Exact bridge partitions and reconnect cases pass targeted tests. Full RFC responses/READER bundle, injection/POST and effects-to-I/O refinement remain open. fn-served-step and fn-served-run preserve the connection and type their effects, over the same fn-nntp-step the session keystones are about; the w5/legacy-commands branches (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) are covered by the unchanged statements of fn-nntp-step-effects-well-formed and fn-nntp-step-preserves-consistent-session. Open: NNT-001's capability/dispatch mismatch, and the owner."
     },
