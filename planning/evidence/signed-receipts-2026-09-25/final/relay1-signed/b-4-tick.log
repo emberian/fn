@@ -1,0 +1,16 @@
+$ fn bp-contact tick /tank/fn/scratch/signed-receipts/final/relay1-signed/b-fnbs dtn://receiver/ dtn://sender/ 0 60000 3600000 2 32 1048576 843614697228 60000
+BP FNBS recovered held=1
+BP queue recovered jobs=1
+BP contact open peer=dtn://sender/
+TCPCL bp-service aux (:SEND :CONTACT 6)
+TCPCL bp-service event (:SEND :SESS-INIT 40)
+TCPCL bp-service event (:SESSION-UP 10 64000 64000 NIL)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 3784)
+TCPCL bp-service event (:OUTBOUND-SENT 0 "bp-service")
+TCPCL bp-service accepted outbound xfer=0
+TCPCL bp-service aux (:SEND :SESS-TERM 3)
+TCPCL bp-service event (:PEER-TERMINATING 0)
+TCPCL bp-service event (:CLOSE)
+BP transport work=bp-receipt:receipt:work-bp-node:0 status=forwarded
+
+# rc=0

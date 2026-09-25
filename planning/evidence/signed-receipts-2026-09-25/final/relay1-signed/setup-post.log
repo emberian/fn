@@ -1,0 +1,4 @@
+$ fn store /tank/fn/scratch/signed-receipts/final/relay1-signed/a-store post <m4-app-receipt@example.invalid> /tank/fn/scratch/signed-receipts/final/relay1-signed/article - - fn.test
+committed sequence=0 charge=3
+
+# rc=0

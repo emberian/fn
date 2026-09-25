@@ -1,0 +1,9 @@
+[store]
+path = "/tank/fn/scratch/signed-receipts/final/relay1-signed/a-store"
+[listener]
+host = "127.0.0.1"
+port = 57879
+[control]
+path = "/tank/fn/scratch/signed-receipts/final/relay1-signed/a-control.sock"
+[log]
+path = "/tank/fn/scratch/signed-receipts/final/relay1-signed/a-owner-service.log"

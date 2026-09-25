@@ -1,0 +1,5 @@
+$ fn operator /tank/fn/scratch/signed-receipts/final/relay1-flipped/a.toml bp-boundary add receiver-author receiver.bp.gate.invalid dtn://receiver/ 54873 receipt-signer 4242424242424242424242424242424242424242424242424242424242424242
+configured generation=4 record=00000004.cfg verification=VERIFIED
+accepted operator bp-boundary
+
+# rc=0
