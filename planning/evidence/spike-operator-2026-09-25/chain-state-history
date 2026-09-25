@@ -1,0 +1,5 @@
+2026-09-25T07:55:29Z install 4eca4148
+2026-09-25T07:55:41Z upgrade 4eca4148 c3420013 profile-upgraded=no kept=/tank/fn/scratch/spike-operator/chain/state/config.json.4eca4148.20260925T075540Z
+2026-09-25T07:56:04Z upgrade c3420013 452d62cb profile-upgraded=yes kept=/tank/fn/scratch/spike-operator/chain/state/config.json.c3420013.20260925T075559Z
+2026-09-25T07:56:06Z rollback 452d62cb c3420013 restored-config=yes kept=/tank/fn/scratch/spike-operator/chain/state/config.json.452d62cb.20260925T075606Z
+2026-09-25T07:56:08Z rollback c3420013 4eca4148 restored-config=no kept=/tank/fn/scratch/spike-operator/chain/state/config.json.c3420013.20260925T075608Z
