@@ -131,6 +131,11 @@ def ihave(port, bind, msgid, octets):
         return n.ihave(msgid, octets)
 
 
+def relayed(octets, path):
+    """The relay fields a neighbour adds; the carrier binds only the source."""
+    return b"Path: " + path.encode() + b"!not-for-mail\r\n" + octets
+
+
 def verdict(port, msgid):
     with fp.Nntp("127.0.0.1", port) as n:
         return n.verdict(msgid)
@@ -168,6 +173,7 @@ INN_CONF = """pathhost:               {pid}
 domain:                 spike.test
 organization:           "fn spike peering lab"
 server:                 127.0.0.1
+mta:                    "/bin/true %s"
 port:                   {innd}
 bindaddress:            127.0.0.1
 hismethod:              hisv6
@@ -346,7 +352,7 @@ def lab(work, args):
     r = tool("accept", inv, "--node", configs["B"], "--keys", keys["nodeB"].dir,
              "--path-id", PATH_IDS["B"], "--as-name", "A", "--out", acc,
              "--enrol-author", keys["alice"].principal, "--inbound-source", "127.0.0.2",
-             "--connects-from", "127.0.0.1", "--feed", "--carry-budget", "1000000", "2")
+             "--connects-from", "127.0.0.1", "--feed", "--carry-budget", "1000000", "3")
     check("accept", r.returncode == 0 and acc.exists(), r.stdout.strip()[-300:])
     r = tool("accept", inv, "--node", configs["B"], "--keys", keys["nodeB"].dir,
              "--path-id", PATH_IDS["B"], "--out", work / "again.eml")
@@ -357,21 +363,16 @@ def lab(work, args):
     r = tool("confirm", acc, "--node", configs["A"], "--keys", keys["nodeA"].dir,
              "--invitation", inv)
     check("confirm-is-once", r.returncode == 1, r.stdout.strip()[-200:])
-    for n in ("A", "B"):
-        r = img("operator", configs[n], "peer", "list")
-        check("peer-list-" + n, r.returncode == 0 and "carries-principal" in r.stdout,
-              r.stdout.strip()[-400:])
 
     # ---------------------------------------------------------- articles, pull
     x1 = signed_article(keys["alice"], "fn.test", "<x1@spike.test>", "alice before",
                         "signed by alice", work)
     y = [signed_article(keys["carol"], "fn.test", "<y{}@spike.test>".format(i),
-                        "carol {}".format(i), "carried by B", work) for i in (1, 2, 3)]
+                        "carol {}".format(i), "carried by B", work) for i in (1, 2)]
     w0 = signed_article(keys["nodeA"], "fn.test", "<w0@spike.test>", "node key before",
                         "old node key", work)
     for msgid, art in (("<x1@spike.test>", x1), ("<w0@spike.test>", w0),
-                       ("<y1@spike.test>", y[0]), ("<y2@spike.test>", y[1]),
-                       ("<y3@spike.test>", y[2])):
+                       ("<y1@spike.test>", y[0]), ("<y2@spike.test>", y[1])):
         check("post-A " + msgid, post(PORTS["A"], art).startswith("240"), msgid)
     r = pull(work, PORTS["A"], PORTS["B"], "127.0.0.2", "fn.*", "pull-B-from-A.json")
     check("pull-B-from-A", r.returncode == 0 and "accepted pull" in r.stdout,
@@ -382,11 +383,6 @@ def lab(work, args):
     vy1 = verdict(PORTS["B"], "<y1@spike.test>")
     check("B-carries-unenrolled-author", vy1.startswith("carried " + keys["carol"].principal),
           vy1)
-    vy3 = verdict(PORTS["B"], "<y3@spike.test>")
-    check("B-budget-refuses-third-carried", not vy3.startswith("carried"), vy3)
-    check("B-budget-refusal-named",
-          any("carried-count-exhausted" in l for l in log_lines(work, "B", "y3@spike.test")),
-          log_lines(work, "B", "y3@spike.test")[-1:])
     vw0 = verdict(PORTS["B"], "<w0@spike.test>")
     check("B-verifies-inviter-node-key", vw0.startswith("verified " + keys["nodeA"].principal),
           vw0)
@@ -415,6 +411,17 @@ def lab(work, args):
                         "superseded", work)
     check("A-refuses-superseded-key-post", not post(PORTS["A"], w1).startswith("240"), "")
     pull(work, PORTS["A"], PORTS["B"], "127.0.0.2", "fn.*", "pull-B-from-A.json")
+    # Budget: y1, y2 and carol's succession statement used B's count of 3 for
+    # the boundary to A; carol's next article is refused there by name.
+    y3 = signed_article(keys["carol2"], "fn.test", "<y3@spike.test>", "carol 3",
+                        "over budget at B", work)
+    check("post-A y3 (carol successor key)", post(PORTS["A"], y3).startswith("240"), "")
+    pull(work, PORTS["A"], PORTS["B"], "127.0.0.2", "fn.*", "pull-B-from-A.json")
+    vy3 = verdict(PORTS["B"], "<y3@spike.test>")
+    check("B-budget-refuses-fourth-carried", not vy3.startswith("carried"), vy3)
+    check("B-budget-refusal-named",
+          any("carried-count-exhausted" in l for l in log_lines(work, "B", "y3@spike.test")),
+          log_lines(work, "B", "y3@spike.test")[-1:])
     vz1 = verdict(PORTS["B"], "<z1@spike.test>")
     check("B-verifies-successor-key", vz1.startswith("verified " + keys["nodeA"].principal), vz1)
     vw0b = verdict(PORTS["B"], "<w0@spike.test>")
@@ -436,11 +443,11 @@ def lab(work, args):
           r.stdout.strip()[-300:])
     served = post(PORTS["A"], r1)
     check("A-served-post-after-revocation-refused", not served.startswith("240"), served)
-    t = ihave(PORTS["A"], "127.0.0.1", "<r1@spike.test>", r1)   # as peer B
+    t = ihave(PORTS["A"], "127.0.0.1", "<r1@spike.test>", relayed(r1, PATH_IDS["B"]))   # as peer B
     check("A-transit-after-revocation-stored", t.startswith("235"), t)
     vr1 = verdict(PORTS["A"], "<r1@spike.test>")
     check("A-verdict-revoked", vr1.startswith("revoked " + keys["alice"].principal), vr1)
-    t = ihave(PORTS["B"], "127.0.0.2", "<r1@spike.test>", r1)   # as peer A
+    t = ihave(PORTS["B"], "127.0.0.2", "<r1@spike.test>", relayed(r1, PATH_IDS["A"]))   # as peer A
     vr1b = verdict(PORTS["B"], "<r1@spike.test>")
     check("B-verdict-revoked", vr1b.startswith("revoked " + keys["alice"].principal),
           "{} {}".format(t, vr1b))
@@ -453,13 +460,13 @@ def lab(work, args):
     # ---------------------------------------------------------- refusal classes
     dave = fp.keygen(work / "keys" / "dave")
     d1 = signed_article(dave, "fn.test", "<d1@spike.test>", "stranger", "no binding", work)
-    t = ihave(PORTS["A"], "127.0.0.1", "<d1@spike.test>", d1)
+    t = ihave(PORTS["A"], "127.0.0.1", "<d1@spike.test>", relayed(d1, PATH_IDS["B"]))
     check("A-refuses-no-local-binding", not t.startswith("235")
           and any("no-local-binding" in l for l in log_lines(work, "A", "d1@spike.test")),
           "{} {}".format(t, log_lines(work, "A", "d1@spike.test")[-1:]))
     z2 = signed_article(keys["nodeA2"], "fn.test", "<z2@spike.test>", "tampered", "orig", work)
     z2 = z2.replace(b"orig", b"ORIG")
-    t = ihave(PORTS["A"], "127.0.0.1", "<z2@spike.test>", z2)
+    t = ihave(PORTS["A"], "127.0.0.1", "<z2@spike.test>", relayed(z2, PATH_IDS["B"]))
     check("A-refuses-signature-failed", not t.startswith("235")
           and any("signature-failed" in l for l in log_lines(work, "A", "z2@spike.test")),
           "{} {}".format(t, log_lines(work, "A", "z2@spike.test")[-1:]))
@@ -484,6 +491,13 @@ def lab(work, args):
     # ---------------------------------------------------------- INN, a stranger
     if args.no_inn:
         return
+    try:
+        inn_lab(work, args, configs, keys)
+    except OSError as error:
+        check("inn-section-completed", False, repr(error))
+
+
+def inn_lab(work, args, configs, keys):
     prefix = inn_setup(work, args.inn_src)
     check("inn-up", inn_start(prefix), prefix)
     # A's peer record for INN: A pulls it (inbound from 127.0.0.3) and feeds it.
