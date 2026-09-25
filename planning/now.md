@@ -13,7 +13,11 @@ log that lived here is [archive/now-2026-09-24.md](archive/now-2026-09-24.md).
   and one line each for the latest result, the obstruction and the next
   gate. Superseded image records are listed there and stay in
   [`evidence/`](evidence/), immutable.
-- **Live node:** hbox `/tank/fn/node` on `18c91321` since ~21:50 UTC
+- **Live node (2026-09-25 ~21:55 UTC):** hbox `/tank/fn/node` on **`bbf52159`**,
+  store at format 8 unmarked ([node record](evidence/node-hbox-bbf52159-2026-09-25.md),
+  [qualification](evidence/qual-bbf52159-2026-09-25.md): deployable); the
+  lines below are the older state.
+- Earlier: hbox `/tank/fn/node` on `18c91321` since ~21:50 UTC
   ([node record](evidence/node-hbox-18c91321-2026-09-24.md),
   [qualification](evidence/qual-18c91321-2026-09-24.md)), upgraded in place
   with the store kept and its profile upgraded to scale (4096);
@@ -242,6 +246,16 @@ Three runtime defects remain, and the deploy-fixes lane is fixing them:
 
 operator-config merged. Next: a second cut after deploy-fixes, qualification,
 then deploy format 8 unmarked (the qualification recommends the same).
+
+**Deployed ~21:55 UTC:** `bbf52159` on hbox `/tank/fn/node`, the store moved to
+format 8 with the marker unmarked
+([node record](evidence/node-hbox-bbf52159-2026-09-25.md)). The qualification
+said deployable and confirmed the five e747dbcc findings fixed; the deploy
+used the in-place shape; `config.json.format-7` and a pre-upgrade snapshot are
+kept. An unauthenticated probe from the laptop passed (201, 480 before login,
+STARTTLS to TLS 1.3). **Owed:** the authenticated probe as ember (the deputy
+does not hold the password); `--history-marker required` after a day of
+service.
 
 ### 2. Landed, by goal item
 
