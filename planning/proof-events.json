@@ -3421,6 +3421,95 @@
           "name": "fn-nls-client-step-of-owner-reply"
         }
       ]
+    },
+    {
+      "id": "PRF-092",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-evc-field-by-shape-is-store-event-sequence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-evc-field-by-shape-is-store-event-txid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-evc-field-by-shape-is-store-event-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-evc-class-by-shape-is-fn-record-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-evc-class-by-shape-is-fn-store-retention-event-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-evc-class-by-shape-is-fn-stxe-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-evc-class-by-shape-is-fn-stxk-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-evc-class-by-shape-is-fn-stxa-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-evc-class-by-shape-is-fn-cpe-eventp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-evc-class-by-shape-is-fn-th-topic-eventp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-ocfg-complete-is-ocfg-step-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-own-finish-is-own-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-sn-finish-is-sn-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-completion-core-enabledp-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-completion-enabledp-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-cpe-projection-step-is-cpe-projection-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-th-prefix-step-is-th-prefix-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-sn-record-bindsp-is-sn-record-bindsp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-seek-finds-a-store-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-icar-path-is-path-of"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-icar-submission-targets-is-submission-targets"
+        }
+      ]
     }
   ]
 }
