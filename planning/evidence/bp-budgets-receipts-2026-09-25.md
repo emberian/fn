@@ -315,3 +315,140 @@ assertions passed:
    dropping `dispatch` from the send would hide the defect. This lane stops here with
    the native module red for this one reason.
 6. The stranded report did not name the arrival that `bp-node resume` needs. It does now.
+
+
+## Continuation 3 (2026-09-25): the uncertain receipt transfer is connection-local
+
+Finding 5 above is repaired in the model's statement, in the host, and on the image.
+
+### What the model already did, and what was missing
+
+On `(:forward-result KEY :uncertain)` for an `:attempting` base job, the lower
+machine (`fn-bpn-forward-result-step`) already proposes the lifecycle record
+`(:requeued TOKEN W A G :uncertain :requeued)`; durable, it makes the job
+`:queued` again. The node-wide exit 3 was the host's: `fnn-bps-send-effect`
+wrote every uncertain transport reading into the process outcome. What was
+missing was the theorem saying the model's answer is connection-local, over
+the function the host calls, and a host that reports the model's scope.
+
+### Theorems (books/bp-node-receipt-send.lisp; subject `fn-bpnp-step`, called at host/native/bp-service.lisp:174; the transfer outcome is reported at :490 by `fnn-bps-send-effect`)
+
+| theorem | statement |
+| --- | --- |
+| `fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed` | well-formed base, nothing issued, no delivery uncertain, base neither fenced nor pending, an `:attempting` job at KEY, token below the bound: the one effect persists the `:requeued :uncertain` record; the jobs are unchanged (the job keeps its durable `:attempting` record); the base stays unfenced, nothing is issued, no delivery becomes uncertain; the success effects are exactly `(:transport W A G :attempted)` and `(:forward-refused W A G :uncertain)`; neither the effects nor the success effects contain `:release` or `:receipt-prepare` |
+| `fn-bpnp-receipt-reoffer-after-uncertain` | under the lower machine's lifecycle invariant and the same hypotheses, after that step and the durable `:persist-result`: the effects are exactly those two; the job at KEY is `fn-bpn-job-with-status` of the same job, `:queued` (same work, attempt, generation, peer, route, wire); `fn-bpnp-receipt-contact-event` answers `(:contact PEER t)` for its peer, so the next contact offers it (with `fn-bpnp-receipt-contact-offers-the-queued-job`) |
+
+The bridge (`fn-bpnp-step-base-event-refines-fn-bpn-step`) carries both to the
+served step; a local lemma shows a base event keeps "nothing issued" and "no
+delivery uncertain", which the second step needs.
+
+Teeth (tests/acl2/bp-node-receipt-send-tests.lisp): the reachable witness is the
+state after the durable `:attempting` record; the uncertain transfer, the
+durable requeue, the reopened contact event and the second offer's
+`:attempting` record for the same key are all asserted. There is one
+`must-fail` per hypothesis, each beside a positive assert that the step
+answered (not errored):
+- issued;
+- delivery uncertain;
+- fenced;
+- pending (the requeue in flight);
+- another key;
+- the job still `:queued`;
+- token at the bound (answers `:bundle-queue-refused`);
+- a malformed base (evaluated with guard checking off: the logical step
+  answers nothing).
+
+Keystone (e) also has must-fails for the malformed, issued, uncertain-delivery,
+fenced and full states.
+
+No retry budget: each contact offers the job once, and it leaves the queue by
+`:finished` or expiry (spec 4.3.2).
+
+### Host
+
+- `fnn-bps` gains `transfer` (the last base transfer's reading in the contact)
+  and `transfer-scope`.
+- `fnn-bpnode-send-receipts` sets `:connection`. The pass prints
+  `BP node receipt transfer <reading> peer=... (connection-local; ...)` and
+  continues, with exit 0 for the pass.
+- `bp-contact tick` and `bp-service run` keep `:process` scope. Their caller
+  asked for the transfer, so an uncertain transfer is exit 3 and a refused
+  one is exit 2. The deletion-report test's tick under `cut_next` still
+  answers 3 on the new image.
+- `fnn-bpc-drive-contact` stops at the first transfer that is not accepted, so
+  a requeued job waits for the next contact.
+
+### Certification (hbox, w28 `acl2-literal-4g`, cache `/tank/fn/certcache`, 2 jobs, 300 s)
+
+| run | rev | result | manifest |
+| --- | --- | --- | --- |
+| run-20260925T080049Z-29bd, `--affected-by books/bp-node-progress` (27 roots) | 0acdb88e | 25 roots cached at these bytes; `bp-node-receipt-send` 8.53 s and `bp-node-receipt-send-tests` 8.43 s passed | `manifests/certify-20260925T080134Z-2821914.json` |
+| dtn image closure, `certify_books.py --incremental` under `swarm-build` in `/tank/fn/scratch/bp-budgets/dtn-edb208fe` (119 dtn roots) | edb208fe (books identical to 0acdb88e) | 255 installed from the cache, 62 certified, all passed; `proof_artifacts.py validate --profile dtn`: roots=119 result=loaded | `manifests/certify-20260925T080424Z-2827312.json` |
+
+The farm preflight was not needed for the dtn roots this time; the 62 books
+(store/owner/checkpoint) were again absent from the cache at their bytes.
+
+### make check
+
+`make check` is clean except for the three generated-ledger staleness lines
+(`planning/ledger.json`, `planning/ledger.md`, `planning/proofs.json`), which
+are the coordinator's to regenerate. It also reported "PRF-082:
+requirement/proof links are not reciprocal"; RET-003 and REP-006 now name
+PRF-082 (284b104f).
+
+### Native (hbox, `fn-host-dtn-developer` from edb208fe; `host/native/build-dtn.lisp` under `swarm-build`; 0 undefined lines)
+
+| file | SHA-256 |
+| --- | --- |
+| launcher | `fd3f683f2a635bb07556a7b16794a0d63f3aed6057c2adb4663c21d46df99551` |
+| core | `05a4d2ce00ba0efaeeae2f75843cdff86b231ca12af2505a595df504f7caa530` |
+
+The script is [`c3/native2.sh`](bp-budgets-receipts-2026-09-25/c3/native2.sh). Tests and labs ran under
+`systemd-run --user --scope -p MemoryMax=24G`.
+
+- **First module run** (`c3/test_bp_node_native.log`, 1093 s): 22 ok,
+  2 failures, 1 error. All eleven exit-3 failures of the previous run pass.
+  The three that remained:
+  - Two idempotence tests: `test_death_after_durable_outbox_does_not_allocate_second_sequence`
+    and `test_deletion_report_intent_recovers_and_observation_does_not_release`.
+    They asserted that a later pass writes no lifecycle frame. A pass now offers
+    the owed job on its own base contact, and the harness neighbour drops it, so
+    the pass writes that job's `:attempting` and `:requeued :uncertain` records
+    (+2 frames). The tests now state the invariant they protect: no second job
+    and no second sequence (frontier unchanged, no `receipt queued`), every
+    earlier frame byte-identical, exactly two new frames, and the pass
+    reporting `BP node receipt transfer uncertain`.
+  - The new case: its request used the sender's FNBS journal while the sender
+    node held that journal's lock. It now sends from a separate outbound journal
+    of the same identity.
+- **The three, alone** (`c3/three.log`): OK.
+- **Second module run, at the committed test file**
+  (sha256 `b49d61b9...346a`, `c3/test-file.sha256`; `c3/test_bp_node_native-2.log`, 1134 s):
+  **25 tests, OK**. That is the 23 older cases, the strand/restart/resume case,
+  and `test_dropped_receipt_contact_is_reoffered_by_the_next_pass`:
+  1. the relay severs the receiver `serve` pass's receipt contact after 80
+     client octets, mid-transfer;
+  2. the pass exits 0, printing `BP node receipt transfer uncertain` and one
+     `BP transport work=W status=attempted`;
+  3. the next `dispatch` pass, over an intact relay, prints one
+     `BP transport work=W status=forwarded` for the same `W`, with no transfer
+     line;
+  4. the sender answers `BP node delivery receipt-accepted`, and its pin is
+     released.
+- **dtn7 app-receipt lab `--no-contact-tick`**: rc 0 with `--relays 1` and rc 0 with
+  `--relays 0` (`c3/lab-dtn7-no-tick.out`, `c3/lab-control-no-tick.out`); B's `serve` sent
+  the receipt and A answered `receipt-accepted`.
+
+## Findings (continuation 3)
+
+7. **The base journal's token space.** An owed job to an unreachable neighbour
+   writes two lifecycle records per pass (`:attempting`, `:requeued`), and the
+   lower machine's token is bounded by `*fn-bpn-machine-max-records*` (4096).
+   At that bound a proposal is refused (`:bundle-queue-refused`, witnessed in the
+   teeth), which is not silent. Still, a node that keeps retrying a dead
+   neighbour exhausts the journal after about 2000 passes. The bound is a fixed
+   cap on retained data, of the kind D27 names. Rotation of the base lifecycle
+   journal, or an operator bound on contact attempts, is the open item. This
+   lane did not change it.
+8. Once per contact is still a host fact: `fnn-bpc-drive-contact` stops at the
+   first transfer that is not accepted. It is not an ACL2 statement over a driver.

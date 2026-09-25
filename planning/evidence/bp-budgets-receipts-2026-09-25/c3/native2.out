@@ -1,0 +1,11 @@
+tree rev: edb208fe
+dtn certify rc=0 Installed from the cache: 255 books ACL2 certification passed: books/app-journal, books/bp-receiver-state-invariants, books/bp-native-app-fast, books/bp-receive-evidence, books/checkpoint-compaction, books/checkpoint-auxiliary, books/store-budget, books/store-profile-upgrade, books/byte-store-programs, books/byte-store-compaction-correspondence, books/checkpoint-compaction-preservation, books/checkpoint, books/checkpoint-codec, books/checkpoint-publish, books/checkpoint-pack-retire, books/config-observed, books/config-store-traces, books/owner-fault, books/owner-config, books/config-owner-live, books/served-tls-prefix, books/owner-tls-prefix, books/owner-agent, books/config-owner-publish, books/consumer-poll-index, books/consumer-owner-local, books/feed-connection, books/feed-connection-invariants, books/feed-journal, books/hybrid-store-injected, books/native-admin, books/native-config-observation, books/native-operator, books/store-budget-naming, books/records-concrete, books/store-sweep, books/store-prepare-correspondence, books/owner-prepare-correspondence, books/owner-served-invariants, books/owner-commit-carried, books/owner-commit-ocl, books/msgid-index-concrete, books/peer-offer-indexed, books/peer-guard-carried, books/served-carried, books/owner-served-carried, books/owner-advance-carried, books/owner-config-observe, books/owner-feed-port, books/owner-intent-carried, books/owner-log, books/owner-store-budget, books/owner-prepare-carried, books/control-classify, books/peer-authored-accept, books/poster-bytes, books/records-attach-concrete, books/records-concrete-owner, books/store-compact-verb, books/store-history-marker, books/store-observed-traces, books/topic-history-local-proposals Certification evidence: build/acl2/certify-20260925T080424Z-2827312 
+profile=dtn image=build/fn-host-dtn roots=119 result=loaded
+built build/fn-host-dtn-developer profile=developer (125M core)
+undefined lines: 0
+fd3f683f2a635bb07556a7b16794a0d63f3aed6057c2adb4663c21d46df99551  build/fn-host-dtn-developer
+05a4d2ce00ba0efaeeae2f75843cdff86b231ca12af2505a595df504f7caa530  build/fn-host-dtn-developer.core
+test_bp_node_native rc=1 wall=1093s FAILED (failures=2, errors=1)
+lab dtn7 --no-contact-tick rc=0
+lab control --no-contact-tick rc=0
+ALLDONE

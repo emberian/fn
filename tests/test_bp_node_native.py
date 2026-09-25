@@ -1088,9 +1088,16 @@ class NativeBpNodeTests(unittest.TestCase):
         sender, sender_port = self.start_node(False, once=False)
         self.relay.route(sender_port, cut_after=80)
         receiver, port = self.start_node(True)
-        sent = self.send_request(port, "carrier-drop")
+        # The sender node holds its own FNBS lifecycle lock, so the request
+        # leaves from a separate outbound journal of the same identity.
+        sent = self.invoke(
+            "bp-service", "run", "127.0.0.1", port,
+            self.request_path, self.tmp / "request-fnbs",
+            "dtn://sender/", "dtn://receiver/", "carrier-drop",
+            "carrier-drop-attempt", 0, 3600000, 2, 32, 1048576, 0, 0,
+        )
+        self.assertEqual(sent.returncode, 0, sent.stdout + sent.stderr)
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(sent.returncode, 0, sent.stderr)
         self.assertEqual(receiver.returncode, 0, out + err)
         self.assertIn(b"BP node receipt queued", out)
         self.assertIn(b"BP node receipt contact peer=dtn://sender/", out)
@@ -1260,8 +1267,14 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertNotIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(frontier.read_bytes(), before_frontier)
+        # The pass sends the one owed receipt itself (spec 9.4); the harness
+        # neighbour drops the connection, so the only new lifecycle frames are
+        # that job's :attempting record and its :requeued :uncertain record
+        # (spec 4.3.2) -- no second job and no second sequence.
+        self.assertIn(b"BP node receipt transfer uncertain", restarted.stdout)
         self.assertEqual(len(tuple(
-            (self.receiver_journal / "lifecycle").glob("*.fnb"))), before_records)
+            (self.receiver_journal / "lifecycle").glob("*.fnb"))),
+            before_records + 2)
         self.assertEqual(self.receiver_counts()[1], 1)
 
     def test_ambiguous_outbox_publication_is_uncertain_not_refused(self):
@@ -1394,10 +1407,20 @@ class NativeBpNodeTests(unittest.TestCase):
         repeated = self.dispatch_receiver(reports=True)
         self.assertEqual(repeated.returncode, 0, repeated.stderr)
         self.assertEqual(frontier.read_bytes(), frontier_bytes)
+        # Every durable frame is kept byte for byte.  The repeated pass offers
+        # the owed report job on the node's own base contact (spec 9.4); the
+        # harness neighbour drops it, so the only new frames are that job's
+        # :attempting and :requeued :uncertain records (spec 4.3.2).
+        after_frames = {
+            frame.name: frame.read_bytes() for frame in lifecycle.glob("*.fnb")
+        }
         self.assertEqual(
-            {frame.name: frame.read_bytes() for frame in lifecycle.glob("*.fnb")},
+            {name: after_frames.get(name) for name in durable_frames},
             durable_frames,
         )
+        self.assertEqual(len(after_frames), len(durable_frames) + 2,
+                         repeated.stdout)
+        self.assertIn(b"BP node receipt transfer uncertain", repeated.stdout)
         self.assertEqual(
             self.acl2_lifecycle_payloads(self.receiver_journal, 10),
             [report_payload],
