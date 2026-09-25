@@ -8,9 +8,13 @@ whose article field A is 300 000 (above the 262 708-octet command frame, so
 the owner's read bound is the profile's), this test submits over the control
 socket:
 
-* 131 073 and 300 000 octets: accepted (exit 0), each re-read over NNTP with
-  the posted body as the stored article's suffix;
+* 131 073 and 290 000 octets: accepted (exit 0), each re-read over NNTP with
+  the posted body as the stored article's suffix (290 000 is above the
+  command frame, so only a read bound taken from A admits it);
 * 300 001 octets: refused by name, ARTICLE-EXCEEDS-PROFILE-BOUND (exit 1).
+
+A bounds the injected article: the owner adds Path, Injection-Date and
+Injection-Info, so a submission of exactly A octets is refused by name too.
 
 Run on hbox with FN_NATIVE_HOST naming the image under test
 (planning/evidence/bounds-blob-2026-09-25.md).
@@ -22,6 +26,7 @@ from tests.test_native_bounds_join import JoinFixture, article
 
 EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
 A = 300000
+BELOW_A = 290000
 
 
 class OperatorPostAboveTheOldBlobTests(JoinFixture):
@@ -31,7 +36,7 @@ class OperatorPostAboveTheOldBlobTests(JoinFixture):
         owner = self.start_owner(self.image)
         served = {}
         try:
-            for n in (131073, A, A + 1):
+            for n in (131073, BELOW_A, A + 1):
                 msgid = "<blob-{}@example.invalid>".format(n)
                 path = self.root / "blob-{}".format(n)
                 path.write_bytes(article(msgid, n))
@@ -41,11 +46,11 @@ class OperatorPostAboveTheOldBlobTests(JoinFixture):
                       served[n].stdout.decode().strip(),
                       served[n].stderr.decode().strip(), flush=True)
             reread = {n: self.reread("<blob-{}@example.invalid>".format(n), n)
-                      for n in (131073, A)}
+                      for n in (131073, BELOW_A)}
             print("reread", reread, flush=True)
         finally:
             self.stop(owner)
-        for n in (131073, A):
+        for n in (131073, BELOW_A):
             self.assertEqual(served[n].returncode, EXIT_OK, served[n].stderr.decode())
             self.assertTrue(reread[n], "{} did not reread identical".format(n))
         self.assertEqual(served[A + 1].returncode, EXIT_REFUSED,
