@@ -47,7 +47,8 @@
                         ;; Backchained on every true-listp and stringp goal and
                         ;; never useful here (0.2 M useless frames each).
                         fn-cp-idp-true-listp
-                        fn-prov-structured-is-not-a-string))))
+                        fn-prov-structured-is-not-a-string
+                        fn-sn-verdict-listp member-equal))))
 
 (defthm fn-sn-initial-is-state
   (implies (and (fn-string-listp groups) (fn-no-duplicatesp groups)
