@@ -163,6 +163,13 @@ repaired chain), books/store-reclaim and its tests (the reclamation books
 against the same merges). Both are join defects to fix first at the reset,
 before any cut.
 
+Update 2026-09-25 ~18:45 UTC: the limit lifted; the first deputy was resumed
+in place and told to resume its lanes by message. The python-store-f8 quiet
+rerun is RED (test_store 1 failure and 16 errors, test_checkpoint 1 error;
+test_store_corruption was interrupted by the coordinator's own mistake and
+not rerun): the lane needs a continuation before it merges. PKT-162: the
+Python bridge starts ACL2 outside the pool and heap cap.
+
 Not done tonight: no cut, qualification or deploy (dev never converged: P6
 held, C3's served half and wave C in flight); segmented articles (P6's
 second half) not started; the node is still on c3420013 with a format-7

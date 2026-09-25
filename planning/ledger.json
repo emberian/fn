@@ -570,6 +570,7 @@
     "books/nntp",
     "books/nntp-overview",
     "books/nntp-legacy",
+    "books/nntp-xpat",
     "books/nntp-newnews",
     "books/nntp-invariants",
     "books/nntp-effects",
@@ -675,6 +676,7 @@
     "tests/acl2/nntp-range-indexed-tests",
     "tests/acl2/nntp-reader-profile-tests",
     "tests/acl2/nntp-legacy-tests",
+    "tests/acl2/nntp-xpat-tests",
     "tests/acl2/nntp-newnews-tests",
     "books/bp-release",
     "books/bp-release-invariants",
@@ -838,25 +840,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 850,
-    "books_in_root_closure": 846,
-    "roots": 834,
-    "theorems": 11539,
-    "functions": 8124,
-    "assert_events": 12374,
-    "must_fails": 1256,
+    "books": 852,
+    "books_in_root_closure": 848,
+    "roots": 836,
+    "theorems": 11549,
+    "functions": 8134,
+    "assert_events": 12411,
+    "must_fails": 1259,
     "encapsulates": 51,
     "guards": {
       "verified": 2157,
-      "declared-off": 605,
-      "default-guarded": 4187,
-      "default-unguarded": 1175
+      "declared-off": 607,
+      "default-guarded": 4191,
+      "default-unguarded": 1179
     },
     "suspect_theorems": 101,
     "export_hygiene_warnings": 139,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 95,
-    "include_hygiene_warnings": 854,
+    "teeth_form_warnings": 98,
+    "include_hygiene_warnings": 855,
     "host_names_warnings": 916,
     "hand_written_record_warnings": 18
   },
@@ -9416,6 +9418,32 @@
       "read_error": null
     },
     {
+      "book": "books/nntp-xpat.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp",
+        "nntp-auth"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/nntp.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11929,18 +11957,18 @@
       "book": "books/store-budget-naming.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
-      "functions": 8,
+      "theorems": 15,
+      "functions": 11,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 7,
+        "default-guarded": 10,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 0,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -20384,6 +20412,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/nntp-xpat-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 30,
+      "must_fails": 1,
+      "defconsts": 10,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-xpat"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/node-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -21907,8 +21962,8 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 54,
-      "must_fails": 15,
+      "assert_events": 61,
+      "must_fails": 17,
       "defconsts": 21,
       "defmacros": 0,
       "encapsulates": 0,
@@ -25138,7 +25193,7 @@
       {
         "theorem": "fn-sbud-store-event-encode-of-composite",
         "book": "books/store-budget-naming.lisp",
-        "line": 216,
+        "line": 301,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -26240,6 +26295,12 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "xp-alternation-without-positive-alternatives",
+        "book": "tests/acl2/nntp-xpat-tests.lisp",
+        "line": 143,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "oat-read-without-served-invariant",
         "book": "tests/acl2/owner-agent-tests.lisp",
         "line": 189,
@@ -26393,6 +26454,18 @@
         "check": "sbnt-publishable-without-ok",
         "book": "tests/acl2/store-budget-naming-tests.lisp",
         "line": 280,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "sbnt-refusals-distinct-without-a-named-word",
+        "book": "tests/acl2/store-budget-naming-tests.lisp",
+        "line": 362,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "sbnt-refusals-distinct-without-distinct-words",
+        "book": "tests/acl2/store-budget-naming-tests.lisp",
+        "line": 367,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -28340,7 +28413,7 @@
       },
       {
         "book": "books/nntp-responses.lisp",
-        "line": 2293,
+        "line": 2299,
         "include": "msgid-index",
         "included": "books/msgid-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -31353,6 +31426,13 @@
         "line": 3,
         "include": "../../books/nntp-verdict-effects",
         "included": "books/nntp-verdict-effects.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-xpat-tests.lisp",
+        "line": 7,
+        "include": "../../books/nntp-xpat",
+        "included": "books/nntp-xpat.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -37225,7 +37305,7 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2359,
+        "line": 2360,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
@@ -38758,21 +38838,21 @@
       },
       {
         "host": "host/store-host.lisp",
-        "line": 103,
+        "line": 104,
         "name": "fn-rcon-store-event-p",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-host.lisp",
-        "line": 114,
+        "line": 115,
         "name": "fn-rcon-store-event-sequence",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-host.lisp",
-        "line": 122,
+        "line": 123,
         "name": "fn-rcon-store-event-txid",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

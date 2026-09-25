@@ -293,10 +293,13 @@ class StoreTests(unittest.TestCase):
             with self.assertRaises(StoreFault):
                 store.transaction_files()
             store.config["max_transactions"] = 128
-            store.config["max_recovery_record_bytes"] = 0
+            # The replay bound is ACL2's per-record verdict over the profile;
+            # a profile it does not admit bounds every aggregate.
+            profile = store.config["profile"]
+            store.config["profile"] = []
             with self.assertRaises(StoreFault):
                 store.durable_records(bridge)
-            store.config["max_recovery_record_bytes"] = 128 * 32768
+            store.config["profile"] = profile
             with mock.patch("run_store.fsync_dir", side_effect=OSError(errno.EIO, "barrier")):
                 with self.assertRaises(StoreIndeterminate):
                     store.recover(bridge)

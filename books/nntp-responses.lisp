@@ -451,7 +451,11 @@
   ; capability is advertised, and this reader is not mode-switching
   ; (section 3.4.2).  XOVER and XHDR carry no capability
   ; label: RFC 2980 predates section 3.3 and names no label for them, and a
-  ; client discovers them by trying them.
+  ; client discovers them by trying them.  XPAT is listed (PKT-110): section
+  ; 3.3.3 lets a private extension appear under a label beginning with "X",
+  ; and XPAT has no RFC 3977 equivalent a client could discover instead
+  ; (XOVER and XHDR have OVER and HDR).  The label promises RFC 2980
+  ; section 2.9 in both its forms (books/nntp-xpat.lisp).
   ; Two ground lists rather than an append of a conditional: every caller's
   ; block-text obligation then evaluates one constant list per branch, which
   ; is what keeps books/nntp-effects.lisp's effect theorems cheap.
@@ -462,6 +466,7 @@
             (fn-nntp-string-octets "POST")
             (fn-nntp-string-octets "OVER MSGID")
             (fn-nntp-string-octets "HDR")
+            (fn-nntp-string-octets "XPAT")
             (fn-nntp-string-octets "NEWNEWS")
             (fn-nntp-string-octets
              "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT")
@@ -470,6 +475,7 @@
           (fn-nntp-string-octets "READER")
           (fn-nntp-string-octets "OVER MSGID")
           (fn-nntp-string-octets "HDR")
+          (fn-nntp-string-octets "XPAT")
           (fn-nntp-string-octets "NEWNEWS")
           (fn-nntp-string-octets
            "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT")
