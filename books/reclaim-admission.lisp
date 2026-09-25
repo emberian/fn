@@ -32,11 +32,6 @@
 (include-book "stx-lace")
 
 (local
- (defthm fn-rca-car-revappend
-   (implies (consp x)
-            (equal (car (revappend x acc)) (car (last x))))))
-
-(local
  (defthm fn-rca-car-append
    (equal (car (append a b)) (if (consp a) (car a) (car b)))))
 
