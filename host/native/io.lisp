@@ -1173,6 +1173,26 @@ filter turns it into an absent or shorter history."
         (fnn-refuse "store is already locked")))
     fd))
 
+(defun fnn-store-owner-observation (root)
+  "What a non-blocking shared flock sees of ROOT's writer lock: :held (a
+process holds it exclusively: a running owner), :free, :absent (no lock
+file), or :unknown when the probe itself failed.  An observation only; what
+it means for the operator is ACL2's (fn-native-auth-admin-effect-word)."
+  (handler-case
+      (let ((path (fnn-lock-path (make-fnn-store root))))
+        (if (null (fnn-lstat path))
+            :absent
+            (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+) 0)))
+              (unwind-protect
+                   (handler-case
+                       (progn (fnn-flock fd (logior +fnn-lock-sh+ +fnn-lock-nb+))
+                              (fnn-flock fd +fnn-lock-un+)
+                              :free)
+                     (fnn-os-error (e)
+                       (if (= (fnn-os-errno e) sb-posix:ewouldblock) :held :unknown)))
+                (fnn-close fd)))))
+    (error () :unknown)))
+
 (defun fnn-init-cut (store label)
   "One test seam after a named fresh-initializer durable syscall."
   (fnn-at store (intern (string-upcase label) :keyword)))
@@ -2225,6 +2245,56 @@ in-process retry."
       (fnn-store-close store))
     +fnn-exit-ok+))
 
+(defun fnn-command-developer-init (root words)
+  "Developer `store ROOT init [PROFILE-FLAGS] [GROUP ...]': ACL2 reads the
+words (books/native-operator.lisp fn-nop-developer-init) with the operator's
+profile grammar over the development base; a flag-shaped word left among the
+groups is refused, never created as a group."
+  (let ((plan (fnn-core 'fn-nop-developer-init words)))
+    (unless (and (consp plan) (member (first plan) '(:init :refused)))
+      (fnn-fault "ACL2 returned a malformed developer init plan"))
+    (if (eq (first plan) :refused)
+        (error 'fnn-usage-error
+               :message (format nil "init refused: ~(~a~)" (second plan)))
+      (fnn-command-init root (second plan) (third plan)))))
+
+(defun fnn-command-needs-upgrade (root)
+  "Whether the no-argument `store upgrade-profile' would write: ACL2's
+fn-profile-needs-upgrade-verdict over the profile decoded from config.json.
+Reads config.json only (no lock, no replay); prints the verdict word."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (let ((verdict (fnn-core 'fn-profile-needs-upgrade-verdict
+                             (fnn-store-config store))))
+      (unless (member verdict '(:needs-upgrade :current :invalid-current-profile))
+        (fnn-fault "ACL2 returned a malformed needs-upgrade verdict"))
+      (fnn-out "~(~a~)" verdict)
+      (if (eq verdict :invalid-current-profile) +fnn-exit-refused+ +fnn-exit-ok+))))
+
+(defun fnn-command-rollback-check (root old-path)
+  "Whether reinstating the kept config.json at OLD-PATH is sound: ACL2's
+fn-profile-rollback-verdict over the kept profile and the octet lengths of the
+store's committed transaction files.  The host reads and measures; it
+decides nothing."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (let* ((old (fnn-core 'fn-store-metadata-config-decode
+                          (fnn-octet-list (fnn-read-regular-bounded old-path 16384))))
+           (lengths (mapcar (lambda (pair)
+                              (let ((st (fnn-lstat (cdr pair))))
+                                (unless st (fnn-fault "transaction file vanished"))
+                                (sb-posix:stat-size st)))
+                            (fnn-transaction-files store)))
+           (verdict (fnn-core 'fn-profile-rollback-verdict old lengths)))
+      (unless (and (consp verdict) (member (first verdict) '(:sound :refused)))
+        (fnn-fault "ACL2 returned a malformed rollback verdict"))
+      (if (eq (first verdict) :sound)
+          (progn (fnn-out "rollback sound transactions=~d" (length lengths))
+                 +fnn-exit-ok+)
+          (progn (fnn-out "rollback refused ~(~a~)~{ ~a~}" (second verdict)
+                          (cddr verdict))
+                 +fnn-exit-refused+)))))
+
 ;; The offline profile upgrade's cuts, in the order
 ;; `fnn-upgrade-profile-write' reaches them: fn-bs-profile-program's
 ;; (books/byte-store-profile-program.lisp) five `:cut' steps.
@@ -3208,7 +3278,7 @@ serialized profile when the saved image later starts."
         ((string= verb "store")
          (need 3)
          (let ((root (second args)) (command (third args)) (rest (cdddr args)))
-           (cond ((string= command "init") (fnn-command-init root rest))
+           (cond ((string= command "init") (fnn-command-developer-init root rest))
                  ((string= command "recover") (fnn-command-recover root))
                  ((string= command "status") (fnn-command-status root))
                  ((string= command "upgrade-profile")

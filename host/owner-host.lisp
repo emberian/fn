@@ -55,6 +55,8 @@
 ; service log lines (fn-olog-*): both ACL2's, read here and nowhere computed.
 (include-book "../books/owner-agent")
 (include-book "../books/owner-log")
+; The served article bound installed with the profile (PKT-103).
+(include-book "../books/owner-served-bound")
 (include-book "../books/topic-history-local-proposals")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
@@ -235,13 +237,20 @@
 ; ACL2); anything that is not one of the named profiles is refused and the
 ; budget stays 0.  The profile is never changed while the owner runs:
 ; books/store-budget.lisp says why it is fixed at init.
+; The served article bound is installed here too, on every run path
+; (books/owner-served-bound.lisp fn-osb-install-serves-the-profile-bound): the
+; developer `owner run' never reaches fn-owner-posting-configure, and served
+; its connections with the codec ceiling recovery installed.
 (defun fn-owner-install-profile (values state)
   (declare (xargs :stobjs state :mode :program))
-  (if (fn-bs-profile-admittedp values)
-      (let* ((state (f-put-global 'fn-owner-store-profile values state))
-             (state (f-put-global 'fn-owner-record-octets nil state)))
-        (value :installed))
-    (value :refused)))
+  (mv-let (verdict next)
+    (fn-osb-install (fn-owner-core state) values)
+    (if (equal verdict :installed)
+        (let* ((state (fn-owner-replace-core next state))
+               (state (f-put-global 'fn-owner-store-profile values state))
+               (state (f-put-global 'fn-owner-record-octets nil state)))
+          (value :installed))
+      (value :refused))))
 
 (defun fn-owner-store-profile (state)
   (declare (xargs :stobjs state :mode :program))
@@ -931,6 +940,12 @@
   (let* ((owner (fn-owner-core state))
          (result (fn-own-operator-submit-result owner msgid-octets
                                                  group-octets payload))
+         ; The refusal's service-log line, NIL unless RESULT is :refused
+         ; (fn-olog-control-refusal-line-says-refused-iff-submit-refused).
+         (state (f-put-global 'fn-owner-log-line
+                              (fn-olog-control-refusal-line
+                               owner msgid-octets group-octets payload)
+                              state))
          (state (fn-owner-step (list :operator-submit msgid-octets
                                      group-octets payload)
                                state)))
@@ -1746,7 +1761,14 @@
              (state (fn-owner-install-effects
                      (fn-own-tls-result-effects result) state))
              (state (f-put-global 'fn-owner-consumed
-                                  (fn-own-tls-result-consumed result) state)))
+                                  (fn-own-tls-result-consumed result) state))
+             ; One line per 441 the effects send (books/owner-log.lisp
+             ; fn-olog-served-refusal-lines-one-per-441).
+             (state (f-put-global 'fn-owner-refusal-lines
+                                  (fn-olog-served-refusal-lines
+                                   (fn-owner-core state) id
+                                   (fn-own-tls-result-effects result))
+                                  state)))
         (value :ok)))))
 
 (defun fn-owner-close (id state)

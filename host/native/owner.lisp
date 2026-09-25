@@ -1520,10 +1520,17 @@ refused, not injected under a stale time (D10-a)."
                           (fnn-owner-complete-bound-submission
                            service
                            (lambda ()
-                             (fnn-owner-action 'fn-owner-operator-submit
-                                               (fnn-octet-list msgid)
-                                               (mapcar #'fnn-octet-list groups)
-                                               (fnn-octet-list payload)))
+                             (let ((submitted
+                                     (fnn-owner-action 'fn-owner-operator-submit
+                                                       (fnn-octet-list msgid)
+                                                       (mapcar #'fnn-octet-list groups)
+                                                       (fnn-octet-list payload))))
+                               ;; An article refused at admission never
+                               ;; reaches an outcome line: ACL2 rendered its
+                               ;; refusal line with the submit
+                               ;; (fn-olog-control-refusal-line), NIL otherwise.
+                               (fnn-owner-log 'fn-owner-log-line t)
+                               submitted))
                            msgid :injected groups evidence generation txid)))
                     ;; A refusal carries ACL2's reason to the operator: the
                     ;; injection decision's reason, mapped to the control
@@ -1561,6 +1568,13 @@ EPIPE and the client saw a bare close)."
      (unless (eq (fnn-owner-action 'fn-owner-chunk cid
                                    (fnn-octet-list incoming)) :ok)
        (fnn-refuse "owner no longer knows connection ~d" cid))
+     ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp
+     ;; fn-olog-served-refusal-lines): a POST refused before it became a
+     ;; submission has no outcome line of its own.
+     (let ((lines (fnn-global 'fn-owner-refusal-lines)))
+       (unless (and (listp lines) (every #'fnn-octet-list-p lines))
+         (fnn-fault "owner returned malformed refusal log lines"))
+       (dolist (line lines) (fnn-log-line line)))
      (let ((reply (fnn-owner-octets-global 'fn-owner-output))
            (closing (fnn-owner-bool-global 'fn-owner-closep))
            (starttls (fnn-owner-bool-global 'fn-owner-starttlsp))
