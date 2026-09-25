@@ -1235,7 +1235,10 @@ step `fn-pa-filing-plan` (`books/peer-authored-accept.lisp`) is the first
 thing every ingress does: host/native/owner.lisp `fnn-owner-attempt-transit`
 calls it through host/owner-host.lisp `fn-owner-control-filing`, and served
 POST, bound submission, NNTP transit and BP transit reach the Store only
-through that function. A control article is filed in `control.<verb>` for
+through that function; the local signed-author path (host/native/
+hybrid-control.lisp `fnn-hybrid-control-author`), which commits through its
+own identity callback, calls `fn-owner-control-filing` itself before it
+builds the event. A control article is filed in `control.<verb>` for
 `cancel`, `newgroup`, `rmgroup`, `checkgroups`, `ihave` and `sendme`, and in
 `control` for an obsolete or unknown verb (the verb compared in ASCII lower
 case, a local policy), if the operator created that group, and it is never
