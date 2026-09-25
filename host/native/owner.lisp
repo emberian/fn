@@ -91,6 +91,16 @@
       (fnn-fault "owner returned non-action from ~a" name))
     value))
 
+(defun fnn-owner-buffer-action (name &rest args)
+  "fnn-owner-action for a wrapper that reads the octet buffer.  The owner's
+prepare answers owner outcomes (:unaffordable, :clock-unusable, ...) that the
+Store node's action list +fnn-actions+ does not name; the buffer twins keep
+the owner's keyword check, not the Store's."
+  (let ((value (apply #'fnn-core-buffer-state name args)))
+    (unless (keywordp value)
+      (fnn-fault "owner returned non-action from ~a" name))
+    value))
+
 (defun fnn-owner-observe (operation result)
   (fnn-owner-action 'fn-owner-io operation result))
 
@@ -786,8 +796,8 @@ follows is justified only by this line."
           ;; books/sha256-buffer.lisp).  Nothing between the fill and the
           ;; prepare writes the buffer; all of it runs under the service mutex.
           (fnn-octets-fill payload)
-          (case (fnn-action (fnn-core-buffer-state 'fn-owner-existing-action-buffer
-                                                   (fnn-octet-list msgid) codes))
+          (case (fnn-owner-buffer-action 'fn-owner-existing-action-buffer
+                                         (fnn-octet-list msgid) codes)
             (:duplicate (return-from fnn-owner-attempt :duplicate))
             (:conflict (return-from fnn-owner-attempt :conflict)))
           (let ((*fnn-observe-callback* #'fnn-owner-observe)
@@ -798,11 +808,10 @@ follows is justified only by this line."
                 (fnn-metadata-buffer msgid)
               (declare (ignore ignored))
               (let ((prepared
-                      (fnn-action
-                       (fnn-core-buffer-state
-                        'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
-                        (fnn-octet-list obligation) (fnn-octet-list subject)
-                        (fnn-octet-list evidence) charge))))
+                      (fnn-owner-buffer-action
+                       'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
+                       (fnn-octet-list obligation) (fnn-octet-list subject)
+                       (fnn-octet-list evidence) charge)))
                 (unless (eq prepared :prepared)
                   (setf (fnn-store-fenced store) t)
                   (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)
