@@ -3549,6 +3549,14 @@
         {
           "kind": "theorem",
           "name": "fn-native-auth-admin-effect-word-restart-unless-no-owner"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-format-7-store-needs-upgrade"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-profile-rollback-sound-iff-records-within"
         }
       ]
     }

@@ -316,6 +316,19 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                (fn-nop-usage :invalid-store-profile "store" config words)
              (fn-nop-result :accepted :plan "store" config
                             (list :upgrade-profile (car parsed))))))
+        ; PKT-099: whether the no-argument upgrade would write
+        ; (fn-profile-needs-upgrade-verdict), and whether reinstating the
+        ; kept older config.json at PATH is sound (fn-profile-rollback-verdict).
+        ((and (consp words) (equal (car words) "needs-upgrade") (null (cdr words)))
+         (fn-nop-result :accepted :plan "store" config (list :needs-upgrade)))
+        ((and (consp words) (equal (car words) "rollback-check")
+              (consp (cdr words)) (null (cddr words))
+              (stringp (cadr words))
+              (< 1 (length (cadr words)))
+              (<= (length (cadr words)) *fn-ncfg-max-path*)
+              (equal (char (cadr words) 0) #\/))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :rollback-check (cadr words))))
         ((and (consp words) (equal (car words) "compact") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :compact)))
         ((and (consp words) (equal (car words) "checkpoint") (null (cdr words)))
@@ -351,7 +364,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | compact | checkpoint} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
+         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | compact | checkpoint} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "control")
@@ -703,6 +716,18 @@ writes, else nil."
         (if (fn-bs-profile-requestp profile) profile nil))
     nil))
 
+(defun fn-native-operator-result-rollback-path-octets (result)
+  "The kept config.json path an accepted `store rollback-check' plan names."
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "store")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :rollback-check)
+           (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
+      (fn-record-string-octets
+       (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
 (defun fn-native-operator-result-upgrade-profile (result)
   "The profile request an accepted `store upgrade-profile' plan names, else nil."
   (declare (xargs :guard t))
@@ -816,6 +841,12 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :checkpoint)
                   :checkpoint)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :needs-upgrade)
+                  :needs-upgrade)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :rollback-check)
+                  :rollback-check)
                  (t :upgrade-profile)))
           ((or (equal (fn-native-operator-result-command result) "group")
                (equal (fn-native-operator-result-command result) "capacity")

@@ -2219,6 +2219,43 @@ groups is refused, never created as a group."
                :message (format nil "init refused: ~(~a~)" (second plan)))
       (fnn-command-init root (second plan) (third plan)))))
 
+(defun fnn-command-needs-upgrade (root)
+  "Whether the no-argument `store upgrade-profile' would write: ACL2's
+fn-profile-needs-upgrade-verdict over the profile decoded from config.json.
+Reads config.json only (no lock, no replay); prints the verdict word."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (let ((verdict (fnn-core 'fn-profile-needs-upgrade-verdict
+                             (fnn-store-config store))))
+      (unless (member verdict '(:needs-upgrade :current :invalid-current-profile))
+        (fnn-fault "ACL2 returned a malformed needs-upgrade verdict"))
+      (fnn-out "~(~a~)" verdict)
+      (if (eq verdict :invalid-current-profile) +fnn-exit-refused+ +fnn-exit-ok+))))
+
+(defun fnn-command-rollback-check (root old-path)
+  "Whether reinstating the kept config.json at OLD-PATH is sound: ACL2's
+fn-profile-rollback-verdict over the kept profile and the octet lengths of the
+store's committed transaction files.  The host reads and measures; it
+decides nothing."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (let* ((old (fnn-core 'fn-store-metadata-config-decode
+                          (fnn-octet-list (fnn-read-regular-bounded old-path 16384))))
+           (lengths (mapcar (lambda (pair)
+                              (let ((st (fnn-lstat (cdr pair))))
+                                (unless st (fnn-fault "transaction file vanished"))
+                                (sb-posix:stat-size st)))
+                            (fnn-transaction-files store)))
+           (verdict (fnn-core 'fn-profile-rollback-verdict old lengths)))
+      (unless (and (consp verdict) (member (first verdict) '(:sound :refused)))
+        (fnn-fault "ACL2 returned a malformed rollback verdict"))
+      (if (eq (first verdict) :sound)
+          (progn (fnn-out "rollback sound transactions=~d" (length lengths))
+                 +fnn-exit-ok+)
+          (progn (fnn-out "rollback refused ~(~a~)~{ ~a~}" (second verdict)
+                          (cddr verdict))
+                 +fnn-exit-refused+)))))
+
 ;; The offline profile upgrade's cuts, in the order
 ;; `fnn-upgrade-profile-write' reaches them: fn-bs-profile-program's
 ;; (books/byte-store-profile-program.lisp) five `:cut' steps.

@@ -171,6 +171,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-profile result))
 
+(defun fn-native-operator-host-result-rollback-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-rollback-path-octets result))
+
 (defun fn-native-operator-host-result-upgrade-profile (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-upgrade-profile result))

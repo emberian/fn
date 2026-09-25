@@ -298,6 +298,13 @@ observation into the outcome and this function only carries it out."
                          (fnn-command-upgrade-profile root profile)))
                       (:compact (funcall *fnn-compact-callback* root))
                       (:checkpoint (fnn-command-state-checkpoint root))
+                      (:needs-upgrade (fnn-command-needs-upgrade root))
+                      (:rollback-check
+                       (fnn-command-rollback-check
+                        root
+                        (fnn-octets-string
+                         (fnn-core 'fn-native-operator-host-result-rollback-path-octets
+                                   result))))
                       (t +fnn-exit-fault+))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
                                     (string-downcase (symbol-name action)))
@@ -408,7 +415,8 @@ configuration usage result."
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
           (:status (fnn-operator-execute-status result))
-          ((:recover :upgrade-profile :compact :checkpoint)
+          ((:recover :upgrade-profile :compact :checkpoint :needs-upgrade
+            :rollback-check)
            (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
           (:principal (fnn-operator-execute-principal result))
