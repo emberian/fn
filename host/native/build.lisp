@@ -54,6 +54,10 @@
 ;; (host/owner-host.lisp) call fn-pbb-existing-action.
 (include-book "books/octets-stobj")
 (include-book "books/poster-bytes-buffer")
+;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
+;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
+;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
+(include-book "books/store-reclaim-buffer")
 ;; The subject digest over the buffer (D27 wave C): fn-owner-subject-id-buffer
 ;; (host/owner-host.lisp) calls fn-shb-subject-id.
 (include-book "books/sha256-buffer")

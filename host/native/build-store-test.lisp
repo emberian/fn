@@ -39,6 +39,10 @@
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")
+;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
+;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
+;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
+(include-book "books/store-reclaim-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)

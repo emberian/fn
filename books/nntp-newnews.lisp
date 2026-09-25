@@ -73,6 +73,7 @@
                     groups threshold (cdr articles)
                     (append newer (list article)) horizon)))
         (if (and (fn-nntp-newnews-candidatep groups article)
+                 (not (fn-rcl-tombstonep (fn-article-payload article)))
                  (fn-nntp-newnews-newp
                   threshold (fn-article-stamp article) current))
             (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
@@ -104,12 +105,19 @@
                                fn-nntp-newnews-scan))))
 
 ; Erase only payload octets; all identifiers, memberships and stamps persist.
+; Since D13 a tombstone is kept (STO-014): whether an article was reclaimed
+; is the one payload fact the scan reads, through `fn-rcl-tombstonep', which
+; walks at most the tombstone's fixed head and parses nothing.
 (defun fn-nntp-newnews-without-payload (articles)
   (declare (xargs :guard t))
   (if (consp articles)
       (let ((a (car articles)))
         (cons (fn-make-article
-               (fn-article-msgid a) nil (fn-article-groups a)
+               (fn-article-msgid a)
+               (if (fn-rcl-tombstonep (fn-article-payload a))
+                   (fn-article-payload a)
+                 nil)
+               (fn-article-groups a)
                (fn-article-memberships a) (fn-article-pin a)
                (fn-article-stamp a))
               (fn-nntp-newnews-without-payload (cdr articles))))
@@ -120,7 +128,7 @@
    (equal (fn-nntp-newnews-candidatep
            groups
            (fn-make-article
-            (fn-article-msgid article) nil (fn-article-groups article)
+            (fn-article-msgid article) payload (fn-article-groups article)
             (fn-article-memberships article) (fn-article-pin article)
             (fn-article-stamp article)))
           (fn-nntp-newnews-candidatep groups article))

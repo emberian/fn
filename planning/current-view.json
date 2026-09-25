@@ -122,10 +122,10 @@
       "name": "one owner decides duplicate versus conflict",
       "contract": "A resubmission with the same poster bytes (the octets without Path, Xref, Injection-Date, Injection-Info and a node-generated Date) is answered already stored; different poster bytes under the same Message-ID are a conflict.",
       "host": {
-        "function": "fn-pb-existing-action",
+        "function": "fn-rcl-existing-action",
         "file": "host/owner-host.lisp"
       },
-      "bridge": "fn-pb-existing-action-refines-the-byte-identity-decision",
+      "bridge": "fn-rcl-existing-action-is-pb-without-a-tombstone",
       "keystone": "fn-pb-same-article-is-answered-already-stored",
       "tested": {
         "record": "planning/evidence/d25-dup-conflict-2026-09-24.md",
