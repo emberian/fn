@@ -1,0 +1,9 @@
+bridge certify rc=1
+ACL2 did not produce complete clean certification evidence. See certify.log. Books that failed: books/bp-node-progress-bridge, tests/acl2/bp-node-counterexamples-tests
+Certification evidence: build/acl2/certify-20260925T003213Z-2244969
+profile=dtn image=build/fn-host-dtn roots=111 result=loaded
+built build/fn-host-dtn-developer profile=developer (122M core)
+undefined lines: 0
+1d05f3b6ecc8149250f7e68c849515325ce5b6a07917e145fc5debb4e4e02b2b  build/fn-host-dtn-developer
+5d7847f3b0556c629596c34c579055ffb9cb655a2744f2d0bbef72851fc4ba20  build/fn-host-dtn-developer.core
+BUILD-DONE

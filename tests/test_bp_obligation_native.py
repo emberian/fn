@@ -112,10 +112,6 @@ class NativeBpObligationTests(unittest.TestCase):
         self.assertIn("authentication profile is unsupported", refused.stderr)
         self.assertEqual(before, self.records())
 
-
-if __name__ == "__main__":
-    unittest.main()
-
     # `bp-obligation recover': a fenced attempt resolved through ACL2.
 
     def request(self, attempt, env=None):
@@ -132,20 +128,24 @@ if __name__ == "__main__":
         self.assertEqual(undertaken.returncode, 0, undertaken.stderr)
         env = dict(self.env)
         env["FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT"] = "1"
+        # The pause holds the process after the attempt record is durable;
+        # watch the journal, not the pipe (the marker line is not flushed to
+        # a pipe before the process ends).
+        count = len(self.records())
         cut = subprocess.Popen(self.request("attempt-a"), cwd=ROOT, env=env,
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL)
         try:
             deadline = time.monotonic() + 120
-            seen = b""
-            while b"BP OBLIGATION ATTEMPT DURABLE" not in seen:
-                self.assertLess(time.monotonic(), deadline, seen)
-                self.assertIsNone(cut.poll(), seen + cut.stderr.read())
-                seen += cut.stdout.readline()
+            while len(self.records()) <= count:
+                self.assertLess(time.monotonic(), deadline)
+                self.assertIsNone(cut.poll())
+                time.sleep(0.2)
+            time.sleep(1)
+            self.assertIsNone(cut.poll())
         finally:
             cut.kill()
             cut.wait(timeout=15)
-            cut.stdout.close()
-            cut.stderr.close()
 
         status = self.invoke("bp-obligation", "status", self.store,
                              self.journal, "work-a")
@@ -195,3 +195,7 @@ if __name__ == "__main__":
         self.assertEqual(status.returncode, 0, status.stderr)
         self.assertIn("pinned=yes", status.stdout)
         self.assertNotIn("status=outstanding", status.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()
