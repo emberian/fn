@@ -3193,6 +3193,55 @@
           "name": "fn-bpnr-family-replay-aux-append"
         }
       ]
+    },
+    {
+      "id": "PRF-083",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-recover-from-checkpoint-equals-full-recover"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sco-extend-of-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sco-capture-of-later-configs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cpr-loop-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-replay-identity-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cpe-projection-replay-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-th-prefix-project-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cei-build-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scc-decode-segments-of-segments"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-scp-program-crash-is-old-or-new"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-read-ranges-concatenate"
+        }
+      ]
     }
   ]
 }

@@ -3303,6 +3303,40 @@
         "fn-bpnr-checkpoint-decode-of-octets",
         "fn-bpnr-family-replay-aux-append"
       ]
+    },
+    {
+      "id": "PRF-083",
+      "title": "Open from an exact-state Store checkpoint equals the full open",
+      "statement": "fn-sn-recover-from-checkpoint-equals-full-recover: for every configuration history, frontier, record prefix P and suffix Q, (fn-sco-open (fn-sco-capture configs P) configs frontier Q) equals (fn-cpo-open-observed configs frontier (append P Q)), with no hypothesis; fn-sco-open is what the host calls at open when a checkpoint verified (host/store-node-host.lisp fn-store-sn-recover-from-checkpoint) and fn-cpo-open-observed is the full open (fn-store-sn-recover). Built from one append lemma per fold of fn-cpo-open-observed: fn-cpr-loop-append (configuration and node fold, paused at the prefix end), fn-replay-identity-append, fn-cpe-projection-replay-append, fn-th-prefix-project-append, fn-cei-build-append; the history recognizer runs over the carried record list. fn-sco-extend-of-capture: the next checkpoint is the extension. fn-sco-capture-of-later-configs: a configuration whose txid is above every covered record does not change the capture. fn-scc-decode-segments-of-segments: the FNSC segments decode to the value, for every tree whose program and record count fit the u64 header fields. fn-bs-scp-program-crash-is-old-or-new: at every cut of the publish program the checkpoint name is the old file, absent, or the new octets. fn-bs-read-ranges-concatenate: consecutive range reads concatenate under A-HOST-EXCLUSIVE-READ.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-011",
+        "STO-006",
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-008",
+        "PRF-072"
+      ],
+      "assumptions": [
+        "A-HOST-EXCLUSIVE-READ",
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION",
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/store-checkpoint-open.lisp",
+        "books/store-checkpoint-codec.lisp",
+        "books/byte-store-state-checkpoint-program.lisp",
+        "books/byte-store-range-read.lisp",
+        "books/assumptions.lisp",
+        "tests/acl2/store-checkpoint-open-tests.lisp",
+        "tests/acl2/byte-store-state-checkpoint-program-tests.lisp",
+        "tests/test_native_state_checkpoint.py",
+        "planning/evidence/bounds-p3-2026-09-25.md"
+      ],
+      "progress_note": "Open items: K0 coverage of the publish program's :root rename and :root fsync (fn-bs-k0-step-inputp admits neither; the profile program has the same gap); the whole-file statement over the host's range loop; the owner's serve path still replays in full (fnn-owner-install); the owner does not yet publish at K/2."
     }
   ]
 }

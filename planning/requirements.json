@@ -468,7 +468,8 @@
         "PRF-044",
         "PRF-072",
         "PRF-004",
-        "PRF-080"
+        "PRF-080",
+        "PRF-083"
       ],
       "verification": [
         "proof",
@@ -531,7 +532,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-008",
-        "PRF-037"
+        "PRF-037",
+        "PRF-083"
       ],
       "verification": [
         "proof",
@@ -1900,6 +1902,28 @@
         "planning/evidence/bp-routing-2026-09-25.md"
       ],
       "implementation_note": "RFC 9171 section 4.3 and 5.4 step 1 leave the forwarding strategy to the node; fn implements no routing protocol (local policy) and decides from operator configuration rows written by `bp-route add PATTERN BOUNDARY [PRIORITY]` through the assured reconfiguration path. The next hop, the expected TCPCL node ID (RFC 9174 section 4.6 SESS_INIT) and the contact port are ACL2's (fn-bprt-outbound-choice over fn-bprt-table); host/native/bp-node.lisp fnn-bpnode-forward-contact opens no session without a route. Not covered: FNBS base jobs (bp-obligation request, bp-contact tick, bp-service) still carry their queued CONTACT-HOST:PORT; the unrouted 6-field :session form and :resume remain in the machine unsent by the host."
+    },
+    {
+      "id": "STO-011",
+      "title": "Open reads the newest verified exact-state checkpoint and replays at most K records after it, else replays in full and says so",
+      "specification": "specs/storage.md#checkpointing",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-083"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-checkpoint-open.lisp",
+        "books/store-checkpoint-codec.lisp",
+        "books/byte-store-state-checkpoint-program.lisp",
+        "tests/test_native_state_checkpoint.py",
+        "planning/evidence/bounds-p3-2026-09-25.md"
+      ],
+      "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
     }
   ]
 }

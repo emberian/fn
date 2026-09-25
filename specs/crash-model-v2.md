@@ -717,6 +717,17 @@ correct (Pillai et al. 2014 §5 "masking"). It also does not encode
 practice does for new files: a program that needs that would be wrong on
 other filesystems.
 
+### 1.9 Range reads and the Store checkpoint program (P3)
+
+`fn-bs-read-range s ino off n` is `off..off+n` of the inode's content, or
+what remains (books/byte-store-range-read.lisp). A read is not a
+transition; across the states the host observes between two reads of one
+open, `fn-bs-read-ranges-concatenate` holds under A-HOST-EXCLUSIVE-READ
+(books/assumptions.lisp), which stands for the store lock. The Store
+checkpoint's publish program `fn-bs-scp-program` has the profile program's
+shape and its old-or-new crash keystone; its `:rename` into `:root` and the
+root fsync are not yet admitted by `fn-bs-k0-step-inputp`.
+
 ## 2. The host's programs over the model
 
 Proposed book: `books/byte-store-programs.lisp`. A program is a constant list

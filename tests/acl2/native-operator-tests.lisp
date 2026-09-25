@@ -412,6 +412,40 @@
                   (fn-nop-test-argv '("store" "upgrade-profile" "scale")))
                  '("store" "compact")))))
 
+; `store checkpoint' (P3): an offline store action with no argument; it
+; publishes the exact-state checkpoint (books/store-checkpoint-open.lisp).
+(defconst *fn-nop-checkpoint*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("store" "checkpoint"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-checkpoint*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-checkpoint*)
+                     :checkpoint))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-compact*) :compact))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "checkpoint" "now"))))
+                     5))
+; Teeth for fn-native-operator-run-store-checkpoint-is-the-checkpoint-action.
+; Without the argv hypothesis: an accepted store plan that is not checkpoint.
+(local (must-fail
+        (defthm fn-nop-checkpoint-action-without-argv
+          (equal (fn-native-operator-result-native-action *fn-nop-compact*) :checkpoint))))
+; Without acceptance: under a configuration that does not load it is usage.
+(defconst *fn-nop-checkpoint-bad-config*
+  (fn-native-operator-run (fn-nop-test-lines '("[store]" "path = 7"))
+                          (fn-nop-test-argv '("store" "checkpoint"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-checkpoint-bad-config*) :usage))
+(local (must-fail
+        (defthm fn-nop-checkpoint-action-without-acceptance
+          (equal (fn-native-operator-result-native-action *fn-nop-checkpoint-bad-config*)
+                 :checkpoint))))
+; Tooth for fn-native-operator-run-checkpoint-action-is-only-store-checkpoint.
+(local (must-fail
+        (defthm fn-nop-checkpoint-argv-without-action
+          (equal (fn-nop-argument-texts
+                  (fn-nop-test-argv '("store" "compact")))
+                 '("store" "checkpoint")))))
+
 ; Teeth, one hypothesis at a time: a bare `init` names no group and is a
 ; usage error rather than a store with a guessed group table; a word that
 ; `fn-record-group-namep` does not admit is a usage error; a repeated name is
