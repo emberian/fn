@@ -71,6 +71,7 @@
     "books/records-stamp",
     "books/records-canonicality",
     "books/records-seam",
+    "books/records-schema-v1",
     "books/records-attach",
     "books/store-events",
     "tests/acl2/store-events-tests",
@@ -88,6 +89,7 @@
     "tests/acl2/consumer-poll-projection-tests",
     "tests/acl2/records-tests",
     "tests/acl2/records-teeth-tests",
+    "tests/acl2/records-schema-v1-teeth-tests",
     "tests/acl2/records-ceiling-tests",
     "tests/acl2/records-shape-tests",
     "books/provenance-codec",
@@ -238,6 +240,8 @@
     "tests/acl2/byte-store-tests",
     "books/byte-store-frame",
     "tests/acl2/byte-store-frame-tests",
+    "books/byte-store-profile-v1",
+    "tests/acl2/byte-store-profile-v1-tests",
     "books/byte-store-txn-name",
     "tests/acl2/byte-store-txn-name-tests",
     "books/byte-store-initializer",
@@ -840,25 +844,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 852,
-    "books_in_root_closure": 848,
-    "roots": 836,
-    "theorems": 11590,
-    "functions": 8155,
-    "assert_events": 12429,
-    "must_fails": 1265,
+    "books": 856,
+    "books_in_root_closure": 852,
+    "roots": 840,
+    "theorems": 11660,
+    "functions": 8172,
+    "assert_events": 12470,
+    "must_fails": 1273,
     "encapsulates": 51,
     "guards": {
-      "verified": 2157,
-      "declared-off": 607,
-      "default-guarded": 4206,
-      "default-unguarded": 1185
+      "verified": 2162,
+      "declared-off": 610,
+      "default-guarded": 4212,
+      "default-unguarded": 1188
     },
     "suspect_theorems": 101,
-    "export_hygiene_warnings": 139,
+    "export_hygiene_warnings": 142,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 98,
-    "include_hygiene_warnings": 855,
+    "teeth_form_warnings": 103,
+    "include_hygiene_warnings": 859,
     "host_names_warnings": 917,
     "hand_written_record_warnings": 18
   },
@@ -5585,6 +5589,31 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-profile-v1.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-frame"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-program-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5990,7 +6019,7 @@
       "book": "books/cbor-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 36,
+      "theorems": 73,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -6018,22 +6047,24 @@
       "book": "books/cbor.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 14,
-      "functions": 30,
+      "theorems": 18,
+      "functions": 35,
       "guards": {
-        "verified": 30,
+        "verified": 35,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 30,
+      "verify_guards_events": 35,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 3,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
-      "system_includes": [],
+      "system_includes": [
+        "ihs/quotient-remainder-lemmas"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -11134,7 +11165,7 @@
       "book": "books/records-canonicality.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 36,
+      "theorems": 41,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -11246,7 +11277,7 @@
       "book": "books/records-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
+      "theorems": 45,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -11269,10 +11300,35 @@
       "read_error": null
     },
     {
+      "book": "books/records-schema-v1.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "records-canonicality"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/records-seam.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
+      "theorems": 20,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -11298,18 +11354,18 @@
       "book": "books/records-shape.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 47,
-      "functions": 51,
+      "theorems": 48,
+      "functions": 54,
       "guards": {
         "verified": 40,
         "declared-off": 0,
-        "default-guarded": 11,
+        "default-guarded": 14,
         "default-unguarded": 0
       },
       "verify_guards_events": 40,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -11350,21 +11406,22 @@
       "book": "books/records.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 20,
-      "functions": 11,
+      "theorems": 23,
+      "functions": 13,
       "guards": {
         "verified": 8,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 4,
         "default-unguarded": 1
       },
       "verify_guards_events": 8,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "cbor-invariants",
         "records-shape"
       ],
       "system_includes": [],
@@ -17094,15 +17151,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 67,
+      "assert_events": 69,
       "must_fails": 0,
       "defconsts": 4,
       "defmacros": 1,
@@ -17423,6 +17480,34 @@
         "../../books/byte-store-observation"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/byte-store-profile-v1-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 1,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-profile-v1",
+        "../../books/codec-attach"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -21497,16 +21582,16 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 0,
+      "functions": 1,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
-      "must_fails": 4,
+      "assert_events": 16,
+      "must_fails": 5,
       "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
@@ -21543,6 +21628,33 @@
         "../../books/records-concrete",
         "../../books/records-concrete-owner",
         "owner-served-invariants-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 20,
+      "must_fails": 6,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/records-schema-v1"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -24403,7 +24515,7 @@
     {
       "theorem": "fn-record-impl-encode-domain",
       "book": "books/records-canonicality.lisp",
-      "line": 906,
+      "line": 919,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value"
       ]
@@ -24411,7 +24523,7 @@
     {
       "theorem": "fn-record-result-okp-is-parse-okp",
       "book": "books/records-canonicality.lisp",
-      "line": 741,
+      "line": 750,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
@@ -24816,7 +24928,7 @@
       {
         "theorem": "fn-bs-frontier-next-is-successor",
         "book": "books/byte-store-frame.lisp",
-        "line": 913,
+        "line": 925,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -24841,6 +24953,12 @@
         "theorem": "fn-bs-txn-decode-natural-digits-left-inverse",
         "book": "books/byte-store-txn-name.lisp",
         "line": 154,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-cbor-encode-uint-wide-is-narrow",
+        "book": "books/cbor-invariants.lisp",
+        "line": 428,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -25147,6 +25265,18 @@
         "theorem": "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
         "book": "books/records-concrete.lisp",
         "line": 318,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-record-v1-read-uint-agrees",
+        "book": "books/records-schema-v1.lisp",
+        "line": 166,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-record-v1-bytes-decode-identically",
+        "book": "books/records-schema-v1.lisp",
+        "line": 248,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -26395,6 +26525,36 @@
         "check": "thm",
         "book": "tests/acl2/records-ceiling-tests.lisp",
         "line": 62,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "thm",
+        "book": "tests/acl2/records-ceiling-tests.lisp",
+        "line": 93,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "p6-teeth-extends-narrow-without-acceptance",
+        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
+        "line": 34,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "p6-teeth-reencode-without-acceptance",
+        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
+        "line": 53,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "p6-teeth-identically-without-acceptance",
+        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
+        "line": 108,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "p6-teeth-translation-without-acceptance",
+        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
+        "line": 113,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -27906,6 +28066,13 @@
         "line": 2,
         "include": "byte-store-observation",
         "included": "books/byte-store-observation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/byte-store-profile-v1.lisp",
+        "line": 22,
+        "include": "byte-store-frame",
+        "included": "books/byte-store-frame.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -30611,6 +30778,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-profile-v1-tests.lisp",
+        "line": 4,
+        "include": "../../books/byte-store-profile-v1",
+        "included": "books/byte-store-profile-v1.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-profile-v1-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-program-invariants-tests.lisp",
         "line": 4,
         "include": "byte-store-relation-tests",
@@ -31784,6 +31965,13 @@
         "line": 8,
         "include": "owner-served-invariants-tests",
         "included": "tests/acl2/owner-served-invariants-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/records-schema-v1-teeth-tests.lisp",
+        "line": 8,
+        "include": "../../books/records-schema-v1",
+        "included": "books/records-schema-v1.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -39019,7 +39207,7 @@
       },
       {
         "book": "books/records-shape.lisp",
-        "line": 439,
+        "line": 492,
         "shape": "fn-record-parse-shapep",
         "shapes": 1,
         "accessors": 3,
