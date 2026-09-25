@@ -21,6 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import fn_web  # noqa: E402
 
+HISTORICAL = "<dt>The node's historical verdict</dt><dd>"
+
 
 @unittest.skipUnless(shutil.which("openssl"), "openssl is required for the socket fixture")
 class WebClientTests(unittest.TestCase):
@@ -65,10 +67,10 @@ class WebClientTests(unittest.TestCase):
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
 
-    def request(self, method, path, body=None, origin=True):
+    def request(self, method, path, body=None, origin=True, extra=None):
         connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port,
                                                  timeout=10)
-        headers = {}
+        headers = dict(extra or {})
         if method == "POST":
             headers["Content-Type"] = "application/x-www-form-urlencoded"
             if origin:
@@ -118,7 +120,10 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("&lt;script&gt;steal()&lt;/script&gt;", page)
         self.assertNotIn("<script>steal()", page)
-        self.assertIn("FN-Statement present; not verified here", page)
+        self.assertIn("<dt>Authorship evidence carried</dt><dd>FN-Statement present in "
+                      "the article</dd>", page)
+        self.assertIn("not performed: carried but not independently verified here", page)
+        self.assertIn("<dt>Claimed author</dt><dd>&lt;script&gt;alert(1)&lt;/script&gt;", page)
         self.assertIn("Path: peer!other", page)
         self.assertIn("Viewing does not acknowledge application processing", page)
 
@@ -264,9 +269,11 @@ class WebClientTests(unittest.TestCase):
         })
         status, _, page = self.request("GET", "/a?group=fn.agents&number=1")
         self.assertEqual(status, 200)
-        self.assertIn("Server report of historical verification verdict: verified by principal " +
-                      "ab" * 32 + " under keyring generation 7", page)
-        self.assertIn("not an independent cryptographic check or current authorization", page)
+        self.assertIn(HISTORICAL + "<span class='badge verified'>verified</span> <code>"
+                      "verified by principal " + "ab" * 32 + " under keyring generation 7"
+                      "</code>", page)
+        self.assertIn("a key retired later does not change this record", page)
+        self.assertIn("<dt>Current enrollment or authorization</dt><dd>not available", page)
         self.assertIn("HDR :fn-verified 1", self.node.seen)
 
         status, _, legacy_page = self.request("GET", "/a?group=fn.agents&number=2")
@@ -276,18 +283,19 @@ class WebClientTests(unittest.TestCase):
             status, _, unavailable = self.request(
                 "GET", "/a?group=fn.agents&number=%d" % number)
             self.assertEqual(status, 200)
-            self.assertIn("Server report of historical verification verdict: unavailable.",
-                          unavailable)
+            self.assertIn(HISTORICAL + "<span class='badge unavailable'>unavailable</span> "
+                          "the node gave no usable", unavailable)
 
         status, _, rejected = self.request("GET", "/a?group=fn.agents&number=5")
         self.assertEqual(status, 200)
-        self.assertIn("Server report of historical verification verdict: "
-                      "unverified: signature, keyring generation 9", rejected)
+        self.assertIn(HISTORICAL + "<span class='badge unverified'>unverified</span> <code>"
+                      "unverified: signature, keyring generation 9</code>", rejected)
 
         # Header presence alone never upgrades an absent server record.
         status, _, absent = self.request("GET", "/a?group=fn.agents&number=6")
         self.assertEqual(status, 200)
-        self.assertIn("Server report of historical verification verdict: absent: no-field", absent)
+        self.assertIn(HISTORICAL + "<span class='badge absent'>absent</span> <code>"
+                      "absent: no-field</code>", absent)
 
     def test_thread_order_follows_the_last_present_reference_and_survives_cycles(self):
         row = lambda n, mid, refs="": {"number": n, "message_id": mid, "references": refs,
@@ -450,7 +458,11 @@ class WebClientTests(unittest.TestCase):
         result = self.request("GET", headers["Location"])[2]
         self.assertIn("badge uncertain", result)
         self.assertIn("Message-ID:", result)
-        status, _, settled = self.request("GET", "/settle?id=" + token)
+        # A GET never records a lookup; the lookup is a form POST.
+        self.assertEqual(self.request("GET", "/settle?id=" + token)[0], 404)
+        status, headers, _ = self.request("POST", "/settle", {"submission_id": token})
+        self.assertEqual(status, 303)
+        status, _, settled = self.request("GET", headers["Location"])
         self.assertEqual(status, 200)
         self.assertIn("did not serve this Message-ID in this lookup", settled)
         self.assertIn("original POST outcome has not changed", settled)
@@ -549,7 +561,8 @@ class WebClientTests(unittest.TestCase):
         saved = json.loads((self.outbox_path / (lost + ".json")).read_text())
         self.node.drop_after_article = False
         self.node.inject("fn.agents", saved["lines"])
-        observed = self.request("GET", "/settle?id=" + lost)[2]
+        observed = self.request("GET", self.request(
+            "POST", "/settle", {"submission_id": lost})[1]["Location"])[2]
         self.assertIn("now serves this Message-ID", observed)
         self.assertIn("badge uncertain", observed)
         self.restart_outbox()
@@ -693,6 +706,112 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(self.node.seen.count("POST"), 1)
         self.assertEqual(self.request("GET", "/compose?group=fn.agents")[0], 503)
 
+    # ---- reader-daily (NNT-021): holes, conversations, re-send, fetch metadata
+
+    def test_holes_are_the_nodes_answers_and_withdrawn_is_not_absent(self):
+        self.node.seed("fn.agents", "first", "one", msgid="<h1@fake.invalid>")
+        self.node.seed("fn.agents", "second", "two", msgid="<h2@fake.invalid>")
+        self.node.seed("fn.agents", "third", "three", msgid="<h3@fake.invalid>")
+        self.node.withdrawn.add("<h2@fake.invalid>")
+        status, _, page = self.request("GET", "/g?name=fn.agents")
+        self.assertEqual(status, 200)
+        self.assertIn("STAT 2", self.node.seen)
+        self.assertIn("<span class='badge withdrawn'>withdrawn</span> local #2 · "
+                      "<code>423 withdrawn</code>", page)
+        self.assertNotIn("/a?group=fn.agents&amp;number=2", page)
+        status, _, page = self.request("GET", "/a?group=fn.agents&number=2")
+        self.assertEqual(status, 410)
+        self.assertIn("was withdrawn", page)
+        self.assertIn("It existed and was accepted", page)
+        status, _, page = self.request("GET", "/find?id=%3Ch2%40fake.invalid%3E")
+        self.assertEqual(status, 410)
+        self.assertIn("<code>430 withdrawn</code>", page)
+        # A number never assigned is the node's other answer, not "withdrawn".
+        status, _, page = self.request("GET", "/g?name=fn.agents&start=1&end=5")
+        self.assertIn("numbers after 3 are not assigned yet", page)
+
+    def test_conversation_follows_references_across_a_withdrawn_middle(self):
+        self.node.seed("fn.agents", "root", "r", msgid="<root@fake.invalid>")
+        self.node.inject("fn.agents", ["From: yue <yue@fake.invalid>", "Newsgroups: fn.agents",
+                                       "Subject: Re: root", "Message-ID: <mid@fake.invalid>",
+                                       "References: <root@fake.invalid>", "", "m"])
+        self.node.seed("fn.agents", "unrelated", "u", msgid="<other@fake.invalid>")
+        self.node.inject("fn.agents", ["From: tulip <t@fake.invalid>", "Newsgroups: fn.agents",
+                                       "Subject: Re: Re: root", "Message-ID: <leaf@fake.invalid>",
+                                       "References: <root@fake.invalid> <mid@fake.invalid>",
+                                       "", "l"])
+        self.node.withdrawn.add("<mid@fake.invalid>")
+        status, _, page = self.request("GET", "/t?group=fn.agents&number=4")
+        self.assertEqual(status, 200, page)
+        self.assertIn("XPAT References 1-4 *<root@fake.invalid>*", self.node.seen)
+        self.assertIn("STAT <mid@fake.invalid>", self.node.seen)
+        self.assertIn("earlier message <code>&lt;mid@fake.invalid&gt;</code> · the node "
+                      "answered <code>430 withdrawn</code>", page)
+        self.assertIn("/a?group=fn.agents&amp;number=1'>root</a>", page)
+        self.assertIn("/a?group=fn.agents&amp;number=4'>Re: Re: root</a>", page)
+        self.assertNotIn("unrelated", page)
+        # The Message-ID's wildmat-special characters are stood for, and said so.
+        self.node.inject("fn.agents", ["Newsgroups: fn.agents", "Subject: odd",
+                                       "Message-ID: <a,b*c@fake.invalid>", "", "o"])
+        status, _, page = self.request("GET", "/t?group=fn.agents&number=5")
+        self.assertIn("XPAT References 1-5 *<a?b?c@fake.invalid>*", self.node.seen)
+        self.assertIn("near-identical Message-ID could also match", page)
+
+    def test_resend_is_explicit_same_bytes_and_keeps_the_original_answer(self):
+        token = self.form_id()
+        self.node.uncertain_post = True
+        status, headers, _ = self.request("POST", "/post", {"submission_id": token})
+        page = self.request("GET", headers["Location"])[2]
+        self.assertIn("Send the same bytes again", page)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+        self.node.uncertain_post = False
+        status, headers, _ = self.request("POST", "/resend", {"submission_id": token})
+        self.assertEqual(status, 303)
+        page = self.request("GET", headers["Location"])[2]
+        self.assertIn("Outcome: <span class='badge uncertain'>uncertain</span>", page)
+        self.assertIn("<span class='badge accepted'>accepted</span> <span class='reason'>", page)
+        self.request("POST", "/resend", {"submission_id": token})
+        page = self.request("GET", "/result?id=" + token)[2]
+        self.assertIn("441 posting failed; this article is already stored here", page)
+        self.assertEqual(self.node.seen.count("POST"), 3)
+        self.assertEqual(len(self.node.numbers["fn.agents"]), 1)
+        # An accepted or refused record is never sent again.
+        other = self.form_id()
+        self.request("POST", "/post", {"submission_id": other, "subject": "two"})
+        self.assertEqual(self.request("POST", "/resend", {"submission_id": other})[0], 400)
+        self.assertEqual(self.node.seen.count("POST"), 4)
+
+    def test_restart_intent_resends_only_on_request_and_survives_restart(self):
+        self.enable_outbox()
+        token = self.form_id()
+        self.node.drop_after_article = True
+        self.request("POST", "/post", {"submission_id": token})
+        self.restart_outbox()
+        page = self.request("GET", "/result?id=" + token)[2]
+        self.assertIn("badge uncertain", page)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+        self.node.drop_after_article = False
+        self.assertEqual(self.request("POST", "/resend", {"submission_id": token})[0], 303)
+        self.restart_outbox()
+        page = self.request("GET", "/result?id=" + token)[2]
+        self.assertIn("Sent again at your request", page)
+        self.assertIn("<span class='badge accepted'>accepted</span>", page)
+        self.assertEqual(self.node.seen.count("POST"), 2)
+
+    def test_another_site_cannot_read_mark_or_post(self):
+        self.node.seed("fn.agents", "private", "p", msgid="<p@fake.invalid>")
+        for site in ("cross-site", "same-site"):
+            status, _, _ = self.request("GET", "/a?group=fn.agents&number=1",
+                                        extra={"Sec-Fetch-Site": site})
+            self.assertEqual(status, 403)
+            status, _, _ = self.request("POST", "/post", {}, extra={"Sec-Fetch-Site": site})
+            self.assertEqual(status, 403)
+        self.assertNotIn("ARTICLE 1", self.node.seen)
+        self.assertEqual(self.node.seen.count("POST"), 0)
+        self.assertFalse(self.server.marks.is_read("fn.agents", 1))
+        status, _, _ = self.request("GET", "/a?group=fn.agents&number=1",
+                                    extra={"Sec-Fetch-Site": "same-origin"})
+        self.assertEqual(status, 200)
 
 
 class ReaderSearchTests(unittest.TestCase):

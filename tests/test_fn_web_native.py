@@ -244,7 +244,8 @@ class NativeWebClientTests(unittest.TestCase):
                 owner = start_owner()
                 restart_web()
                 self.assertIn("badge uncertain", request("GET", "/result?id=" + token)[2])
-                observed = request("GET", "/settle?id=" + token)
+                observed = request("GET", request(
+                    "POST", "/settle", {"submission_id": token})[1]["Location"])
                 self.assertIn("now serves this Message-ID", observed[2])
                 self.assertIn("badge uncertain", observed[2])
                 duplicate = request("POST", "/post", {"submission_id": token,

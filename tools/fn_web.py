@@ -46,6 +46,9 @@ MAX_ARTICLE_NUMBER = 9_999_999_999
 MAX_SUBMISSIONS = 128
 MAX_READ_NUMBERS = 4096
 MAX_REFERENCES = 800
+# Explicit re-sends of one uncertain record's exact bytes that the record
+# keeps; a further request is refused, never silently dropped.
+MAX_RESENDS = 8
 LOOPBACK = ("127.0.0.1", "::1")
 
 
@@ -54,6 +57,13 @@ LOOPBACK = ("127.0.0.1", "::1")
 # next page continues past.
 SEARCH_SPAN = 2000
 MAX_SEARCH_HITS = 200
+# A conversation page asks about at most this many References entries (the
+# form's References is at most 800 characters) and shows at most MAX_RECENT
+# replies per window; the page links the next window.
+MAX_THREAD_REFERENCES = 40
+# RFC 3977 section 4.1: a wildmat cannot state these characters exactly; the
+# conversation query stands `?` for each and says so on the page.
+WILDMAT_SPECIAL = set('*?[]\\,!')
 
 
 class BoundedSession(Session):
@@ -241,10 +251,111 @@ class Backend:
                                             row["verdict"] = report
                 except fn_client.Stop:
                     pass
+            # Numbers inside the window and the group's current range that
+            # carry no overview row: ask the node what each one is now.  At
+            # most MAX_RECENT STATs; the answer (`423 withdrawn`, `423 no
+            # article with that number`, or an article that arrived since) is
+            # shown as the node sent it.
+            holes = []
+            if high >= low and window_end >= window_start:
+                for one in range(max(window_start, low), min(window_end, high) + 1):
+                    if one not in wanted:
+                        answer, _ = client.cmd("STAT %d" % one)
+                        holes.append({"number": one, "answer": answer})
             return fn_client.Result(fn_client.DONE, status,
                                     {"group": group, "rows": rows, "low": low,
                                      "high": high, "window_start": window_start,
-                                     "window_end": window_end}, "")
+                                     "window_end": window_end, "holes": holes}, "")
+        return self.using(query)
+
+    @staticmethod
+    def over_row(client, number: int):
+        """The node's OVER row for one number, or (None, its answer)."""
+        overview, body = client.cmd("OVER %d" % number, multiline=True)
+        if overview.startswith("224"):
+            for line in body:
+                parts = line.split("\t")
+                if parts and fn_client.number(parts[0]) == number:
+                    return ({"number": number,
+                             "subject": parts[1] if len(parts) > 1 else "(no subject)",
+                             "from": parts[2] if len(parts) > 2 else "",
+                             "date": parts[3] if len(parts) > 3 else "",
+                             "message_id": parts[4] if len(parts) > 4 else "",
+                             "references": parts[5] if len(parts) > 5 else ""}, overview)
+            return None, overview
+        return None, overview
+
+    def thread(self, group: str, number: int, before: Optional[int] = None):
+        """One conversation around a local article, within a stated scope.
+
+        The article's References are asked about one by one (`STAT <id>`):
+        the node answers where it serves each in this group, that it was
+        withdrawn, or that it does not serve it.  The replies are the node's
+        answer to `XPAT References <low>-<high> *<root>*` over one window of
+        at most SEARCH_SPAN numbers ending at `before` (default the group's
+        high-water mark): the node matches, over what it serves
+        (books/nntp-search-scope.lisp).  The client orders what the node
+        answered for display and decides nothing about membership.
+        """
+        def query(client):
+            status, _ = client.cmd("GROUP " + group)
+            if not status.startswith("211"):
+                return fn_client.Result(fn_client.REFUSED, status, {}, "")
+            fields = status.split()
+            low = fn_client.number(fields[2]) if len(fields) > 2 else None
+            high = fn_client.number(fields[3]) if len(fields) > 3 else None
+            if low is None or high is None:
+                raise fn_client.Stop(fn_client.UNCERTAIN, "invalid GROUP range: " + status)
+            row, answer = self.over_row(client, number)
+            if row is None:
+                stat, _ = client.cmd("STAT %d" % number)
+                return fn_client.Result(fn_client.REFUSED, stat, {"number": number}, "")
+            references = row["references"].split()
+            root = references[0] if references else row["message_id"]
+            ancestors = []
+            for ident in references[:MAX_THREAD_REFERENCES]:
+                entry = {"message_id": ident, "answer": "", "row": None}
+                if not (ident.startswith("<") and ident.endswith(">") and len(ident) <= 250):
+                    entry["answer"] = "not a Message-ID; not asked"
+                    ancestors.append(entry)
+                    continue
+                stat, _ = client.cmd("STAT " + ident)
+                entry["answer"] = stat
+                parts = stat.split()
+                if stat.startswith("223") and len(parts) > 1:
+                    found = fn_client.number(parts[1])
+                    if found:
+                        entry["row"], _ = self.over_row(client, found)
+                ancestors.append(entry)
+            end = min(high, before) if before is not None else high
+            start = max(low, end - SEARCH_SPAN + 1)
+            pattern = "*" + "".join("?" if c in WILDMAT_SPECIAL else c for c in root) + "*"
+            hits, command = [], ""
+            if end >= start and high >= low and root.startswith("<"):
+                command = "XPAT References %d-%d %s" % (start, end, pattern)
+                reply, lines = client.cmd(command, multiline=True)
+                if not reply.startswith("221"):
+                    return fn_client.Result(fn_client.REFUSED, reply, {"command": command}, "")
+                for line in lines[:MAX_SEARCH_HITS]:
+                    one = fn_client.number(line.partition(" ")[0])
+                    if one is not None and start <= one <= end:
+                        hits.append(one)
+            shown = sorted(set(hits))[-MAX_RECENT:]
+            rows = {row["number"]: row}
+            for entry in ancestors:
+                if entry["row"]:
+                    rows[entry["row"]["number"]] = entry["row"]
+            for one in shown:
+                if one not in rows:
+                    found, _ = self.over_row(client, one)
+                    if found:
+                        rows[one] = found
+            return fn_client.Result(fn_client.DONE, status, {
+                "group": group, "row": row, "root": root, "ancestors": ancestors,
+                "rows": [rows[k] for k in sorted(rows)], "hits": len(set(hits)),
+                "shown": len(shown), "start": start, "end": end, "low": low,
+                "high": high, "command": command,
+                "approximate": any(c in WILDMAT_SPECIAL for c in root)}, "")
         return self.using(query)
 
     def search(self, group: str, field: str, pattern: str, before: Optional[int] = None):
@@ -347,7 +458,8 @@ class SubmissionBook:
                 self.entries.popitem(last=False)
             token = secrets.token_urlsafe(24)
             self.entries[token] = {"group": group, "lines": None, "message_id": "",
-                                   "result": None, "settlement": None}
+                                   "result": None, "settlement": None,
+                                   "resends": []}
             return token
 
     def get(self, token: str):
@@ -391,6 +503,38 @@ class SubmissionBook:
             except (OSError, Disconnected) as exc:
                 result = fn_client.Result(fn_client.UNCERTAIN, str(exc), {}, "")
             entry["settlement"] = result
+            return entry
+
+    def _resend_allowed(self, entry):
+        if entry["result"] is None or entry["result"].word != fn_client.UNCERTAIN or \
+                not entry["lines"]:
+            raise ValueError("only an uncertain submission's exact bytes can be sent again")
+        if len(entry.setdefault("resends", [])) >= MAX_RESENDS:
+            raise ValueError("this record already holds %d re-sends; settle it by "
+                             "Message-ID instead" % MAX_RESENDS)
+
+    def _send_again(self, entry):
+        try:
+            return self.backend.post(entry["group"], entry["lines"], entry["message_id"])
+        except (OSError, Disconnected) as exc:
+            return fn_client.Result(fn_client.UNCERTAIN,
+                                    fn_client.unsettled(entry["message_id"], str(exc)),
+                                    {"message_id": entry["message_id"]}, "")
+
+    def resend(self, token: str):
+        """Send an uncertain record's exact recorded bytes again, once, on request.
+
+        The same article lines and the same Message-ID: the node's answer
+        (240; `441 ... already stored here`; `441 ... a different article
+        with this Message-ID`) is recorded beside the original answer, which
+        is never rewritten.  Nothing here is automatic.
+        """
+        with self.lock:
+            entry = self.entries.get(token)
+            if entry is None:
+                return None
+            self._resend_allowed(entry)
+            entry["resends"].append(self._send_again(entry))
             return entry
 
 
@@ -517,7 +661,7 @@ class DurableSubmissionBook(SubmissionBook):
                 return {"group": saved["group"], "lines": None,
                         "message_id": "", "result": None, "settlement": None,
                         "draft": draft, "original_recorded": False,
-                        "record_error": None}
+                        "record_error": None, "resends": []}
             if not isinstance(saved["lines"], list) or not saved["lines"] or \
                     not all(isinstance(line, str) for line in saved["lines"]) or \
                     len("\r\n".join(saved["lines"]).encode()) > MAX_BODY + 4096 or \
@@ -544,12 +688,21 @@ class DurableSubmissionBook(SubmissionBook):
                     (fn_client.DONE, fn_client.REFUSED, fn_client.UNCERTAIN) or
                     not isinstance(observation["detail"], str)):
                 raise OutboxError("outbox observation is malformed")
+            resends = saved.get("resends") or []
+            if not isinstance(resends, list) or len(resends) > MAX_RESENDS or any(
+                    not isinstance(one, dict) or one.get("word") not in
+                    (fn_client.ACCEPTED, fn_client.REFUSED, fn_client.UNCERTAIN) or
+                    not isinstance(one.get("detail"), str) for one in resends):
+                raise OutboxError("outbox re-send record is malformed")
             return {"group": saved["group"], "lines": tuple(saved["lines"]),
                     "message_id": saved["message_id"], "result": result,
                     "settlement": (fn_client.Result(observation["word"],
                                    observation["detail"], {}, "") if observation else None),
                     "draft": None, "original_recorded": original is not None,
-                    "record_error": None}
+                    "record_error": None,
+                    "resends": [fn_client.Result(one["word"], one["detail"],
+                                                 {"message_id": saved["message_id"]}, "")
+                                for one in resends]}
         except (KeyError, TypeError, UnicodeError, ValueError, AttributeError) as exc:
             raise OutboxError("outbox record is malformed") from exc
 
@@ -558,7 +711,9 @@ class DurableSubmissionBook(SubmissionBook):
                  "group": entry["group"],
                  "lines": list(entry["lines"]) if entry["lines"] is not None else None,
                  "message_id": entry["message_id"], "result": original,
-                 "settlement": settlement, "draft": entry.get("draft")}
+                 "settlement": settlement, "draft": entry.get("draft"),
+                 "resends": [{"word": one.word, "detail": one.detail}
+                             for one in entry.get("resends") or ()]}
         data = json.dumps(saved, ensure_ascii=True, separators=(",", ":")).encode()
         if len(data) > 32768:
             raise OutboxError("outbox record exceeds 32 KiB")
@@ -591,7 +746,8 @@ class DurableSubmissionBook(SubmissionBook):
             token = secrets.token_urlsafe(24)
             self.entries[token] = {"group": group, "lines": None, "message_id": "",
                                    "result": None, "settlement": None, "draft": None,
-                                   "original_recorded": False, "record_error": None}
+                                   "original_recorded": False, "record_error": None,
+                                   "resends": []}
             return token
 
     def save_draft(self, token, group, subject, sender, references, body):
@@ -652,19 +808,50 @@ class DurableSubmissionBook(SubmissionBook):
                 entry["record_error"] = self._fence(exc)
             return entry
 
+    def _recorded(self, entry):
+        original = ({"word": entry["result"].word, "detail": entry["result"].detail}
+                    if entry["original_recorded"] else None)
+        observation = ({"word": entry["settlement"].word,
+                        "detail": entry["settlement"].detail}
+                       if entry["settlement"] is not None else None)
+        return original, observation
+
     def settle(self, token):
         entry = super().settle(token)
         with self.lock:
             if entry is not None and entry["settlement"] is not None and not self.fenced:
-                observation = {"word": entry["settlement"].word,
-                               "detail": entry["settlement"].detail}
-                original = ({"word": entry["result"].word, "detail": entry["result"].detail}
-                            if entry["original_recorded"] else None)
                 try:
-                    self._write(token, entry, original, observation)
+                    self._write(token, entry, *self._recorded(entry))
                 except (OSError, OutboxError) as exc:
                     entry["record_error"] = self._fence(exc)
         return entry
+
+    def resend(self, token):
+        # The re-send's intent reaches disk (as an uncertain re-send) before
+        # the NNTP connection opens; a restart in between finds it uncertain.
+        with self.lock:
+            entry = self.entries.get(token)
+            if entry is None:
+                return None
+            self._resend_allowed(entry)
+            if self.fenced:
+                raise OutboxError(self.fenced)
+            entry["resends"].append(fn_client.Result(
+                fn_client.UNCERTAIN, fn_client.unsettled(
+                    entry["message_id"], "a re-send was in flight with no recorded answer"),
+                {"message_id": entry["message_id"]}, ""))
+            try:
+                self._write(token, entry, *self._recorded(entry))
+            except (OSError, OutboxError) as exc:
+                entry["resends"].pop()
+                entry["record_error"] = self._fence(exc)
+                raise OutboxError(entry["record_error"]) from exc
+            entry["resends"][-1] = self._send_again(entry)
+            try:
+                self._write(token, entry, *self._recorded(entry))
+            except (OSError, OutboxError) as exc:
+                entry["record_error"] = self._fence(exc)
+            return entry
 
 
 class ReadMarks:
@@ -895,6 +1082,22 @@ def verdict_kind(report) -> str:
     return report.split(" ", 1)[0].rstrip(":")
 
 
+def answer_kind(answer: str) -> str:
+    """A CSS label for a node's retrieval answer; the text shown is the node's."""
+    if answer.startswith(("423 withdrawn", "430 withdrawn")):
+        return "withdrawn"
+    if answer.startswith(("220", "221", "222", "223")):
+        return "served"
+    return "unavailable"
+
+
+def withdrawn_note(answer: str) -> str:
+    return ("The node answered <code>" + e(answer) + "</code>: an authorized cancel "
+            "withdrew this article from what the node serves. It existed and was "
+            "accepted; people may already have read it, and copies elsewhere are not "
+            "erased. The withdrawal is the node's record, not this reader's.")
+
+
 def e(value) -> str:
     return html.escape(str(value if value is not None else ""), quote=True)
 
@@ -987,6 +1190,10 @@ button:hover,.button:hover { background:#0b4439 } .muted { color:#52645d }
 .identity { font-size:.85rem } .resume code { overflow-wrap:anywhere } form.inline { display:inline }
 form.inline button { padding:.35rem .7rem; font-size:.85rem } .row { display:flex; gap:.6rem; flex-wrap:wrap }
 .row label { flex:1 1 12rem }
+dl.facts { display:grid; grid-template-columns:minmax(9rem,14rem) 1fr; gap:.3rem 1rem; margin:.6rem 0 }
+dl.facts dt { font-weight:650 } dl.facts dd { margin:0; overflow-wrap:anywhere }
+@media (max-width: 560px) { dl.facts { grid-template-columns:1fr } dl.facts dd { margin-bottom:.4rem } }
+.withdrawn { background:#ece3f3; color:#4b2a63 } .hole { border-style:dashed; background:#faf9f4 }
 """
 
 
@@ -1028,6 +1235,13 @@ class Handler(BaseHTTPRequestHandler):
     def valid_host(self) -> bool:
         return self.headers.get("Host") == "127.0.0.1:%d" % self.server.server_port
 
+    def cross_site(self) -> bool:
+        # Fetch metadata (W3C Fetch Metadata Request Headers): a browser says
+        # where a request came from.  Another site's page, image, iframe or
+        # form reaching this loopback reader is refused before any NNTP
+        # command or local write; a typed address or bookmark says `none`.
+        return self.headers.get("Sec-Fetch-Site", "none") not in ("same-origin", "none")
+
     def get_parameters(self):
         if len(self.path) > 2048:
             raise ValueError("request URL is too long")
@@ -1045,9 +1259,8 @@ class Handler(BaseHTTPRequestHandler):
                   ("<p>Message-ID: <code>" + e(msgid) + "</code></p>" if msgid else "") +
                   link + "</div>", 200 if word in ("done", "accepted") else 503)
 
-    def submission_result(self, token: str, settle: bool = False):
-        entry = (self.server.submissions.settle(token) if settle else
-                 self.server.submissions.get(token))
+    def submission_result(self, token: str):
+        entry = self.server.submissions.get(token)
         if entry is None:
             self.page("Submission unavailable", "<p>No local record has this identifier. "
                       "A form may have expired before its first submission. "
@@ -1098,12 +1311,33 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 finding = "The lookup could not establish whether the article is served."
             observed = "<p class='hint'>" + e(finding) + "</p>"
+        resends = entry.get("resends") or []
+        if resends:
+            observed += ("<h3>Sent again at your request (same bytes, same Message-ID)</h3>"
+                         "<p class='muted'>The original answer above is unchanged. Each "
+                         "line is the node's answer to one re-send, as it sent it.</p><ol>" +
+                         "".join("<li><span class='badge " + e(one.word) + "'>" +
+                                 e(one.word) + "</span> <span class='reason'>" +
+                                 e(one.detail) + "</span></li>" for one in resends) + "</ol>")
+        hidden = ("<input type='hidden' name='csrf' value='" + e(self.server.token) +
+                  "'><input type='hidden' name='submission_id' value='" + e(token) + "'>")
+        actions = ("<form class='inline' method='post' action='/settle'>" + hidden +
+                   "<button type='submit'>Check whether the node serves this "
+                   "Message-ID</button></form>")
+        if word == fn_client.UNCERTAIN and len(resends) < MAX_RESENDS:
+            actions += (" <form class='inline' method='post' action='/resend'>" + hidden +
+                        "<button type='submit'>Send the same bytes again</button></form>"
+                        "<p class='meta'>Sending again repeats this exact article with "
+                        "this Message-ID. If the node already stored it, it says so and "
+                        "stores nothing new; if it did not, this is the post. It is never "
+                        "done automatically.</p>")
+        local = ("<span class='badge uncertain'>local record uncertain</span> "
+                 if entry.get("record_error") else "")
         self.page("Post " + word, "<nav><a href='/'>Groups</a></nav><article>"
-                  "<span class='badge " + e(word) + "'>" + e(word) + "</span>"
-                  "<h2>" + e(meaning) + "</h2>"
+                  "Outcome: <span class='badge " + e(word) + "'>" + e(word) + "</span> "
+                  + local + "<h2>" + e(meaning) + "</h2>"
                   "<p class='meta'>Message-ID: <code>" + e(msgid) + "</code></p>" + said
-                  + observed + "<p><a href='" + e(href("/settle", id=token)) +
-                  "'>Check whether the node serves this Message-ID</a></p>"
+                  + observed + "<p>" + actions + "</p>"
                   "<details" + (" open" if word == fn_client.UNCERTAIN else "") +
                   "><summary>The exact article sent</summary><pre>" + e(source) +
                   "</pre></details>"
@@ -1111,7 +1345,8 @@ class Handler(BaseHTTPRequestHandler):
                   e(result.detail) + "</pre></details>"
                   + ("<p class='hint'>" + e(entry.get("record_error")) +
                      ". This process is fenced from new submissions. The node answer above "
-                     "was observed here, but its local recording is uncertain.</p>"
+                     "was observed here, but this client could not record it locally: "
+                     "that is this machine's failure, not the node refusing the post.</p>"
                      if entry.get("record_error") else "") +
                   "<p class='muted'>Refresh this page safely; it never sends another POST. "
                   + ("The durable outbox keeps the source and recorded result across restart."
@@ -1126,32 +1361,44 @@ class Handler(BaseHTTPRequestHandler):
         statement = bool(first("fn-statement"))
         carrier = bool(first("fn-authorship"))
         kind = verdict_kind(verdict) if has_verdict_lookup else "unavailable"
-        badge = ("<p><span class='badge " + e(kind) + "'>node verdict: " + e(kind) +
-                 "</span></p>")
-        verdict_html = (("<p class='meta'>Server report of historical verification "
-                         "verdict: " + e(verdict) + ". This reports what this node "
-                         "recorded; it is not an independent cryptographic check or "
-                         "current authorization.</p>") if verdict else
-                        "<p class='meta'>Server report of historical verification "
-                        "verdict: unavailable" +
-                        ("" if has_verdict_lookup else
-                         " (HDR :fn-verified needs a group and local number; this view "
-                         "was reached by Message-ID)") + ".</p>")
-        provenance = (badge + "<p class='hint'><strong>Who wrote this?</strong> The displayed "
-                      "From name is a claim in the article. This reader has not "
-                      "verified the writer's identity.</p><p class='meta'>"
-                      + ("FN-Statement present; not verified here" if statement else
-                         "No FN-Statement recorded in this article") + "<br>" +
-                      ("FN-Authorship carrier present; not verified here" if carrier else
-                       "No FN-Authorship carrier recorded in this article") + "</p>" +
-                      verdict_html +
-                      "<details><summary>Recorded handling details</summary>"
-                      "<p class='meta'>From (claimed): " + e(first("from")) +
-                      "<br>Path: " + e(first("path") or "not supplied") +
-                      "<br>Injection-Info: " + e(first("injection-info") or "not supplied") +
-                      "<br>Injection-Date: " + e(first("injection-date") or "not supplied") +
-                      "<br>References: " + e(first("references") or "none") +
-                      "</p></details><p class='muted'>Viewing does not acknowledge application processing.</p>")
+        if verdict:
+            recorded = ("<span class='badge " + e(kind) + "'>" + e(kind) + "</span> "
+                        "<code>" + e(verdict) + "</code> — what this node recorded when it "
+                        "checked the article's authorship; a key retired later does not "
+                        "change this record")
+        elif has_verdict_lookup:
+            recorded = ("<span class='badge unavailable'>unavailable</span> the node gave "
+                        "no usable <code>HDR :fn-verified</code> line for this number")
+        else:
+            recorded = ("<span class='badge unavailable'>unavailable</span> "
+                        "<code>HDR :fn-verified</code> needs a group and local number; this "
+                        "view was reached by Message-ID")
+        carried = [name for name, present in (("FN-Statement", statement),
+                                              ("FN-Authorship", carrier)) if present]
+        provenance = (
+            "<p><span class='badge " + e(kind) + "'>node verdict: " + e(kind) +
+            "</span></p><dl class='facts'>"
+            "<dt>Claimed author</dt><dd>" + e(first("from") or "(no From)") +
+            " <span class='muted'>— the From line is what the poster wrote; nobody "
+            "has checked it</span></dd>"
+            "<dt>Authorship evidence carried</dt><dd>" +
+            (e(" and ".join(carried)) + " present in the article" if carried else
+             "none: the article carries no FN-Statement or FN-Authorship") + "</dd>"
+            "<dt>The node's historical verdict</dt><dd>" + recorded + "</dd>"
+            "<dt>Current enrollment or authorization</dt><dd>not available: this node "
+            "serves no query for a key's current status, so this page cannot say "
+            "whether the signer is still enrolled</dd>"
+            "<dt>Independent verification here</dt><dd>" +
+            ("not performed: carried but not independently verified here" if carried else
+             "not performed, and nothing is carried to verify") + "</dd></dl>"
+            "<details><summary>Recorded handling details</summary>"
+            "<p class='meta'>From (claimed): " + e(first("from")) +
+            "<br>Path: " + e(first("path") or "not supplied") +
+            "<br>Injection-Info: " + e(first("injection-info") or "not supplied") +
+            "<br>Injection-Date: " + e(first("injection-date") or "not supplied") +
+            "<br>References: " + e(first("references") or "none") +
+            "</p></details><p class='muted'>Viewing does not acknowledge application "
+            "processing.</p>")
         msgid = one["message_id"] or ""
         resume = ""
         if number and msgid:
@@ -1165,7 +1412,8 @@ class Handler(BaseHTTPRequestHandler):
                       "line: <code>" + e("fn_client.py read %s --since %d" % (group, number)) +
                       "</code></p></details>")
         nav = ("<nav><a href='" + e(href("/g", name=group)) + "'>" + e(group) +
-               "</a><a href='" + e(href("/compose", group=group, reply=number)) +
+               "</a><a href='" + e(href("/t", group=group, number=number)) +
+               "'>Conversation</a><a href='" + e(href("/compose", group=group, reply=number)) +
                "'>Reply</a></nav>" if group and number else
                "<nav><a href='/'>Groups</a></nav>")
         return (nav + "<article><h2>" + e(first("subject") or "(no subject)") +
@@ -1224,6 +1472,77 @@ class Handler(BaseHTTPRequestHandler):
                   "keeps no index.</p>" % SEARCH_SPAN +
                   (rows or "<p>No matches in this window.</p>") + "<nav>" + older + "</nav>")
 
+    def thread_page(self, values):
+        group, raw = values.get("group", ""), values.get("number", "")
+        if not group_token(group) or not raw.isascii() or not raw.isdecimal() or \
+                len(raw) > 10 or int(raw) < 1:
+            raise ValueError("invalid article address")
+        number = int(raw)
+        before = None
+        if "before" in values:
+            limit = values["before"]
+            if not limit.isascii() or not limit.isdecimal() or len(limit) > 10 or int(limit) < 1:
+                raise ValueError("invalid conversation window")
+            before = int(limit)
+        result = self.run_backend(lambda: self.server.backend.thread(group, number, before))
+        if result is None:
+            return
+        if result.word != fn_client.DONE:
+            if answer_kind(result.detail) == "withdrawn":
+                self.page("Withdrawn", "<nav><a href='" + e(href("/g", name=group)) + "'>" +
+                          e(group) + "</a></nav><article><span class='badge withdrawn'>"
+                          "withdrawn</span><h2>Local #" + e(number) + " was withdrawn</h2><p>" +
+                          withdrawn_note(result.detail) + "</p></article>", 410)
+                return
+            self.outcome(result.word, result.detail + (
+                " (" + result.data["command"] + ")" if result.data.get("command") else ""))
+            return
+        data, marks = result.data, self.server.marks
+        missing = [one for one in data["ancestors"] if not one["row"]]
+        gaps = "".join(
+            "<article class='hole'><span class='badge " + e(answer_kind(one["answer"])) +
+            "'>" + e("withdrawn" if answer_kind(one["answer"]) == "withdrawn" else
+                     "served elsewhere" if answer_kind(one["answer"]) == "served" else
+                     "not served here") + "</span> earlier message <code>" +
+            e(one["message_id"]) + "</code> · the node answered <code>" +
+            e(one["answer"]) + "</code>" +
+            (" · <a href='" + e(href("/find", id=one["message_id"])) + "'>look it up</a>"
+             if answer_kind(one["answer"]) == "served" else "") + "</article>"
+            for one in missing)
+        cards = "".join(
+            "<article class='thread' style='margin-left:" + str(min(depth, 8) * 18) +
+            "px'><h2" + ("" if marks.is_read(group, row["number"]) else " class='unread'") +
+            ">" + ("<strong>▸ </strong>" if row["number"] == number else "") +
+            "<a href='" + e(href("/a", group=group, number=row["number"])) + "'>" +
+            e(row["subject"]) + "</a></h2><p class='meta'>" +
+            e(" · ".join(x for x in (row["from"], row["date"], "local #%s" % row["number"],
+                                     "its parent is not shown here" if outside else "")
+                         if x)) + "</p></article>"
+            for row, depth, outside in thread_rows(data["rows"]))
+        more = data["hits"] - data["shown"]
+        older = ("<a rel='prev' href='" + e(href("/t", group=group, number=number,
+                                                  before=data["start"] - 1)) +
+                 "'>Look for replies in older articles</a>" if data["start"] > data["low"] else "")
+        self.page("Conversation", "<nav><a href='" + e(href("/g", name=group)) + "'>" +
+                  e(group) + "</a><a href='" + e(href("/a", group=group, number=number)) +
+                  "'>The article</a><a href='" + e(href("/compose", group=group, reply=number)) +
+                  "'>Reply</a></nav><h2>Conversation</h2>"
+                  "<p class='muted'>Started by <code>" + e(data["root"]) + "</code>. "
+                  "Earlier messages are the article's References, each asked of the node by "
+                  "Message-ID. Replies are the node's answer to <code>" +
+                  e(data["command"] or "nothing: the window is empty") + "</code> over local "
+                  "numbers " + e("%d–%d" % (data["start"], data["end"])) + " of " + e(group) +
+                  ": the node decides which served articles match; replies outside this "
+                  "window or this group are not shown." +
+                  (" The Message-ID has characters a wildmat cannot state exactly; the "
+                   "pattern stands ? for each, so a near-identical Message-ID could also "
+                   "match." if data["approximate"] else "") + "</p>" +
+                  (("<h3>Not in this conversation's served history</h3>" + gaps) if gaps else "") +
+                  cards +
+                  ("<p class='muted'>" + e(more) + " more matching article(s) in this window "
+                   "are not shown; the newest " + e(data["shown"]) + " are.</p>" if more > 0 else "") +
+                  "<nav>" + older + "</nav>")
+
     def marks_note(self) -> str:
         error = self.server.marks.error
         return "<p class='hint'>" + e(error) + ".</p>" if error else ""
@@ -1280,6 +1599,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.valid_host():
             self.send_error(400)
+            return
+        if self.cross_site():
+            self.page("Refused", "<p>Requests from another site are not served.</p>", 403)
             return
         try:
             path, values = self.get_parameters()
@@ -1361,8 +1683,25 @@ class Handler(BaseHTTPRequestHandler):
                                              "local #%s" % row["number"],
                                              "reply to an article outside this window"
                                              if outside else "") if x)) +
+                    (" · <a href='" + e(href("/t", group=group, number=row["number"])) +
+                     "'>conversation</a>" if row.get("references") or outside else "") +
                     "</p></article>"
                     for row, depth, outside in thread_rows(rows))
+                holes = result.data.get("holes") or []
+                gaps = ""
+                if holes:
+                    gaps = ("<details class='holes'" + (" open" if len(holes) <= 8 else "") +
+                              "><summary>" + e(len(holes)) + " local number(s) in this "
+                              "window serve no article</summary><p class='muted'>The node's "
+                              "answer to <code>STAT</code> for each, as it sent it. A "
+                              "withdrawn article existed and was cancelled; a number with "
+                              "no article was never assigned here or its article was "
+                              "released.</p>" + "".join(
+                                  "<article class='hole'><span class='badge " +
+                                  e(answer_kind(hole["answer"])) + "'>" +
+                                  e(answer_kind(hole["answer"])) + "</span> local #" +
+                                  e(hole["number"]) + " · <code>" + e(hole["answer"]) +
+                                  "</code></article>" for hole in holes) + "</details>")
                 mark_all = (("<form class='inline' method='post' action='/mark'>"
                              "<input type='hidden' name='csrf' value='" + e(self.server.token) +
                              "'><input type='hidden' name='group' value='" + e(group) +
@@ -1381,6 +1720,9 @@ class Handler(BaseHTTPRequestHandler):
                                if end >= start else "No local article numbers")
                 frontier = (" · group currently spans %s–%s" % (low, high)
                             if high >= low else " · group currently has no articles")
+                if high >= low and end > high:
+                    frontier += (" · numbers after %s are not assigned yet; follow Newer "
+                                 "later for articles that arrive" % high)
                 self.page(group, "<nav><a href='/'>Groups</a><a href='" +
                           e(href("/compose", group=group)) + "'>Write a post</a></nav>"
                           "<h2>" + e(group) + "</h2><p class='muted'>" +
@@ -1391,7 +1733,7 @@ class Handler(BaseHTTPRequestHandler):
                           self.marks_note() +
                           "<nav aria-label='Article number windows'>" + older + " " + newer +
                           " " + mark_all + "</nav>" +
-                          (cards or "<p>No articles in this number window.</p>"))
+                          (cards or "<p>No articles in this number window.</p>") + gaps)
             elif path == "/search":
                 self.search_page(values)
             elif path == "/a":
@@ -1405,6 +1747,15 @@ class Handler(BaseHTTPRequestHandler):
                 if result is None:
                     return
                 if result.word != fn_client.DONE:
+                    if answer_kind(result.detail) == "withdrawn":
+                        self.page("Withdrawn", "<nav><a href='" + e(href(
+                            "/g", name=group, start=max(1, number - MAX_RECENT // 2),
+                            end=min(MAX_ARTICLE_NUMBER, number + MAX_RECENT // 2 - 1))) +
+                            "'>Articles around local #" + e(number) + "</a></nav><article>"
+                            "<span class='badge withdrawn'>withdrawn</span><h2>Local #" +
+                            e(number) + " in " + e(group) + " was withdrawn</h2><p>" +
+                            withdrawn_note(result.detail) + "</p></article>", 410)
+                        return
                     self.outcome(result.word, result.detail)
                     return
                 one = result.data["articles"][0]
@@ -1412,6 +1763,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.page(fn_client.first(one["headers"], "subject") or "Article",
                           self.article_html(group, number, one,
                                             result.data.get("fn_verified_report"), True))
+            elif path == "/t":
+                self.thread_page(values)
             elif path == "/compose":
                 group = values.get("group", "")
                 if not group_token(group):
@@ -1474,11 +1827,11 @@ class Handler(BaseHTTPRequestHandler):
                            if record_error else "") +
                           self.compose_form(token, group, draft["subject"], draft["sender"],
                                             draft["references"], draft["body"]))
-            elif path in ("/result", "/settle"):
+            elif path == "/result":
                 token = values.get("id", "")
                 if not token or len(token) > 64:
                     raise ValueError("invalid submission identifier")
-                self.submission_result(token, settle=(path == "/settle"))
+                self.submission_result(token)
             elif path == "/find":
                 msgid, within = values.get("id", ""), values.get("group", "")
                 if not (len(msgid) <= 250 and msgid.startswith("<") and msgid.endswith(">")
@@ -1494,6 +1847,12 @@ class Handler(BaseHTTPRequestHandler):
                 if result is None:
                     return
                 if result.word != fn_client.DONE:
+                    if answer_kind(result.detail) == "withdrawn":
+                        self.page("Withdrawn", "<nav><a href='/'>Groups</a></nav><article>"
+                                  "<span class='badge withdrawn'>withdrawn</span><h2><code>" +
+                                  e(msgid) + "</code> was withdrawn</h2><p>" +
+                                  withdrawn_note(result.detail) + "</p></article>", 410)
+                        return
                     self.outcome(result.word, result.detail, msgid)
                     return
                 one = result.data["articles"][0]
@@ -1567,8 +1926,11 @@ class Handler(BaseHTTPRequestHandler):
             self.page("Outbox unavailable", "<p>" + e(exc) + "</p>", 503)
 
     def do_POST(self):
-        if not self.valid_host() or self.path not in ("/post", "/mark"):
+        if not self.valid_host() or self.path not in ("/post", "/mark", "/settle", "/resend"):
             self.send_error(400)
+            return
+        if self.cross_site():
+            self.page("Refused", "<p>Requests from another site are not served.</p>", 403)
             return
         expected = "http://127.0.0.1:%d" % self.server.server_port
         if self.headers.get("Origin") != expected:
@@ -1584,6 +1946,27 @@ class Handler(BaseHTTPRequestHandler):
                                                     max_num_fields=16).items()}
             if not hmac.compare_digest(values.get("csrf", ""), self.server.token):
                 self.page("Refused", "<p>Form token is invalid.</p>", 403)
+                return
+            if self.path in ("/settle", "/resend"):
+                # Both touch the local record: a lookup observation, or the
+                # node's answer to the same bytes sent again at the person's
+                # explicit request.  Neither rewrites the original answer.
+                token = values.get("submission_id", "")
+                if not token or len(token) > 64:
+                    raise ValueError("invalid submission identifier")
+                if self.path == "/resend":
+                    entry = self.server.submissions.resend(token)
+                    if entry is None:
+                        self.page("Submission unavailable", "<p>No local record has this "
+                                  "identifier. Nothing was sent.</p>", 410)
+                        return
+                    self.redirect(href("/result", id=token))
+                    return
+                if self.server.submissions.settle(token) is None:
+                    self.page("Submission unavailable", "<p>No local record has this "
+                              "identifier.</p>", 410)
+                    return
+                self.redirect(href("/result", id=token))
                 return
             if self.path == "/mark":
                 # Local read marks only; nothing is sent to the node.
