@@ -3199,7 +3199,13 @@
         "planning/evidence/manifests/certify-20260925T045027Z-2521559.json",
         "planning/evidence/manifests/certify-20260925T050457Z-2551445.json"
       ],
-      "progress_note": "Lane bp-routing (2026-09-25). Teeth in tests/acl2/bp-route-tests.lisp: a reachable witness (the bp-node-forward-retry fixture's held transit to dtn://bp-dest/, routed to relay, proposes the attempt) and must-fail cases for an unlisted hop, a wrong announced EID, a prefix route to another boundary, the route present (no report), and tables whose matching sets differ."
+      "progress_note": "Lane bp-routing (2026-09-25). Teeth in tests/acl2/bp-route-tests.lisp: a reachable witness (the bp-node-forward-retry fixture's held transit to dtn://bp-dest/, routed to relay, proposes the attempt) and must-fail cases for an unlisted hop, a wrong announced EID, a prefix route to another boundary, the route present (no report), and tables whose matching sets differ.",
+      "events": [
+        "fn-bpnp-step-offers-only-the-routed-hop",
+        "fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported",
+        "fn-bprt-next-hop-deterministic-in-the-table",
+        "fn-bprt-next-hop-names-a-live-matching-route"
+      ]
     }
   ]
 }
