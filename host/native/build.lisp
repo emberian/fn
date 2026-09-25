@@ -74,6 +74,7 @@
 (include-book "books/native-operator")
 (include-book "books/native-control")
 (include-book "books/native-hybrid-control")
+(include-book "books/peer-invite")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-native-app-fast")
 (include-book "books/bp-workflow-records")
@@ -164,6 +165,7 @@
 (ld "host/native-control-host.lisp" :ld-error-action :error)
 (ld "host/native-hybrid-control-host.lisp" :ld-error-action :error)
 (ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
+(ld "host/peer-invite-host.lisp" :ld-error-action :error)
 (ld "host/topic-history-metadata-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
@@ -246,6 +248,9 @@
         ; executor for the ACL2-planned group/capacity actions.
         (load "host/native/operator.lisp")
         (load "host/native/signature-command.lisp")
+        ; Peering invitations (PRF-097): after the hybrid control handler it
+        ; wraps, the signing commands it reuses and the admin publisher.
+        (load "host/native/peer-invite.lisp")
         (load "host/native/checkpoint.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
