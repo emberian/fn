@@ -382,3 +382,83 @@
                                     fn-olog-class-word fn-olog-text)
                                    (fn-olog-field fn-olog-decimal
                                     fn-olog-symbol-text))))))
+
+; -----------------------------------------------------------------------------
+; Refused POSTs (PKT-095): fn-olog-served-refusal-lines, which
+; host/owner-host.lisp fn-owner-chunk calls over the effects it installs, and
+; fn-olog-control-refusal-line, which fn-owner-operator-submit calls.
+
+(defun olt-reply (text) (list :reply (fn-nntp-crlf (fn-nntp-string-octets text))))
+(defconst *olt-read-effects*
+  (list (olt-reply "340 send article to be posted")
+        (olt-reply (fn-post-refusal-line :unknown-group))
+        (olt-reply "240 article received")
+        (olt-reply (fn-post-refusal-line :oversize))
+        (olt-reply "441 posting failed; a text no table names")))
+(defconst *olt-refusal-lines*
+  (fn-olog-served-refusal-lines *olt-served* 3 *olt-read-effects*))
+(assert-event (equal (len *olt-refusal-lines*) 3))
+(assert-event (equal (fn-olog-441-count *olt-read-effects*) 3))
+(assert-event
+ (equal *olt-refusal-lines*
+        (list (olt-text "refused post path=served connection=3 reason=unknown-group time=2026-09-18T00:00:00Z")
+              (olt-text "refused post path=served connection=3 reason=oversize time=2026-09-18T00:00:00Z")
+              (olt-text "refused post path=served connection=3 reason=unnamed time=2026-09-18T00:00:00Z"))))
+; A read with no 441 logs nothing.
+(assert-event
+ (null (fn-olog-served-refusal-lines *olt-served* 3
+                                     (list (olt-reply "240 article received")))))
+; The weaker statement "one line per reply" is false: the 340 and the 240
+; above are replies and have no line.
+(must-fail
+ (defthm olt-refusal-lines-one-per-reply
+   (equal (len (fn-olog-served-refusal-lines o id effects)) (len effects))
+   :hints (("Goal" :in-theory (disable fn-olog-served-refusal-line)))))
+; The reason read-back is not the identity on arbitrary octets: an unnamed
+; 441 reads as `unnamed', so the membership hypothesis is needed.
+(must-fail
+ (defthm olt-post-refusal-reason-without-membership
+   (equal (fn-olog-post-refusal-reason (fn-olog-post-refusal-reply reason))
+          reason)
+   :hints (("Goal" :in-theory (disable fn-olog-post-refusal-reply)))))
+
+; The control path: the operator's article naming a group the owner does not
+; serve is refused by the submit, and its line says so with the reason.
+(defconst *olt-operator-msgid* (olt-text "<op-refused@example.invalid>"))
+(defconst *olt-operator-groups* (list (olt-text "not.carried")))
+(assert-event
+ (equal (fn-own-operator-submit-result *olt-served* *olt-operator-msgid*
+                                       *olt-operator-groups* *olt-source*)
+        :refused))
+(defconst *olt-control-refusal*
+  (fn-olog-control-refusal-line *olt-served* *olt-operator-msgid*
+                                *olt-operator-groups* *olt-source*))
+(assert-event (equal (fn-olog-line-word *olt-control-refusal*) (olt-text "refused")))
+; The article names fn.letters and the operator asked for not.carried: the
+; decision is the injection's :control-mismatch, and the line names it.
+(assert-event
+ (equal *olt-control-refusal*
+        (olt-text "refused post path=control message-id=<op-refused@example.invalid> reason=control-mismatch time=2026-09-18T00:00:00Z")))
+; A decision that injects gets no refusal line: here the submit answers
+; :busy (a submission is in flight), which is not a refusal.
+(defconst *olt-operator-ok-msgid* (olt-text "<log@example.invalid>"))
+(defconst *olt-operator-ok-groups* (list (olt-text "fn.letters")))
+(assert-event
+ (equal (fn-own-operator-submit-result *olt-served* *olt-operator-ok-msgid*
+                                       *olt-operator-ok-groups* *olt-source*)
+        :busy))
+(assert-event
+ (null (fn-olog-control-refusal-line *olt-served* *olt-operator-ok-msgid*
+                                     *olt-operator-ok-groups* *olt-source*)))
+; The weaker statement "a control line says refused whenever the submit did
+; not submit" is false: :busy is not a refusal and has no line.
+(must-fail
+ (defthm olt-control-refusal-line-for-every-non-submission
+   (implies (not (equal (fn-own-operator-submit-result o m g x) :submitted))
+            (equal (fn-olog-line-word (fn-olog-control-refusal-line o m g x))
+                   (fn-olog-text "refused")))
+   :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text
+                                    fn-own-operator-submit-result)
+                                   (fn-olog-field fn-olog-decimal fn-olog-time
+                                    fn-olog-symbol-text
+                                    fn-own-operator-decision-of))))))

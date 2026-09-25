@@ -223,7 +223,18 @@ class NativeControlFilingTests(unittest.TestCase):
         print("NATIVE-CONTROL-WITNESS " + json.dumps(witness, sort_keys=True))
         self.assertTrue(refused[0].startswith(b"335"), refused)
         self.assertTrue(refused[1].startswith(b"437"), refused)
-        self.assertTrue(any("control-not-filed" in line for line in lines), lines)
+        # PKT-104: the 437 carries its reason (books/peer-inbound.lisp
+        # fn-peer-transit-refusal-line over fn-post-store-refusal-text), fed
+        # by host/native/owner.lisp fnn-owner-transit-complete, and its log
+        # line (fn-olog-transit-line) names the code and the detail.
+        self.assertEqual(
+            refused[1],
+            b"437 transfer rejected; control message not filed: its control group"
+            b" is not configured here (control-not-filed)\r\n")
+        self.assertTrue(any(line.startswith("refused transit ") and "code=437" in line
+                            and "detail=control-not-filed" in line
+                            and "message-id=" + cancel in line
+                            for line in lines), lines)
         self.assertTrue(ordinary[1].startswith(b"235"), ordinary)
         self.assertTrue(filed[1].startswith(b"235"), filed)
         self.assertTrue(in_control[0].startswith(b"211 1 "), in_control)

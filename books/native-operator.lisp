@@ -218,6 +218,26 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
           (fn-nop-parse-profile-flags (cddr words) base named
                                       (cons (cons field value) overrides)))))))
 
+;  A command-line word that starts with `--' is a flag, never a group name.
+; RFC 5536 section 3.1.4 admits such a newsgroup name; fn declines to take one
+; from a command line (a local policy, PKT-103): a misspelt or unknown flag
+; would otherwise become a group, as `--max-article-octets' and `4194304' did
+; under the developer init (planning/evidence/large-article-2026-09-25.md
+; section 4.1).
+(defun fn-nop-flag-wordp (word)
+  (declare (xargs :guard t))
+  (and (stringp word)
+       (<= 2 (length word))
+       (equal (char word 0) #\-)
+       (equal (char word 1) #\-)))
+
+(defun fn-nop-some-flag-wordp (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (or (fn-nop-flag-wordp (car words))
+          (fn-nop-some-flag-wordp (cdr words)))
+    nil))
+
 (defun fn-nop-parse-init (words config)
   (declare (xargs :guard t))
   (let* ((parsed (fn-nop-parse-profile-flags words :default nil nil))
@@ -231,6 +251,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
            (fn-nop-usage :invalid-init-profile "init" config words))
           ((equal groups :bad)
            (fn-nop-usage :invalid-init-groups "init" config words))
+          ((fn-nop-some-flag-wordp names)
+           (fn-nop-usage :flag-word-as-group "init" config words))
           ; The profile's own relations, by the name of the first that fails.
           ((equal (fn-ncfg-first profile) :invalid)
            (fn-nop-refused (fn-ncfg-second profile) "init" config words))
@@ -242,6 +264,34 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
            (fn-nop-refused :reserved-group-name "init" config words))
           (t (fn-nop-result :accepted :plan "init" config
                             (list :init groups request))))))
+
+;  The developer image's `store ROOT init [PROFILE-FLAGS] [GROUP ...]'
+; (host/native/io.lisp fnn-command-developer-init): the operator's profile
+; grammar over the development base, so a profile flag sets its field, and a
+; flag-shaped word left among the groups is refused instead of becoming a
+; group.  (:init GROUPS REQUEST), GROUPS NIL for the image's default groups,
+; or (:refused REASON).  The groups themselves are admitted at the store.
+(defun fn-nop-developer-init (words)
+  (declare (xargs :guard t))
+  (let ((parsed (fn-nop-parse-profile-flags words :development nil nil)))
+    (if (not (consp parsed))
+        (list :refused :invalid-init-profile)
+      (let* ((request (car parsed))
+             (names (fn-ncfg-second parsed))
+             (profile (fn-bs-profile-resolve request nil)))
+        (cond ((equal (fn-ncfg-first profile) :invalid)
+               (list :refused (fn-ncfg-second profile)))
+              ((fn-nop-some-flag-wordp names)
+               (list :refused :flag-word-as-group))
+              (t (list :init names request)))))))
+
+; An accepted developer init names no flag-shaped group (by its definition:
+; the refusal arm above), and its request is the parsed profile flags.
+(defthm fn-nop-developer-init-groups-are-not-flags-by-definition
+  (implies (equal (car (fn-nop-developer-init words)) :init)
+           (not (fn-nop-some-flag-wordp (cadr (fn-nop-developer-init words)))))
+  :hints (("Goal" :in-theory (disable fn-nop-parse-profile-flags
+                                      fn-bs-profile-resolve))))
 
 ; `store upgrade-profile [WORD] [--FIELD N ...]': the offline profile upgrade
 ; (books/store-profile-upgrade.lisp).  WORD names a preset base; without it
@@ -728,6 +778,16 @@ formed and the operator asked for something the node declined to do."
   (if (fn-native-operator-result-principal-planp result)
       (fn-record-string-octets
        (fn-native-config-auth-path (fn-native-operator-result-config result)))
+    nil))
+
+; The store the configuration declares, whose writer lock tells the principal
+; verb whether an owner is serving (PKT-102,
+; fn-native-auth-admin-effect-word).
+(defun fn-native-operator-result-principal-store-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-principal-planp result)
+      (fn-record-string-octets
+       (fn-native-config-store (fn-native-operator-result-config result)))
     nil))
 
 (defun fn-native-operator-result-native-action (result)

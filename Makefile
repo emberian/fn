@@ -693,6 +693,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-retention-preparation \
 	books/owner-agent \
 	books/owner-log \
+	books/owner-served-bound \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
 	books/consumer-poll-index \
@@ -715,6 +716,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-operator-tests \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
+	tests/acl2/owner-served-bound-tests \
 	tests/acl2/owner-config-tests \
 	tests/acl2/owner-prepare-correspondence-tests \
 	books/owner-store-budget \

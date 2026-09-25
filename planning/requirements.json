@@ -1433,7 +1433,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-014",
-        "PRF-092"
+        "PRF-092",
+        "PRF-095"
       ],
       "verification": [
         "proof",
@@ -1464,7 +1465,8 @@
       "proof_targets": [
         "PRF-015",
         "PRF-016",
-        "PRF-054"
+        "PRF-054",
+        "PRF-095"
       ],
       "verification": [
         "proof",
