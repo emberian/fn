@@ -114,7 +114,17 @@ the profile's widths and the observations as inputs:
 
 ## Runs
 
-(filled in below as they complete)
+| run | host | scope | result |
+| --- | --- | --- | --- |
+| `run-20260925T105044Z-4572`, manifest `certify-20260925T105118Z-4150165` | persvati, 2 jobs, 300 s, w25 | `--affected-by` config, hybrid-lifecycle, native-operator, peer-invite: 530 books, 299 certified | 295 passed, 4 failed, none of them this lane's: `books/store-reclaim` (`fn-pb-path-agent` called with one argument, arity changed on dev by the D32 Path change), `tests/acl2/store-reclaim-tests` (its dependent), `books/poster-bytes-buffer` (`fn-pbb-source-index-is-inj-source-of`) and `tests/acl2/octets-stobj-tests`; no changed book is in their include closure's changed set beyond config/lifecycle, and each fails in an event this lane does not touch |
+
+Proof cost at 2 jobs on persvati (same run): `books/peer-invite` 4.6 s,
+`tests/acl2/peer-invite-tests` 5.9 s, `books/config` 1.2 s,
+`books/config-invariants` 1.0 s, `books/native-operator` 10.1 s (process
+wall, 5.5 s of it `include-book native-admin`; a WARNING, not over the
+ratchet). The run's other slow books (byte-store-k0*, bp-node-*) are
+unchanged by this lane and were measured on a loaded box.
+
 
 ## Not done, and why
 
