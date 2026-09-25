@@ -1986,6 +1986,29 @@
       ],
       "implementation_note": "`operator CONFIG status|pins|obligations|peer list` asks the owner whose control socket the configuration names (FNLS frames); the owner renders the report from the Store, configuration and connection pins it carries (fn-nls-live-report) under its mutex and returns no state; with no owner the Store is opened read-only and the same renderer runs (fn-nls-offline-report). fn-nls-route: no socket, or a socket nothing accepts on, is the offline path, whose shared lock refuses behind a live owner; any other failure is uncertain (3), an owner refusal is refused (1). `status --watch N` re-asks every N seconds (1..86400).",
       "note": "Spike deferral 'live status, obligations, pins' (planning/evidence/spike-operator-2026-09-25.md). Held BP forwarding obligations are the DTN image's `bp-obligation status`, not this report: the NNTP owner carries no BP node."
+    },
+    {
+      "id": "NNT-012",
+      "title": "Key succession and revocation are owner-executed signed statements; a revoked principal is never verified again and its later transit is :revoked evidence",
+      "specification": "specs/peering.md#9-key-statements-succession-and-revocation-prf-098",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-098"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/key-statements.lisp",
+        "books/peer-authored-accept.lisp",
+        "books/replay.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "tests/acl2/peer-authored-accept-tests.lisp",
+        "planning/evidence/peer-keys-2026-09-25.md"
+      ],
+      "implementation_note": "A stronger fn guarantee and local policy (no RFC defines key statements). ACL2 decides: fn-ks-plan in C2's fn-ctl-authorize shape (verb keys) with the PoP observations checked in ACL2; the owner executes after the statement's kind-4 commit; the revoked arm of fn-pa-current-plan on NNTP transit only. Stays specified: no native run on these bytes; the kind-4-then-kind-3 crash cut is not a model crash point yet."
     }
   ]
 }

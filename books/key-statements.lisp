@@ -5,13 +5,15 @@
 ;
 ; A key statement is an ordinary signed article in a group the operator's
 ; authorities rows grant the verb "keys" over (fn.keys by convention).  Its
-; authored source's header carries the statement:
+; authored source's body carries the statement:
 ;
+;   (body lines of the authored source; a long value spans several lines of
+;   the same name, concatenated)
 ;   FN-Key-Statement: succession-v1 | revocation-v1
 ;   FN-Key-Principal: HEX64                 the principal the statement is about
 ;   FN-Key-Old-Ed25519: HEX64               succession: the key it retires
 ;   FN-Key-New-Ed25519: HEX64               succession: the new key pair
-;   FN-Key-New-ML-DSA-65: HEX3904           (folded; SP and HTAB are ignored)
+;   FN-Key-New-ML-DSA-65: HEX3904
 ;   FN-Key-PoP-Ed25519: HEX128              succession: the proof of possession,
 ;   FN-Key-PoP-ML-DSA-65: HEX6618           a hybrid signature by the NEW keys
 ;
@@ -43,20 +45,20 @@
 
 (defconst *fn-ks-verb* "keys")
 
-(defconst *fn-ks-statement-name*   ; fn-key-statement
-  '(102 110 45 107 101 121 45 115 116 97 116 101 109 101 110 116))
-(defconst *fn-ks-principal-name*   ; fn-key-principal
-  '(102 110 45 107 101 121 45 112 114 105 110 99 105 112 97 108))
-(defconst *fn-ks-old-ed-name*      ; fn-key-old-ed25519
-  '(102 110 45 107 101 121 45 111 108 100 45 101 100 50 53 53 49 57))
-(defconst *fn-ks-new-ed-name*      ; fn-key-new-ed25519
-  '(102 110 45 107 101 121 45 110 101 119 45 101 100 50 53 53 49 57))
-(defconst *fn-ks-new-ml-name*      ; fn-key-new-ml-dsa-65
-  '(102 110 45 107 101 121 45 110 101 119 45 109 108 45 100 115 97 45 54 53))
-(defconst *fn-ks-pop-ed-name*      ; fn-key-pop-ed25519
-  '(102 110 45 107 101 121 45 112 111 112 45 101 100 50 53 53 49 57))
-(defconst *fn-ks-pop-ml-name*      ; fn-key-pop-ml-dsa-65
-  '(102 110 45 107 101 121 45 112 111 112 45 109 108 45 100 115 97 45 54 53))
+(defconst *fn-ks-statement-name*   ; FN-Key-Statement:
+  '(70 78 45 75 101 121 45 83 116 97 116 101 109 101 110 116 58 32))
+(defconst *fn-ks-principal-name*   ; FN-Key-Principal:
+  '(70 78 45 75 101 121 45 80 114 105 110 99 105 112 97 108 58 32))
+(defconst *fn-ks-old-ed-name*   ; FN-Key-Old-Ed25519:
+  '(70 78 45 75 101 121 45 79 108 100 45 69 100 50 53 53 49 57 58 32))
+(defconst *fn-ks-new-ed-name*   ; FN-Key-New-Ed25519:
+  '(70 78 45 75 101 121 45 78 101 119 45 69 100 50 53 53 49 57 58 32))
+(defconst *fn-ks-new-ml-name*   ; FN-Key-New-ML-DSA-65:
+  '(70 78 45 75 101 121 45 78 101 119 45 77 76 45 68 83 65 45 54 53 58 32))
+(defconst *fn-ks-pop-ed-name*   ; FN-Key-PoP-Ed25519:
+  '(70 78 45 75 101 121 45 80 111 80 45 69 100 50 53 53 49 57 58 32))
+(defconst *fn-ks-pop-ml-name*   ; FN-Key-PoP-ML-DSA-65:
+  '(70 78 45 75 101 121 45 80 111 80 45 77 76 45 68 83 65 45 54 53 58 32))
 (defconst *fn-ks-succession-v1*    ; succession-v1
   '(115 117 99 99 101 115 115 105 111 110 45 118 49))
 (defconst *fn-ks-revocation-v1*    ; revocation-v1
@@ -66,31 +68,53 @@
     111 112 45 118 49))
 
 ; -----------------------------------------------------------------------------
-; Field values.  A field is read only when the header holds exactly one of
-; that name.  Hex is lowercase; folding whitespace is dropped.
+; Field values.  The statement is in the authored source's BODY, one line
+; per field, `Name: value' with the exact spelling above; a long value is
+; split over several lines of the same name, concatenated in order (a line
+; is at most 998 octets, and the carrier holds the source's header in a
+; bounded header field, so the key material cannot live in the header).
+; Hex is lowercase.
 
-(defun fn-ks-drop-wsp (octets)
+(defun fn-ks-prefix-rest (prefix line)
   (declare (xargs :guard t))
+  (if (consp prefix)
+      (if (and (consp line) (equal (car line) (car prefix)))
+          (fn-ks-prefix-rest (cdr prefix) (cdr line))
+        :no)
+    line))
+
+; The body's lines, split at LF, a CR before it dropped; LINE is the current
+; line reversed.
+(defun fn-ks-lines (octets line)
+  (declare (xargs :guard (true-listp line)))
   (if (consp octets)
-      (if (or (equal (car octets) 32) (equal (car octets) 9))
-          (fn-ks-drop-wsp (cdr octets))
-        (cons (car octets) (fn-ks-drop-wsp (cdr octets))))
-    nil))
+      (if (equal (car octets) 10)
+          (cons (reverse (if (and (consp line) (equal (car line) 13))
+                             (cdr line) line))
+                (fn-ks-lines (cdr octets) nil))
+        (fn-ks-lines (cdr octets) (cons (car octets) line)))
+    (if (consp line) (list (reverse line)) nil)))
+
+; The concatenated values of the lines named PREFIX, and whether any was.
+(defun fn-ks-values (prefix lines)
+  (declare (xargs :guard t))
+  (if (consp lines)
+      (let ((rest (fn-ks-prefix-rest prefix (car lines)))
+            (more (fn-ks-values prefix (cdr lines))))
+        (if (equal rest :no) more
+          (cons t (append (if (true-listp rest) rest nil) (cdr more)))))
+    (cons nil nil)))
+
+(defun fn-ks-field (lines prefix)
+  (declare (xargs :guard t))
+  (let ((v (fn-ks-values prefix lines)))
+    (if (car v) (cdr v) nil)))
 
 (defun fn-ks-unhex-exact (octets n)
   (declare (xargs :guard (natp n)))
-  (let ((hex (fn-ks-drop-wsp octets)))
-    (if (and (fn-id-hex-listp hex) (equal (len hex) (* 2 n)))
-        (fn-id-unhex hex)
-      nil)))
-
-(defun fn-ks-field (article name)
-  (declare (xargs :guard t))
-  (if (not (fn-article-syntax-p article)) nil
-    (let ((fields (fn-article-get-headers article name)))
-      (if (and (consp fields) (null (cdr fields)))
-          (fn-article-field-unfolded-value (car fields))
-        nil))))
+  (if (and (fn-id-hex-listp octets) (equal (len octets) (* 2 n)))
+      (fn-id-unhex octets)
+    nil))
 
 ; (:succession principal old-ed new-keys pop-signatures), (:revocation
 ; principal), or nil (not a statement, or a malformed one).
@@ -99,23 +123,26 @@
   (let ((parsed (fn-article-parse source)))
     (if (not (fn-article-result-okp parsed)) nil
       (let* ((article (fn-article-result-article parsed))
-             (kind (fn-ks-drop-wsp (fn-ks-field article *fn-ks-statement-name*)))
+             (lines (fn-ks-lines (and (true-listp article)
+                                      (fn-article-body article))
+                                 nil))
+             (kind (fn-ks-field lines *fn-ks-statement-name*))
              (principal (fn-ks-unhex-exact
-                         (fn-ks-field article *fn-ks-principal-name*) 32)))
+                         (fn-ks-field lines *fn-ks-principal-name*) 32)))
         (cond
          ((not (fn-hsig-exact-octets-p principal 32)) nil)
          ((equal kind *fn-ks-revocation-v1*) (list :revocation principal))
          ((equal kind *fn-ks-succession-v1*)
           (let ((old-ed (fn-ks-unhex-exact
-                         (fn-ks-field article *fn-ks-old-ed-name*) 32))
+                         (fn-ks-field lines *fn-ks-old-ed-name*) 32))
                 (new-ed (fn-ks-unhex-exact
-                         (fn-ks-field article *fn-ks-new-ed-name*) 32))
+                         (fn-ks-field lines *fn-ks-new-ed-name*) 32))
                 (new-ml (fn-ks-unhex-exact
-                         (fn-ks-field article *fn-ks-new-ml-name*) 1952))
+                         (fn-ks-field lines *fn-ks-new-ml-name*) 1952))
                 (pop-ed (fn-ks-unhex-exact
-                         (fn-ks-field article *fn-ks-pop-ed-name*) 64))
+                         (fn-ks-field lines *fn-ks-pop-ed-name*) 64))
                 (pop-ml (fn-ks-unhex-exact
-                         (fn-ks-field article *fn-ks-pop-ml-name*) 3309)))
+                         (fn-ks-field lines *fn-ks-pop-ml-name*) 3309)))
             (if (and (fn-hsig-exact-octets-p old-ed 32)
                      (fn-hsig-exact-octets-p new-ed 32)
                      (fn-hsig-exact-octets-p new-ml 1952)
@@ -536,7 +563,8 @@
                   "")
                 (if committed " committed" ""))))
 
-(in-theory (disable (:d fn-ks-drop-wsp) (:d fn-ks-unhex-exact) (:d fn-ks-field)
+(in-theory (disable (:d fn-ks-prefix-rest) (:d fn-ks-lines) (:d fn-ks-values)
+                    (:d fn-ks-unhex-exact) (:d fn-ks-field)
                     (:d fn-ks-statement) (:d fn-ks-pop-source)
                     (:d fn-ks-evidence) (:d fn-ks-verdict) (:d fn-ks-msgid)
                     (:d fn-ks-source) (:d fn-ks-pop-request) (:d fn-ks-plan)
