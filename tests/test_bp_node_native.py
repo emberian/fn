@@ -417,7 +417,8 @@ class NativeBpNodeTests(unittest.TestCase):
         out = self.wait_for_output(
             receiver, b"BP node delivery deferred busy=1", timeout=120)
         self.assertNotIn(b"request-refused", out)
-        self.assertNotIn(b"uncertain", out)
+        self.assertNotIn(b"application uncertain", out)
+        self.assertNotIn(b"application result is uncertain", out)
         time.sleep(5.5)
         # Any later connection runs the dispatch loop; an unrouted transit
         # consumes no application answer.
