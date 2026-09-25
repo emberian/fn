@@ -92,12 +92,14 @@
   "Run one request through FNRJ, owner Store, FNFD, and receipt decision.
 The caller holds SERVICE's mutex for this whole function."
   (fnn-bpapp-bind-owner-store)
-  (unless (eq (fnn-owner-action
-               'fn-owner-app-plan inbound-id (fnn-octet-list request) node-id
-               (fnn-octet-list bundle-identity) ingress bundle-source
-               bundle-destination)
-              :ready)
-    (return-from fnn-bpapp-accept-locked (values :refused nil)))
+  (let ((planned (fnn-owner-action
+                  'fn-owner-app-plan inbound-id (fnn-octet-list request) node-id
+                  (fnn-octet-list bundle-identity) ingress bundle-source
+                  bundle-destination)))
+    ;; ACL2's plan answer: :ready, the deferral :busy (BP-R17), or :refused.
+    (unless (eq planned :ready)
+      (return-from fnn-bpapp-accept-locked
+        (values (if (eq planned :busy) :busy :refused) nil))))
   ;; TXID is the planned transaction of the durable intent, or of the plan
   ;; that will become one.  Only :persist-intent and :submit consume it; a
   ;; request already bound before this process started may carry none.

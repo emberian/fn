@@ -8,14 +8,12 @@
 (include-book "bp-fnbs-byte-publisher")
 (set-verify-guards-eagerness 0)
 
-; The issued :conflict operation.  fn-bpnf-operationp (bp-node-foundation)
-; predates kind 14 and does not list :conflict among its kinds, so the
-; shape is stated here.
+; The issued :conflict operation: an fn-bpnf-operationp of kind :conflict
+; whose detail is the (record ingress) pair fn-bpnp-conflict-propose-step
+; issues.
 (defun fn-bpnf-conflict-operation-shapep (issued)
   (declare (xargs :guard t))
-  (and (true-listp issued) (equal (len issued) 6)
-       (equal (car issued) :bpnf-operation)
-       (natp (fn-bpn-nth 1 issued)) (natp (fn-bpn-nth 2 issued))
+  (and (fn-bpnf-operationp issued)
        (equal (fn-bpn-nth 3 issued) :conflict)
        (true-listp (fn-bpn-nth 4 issued))
        (equal (len (fn-bpn-nth 4 issued)) 2)))
@@ -67,7 +65,7 @@
   (declare (xargs :guard t)) (nth 6 operation))
 
 ; KEYSTONE.  An authorized kind-14 publication is exactly the machine's
-; pending :conflict operation at (epoch, op), with the next operation id
+; pending :conflict operation (an fn-bpnf-operationp) at (epoch, op), with the next operation id
 ; already advanced past it, under the held lock and an absent final name;
 ; it publishes the codec's frame of that very record at the stored-record
 ; name of (epoch, op).
@@ -75,7 +73,8 @@
   (let ((operation (fn-bpnf-conflict-publication-authorize
                     st epoch op record lock-owned final-absent)))
     (implies (equal (car operation) :ok)
-             (and (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :conflict)
+             (and (fn-bpnf-operationp (fn-bpnf-issued st))
+                  (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :conflict)
                   (equal (fn-bpn-nth 0 (fn-bpn-nth 4 (fn-bpnf-issued st)))
                          record)
                   (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :pending)
@@ -93,7 +92,7 @@
            :in-theory (e/d (fn-bpnf-conflict-publication-authorize
                             fn-bpnf-conflict-publication-name
                             fn-bpnf-conflict-publication-frame)
-                           (fn-bpnf-conflict-operation-shapep
+                           (fn-bpnf-operationp
                             fn-bpnf-operation-matchp
                             fn-bpnf-conflict-recordp
                             fn-bpnf-conflict-frame

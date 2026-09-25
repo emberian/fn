@@ -272,6 +272,32 @@
          (integerp (fn-bpn-nth 3 wait))
          (<= free (fn-bpn-nth 3 wait)))))
 
+; BP-R17 (spec 4.2, the (:after m) wait).  A delivery the application
+; answered :busy leaves the row held and :dispatch-pending with the volatile
+; wait (:bpnp-wait key :busy n m): n busy answers so far, m the monotonic
+; reading before which class 3 does not offer it again.  At n equal to the
+; kind-8 retry bound the row is stranded: still held, never refused, and
+; not offered again until recovery clears the volatile wait.
+(defconst *fn-bpnp-owner-backoff* 5000)
+
+(defun fn-bpnp-busy-count (key waits)
+  (declare (xargs :guard t))
+  (let ((wait (fn-bpnp-wait-for key waits)))
+    (if (and (equal (fn-bpn-nth 0 wait) :bpnp-wait)
+             (equal (fn-bpn-nth 2 wait) :busy))
+        (nfix (fn-bpn-nth 3 wait))
+      0)))
+
+(defun fn-bpnp-busy-blockedp (h waits observation)
+  (declare (xargs :guard t))
+  (let ((wait (fn-bpnp-wait-for (fn-bpnp-wait-key h) waits)))
+    (and (equal (fn-bpn-nth 0 wait) :bpnp-wait)
+         (equal (fn-bpn-nth 2 wait) :busy)
+         (or (<= *fn-bpnp-max-forward-retries* (nfix (fn-bpn-nth 3 wait)))
+             (not (fn-clock-observationp observation))
+             (< (nfix (fn-clock-monotonic observation))
+                (nfix (fn-bpn-nth 4 wait)))))))
+
 (defun fn-bpnp-oldest-eligible-with-credit
   (held node observation routes generation waits free selected)
   (declare (xargs :guard t :measure (acl2-count held)))
@@ -282,6 +308,7 @@
                      (not (fn-bpnp-blockedp
                            h node routes generation waits))
                      (not (fn-bpnp-credit-blockedp h waits free))
+                     (not (fn-bpnp-busy-blockedp h waits observation))
                      (or (null selected)
                          (< (nfix (fn-bpn-nth 3 h))
                             (nfix (fn-bpn-nth 3 selected)))))
@@ -322,6 +349,7 @@
                      (not (fn-bpp-fragmentp flags))
                      (equal (fn-bpn-nth 3 primary) node)
                      (not (fn-bpnp-blockedp h node nil generation waits))
+                     (not (fn-bpnp-busy-blockedp h waits observation))
                      (equal (fn-bpnp-held-expiry h observation) :uncertain)
                      (or (null selected)
                          (< (nfix (fn-bpn-nth 3 h))
@@ -1077,6 +1105,45 @@
                               :conflict (fn-bpn-nth 4 issued) :uncertain))
        (fn-bpnp-conflict-refusal ingress))))))
 
+;; BP-R17.  (:deliver-result epoch op key :busy detail obs): the owner
+;; answered the delivery named by the volatile marker (:delivery epoch op
+;; key) busy.  Nothing is proposed and nothing is published: the marker is
+;; cleared and the key's deferral wait is set; every other slot is kept.
+(defun fn-bpnp-busy-eventp (event)
+  (declare (xargs :guard t))
+  (and (true-listp event) (equal (len event) 7)
+       (equal (car event) :deliver-result)
+       (fn-frame-natp (fn-bpn-nth 1 event))
+       (fn-frame-natp (fn-bpn-nth 2 event))
+       (true-listp (fn-bpn-nth 3 event))
+       (equal (len (fn-bpn-nth 3 event)) 2)
+       (equal (fn-bpn-nth 4 event) :busy)
+       (fn-cbor-octet-listp (fn-bpn-nth 5 event))
+       (<= (len (fn-bpn-nth 5 event)) 256)
+       (fn-clock-observationp (fn-bpn-nth 6 event))))
+
+(defun fn-bpnp-busy-wait (key waits observation)
+  (declare (xargs :guard t))
+  (list :bpnp-wait key :busy (1+ (fn-bpnp-busy-count key waits))
+        (+ (nfix (fn-clock-monotonic observation)) *fn-bpnp-owner-backoff*)))
+
+(defun fn-bpnp-busy-delivery-step (st epoch op key observation)
+  (declare (xargs :guard t))
+  (if (not (and (true-listp st)
+                (equal (fn-bpnf-waits st) (list :delivery epoch op key))
+                (equal (fn-bpnf-epoch st) epoch)
+                (null (fn-bpnf-issued st))))
+      (fn-bpnf-answer st (list (list :delivery-answer :refused)))
+    (let* ((waits (fn-bpnp-waits st))
+           (wait (fn-bpnp-busy-wait key waits observation))
+           (n (fn-bpn-nth 3 wait)))
+      (fn-bpnf-answer
+       (update-nth 11 (cons wait (fn-bpnp-remove-wait key waits))
+                   (update-nth 7 nil st))
+       (list (if (<= *fn-bpnp-max-forward-retries* n)
+                 (list :delivery-stranded key n)
+               (list :delivery-deferred key n (fn-bpn-nth 4 wait))))))))
+
 (defun fn-bpnp-host-eventp (event)
   (declare (xargs :guard t))
   (case (fn-cbor-ag-car event)
@@ -1108,6 +1175,9 @@
           (fn-bpnp-session-idp (fn-bpn-nth 3 event))
           (fn-bpnp-forward-outcomep (fn-bpn-nth 4 event))
           (fn-clock-observationp (fn-bpn-nth 5 event))))
+    (:deliver-result
+     (or (fn-bpnf-host-eventp event)
+         (fn-bpnp-busy-eventp event)))
     (:recover-fnbs
      (or (fn-bpnf-host-eventp event)
          (and (true-listp event) (equal (len event) 7)
@@ -1219,6 +1289,11 @@
          (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :conflict))
     (fn-bpnp-conflict-persist-step
      st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event) (fn-bpn-nth 3 event)))
+   ((and (equal (fn-cbor-ag-car event) :deliver-result)
+         (equal (fn-bpn-nth 4 event) :busy))
+    (fn-bpnp-busy-delivery-step
+     st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event) (fn-bpn-nth 3 event)
+     (fn-bpn-nth 6 event)))
    ((fn-bpnp-conflict-held st event)
     (fn-bpnp-conflict-propose-step st event (fn-bpnp-conflict-held st event)))
    ((equal (fn-cbor-ag-car event) :session)
