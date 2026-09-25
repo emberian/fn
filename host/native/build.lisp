@@ -53,6 +53,18 @@
 (include-book "books/frame-stobj")
 (include-book "books/records-stobj")
 (include-book "books/article-stobj")
+;; SPIKE (D28, lane spike-representation): the payload recognizer is
+;; memoized.  `memoize' is a logical no-op (ACL2's own hons/memoize facility,
+;; not a trust tag); its table is keyed by the argument's pointer identity, so
+;; the second, third and fourth recognitions of the same payload object on one
+;; POST (the commit's seek, its completion gates, its finish, through
+;; fn-rcon-record-p) are table hits.  The 32 KiB POST profile of
+;; planning/evidence/spike-representation-2026-09-25.md put the list walk at
+;; 30% of the POST.  What dev must decide: the table keeps a key per payload
+;; object it has seen (the objects live in the store anyway) and is never
+;; cleared here; the proved form is the recognition carried in state
+;; (design boundary 10), and this line is its measurement.
+(memoize 'fn-record-payloadp)
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-intent-carried")
 (include-book "books/owner-commit-ocl")
