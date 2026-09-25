@@ -148,6 +148,8 @@
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
 (ld "host/native-operator-host.lisp" :ld-error-action :error)
+; The status report, offline and from the running owner.
+(ld "host/native-live-status-host.lisp" :ld-error-action :error)
 (ld "host/native-control-host.lisp" :ld-error-action :error)
 (ld "host/native-hybrid-control-host.lisp" :ld-error-action :error)
 (ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
