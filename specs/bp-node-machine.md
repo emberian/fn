@@ -1131,6 +1131,25 @@ the marker, propose nothing, leave `:dispatch-pending` and set wait
 `(:after m)`, so class 3 redelivers after the backoff (BP-R17) and serves
 other entries meanwhile.
 
+**BP-R17, present (2026-09-24).** The busy half is in `fn-bpnp-step`: the
+seven-field `(:deliver-result epoch op key :busy detail obs)` clears the
+marker and sets the volatile wait `(:bpnp-wait key :busy n m)` with
+`m` = monotonic + `*fn-bpnp-owner-backoff*` (5000 ms); nothing is proposed
+and the row stays held and `:dispatch-pending`
+(`fn-bpnp-step-busy-delivery-defers`, `books/bp-node-busy-delivery.lisp`).
+Class 3 offers the row again once the reading reaches `m`
+(`fn-bpnp-busy-deferral-ends-at-its-reading`); at the kind-8 retry bound
+`*fn-bpnp-max-forward-retries*` the answer is `(:delivery-stranded key n)`
+and the row is not offered until recovery clears the wait
+(`fn-bpnp-busy-stranded-row-is-not-offered`). The count is volatile, like
+every wait: a restart gives a stranded row a fresh budget. `:uncertain`
+keeps its fence (the delivery-uncertain marker, recovery first) rather than
+the `(:after m)` wait this paragraph first named for it. Host:
+`fn-owner-app-plan-install` answers a `(:busy reason)` transit plan `:busy`,
+`fnn-bpapp-accept-locked` returns it, `fnn-bpnode-request-result` maps it to
+`:busy`, and `fnn-bpnode-dispatch-one` issues the busy event with its
+observation (host/native/bp-node.lisp).
+
 ### 4.3 Forwarding: `fn-bpn-session-step`, `fn-bpn-resume-step`, `fn-bpn-forward-result-step`
 
 `fn-bpn-start-one st peer session obs`, called by a session open and by
@@ -3361,7 +3380,7 @@ it (review-2 §10).
 
 | Trace | Slice | | Trace | Slice | | Trace | Slice |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| BP-R01 | A3 | | BP-R09 | B | | BP-R17 | A1 |
+| BP-R01 | A3 | | BP-R09 | B | | BP-R17 | A1 (present, §4.2) |
 | BP-R02 | A1, A2 | | BP-R10 | A1 | | BP-R18 | D2 |
 | BP-R03 | A3 | | BP-R11 | C2 | | BP-R19 | A3 |
 | BP-R04 | A3 | | BP-R12 | C2 | | BP-R20 | B |
