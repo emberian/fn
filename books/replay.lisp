@@ -371,6 +371,35 @@
                      (cons e (fn-stxk-context-verdicts ctx))
                      (fn-stxk-context-current-generation ctx) nil))))
 
+;; SPIKE (spike/peering): defers the dev replay theorems for the :revoked
+;; composite.  Its verdict is recorded when the generation it names is, in
+;; the replayed history, a revocation tombstone ("fn-hybrid-revoked-v1",
+;; books/hybrid-lifecycle.lisp) of exactly the verdict's principal.
+(defconst *fn-replay-revoked-profile*
+  '(102 110 45 104 121 98 114 105 100 45 114 101 118 111 107 101 100 45 118 49))
+
+(defun fn-replay-apply-revoked-verdict (ctx e)
+  (declare (xargs :guard t))
+  (cond
+   ((not (equal (fn-stxk-context-kind ctx) :ok)) ctx)
+   ((not (fn-stxe-p e)) (fn-stxk-fault ctx :malformed-verdict))
+   ((not (equal (fn-stxe-sequence e) (fn-stxk-context-next ctx)))
+    (fn-stxk-fault ctx :sequence))
+   ((not (equal (fn-stxe-token e) :revoked))
+    (fn-stxk-fault ctx :composite-verdict))
+   (t
+    (let ((tombstone (fn-stxk-find (fn-stxe-keyring-generation e)
+                                   (fn-stxk-context-snapshots ctx))))
+      (if (not (and tombstone
+                    (equal (fn-stxk-profile tombstone)
+                           *fn-replay-revoked-profile*)
+                    (equal (fn-stxk-snapshot tombstone) (fn-stxe-detail e))))
+          (fn-stxk-fault ctx :composite-binding)
+        (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
+                         (fn-stxk-context-snapshots ctx)
+                         (cons e (fn-stxk-context-verdicts ctx))
+                         (fn-stxk-context-current-generation ctx) nil))))))
+
 (defun fn-replay-identity-step (ctx event)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (equal (fn-stxk-context-kind ctx) :ok)) ctx
@@ -390,6 +419,10 @@
        ;; (token :carried) is recorded without a snapshot lookup.
        ((fn-hsig-article-event-carried-bindsp event)
         (fn-replay-apply-carried-verdict
+         ctx (fn-stmt-value (fn-stxe-decode-exact
+                             (fn-stxa-verdict-event event)))))
+       ((fn-hsig-article-event-revoked-bindsp event)
+        (fn-replay-apply-revoked-verdict
          ctx (fn-stmt-value (fn-stxe-decode-exact
                              (fn-stxa-verdict-event event)))))
        ((fn-stxa-p event)

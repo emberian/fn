@@ -1002,6 +1002,14 @@
                                       (fn-pa-peer-carried-sources
                                        peer (fn-cfg-peers (fn-cfg-value cfg)))
                                       state))
+                 ; SPIKE (spike/peering): the delivering boundary's name and
+                 ; opaque-carriage budget, for the carried arm's budget
+                 ; decision (fn-pa-carried-budget-decision).
+                 (state (f-put-global 'fn-owner-transit-peer peer state))
+                 (state (f-put-global 'fn-owner-transit-budget
+                                      (fn-pa-peer-carried-budget
+                                       peer (fn-cfg-peers (fn-cfg-value cfg)))
+                                      state))
                  ; (nth 2 args) is the payload fn-node-prepare is given:
                  ; fn-peer-relayed-octets of the received octets
                  ; (fn-peer-injection-arguments-stages-the-relayed-octets).
@@ -1381,6 +1389,66 @@
         (fn-sn-keyring-snapshots s)
         (fn-owner-transit-carried-list t state)
         (fn-own-clock (fn-owner-core state)))))))
+
+;; SPIKE (spike/peering): the revoked arm's plan and kind-4 event
+;; (fn-pa-revoked-plan, fn-pa-revoked-event), for NNTP transit only, asked
+;; after fn-pa-current-plan refused with :local-enrollment.  Defers to dev:
+;; the fifth outcome of fn-pa-current-plan and the observation binding.
+(defun fn-owner-peer-revoked-plan (received state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pa-revoked-plan
+          received (fn-sn-keyring-snapshots (fn-owner-store state)))))
+
+(defun fn-owner-peer-revoked-event
+    (coordinates msgid received group-codes obligation subject evidence charge
+                 state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes
+                  (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
+    (value
+     (if (equal groups :bad) nil
+       (fn-pa-revoked-event
+        (first coordinates) (second coordinates) (third coordinates)
+        (fn-store-octets->string msgid) received groups
+        (fn-store-octets->string obligation)
+        (fn-store-octets->string subject)
+        (fn-store-octets->string evidence) charge
+        (fn-sn-keyring-snapshots s)
+        (fn-own-clock (fn-owner-core state)))))))
+
+;; SPIKE (spike/peering): the next keyring generation, for the control
+;; verbs' "0 = next" convenience (host/native/hybrid-control.lisp).  Defers
+;; to dev: an ACL2-owned "next" request in the hybrid control codec.
+(defun fn-owner-hybrid-next-generation (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((current (fn-hl-current-snapshot
+                  (fn-sn-keyring-snapshots (fn-owner-store state)))))
+    (value (if (fn-stxk-p current)
+               (1+ (fn-stxk-keyring-generation current))
+             1))))
+
+;; SPIKE (spike/peering): the budget decision and the refusal class.
+(defun fn-owner-transit-peer-name (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (if (boundp-global 'fn-owner-transit-peer state)
+             (f-get-global 'fn-owner-transit-peer state)
+           nil)))
+
+(defun fn-owner-carried-budget-decision (usage charge state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pa-carried-budget-decision
+          (if (boundp-global 'fn-owner-transit-budget state)
+              (f-get-global 'fn-owner-transit-budget state)
+            nil)
+          usage charge)))
+
+(defun fn-owner-signed-refusal-class (received transitp observed state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pa-signed-refusal-class
+          received (fn-sn-keyring-snapshots (fn-owner-store state))
+          (fn-owner-transit-carried-list transitp state) observed)))
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge
