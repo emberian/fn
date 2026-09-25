@@ -228,20 +228,6 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-own-store (fn-owner-core state)))
 
-; The Store's persisted profile, carried from open.  VALUES is what
-; `fn-bs-config-decode' returned for the store's metadata file (the host
-; decoded nothing: host/native/io.lisp `fnn-metadata-config-decode' asked
-; ACL2); anything that is not one of the named profiles is refused and the
-; budget stays 0.  The profile is never changed while the owner runs:
-; books/store-budget.lisp says why it is fixed at init.
-(defun fn-owner-install-profile (values state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (fn-bs-profile-admittedp values)
-      (let* ((state (f-put-global 'fn-owner-store-profile values state))
-             (state (f-put-global 'fn-owner-record-octets nil state)))
-        (value :installed))
-    (value :refused)))
-
 (defun fn-owner-store-profile (state)
   (declare (xargs :stobjs state :mode :program))
   (if (boundp-global 'fn-owner-store-profile state)
@@ -262,6 +248,39 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((bound (fn-sbud-payload-bound (fn-owner-store-profile state))))
     (if (posp bound) bound *fn-record-max-payload*)))
+
+; The Store's persisted profile, carried from open.  VALUES is what
+; `fn-bs-config-decode' returned for the store's metadata file (the host
+; decoded nothing: host/native/io.lisp `fnn-metadata-config-decode' asked
+; ACL2); anything that is not one of the named profiles is refused and the
+; budget stays 0.  The profile is never changed while the owner runs:
+; books/store-budget.lisp says why it is fixed at init.
+;
+; Installing the profile also sets the served POST bound to its A
+; (`fn-owner-served-post-bound'), keeping the posting bit, agent and served
+; groups the owner already holds.  Until then recovery's configuration
+; carries the codec ceiling (`fn-owner-post-config').  Without this a served
+; owner that no control start configured read an article past A off the wire
+; and refused it at the store boundary with the generic 441 line, where the
+; operator path's wire closes it with the size line (books/nntp-post.lisp
+; `fn-nntp-post-step' on (:reject :body-overlimit)).
+(defun fn-owner-install-profile (values state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (fn-bs-profile-admittedp values)
+      (let* ((state (f-put-global 'fn-owner-store-profile values state))
+             (state (f-put-global 'fn-owner-record-octets nil state))
+             (owner (fn-owner-core state))
+             (cfg (fn-own-config owner))
+             (next (fn-inj-make-config (fn-inj-config-allow cfg)
+                                       (fn-inj-config-agent cfg)
+                                       (fn-inj-config-groups cfg)
+                                       (fn-owner-served-post-bound state))))
+        (if (not (fn-inj-configp next))
+            (value :refused)
+          (let ((state (fn-owner-replace-core (fn-own-configure owner next)
+                                              state)))
+            (value :installed))))
+    (value :refused)))
 
 ;; The owner's publication (books/owner-checkpoint-open.lisp).  These read
 ;; the owner and write only the four fn-owner-sco-* globals: the served
