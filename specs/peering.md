@@ -176,6 +176,61 @@ the carrier. This is a local trust policy, not an RFC requirement. The list
 admits an item. It does not vouch for the item. The BP boundary's list is
 the BP lane's (D23, `bp-session-admission`); this list is NNTP only.
 
+#### 1.2.3 The opaque-carriage budget and the refusal classes
+
+Carriage without enrollment still spends this node's Store, so a boundary
+carries only under a budget of its own (gpt-6 direction review, 2026-09-24,
+"Opaque carriage"). The budget is two typed rows of the peer's group, the
+natural slot of each a uint32 (books/peer-carriage-rows.lisp):
+
+```
+(name "carried-budget-charge" "" CHARGE)   ; Store charge units (4096-octet pages)
+(name "carried-budget-count"  "" COUNT)    ; carried articles
+```
+
+`fn operator CONFIG peer budget NAME OCTETS COUNT` sets them, CHARGE being
+floor(OCTETS / 4096); `peer carries NAME HEX ...` adds principals to the
+list. Both extend an existing boundary's rows over the live table
+(`fn-pcb-extend-delta`), so a list grows across requests while the argv
+bound stays a per-request work bound (D27). A boundary with a list and no
+budget carries nothing: `fn-pcb-carried-event`, the constructor the host
+calls for the carried arm, answers `(:refused :carried-budget-unset)`, and
+each exhausted bound is refused by its own name (`:carried-count-exhausted`,
+`:carried-octets-exhausted`). This is a behaviour change from D23 as first
+implemented, where a listed principal was carried without bound.
+
+The usage a decision reads is the projection of the committed records: the
+carried kind-4 composites whose article record's release evidence is the
+boundary's `peer-transit:NAME`, their charges and their count
+(`fn-pcb-usage`). The owner carries it as a cache over the first K committed
+records, extended by the records committed since, and
+`fn-pcb-carried-usage-is-the-projection` says the carried value is the
+projection; there is no host counter. Across any committed history whose
+carried records for a boundary were admitted, their charge sum is at most
+the charge budget and their count at most the count budget
+(`fn-pcb-carried-history-within-budget`); the constructor keeps a history
+admitted (`fn-pcb-carried-event-keeps-history-admitted`). Since a record's
+charge is one more than its payload's page count, the carried payload octets
+are then at most OCTETS.
+
+A present carrier this node does not accept on NNTP transit is refused with
+one of four classes, a function of the received octets, the keyring
+snapshots, the delivering boundary's list and the two primitive
+observations (`fn-pcb-refusal-class`): `no-local-binding` (no current
+enrollment names these keys: never enrolled, re-keyed or revoked, and not
+carried), `unsupported-profile` (the carrier's items decode but name another
+version, suite or algorithm), `signature-failed` (a binding exists and a
+primitive refused) and `malformed` (anything else about the article or
+carrier). None is `verified`, and a present carrier is never the unsigned
+arm (`fn-pcb-present-carrier-not-accepted-has-a-class`). The class is the
+transit refusal's log detail; the served POST keeps its own words.
+
+NNT-015: a boundary carries articles of principals this node has not
+enrolled only within its operator-set charge and count budget, whose usage
+is the projection of the committed carried records, each exhaustion refused
+by name; and a present carrier refused on transit is named by exactly one of
+no-local-binding, unsupported-profile, signature-failed and malformed.
+
 #### 1.2.1 Peer changes are not transport-only
 
 Reconfiguration §2.3 and theorem §3.7 call listener and peer changes "effects,
