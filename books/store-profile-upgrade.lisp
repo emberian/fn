@@ -392,12 +392,17 @@
   :hints (("Goal" :use ((:instance fn-profile-budget-reads-the-profile-of
                                    (a (fn-bs-profile-from-format-7 current))
                                    (b current)))
-           :in-theory (e/d (fn-bs-meta-format-7-valuesp
-                            fn-profile-upgrade-verdict
-                            fn-profile-upgrade-target)
-                           ((:e fn-bs-config-encode) fn-bs-config-encode
-                            (:e fn-profile-upgrade-verdict)
-                            fn-sbud-budget)))))
+           :in-theory (union-theories
+                       '(fn-bs-meta-format-7-valuesp
+                         fn-profile-upgrade-verdict
+                         (:e fn-profile-upgrade-target)
+                         (:e fn-bs-profile-admittedp)
+                         (:e fn-profile-upgradep)
+                         (:e fn-bs-profile-from-format-7)
+                         (:e fn-sbud-budget)
+                         (:e fn-bs-profile-of)
+                         (:e fn-profile-shrunk-field))
+                       (theory 'minimal-theory)))))
 
 ; The deployed case, as ground facts: development to scale is an upgrade,
 ; with budgets 128 and 4096; development to development is the same profile;

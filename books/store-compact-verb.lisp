@@ -49,6 +49,13 @@
 (include-book "store-observed")
 (include-book "replay")
 
+; The profile's fields are read through its accessors, closed here: every
+; decision below needs only that they are naturals, never how a profile
+; validates (books/byte-store-frame.lisp).
+(local (in-theory (disable fn-bs-profile-admittedp
+                           fn-bs-profile-max-history-octets
+                           fn-bs-profile-max-transactions)))
+
 (defconst *fn-cverb-pack-steps* '(:pack :select :reclaim :retire))
 (defconst *fn-cverb-resume-steps* '(:reclaim :retire))
 
