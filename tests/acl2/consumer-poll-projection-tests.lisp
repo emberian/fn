@@ -6,7 +6,10 @@
 (include-book "../../books/crypto-attach")
 
 (assert-event (equal (fn-cpj-max-cursor-octets) 346))
-(assert-event (equal (fn-cpj-max-event-octets) 196608))
+; D27 (signed-path): the widest composite the Store and poll frames carry,
+; no longer the old 196,608 data cap.
+(assert-event (equal (fn-cpj-max-event-octets) *fn-stxa-max-octets*))
+(assert-event (< 196608 (fn-cpj-max-event-octets)))
 
 (defconst *cpj-cursor*
   (fn-cp-cursor '(1) '(2) '(3) '(4) '(5) 1 1 1 3))
