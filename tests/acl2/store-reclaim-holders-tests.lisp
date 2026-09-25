@@ -7,8 +7,10 @@
 (include-book "owner-served-invariants-tests")
 
 ; The owner fixture's store, its one article, and a group it is numbered in.
-(defconst *rht-s0* *ost-s*)
-(defconst *rht-art* (car (fn-state-articles (fn-node-acceptance (fn-sn-node *ost-s*)))))
+; The completing owner's store after its article completed, as in
+; octets-stobj-tests (not included: it depends on the octet buffer books).
+(defconst *rht-s0* (fn-own-store (cdr (fn-own-finish *osi-completing* *osi-cfg*))))
+(defconst *rht-art* (car (fn-state-articles (fn-node-acceptance (fn-sn-node *rht-s0*)))))
 (defconst *rht-m* (car (fn-article-memberships *rht-art*)))
 (defconst *rht-g* (car *rht-m*))
 (defconst *rht-n* (cdr *rht-m*))
