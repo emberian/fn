@@ -485,9 +485,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
 	books/bp-fragment-fast \
+	books/bp-fragment-sweep \
 	books/bp-limits \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \
+	tests/acl2/bp-fragment-sweep-tests \
 	tests/acl2/bp-limits-tests \
 	books/bp-fragment-send \
 	tests/acl2/bp-fragment-send-tests \

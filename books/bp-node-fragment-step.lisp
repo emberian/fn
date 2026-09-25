@@ -129,13 +129,127 @@
           (fn-bpnf-family-next-aux st (cdr held) observation)))
     nil))
 
+;; The selector above plans a family once per member: a family of n
+;; fragments costs n reassemblies of the whole family each time the host asks
+;; (bp-service `fnn-bps-fragment-progress`), quadratic in the family.  The executed
+;; selector below plans each family at most once per call: a row whose family
+;; some earlier row already planned (not ready) is skipped, because every
+;; member of one family has the same plan (fn-bpnf-family-plan-at-of-member).
+;; fn-bpnf-family-next-memo-is-aux equates the two, so the answer, the anchor
+;; included, is the same.
+
+(defun fn-bpnf-family-tried-p (h tried)
+  (declare (xargs :guard t :measure (acl2-count tried)))
+  (if (consp tried)
+      (or (fn-bpnf-same-fragment-family-p h (car tried))
+          (fn-bpnf-family-tried-p h (cdr tried)))
+    nil))
+
+(defun fn-bpnf-family-next-memo (st held observation tried)
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :measure (acl2-count held)
+                  :verify-guards nil))
+  (if (consp held)
+      (let ((h (car held)))
+        (if (and (fn-bpnf-active-fragmentp h)
+                 (equal (fn-bpnf-arrival-count
+                         (fn-bpn-nth 3 h) (fn-bpnf-held-list st)) 1))
+            (if (fn-bpnf-family-tried-p h tried)
+                (fn-bpnf-family-next-memo st (cdr held) observation tried)
+              (if (equal (fn-cbor-ag-car
+                          (fn-bpnf-family-plan-at st h observation)) :ready)
+                  (list :ready (fn-bpn-nth 3 h))
+                (fn-bpnf-family-next-memo st (cdr held) observation
+                                          (cons h tried))))
+          (fn-bpnf-family-next-memo st (cdr held) observation tried)))
+    nil))
+
+;; Every member of one family selects the same rows, so it has the same plan.
+(defthm fn-bpnf-same-family-selects-same-rows
+  (implies (and (fn-bpnf-same-fragment-family-p a b))
+           (equal (fn-bpnf-active-set-rows held a)
+                  (fn-bpnf-active-set-rows held b)))
+  :hints (("Goal" :induct (fn-bpnf-active-set-rows held a))))
+
+(defthm fn-bpnf-same-family-same-total
+  (implies (fn-bpnf-same-fragment-family-p a b)
+           (equal (fn-bpp-total-adu-length
+                   (fn-bpb-bundle-primary (fn-bpnf-held-bundle a)))
+                  (fn-bpp-total-adu-length
+                   (fn-bpb-bundle-primary (fn-bpnf-held-bundle b)))))
+  :hints (("Goal" :in-theory (enable fn-bpnf-fragment-coherence-key))))
+
+(defthm fn-bpnf-family-plan-at-of-member
+  (implies (and (fn-bpnf-same-fragment-family-p a b)
+                (member-equal a (fn-bpnf-held-list st))
+                (member-equal b (fn-bpnf-held-list st)))
+           (equal (fn-bpnf-family-plan-at st a observation)
+                  (fn-bpnf-family-plan-at st b observation)))
+  :hints (("Goal" :in-theory (e/d (fn-bpnf-family-plan-at fn-bpnf-family-plan
+                                   fn-bpnf-fragment-query fn-bpnf-active-set
+                                   fn-bpnf-family-member)
+                                  (fn-bpnf-fragment-query-is-reference
+                                   fn-bpnf-active-set-rows
+                                   fn-bpnf-same-fragment-family-p
+                                   fn-bpfw-reassemble fn-bpnf-offset-zero-source
+                                   fn-bpnf-family-whole-bundle
+                                   fn-bpnf-family-rows-livep
+                                   fn-bpnf-family-consumed-ids
+                                   fn-bpnf-held-octets fn-bpb-encode
+                                   fn-bpb-bundlep fn-bpnf-fragment-cells))
+           :use ((:instance fn-bpnf-same-family-selects-same-rows
+                            (held (fn-bpnf-held-list st)))
+                 (:instance fn-bpnf-same-family-same-total)))))
+
+;; The memo's invariant: every tried row is a held active fragment whose plan
+;; is not ready.
+(defun fn-bpnf-family-tried-okp (st tried observation)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count tried)))
+  (if (consp tried)
+      (and (fn-bpnf-active-fragmentp (car tried))
+           (member-equal (car tried) (fn-bpnf-held-list st))
+           (not (equal (fn-cbor-ag-car
+                        (fn-bpnf-family-plan-at st (car tried) observation))
+                       :ready))
+           (fn-bpnf-family-tried-okp st (cdr tried) observation))
+    t))
+
+(defthm fn-bpnf-family-tried-member-not-ready
+  (implies (and (fn-bpnf-family-tried-okp st tried observation)
+                (fn-bpnf-family-tried-p h tried)
+                (member-equal h (fn-bpnf-held-list st)))
+           (not (equal (fn-cbor-ag-car
+                        (fn-bpnf-family-plan-at st h observation))
+                       :ready)))
+  :hints (("Goal" :induct (fn-bpnf-family-tried-p h tried)
+           :in-theory (disable fn-bpnf-family-plan-at
+                               fn-bpnf-same-fragment-family-p))
+          ("Subgoal *1/2" :use ((:instance fn-bpnf-family-plan-at-of-member
+                                           (a h) (b (car tried)))))))
+
+(defthm fn-bpnf-family-next-memo-is-aux
+  (implies (and (subsetp-equal held (fn-bpnf-held-list st))
+                (fn-bpnf-family-tried-okp st tried observation))
+           (equal (fn-bpnf-family-next-memo st held observation tried)
+                  (fn-bpnf-family-next-aux st held observation)))
+  :hints (("Goal" :induct (fn-bpnf-family-next-memo st held observation tried)
+           :in-theory (disable fn-bpnf-family-plan-at
+                               fn-bpnf-active-fragmentp
+                               fn-bpnf-arrival-count
+                               fn-bpnf-family-tried-p))))
+
+(defthm fn-bpnf-subsetp-equal-reflexive
+  (subsetp-equal x x))
+
 (defun fn-bpnf-family-next (st observation)
   (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
                   :verify-guards nil))
   (if (or (fn-bpnf-issued st) (fn-bpnf-waits st)
           (not (fn-frame-natp (fn-bpnf-next-arrival st))))
       nil
-    (fn-bpnf-family-next-aux st (fn-bpnf-held-list st) observation)))
+    (mbe :logic (fn-bpnf-family-next-aux st (fn-bpnf-held-list st) observation)
+         :exec (fn-bpnf-family-next-memo st (fn-bpnf-held-list st) observation
+                                         nil))))
 
 (defthm fn-bpnf-fragment-step-delegates-ordinary-events
   (implies (and (not (fn-bpnf-family-issuedp st))
