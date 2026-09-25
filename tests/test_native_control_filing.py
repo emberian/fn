@@ -311,5 +311,109 @@ class NativeControlFilingTests(unittest.TestCase):
         self.assertTrue(replayed[0].startswith(b"211 1 "), replayed)
 
 
+    def test_signed_withdrawal(self):
+        """C3 on the served path (control-c3b): the owner's refresh
+        (books/owner.lisp fn-own-refresh, fn-ctl-refresh-withdrawals and
+        fn-ctl-refresh-visible) publishes the visible state.  A signed cancel
+        by the target's own signer withdraws it from every view published
+        after it (430 by Message-ID); a cancel committed before its target
+        makes the target's first view exclude it; a cancel of an article
+        whose verdict names nobody, by a principal holding no grant, changes
+        nothing; a reader pinned before the cancel is recorded as it answers;
+        a restart (a discontinuous refresh) publishes the same state."""
+        openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
+        node = self.initialize("withdraw", ["fn.test", "control.cancel"])
+        root = node["root"]
+        principal, ed_public, ed_secret = (root / "principal.bin",
+                                           root / "ed-public.bin", root / "ed-secret.bin")
+        principal.write_bytes(bytes([85]) * 32)
+        ed_public.write_bytes(bytes.fromhex(
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        ed_secret.write_bytes(bytes.fromhex(
+            "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        ml_private, ml_public = root / "ml-private.pem", root / "ml-public.pem"
+        self.command([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private])
+        self.command([openssl, "pkey", "-in", ml_private, "-pubout", "-out", ml_public])
+        control = root / "control.sock"
+        self.start(node)
+
+        def author(stem, message_id, control_field):
+            source = root / (stem + ".eml")
+            source.write_bytes(article(message_id, "signed " + stem,
+                                       control=control_field))
+            signed = self.command([IMAGE, "--fn", "hybrid-sign", principal, ed_public,
+                                   ed_secret, ml_public, ml_private, source])
+            parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+            ed_sig, ml_sig = root / (stem + ".ed"), root / (stem + ".ml")
+            ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+            ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+            done = subprocess.run(
+                [str(IMAGE), "--fn", "hybrid-author", str(control), "1", str(source),
+                 str(ed_sig), str(ml_sig), str(ml_public)], cwd=ROOT, env=self.env,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180, check=False)
+            return done.returncode
+
+        def first_line(stream, command):
+            stream.write(command)
+            line = stream.readline()
+            if line[:3] in (b"211", b"220"):
+                while stream.readline() not in (b".\r\n", b""):
+                    pass
+            return line.decode().strip()
+
+        self.command([IMAGE, "--fn", "hybrid-enroll", control, "1", principal,
+                      ed_public, ml_public])
+        target = "<c3b-target@example.invalid>"
+        codes = {"target": author("target", target, None)}
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
+            pinned = client.makefile("rwb", buffering=0)
+            self.assertTrue(pinned.readline().startswith(b"200 "))
+            pinned_before = first_line(pinned, b"ARTICLE " + target.encode() + b"\r\n")
+            codes["cancel"] = author("cancel", "<c3b-cancel@example.invalid>",
+                                     "cancel " + target)
+            fresh = self.article_reply(node, target).decode().strip()
+            pinned_after = first_line(pinned, b"ARTICLE " + target.encode() + b"\r\n")
+        late = "<c3b-late@example.invalid>"
+        codes["early-cancel"] = author("early", "<c3b-early@example.invalid>",
+                                       "cancel " + late)
+        codes["late-target"] = author("late", late, None)
+        late_reply = self.article_reply(node, late).decode().strip()
+        unsigned = "<c3b-unsigned@example.invalid>"
+        posted = self.post(node, article(unsigned, "unsigned")).decode().strip()
+        codes["no-grant-cancel"] = author("nogrant", "<c3b-nogrant@example.invalid>",
+                                          "cancel " + unsigned)
+        unsigned_reply = self.article_reply(node, unsigned).decode().strip()
+        listed = self.listgroup(node, b"fn.test")
+        self.stop(node)
+        self.start(node)
+        restarted = {m: self.article_reply(node, m).decode().strip()
+                     for m in (target, late, unsigned)}
+        listed_after = self.listgroup(node, b"fn.test")
+        self.stop(node)
+        witness = {
+            "author-codes": codes, "pinned-before": pinned_before,
+            "fresh-after-cancel": fresh, "pinned-after-cancel": pinned_after,
+            "cancel-before-target": late_reply, "unsigned-post": posted,
+            "no-grant-unsigned-target": unsigned_reply,
+            "listgroup-fn.test": [x.decode() if isinstance(x, bytes) else
+                                  [y.decode() for y in x] for x in listed],
+            "after-restart": restarted,
+            "listgroup-fn.test-after-restart": [
+                x.decode() if isinstance(x, bytes) else [y.decode() for y in x]
+                for x in listed_after],
+        }
+        print("NATIVE-WITHDRAWAL-WITNESS " + json.dumps(witness, sort_keys=True))
+        self.assertTrue(all(code == 0 for code in codes.values()), codes)
+        self.assertTrue(pinned_before.startswith("220"), pinned_before)
+        self.assertTrue(fresh.startswith("430"), fresh)
+        self.assertTrue(late_reply.startswith("430"), late_reply)
+        self.assertTrue(posted.startswith("240"), posted)
+        self.assertTrue(unsigned_reply.startswith("220"), unsigned_reply)
+        self.assertTrue(restarted[target].startswith("430"), restarted)
+        self.assertTrue(restarted[late].startswith("430"), restarted)
+        self.assertTrue(restarted[unsigned].startswith("220"), restarted)
+
+
 if __name__ == "__main__":
     unittest.main()
