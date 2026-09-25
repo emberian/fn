@@ -64,7 +64,29 @@
  (defthm fn-pb-an-injection-configures
    (implies (fn-inj-injectedp (fn-inj-decide source config obs))
             (fn-inj-configp config))
-   :hints (("Goal" :in-theory (enable fn-inj-decide fn-inj-injectedp fn-inj-refuse)))))
+   :hints (("Goal" :in-theory (e/d (fn-inj-decide fn-inj-injectedp fn-inj-refuse)
+                                   (fn-inj-configp fn-inj-mandatory-reason
+                                    fn-inj-groups-admissiblep fn-inj-absentp
+                                    fn-inj-prefix fn-inj-date-octets
+                                    fn-inj-instant-of fn-inj-generated-message-id
+                                    fn-inj-append floor fn-article-parse
+                                    fn-af-proto-article-check fn-article-result-okp
+                                    fn-article-result-article fn-article-syntax-p
+                                    fn-clock-observationp fn-clock-has-wall
+                                    fn-clock-wall))))))
+
+; Every injection block opens with the agent's Path line.
+(local
+ (defthm fn-pb-path-agent-of-a-prefix
+   (implies (and (true-listp agent) (consp agent)
+                 (not (member-equal 10 agent)))
+            (equal (fn-pb-path-agent
+                    (fn-inj-append (fn-inj-prefix date msgid agent gid gdate) source))
+                   agent))
+   :hints (("Goal" :in-theory (e/d (fn-inj-prefix)
+                                   (fn-inj-path-line fn-inj-injection-date-line
+                                    fn-inj-injection-info-line
+                                    fn-inj-message-id-line fn-inj-date-line))))))
 
 ; An injected article's Path line names the configured agent.
 (defthm fn-pb-path-agent-of-an-injection
@@ -72,12 +94,22 @@
            (equal (fn-pb-path-agent
                    (fn-inj-decision-octets (fn-inj-decide source config obs)))
                   (fn-inj-config-agent config)))
-  :hints (("Goal" :use ((:instance fn-inj-injected-octets-are-the-block-and-the-source))
-                  :in-theory (e/d (fn-inj-prefix)
-                                  (fn-inj-decide fn-inj-injectedp
-                                   fn-inj-path-line fn-inj-injection-date-line
-                                   fn-inj-injection-info-line
-                                   fn-inj-message-id-line fn-inj-date-line)))))
+  :hints (("Goal" :use ((:instance fn-inj-injected-octets-are-the-block-and-the-source)
+                        fn-pb-an-injection-configures
+                        fn-pb-a-configured-agent-is-a-line-free-list
+                        (:instance fn-pb-path-agent-of-a-prefix
+                                   (date (fn-inj-date-octets
+                                          (fn-inj-instant-of (fn-clock-wall obs))))
+                                   (msgid (fn-inj-decision-msgid
+                                           (fn-inj-decide source config obs)))
+                                   (agent (fn-inj-config-agent config))
+                                   (gid (not (fn-inj-nth 1 (fn-af-proto-article-check
+                                                            (fn-article-result-article
+                                                             (fn-article-parse source))))))
+                                   (gdate (fn-inj-absentp (fn-article-result-article
+                                                           (fn-article-parse source))
+                                                          *fn-inj-date-name*))))
+                  :in-theory (theory 'minimal-theory))))
 
 ; -----------------------------------------------------------------------------
 ; The comparison over two injections.
