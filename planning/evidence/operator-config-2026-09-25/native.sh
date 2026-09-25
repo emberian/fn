@@ -3,9 +3,10 @@
 # usage: native.sh TREE   (TREE holds build/fn-host built from the lane)
 set -u
 T=$1
-IMG=$T/build/fn-host
+IMG=${FN_IMG:-$T/build/fn-host-developer}
 W=/tank/fn/scratch/operator-config/run
 export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+export LD_LIBRARY_PATH=$FN_OPENSSL_PREFIX/lib
 rm -rf $W; mkdir -p $W/out $W/p
 O=$W/out
 say() { echo "$*" | tee -a $O/summary.txt; }
@@ -53,4 +54,10 @@ systemctl --user restart fn-oc-small-community; for i in $(seq 100); do [ -S $N/
 FN_PROBE_USER=prober FN_PROBE_PASSWORD=probe-pass-1234 python3 $T/tools/node_probe.py 127.0.0.1 11961 --cafile $N/tls/cert.pem --group local.test > $O/node-probe.out 2>&1; say "node_probe exit=$?"
 for M in small-community relay archive; do systemctl --user stop fn-oc-$M; done
 say "units: $(for M in small-community relay archive; do systemctl --user is-active fn-oc-$M; done | tr '\n' ' ')"
+# PKT-069 file first: the signed-author ingress commits through the bound
+# commit gate (fn-owner-bound-commit-gate): the signed cancel lands only in
+# control.cancel, the signed ordinary article in fn.test.
+( cd $T && FN_NATIVE_HOST=$IMG FN_RUN_HYBRID_E2E=1 FN_TEST_OPENSSL=$FN_OPENSSL_PREFIX/bin/openssl \
+  python3 -m unittest -v tests.test_native_control_filing.NativeControlFilingTests.test_signed_author ) > $O/file-first.out 2>&1
+say "file-first signed-author exit=$? $(grep -o 'NATIVE-CONTROL-WITNESS.*' $O/file-first.out | head -c 400)"
 cd $O && sha256sum * > SHA256SUMS
