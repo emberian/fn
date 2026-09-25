@@ -148,6 +148,17 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((request (fn-bpaj-request request-octets))
          (fields (and request (fn-bpaj-article-fields request)))
+         ;; C1/C3: the filing step every ingress takes, as the NNTP and
+         ;; signed-author paths do (fn-owner-control-filing,
+         ;; host/owner-host.lisp; books/peer-authored-accept.lisp
+         ;; fn-pa-filing-plan): a control article is filed in its filing
+         ;; group or refused, never stored under its Newsgroups; an ordinary
+         ;; article keeps its groups.
+         (filing (and request (equal (car fields) :ok)
+                      (fn-pa-filing-plan
+                       (fn-bpa-request-article request) (caddr fields)
+                       (fn-state-groups
+                        (fn-node-acceptance (fn-owner-node state))))))
          (evidence (and request
                         (fn-bpaj-bp-provenance-octets
                          node-id bundle-identity request)))
@@ -171,12 +182,15 @@
          (state (f-put-global 'fn-owner-app-msgid
                               (and (equal (car fields) :ok) (cadr fields)) state))
          (state (f-put-global 'fn-owner-app-groups
-                              (and (equal (car fields) :ok) (caddr fields)) state))
+                              (and (equal (car filing) :file) (cadr filing))
+                              state))
          (state (f-put-global 'fn-owner-app-article
                               (and request (fn-bpa-request-article request)) state)))
     (fn-owner-app-plan-answer
      (cond ((not request) :request)
            ((not (equal (car fields) :ok)) :article-fields)
+           ((not (equal (car filing) :file))
+            (or (cadr filing) :control-not-filed))
            ((not (fn-bpaj-request-subjectp request)) :request-subject)
            ((not (equal (fn-bpa-request-source-eid request)
                         (f-get-global 'fn-owner-app-bundle-source state)))
