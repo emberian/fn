@@ -1,0 +1,276 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "tests/acl2/sha256-buffer-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "book_failures": {},
+  "book_provenance": {
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/crypto-attach": "installed",
+    "books/crypto-seam": "installed",
+    "books/defrecord": "installed",
+    "books/frame": "installed",
+    "books/frame-fields": "installed",
+    "books/frame-journal": "installed",
+    "books/frame-octets": "installed",
+    "books/identity": "installed",
+    "books/octets-stobj": "installed",
+    "books/records": "installed",
+    "books/records-invariants": "installed",
+    "books/records-shape": "installed",
+    "books/sha256": "installed",
+    "books/sha256-buffer": "installed",
+    "books/sha256-stobj": "installed",
+    "books/wildmat": "installed",
+    "tests/acl2/sha256-buffer-tests": "certified"
+  },
+  "book_results": {
+    "tests/acl2/sha256-buffer-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "tests/acl2/sha256-buffer-tests": 2.069
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 300,
+  "cache_install": {
+    "directory": "/home/ember/fn-certcache",
+    "fasl_installed": 12,
+    "fasl_missing": 6,
+    "installed": 0,
+    "kept": 18,
+    "origins": {
+      "/home/ember/fn-gates/fasl-cache-5d268b56-warm": 10,
+      "/home/ember/fn-gates/large-article-4d75b021": 1,
+      "/home/ember/fn-gates/large-article-7fc757a8": 5,
+      "/home/ember/fn-gates/rep-octets-219fd392": 1,
+      "/home/ember/fn-gates/rep-wave-c-r1": 1
+    },
+    "recertified": [],
+    "removed": 1,
+    "roots_installed": [],
+    "toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286"
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "tests/acl2/sha256-buffer-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "tests/acl2/sha256-buffer-tests": "4965bde4ce30ef55034a412580d8e222a5c71cf24798f31e5113b729b19b2784"
+  },
+  "certify_wall_seconds": 2.627,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "compiled_digests_sha256": {
+    "tests/acl2/sha256-buffer-tests": "acd66da8deb901bd560fd17c70917271b3580ef9ffac9943d4544b441723e238"
+  },
+  "driver_digests_sha256": {
+    "tests/acl2/sha256-buffer-tests": "5ee30f43d336adbdab228385b1c28818fbabf052e72825fc8ac78631aabd4313"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null,
+    "SBCL_USER_ARGS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 683f8ece40dea9ac447f0f1f3f52c5d8 d10e681fc851"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-25T10:34:13+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "incremental": true,
+  "installed_books": {
+    "books/cbor": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/cbor-invariants": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/crypto-attach": "/home/ember/fn-gates/large-article-7fc757a8",
+    "books/crypto-seam": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/defrecord": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/frame": "/home/ember/fn-gates/large-article-7fc757a8",
+    "books/frame-fields": "/home/ember/fn-gates/large-article-7fc757a8",
+    "books/frame-journal": "/home/ember/fn-gates/large-article-7fc757a8",
+    "books/frame-octets": "/home/ember/fn-gates/large-article-4d75b021",
+    "books/identity": "/home/ember/fn-gates/large-article-7fc757a8",
+    "books/octets-stobj": "/home/ember/fn-gates/rep-octets-219fd392",
+    "books/records": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/records-invariants": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/records-shape": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/sha256": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/sha256-buffer": "/home/ember/fn-gates/rep-wave-c-r1",
+    "books/sha256-stobj": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/wildmat": "/home/ember/fn-gates/fasl-cache-5d268b56-warm"
+  },
+  "installed_over_failed": [],
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 683f8ece40dea9ac447f0f1f3f52c5d8 d10e681fc851"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "recertify": [],
+  "requested_before_filter": [
+    "tests/acl2/sha256-buffer-tests"
+  ],
+  "requested_books": [
+    "tests/acl2/sha256-buffer-tests"
+  ],
+  "roots": [
+    "tests/acl2/sha256-buffer-tests"
+  ],
+  "run_id": "certify-20260925T103356Z-3973019",
+  "runner_sha256": "90b2edaa07d592042c78cd213ca6da391657ef71db3a4fed66078ec25be3f683",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "tests/acl2/sha256-buffer-tests": 0.552,
+    "version-probe": 12.25
+  },
+  "source_digests_sha256": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-attach.lisp": "571358a1d90cfea68c4176df19acf4b415e048096e7980a216bfd5f9a987902a",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-journal.lisp": "28287183b2e3c52acedeaa0ad1b6bc1b21487fce3f965b66dad75e16e4e8f970",
+    "books/frame-octets.lisp": "c98d9385cb9253ac2c7b72e08096c59f6e9a216b538b94d09d689c9a817b090f",
+    "books/frame.lisp": "8e127b62bc7309d25137c7e7e245d1147e5adaaf240d428f73711d51cb64972b",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/octets-stobj.lisp": "d76704ebd068b9ae9ff8a89d3e23c8aa35fd81ece30fd01df012d48b1151de6a",
+    "books/records-invariants.lisp": "3e0202fd63ec5eb418f949635400609514f7891183cad72da58dfb2fb56a76b8",
+    "books/records-shape.lisp": "c3c4114ef6cf4b9a1c01888c7a9c65d5abfd93feca53010a950b7e94315170cd",
+    "books/records.lisp": "bc4003d968bdd440fed58a0c5cee054d6cdf4c77229cebd3a12dd02d09b39bf5",
+    "books/sha256-buffer.lisp": "47cf037305cccdae6b4a973716bd6cadb7089389db66f34a8c32985682487f99",
+    "books/sha256-stobj.lisp": "0ce907d5b109a82e3e22cb74645145e36193c8a627361ff7bd62b703e749a779",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/sha256-buffer-tests.lisp": "ea4e934b0e4d1d687ac02606bda89d81f821092fb39f5b70b7c0c5067d861d1d"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-attach.lisp": "571358a1d90cfea68c4176df19acf4b415e048096e7980a216bfd5f9a987902a",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-journal.lisp": "28287183b2e3c52acedeaa0ad1b6bc1b21487fce3f965b66dad75e16e4e8f970",
+    "books/frame-octets.lisp": "c98d9385cb9253ac2c7b72e08096c59f6e9a216b538b94d09d689c9a817b090f",
+    "books/frame.lisp": "8e127b62bc7309d25137c7e7e245d1147e5adaaf240d428f73711d51cb64972b",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/octets-stobj.lisp": "d76704ebd068b9ae9ff8a89d3e23c8aa35fd81ece30fd01df012d48b1151de6a",
+    "books/records-invariants.lisp": "3e0202fd63ec5eb418f949635400609514f7891183cad72da58dfb2fb56a76b8",
+    "books/records-shape.lisp": "c3c4114ef6cf4b9a1c01888c7a9c65d5abfd93feca53010a950b7e94315170cd",
+    "books/records.lisp": "bc4003d968bdd440fed58a0c5cee054d6cdf4c77229cebd3a12dd02d09b39bf5",
+    "books/sha256-buffer.lisp": "47cf037305cccdae6b4a973716bd6cadb7089389db66f34a8c32985682487f99",
+    "books/sha256-stobj.lisp": "0ce907d5b109a82e3e22cb74645145e36193c8a627361ff7bd62b703e749a779",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/sha256-buffer-tests.lisp": "ea4e934b0e4d1d687ac02606bda89d81f821092fb39f5b70b7c0c5067d861d1d"
+  },
+  "start_order": [
+    "tests/acl2/sha256-buffer-tests"
+  ],
+  "started_utc": "2026-09-25T10:33:56+00:00",
+  "status": "passed",
+  "timeout_seconds": 300,
+  "tree": "/home/ember/fn-gates/rep-wave-c-r1"
+}

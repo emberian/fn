@@ -2630,9 +2630,12 @@ retention ledger's reserved charge of its capacity."
 (defun fnn-store-observation (store)
   "What this process observed at its own open, which the status report names:
 the staging orphans, whether their listing stopped at its bound, and how
-the Store was opened (checkpoint or full replay, and why)."
+the Store was opened (checkpoint or full replay, and why), and one clock
+observation, from which ACL2 derives the instant the retention rule is
+measured at (books/native-live-status.lisp `fn-nls-reclaim-words')."
   (list (fnn-store-orphans store) (fnn-store-orphans-more store)
-        (fnn-store-open-mode store)))
+        (fnn-store-open-mode store)
+        (fnn-store-prepare-observation)))
 
 (defun fnn-write-report (report)
   "Write the octets of one ACL2 status report; render nothing."
@@ -3239,7 +3242,7 @@ serialized profile when the saved image later starts."
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
     "FN_NATIVE_PROFILE_FAULT" "FN_NATIVE_STATE_CHECKPOINT_FAULT"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
-    "FN_NATIVE_AUTH_ADMIN_FAULT"
+    "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
@@ -3263,7 +3266,8 @@ serialized profile when the saved image later starts."
     "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE"
     "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE"
     "FN_APP_JOURNAL_TEST_FENCE_STORE" "FN_APP_JOURNAL_TEST_READ_ONLY_STORE"
-    "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"))
+    "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"
+    "FN_PEER_TEST_STOP_AFTER_CONSUME"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."

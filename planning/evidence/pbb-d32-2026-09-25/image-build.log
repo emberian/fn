@@ -1,0 +1,103 @@
+== acquire default
+attempt b9a34f849f237057 composed: loaded
+profile=default image=build/fn-host artifact-set=b9a34f849f237057344f99c8f152172feef8cf25f3a636be9c2f5c2ec23bf464 origin=composed books=341 source=45ec031d843cbe6f0d2a2dc1b8e79570e46369447d54ff83e5f338d982f02d0d toolchain=d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0 rejected=0
+== acquire dtn
+attempt e8e7569487df7d74 composed: loaded
+profile=dtn image=build/fn-host-dtn artifact-set=e8e7569487df7d74cb91c86279e2f2c4fea164d570276ce98c471adf7184285b origin=composed books=335 source=0380ecfb4e4a1f65b27be0103a95b60b66bd0ebc1e6b32752411128768c31e11 toolchain=d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0 rejected=0
+== validate default
+profile=default image=build/fn-host roots=144 result=loaded
+== validate dtn
+profile=dtn image=build/fn-host-dtn roots=130 result=loaded
+== build production
+built build/fn-host profile=production (129M core)
+== build developer
+built build/fn-host-developer profile=developer (129M core)
+== build dtn
+built build/fn-host-dtn profile=production (128M core)
+== build dtn developer
+built build/fn-host-dtn-developer profile=developer (128M core)
+== freeze
+fn-host: OK
+fn-host.core: OK
+fn-host-developer: OK
+fn-host-developer.core: OK
+fn-host-dtn: OK
+fn-host-dtn.core: OK
+fn-host-dtn-developer: OK
+fn-host-dtn-developer.core: OK
+lib/libsodium.so.23: OK
+openssl/lib/libcrypto.so.3: OK
+openssl/lib/libssl.so.3: OK
+runtime/sbcl: OK
+runtime/sbcl-home/contrib/asdf.fasl: OK
+runtime/sbcl-home/contrib/sb-aclrepl.asd: OK
+runtime/sbcl-home/contrib/sb-aclrepl.fasl: OK
+runtime/sbcl-home/contrib/sb-bsd-sockets.asd: OK
+runtime/sbcl-home/contrib/sb-bsd-sockets.fasl: OK
+runtime/sbcl-home/contrib/sb-capstone.asd: OK
+runtime/sbcl-home/contrib/sb-capstone.fasl: OK
+runtime/sbcl-home/contrib/sb-cltl2.asd: OK
+runtime/sbcl-home/contrib/sb-cltl2.fasl: OK
+runtime/sbcl-home/contrib/sb-concurrency.asd: OK
+runtime/sbcl-home/contrib/sb-concurrency.fasl: OK
+runtime/sbcl-home/contrib/sb-cover.asd: OK
+runtime/sbcl-home/contrib/sb-cover.fasl: OK
+runtime/sbcl-home/contrib/sb-executable.asd: OK
+runtime/sbcl-home/contrib/sb-executable.fasl: OK
+runtime/sbcl-home/contrib/sb-gmp.asd: OK
+runtime/sbcl-home/contrib/sb-gmp.fasl: OK
+runtime/sbcl-home/contrib/sb-grovel.asd: OK
+runtime/sbcl-home/contrib/sb-grovel.fasl: OK
+runtime/sbcl-home/contrib/sb-introspect.asd: OK
+runtime/sbcl-home/contrib/sb-introspect.fasl: OK
+runtime/sbcl-home/contrib/sb-manual.asd: OK
+runtime/sbcl-home/contrib/sb-manual.fasl: OK
+runtime/sbcl-home/contrib/sb-md5.asd: OK
+runtime/sbcl-home/contrib/sb-md5.fasl: OK
+runtime/sbcl-home/contrib/sb-mpfr.asd: OK
+runtime/sbcl-home/contrib/sb-mpfr.fasl: OK
+runtime/sbcl-home/contrib/sb-perf.asd: OK
+runtime/sbcl-home/contrib/sb-perf.fasl: OK
+runtime/sbcl-home/contrib/sb-posix.asd: OK
+runtime/sbcl-home/contrib/sb-posix.fasl: OK
+runtime/sbcl-home/contrib/sb-queue.asd: OK
+runtime/sbcl-home/contrib/sb-queue.fasl: OK
+runtime/sbcl-home/contrib/sb-rotate-byte.asd: OK
+runtime/sbcl-home/contrib/sb-rotate-byte.fasl: OK
+runtime/sbcl-home/contrib/sb-rt.asd: OK
+runtime/sbcl-home/contrib/sb-rt.fasl: OK
+runtime/sbcl-home/contrib/sb-simd.asd: OK
+runtime/sbcl-home/contrib/sb-simd.fasl: OK
+runtime/sbcl-home/contrib/sb-simple-streams.asd: OK
+runtime/sbcl-home/contrib/sb-simple-streams.fasl: OK
+runtime/sbcl-home/contrib/sb-sprof.asd: OK
+runtime/sbcl-home/contrib/sb-sprof.fasl: OK
+runtime/sbcl-home/contrib/uiop.fasl: OK
+runtime/sbcl-home/sbcl.core: OK
+runtime/sbcl-home/sbcl.mk: OK
+5ea270e5eaebecc7aa94724bfb4d8637702b59e2816275de5c1c5873de8b0ee3  /tank/fn/scratch/pbb-d32/tree/build/images/4e1b2a716e077080b9acd7237ebb0e3a2d2bee12/fn-host-developer.core
+6ddc5085e80bc9a49419b592d07866d57210d0295911d535ffbdce9bb0d4ab9c  /tank/fn/scratch/pbb-d32/tree/build/images/4e1b2a716e077080b9acd7237ebb0e3a2d2bee12/fn-host-dtn-developer.core
+6303a369a0a01433eb1a92637f30172c43b30f504c130a5175f87372af8d8634  /tank/fn/scratch/pbb-d32/tree/build/images/4e1b2a716e077080b9acd7237ebb0e3a2d2bee12/fn-host-dtn.core
+24fd2c2f6d930d4212ff51ec9c8c9c7b5c59b8d525f512fcea85257c8f27be72  /tank/fn/scratch/pbb-d32/tree/build/images/4e1b2a716e077080b9acd7237ebb0e3a2d2bee12/fn-host.core
+b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5  /tank/fn/scratch/pbb-d32/tree/build/images/4e1b2a716e077080b9acd7237ebb0e3a2d2bee12/runtime/sbcl
+14d40ec690d4d2e4d49f95d9509ec8b3112c39089f9ad11fa8bde42796b99190  /tank/fn/scratch/pbb-d32/tree/build/images/4e1b2a716e077080b9acd7237ebb0e3a2d2bee12/openssl/lib/libcrypto.so.3
+bb2d12bec3c53f997b5edf5e4ac3ed24584412008070eb731830f29896004ed4  /tank/fn/scratch/pbb-d32/tree/build/images/4e1b2a716e077080b9acd7237ebb0e3a2d2bee12/openssl/lib/libssl.so.3
+7de3e60f9f7df83a7299aa1b8b7a88013ace3233f70c9f63698dd331781d557e  /tank/fn/scratch/pbb-d32/tree/build/images/4e1b2a716e077080b9acd7237ebb0e3a2d2bee12/lib/libsodium.so.23
+9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8  /tank/fn/toolchains/w28/acl2-literal-4g
+total 140772
+drwxrwxr-x 5 hbox hbox        15 Sep 25 14:46 .
+drwxrwxr-x 3 hbox hbox         3 Sep 25 14:46 ..
+-rw-rw-r-- 1 hbox hbox     54249 Sep 25 14:46 build-source.sha256
+-rwxr-xr-x 1 hbox hbox       544 Sep 25 14:46 fn-host
+-rw-rw-r-- 1 hbox hbox 350273528 Sep 25 14:45 fn-host.core
+-rwxr-xr-x 1 hbox hbox       554 Sep 25 14:46 fn-host-developer
+-rw-rw-r-- 1 hbox hbox 350273528 Sep 25 14:45 fn-host-developer.core
+-rwxr-xr-x 1 hbox hbox       548 Sep 25 14:46 fn-host-dtn
+-rw-rw-r-- 1 hbox hbox 346602688 Sep 25 14:46 fn-host-dtn.core
+-rwxr-xr-x 1 hbox hbox       558 Sep 25 14:46 fn-host-dtn-developer
+-rw-rw-r-- 1 hbox hbox 346602688 Sep 25 14:46 fn-host-dtn-developer.core
+-rw-rw-r-- 1 hbox hbox      5905 Sep 25 14:46 image.sha256
+drwxrwxr-x 2 hbox hbox         3 Sep 25 14:46 lib
+drwxrwxr-x 3 hbox hbox         3 Sep 25 14:46 openssl
+drwxrwxr-x 3 hbox hbox         4 Sep 25 14:46 runtime
+== done

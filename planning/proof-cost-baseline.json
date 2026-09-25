@@ -11,13 +11,6 @@
       "jobs": 2,
       "verdict": "passed"
     },
-    "books/bp-node-forward-lower-guards": {
-      "seconds": 13.642,
-      "run": "certify-20260925T103652Z-3170879",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
     "books/bp-node-fragment-replacement": {
       "seconds": 10.684,
       "run": "certify-20260925T103038Z-3156842",
@@ -172,23 +165,9 @@
       "jobs": 2,
       "verdict": "passed"
     },
-    "books/native-admin-peer": {
-      "seconds": 13.188,
-      "run": "certify-20260925T103652Z-3170879",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
     "books/native-live-status": {
       "seconds": 10.036,
       "run": "certify-20260925T103652Z-3170879",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/nntp-auth": {
-      "seconds": 12.698,
-      "run": "certify-20260925T103038Z-3156842",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
@@ -207,13 +186,6 @@
       "jobs": 2,
       "verdict": "passed"
     },
-    "books/peer-inbound": {
-      "seconds": 25.117,
-      "run": "certify-20260925T103038Z-3156842",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
     "books/store-files-invariants": {
       "seconds": 10.237,
       "run": "certify-20260925T100705Z-3116225",
@@ -222,8 +194,8 @@
       "verdict": "passed"
     },
     "books/store-node-invariants": {
-      "seconds": 20.554,
-      "run": "certify-20260925T100705Z-3116225",
+      "seconds": 11.998,
+      "run": "certify-20260925T185444Z-3591801",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"

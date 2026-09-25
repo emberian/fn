@@ -286,6 +286,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-reclaim \
 	books/nntp-reclaimed \
 	tests/acl2/store-reclaim-tests \
+	books/store-reclaim-buffer \
+	tests/acl2/store-reclaim-buffer-tests \
+	books/store-reclaim-holders \
+	tests/acl2/store-reclaim-holders-tests \
+	books/reclaim-admission \
+	tests/acl2/reclaim-admission-tests \
 	tests/acl2/store-history-marker-tests \
 	books/store-history-required \
 	tests/acl2/store-history-required-tests \
@@ -304,6 +310,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-k0-cuts-tests \
 	books/byte-store-k0-step-bridge-root \
 	tests/acl2/byte-store-k0-step-bridge-root-tests \
+	books/byte-store-k0-window \
+	books/byte-store-k0-recover-program \
+	tests/acl2/byte-store-k0-recover-program-tests \
+	books/byte-store-k0-pre-init \
+	tests/acl2/byte-store-k0-pre-init-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -779,8 +790,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
+	books/key-statements \
+	tests/acl2/key-statements-tests \
+	books/peer-invite \
+	tests/acl2/peer-invite-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
+	books/control-served \
+	tests/acl2/control-served-tests \
 	books/login-binding \
 	tests/acl2/login-binding-tests \
 	books/topic-history-metadata \

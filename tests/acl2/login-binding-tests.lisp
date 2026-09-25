@@ -52,7 +52,7 @@
 
 ; A macro, not a constant: the plan decodes through attached codecs, which
 ; a defconst may not call.
-(defmacro lbt-plan () '(fn-pa-current-plan *pat-relayed* *pat-snapshots* nil))
+(defmacro lbt-plan () '(fn-pa-current-plan *pat-relayed* *pat-snapshots* nil nil))
 (assert-event (equal (car (lbt-plan)) :ok))
 
 ; --- fn-lb-bound-login-accepted-signed-article-carries-its-principal ------
@@ -91,10 +91,10 @@
 ; Without the plan's :ok: no enrollment, the plan refuses, and its third
 ; element is not the principal.
 (assert-event
- (equal (fn-pa-current-plan *pat-relayed* nil nil)
+ (equal (fn-pa-current-plan *pat-relayed* nil nil nil)
         (list :refused :local-enrollment)))
 (must-fail
- (assert-event (equal (nth 2 (fn-pa-current-plan *pat-relayed* nil nil))
+ (assert-event (equal (nth 2 (fn-pa-current-plan *pat-relayed* nil nil nil))
                       *tha-principal*)))
 
 ; --- fn-lb-bound-login-unsigned-article-is-refused -------------------------

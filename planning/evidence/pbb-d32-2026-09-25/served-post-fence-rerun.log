@@ -1,0 +1,6 @@
+test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.422s
+
+OK

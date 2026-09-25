@@ -139,7 +139,7 @@
   (list :control '(99 97 110 99 101 108)
         (list (fn-record-string-octets "<t@example.invalid>"))))
 (defconst *cat-entries*
-  (list (list 5 "<c@example.invalid>" *cat-p-verified* *cat-classified*)))
+  (list (list 5 "<c@example.invalid>" *cat-p-verified* "<t@example.invalid>")))
 
 ; fn-ctl-revoke-changes-decisions-not-records.  Hypothesis: every entry is
 ; below the first appended record's txid.

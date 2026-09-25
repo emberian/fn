@@ -68,6 +68,7 @@
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
+(include-book "../books/key-statements")
 (include-book "../books/login-binding")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -550,7 +551,7 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-pb-existing-action msgid payload groups s)))
+             (existing (fn-rcl-existing-action msgid payload groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -628,7 +629,7 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-pbb-existing-action msgid fn-octets groups s)))
+             (existing (fn-rclb-existing-action msgid fn-octets groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -1589,7 +1590,8 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-current-plan
           received (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state))))
+          (fn-owner-transit-carried-list transitp state)
+          (and transitp t))))
 
 ;; C1 (control messages): the filing step every ingress takes first,
 ;; books/peer-authored-accept.lisp fn-pa-filing-plan over the received
@@ -1717,6 +1719,70 @@
         ;; (the 9c344d1d image build, native-build-production.log:8292).
         (fn-own-clock (fn-owner-core state)))))))
 
+;; PRF-098: the revoked arm's kind-4 event (fn-pa-revoked-event), for the
+;; NNTP transit attempt only, with both primitive observations the host made
+;; over the carrier's keys (the keys this node once enrolled for the
+;; principal).
+(defun fn-owner-peer-revoked-event
+    (coordinates msgid received group-codes obligation subject evidence charge
+                 observed-ml-key ed-observation ml-observation state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes
+                  (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
+    (value
+     (if (equal groups :bad) nil
+       (fn-pa-revoked-event
+        (first coordinates) (second coordinates) (third coordinates)
+        (fn-store-octets->string msgid) received groups
+        (fn-store-octets->string obligation)
+        (fn-store-octets->string subject)
+        (fn-store-octets->string evidence) charge
+        (fn-sn-keyring-snapshots s)
+        observed-ml-key ed-observation ml-observation
+        (fn-own-clock (fn-owner-core state)))))))
+
+;; PRF-098: the key-statement executor (books/key-statements.lisp), run by
+;; the owner after it committed a kind-4 statement composite EVENT.  The
+;; request names the primitive observation the host must make (the PoP's
+;; D09 subject), or nil; the plan and event are ACL2's.  ROWS are the live
+;; configuration's authorities rows (C2).
+(defun fn-owner-key-statement-request (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-pop-request event)))
+
+(defun fn-owner-key-statement-plan
+    (event observed-ml-key ed-observation ml-observation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-plan event (fn-sn-keyring-snapshots (fn-owner-store state))
+                     (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                     observed-ml-key ed-observation ml-observation)))
+
+(defun fn-owner-key-statement-event
+    (event observed-ml-key ed-observation ml-observation coordinates state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-execute event (fn-sn-keyring-snapshots (fn-owner-store state))
+                        (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                        observed-ml-key ed-observation ml-observation
+                        (first coordinates) (second coordinates)
+                        (third coordinates))))
+
+(defun fn-owner-key-statement-log-line (plan outcome at-open state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-log-line plan outcome at-open)))
+
+;; PRF-098, the crash cut: the open's recovery (books/key-statements.lisp
+;; fn-ks-recover) executes the newest Store record when it is a statement.
+;; OCTETS are that record as the open read it; the answer is the decoded
+;; event for fnn-owner-key-statement, or nil.
+(defun fn-owner-key-statement-pending (octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((records (fn-store-decode-records (list octets))))
+    (value (if (and (consp records) (null (cdr records)))
+               (fn-ks-pending (car records))
+             nil))))
+
 ;; D27: the signed composite against the profile the owner was handed at
 ;; open (books/store-budget-naming.lisp fn-sbud-signed-event-boundary):
 ;; :ok, :event (no composite formed) or :signed-record (past its R).
@@ -1752,7 +1818,7 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-pb-existing-action
+      (let ((action (fn-rcl-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
@@ -1761,9 +1827,12 @@
 ; (books/octets-stobj.lisp): host/native/owner.lisp fnn-owner-attempt fills
 ; the buffer once from the byte vector the owner handed back and asks this
 ; and fn-owner-prepare-buffer over it, so the payload is not consed into a
-; list for either.  The decision is fn-pbb-existing-action
-; (books/poster-bytes-buffer.lisp), equal to fn-pb-existing-action on the
-; buffer's logical value (fn-pbb-existing-action-is-pb-existing-action);
+; list for either.  The decision is fn-rclb-existing-action
+; (books/store-reclaim-buffer.lisp), equal to the tombstone-aware
+; fn-rcl-existing-action on the buffer's logical value
+; (fn-rclb-existing-action-is-rcl-existing-action), which is
+; fn-pb-existing-action wherever the held payload is not a tombstone
+; (fn-rcl-existing-action-is-pb-without-a-tombstone);
 ; the list entry's fn-octet-listp test is the buffer's recognizer
 ; (fn-pbb-buffer-is-octet-listp).
 (defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets state)
@@ -1774,7 +1843,7 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-pbb-existing-action
+      (let ((action (fn-rclb-existing-action
                      (fn-store-octets->string msgid-octets) fn-octets groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
