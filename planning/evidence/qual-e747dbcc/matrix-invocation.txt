@@ -1,0 +1,11 @@
+# laptop, worktree build/lanes/qual-e747dbcc-lane at d78ee77d (dev; tools/ equals e747dbcc's except tools/build_lists_check.py, which the matrix does not use; the image is what runs)
+# stores provisioned on hbox as tools/runbooks/hbox-matrix-provision.sh does, under /tank/fn/scratch/qual-e747dbcc/matrix/stores/{a,b}
+#   <image>/fn-host --fn store <root>/store init fn.letters ; fn.toml: 127.0.0.1:11190 / 11191, control socket
+I=/tank/fn/gates/qual-e747dbcc-20260925/build/images/e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6
+S=/tank/fn/scratch/qual-e747dbcc/matrix/stores
+python3 tools/v0_matrix.py HEAD --host hbox --tree native-e747dbcc --backend native-operator \
+  --native-image $I/fn-host --native-developer-image $I/fn-host-developer \
+  --native-config-a $S/a/fn.toml --native-config-b $S/b/fn.toml --native-group fn.letters \
+  --native-image-source e747dbcc7f9f4ba6d86e0dc3ec8856a06f1994e6 \
+  --native-runtime $I/runtime/sbcl --native-openssl-prefix $I/openssl \
+  --inn --keep --publish-current

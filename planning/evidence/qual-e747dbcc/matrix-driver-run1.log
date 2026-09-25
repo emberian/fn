@@ -1,0 +1,7 @@
+ERROR: matrix publication: a run the driver stopped early cannot replace the current matrix; the immutable report remains available
+matrix: /Users/ember/dev/fn/build/lanes/qual-e747dbcc-lane/planning/evidence/v0-runs/20260925T200259.078297Z-d78ee77-6640c1ceee65/matrix.json
+evidence: /Users/ember/dev/fn/build/lanes/qual-e747dbcc-lane/planning/evidence/v0-runs/20260925T200259.078297Z-d78ee77-6640c1ceee65/report.md
+steps=220 failed=0 not-exercised=85
+gate error: could not install $HOME/fn-deploy/native-e747dbcc-d78ee77/gate-run/tin-home/.newsrc: bash: line 3: /home/hbox/fn-deploy/native-e747dbcc-d78ee77/gate-run/tin-home/.newsrc: No such file or directory
+chmod: cannot access '/home/hbox/fn-deploy/native-e747dbcc-d78ee77/gate-run/tin-home/.ne
+rc=2
