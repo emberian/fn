@@ -10,6 +10,7 @@
 (include-book "native-config")
 (include-book "native-admin")
 (include-book "native-auth-admin")
+(include-book "byte-store-frame")
 
 (defconst *fn-nop-max-arguments* 32)
 (defconst *fn-nop-max-argument-octets* 512)
@@ -122,52 +123,132 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         :bad
       (fn-nop-parse-init-groups (cdr words) (cons (car words) groups)))))
 
-; The store profile `init' writes (books/byte-store-frame.lisp
-; `fn-bs-config-for-profile'): its transaction budget is fixed for the life of
-; the store (books/store-budget.lisp).  Without `--profile' it is the
-; 128-transaction :development profile; `--profile scale' is the
-; 4096-transaction one.  Any other word is a usage error, never a default.
-(defun fn-nop-init-profile-word (word)
+;  The store profile `init' writes and `store upgrade-profile' asks for
+; (books/byte-store-frame.lisp, D27): the operator's fields.  A request is a
+; base -- a preset word (`--profile development|scale|default' at init, a bare
+; word after `upgrade-profile'), the D27 defaults at init when none is named,
+; the store's current profile at upgrade -- and field overrides, one
+; `--FIELD N' per field of `*fn-bs-profile-field-names*' (for example
+; `--max-transactions 100000 --max-article-octets 20000').  N is a decimal
+; natural of at most 20 digits (a frame natural, below 2^64); the relations
+; between the fields are ACL2's (`fn-bs-profile-validp'), decided below at
+; init and at the store for an upgrade.
+(defun fn-nop-profile-preset-word (word)
   (declare (xargs :guard t))
   (cond ((equal word "development") :development)
         ((equal word "scale") :scale)
+        ((equal word "default") :default)
         (t nil)))
+
+(defun fn-nop-profile-flag-field (word names)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let ((entry (car names)))
+        (if (and (consp entry) (natp (car entry)) (stringp (cdr entry))
+                 (stringp word)
+                 (equal word (string-append "--" (cdr entry))))
+            (car entry)
+          (fn-nop-profile-flag-field word (cdr names))))
+    nil))
+
+; A frame natural in decimal: 1 to 20 digits, no leading zero, below 2^64.
+; This bounds the work of reading one flag value, not the profile's data.
+(defun fn-nop-profile-decimal (text)
+  (declare (xargs :guard t))
+  (if (not (stringp text)) nil
+    (let ((chars (coerce text 'list)))
+      (if (and (consp chars) (<= (len chars) 20)
+               (not (and (consp (cdr chars)) (equal (car chars) #\0))))
+          (let ((value (fn-native-admin-decimal-value chars)))
+            (if (and (natp value) (< value 18446744073709551616)) value nil))
+        nil))))
+
+(defun fn-nop-profile-field-namedp (field overrides)
+  (declare (xargs :guard t))
+  (if (consp overrides)
+      (or (and (consp (car overrides)) (equal (caar overrides) field))
+          (fn-nop-profile-field-namedp field (cdr overrides)))
+    nil))
+
+; Leading profile words of WORDS: (REQUEST REST), or :bad for a malformed or
+; repeated flag.  BASE is the preset in force; OVERRIDES the fields so far.
+(defun fn-nop-parse-profile-flags (words base named overrides)
+  (declare (xargs :guard t :measure (len words)
+                  :hints (("Goal" :in-theory (disable fn-nop-profile-flag-field
+                                                      fn-nop-profile-decimal
+                                                      fn-nop-profile-preset-word)))
+                  :guard-hints (("Goal" :in-theory (disable fn-nop-profile-flag-field
+                                                            fn-nop-profile-decimal
+                                                            fn-nop-profile-preset-word)))))
+  (if (or (atom words) (atom (cdr words))
+          (not (or (equal (car words) "--profile")
+                   (fn-nop-profile-flag-field (car words)
+                                              *fn-bs-profile-field-names*))))
+      (if (and (consp words)
+               (or (equal (car words) "--profile")
+                   (fn-nop-profile-flag-field (car words)
+                                              *fn-bs-profile-field-names*)))
+          :bad  ; a flag with no value
+        (list (list base (fn-ncfg-reverse overrides)) words))
+    (if (equal (car words) "--profile")
+        (let ((preset (fn-nop-profile-preset-word (cadr words))))
+          (if (or (null preset) named)
+              :bad
+            (fn-nop-parse-profile-flags (cddr words) preset t overrides)))
+      (let ((field (fn-nop-profile-flag-field (car words)
+                                              *fn-bs-profile-field-names*))
+            (value (fn-nop-profile-decimal (cadr words))))
+        (if (or (null value) (fn-nop-profile-field-namedp field overrides))
+            :bad
+          (fn-nop-parse-profile-flags (cddr words) base named
+                                      (cons (cons field value) overrides)))))))
 
 (defun fn-nop-parse-init (words config)
   (declare (xargs :guard t))
-  (let* ((profilep (and (consp words) (equal (car words) "--profile")))
-         (profile (if profilep
-                      (fn-nop-init-profile-word (fn-ncfg-second words))
-                    :development))
-         (names (if profilep (fn-ncfg-rest (fn-ncfg-rest words)) words))
+  (let* ((parsed (fn-nop-parse-profile-flags words :default nil nil))
+         (request (if (consp parsed) (car parsed) nil))
+         (names (if (consp parsed) (fn-ncfg-second parsed) nil))
+         ; The profile init will write, resolved over no store, or
+         ; (:invalid REASON); the frame itself is encoded at the store.
+         (profile (if (consp parsed) (fn-bs-profile-resolve request nil) nil))
          (groups (fn-nop-parse-init-groups names nil)))
-    (cond ((null profile)
+    (cond ((not (consp parsed))
            (fn-nop-usage :invalid-init-profile "init" config words))
           ((equal groups :bad)
            (fn-nop-usage :invalid-init-groups "init" config words))
+          ; The profile's own relations, by the name of the first that fails.
+          ((equal (fn-ncfg-first profile) :invalid)
+           (fn-nop-refused (fn-ncfg-second profile) "init" config words))
           ; RFC 5536 s3.1.4: "example.*" and "poster" MUST NOT be created.
           ; The command line is well formed; the node declines it.
-          ((fn-native-admin-some-group-name-reservedp names)
+          ; Checked over every init word: the profile words before the
+          ; groups are flags, preset words and decimals, never a group name.
+          ((fn-native-admin-some-group-name-reservedp words)
            (fn-nop-refused :reserved-group-name "init" config words))
           (t (fn-nop-result :accepted :plan "init" config
-                            (list :init groups profile))))))
+                            (list :init groups request))))))
 
-; `store upgrade-profile PROFILE': the offline profile upgrade
-; (books/store-profile-upgrade.lisp).  The same two profile words as init;
-; whether the named profile is an upgrade of the store's is decided at the
-; store, by `fn-profile-upgrade-verdict', not here.
+; `store upgrade-profile [WORD] [--FIELD N ...]': the offline profile upgrade
+; (books/store-profile-upgrade.lisp).  WORD names a preset base; without it
+; the base is the store's current profile, so `store upgrade-profile' alone
+; is the format 7 to 8 step.  Whether the request is an upgrade of the
+; store's profile is decided at the store, by `fn-profile-upgrade-verdict',
+; not here.
 ; `store compact': the offline compaction (books/store-compact-verb.lisp).
 ; It takes no argument; what it does to the store (pack and reclaim, resume a
 ; reclaim, or refuse) is `fn-cverb-decide' at the store, not here.
 (defun fn-nop-parse-store (words config)
   (declare (xargs :guard t))
-  (cond ((and (consp words) (equal (car words) "upgrade-profile")
-              (consp (cdr words)) (null (cddr words)))
-         (let ((profile (fn-nop-init-profile-word (cadr words))))
-           (if (null profile)
+  (cond ((and (consp words) (equal (car words) "upgrade-profile"))
+         (let* ((preset (and (consp (cdr words))
+                             (fn-nop-profile-preset-word (cadr words))))
+                (parsed (fn-nop-parse-profile-flags
+                         (if preset (cddr words) (cdr words))
+                         (or preset :current) (and preset t) nil)))
+           (if (or (not (consp parsed)) (fn-ncfg-second parsed))
                (fn-nop-usage :invalid-store-profile "store" config words)
              (fn-nop-result :accepted :plan "store" config
-                            (list :upgrade-profile profile)))))
+                            (list :upgrade-profile (car parsed))))))
         ((and (consp words) (equal (car words) "compact") (null (cdr words)))
          (fn-nop-result :accepted :plan "store" config (list :compact)))
         (t (fn-nop-usage :invalid-store-command "store" config words))))
@@ -180,14 +261,14 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   "Bounded operator help output, selected only from ACL2-normalized subjects."
   (declare (xargs :guard t))
   (cond ((equal subject "init")
-         "usage: fn operator CONFIG init [--profile development|scale] GROUP [GROUP...]")
+         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]")
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "post")
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status") "usage: fn operator CONFIG status")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {upgrade-profile development|scale | compact} (offline; refused while an owner runs)")
+         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] | compact} (offline; refused while an owner runs; no field may shrink)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "peer")
@@ -509,23 +590,24 @@ is installed into the owner for both served and control submission."
     nil))
 
 (defun fn-native-operator-result-init-profile (result)
-  "The store profile keyword an accepted init plan writes, else nil."
+  "The profile request (base and field overrides) an accepted init plan
+writes, else nil."
   (declare (xargs :guard t))
   (if (fn-native-operator-result-init-planp result)
       (let ((profile (fn-ncfg-second
                       (fn-ncfg-rest (fn-native-operator-result-arguments result)))))
-        (if (member-equal profile '(:development :scale)) profile nil))
+        (if (fn-bs-profile-requestp profile) profile nil))
     nil))
 
 (defun fn-native-operator-result-upgrade-profile (result)
-  "The profile keyword an accepted `store upgrade-profile' plan names, else nil."
+  "The profile request an accepted `store upgrade-profile' plan names, else nil."
   (declare (xargs :guard t))
   (if (and (equal (fn-native-operator-result-status result) :accepted)
            (equal (fn-native-operator-result-command result) "store")
            (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                   :upgrade-profile))
       (let ((profile (fn-ncfg-second (fn-native-operator-result-arguments result))))
-        (if (member-equal profile '(:development :scale)) profile nil))
+        (if (fn-bs-profile-requestp profile) profile nil))
     nil))
 
 (defun fn-native-operator-init-outcome (result observed)
@@ -650,6 +732,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
                                   (fn-native-admin-group-name-reservedp
                                    fn-native-admin-some-group-name-reservedp
                                    fn-nop-parse-init-groups fn-nop-argument-texts
+                                   fn-nop-parse-profile-flags
+                                   fn-bs-profile-resolve
                                    fn-nop-argvp fn-native-config-load
                                    fn-ncfg-ascii-octetsp
                                    fn-native-config-operator-availablep)))))
@@ -699,7 +783,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
  (defthm fn-nop-parse-init-command
    (equal (fn-native-operator-result-command (fn-nop-parse-init w c)) "init")
    :hints (("Goal" :in-theory (e/d (fn-nop-parse-init fn-nop-usage fn-nop-refused)
-                                   (fn-nop-result fn-native-operator-result-command fn-nop-parse-init-groups fn-nop-init-profile-word fn-native-admin-some-group-name-reservedp))))))
+                                   (fn-nop-result fn-native-operator-result-command fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-native-admin-some-group-name-reservedp))))))
 
 (local
  (defthm fn-nop-parse-post-command
@@ -723,7 +807,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
  (defthm fn-nop-parse-store-command
    (equal (fn-native-operator-result-command (fn-nop-parse-store w c)) "store")
    :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-refused)
-                                   (fn-nop-result fn-native-operator-result-command fn-nop-init-profile-word))))))
+                                   (fn-nop-result fn-native-operator-result-command fn-nop-parse-profile-flags fn-nop-profile-preset-word))))))
 
 (local
  (defthm fn-nop-parse-store-compact-words
