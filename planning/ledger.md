@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 773 |
-| Certification roots in the Makefile | 761 |
-| Books inside the root closure | 771 |
-| `defthm` and `defthmd` events | 10241 |
-| `defun` events | 7242 |
+| Books read | 775 |
+| Certification roots in the Makefile | 763 |
+| Books inside the root closure | 773 |
+| `defthm` and `defthmd` events | 10250 |
+| `defun` events | 7265 |
 | Functions with verified guards | 2085 |
 | Functions declared `:verify-guards nil` and never verified | 526 |
-| Functions left at the default with an explicit guard | 3589 |
+| Functions left at the default with an explicit guard | 3612 |
 | Functions left at the default with no guard | 1042 |
-| `assert-event` checks | 11228 |
-| `must-fail` checks | 1005 |
+| `assert-event` checks | 11255 |
+| `must-fail` checks | 1011 |
 | `encapsulate` events | 41 |
 | Theorems flagged SUSPECT by shape | 91 |
 | Export-hygiene warnings | 127 |
 | Enabled-projection warnings | 42 |
 | Teeth-form warnings | 69 |
-| Include-hygiene warnings | 764 |
+| Include-hygiene warnings | 765 |
 | Host-names warnings | 860 |
 | Hand-written-record warnings | 18 |
 
@@ -296,6 +296,7 @@ that `make certify` requests.
 | `books/consumer-store-projection.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
+| `books/control-classify.lisp` | root | 6 | 20 | 0/0/20/0 | 1 | 0 | 0 |
 | `books/crypto-attach.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
 | `books/defrecord.lisp` | root | 0 | 16 | 0/0/0/16 | 0 | 0 | 0 |
@@ -415,7 +416,7 @@ that `make certify` requests.
 | `books/path-update-tail.lisp` | root | 67 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/path-update.lisp` | root | 77 | 29 | 2/0/26/1 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
-| `books/peer-authored-accept.lisp` | root | 10 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/peer-authored-accept.lisp` | root | 13 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 36 | 35 | 0/0/30/5 | 0 | 0 | 0 |
 | `books/peer-feed-invariants.lisp` | root | 134 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/peer-feed.lisp` | root | 35 | 100 | 3/0/97/0 | 0 | 0 | 0 |
@@ -691,6 +692,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-store-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
 | `tests/acl2/consumer-topic-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
+| `tests/acl2/control-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 26 | 6 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/defrecord-tests.lisp` | root | 37 | 20 | 9/0/11/0 | 39 | 1 | 2 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
