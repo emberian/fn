@@ -245,11 +245,12 @@
                        (theory 'minimal-theory)))))
 
 (defthm fn-bpnp-attempted-held-counts-one-more
-  (equal (fn-bpnp-attempt-retries
-          (fn-bpn-nth 13 (fn-bpnp-attempted-held h record)))
-         (if (fn-bpn-nth 13 h)
-             (1+ (fn-bpnp-attempt-retries (fn-bpn-nth 13 h)))
-           0))
+  (implies (true-listp h)
+           (equal (fn-bpnp-attempt-retries
+                   (fn-bpn-nth 13 (fn-bpnp-attempted-held h record)))
+                  (if (fn-bpn-nth 13 h)
+                      (1+ (fn-bpnp-attempt-retries (fn-bpn-nth 13 h)))
+                    0)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpnp-attempted-held
                                 fn-bpnp-attempt-retries
@@ -274,7 +275,7 @@
       (< (fn-bpnp-attempt-retries (fn-bpn-nth 13 h)) (nfix budget))))
 
 (defthm fn-bpnp-attempted-held-retries-within-bound
-  (implies (fn-bpnp-under-budgetp h budget)
+  (implies (and (true-listp h) (fn-bpnp-under-budgetp h budget))
            (<= (fn-bpnp-attempt-retries
                 (fn-bpn-nth 13 (fn-bpnp-attempted-held h record)))
                (nfix budget)))

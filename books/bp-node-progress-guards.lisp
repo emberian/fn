@@ -161,7 +161,13 @@
 (verify-guards fn-bpnp-busy-wait)
 (verify-guards fn-bpnp-busy-delivery-step)
 (verify-guards fn-bpnp-deferral-effects)
-(verify-guards fn-bpnp-deferral-persist-step)
+(verify-guards fn-bpnp-deferral-persist-step
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpnp-deferral-apply fn-bpnf-find-arrival
+                               fn-bpnp-wait-for fn-bpnp-remove-wait
+                               fn-bpnp-deferral-effects fn-bpnp-wait-key
+                               fn-bpnf-operation-matchp fn-bpnp-with-waits
+                               fn-bpnp-with-credit fn-bpnf-operation))))
 (verify-guards fn-bpnp-busy-resume-step)
 (verify-guards fn-bpnp-host-eventp)
 (verify-guards fn-bpnp-preserve-runtime-answer)

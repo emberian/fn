@@ -567,6 +567,13 @@
             :in-theory (union-theories '(fn-bpnp-preserve-runtime-answer)
                                        (theory 'fn-bpnpp-theory))))))
 
+(local
+ (defthm fn-bpnpp-premises-of-next-issued
+   (implies (fn-bpnp-step-guard-premisesp st)
+            (fn-bpnp-step-guard-premisesp (fn-bpnp-with-next-issued st issued)))
+   :hints (("Goal" :in-theory (union-theories '(fn-bpnp-with-next-issued)
+                                              (theory 'fn-bpnpp-theory))))))
+
 (fn-bpnpp-defkeep fn-bpnpp-transit-dispatch-step
   (fn-bpnp-transit-dispatch-step st h peer node)
   (fn-bpnp-transit-dispatch-step))
@@ -592,7 +599,7 @@
 
 (fn-bpnpp-defkeep fn-bpnpp-busy-delivery-step
   (fn-bpnp-busy-delivery-step st epoch op key observation budgets)
-  (fn-bpnp-busy-delivery-step fn-bpnp-with-next-issued
+  (fn-bpnp-busy-delivery-step fn-bpnpp-premises-of-next-issued
    fn-bpnpp-premises-of-busy-slots))
 
 (fn-bpnpp-defkeep fn-bpnpp-deferral-persist-step
@@ -602,7 +609,7 @@
 
 (fn-bpnpp-defkeep fn-bpnpp-busy-resume-step
   (fn-bpnp-busy-resume-step st arrival budget)
-  (fn-bpnp-busy-resume-step fn-bpnp-with-next-issued))
+  (fn-bpnp-busy-resume-step fn-bpnpp-premises-of-next-issued))
 
 (fn-bpnpp-defkeep fn-bpnpp-conflict-persist-step
   (fn-bpnp-conflict-persist-step st epoch op result)
