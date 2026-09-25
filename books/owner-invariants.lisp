@@ -218,7 +218,17 @@
                                  groups capacity records
                                  (fn-own-view-version view)
                                  (fn-own-view-frontier view)))))
-  :hints (("Goal" :in-theory (e/d (fn-ctl-visible-state)
+  :hints (("Goal" :in-theory (e/d (fn-ctl-visible-state fn-own-control-okp)
+                                  (fn-own-prefix-archive fn-ctl-visible-articles
+                                   fn-ctl-subseq-diff)))))
+
+(defthm fn-own-view-control-okp-raw
+  (implies (fn-own-view-okp view groups capacity records)
+           (fn-own-control-okp (fn-own-view-control view)
+                               (fn-own-view-archive view)
+                               (fn-own-view-verdicts view)
+                               (fn-own-view-raw view)))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-visible-state fn-own-control-okp)
                                   (fn-own-prefix-archive fn-ctl-visible-articles
                                    fn-ctl-subseq-diff)))))
 

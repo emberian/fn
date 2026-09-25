@@ -27,15 +27,6 @@
 (include-book "nntp-control")
 (include-book "owner-invariants")
 
-(defthm fn-octl-fields-of-with-wire
-  (and (equal (fn-served-conn-config (fn-ovr-with-wire conn w))
-              (fn-served-conn-config conn))
-       (equal (fn-served-conn-observation (fn-ovr-with-wire conn w))
-              (fn-served-conn-observation conn))
-       (equal (fn-served-conn-pinned-index (fn-ovr-with-wire conn w))
-              (fn-served-conn-pinned-index conn)))
-  :hints (("Goal" :in-theory (enable fn-ovr-with-wire))))
-
 ;; The pinned dispatcher's reply to one command line, over connection CONN.
 (defun fn-octl-reply (conn line)
   (declare (xargs :verify-guards nil))
@@ -94,8 +85,10 @@
                                    fn-peer-step-pinned fn-peer-delegate-pinned
                                    fn-nntp-post-step-pinned fn-nntp-step-pinned
                                    fn-nntp-command-pinned
-                                   fn-auth-tls-eventp)
-                                  (fn-nntp-archive-command-pinned
+                                   fn-auth-tls-eventp fn-nntp-keywordp
+                                   fn-nntp-archive-keywordp)
+                                  (fn-nntp-archive-command-pinned fn-nntp-upcase-keyword
+                                   fn-served-conn-pinned-index
                                    fn-nntp-tokenize fn-auth-sessionp
                                    fn-peer-sessionp fn-post-sessionp
                                    fn-nntp-sessionp fn-auth-gatedp
