@@ -26,6 +26,123 @@ this operator CLI. See the
 parity work and [host contract](../specs/host.md#selected-production-runtime) for
 the runtime boundary.
 
+## Operating a native node with `fn` (spike, D28)
+
+On `spike/mega` only. `packaging/fn` is the operator's one command for a
+native node; `install-native.sh` installs it as a release's `bin/fn` (the raw
+image entry moves to `bin/fn-native`). Every decision it makes beyond passing
+a verb to the image is host-side and marked `SPIKE`; the list of what `dev`
+must give an ACL2 owner is in
+[the spike record](../planning/evidence/spike-operator-2026-09-25.md).
+
+### Quickstart: nothing to a probed node in ten commands
+
+You need a frozen image directory (`fn-host`, `fn-host.core`, `image.sha256`,
+`runtime/`, `openssl/`, `lib/`) and the fn source tree for `packaging/`.
+
+```sh
+export FN_NODE=$HOME/fn-node PATH=$HOME/fn-node/current/bin:$PATH
+fn-src/packaging/fn install /path/to/images/REV REV                # 1 digests checked, releases/REV, current ->
+fn init --mission small-community --host 127.0.0.1 --port 1119     # 2 fn.toml, self-signed TLS, store profile
+fn principal set-password alice --posting                          # 3 password twice on stdin or the tty
+fn install-unit                                                    # 4 user unit + a one-minute check timer
+fn start                                                           # 5 waits for the listener
+fn doctor                                                          # 6 ok/warn/fail per check
+FN_PROBE_USER=alice FN_PROBE_PASSWORD=... fn probe --post          # 7 post by control, STARTTLS, login, STAT
+fn backup                                                          # 8 stopped copy, opened, digested, tar
+fn top                                                             # 9 connections, POST rate, headroom
+fn status                                                          # 10
+```
+
+This exact sequence ran on hbox from an empty directory against the
+`452d62cb` frozen image; the transcript is in the spike record.
+
+### Missions
+
+`fn init --mission M` writes a complete `fn.toml` (image tables plus
+`[alerts]` and `[ops]`), a self-signed P-256 certificate for `--host`, and
+initializes the store with the mission's profile (on an image whose `init`
+takes `--max-*` fields; an older image gets `--profile scale`).
+
+| mission | posting | login | protected only | article cap | groups/article | headroom alert | refusal alert |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `small-community` | yes | required | yes | 1 MiB | 8 | < 10 % | > 30/min |
+| `relay` | no (peers feed it) | required | yes | 1 MiB | 16 | < 20 % | > 120/min |
+| `archive` | no | not required | no | 1 MiB | 16 | < 25 % | > 30/min |
+
+The article cap stays at 1 MiB because the large-article finding (the owner's
+take recursion) is not fixed on these images. `small-community` defaults to
+`local.general local.test`; the others need `--group`.
+
+### Commands
+
+`fn [--node DIR] COMMAND`. The node is `--node`, else `$FN_NODE`, else the
+node the running `bin/fn` belongs to (`NODE/releases/REV/bin/fn`).
+
+| command | what it does |
+| --- | --- |
+| `init`, `post`, `recover`, `store`, `group`, `capacity`, `peer`, `bp-boundary`, `bp-route`, `policy`, `principal`, `help VERB` | the image's operator verb with the node's config (ACL2 grammar) |
+| `run [--once]` | the owner; what the unit runs (`exec`, so SIGTERM reaches it) |
+| `checkpoint SUB` | `--fn checkpoint SUB STORE` |
+| `raw VERB ...`, `operator CFG ...` | the image, unchanged (the old unit line `bin/fn operator CFG run` still works) |
+| `install IMAGE REV` | install a release beside the others; `install-native.sh` checks `image.sha256` first |
+| `install-unit`, `start`, `stop`, `restart` | the unit named in `[ops]`, plus `NAME-check.timer` running `fn check` each minute |
+| `upgrade IMAGE REV` | install beside; stop; keep `config.json`; the new image must open the store; if its store format is newer, `store upgrade-profile`; repoint `current`; start; probe; roll back by itself on a failed probe; prune to `keep_releases` |
+| `rollback` | pops the upgrade stack: stop, restore the kept `config.json` if that upgrade moved the profile, let the older image judge (`status`) the store, repoint, start, probe. Repeated rollbacks walk back release by release |
+| `backup [--online]` | stop (unless `--online`), copy the store, restart; open the copy with the current image; tar with `MANIFEST.sha256`, `BACKUP` (counts, release) and a `.sha256` beside |
+| `restore ARCHIVE DIR [--port N] [--same-identity]` | verify both digests, place the store into an empty DIR with `checkpoint clone` (a fresh incarnation), rewrite paths, open it and compare counts |
+| `status [--watch [S]]`, `top [S]` | image status plus headroom; the watch loops |
+| `doctor` | release digests, store opens, mode, profile, marker, orphans, headroom, disk, TLS expiry/pair/mode, credentials, port, unit, log, backup age, alerts |
+| `probe [--post]` | NNTP over STARTTLS (RFC 4642) against the node's own certificate; with `FN_PROBE_USER`/`FN_PROBE_PASSWORD` logs in (RFC 4643) and reads the posted article back |
+| `check`, `alert test` | the alert rules and log rotation; fire the hook once |
+
+Exit codes are the image's: 0 accepted, 1 refused, 3 uncertain, 4 fault,
+5 usage; every command ends with one stderr line whose first word is the
+outcome. `doctor` exits 1 when a check failed and 3 when one was undecided.
+
+### Alerts and log rotation
+
+```toml
+[alerts]
+command = "/usr/local/bin/fn-alert"   # gets FN_ALERT_KIND, FN_ALERT_DETAIL, FN_NODE, FN_ALERT_TIME
+headroom_min_percent = 10
+refusal_rate_per_minute = 30
+cooldown_seconds = 900
+
+[ops]
+unit = "fn-node.service"
+scope = "user"            # or "system"
+keep_releases = 3
+log_max_bytes = 67108864
+log_keep = 7
+memory_max = "24G"
+```
+
+Kinds: `fault` (the unit is `failed`, or a `fault`/`uncertain` line in the
+log since the last check), `refusal-rate` (refused POST lines per minute),
+`headroom` (the smaller of free transaction budget and free history bound),
+`test`. The image refuses these two tables, so `bin/fn` hands it `fn.toml`
+without them (`state/fn.core.toml`).
+
+Rotation: when `[log] path` passes `log_max_bytes`, `fn check` copies it to
+`.1`, truncates it and gzips the copy, keeping `log_keep`. The owner writes
+`O_APPEND`, so its offset follows the truncation; a line written between the
+copy and the truncate is lost.
+
+### Known limits of the spike surface
+
+- With an owner live, the image's `status` is refused (the store is locked),
+  so `fn status`, `top` and `check` report `owner-held`: no live headroom, so
+  the headroom alert only fires from a check while the owner is stopped.
+- The owner logs accepted and duplicate posts and connections, but not
+  refused posts (served or control path), so `refusal-rate` has no signal yet.
+- `restore` of a store with no consumer incarnation is refused by the clone
+  (`:unbootstrapped`); `--same-identity` places it as is, which must never run
+  beside the original.
+- Rollback across a format change is sound only while no committed record
+  exceeds the older format's bounds (bounds-join, section 5); the older image
+  is asked to open the store before `current` moves.
+
 ## Native component entry
 
 The native image now has an ACL2-owned operator entry. For a compatible existing

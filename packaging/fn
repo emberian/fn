@@ -1,0 +1,775 @@
+#!/usr/bin/env bash
+# fn -- the operator's one command for a native fn node.
+#
+# SPIKE (D28): this whole file is host-side operator policy.  It defers to an
+# ACL2 owner every decision it makes that is not a pass-through to the image:
+# the mission table, the doctor's checks and thresholds, the alert rules, the
+# upgrade's format comparison, rotation, and the [alerts]/[ops] config tables.
+# planning/evidence/spike-operator-2026-09-25.md lists each deferral.
+#
+# Node layout (the model is the hbox node under /tank/fn/node):
+#   NODE/fn.toml              the configuration (image tables + [alerts] + [ops])
+#   NODE/releases/REV/        an installed release (bin/fn, libexec/fn/fn-host*)
+#   NODE/current -> releases/REV
+#   NODE/store  NODE/tls  NODE/log  NODE/backups
+#   NODE/state/               derived config, upgrade history, kept config.json
+#
+# Outcomes: 0 accepted, 1 refused, 3 uncertain, 4 fault, 5 usage.  Every
+# command ends with one stderr line whose first word is the outcome.
+set -u
+
+EX_OK=0 EX_REFUSED=1 EX_UNCERTAIN=3 EX_FAULT=4 EX_USAGE=5
+SELF=$(cd -- "$(dirname -- "$0")" && pwd)/$(basename -- "$0")
+CMD=help
+
+word() { case $1 in 0) echo accepted;; 1) echo refused;; 3) echo uncertain;; 5) echo usage;; *) echo fault;; esac; }
+finish() { # finish CODE [REASON...]
+  local code=$1; shift
+  echo "$(word "$code") fn $CMD${1:+ $*}" >&2
+  exit "$code"
+}
+say() { echo "fn $CMD: $*" >&2; }
+now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+stamp() { date -u +%Y%m%dT%H%M%SZ; }
+if command -v sha256sum >/dev/null 2>&1; then SHACMD=sha256sum; else SHACMD="shasum -a 256"; fi
+sha() { $SHACMD "$@"; }
+
+# ---------------------------------------------------------------- node + config
+NODE=
+resolve_node() {
+  [ -n "$NODE" ] || NODE=${FN_NODE:-}
+  if [ -z "$NODE" ]; then
+    local rel parent
+    rel=$(dirname -- "$(dirname -- "$SELF")"); parent=$(dirname -- "$rel")
+    if [ -f "$parent/fn.toml" ]; then NODE=$parent
+    elif [ "$(basename -- "$parent")" = releases ] && [ -f "$(dirname -- "$parent")/fn.toml" ]; then
+      NODE=$(dirname -- "$parent")
+    fi
+  fi
+  [ -n "$NODE" ] || finish $EX_USAGE "no node: pass --node DIR or set FN_NODE"
+  case $NODE in /*) ;; *) NODE=$(cd -- "$NODE" 2>/dev/null && pwd) || finish $EX_USAGE "node directory missing";; esac
+  CFG=$NODE/fn.toml
+}
+need_config() { [ -f "$CFG" ] || finish $EX_USAGE "missing $CFG (run fn init)"; }
+
+# SPIKE: defers a projection of the normalized configuration from ACL2
+# (`operator CONFIG show`); this reads the flat TOML subset fn.toml uses.
+toml_get() { # toml_get SECTION KEY [DEFAULT]
+  local v
+  v=$(awk -v s="[$1]" -v k="$2" '
+    /^[ \t]*\[/ { gsub(/[ \t]/, ""); cur=$0; next }
+    cur==s { line=$0; sub(/#.*/, "", line)
+      if (match(line, "^[ \t]*" k "[ \t]*=")) { v=substr(line, RLENGTH+1)
+        gsub(/^[ \t]+|[ \t]+$/, "", v); gsub(/^"|"$/, "", v); print v; exit } }' "$CFG" 2>/dev/null)
+  [ -n "$v" ] && echo "$v" || echo "${3:-}"
+}
+
+# SPIKE: defers [alerts]/[ops] to the ACL2 configuration grammar, which today
+# refuses unknown tables; the image is handed fn.toml without them.
+core_config() {
+  mkdir -p "$NODE/state" || finish $EX_FAULT "cannot create $NODE/state"
+  local tmp=$NODE/state/.fn.core.toml.$$
+  awk '/^[ \t]*\[/ { t=$0; gsub(/[ \t]/, "", t); skip=(t=="[alerts]" || t=="[ops]") }
+       !skip { print }' "$CFG" > "$tmp" && mv -f "$tmp" "$NODE/state/fn.core.toml" ||
+    finish $EX_FAULT "cannot write derived configuration"
+  CORE=$NODE/state/fn.core.toml
+}
+
+image_of() { echo "$1/libexec/fn/fn-host"; }
+current_release() {
+  if [ -n "${FN_NATIVE_HOST:-}" ]; then dirname -- "$(dirname -- "$(dirname -- "$FN_NATIVE_HOST")")"; return; fi
+  [ -L "$NODE/current" ] && { (cd -P "$NODE/current" && pwd); return; }
+  dirname -- "$(dirname -- "$SELF")"
+}
+IMAGE=
+resolve_image() {
+  IMAGE=${FN_NATIVE_HOST:-$(image_of "$(current_release)")}
+  [ -x "$IMAGE" ] || finish $EX_FAULT "native image missing: $IMAGE"
+}
+host() { # host IMAGE ARGS... : run one image verb with the saved-image environment
+  local img=$1; shift
+  ACL2_CUSTOMIZATION=NONE env -u ACL2_SYSTEM_BOOKS "$img" --fn "$@"
+}
+op() { host "$IMAGE" operator "$CORE" "$@"; }
+
+# ---------------------------------------------------------------- unit control
+unit_name() { toml_get ops unit "fn-node.service"; }
+unit_scope() { toml_get ops scope user; }
+sctl() { if [ "$(unit_scope)" = system ]; then systemctl "$@"; else systemctl --user "$@"; fi; }
+unit_active() { sctl is-active --quiet "$(unit_name)"; }
+unit_dir() { if [ "$(unit_scope)" = system ]; then echo /etc/systemd/system; else echo "$HOME/.config/systemd/user"; fi; }
+
+listen_addr() { echo "$(toml_get listener host 127.0.0.1):$(toml_get listener port 1119)"; }
+listening() { ss -ltnH 2>/dev/null | awk '{print $4}' | grep -qx "$(listen_addr)"; }
+
+wait_listening() { # wait_listening SECONDS
+  local i=0
+  while [ "$i" -lt "$1" ]; do listening && return 0; sleep 1; i=$((i + 1)); done
+  return 1
+}
+
+# ---------------------------------------------------------------- probe
+# NNTP over STARTTLS (RFC 4642) when the listener has a certificate, plain
+# otherwise.  With FN_PROBE_USER/FN_PROBE_PASSWORD it logs in (RFC 4643) and,
+# given a Message-ID, reads the article back.
+nntp_session() { # nntp_session COMMANDS-FILE
+  local h p cert; h=$(toml_get listener host 127.0.0.1); p=$(toml_get listener port 1119)
+  cert=$(toml_get listener tls_cert)
+  if [ -n "$cert" ]; then
+    timeout 20 openssl s_client -quiet -starttls nntp -connect "$h:$p" -CAfile "$cert" \
+      -verify_return_error -verify_ip "$h" < "$1" 2>/dev/null
+  else
+    timeout 20 bash -c "exec 3<>/dev/tcp/$h/$p; cat '$1' >&3; cat <&3" 2>/dev/null
+  fi
+}
+probe() { # probe [MESSAGE-ID]: prints steps; 0 held, 1 violated, 3 undecided
+  local cmds out verdict=0
+  cmds=$(mktemp "${TMPDIR:-/tmp}/fn-probe.XXXXXX")
+  { printf 'CAPABILITIES\r\n'
+    if [ -n "${FN_PROBE_USER:-}" ]; then
+      printf 'AUTHINFO USER %s\r\nAUTHINFO PASS %s\r\n' "$FN_PROBE_USER" "${FN_PROBE_PASSWORD:-}"
+      [ -n "${1:-}" ] && printf 'STAT %s\r\n' "$1"
+    fi
+    printf 'QUIT\r\n'; } > "$cmds"
+  out=$(nntp_session "$cmds"); rm -f "$cmds"
+  [ -n "$out" ] || { echo "probe connect: no answer from $(listen_addr)"; return 3; }
+  echo "$out" | grep -q '^101' && echo "probe capabilities: 101" || { echo "probe capabilities: missing"; verdict=1; }
+  if [ -n "${FN_PROBE_USER:-}" ]; then
+    echo "$out" | grep -q '^281' && echo "probe login: 281" || { echo "probe login: $(echo "$out" | grep -E '^(48|50)' | head -1)"; verdict=1; }
+    if [ -n "${1:-}" ]; then
+      echo "$out" | grep -q "^223 .*$1" && echo "probe read-back: 223 $1" || { echo "probe read-back: missing $1"; verdict=1; }
+    fi
+  fi
+  echo "$out" | grep -q '^205' && echo "probe quit: 205" || { echo "probe quit: missing"; [ $verdict -eq 0 ] && verdict=3; }
+  return $verdict
+}
+first_group() { # the first group the node serves, from the init record
+  cat "$NODE/state/groups" 2>/dev/null | head -1
+}
+probe_post() { # post one probe article through the control socket; echo its Message-ID
+  local group=$1 id art
+  id="<fn-probe.$(stamp).$$@probe.invalid>"
+  art=$(mktemp "${TMPDIR:-/tmp}/fn-probe-art.XXXXXX")
+  printf 'From: fn probe <probe@probe.invalid>\r\nNewsgroups: %s\r\nSubject: fn probe %s\r\nMessage-ID: %s\r\nDate: %s\r\n\r\nprobe\r\n' \
+    "$group" "$(now)" "$id" "$(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S +0000')" > "$art"
+  op post --message-id "$id" --payload "$art" --group "$group" >&2
+  local rc=$?; rm -f "$art"
+  echo "$id"; return $rc
+}
+
+# ---------------------------------------------------------------- status
+status_text() {
+  local out rc; out=$(op status 2>&1); rc=$?
+  # SPIKE: defers a live status over the control socket (headroom, profile,
+  # counts while an owner holds the lock); the image refuses status then.
+  if [ $rc -eq 1 ] && echo "$out" | grep -q 'already locked' && unit_active; then
+    echo "owner live pid=$(sctl show -p MainPID --value "$(unit_name)") since=$(sctl show -p ActiveEnterTimestamp --value "$(unit_name)" | tr ' ' '_')"
+    echo "owner-held store-side fields (transactions, headroom) need the owner's control query"
+    return 0
+  fi
+  echo "$out"; return $rc
+}
+kv() { echo "$1" | tr ' ' '\n' | awk -F= -v k="$2" '$1==k {print $2; exit}'; }
+headroom_pct() { # percent of the transaction budget and history bound still free (the smaller)
+  local s=$1 used budget bu hb a b
+  used=$(kv "$(echo "$s" | grep '^headroom')" transactions-used)
+  budget=$(kv "$(echo "$s" | grep '^headroom')" transactions-budget)
+  bu=$(kv "$(echo "$s" | grep '^headroom')" bytes-used)
+  hb=$(kv "$(echo "$s" | grep '^headroom')" history-bound)
+  [ -n "$used" ] && [ -n "$budget" ] && [ "$budget" -gt 0 ] || { echo ""; return; }
+  a=$(( (budget - used) * 100 / budget ))
+  if [ -n "$bu" ] && [ -n "$hb" ] && [ "$hb" -gt 0 ]; then b=$(( (hb - bu) * 100 / hb )); [ "$b" -lt "$a" ] && a=$b; fi
+  echo "$a"
+}
+log_path() { toml_get log path; }
+log_counts() { # log_counts SINCE-EPOCH : "posts-accepted posts-refused readers faults"
+  local lp; lp=$(log_path); [ -f "$lp" ] || { echo "0 0 0 0"; return; }
+  local since; since=$(date -u -d "@$1" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -r "$1" +%Y-%m-%dT%H:%M:%SZ)
+  tail -n 20000 "$lp" | awk -v s="$since" '
+    { t=""; for (i=1;i<=NF;i++) if ($i ~ /^time=/) t=substr($i,6) }
+    t < s { next }
+    $2=="post" && $1=="accepted" {pa++} $2=="post" && $1=="refused" {pr++}
+    $2=="reader" || $2=="peer" {rd++} $1=="fault" || $1=="uncertain" {f++}
+    END { printf "%d %d %d %d\n", pa, pr, rd, f }'
+}
+connections() { ss -tnH state established 2>/dev/null | awk '{print $3}' | grep -c ":$(toml_get listener port 1119)\$"; }
+
+cmd_top() {
+  local interval=${1:-5}
+  while :; do
+    local s t n c15 c1 hp
+    s=$(status_text); n=$(date +%s)
+    c1=$(log_counts $((n - 60))); c15=$(log_counts $((n - 900)))
+    hp=$(headroom_pct "$s")
+    [ -t 1 ] && printf '\033[H\033[2J'
+    echo "fn top  $(now)  node $NODE  release $(basename "$(current_release)")"
+    echo "unit    $(unit_name) $(sctl is-active "$(unit_name)" 2>/dev/null)   listen $(listen_addr) $(listening && echo up || echo down)"
+    echo "conns   $(connections) established"
+    set -- $c1; echo "1m      posts accepted $1 refused $2   connections opened $3   faults/uncertain $4"
+    set -- $c15; echo "15m     posts accepted $1 refused $2   connections opened $3   faults/uncertain $4   POST rate $(( $1 * 60 / 900 ))/min"
+    echo "head    ${hp:-?}% free (the smaller of the transaction budget and history bound)"
+    echo "$s" | grep -E '^(transactions|headroom|profile|live|owner)' | sed 's/^/store   /'
+    # SPIKE: defers obligations and pins to a live owner query over the
+    # control socket; the store-side views need the writer lock.
+    echo "oblig   $( [ -n "$(toml_get control path)" ] && unit_active && echo 'owner-held (no live query yet)' || host "$IMAGE" bp-obligation list "$(toml_get store path)" 2>/dev/null | wc -l)"
+    echo "pins    $( unit_active && echo 'owner-held' || host "$IMAGE" checkpoint status "$(toml_get store path)" 2>&1 | head -1)"
+    [ "${TOP_ONCE:-}" = 1 ] && return 0
+    sleep "$interval"
+  done
+}
+
+# ---------------------------------------------------------------- alerts
+# SPIKE: defers the alert rules (what is a fault, the refusal-rate window,
+# the headroom threshold) to an ACL2 owner of node health.
+fire_alert() { # fire_alert KIND DETAIL
+  local cmd; cmd=$(toml_get alerts command)
+  echo "$(now) alert $1 $2" >> "$NODE/state/alerts.log"
+  [ -n "$cmd" ] || { say "alert $1 (no [alerts] command): $2"; return 0; }
+  local cool last; cool=$(toml_get alerts cooldown_seconds 900)
+  last=$(cat "$NODE/state/alert.$1.last" 2>/dev/null || echo 0)
+  if [ "$1" != test ] && [ $(( $(date +%s) - last )) -lt "$cool" ]; then return 0; fi
+  date +%s > "$NODE/state/alert.$1.last"
+  FN_ALERT_KIND=$1 FN_ALERT_DETAIL=$2 FN_NODE=$NODE FN_ALERT_TIME=$(now) timeout 30 "$cmd"
+}
+rotate_log() {
+  local lp max keep; lp=$(log_path); max=$(toml_get ops log_max_bytes 67108864); keep=$(toml_get ops log_keep 7)
+  [ -f "$lp" ] || return 0
+  [ "$(wc -c < "$lp")" -ge "$max" ] || return 0
+  local i=$keep
+  rm -f "$lp.$keep.gz"
+  while [ "$i" -gt 1 ]; do [ -f "$lp.$((i - 1)).gz" ] && mv -f "$lp.$((i - 1)).gz" "$lp.$i.gz"; i=$((i - 1)); done
+  # SPIKE: defers a reopen of [log] path on SIGHUP in the owner.  The owner
+  # writes O_APPEND, so copy-then-truncate is safe for its offset; a line
+  # written between the copy and the truncate is lost.
+  cp -p "$lp" "$lp.1" && : > "$lp" && gzip -f "$lp.1"
+  say "rotated $lp (kept $keep)"
+}
+cmd_check() {
+  local n last s hp rate thr min c
+  n=$(date +%s); last=$(cat "$NODE/state/check.last" 2>/dev/null || echo $((n - 60)))
+  [ "$last" -lt "$n" ] || last=$((n - 60))
+  local fired=0
+  if [ -f "$(unit_dir)/$(unit_name)" ] && [ "$(sctl is-active "$(unit_name)")" = failed ]; then
+    fire_alert fault "unit $(unit_name) failed"; fired=1
+  fi
+  c=$(log_counts "$last"); set -- $c
+  [ "$4" -gt 0 ] && { fire_alert fault "$4 fault/uncertain log lines since $(date -u -d "@$last" +%H:%M:%S 2>/dev/null)"; fired=1; }
+  thr=$(toml_get alerts refusal_rate_per_minute 30)
+  rate=$(( $2 * 60 / ( (n - last) > 0 ? (n - last) : 1 ) ))
+  [ "$rate" -gt "$thr" ] && { fire_alert refusal-rate "$rate refused posts/min > $thr"; fired=1; }
+  s=$(status_text); hp=$(headroom_pct "$s"); min=$(toml_get alerts headroom_min_percent 10)
+  [ -n "$hp" ] && [ "$hp" -lt "$min" ] && { fire_alert headroom "$hp% free < $min%"; fired=1; }
+  echo "$n" > "$NODE/state/check.last"
+  rotate_log
+  echo "check faults=$4 refused=$2 rate=$rate/min headroom=${hp:-?}% alerts=$fired"
+}
+
+# ---------------------------------------------------------------- doctor
+DOC_FAIL=0 DOC_WARN=0 DOC_UNDECIDED=0
+chk() { # chk ok|warn|fail|undecided NAME DETAIL
+  printf '%-9s %-18s %s\n' "$1" "$2" "$3"
+  case $1 in fail) DOC_FAIL=$((DOC_FAIL + 1));; warn) DOC_WARN=$((DOC_WARN + 1));; undecided) DOC_UNDECIDED=$((DOC_UNDECIDED + 1));; esac
+}
+mode_of() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
+cmd_doctor() {
+  # SPIKE: defers every check below, and its threshold, to an ACL2 owner of
+  # node health; today they are host observations and host judgments.
+  local store rel s rc cert key auth lp
+  store=$(toml_get store path)
+  rel=$(current_release)
+  [ -L "$NODE/current" ] && chk ok release "current -> $(basename "$rel")" || chk warn release "no current symlink; image $IMAGE"
+  if [ -s "$rel/share/fn/native-artifacts.txt" ]; then
+    local want got
+    want=$(sed -n '/^installed-launcher-and-core:/{n;p;n;p;}' "$rel/share/fn/native-artifacts.txt" | awk '{print $1}' | tr '\n' ' ')
+    got=$(sha "$rel/libexec/fn/fn-host" "$rel/libexec/fn/fn-host.core" | awk '{print $1}' | tr '\n' ' ')
+    [ "$want" = "$got" ] && chk ok image-digest "launcher+core match native-artifacts.txt" || chk fail image-digest "installed image differs from its record"
+  else chk warn image-digest "no native-artifacts.txt beside the release"; fi
+  s=$(status_text); rc=$?
+  case $rc in
+    0) chk ok store-open "$(echo "$s" | head -1)";;
+    5) chk fail config "$(echo "$s" | tail -1)";;
+    3) chk undecided store-open "$(echo "$s" | tail -1)";;
+    *) chk fail store-open "$(echo "$s" | tail -1)";;
+  esac
+  if [ -d "$store" ]; then
+    [ "$(mode_of "$store")" = 700 ] && chk ok store-mode 700 || chk warn store-mode "$(mode_of "$store") (want 700)"
+    [ -s "$store/config.json" ] && chk ok store-profile "config.json $(wc -c < "$store/config.json") bytes; $(echo "$s" | grep -o 'format=[0-9]*' | head -1)" || chk fail store-profile "config.json missing"
+    [ -s "$store/committed-history.json" ] && chk ok marker "committed-history.json present" || chk warn marker "no committed-history marker (written at the first commit)"
+    echo "$s" | grep -q 'staging-orphans=0' && chk ok staging "no orphans" || { echo "$s" | grep -q 'staging-orphans' && chk warn staging "$(echo "$s" | grep -o 'staging-orphans=[0-9]*')"; }
+    local hp; hp=$(headroom_pct "$s"); local min; min=$(toml_get alerts headroom_min_percent 10)
+    if [ -n "$hp" ]; then [ "$hp" -ge "$min" ] && chk ok headroom "$hp% free" || chk warn headroom "$hp% free < $min%"; fi
+    local avail; avail=$(df -Pk "$store" | awk 'NR==2 {print $4}')
+    [ "${avail:-0}" -gt 1048576 ] && chk ok disk "$((avail / 1024)) MiB free" || chk warn disk "$((avail / 1024)) MiB free on the store's filesystem"
+  else chk fail store "missing $store"; fi
+  cert=$(toml_get listener tls_cert); key=$(toml_get listener tls_key)
+  if [ -n "$cert" ]; then
+    if [ -s "$cert" ] && [ -s "$key" ]; then
+      openssl x509 -in "$cert" -noout -checkend 2592000 >/dev/null 2>&1 &&
+        chk ok tls-expiry "$(openssl x509 -in "$cert" -noout -enddate 2>/dev/null)" || chk warn tls-expiry "expires within 30 days"
+      [ "$(openssl x509 -in "$cert" -noout -pubkey 2>/dev/null | sha)" = "$(openssl pkey -in "$key" -pubout 2>/dev/null | sha)" ] &&
+        chk ok tls-pair "key matches certificate" || chk fail tls-pair "key does not match certificate"
+      case $(mode_of "$key") in 600|400) chk ok tls-key-mode "$(mode_of "$key")";; *) chk warn tls-key-mode "$(mode_of "$key") (want 600)";; esac
+    else chk fail tls "certificate or key missing"; fi
+  else chk warn tls "no [listener] tls_cert: STARTTLS unavailable, logins refused off loopback"; fi
+  auth=$(toml_get auth path)
+  if [ "$(toml_get auth required false)" = true ]; then
+    if [ -s "$auth" ]; then
+      [ "$(mode_of "$auth")" = 600 ] && chk ok credentials "mode 600, $(grep -c '^\[login\.' "$auth") login(s)" || chk warn credentials "mode $(mode_of "$auth") (want 600)"
+    else chk fail credentials "auth required but $auth missing (fn principal set-password NAME)"; fi
+  else chk ok credentials "auth not required"; fi
+  if unit_active; then
+    listening && chk ok port "$(listen_addr) listening" || chk fail port "unit active but $(listen_addr) not listening"
+  else
+    listening && chk fail port "$(listen_addr) held by another process" || chk ok port "$(listen_addr) free"
+  fi
+  local uf; uf=$(unit_dir)/$(unit_name)
+  if [ -f "$uf" ]; then
+    grep -q "^ExecStart=$NODE/current/bin/fn" "$uf" && chk ok unit-exec "$(unit_name) runs current" || chk warn unit-exec "$(grep '^ExecStart=' "$uf")"
+    grep -q '^MemoryMax=' "$uf" && chk ok unit-memory "$(grep '^MemoryMax=' "$uf")" || chk warn unit-memory "no MemoryMax"
+    case $(sctl is-active "$(unit_name)") in
+      failed) chk fail unit-state "failed ($(sctl show -p Result --value "$(unit_name)"))";;
+      *) chk ok unit-state "$(sctl is-active "$(unit_name)")";;
+    esac
+  else chk warn unit "no $uf (fn install-unit)"; fi
+  lp=$(log_path)
+  if [ -n "$lp" ]; then
+    [ -w "$(dirname "$lp")" ] && chk ok log "$lp $( [ -f "$lp" ] && wc -c < "$lp" || echo 0) bytes" || chk fail log "$(dirname "$lp") not writable"
+  else chk warn log "no [log] path: the log goes to the journal and fn top sees no rates"; fi
+  local lb; lb=$(ls -1t "$NODE/backups"/*.tar 2>/dev/null | head -1)
+  [ -n "$lb" ] && chk ok backup "$(basename "$lb")" || chk warn backup "no backup yet (fn backup)"
+  [ -n "$(toml_get alerts command)" ] && chk ok alerts "$(toml_get alerts command)" || chk warn alerts "no [alerts] command"
+  echo "doctor fail=$DOC_FAIL warn=$DOC_WARN undecided=$DOC_UNDECIDED"
+  [ $DOC_FAIL -gt 0 ] && finish $EX_REFUSED "$DOC_FAIL check(s) failed"
+  [ $DOC_UNDECIDED -gt 0 ] && finish $EX_UNCERTAIN "$DOC_UNDECIDED check(s) undecided"
+  finish $EX_OK "$DOC_WARN warning(s)"
+}
+
+# ---------------------------------------------------------------- init --mission
+# SPIKE: defers the mission table to an ACL2 owner (a mission is a named,
+# validated fn.toml + store profile; fn-bs-profile-validp already judges the
+# profile half at init).
+mission_values() { # prints: posting auth_required protected_only headroom refusal max_article max_groups
+  case $1 in
+    small-community) echo "true true true 10 30 1048576 8";;
+    relay)           echo "false true true 20 120 1048576 16";;
+    archive)         echo "false false false 25 30 1048576 16";;
+    *) return 1;;
+  esac
+}
+cmd_init() {
+  local mission= host=127.0.0.1 port=1119 groups=() rest=()
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --mission) mission=${2:-}; shift 2;;
+      --host) host=${2:-}; shift 2;;
+      --port) port=${2:-}; shift 2;;
+      --group) groups+=("${2:-}"); shift 2;;
+      *) rest+=("$1"); shift;;
+    esac
+  done
+  if [ -z "$mission" ]; then # plain init: the image's own verb over an existing fn.toml
+    need_config; core_config; resolve_image
+    op init ${rest[@]+"${rest[@]}"}; local rc=$?
+    [ $rc -eq 0 ] && printf '%s\n' ${rest[@]+"${rest[@]}"} | grep -v '^--' > "$NODE/state/groups"
+    finish $rc
+  fi
+  local v; v=$(mission_values "$mission") || finish $EX_USAGE "unknown mission $mission (small-community|relay|archive)"
+  set -- $v
+  local posting=$1 areq=$2 aprot=$3 head=$4 refusal=$5 maxart=$6 maxg=$7
+  [ ${#groups[@]} -gt 0 ] || case $mission in
+    small-community) groups=(local.general local.test);;
+    *) finish $EX_USAGE "mission $mission needs --group NAME (the groups it carries)";;
+  esac
+  [ -e "$CFG" ] && finish $EX_REFUSED "$CFG exists; a mission writes a new node only"
+  resolve_image
+  mkdir -p "$NODE/tls" "$NODE/log" "$NODE/backups" "$NODE/state" && chmod 700 "$NODE/tls" || finish $EX_FAULT "cannot create node directories"
+  if [ ! -s "$NODE/tls/cert.pem" ]; then
+    local san="IP:$host"; case $host in *[!0-9.]*) san="DNS:$host";; esac
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 825 \
+      -subj "/CN=$host" -addext "subjectAltName=$san" \
+      -keyout "$NODE/tls/key.pem" -out "$NODE/tls/cert.pem" >/dev/null 2>&1 || finish $EX_FAULT "certificate generation failed"
+    chmod 600 "$NODE/tls/key.pem"
+  fi
+  cat > "$CFG" <<EOF
+# fn node, mission $mission, written by fn init $(now).
+[store]
+path = "$NODE/store"
+
+[listener]
+host = "$host"
+port = $port
+tls_cert = "$NODE/tls/cert.pem"
+tls_key = "$NODE/tls/key.pem"
+
+[auth]
+required = $areq
+protected_only = $aprot
+path = "$NODE/store/auth.toml"
+
+[posting]
+enabled = $posting
+
+[control]
+path = "$NODE/store/control.sock"
+
+[log]
+path = "$NODE/log/fn.log"
+
+# The tables below are read by bin/fn, not by the image (SPIKE).
+[alerts]
+# command = "/usr/local/bin/fn-alert"   # run with FN_ALERT_KIND/DETAIL/NODE/TIME
+headroom_min_percent = $head
+refusal_rate_per_minute = $refusal
+cooldown_seconds = 900
+
+[ops]
+unit = "fn-$(basename "$NODE").service"
+scope = "user"
+keep_releases = 3
+log_max_bytes = 67108864
+log_keep = 7
+memory_max = "24G"
+EOF
+  core_config
+  local flags=()
+  if host "$IMAGE" operator "$CORE" help init 2>/dev/null | grep -q -- '--max-article-octets'; then
+    flags=(--max-article-octets "$maxart" --max-groups-per-article "$maxg")
+  else flags=(--profile scale); fi
+  say "mission $mission: posting=$posting auth=$areq profile ${flags[*]}"
+  op init ${flags[@]+"${flags[@]}"} "${groups[@]}"; local rc=$?
+  [ $rc -eq 0 ] && printf '%s\n' "${groups[@]}" > "$NODE/state/groups"
+  finish $rc "mission $mission"
+}
+
+# ---------------------------------------------------------------- releases
+# install IMAGE-DIR REV: stage a release beside the others; digests checked
+# by install-native.sh against image.sha256 before anything is switched.
+packaging_dir() { # where install-native.sh and this script's siblings live
+  if [ -f "$(dirname "$SELF")/install-native.sh" ]; then (cd "$(dirname "$SELF")/.." && pwd)
+  elif [ -f "$(current_release)/share/fn/packaging/install-native.sh" ]; then echo "$(current_release)/share/fn"
+  else return 1; fi
+}
+install_release() { # install_release IMAGE-DIR REV -> NODE/releases/REV
+  local img=$1 rev=$2 tree dest
+  tree=${FN_PACKAGING:-$(packaging_dir)} || finish $EX_FAULT "no packaging/install-native.sh to install with"
+  dest=$NODE/releases/$rev
+  [ -e "$dest" ] && finish $EX_REFUSED "release $rev already installed"
+  [ -x "$img/fn-host" ] || finish $EX_USAGE "$img/fn-host is not an image"
+  mkdir -p "$NODE/releases"
+  (cd "$tree" && FN_NATIVE_HOST="$img/fn-host" FN_NATIVE_SOURCE_REVISION="$rev" PREFIX="$dest" \
+     sh packaging/install-native.sh) >&2 || { rm -rf "$dest"; finish $EX_REFUSED "install-native refused $img"; }
+  # the release carries its own installer so it can install the next one
+  mkdir -p "$dest/share/fn/packaging"
+  cp -p "$tree/packaging/install-native.sh" "$tree/packaging/fn" "$tree/packaging/fn-native" \
+        "$tree/packaging/fn-native.service.in" "$tree/packaging/net.fn.native.plist.in" "$dest/share/fn/packaging/"
+  echo "$rev" > "$dest/share/fn/REVISION"
+}
+set_current() { ln -sfn "releases/$1" "$NODE/.current.next" && mv -Tf "$NODE/.current.next" "$NODE/current" 2>/dev/null || mv -fh "$NODE/.current.next" "$NODE/current"; }
+cmd_install() {
+  [ $# -eq 2 ] || finish $EX_USAGE "usage: fn install IMAGE-DIR REV"
+  install_release "$1" "$2"
+  [ -L "$NODE/current" ] || set_current "$2"
+  mkdir -p "$NODE/state" && echo "$(now) install $2" >> "$NODE/state/history"
+  finish $EX_OK "$2 at $NODE/releases/$2"
+}
+store_format() { echo "$1" | grep -o 'format=[0-9]*' | head -1 | cut -d= -f2; }
+image_native_format() { # the format an image writes at init, observed on a scratch store
+  local img=$1 d rc out
+  d=$(mktemp -d "$NODE/state/.fmt.XXXXXX")
+  printf '[store]\npath = "%s/store"\n' "$d" > "$d/fn.toml"
+  host "$img" operator "$d/fn.toml" init probe.format >/dev/null 2>&1
+  out=$(host "$img" operator "$d/fn.toml" status 2>&1); rm -rf "$d"
+  store_format "$out"
+}
+start_and_probe() { # start the unit, wait for the listener, probe; 0 ok
+  sctl start "$(unit_name)" || return 1
+  wait_listening 60 || { say "listener $(listen_addr) did not come up"; return 1; }
+  probe >&2
+}
+cmd_upgrade() {
+  [ $# -eq 2 ] || finish $EX_USAGE "usage: fn upgrade IMAGE-DIR REV"
+  local img=$1 rev=$2 old oldrev s fmt want kept= upgraded=no
+  old=$(current_release); oldrev=$(basename "$old")
+  [ "$oldrev" = "$rev" ] && finish $EX_REFUSED "$rev is already current"
+  install_release "$img" "$rev"
+  local new=$NODE/releases/$rev nimg; nimg=$(image_of "$new")
+  local was_active=no; unit_active && was_active=yes
+  sctl stop "$(unit_name)" 2>/dev/null
+  local store; store=$(toml_get store path)
+  kept=$NODE/state/config.json.$oldrev.$(stamp)
+  cp -p "$store/config.json" "$kept" || finish $EX_FAULT "cannot keep config.json"
+  s=$(host "$nimg" operator "$CORE" status 2>&1); local rc=$?
+  if [ $rc -ne 0 ]; then
+    say "the new image does not open the store: $(echo "$s" | tail -1)"
+    [ $was_active = yes ] && sctl start "$(unit_name)"
+    finish $EX_REFUSED "store refused by $rev; $oldrev left current"
+  fi
+  fmt=$(store_format "$s"); want=$(image_native_format "$nimg")
+  if [ -n "$fmt" ] && [ -n "$want" ] && [ "$fmt" -lt "$want" ]; then
+    say "store format $fmt < image format $want: store upgrade-profile"
+    host "$nimg" operator "$CORE" store upgrade-profile >&2; rc=$?
+    case $rc in
+      0) upgraded=yes;;
+      3) finish $EX_UNCERTAIN "upgrade-profile uncertain: run fn status with $rev before anything else";;
+      *) cp -p "$kept" "$store/config.json"; [ $was_active = yes ] && sctl start "$(unit_name)"
+         finish $rc "upgrade-profile did not accept; $oldrev left current";;
+    esac
+  fi
+  set_current "$rev"
+  echo "$(now) upgrade $oldrev $rev profile-upgraded=$upgraded kept=$kept" >> "$NODE/state/history"
+  if ! start_and_probe; then
+    say "the new release failed its probe; rolling back"
+    CMD=upgrade; do_rollback || finish $EX_FAULT "rollback after a failed upgrade failed: operator action required"
+    finish $EX_REFUSED "$rev failed its probe; rolled back to $oldrev"
+  fi
+  prune_releases
+  finish $EX_OK "active=$rev previous=$oldrev profile-upgraded=$upgraded"
+}
+prune_releases() {
+  local keep cur n=0; keep=$(toml_get ops keep_releases 3); cur=$(basename "$(current_release)")
+  for r in $(ls -1t "$NODE/releases" 2>/dev/null); do
+    n=$((n + 1)); [ "$r" = "$cur" ] && continue
+    [ $n -gt "$keep" ] && { rm -rf "$NODE/releases/$r"; say "pruned release $r (keep_releases=$keep)"; }
+  done
+}
+do_rollback() {
+  local line prev cur kept upgraded store
+  # the history is a stack: an upgrade pushes, a rollback pops, so repeated
+  # rollbacks walk back through every kept release in order
+  line=$(awk '$2=="upgrade" {st[++n]=$0} $2=="rollback" && n>0 {n--} END {if (n>0) print st[n]}' "$NODE/state/history" 2>/dev/null)
+  [ -n "$line" ] || { say "no upgrade recorded"; return 2; }
+  set -- $line; prev=$3; cur=$4; upgraded=${5#profile-upgraded=}; kept=${6#kept=}
+  [ "$(basename "$(current_release)")" = "$cur" ] || { say "current is not $cur (the last upgrade's target)"; return 2; }
+  [ -d "$NODE/releases/$prev" ] || { say "release $prev was pruned"; return 2; }
+  store=$(toml_get store path)
+  sctl stop "$(unit_name)" 2>/dev/null
+  local saved=$NODE/state/config.json.$cur.$(stamp)
+  cp -p "$store/config.json" "$saved"
+  [ "$upgraded" = yes ] && cp -p "$kept" "$store/config.json"
+  # the old image is the judge of whether it can open what the new one wrote
+  local s; s=$(host "$(image_of "$NODE/releases/$prev")" operator "$CORE" status 2>&1) || {
+    say "$prev does not open the store: $(echo "$s" | tail -1); restoring $cur"
+    cp -p "$saved" "$store/config.json"; sctl start "$(unit_name)"; return 1; }
+  set_current "$prev"
+  echo "$(now) rollback $cur $prev restored-config=$upgraded kept=$saved" >> "$NODE/state/history"
+  start_and_probe
+}
+cmd_rollback() { do_rollback; local rc=$?; [ $rc -eq 2 ] && finish $EX_REFUSED "nothing to roll back"; [ $rc -eq 0 ] && finish $EX_OK "active=$(basename "$(current_release)")"; finish $EX_REFUSED "rollback did not complete"; }
+
+# ---------------------------------------------------------------- units
+cmd_install_unit() {
+  local u d; u=$(unit_name); d=$(unit_dir); mkdir -p "$d"
+  local mm; mm=$(toml_get ops memory_max 24G)
+  cat > "$d/$u" <<EOF
+[Unit]
+Description=fn native news node ($NODE)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=$NODE/current/bin/fn --node $NODE run
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=120
+MemoryMax=$mm
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target
+EOF
+  local c=${u%.service}-check
+  cat > "$d/$c.service" <<EOF
+[Unit]
+Description=fn health check and log rotation ($NODE)
+[Service]
+Type=oneshot
+ExecStart=$NODE/current/bin/fn --node $NODE check
+EOF
+  cat > "$d/$c.timer" <<EOF
+[Unit]
+Description=fn health check every minute ($NODE)
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=60
+[Install]
+WantedBy=timers.target
+EOF
+  sctl daemon-reload && sctl enable --now "$c.timer" >/dev/null 2>&1
+  finish $EX_OK "$d/$u and $c.timer"
+}
+
+# ---------------------------------------------------------------- backup / restore
+cmd_backup() {
+  local online=no; [ "${1:-}" = --online ] && online=yes
+  local store t stage out rc s
+  store=$(toml_get store path); t=$(stamp)
+  stage=$NODE/backups/.stage-$t; out=$NODE/backups/fn-backup-$t.tar
+  mkdir -p "$stage/node" && chmod 700 "$NODE/backups" || finish $EX_FAULT "cannot create backup stage"
+  local was=no; unit_active && was=yes
+  [ $was = yes ] && [ $online = no ] && sctl stop "$(unit_name)"
+  # a copy of a stopped store is exact; an online copy may miss the newest
+  # transaction mid-write, which recovery on the copy discards
+  rsync -a --exclude control.sock "$store/" "$stage/node/store/"; rc=$?
+  [ $was = yes ] && [ $online = no ] && { sctl start "$(unit_name)"; wait_listening 60 || say "restarted unit is not listening yet"; }
+  [ $rc -eq 0 ] || { rm -rf "$stage"; finish $EX_FAULT "store copy failed"; }
+  cp -p "$CFG" "$stage/node/fn.toml"; cp -pR "$NODE/tls" "$stage/node/" 2>/dev/null
+  cp -p "$NODE/state/groups" "$stage/node/groups" 2>/dev/null
+  # open the copy with the current image: a backup that does not open is not one
+  printf '[store]\npath = "%s"\n' "$stage/node/store" > "$stage/open.toml"
+  s=$(host "$IMAGE" operator "$stage/open.toml" status 2>&1); rc=$?
+  rm -f "$stage/open.toml"
+  [ $rc -eq 0 ] || { rm -rf "$stage"; finish $rc "the copy does not open: $(echo "$s" | tail -1)"; }
+  { echo "fn-backup v1"; echo "time=$(now)"; echo "node=$NODE"; echo "release=$(basename "$(current_release)")"
+    echo "online=$online"; echo "$s" | grep -v '^accepted'; } > "$stage/node/BACKUP"
+  (cd "$stage/node" && find . -type f ! -name MANIFEST.sha256 | sort | xargs $SHACMD >> MANIFEST.sha256) || { rm -rf "$stage"; finish $EX_FAULT "manifest failed"; }
+  (umask 077; tar -C "$stage" -cf "$out" node) && (cd "$NODE/backups" && sha "$(basename "$out")" > "$(basename "$out").sha256") || { rm -rf "$stage"; finish $EX_FAULT "archive failed"; }
+  rm -rf "$stage"
+  echo "$out"; finish $EX_OK "$(grep -o 'transactions=[0-9]* articles=[0-9]*' < <(echo "$s")) -> $out"
+}
+cmd_restore() { # restore ARCHIVE NEW-NODE [--port N]
+  [ $# -ge 2 ] || finish $EX_USAGE "usage: fn restore ARCHIVE NEW-NODE-DIR [--port N] [--same-identity]"
+  local arc=$1 dst=$2 port= same=no; shift 2
+  while [ $# -gt 0 ]; do case $1 in --port) port=$2; shift 2;; --same-identity) same=yes; shift;; *) finish $EX_USAGE "unknown $1";; esac; done
+  case $dst in /*) ;; *) finish $EX_USAGE "NEW-NODE-DIR must be absolute";; esac
+  [ -f "$arc.sha256" ] && (cd "$(dirname "$arc")" && sha -c "$(basename "$arc").sha256" >/dev/null) || finish $EX_REFUSED "archive digest missing or wrong"
+  [ -e "$dst/store" ] || [ -e "$dst/fn.toml" ] && finish $EX_REFUSED "$dst is not empty"
+  mkdir -p "$dst" || finish $EX_FAULT "cannot create $dst"
+  local stage; stage=$(mktemp -d "$dst/.restore.XXXXXX")
+  tar -C "$stage" -xf "$arc" && (cd "$stage/node" && sha -c MANIFEST.sha256 >/dev/null) || { rm -rf "$stage"; finish $EX_REFUSED "manifest does not verify"; }
+  mkdir -p "$dst/log" "$dst/state" "$dst/backups" && cp -pR "$stage/node/tls" "$dst/" 2>/dev/null
+  cp -p "$stage/node/groups" "$dst/state/groups" 2>/dev/null
+  local oldnode; oldnode=$(sed -n 's/^node=//p' "$stage/node/BACKUP")
+  sed "s#$oldnode/#$dst/#g" "$stage/node/fn.toml" > "$dst/fn.toml"
+  [ -n "$port" ] && sed -i.bak "s/^port = .*/port = $port/" "$dst/fn.toml" && rm -f "$dst/fn.toml.bak"
+  sed -i.bak "s/^unit = .*/unit = \"fn-$(basename "$dst").service\"/" "$dst/fn.toml" && rm -f "$dst/fn.toml.bak"
+  local rel; rel=$(current_release)
+  NODE=$dst; CFG=$dst/fn.toml; core_config
+  local rc
+  if [ $same = yes ]; then
+    mv "$stage/node/store" "$dst/store"; rc=$?
+  else
+    # a restored copy takes a fresh incarnation (ACL2's clone rollover), so
+    # it and a surviving original can never answer as one identity
+    # (the clone destination must be a sibling of its source)
+    mv "$stage/node/store" "$dst/.store-restoring" &&
+      host "$IMAGE" checkpoint clone "$dst/.store-restoring" "$dst/store" >&2; rc=$?
+    rm -rf "$dst/.store-restoring"
+  fi
+  # dst was empty when we began, so everything in it is ours to remove
+  [ $rc -eq 0 ] || { rm -rf "$dst"; finish $rc "store placement failed (a clone refused :unbootstrapped means the store carries no consumer incarnation to roll: restore it with --same-identity, and never run it beside the original)"; }
+  ln -sfn "$rel" "$dst/current"
+  local want got s; want=$(grep -o 'transactions=[0-9]* articles=[0-9]*' "$stage/node/BACKUP")
+  s=$(op status 2>&1); rc=$?; got=$(echo "$s" | grep -o 'transactions=[0-9]* articles=[0-9]*')
+  rm -rf "$stage"
+  [ $rc -eq 0 ] || finish $rc "restored store does not open: $(echo "$s" | tail -1)"
+  echo "backup: $want"; echo "restored: $got"
+  [ $same = yes ] && [ "$want" != "$got" ] && finish $EX_REFUSED "counts differ"
+  finish $EX_OK "$dst opens ($got)"
+}
+
+# ---------------------------------------------------------------- dispatch
+usage() {
+  cat <<'EOF'
+usage: fn [--node DIR] COMMAND [ARGS]
+
+node lifecycle
+  init --mission small-community|relay|archive [--host H] [--port P] [--group G]...
+  init GROUP...                 initialise the store an existing fn.toml names
+  install IMAGE-DIR REV         install a release beside the others
+  install-unit                  write the service unit and the check timer
+  start | stop | restart        the unit
+  run [--once]                  the owner (what the unit runs)
+  upgrade IMAGE-DIR REV         install, stop, upgrade-profile if the format moved, start, probe
+  rollback                      previous release + the kept config.json
+  backup [--online]             store copy, opened and digested, as a tar
+  restore ARCHIVE DIR [--port N] [--same-identity]
+
+looking at it
+  status [--watch [SECONDS]]    store / owner status (image), plus headroom
+  top [SECONDS]                 connections, POST rate, headroom, obligations, pins
+  doctor                        store, profile, marker, TLS, credentials, ports, unit
+  probe [--post]                NNTP (STARTTLS) probe; --post posts and reads back
+  check                         alert rules + log rotation (the timer runs this)
+  alert test                    fire the [alerts] command once
+
+the image's verbs (ACL2-owned grammar; `fn help VERB`)
+  post recover store group capacity peer bp-boundary bp-route policy principal
+  checkpoint SUB                --fn checkpoint SUB STORE
+  raw VERB ARGS...              --fn VERB ARGS...
+  operator CONFIG ARGS...       the image's operator entry, unchanged
+
+outcomes: 0 accepted, 1 refused, 3 uncertain, 4 fault, 5 usage
+EOF
+}
+
+while [ $# -gt 0 ]; do
+  case $1 in
+    --node) NODE=${2:-}; shift 2;;
+    --node=*) NODE=${1#--node=}; shift;;
+    *) break;;
+  esac
+done
+[ $# -gt 0 ] || { usage; CMD=help; finish $EX_USAGE "no command"; }
+CMD=$1; shift
+
+case $CMD in
+  -h|--help) usage; CMD=help; finish $EX_OK;;
+  operator) resolve_image; exec env ACL2_CUSTOMIZATION=NONE "$IMAGE" --fn operator "$@";;
+  raw) resolve_image; [ $# -gt 0 ] || finish $EX_USAGE "raw VERB"; exec env ACL2_CUSTOMIZATION=NONE "$IMAGE" --fn "$@";;
+esac
+
+if [ "$CMD" = restore ]; then resolve_image; cmd_restore "$@"; fi
+resolve_node
+case $CMD in
+  init) cmd_init "$@";;
+  install) cmd_install "$@";;
+esac
+need_config; core_config; resolve_image
+
+case $CMD in
+  help)
+    if [ $# -eq 0 ]; then usage; op help >/dev/null 2>&1; finish $EX_OK; fi
+    op help "$@"; finish $?;;
+  run) exec env ACL2_CUSTOMIZATION=NONE "$IMAGE" --fn operator "$CORE" run "$@";;
+  post|recover|store|group|capacity|peer|bp-boundary|bp-route|policy|principal)
+    op "$CMD" "$@"; exit $?;;
+  checkpoint) [ $# -ge 1 ] || finish $EX_USAGE "checkpoint SUB [ARGS]"
+    sub=$1; shift; host "$IMAGE" checkpoint "$sub" "$(toml_get store path)" "$@"; exit $?;;
+  status)
+    if [ "${1:-}" = --watch ]; then
+      while :; do
+        [ -t 1 ] && printf '\033[H\033[2J'; echo "$(now) $(unit_name) $(sctl is-active "$(unit_name)" 2>/dev/null)"
+        s=$(status_text); echo "$s"; hp=$(headroom_pct "$s"); [ -n "$hp" ] && echo "headroom-free $hp%"; sleep "${2:-5}"
+      done
+    fi
+    s=$(status_text); rc=$?; echo "$s" | grep -v '^[a-z]* operator status' ; hp=$(headroom_pct "$s")
+    [ -n "$hp" ] && echo "headroom-free ${hp}%"
+    finish $rc;;
+  top) cmd_top "$@";;
+  doctor) cmd_doctor;;
+  check) cmd_check; finish $EX_OK;;
+  alert) [ "${1:-}" = test ] || finish $EX_USAGE "alert test"
+    fire_alert test "fn alert test from $(hostname)"; rc=$?; [ $rc -eq 0 ] && finish $EX_OK "fired" || finish $EX_FAULT "alert command exited $rc";;
+  probe)
+    id=
+    if [ "${1:-}" = --post ]; then
+      g=$(first_group); [ -n "$g" ] || finish $EX_USAGE "no group recorded in state/groups"
+      id=$(probe_post "$g") || finish $? "probe post"
+      echo "probe post: accepted $id"
+    fi
+    probe "$id"; finish $?;;
+  start|stop|restart) sctl "$CMD" "$(unit_name)"; rc=$?
+    if [ "$CMD" != stop ] && [ $rc -eq 0 ]; then wait_listening 60 || finish $EX_UNCERTAIN "unit started, $(listen_addr) not listening"; fi
+    [ $rc -eq 0 ] && finish $EX_OK "$(unit_name)" || finish $EX_FAULT "systemctl $CMD exited $rc";;
+  install-unit) cmd_install_unit;;
+  upgrade) cmd_upgrade "$@";;
+  rollback) cmd_rollback;;
+  backup) cmd_backup "$@";;
+  restore) cmd_restore "$@";;
+  *) usage >&2; finish $EX_USAGE "unknown command $CMD";;
+esac

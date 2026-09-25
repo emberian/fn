@@ -1,0 +1,3 @@
+2026-09-25T07:51:04Z install c3420013
+2026-09-25T07:54:27Z upgrade c3420013 452d62cb profile-upgraded=yes kept=/tank/fn/scratch/spike-operator/rehearsal/state/config.json.c3420013.20260925T075426Z
+2026-09-25T07:54:34Z rollback 452d62cb c3420013 restored-config=yes kept=/tank/fn/scratch/spike-operator/rehearsal/state/config.json.452d62cb.20260925T075434Z
