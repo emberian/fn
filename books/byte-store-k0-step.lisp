@@ -24,7 +24,9 @@
 ;   :fsync-dir    :staging with :ok; :transactions with :ok in phase
 ;                 :record-attempted with the link pending (the record
 ;                 barrier); :root over a pending marker rename, any outcome
-;                 (lands or drops it).
+;                 (lands or drops it); :root with :ok from any related state
+;                 (over a pending frontier rename, or quiet:
+;                 fn-bs-k0s-root-fence-preserves-relation, lane k0-cuts).
 ;   :unlink       outside :root and :transactions; any outcome.
 ;   :rename       :staging to the committed-history marker name, root quiet,
 ;                 source present: covered, any outcome; :staging to the
@@ -46,11 +48,11 @@
 ; hypothesis.
 ; NOT covered, named: :mkdir and :link-eexist (initialization only; the init
 ; program has its own theorem), the error outcomes of the :staging and
-; :transactions barriers, the root barrier over a pending frontier rename,
-; and every step in the recovery window.  The per-cut theorems that follow
+; :transactions barriers, the error outcomes of the root barrier over a
+; pending frontier rename, and every step in the recovery window.  The per-cut theorems that follow
 ; from this one are in byte-store-k0-step-bridge.
 (in-package "ACL2")
-(include-book "byte-store-k0-step-lemmas")
+(include-book "byte-store-k0-step-root-fence")
 
 (defthm fn-bs-k0s-covered-of-relation
   (implies (fn-bs-store-relation bs ks) (fn-bs-k0-coveredp bs ks))
@@ -118,7 +120,8 @@
                        (and (fn-bs-store-relation bs ks) (equal d1 :transactions) (equal outcome :ok)
                             (equal (fn-sf-phase ks) :record-attempted)
                             (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
-                       (and (equal d1 :root) (fn-bs-k0s-marker-pendingp bs ks))))
+                       (and (equal d1 :root) (fn-bs-k0s-marker-pendingp bs ks))
+                       (and (fn-bs-store-relation bs ks) (equal d1 :root) (equal outcome :ok))))
        (:unlink (and (fn-bs-store-relation bs ks) (not (member-equal d1 '(:root :transactions)))))
        (:rename (and (fn-bs-store-relation bs ks) (equal d1 :staging) (equal d3 :root)
                      (let ((ino (fn-bs-lookup bs :staging n2)))
@@ -208,7 +211,7 @@
            (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
-           :use ((:instance fn-bs-k0-staging-fence-preserves-relation (b bs) (k ks)) (:instance fn-bs-k8-pending-link-fence-preserves-relation) (:instance fn-bs-k0s-marker-barrier-resolves (m bs)))
+           :use ((:instance fn-bs-k0-staging-fence-preserves-relation (b bs) (k ks)) (:instance fn-bs-k8-pending-link-fence-preserves-relation) (:instance fn-bs-k0s-marker-barrier-resolves (m bs)) fn-bs-k0s-root-fence-preserves-relation)
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0s-covered-of-relation fn-bs-k0s-fsync-dir-ok-is-fence)
                            (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed
                             fn-bs-marker-rename-dropped fn-bs-lookup fn-bs-create fn-bs-write fn-bs-fsync-file
