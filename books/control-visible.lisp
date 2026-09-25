@@ -73,6 +73,14 @@
           (cons a kept)))
     (cons a old-visible)))
 
+; `append' with guard t (the same logical definition).
+(defun fn-ctl-prepend (xs ys)
+  (declare (xargs :guard t))
+  (if (consp xs) (cons (car xs) (fn-ctl-prepend (cdr xs) ys)) ys))
+
+(defthm fn-ctl-prepend-is-append
+  (equal (fn-ctl-prepend xs ys) (append xs ys)))
+
 ; A batch DELTA (newest first, as the acceptance archive conses) over OLD.
 (defun fn-ctl-visible-extend (delta old-visible old ws verdicts)
   (declare (xargs :guard t))
@@ -80,7 +88,7 @@
       (fn-ctl-visible-add (car delta)
                           (fn-ctl-visible-extend (cdr delta) old-visible old
                                                  ws verdicts)
-                          (append (cdr delta) old) ws verdicts)
+                          (fn-ctl-prepend (cdr delta) old) ws verdicts)
     old-visible))
 
 ; -----------------------------------------------------------------------------
@@ -107,6 +115,10 @@
          (if (fn-ctl-withdrawn-via-p x ws cause verdicts)
              (fn-ctl-drop-via xs ws cause verdicts)
            (cons x (fn-ctl-drop-via xs ws cause verdicts)))))
+
+(defthm fn-ctl-drop-via-of-atom
+  (implies (not (consp xs))
+           (equal (fn-ctl-drop-via xs ws cause verdicts) nil)))
 
 (defthm fn-ctl-visible-filter-of-cons-article
   (implies (consp a)
