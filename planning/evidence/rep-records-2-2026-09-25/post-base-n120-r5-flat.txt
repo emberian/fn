@@ -1,0 +1,55 @@
+
+Number of samples:   125
+Sample interval:     0.001 seconds
+Total sampling time: 0.125 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2414639 "fn-sprof" RUNNING {120F5785C3}> (376/1048576 bytes, 3 hash buckets)
+   #<THREAD tid=2414642 "fn owner client" RUNNING {120FB45163}> (29776/1048576 bytes, 107 hash buckets)
+   #<THREAD tid=2414640 "fn outbound feed" RUNNING {120F9DB303}> (456/1048576 bytes, 3 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     13  10.4     27  21.6     13  10.4        -  FN-RECORD-STRING-OCTETS-AUX
+   4     12   9.6     12   9.6     25  20.0        -  foreign function fsync
+   6      7   5.6      7   5.6     32  25.6        -  FN-RECORD-STRING-OCTETS
+   8      5   4.0      8   6.4     37  29.6        -  FN-SHA256-ROTR32
+  10      5   4.0      5   4.0     42  33.6        -  FN-SHA256-W32
+  12      4   3.2     19  15.2     46  36.8        -  FN-SHA256-ROUNDS
+  14      4   3.2      5   4.0     50  40.0        -  FN-CBOR-OCTET-LISTP
+  16      4   3.2      4   3.2     54  43.2        -  foreign function rename
+  18      4   3.2      4   3.2     58  46.4        -  ASH
+  20      4   3.2      4   3.2     62  49.6        -  FN-SHA256-NTHX
+  22      3   2.4      3   2.4     65  52.0        -  foreign function clock_nanosleep
+  24      3   2.4      3   2.4     68  54.4        -  foreign function __close
+  26      3   2.4      3   2.4     71  56.8        -  GENERIC--
+  28      2   1.6      7   5.6     73  58.4        -  FN-RECORD-PAYLOADP
+  30      2   1.6      4   3.2     75  60.0        -  FN-RETAIN-OBLIGATION-IDS
+  32      2   1.6      4   3.2     77  61.6        -  FN-SHA256-FIX-OCTETS
+  34      2   1.6      2   1.6     79  63.2        -  FN-AG-CAR
+  36      2   1.6      2   1.6     81  64.8        -  SB-KERNEL:TWO-ARG-XOR
+  38      2   1.6      2   1.6     83  66.4        -  foreign function unlink
+  40      2   1.6      2   1.6     85  68.0        -  SB-KERNEL:VECTOR-TO-LIST
+  42      2   1.6      2   1.6     87  69.6        -  foreign function syscall
+  44      1   0.8    118  94.4     88  70.4        -  FNN-OWNER-SERVE-CLIENT
+  46      1   0.8     14  11.2     89  71.2        -  FN-RECORD-P
+  48      1   0.8     13  10.4     90  72.0        -  FN-SHA256-SCHEDULE-AUX
+  50      1   0.8      5   4.0     91  72.8        -  FNN-MARK-COMMITTED
+  52      1   0.8      5   4.0     92  73.6        -  FN-SHA256-BSIG1
+  54      1   0.8      4   3.2     93  74.4        -  SB-UNIX:NANOSLEEP
+  56      1   0.8      3   2.4     94  75.2        -  FN-ARTICLE-PARSE-LINES
+  58      1   0.8      3   2.4     95  76.0        -  FN-SHA256-SSIG0
+  60      1   0.8      3   2.4     96  76.8        -  FN-SHA256-SSIG1
+  62      1   0.8      2   1.6     97  77.6        -  FN-SHA256-SHR32
+  64      1   0.8      1   0.8     98  78.4        -  POSITION
+  66      1   0.8      1   0.8     99  79.2        -  SB-KERNEL:%MAP-FOR-EFFECT-ARITY-1
+  68      1   0.8      1   0.8    100  80.0        -  FN-ARTICLE-NEXT-LINE-AUX
+  70      1   0.8      1   0.8    101  80.8        -  FN-CBOR-OCTETP
+  72      1   0.8      1   0.8    102  81.6        -  FN-TH-LOCAL-ADMIN-EVENTP
+  74      1   0.8      1   0.8    103  82.4        -  FN-INJ-DECIDE
+  76      1   0.8      1   0.8    104  83.2        -  foreign function link
+  78      1   0.8      1   0.8    105  84.0        -  FN-RECORD-PAYLOAD
+  80      1   0.8      1   0.8    106  84.8        -  FN-SHA256-NTHCDRX
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere

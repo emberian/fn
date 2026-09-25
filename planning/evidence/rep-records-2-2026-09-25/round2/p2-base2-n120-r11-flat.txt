@@ -1,0 +1,55 @@
+
+Number of samples:   121
+Sample interval:     0.001 seconds
+Total sampling time: 0.121 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2452837 "fn-sprof" RUNNING {120F5785D3}> (456/1048576 bytes, 3 hash buckets)
+   #<THREAD tid=2452840 "fn owner client" RUNNING {120FB45163}> (28552/1048576 bytes, 106 hash buckets)
+   #<THREAD tid=2452838 "fn outbound feed" RUNNING {120F9DB303}> (136/1048576 bytes, 1 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     10   8.3     10   8.3     10   8.3        -  foreign function fsync
+   4      9   7.4      9   7.4     19  15.7        -  ASH
+   6      6   5.0      6   5.0     25  20.7        -  FN-SHA256-NTHX
+   8      5   4.1     25  20.7     30  24.8        -  FN-SHA256-ROUNDS
+  10      5   4.1      5   4.1     35  28.9        -  FN-SHA256-W32
+  12      4   3.3     14  11.6     39  32.2        -  FN-SHA256-ROTR32
+  14      4   3.3      4   3.3     43  35.5        -  foreign function rename
+  16      4   3.3      4   3.3     47  38.8        -  foreign function link
+  18      3   2.5     18  14.9     50  41.3        -  FN-SHA256-SCHEDULE-AUX
+  20      3   2.5      3   2.5     53  43.8        -  foreign function __open64
+  22      3   2.5      3   2.5     56  46.3        -  FN-RECORD-STRING-OCTETS
+  24      2   1.7      6   5.0     58  47.9        -  FN-SHA256-MAJ
+  26      2   1.7      5   4.1     60  49.6        -  FN-RECORD-STRING-OCTETS-AUX
+  28      2   1.7      4   3.3     62  51.2        -  FN-SHA256-CH
+  30      2   1.7      4   3.3     64  52.9        -  FN-SHA256-FIX-OCTETS
+  32      2   1.7      2   1.7     66  54.5        -  FN-WIRE-AG-CDR
+  34      2   1.7      2   1.7     68  56.2        -  SB-IMPL::LIST-REVERSE
+  36      2   1.7      2   1.7     70  57.9        -  SB-KERNEL:TWO-ARG-IOR
+  38      2   1.7      2   1.7     72  59.5        -  foreign function __write
+  40      2   1.7      2   1.7     74  61.2        -  SB-KERNEL:TWO-ARG-AND
+  42      1   0.8    114  94.2     75  62.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX)
+  44      1   0.8     85  70.2     76  62.8        -  FNN-CALL
+  46      1   0.8     27  22.3     77  63.6        -  FN-OWN-FEED-INTENT-ID
+  48      1   0.8      8   6.6     78  64.5        -  FN-SHA256-BSIG1
+  50      1   0.8      5   4.1     79  65.3        -  FN-SHA256-SSIG1
+  52      1   0.8      3   2.5     80  66.1        -  FN-SHA256-BSIG0
+  54      1   0.8      3   2.5     81  66.9        -  FN-ID-HEX-OCTETS
+  56      1   0.8      2   1.7     82  67.8        -  FN-SHA256-APPX
+  58      1   0.8      2   1.7     83  68.6        -  FN-RECORD-PAYLOADP
+  60      1   0.8      2   1.7     84  69.4        -  FN-INDEX-MEMBERSHIP-ENTRIES
+  62      1   0.8      2   1.7     85  70.2        -  FN-SHA256-ZEROS
+  64      1   0.8      2   1.7     86  71.1        -  FN-SHA256-WORDS-OCTETS
+  66      1   0.8      2   1.7     87  71.9        -  FN-SHA256-FIRSTN
+  68      1   0.8      1   0.8     88  72.7        -  SB-IMPL::COMPARE-COMPONENT
+  70      1   0.8      1   0.8     89  73.6        -  foreign function fstatat
+  72      1   0.8      1   0.8     90  74.4        -  POSITION
+  74      1   0.8      1   0.8     91  75.2        -  FN-GIDX-PUT
+  76      1   0.8      1   0.8     92  76.0        -  SB-KERNEL:TWO-ARG-<=
+  78      1   0.8      1   0.8     93  76.9        -  FN-RECORD-UINT32P
+  80      1   0.8      1   0.8     94  77.7        -  SB-KERNEL:%MAP-FOR-EFFECT-ARITY-1
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere

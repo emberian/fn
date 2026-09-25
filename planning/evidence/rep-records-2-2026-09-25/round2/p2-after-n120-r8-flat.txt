@@ -1,0 +1,56 @@
+
+Number of samples:   127
+Sample interval:     0.001 seconds
+Total sampling time: 0.127 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2450927 "fn-sprof" RUNNING {120F5D05D3}> (400/1048576 bytes, 3 hash buckets)
+   #<THREAD tid=2450930 "fn owner client" RUNNING {120FB9D163}> (30136/1048576 bytes, 109 hash buckets)
+   #<THREAD tid=2450929 "fn local control accept" RUNNING {120FAFB433}> (136/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2450928 "fn outbound feed" RUNNING {120FA33303}> (304/1048576 bytes, 2 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2      9   7.1     22  17.3      9   7.1        -  FN-SHA256-ROTR32
+   4      8   6.3      8   6.3     17  13.4        -  ASH
+   6      7   5.5      7   5.5     24  18.9        -  FN-SHA256-NTHX
+   8      7   5.5      7   5.5     31  24.4        -  foreign function rename
+  10      6   4.7      6   4.7     37  29.1        -  foreign function clock_nanosleep
+  12      6   4.7      6   4.7     43  33.9        -  SB-KERNEL:TWO-ARG-IOR
+  14      5   3.9     10   7.9     48  37.8        -  FN-SHA256-FIRSTN
+  16      5   3.9      5   3.9     53  41.7        -  FN-SHA256-W32
+  18      5   3.9      5   3.9     58  45.7        -  foreign function fsync
+  20      4   3.1      8   6.3     62  48.8        -  FN-RECORD-STRING-OCTETS-AUX
+  22      4   3.1      4   3.1     66  52.0        -  foreign function __open64
+  24      3   2.4      6   4.7     69  54.3        -  FN-SHA256-ZEROS
+  26      3   2.4      3   2.4     72  56.7        -  SB-IMPL::APPEND2
+  28      2   1.6     19  15.0     74  58.3        -  FN-SHA256-SCHEDULE-AUX
+  30      2   1.6     13  10.2     76  59.8        -  FN-SHA256-BSIG0
+  32      2   1.6      3   2.4     78  61.4        -  FN-SHA256-MAJ
+  34      2   1.6      3   2.4     80  63.0        -  FN-SHA256-CH
+  36      2   1.6      2   1.6     82  64.6        -  FN-SHA256-REVX
+  38      2   1.6      2   1.6     84  66.1        -  FN-ARTICLE-PARSE-LINES
+  40      2   1.6      2   1.6     86  67.7        -  FN-CBOR-OCTETP
+  42      2   1.6      2   1.6     88  69.3        -  FN-INDEX-ENTRY
+  44      2   1.6      2   1.6     90  70.9        -  foreign function syscall
+  46      1   0.8     28  22.0     91  71.7        -  FN-SHA256-ROUNDS
+  48      1   0.8      7   5.5     92  72.4        -  foreign function nanosleep
+  50      1   0.8      6   4.7     93  73.2        -  FNN-DURABLE-BARRIER
+  52      1   0.8      5   3.9     94  74.0        -  FNN-FSYNC-DIR
+  54      1   0.8      2   1.6     95  74.8        -  FN-SHA256-FIX-OCTETS
+  56      1   0.8      2   1.6     96  75.6        -  FN-SHA256-APPX
+  58      1   0.8      2   1.6     97  76.4        -  FN-SHA256-SHR32
+  60      1   0.8      2   1.6     98  77.2        -  FN-RECORD-PAYLOADP
+  62      1   0.8      2   1.6     99  78.0        -  FN-SHA256-ADD8
+  64      1   0.8      1   0.8    100  78.7        -  SB-KERNEL:VECTOR-SUBSEQ
+  66      1   0.8      1   0.8    101  79.5        -  FN-SERVED-CONN-INJECTION
+  68      1   0.8      1   0.8    102  80.3        -  FN-PENDING-TXID
+  70      1   0.8      1   0.8    103  81.1        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-REF/CHECK-BOUNDS
+  72      1   0.8      1   0.8    104  81.9        -  FN-GIDX-PUT
+  74      1   0.8      1   0.8    105  82.7        -  FN-AG-CDR
+  76      1   0.8      1   0.8    106  83.5        -  SB-KERNEL:TWO-ARG-<=
+  78      1   0.8      1   0.8    107  84.3        -  FN-RECORD-STRING-OCTETS
+  80      1   0.8      1   0.8    108  85.0        -  foreign function unlink
+------------------------------------------------------------------------
+          1   0.8                                     elsewhere

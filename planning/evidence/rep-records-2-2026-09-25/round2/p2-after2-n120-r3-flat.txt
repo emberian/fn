@@ -1,0 +1,55 @@
+
+Number of samples:   139
+Sample interval:     0.001 seconds
+Total sampling time: 0.139 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2444776 "fn-sprof" RUNNING {120F5C85D3}> (968/1048576 bytes, 7 hash buckets)
+   #<THREAD tid=2444779 "fn owner client" RUNNING {120FB95163}> (31992/1048576 bytes, 117 hash buckets)
+   #<THREAD tid=2444777 "fn outbound feed" RUNNING {120FA2B303}> (456/1048576 bytes, 3 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2      9   6.5     18  12.9      9   6.5        -  FN-SHA256-ROTR32
+   4      9   6.5      9   6.5     18  12.9        -  FN-SHA256-W32
+   6      7   5.0      7   5.0     25  18.0        -  ASH
+   8      5   3.6      5   3.6     30  21.6        -  foreign function clock_nanosleep
+  10      4   2.9     15  10.8     34  24.5        -  FN-SHA256-SCHEDULE-AUX
+  12      4   2.9      8   5.8     38  27.3        -  FN-SHA256-APPX
+  14      4   2.9      4   2.9     42  30.2        -  foreign function fstatat
+  16      4   2.9      4   2.9     46  33.1        -  FN-SHA256-NTHX
+  18      4   2.9      4   2.9     50  36.0        -  FN-CBOR-OCTETP
+  20      4   2.9      4   2.9     54  38.8        -  SB-KERNEL:TWO-ARG-IOR
+  22      4   2.9      4   2.9     58  41.7        -  foreign function fsync
+  24      4   2.9      4   2.9     62  44.6        -  foreign function __write
+  26      3   2.2      3   2.2     65  46.8        -  APPEND
+  28      3   2.2      3   2.2     68  48.9        -  SB-KERNEL:TWO-ARG-AND
+  30      3   2.2      3   2.2     71  51.1        -  foreign function rename
+  32      3   2.2      3   2.2     74  53.2        -  foreign function __open64
+  34      2   1.4      5   3.6     76  54.7        -  FN-CBOR-OCTET-LISTP
+  36      2   1.4      4   2.9     78  56.1        -  FN-ID-HEX-OCTETS
+  38      2   1.4      2   1.4     80  57.6        -  FN-SHA256-REVX
+  40      2   1.4      2   1.4     82  59.0        -  FN-RECORD-STRING-OCTETS
+  42      2   1.4      2   1.4     84  60.4        -  FN-AG-CDR
+  44      2   1.4      2   1.4     86  61.9        -  SB-KERNEL:VECTOR-TO-LIST
+  46      2   1.4      2   1.4     88  63.3        -  FN-ARTICLE-HEADER-BYTEP
+  48      2   1.4      2   1.4     90  64.7        -  foreign function syscall
+  50      1   0.7     98  70.5     91  65.5        -  FNN-CALL
+  52      1   0.7      8   5.8     92  66.2        -  FN-RCON-RECORD-P
+  54      1   0.7      5   3.6     93  66.9        -  SB-UNIX:UNIX-STAT
+  56      1   0.7      4   2.9     94  67.6        -  FN-SHA256-WORDS16
+  58      1   0.7      4   2.9     95  68.3        -  FN-RECORD-GROUPSP
+  60      1   0.7      4   2.9     96  69.1        -  FN-ARTICLE-HEADER-BYTES-P
+  62      1   0.7      3   2.2     97  69.8        -  FN-WIRE-FEED-BYTE
+  64      1   0.7      2   1.4     98  70.5        -  POSITION
+  66      1   0.7      2   1.4     99  71.2        -  FN-SHA256-CH
+  68      1   0.7      2   1.4    100  71.9        -  FN-ARTICLE-FTEXT-LISTP
+  70      1   0.7      2   1.4    101  72.7        -  FN-SHA256-FIX-OCTETS
+  72      1   0.7      2   1.4    102  73.4        -  FN-RECORD-OCTETS-CHARS
+  74      1   0.7      2   1.4    103  74.1        -  SB-IMPL::%LOOKUP-SYMBOL
+  76      1   0.7      2   1.4    104  74.8        -  FN-RECORD-ASCII-OCTET-LISTP
+  78      1   0.7      2   1.4    105  75.5        -  FN-RETAIN-OBLIGATION-IDS
+  80      1   0.7      2   1.4    106  76.3        -  FN-CBOR-ENCODE-BOUNDED
+------------------------------------------------------------------------
+          1   0.7                                     elsewhere

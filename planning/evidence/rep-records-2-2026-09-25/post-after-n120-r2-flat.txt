@@ -1,0 +1,55 @@
+
+Number of samples:   125
+Sample interval:     0.001 seconds
+Total sampling time: 0.125 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2413344 "fn-sprof" RUNNING {120F5D05C3}> (400/1048576 bytes, 3 hash buckets)
+   #<THREAD tid=2413347 "fn owner client" RUNNING {120FB9D163}> (30432/1048576 bytes, 109 hash buckets)
+   #<THREAD tid=2413345 "fn outbound feed" RUNNING {120FA33303}> (456/1048576 bytes, 3 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2      7   5.6      7   5.6      7   5.6        -  FN-SHA256-NTHX
+   4      7   5.6      7   5.6     14  11.2        -  foreign function rename
+   6      6   4.8     14  11.2     20  16.0        -  FN-SHA256-ROTR32
+   8      6   4.8      6   4.8     26  20.8        -  ASH
+  10      6   4.8      6   4.8     32  25.6        -  foreign function __open64
+  12      4   3.2      4   3.2     36  28.8        -  FN-SHA256-W32
+  14      4   3.2      4   3.2     40  32.0        -  foreign function fsync
+  16      4   3.2      4   3.2     44  35.2        -  foreign function __close
+  18      3   2.4      6   4.8     47  37.6        -  FN-SHA256-FIRSTN
+  20      3   2.4      5   4.0     50  40.0        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  22      3   2.4      3   2.4     53  42.4        -  SB-KERNEL:TWO-ARG-IOR
+  24      3   2.4      3   2.4     56  44.8        -  foreign function __write
+  26      2   1.6     19  15.2     58  46.4        -  FN-SHA256-ROUNDS
+  28      2   1.6      4   3.2     60  48.0        -  FN-SHA256-MAJ
+  30      2   1.6      4   3.2     62  49.6        -  FN-SHA256-FIX-OCTETS
+  32      2   1.6      2   1.6     64  51.2        -  PARSE-NAMESTRING
+  34      2   1.6      2   1.6     66  52.8        -  SB-IMPL::%LOOKUP-SYMBOL
+  36      2   1.6      2   1.6     68  54.4        -  APPEND
+  38      2   1.6      2   1.6     70  56.0        -  FN-GIDX-PUT
+  40      2   1.6      2   1.6     72  57.6        -  FN-AG-CAR
+  42      2   1.6      2   1.6     74  59.2        -  foreign function syscall
+  44      1   0.8    116  92.8     75  60.0        -  FNN-OWNER-SERVE-CLIENT
+  46      1   0.8     14  11.2     76  60.8        -  FN-SHA256-SCHEDULE-AUX
+  48      1   0.8      6   4.8     77  61.6        -  FN-INDEX-BUILD
+  50      1   0.8      6   4.8     78  62.4        -  FN-SHA256-BSIG1
+  52      1   0.8      4   3.2     79  63.2        -  FN-SHA256-SSIG0
+  54      1   0.8      4   3.2     80  64.0        -  FN-SHA256-SSIG1
+  56      1   0.8      4   3.2     81  64.8        -  FN-INDEX-MEMBERSHIP-ENTRIES
+  58      1   0.8      4   3.2     82  65.6        -  FN-GIDX-BUILD-ENTRIES
+  60      1   0.8      2   1.6     83  66.4        -  CONCATENATE
+  62      1   0.8      2   1.6     84  67.2        -  FN-RECORD-OCTETS-CHARS
+  64      1   0.8      2   1.6     85  68.0        -  FN-SHA256-APPX
+  66      1   0.8      2   1.6     86  68.8        -  FN-ID-HEX-OCTETS
+  68      1   0.8      2   1.6     87  69.6        -  FN-SHA256-CH
+  70      1   0.8      2   1.6     88  70.4        -  FN-RECORD-STRING-OCTETS-AUX
+  72      1   0.8      2   1.6     89  71.2        -  FN-INJ-APPEND
+  74      1   0.8      2   1.6     90  72.0        -  FN-ARTICLE-ASCII-DOWNCASE
+  76      1   0.8      2   1.6     91  72.8        -  FN-WIRE-LIST-LENGTH
+  78      1   0.8      1   0.8     92  73.6        -  FN-CBOR-AG-CDR
+  80      1   0.8      1   0.8     93  74.4        -  SB-KERNEL:STRING=*
+------------------------------------------------------------------------
+          2   1.6                                     elsewhere

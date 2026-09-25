@@ -1,0 +1,55 @@
+
+Number of samples:   134
+Sample interval:     0.001 seconds
+Total sampling time: 0.134 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2414470 "fn-sprof" RUNNING {120F5785C3}> (640/1048576 bytes, 5 hash buckets)
+   #<THREAD tid=2414473 "fn owner client" RUNNING {120FB45163}> (30800/1048576 bytes, 113 hash buckets)
+   #<THREAD tid=2414471 "fn outbound feed" RUNNING {120F9DB303}> (360/1048576 bytes, 2 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     12   9.0     20  14.9     12   9.0        -  FN-SHA256-ROTR32
+   4     11   8.2     11   8.2     23  17.2        -  FN-SHA256-W32
+   6     11   8.2     11   8.2     34  25.4        -  foreign function fsync
+   8      7   5.2      7   5.2     41  30.6        -  FN-SHA256-NTHX
+  10      7   5.2      7   5.2     48  35.8        -  foreign function __write
+  12      4   3.0      8   6.0     52  38.8        -  FN-SHA256-FIRSTN
+  14      4   3.0      4   3.0     56  41.8        -  foreign function rename
+  16      3   2.2     23  17.2     59  44.0        -  FN-SHA256-ROUNDS
+  18      3   2.2      6   4.5     62  46.3        -  FN-SHA256-BSIG1
+  20      3   2.2      3   2.2     65  48.5        -  GENERIC--
+  22      3   2.2      3   2.2     68  50.7        -  foreign function __open64
+  24      3   2.2      3   2.2     71  53.0        -  SB-KERNEL:TWO-ARG-IOR
+  26      3   2.2      3   2.2     74  55.2        -  foreign function __close
+  28      3   2.2      3   2.2     77  57.5        -  FN-AG-CDR
+  30      2   1.5      4   3.0     79  59.0        -  FN-RECORD-STRING-OCTETS-AUX
+  32      2   1.5      4   3.0     81  60.4        -  FN-SHA256-WORDS16
+  34      2   1.5      3   2.2     83  61.9        -  SB-KERNEL:VECTOR-SUBSEQ
+  36      2   1.5      3   2.2     85  63.4        -  FN-ARTICLE-ASCII-DOWNCASE
+  38      2   1.5      2   1.5     87  64.9        -  SB-KERNEL:STRING=*
+  40      2   1.5      2   1.5     89  66.4        -  ASH
+  42      2   1.5      2   1.5     91  67.9        -  GENERIC-+
+  44      2   1.5      2   1.5     93  69.4        -  FN-RECORD-STRING-OCTETS
+  46      1   0.7    110  82.1     94  70.1        -  FNN-OWNER-DRAIN-ONE
+  48      1   0.7      5   3.7     95  70.9        -  FN-ARTICLE-PARSE-LINES
+  50      1   0.7      5   3.7     96  71.6        -  FN-RECORD-P
+  52      1   0.7      3   2.2     97  72.4        -  FN-SCAR-FEED-BYTE
+  54      1   0.7      2   1.5     98  73.1        -  FN-RECORD-NONEMPTY-AT-MOSTP
+  56      1   0.7      2   1.5     99  73.9        -  FN-SHA256-FIX-OCTETS
+  58      1   0.7      2   1.5    100  74.6        -  FN-RECORD-OCTETS-CHARS
+  60      1   0.7      2   1.5    101  75.4        -  SB-IMPL::APPEND2
+  62      1   0.7      2   1.5    102  76.1        -  FN-SHA256-APPX
+  64      1   0.7      1   0.7    103  76.9        -  foreign function fstatat
+  66      1   0.7      1   0.7    104  77.6        -  SB-KERNEL:UB32-BASH-COPY
+  68      1   0.7      1   0.7    105  78.4        -  SB-KERNEL:TWO-ARG->=
+  70      1   0.7      1   0.7    106  79.1        -  SB-IMPL::LIST-REVERSE
+  72      1   0.7      1   0.7    107  79.9        -  FN-OCTET-LISTP
+  74      1   0.7      1   0.7    108  80.6        -  FN-STORE-TEXT-OCTETSP-TAIL
+  76      1   0.7      1   0.7    109  81.3        -  FN-OWN-MAKE
+  78      1   0.7      1   0.7    110  82.1        -  FN-PROVP
+  80      1   0.7      1   0.7    111  82.8        -  SB-KERNEL:TWO-ARG-<=
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere

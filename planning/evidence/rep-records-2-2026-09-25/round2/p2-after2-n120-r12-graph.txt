@@ -1,0 +1,1169 @@
+
+Number of samples:   125
+Sample interval:     0.001 seconds
+Total sampling time: 0.125 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2453718 "fn-sprof" RUNNING {120F5C85D3}> (448/1048576 bytes, 3 hash buckets)
+   #<THREAD tid=2453721 "fn owner client" RUNNING {120FB95163}> (31520/1048576 bytes, 112 hash buckets)
+   #<THREAD tid=2453719 "fn outbound feed" RUNNING {120FA2B303}> (384/1048576 bytes, 3 hash buckets)
+
+                               Callers
+                 Total.     Function
+ Count     %  Count     %      Callees
+------------------------------------------------------------------------
+    10   8.0                   FNN-DURABLE-BARRIER [197]
+    10   8.0     10   8.0   foreign function fsync [1]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-WORDS16 [193]
+     8   6.4                   FN-SHA256-SCHEDULE-AUX [24]
+     9   7.2      9   7.2   FN-SHA256-NTHX [2]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-ROUNDS [5]
+     2   1.6                   FN-SHA256-SSIG1 [7]
+     1   0.8                   FN-SHA256-ROTR32 [6]
+     3   2.4                   FN-SHA256-MAJ [8]
+     1   0.8                   FN-SHA256-SSIG0 [124]
+     8   6.4      8   6.4   FN-SHA256-W32 [3]
+------------------------------------------------------------------------
+    19  15.2                   FN-SHA256-COMPRESS [107]
+     5   4.0     19  15.2   FN-SHA256-ROUNDS [5]
+     1   0.8                   FN-SHA256-W32 [3]
+     3   2.4                   FN-SHA256-BSIG1 [189]
+     6   4.8                   FN-SHA256-MAJ [8]
+     4   3.2                   FN-SHA256-BSIG0 [114]
+------------------------------------------------------------------------
+     3   2.4                   FN-SHA256-BSIG1 [189]
+     2   1.6                   FN-SHA256-SSIG0 [124]
+     2   1.6                   FN-SHA256-SSIG1 [7]
+     4   3.2                   FN-SHA256-BSIG0 [114]
+     5   4.0     11   8.8   FN-SHA256-ROTR32 [6]
+     4   3.2                   ASH [4]
+     1   0.8                   FN-SHA256-W32 [3]
+     1   0.8                   SB-KERNEL:TWO-ARG-IOR [26]
+------------------------------------------------------------------------
+     4   3.2                   FN-SHA256-ROTR32 [6]
+     1   0.8                   FN-SHA256-SSIG1 [7]
+     5   4.0      5   4.0   ASH [4]
+------------------------------------------------------------------------
+     8   6.4                   FN-SHA256-SCHEDULE-AUX [24]
+     3   2.4      8   6.4   FN-SHA256-SSIG1 [7]
+     2   1.6                   FN-SHA256-W32 [3]
+     2   1.6                   FN-SHA256-ROTR32 [6]
+     1   0.8                   ASH [4]
+------------------------------------------------------------------------
+     6   4.8                   FN-SHA256-ROUNDS [5]
+     3   2.4      6   4.8   FN-SHA256-MAJ [8]
+     3   2.4                   FN-SHA256-W32 [3]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-PAD [203]
+     2   1.6                   SB-SPROF::UNAVAILABLE-FRAMES [134]
+     3   2.4                   FN-SHA256-APPX [9]
+     2   1.6                   FN-SHA256-OF-OCTETS [105]
+     3   2.4      6   4.8   FN-SHA256-APPX [9]
+     1   0.8                   SB-SPROF::UNAVAILABLE-FRAMES [134]
+     3   2.4                   FN-SHA256-APPX [9]
+------------------------------------------------------------------------
+     3   2.4                   FNN-OPEN [160]
+     3   2.4      3   2.4   foreign function __open64 [10]
+------------------------------------------------------------------------
+     4   3.2                   FN-RECORD-PAYLOADP [31]
+     2   1.6      4   3.2   FN-CBOR-OCTET-LISTP [14]
+     2   1.6                   FN-CBOR-OCTETP [15]
+------------------------------------------------------------------------
+     1   0.8                   SB-SPROF::UNAVAILABLE-FRAMES [134]
+     2   1.6                   FN-SHA256-FIRSTN [17]
+     2   1.6                   FN-SHA256-BLOCKS [106]
+     2   1.6      4   3.2   FN-SHA256-FIRSTN [17]
+     1   0.8                   SB-SPROF::UNAVAILABLE-FRAMES [134]
+     2   1.6                   FN-SHA256-FIRSTN [17]
+------------------------------------------------------------------------
+     1   0.8                   FNN-SUBJECT-ID [25]
+     1   0.8                   FNN-OWNER-ATTEMPT [110]
+     2   1.6      2   1.6   SB-KERNEL:VECTOR-TO-LIST [11]
+------------------------------------------------------------------------
+     1   0.8                   FN-INDEX-MEMBERSHIP-ENTRIES [170]
+     1   0.8                   FN-STATE-ARTICLES [120]
+     2   1.6      2   1.6   FN-AG-CDR [12]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-COMPRESS [107]
+     1   0.8                   FN-SHA256-SCHEDULE [108]
+     2   1.6      2   1.6   FN-SHA256-REVX [13]
+------------------------------------------------------------------------
+     2   1.6                   FN-CBOR-OCTET-LISTP [14]
+     2   1.6      2   1.6   FN-CBOR-OCTETP [15]
+------------------------------------------------------------------------
+     1   0.8                   FNN-ADVANCE-FRONTIER [115]
+     1   0.8                   FNN-MARK-COMMITTED [155]
+     2   1.6      2   1.6   foreign function rename [16]
+------------------------------------------------------------------------
+     2   1.6                   FNN-CLOSE [196]
+     2   1.6      2   1.6   foreign function __close [18]
+------------------------------------------------------------------------
+     2   1.6                   FN-RCON-RECORD-P [149]
+     2   1.6      2   1.6   FN-RCON-ASCII-FROM [19]
+------------------------------------------------------------------------
+   104  83.2                   (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK) [96]
+     1   0.8    104  83.2   FNN-OWNER-DRAIN-ONE [23]
+    11   8.8                   FNN-METADATA [111]
+    65  52.0                   FNN-OWNER-ATTEMPT-SERVED [109]
+    27  21.6                   FNN-OWNER-ACTION [97]
+------------------------------------------------------------------------
+    21  16.8                   FN-SHA256-SCHEDULE [108]
+     1   0.8     21  16.8   FN-SHA256-SCHEDULE-AUX [24]
+     8   6.4                   FN-SHA256-NTHX [2]
+     4   3.2                   FN-SHA256-SSIG0 [124]
+     8   6.4                   FN-SHA256-SSIG1 [7]
+------------------------------------------------------------------------
+     1   0.8                   FNN-OWNER-ACTION [97]
+    15  12.0                   FNN-METADATA [111]
+     1   0.8     16  12.8   FNN-SUBJECT-ID [25]
+     1   0.8                   SB-KERNEL:VECTOR-TO-LIST [11]
+    14  11.2                   FNN-CORE [112]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-FEED-COUNTED [139]
+     1   0.8     10   8.0   FN-SCAR-FEED-BYTE [29]
+     1   0.8                   FN-WIRE-AFTER-LINE [232]
+     1   0.8                   FN-SERVED-MAKE-CONN-GROUP-INDEXED [64]
+     1   0.8                   FN-WIRE-MAKE-RESULT [59]
+     1   0.8                   FN-AG-CAR [54]
+     4   3.2                   FN-WIRE-FEED-BYTE [33]
+     1   0.8                   FN-SERVED-CONN-CONFIG [30]
+------------------------------------------------------------------------
+     5   4.0                   FN-RCON-RECORD-P [149]
+     1   0.8      5   4.0   FN-RECORD-PAYLOADP [31]
+     4   3.2                   FN-CBOR-OCTET-LISTP [14]
+------------------------------------------------------------------------
+     4   3.2                   FN-SCAR-FEED-BYTE [29]
+     1   0.8      4   3.2   FN-WIRE-FEED-BYTE [33]
+     1   0.8                   FN-WIRE-STATE-LINE-LIMIT [50]
+     1   0.8                   FN-WIRE-STATE-BODY-SIZE [48]
+     1   0.8                   FN-WIRE-STATE-LINE-LEN [154]
+------------------------------------------------------------------------
+     1   0.8                   CONCATENATE [39]
+     1   0.8                   FNN-ADVANCE-FRONTIER [115]
+     1   0.8                   FNN-MARK-COMMITTED [155]
+     1   0.8      3   2.4   CONCATENATE [39]
+     1   0.8                   CONCATENATE [39]
+     1   0.8                   SB-KERNEL:%CONCATENATE-TO-STRING [165]
+------------------------------------------------------------------------
+     1   0.8                   FN-RETAIN-OBLIGATION-IDS [28]
+     1   0.8                   SB-SPROF::UNAVAILABLE-FRAMES [134]
+     1   0.8                   FN-RETAIN-KNOWN-IDP [133]
+     1   0.8      2   1.6   FN-RETAIN-OBLIGATION-IDS [28]
+     1   0.8                   FN-RETAIN-OBLIGATION-IDS [28]
+     1   0.8                   SB-SPROF::UNAVAILABLE-FRAMES [134]
+------------------------------------------------------------------------
+     1   0.8                   FN-RECORD-OCTETS-CHARS [32]
+     1   0.8                   FN-RECORD-OCTETS-STRING [153]
+     1   0.8      2   1.6   FN-RECORD-OCTETS-CHARS [32]
+     1   0.8                   FN-RECORD-OCTETS-CHARS [32]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-WORDS-OCTETS [42]
+     1   0.8                   FN-FRAME-DIGEST [104]
+     1   0.8      2   1.6   FN-SHA256-WORDS-OCTETS [42]
+     1   0.8                   FN-SHA256-WORDS-OCTETS [42]
+------------------------------------------------------------------------
+     1   0.8                   FN-OWN-FEED-ARTICLE-OF [209]
+     1   0.8                   FN-STX-PARSE [199]
+     1   0.8      2   1.6   FN-ARTICLE-PARSE-LINES [51]
+     1   0.8                   APPEND [57]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-ADD8 [52]
+     1   0.8                   FN-SHA256-BLOCKS [106]
+     1   0.8      2   1.6   FN-SHA256-ADD8 [52]
+     1   0.8                   FN-SHA256-ADD8 [52]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-FIX-OCTETS [55]
+     1   0.8                   FN-SHA256 [204]
+     1   0.8      2   1.6   FN-SHA256-FIX-OCTETS [55]
+     1   0.8                   FN-SHA256-FIX-OCTETS [55]
+------------------------------------------------------------------------
+     1   0.8                   FN-RECORD-STRING-OCTETS-AUX [63]
+     1   0.8                   FN-RCON-RECORD-ENCODE-IMPL [227]
+     1   0.8      2   1.6   FN-RECORD-STRING-OCTETS-AUX [63]
+     1   0.8                   FN-RECORD-STRING-OCTETS-AUX [63]
+------------------------------------------------------------------------
+     1   0.8                   SB-UNIX:UNIX-STAT [82]
+     1   0.8      1   0.8   foreign function fstatat [20]
+------------------------------------------------------------------------
+     1   0.8                   SB-IMPL::PATTERN-HASH [87]
+     1   0.8      1   0.8   SB-IMPL::HASH-PATHNAME-PIECE [21]
+------------------------------------------------------------------------
+     1   0.8                   SB-IMPL::MAYBE-MAKE-PATTERN [89]
+     1   0.8      1   0.8   SB-KERNEL:VECTOR-SUBSEQ [22]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-ROTR32 [6]
+     1   0.8      1   0.8   SB-KERNEL:TWO-ARG-IOR [26]
+------------------------------------------------------------------------
+     1   0.8                   FN-OWN-FEED-STAMP [125]
+     1   0.8      1   0.8   FN-CLOCK-MONOTONIC [27]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-FEED-BYTE [29]
+     1   0.8      1   0.8   FN-SERVED-CONN-CONFIG [30]
+------------------------------------------------------------------------
+     1   0.8                   FN-WIRE-STATE-LINE-LEN [154]
+     1   0.8      1   0.8   FN-WIRE-AG-CDR [34]
+------------------------------------------------------------------------
+     1   0.8                   FN-FRAME-SEAL [156]
+     1   0.8      1   0.8   FN-FRAME-HEADER [35]
+------------------------------------------------------------------------
+     1   0.8                   ACL2_*1*_ACL2::FN-STORE-SUBJECT-ID-OF-PAYLOAD [157]
+     1   0.8      1   0.8   ACL2_*1*_ACL2::LEN [36]
+------------------------------------------------------------------------
+     1   0.8                   FNN-OPEN [160]
+     1   0.8      1   0.8   SB-ALIEN::DEFAULT-C-STRING-EXTERNAL-FORMAT [37]
+------------------------------------------------------------------------
+     1   0.8                   FNN-OWNER-ADVANCE-CLOCK [161]
+     1   0.8      1   0.8   GET-INTERNAL-REAL-TIME [38]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-SCHEDULE [108]
+     1   0.8      1   0.8   GENERIC-- [40]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-SSIG0 [124]
+     1   0.8      1   0.8   FN-SHA256-SHR32 [41]
+------------------------------------------------------------------------
+     1   0.8                   FN-INDEX-MEMBERSHIP-ENTRIES [170]
+     1   0.8      1   0.8   FN-INDEX-ENTRY [43]
+------------------------------------------------------------------------
+     1   0.8                   SB-IMPL::%FIND-SYMBOL [172]
+     1   0.8      1   0.8   SB-IMPL::%LOOKUP-SYMBOL [44]
+------------------------------------------------------------------------
+     1   0.8                   FN-INJ-YEAR-OF [180]
+     1   0.8      1   0.8   FN-INJ-YEAR-DAYS [45]
+------------------------------------------------------------------------
+     1   0.8      1   0.8   FN-TH-AT [46]
+------------------------------------------------------------------------
+     1   0.8                   SB-UNIX:UNIX-WRITE [185]
+     1   0.8      1   0.8   foreign function __write [47]
+------------------------------------------------------------------------
+     1   0.8                   FN-WIRE-FEED-BYTE [33]
+     1   0.8      1   0.8   FN-WIRE-STATE-BODY-SIZE [48]
+------------------------------------------------------------------------
+     1   0.8                   FN-ARTICLE-LOWER-NAMEP [188]
+     1   0.8      1   0.8   FN-ARTICLE-ASCII-DOWNCASE [49]
+------------------------------------------------------------------------
+     1   0.8                   FN-WIRE-FEED-BYTE [33]
+     1   0.8      1   0.8   FN-WIRE-STATE-LINE-LIMIT [50]
+------------------------------------------------------------------------
+     1   0.8                   FN-RCON-RECORD-P [149]
+     1   0.8      1   0.8   FN-CBOR-AG-CDR [53]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-FEED-BYTE [29]
+     1   0.8      1   0.8   FN-AG-CAR [54]
+------------------------------------------------------------------------
+     1   0.8                   FNN-PUBLISH [162]
+     1   0.8      1   0.8   foreign function link [56]
+------------------------------------------------------------------------
+     1   0.8                   FN-ARTICLE-PARSE-LINES [51]
+     1   0.8      1   0.8   APPEND [57]
+------------------------------------------------------------------------
+     1   0.8                   FN-RECORD-GROUP-NAMEP [212]
+     1   0.8      1   0.8   FN-RECORD-STRING-OCTETS [58]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-FEED-BYTE [29]
+     1   0.8      1   0.8   FN-WIRE-MAKE-RESULT [59]
+------------------------------------------------------------------------
+     1   0.8                   FN-CFG-PEERS [220]
+     1   0.8      1   0.8   FN-CFG-AG-CDR [60]
+------------------------------------------------------------------------
+     1   0.8                   FN-PATH-TRIM-LEADING [223]
+     1   0.8      1   0.8   FN-WILDMAT-OCTETP [61]
+------------------------------------------------------------------------
+     1   0.8                   FN-ARTICLE-SYNTAX-P [224]
+     1   0.8      1   0.8   FN-ARTICLE-BODY [62]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-FEED-BYTE [29]
+     1   0.8      1   0.8   FN-SERVED-MAKE-CONN-GROUP-INDEXED [64]
+------------------------------------------------------------------------
+     1   0.8                   FN-RCON-SF-RECORD-DIR-RESULT [230]
+     1   0.8      1   0.8   FN-SF-RECORD-CANDIDATE [65]
+------------------------------------------------------------------------
+     1   0.8                   FNN-CALL [99]
+     1   0.8      1   0.8   ACL2_*1*_ACL2::FN-STORE-METADATA-FRONTIER-NEXT [66]
+------------------------------------------------------------------------
+     1   0.8                   FN-WIRE-LIST-LENGTH [234]
+     1   0.8      1   0.8   GENERIC-+ [67]
+------------------------------------------------------------------------
+     1   0.8                   FN-RCON-RECORD-P [149]
+     1   0.8      1   0.8   FN-RCON-METADATA-BYTES-P [68]
+------------------------------------------------------------------------
+     1   0.8                   FNN-FEED-WORKER [236]
+     1   0.8      1   0.8   FNN-FEED-STOPPINGP [69]
+------------------------------------------------------------------------
+     1   0.8                   (FLET SB-UNIX::BODY :IN SB-THREAD::FUTEX-WAIT) [240]
+     1   0.8      1   0.8   foreign function syscall [70]
+------------------------------------------------------------------------
+     1   0.8                   FNN-FEED-WORKER [236]
+     1   0.8      1   0.8   FNN-FEED-NOW [71]
+------------------------------------------------------------------------
+   125 100.0                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN) [76]
+     0   0.0    125 100.0   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [77]
+     1   0.8                   FNN-FEED-WORKER-GUARDED [235]
+     1   0.8                   (LAMBDA NIL :IN FNN-OWNER-LAUNCH-CLIENT) [90]
+     1   0.8                   (LAMBDA NIL :IN FN-NATIVE-ENTRY) [78]
+   125 100.0                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN) [76]
+------------------------------------------------------------------------
+   125 100.0                   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [77]
+   125 100.0                   SB-THREAD::RUN [75]
+     0   0.0    125 100.0   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN) [76]
+   125 100.0                   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [77]
+------------------------------------------------------------------------
+   125 100.0                   foreign function call_into_lisp_ [74]
+     0   0.0    125 100.0   SB-THREAD::RUN [75]
+   125 100.0                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN) [76]
+------------------------------------------------------------------------
+   125 100.0                   foreign function funcall1 [73]
+     0   0.0    125 100.0   foreign function call_into_lisp_ [74]
+   125 100.0                   SB-THREAD::RUN [75]
+------------------------------------------------------------------------
+   125 100.0                   foreign function new_thread_trampoline [72]
+     0   0.0    125 100.0   foreign function funcall1 [73]
+   125 100.0                   foreign function call_into_lisp_ [74]
+------------------------------------------------------------------------
+     0   0.0    125 100.0   foreign function new_thread_trampoline [72]
+   125 100.0                   foreign function funcall1 [73]
+------------------------------------------------------------------------
+   119  95.2                   SB-THREAD::FAST-CALL-WITH-MUTEX [93]
+     0   0.0    119  95.2   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX) [94]
+     1   0.8                   SB-THREAD::MUTEX-WAIT [238]
+   118  94.4                   FNN-OWNER-SHARED-ACTION-LOCKED [95]
+------------------------------------------------------------------------
+   119  95.2                   FNN-OWNER-SERIALIZED [92]
+     0   0.0    119  95.2   SB-THREAD::FAST-CALL-WITH-MUTEX [93]
+   119  95.2                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX) [94]
+------------------------------------------------------------------------
+     1   0.8                   FNN-FEED-REFRESH-LINKS [237]
+   118  94.4                   FNN-OWNER-SERVE-CLIENT [91]
+     0   0.0    119  95.2   FNN-OWNER-SERIALIZED [92]
+   119  95.2                   SB-THREAD::FAST-CALL-WITH-MUTEX [93]
+------------------------------------------------------------------------
+   119  95.2                   (LAMBDA NIL :IN FNN-OWNER-LAUNCH-CLIENT) [90]
+     0   0.0    119  95.2   FNN-OWNER-SERVE-CLIENT [91]
+     1   0.8                   FNN-OWNER-CONNECTION-CALL [181]
+   118  94.4                   FNN-OWNER-SERIALIZED [92]
+------------------------------------------------------------------------
+     1   0.8                   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [77]
+     0   0.0    119  95.2   (LAMBDA NIL :IN FNN-OWNER-LAUNCH-CLIENT) [90]
+   119  95.2                   FNN-OWNER-SERVE-CLIENT [91]
+------------------------------------------------------------------------
+   118  94.4                   FNN-OWNER-SHARED-ACTION-LOCKED [95]
+     0   0.0    118  94.4   (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK) [96]
+     1   0.8                   FNN-OWNER-ADVANCE-CLOCK [161]
+    13  10.4                   FNN-OWNER-ACTION [97]
+   104  83.2                   FNN-OWNER-DRAIN-ONE [23]
+------------------------------------------------------------------------
+   118  94.4                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX) [94]
+     0   0.0    118  94.4   FNN-OWNER-SHARED-ACTION-LOCKED [95]
+   118  94.4                   (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK) [96]
+------------------------------------------------------------------------
+    31  24.8                   FNN-CORE [112]
+    61  48.8                   FNN-CORE-STATE [98]
+     0   0.0     92  73.6   FNN-CALL [99]
+     1   0.8                   ACL2_*1*_ACL2::FN-STORE-METADATA-FRONTIER-NEXT [66]
+     1   0.8                   FN-OWNER-PENDING-OCTETS [225]
+     1   0.8                   ACL2_*1*_ACL2::FN-BS-FRONTIER-ENCODE [214]
+     1   0.8                   FNN-COUNTERPART [171]
+    11   8.8                   FN-FRAME-DIGEST [104]
+     3   2.4                   FN-ID-OBLIGATION-OF [103]
+     1   0.8                   ACL2_*1*_ACL2::FN-STORE-SUBJECT-ID-OF-PAYLOAD [157]
+     1   0.8                   FN-FRAME-SEAL [156]
+     1   0.8                   FN-STORE-PROV-POST [151]
+    10   8.0                   FN-OWNER-FINISH-SUBMISSION [142]
+    13  10.4                   FN-OWNER-CHUNK [135]
+     5   4.0                   FN-OWNER-PREPARE [126]
+    22  17.6                   FN-OWNER-SUBMISSION-INTENT [121]
+     3   2.4                   FN-OWNER-IO [117]
+    13  10.4                   FN-ID-SUBJECT-OF-PAYLOAD [113]
+     5   4.0                   FN-OWNER-SUBMISSION-RESOLUTION [100]
+------------------------------------------------------------------------
+    65  52.0                   FNN-OWNER-ATTEMPT-SERVED [109]
+     0   0.0     65  52.0   FNN-OWNER-ATTEMPT [110]
+     8   6.4                   FNN-METADATA [111]
+    39  31.2                   FNN-OWNER-PUBLISH-PREPARED [140]
+     6   4.8                   FNN-OWNER-ACTION [97]
+    11   8.8                   FNN-ADVANCE-FRONTIER [115]
+     1   0.8                   SB-KERNEL:VECTOR-TO-LIST [11]
+------------------------------------------------------------------------
+    65  52.0                   FNN-OWNER-DRAIN-ONE [23]
+     0   0.0     65  52.0   FNN-OWNER-ATTEMPT-SERVED [109]
+    65  52.0                   FNN-OWNER-ATTEMPT [110]
+------------------------------------------------------------------------
+     2   1.6                   FNN-OWNER-PUBLISH-PREPARED [140]
+     1   0.8                   FNN-PROVENANCE-POST [150]
+    58  46.4                   FNN-OWNER-ACTION [97]
+     0   0.0     61  48.8   FNN-CORE-STATE [98]
+    61  48.8                   FNN-CALL [99]
+------------------------------------------------------------------------
+    10   8.0                   FNN-FINISH [141]
+    13  10.4                   (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK) [96]
+     6   4.8                   FNN-OWNER-ATTEMPT [110]
+     3   2.4                   FNN-OBSERVE [116]
+    27  21.6                   FNN-OWNER-DRAIN-ONE [23]
+     0   0.0     59  47.2   FNN-OWNER-ACTION [97]
+     1   0.8                   FNN-SUBJECT-ID [25]
+    58  46.4                   FNN-CORE-STATE [98]
+------------------------------------------------------------------------
+     1   0.8                   FN-FRAME-SEAL [156]
+    11   8.8                   FNN-CALL [99]
+    26  20.8                   FN-ID-SUBJECT-OF-PAYLOAD [113]
+    14  11.2                   FN-ID-OBLIGATION-OF [103]
+     0   0.0     52  41.6   FN-FRAME-DIGEST [104]
+     1   0.8                   FN-SHA256 [204]
+     1   0.8                   FN-SHA256-WORDS-OCTETS [42]
+    50  40.0                   FN-SHA256-OF-OCTETS [105]
+------------------------------------------------------------------------
+    50  40.0                   FN-FRAME-DIGEST [104]
+     0   0.0     50  40.0   FN-SHA256-OF-OCTETS [105]
+     1   0.8                   FN-SHA256-PAD [203]
+     2   1.6                   FN-SHA256-APPX [9]
+    47  37.6                   FN-SHA256-BLOCKS [106]
+------------------------------------------------------------------------
+    47  37.6                   FN-SHA256-OF-OCTETS [105]
+     0   0.0     47  37.6   FN-SHA256-BLOCKS [106]
+     1   0.8                   FN-SHA256-ADD8 [52]
+     2   1.6                   FN-SHA256-FIRSTN [17]
+    44  35.2                   FN-SHA256-COMPRESS [107]
+------------------------------------------------------------------------
+    44  35.2                   FN-SHA256-BLOCKS [106]
+     0   0.0     44  35.2   FN-SHA256-COMPRESS [107]
+     1   0.8                   FN-SHA256-WORDS16 [193]
+     1   0.8                   FN-SHA256-REVX [13]
+    19  15.2                   FN-SHA256-ROUNDS [5]
+    23  18.4                   FN-SHA256-SCHEDULE [108]
+------------------------------------------------------------------------
+    39  31.2                   FNN-OWNER-ATTEMPT [110]
+     0   0.0     39  31.2   FNN-OWNER-PUBLISH-PREPARED [140]
+     2   1.6                   FNN-CORE-STATE [98]
+    20  16.0                   FNN-PUBLISH [162]
+     7   5.6                   FNN-MARK-COMMITTED [155]
+    10   8.0                   FNN-FINISH [141]
+------------------------------------------------------------------------
+     1   0.8                   FNN-METADATA-FRONTIER-NEXT [231]
+     1   0.8                   FNN-METADATA-FRONTIER-FRAME [213]
+    11   8.8                   FNN-TRAILER [164]
+     3   2.4                   FNN-OBLIGATION-ID [158]
+     1   0.8                   FNN-MARK-COMMITTED [155]
+    14  11.2                   FNN-SUBJECT-ID [25]
+     0   0.0     31  24.8   FNN-CORE [112]
+    31  24.8                   FNN-CALL [99]
+------------------------------------------------------------------------
+    13  10.4                   FN-OWN-FEED-INTENT-ID [102]
+    13  10.4                   FNN-CALL [99]
+     0   0.0     26  20.8   FN-ID-SUBJECT-OF-PAYLOAD [113]
+    26  20.8                   FN-FRAME-DIGEST [104]
+------------------------------------------------------------------------
+     9   7.2                   FN-OWN-SUBMISSION-INTENT-RECORDS [122]
+    11   8.8                   FN-OWN-SUBMISSION-INTENT-RESULT [123]
+     4   3.2                   FN-OWN-SUBMISSION-RESOLUTION-RECORDS [101]
+     0   0.0     24  19.2   FN-OWN-FEED-INTENT-ID [102]
+    13  10.4                   FN-ID-SUBJECT-OF-PAYLOAD [113]
+    11   8.8                   FN-ID-OBLIGATION-OF [103]
+------------------------------------------------------------------------
+    23  18.4                   FN-SHA256-COMPRESS [107]
+     0   0.0     23  18.4   FN-SHA256-SCHEDULE [108]
+     1   0.8                   GENERIC-- [40]
+     1   0.8                   FN-SHA256-REVX [13]
+    21  16.8                   FN-SHA256-SCHEDULE-AUX [24]
+------------------------------------------------------------------------
+    22  17.6                   FNN-CALL [99]
+     0   0.0     22  17.6   FN-OWNER-SUBMISSION-INTENT [121]
+     8   6.4                   FN-OWN-SUBMISSION-INTENT-RESULT [123]
+    14  11.2                   FN-OWN-SUBMISSION-INTENT-RECORDS [122]
+------------------------------------------------------------------------
+    20  16.0                   FNN-OWNER-PUBLISH-PREPARED [140]
+     0   0.0     20  16.0   FNN-PUBLISH [162]
+     1   0.8                   FNN-OBSERVE [116]
+     1   0.8                   foreign function link [56]
+     2   1.6                   FNN-WRITE-STAGED-AT [159]
+     5   4.0                   FNN-FSYNC-DIR [194]
+    11   8.8                   FNN-SEAL [163]
+------------------------------------------------------------------------
+     8   6.4                   FNN-OWNER-ATTEMPT [110]
+    11   8.8                   FNN-OWNER-DRAIN-ONE [23]
+     0   0.0     19  15.2   FNN-METADATA [111]
+     3   2.4                   FNN-OBLIGATION-ID [158]
+     1   0.8                   FNN-PROVENANCE-POST [150]
+    15  12.0                   FNN-SUBJECT-ID [25]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-FIRSTN [17]
+     1   0.8                   FN-SHA256-APPX [9]
+     1   0.8                   FN-INDEX-BUILD [169]
+     1   0.8                   FN-SCAR-FEED-COUNTED [139]
+     1   0.8                   FN-RETAIN-OBLIGATION-IDS [28]
+     0   0.0     14  11.2   SB-SPROF::UNAVAILABLE-FRAMES [134]
+     1   0.8                   FN-SHA256-FIRSTN [17]
+     2   1.6                   FN-SHA256-APPX [9]
+     2   1.6                   FN-INDEX-BUILD [169]
+     8   6.4                   FN-SCAR-FEED-COUNTED [139]
+     1   0.8                   FN-RETAIN-OBLIGATION-IDS [28]
+------------------------------------------------------------------------
+     3   2.4                   FNN-CALL [99]
+    11   8.8                   FN-OWN-FEED-INTENT-ID [102]
+     0   0.0     14  11.2   FN-ID-OBLIGATION-OF [103]
+    14  11.2                   FN-FRAME-DIGEST [104]
+------------------------------------------------------------------------
+    14  11.2                   FN-OWNER-SUBMISSION-INTENT [121]
+     0   0.0     14  11.2   FN-OWN-SUBMISSION-INTENT-RECORDS [122]
+     9   7.2                   FN-OWN-FEED-INTENT-ID [102]
+     5   4.0                   FN-OWN-SUBMISSION-INTENT-RESULT [123]
+------------------------------------------------------------------------
+     8   6.4                   FN-OWNER-SUBMISSION-INTENT [121]
+     5   4.0                   FN-OWN-SUBMISSION-INTENT-RECORDS [122]
+     0   0.0     13  10.4   FN-OWN-SUBMISSION-INTENT-RESULT [123]
+     1   0.8                   FN-FRAME-TEXTP [221]
+     1   0.8                   FN-OWN-SUBMISSION-TARGETS [207]
+    11   8.8                   FN-OWN-FEED-INTENT-ID [102]
+------------------------------------------------------------------------
+    13  10.4                   FN-SCAR-OCFG-READ-TLS-PREFIX [136]
+     0   0.0     13  10.4   FN-SCAR-OWN-READ-TLS-PREFIX [137]
+     1   0.8                   FN-SCAR-FINISH-READ [215]
+    12   9.6                   FN-SCAR-STEP-COUNTED-CORE [138]
+------------------------------------------------------------------------
+    13  10.4                   FN-OWNER-CHUNK [135]
+     0   0.0     13  10.4   FN-SCAR-OCFG-READ-TLS-PREFIX [136]
+    13  10.4                   FN-SCAR-OWN-READ-TLS-PREFIX [137]
+------------------------------------------------------------------------
+    13  10.4                   FNN-CALL [99]
+     0   0.0     13  10.4   FN-OWNER-CHUNK [135]
+    13  10.4                   FN-SCAR-OCFG-READ-TLS-PREFIX [136]
+------------------------------------------------------------------------
+     8   6.4                   SB-SPROF::UNAVAILABLE-FRAMES [134]
+    12   9.6                   FN-SCAR-FEED-COUNTED [139]
+    12   9.6                   FN-SCAR-STEP-COUNTED-CORE [138]
+     0   0.0     12   9.6   FN-SCAR-FEED-COUNTED [139]
+     1   0.8                   FN-SCAR-DISPATCH-EVENTS [173]
+     1   0.8                   FN-SCAR-FEED-BYTE [29]
+     1   0.8                   SB-SPROF::UNAVAILABLE-FRAMES [134]
+    12   9.6                   FN-SCAR-FEED-COUNTED [139]
+------------------------------------------------------------------------
+    12   9.6                   FN-SCAR-OWN-READ-TLS-PREFIX [137]
+     0   0.0     12   9.6   FN-SCAR-STEP-COUNTED-CORE [138]
+    12   9.6                   FN-SCAR-FEED-COUNTED [139]
+------------------------------------------------------------------------
+    11   8.8                   FNN-OWNER-ATTEMPT [110]
+     0   0.0     11   8.8   FNN-ADVANCE-FRONTIER [115]
+     1   0.8                   FNN-METADATA-FRONTIER-NEXT [231]
+     1   0.8                   FNN-METADATA-FRONTIER-FRAME [213]
+     3   2.4                   FNN-FSYNC-DIR [194]
+     1   0.8                   CONCATENATE [39]
+     1   0.8                   foreign function rename [16]
+     2   1.6                   FNN-WRITE-STAGED-AT [159]
+     2   1.6                   FNN-OBSERVE [116]
+------------------------------------------------------------------------
+    11   8.8                   FNN-SEAL [163]
+     0   0.0     11   8.8   FNN-TRAILER [164]
+    11   8.8                   FNN-CORE [112]
+------------------------------------------------------------------------
+    11   8.8                   FNN-PUBLISH [162]
+     0   0.0     11   8.8   FNN-SEAL [163]
+    11   8.8                   FNN-TRAILER [164]
+------------------------------------------------------------------------
+     1   0.8                   FN-RCON-STORE-EVENT-GENERATION [202]
+     1   0.8                   FN-RCON-STORE-EVENT-P [192]
+     3   2.4                   FN-RCON-STORE-EVENT-TXID [167]
+     1   0.8                   FN-PCAR-SPC-PREPARE [129]
+     4   3.2                   FN-RCON-STORE-EVENT-SEQUENCE [148]
+     0   0.0     10   8.0   FN-RCON-RECORD-P [149]
+     1   0.8                   FN-RCON-METADATA-BYTES-P [68]
+     1   0.8                   FN-RECORD-GROUPSP [210]
+     1   0.8                   FN-CBOR-AG-CDR [53]
+     2   1.6                   FN-RCON-ASCII-FROM [19]
+     5   4.0                   FN-RECORD-PAYLOADP [31]
+------------------------------------------------------------------------
+    10   8.0                   FN-OWNER-FINISH-SUBMISSION [142]
+     0   0.0     10   8.0   FN-CCAR-OWN-FINISH [143]
+     1   0.8                   FN-CCAR-COMPLETION-NAMES-SUBMISSION-P [205]
+     1   0.8                   FN-OWN-REFRESH [119]
+     6   4.8                   FN-CCAR-OWN-COMPLETE [166]
+     2   1.6                   FN-CCAR-COMPLETION-ENABLEDP [144]
+------------------------------------------------------------------------
+    10   8.0                   FNN-CALL [99]
+     0   0.0     10   8.0   FN-OWNER-FINISH-SUBMISSION [142]
+    10   8.0                   FN-CCAR-OWN-FINISH [143]
+------------------------------------------------------------------------
+    10   8.0                   FNN-OWNER-PUBLISH-PREPARED [140]
+     0   0.0     10   8.0   FNN-FINISH [141]
+    10   8.0                   FNN-OWNER-ACTION [97]
+------------------------------------------------------------------------
+     4   3.2                   FNN-WRITE-STAGED-AT [159]
+     6   4.8                   FNN-FSYNC-DIR [194]
+     0   0.0     10   8.0   FNN-DURABLE-BARRIER [197]
+    10   8.0                   foreign function fsync [1]
+------------------------------------------------------------------------
+     2   1.6                   FNN-PUBLISH [162]
+     4   3.2                   FNN-MARK-COMMITTED [155]
+     2   1.6                   FNN-ADVANCE-FRONTIER [115]
+     0   0.0      8   6.4   FNN-WRITE-STAGED-AT [159]
+     4   3.2                   FNN-DURABLE-BARRIER [197]
+     4   3.2                   FNN-OPEN [160]
+------------------------------------------------------------------------
+     5   4.0                   FNN-PUBLISH [162]
+     3   2.4                   FNN-ADVANCE-FRONTIER [115]
+     0   0.0      8   6.4   FNN-FSYNC-DIR [194]
+     6   4.8                   FNN-DURABLE-BARRIER [197]
+     2   1.6                   (FLET "CLEANUP-FUN-0" :IN FNN-FSYNC-DIR) [195]
+------------------------------------------------------------------------
+     7   5.6                   FNN-OWNER-PUBLISH-PREPARED [140]
+     0   0.0      7   5.6   FNN-MARK-COMMITTED [155]
+     4   3.2                   FNN-WRITE-STAGED-AT [159]
+     1   0.8                   foreign function rename [16]
+     1   0.8                   CONCATENATE [39]
+     1   0.8                   FNN-CORE [112]
+------------------------------------------------------------------------
+     1   0.8                   FN-CCAR-SN-FINISH [190]
+     3   2.4                   FN-CCAR-OWN-COMPLETE [166]
+     2   1.6                   FN-CCAR-OWN-FINISH [143]
+     0   0.0      6   4.8   FN-CCAR-COMPLETION-ENABLEDP [144]
+     2   1.6                   FN-RCON-TH-PREFIX-STEP [191]
+     2   1.6                   FN-CCAR-SEEK [146]
+     1   0.8                   FN-CCAR-COMPLETION-CORE-ENABLEDP [145]
+------------------------------------------------------------------------
+     6   4.8                   FN-CCAR-OWN-FINISH [143]
+     0   0.0      6   4.8   FN-CCAR-OWN-COMPLETE [166]
+     3   2.4                   FN-CCAR-SN-FINISH [190]
+     3   2.4                   FN-CCAR-COMPLETION-ENABLEDP [144]
+------------------------------------------------------------------------
+     5   4.0                   FN-OWNER-SUBMISSION-RESOLUTION [100]
+     0   0.0      5   4.0   FN-OWN-SUBMISSION-RESOLUTION-RECORDS [101]
+     1   0.8                   FN-OWN-FEED-STAMP [125]
+     4   3.2                   FN-OWN-FEED-INTENT-ID [102]
+------------------------------------------------------------------------
+     5   4.0                   FNN-CALL [99]
+     0   0.0      5   4.0   FN-OWNER-SUBMISSION-RESOLUTION [100]
+     5   4.0                   FN-OWN-SUBMISSION-RESOLUTION-RECORDS [101]
+------------------------------------------------------------------------
+     5   4.0                   FN-PCAR-OPC-OWNER-PREPARE [128]
+     0   0.0      5   4.0   FN-PCAR-SPC-PREPARE [129]
+     3   2.4                   FN-PCAR-STAGE-RECORD [200]
+     1   0.8                   FN-RCON-RECORD-P [149]
+     1   0.8                   FN-NODE-PREPARE [130]
+------------------------------------------------------------------------
+     5   4.0                   FN-PCAR-OPC-PREPARE [127]
+     0   0.0      5   4.0   FN-PCAR-OPC-OWNER-PREPARE [128]
+     5   4.0                   FN-PCAR-SPC-PREPARE [129]
+------------------------------------------------------------------------
+     5   4.0                   FN-OWNER-PREPARE [126]
+     0   0.0      5   4.0   FN-PCAR-OPC-PREPARE [127]
+     5   4.0                   FN-PCAR-OPC-OWNER-PREPARE [128]
+------------------------------------------------------------------------
+     5   4.0                   FNN-CALL [99]
+     0   0.0      5   4.0   FN-OWNER-PREPARE [126]
+     5   4.0                   FN-PCAR-OPC-PREPARE [127]
+------------------------------------------------------------------------
+     4   3.2                   FN-SHA256-ROUNDS [5]
+     0   0.0      4   3.2   FN-SHA256-BSIG0 [114]
+     4   3.2                   FN-SHA256-ROTR32 [6]
+------------------------------------------------------------------------
+     4   3.2                   FN-SHA256-SCHEDULE-AUX [24]
+     0   0.0      4   3.2   FN-SHA256-SSIG0 [124]
+     2   1.6                   FN-SHA256-ROTR32 [6]
+     1   0.8                   FN-SHA256-SHR32 [41]
+     1   0.8                   FN-SHA256-W32 [3]
+------------------------------------------------------------------------
+     1   0.8                   FN-RCON-TH-PREFIX-STEP [191]
+     3   2.4                   FN-RCON-SF-RECORD-PAIR [147]
+     0   0.0      4   3.2   FN-RCON-STORE-EVENT-SEQUENCE [148]
+     4   3.2                   FN-RCON-RECORD-P [149]
+------------------------------------------------------------------------
+     4   3.2                   FN-CCAR-SEEK [146]
+     0   0.0      4   3.2   FN-RCON-SF-RECORD-PAIR [147]
+     1   0.8                   FN-RCON-STORE-EVENT-TXID [167]
+     3   2.4                   FN-RCON-STORE-EVENT-SEQUENCE [148]
+------------------------------------------------------------------------
+     1   0.8                   FN-CCAR-COMPLETION-NAMES-SUBMISSION-P [205]
+     2   1.6                   FN-CCAR-COMPLETION-ENABLEDP [144]
+     1   0.8                   FN-CCAR-COMPLETION-CORE-ENABLEDP [145]
+     0   0.0      4   3.2   FN-CCAR-SEEK [146]
+     4   3.2                   FN-RCON-SF-RECORD-PAIR [147]
+------------------------------------------------------------------------
+     4   3.2                   FNN-WRITE-STAGED-AT [159]
+     0   0.0      4   3.2   FNN-OPEN [160]
+     3   2.4                   foreign function __open64 [10]
+     1   0.8                   SB-ALIEN::DEFAULT-C-STRING-EXTERNAL-FORMAT [37]
+------------------------------------------------------------------------
+     3   2.4                   PROBE-FILE [79]
+     0   0.0      3   2.4   SB-IMPL::QUERY-FILE-SYSTEM [80]
+     2   1.6                   PATHNAME [83]
+     1   0.8                   SB-IMPL::%QUERY-FILE-SYSTEM [81]
+------------------------------------------------------------------------
+     3   2.4                   (LAMBDA NIL :IN FN-NATIVE-ENTRY) [78]
+     0   0.0      3   2.4   PROBE-FILE [79]
+     3   2.4                   SB-IMPL::QUERY-FILE-SYSTEM [80]
+------------------------------------------------------------------------
+     1   0.8                   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [77]
+     0   0.0      3   2.4   (LAMBDA NIL :IN FN-NATIVE-ENTRY) [78]
+     3   2.4                   PROBE-FILE [79]
+------------------------------------------------------------------------
+     1   0.8                   FN-CCAR-OWN-FINISH [143]
+     2   1.6                   FN-RCON-OCFG-IO [118]
+     0   0.0      3   2.4   FN-OWN-REFRESH [119]
+     2   1.6                   FN-GIDX-BUILD [168]
+     1   0.8                   FN-STATE-ARTICLES [120]
+------------------------------------------------------------------------
+     3   2.4                   FN-OWNER-IO [117]
+     0   0.0      3   2.4   FN-RCON-OCFG-IO [118]
+     1   0.8                   FN-RCON-OWN-STORE-IO [228]
+     2   1.6                   FN-OWN-REFRESH [119]
+------------------------------------------------------------------------
+     3   2.4                   FNN-CALL [99]
+     0   0.0      3   2.4   FN-OWNER-IO [117]
+     3   2.4                   FN-RCON-OCFG-IO [118]
+------------------------------------------------------------------------
+     1   0.8                   FN-PCAR-CANDIDATEP [201]
+     1   0.8                   FN-PCAR-NEXT-LOWER [206]
+     1   0.8                   FN-RCON-SF-RECORD-PAIR [147]
+     0   0.0      3   2.4   FN-RCON-STORE-EVENT-TXID [167]
+     3   2.4                   FN-RCON-RECORD-P [149]
+------------------------------------------------------------------------
+     3   2.4                   FN-SHA256-ROUNDS [5]
+     0   0.0      3   2.4   FN-SHA256-BSIG1 [189]
+     3   2.4                   FN-SHA256-ROTR32 [6]
+------------------------------------------------------------------------
+     3   2.4                   FN-CCAR-OWN-COMPLETE [166]
+     0   0.0      3   2.4   FN-CCAR-SN-FINISH [190]
+     2   1.6                   FN-STX-DELTA [198]
+     1   0.8                   FN-CCAR-COMPLETION-ENABLEDP [144]
+------------------------------------------------------------------------
+     3   2.4                   FN-PCAR-STAGE-RECORD [200]
+     0   0.0      3   2.4   FN-PCAR-CANDIDATEP [201]
+     1   0.8                   FN-RCON-STORE-EVENT-TXID [167]
+     1   0.8                   FN-PCAR-NEXT-LOWER [206]
+     1   0.8                   FN-RCON-STORE-EVENT-GENERATION [202]
+------------------------------------------------------------------------
+     3   2.4                   FN-PCAR-SPC-PREPARE [129]
+     0   0.0      3   2.4   FN-PCAR-STAGE-RECORD [200]
+     3   2.4                   FN-PCAR-CANDIDATEP [201]
+------------------------------------------------------------------------
+     1   0.8                   FNN-PUBLISH [162]
+     2   1.6                   FNN-ADVANCE-FRONTIER [115]
+     0   0.0      3   2.4   FNN-OBSERVE [116]
+     3   2.4                   FNN-OWNER-ACTION [97]
+------------------------------------------------------------------------
+     3   2.4                   FNN-METADATA [111]
+     0   0.0      3   2.4   FNN-OBLIGATION-ID [158]
+     3   2.4                   FNN-CORE [112]
+------------------------------------------------------------------------
+     3   2.4                   FNN-FEED-WORKER-GUARDED [235]
+     0   0.0      3   2.4   FNN-FEED-WORKER [236]
+     1   0.8                   FNN-FEED-NOW [71]
+     1   0.8                   FNN-FEED-REFRESH-LINKS [237]
+     1   0.8                   FNN-FEED-STOPPINGP [69]
+------------------------------------------------------------------------
+     1   0.8                   (FLET SB-UNIX::BODY :IN SB-THREAD::RUN) [77]
+     0   0.0      3   2.4   FNN-FEED-WORKER-GUARDED [235]
+     3   2.4                   FNN-FEED-WORKER [236]
+------------------------------------------------------------------------
+     2   1.6                   PARSE-NAMESTRING [84]
+     0   0.0      2   1.6   SB-IMPL::%PARSE-NAMESTRING [85]
+     1   0.8                   SB-IMPL::PARSE-UNIX-NAMESTRING [88]
+     1   0.8                   SB-IMPL::INTERN-PATHNAME [86]
+------------------------------------------------------------------------
+     2   1.6                   PATHNAME [83]
+     0   0.0      2   1.6   PARSE-NAMESTRING [84]
+     2   1.6                   SB-IMPL::%PARSE-NAMESTRING [85]
+------------------------------------------------------------------------
+     2   1.6                   SB-IMPL::QUERY-FILE-SYSTEM [80]
+     0   0.0      2   1.6   PATHNAME [83]
+     2   1.6                   PARSE-NAMESTRING [84]
+------------------------------------------------------------------------
+     1   0.8                   FN-INDEX-BUILD [169]
+     0   0.0      2   1.6   FN-INDEX-MEMBERSHIP-ENTRIES [170]
+     1   0.8                   FN-AG-CDR [12]
+     1   0.8                   FN-INDEX-ENTRY [43]
+------------------------------------------------------------------------
+     2   1.6                   FN-NNTP-POST-STEP [177]
+     0   0.0      2   1.6   FN-INJ-DECIDE [178]
+     1   0.8                   FN-ARTICLE-FIELD-LISTP [186]
+     1   0.8                   FN-INJ-INSTANT-OF [179]
+------------------------------------------------------------------------
+     2   1.6                   FN-PIX-PEER-DELEGATE-PINNED [176]
+     0   0.0      2   1.6   FN-NNTP-POST-STEP [177]
+     2   1.6                   FN-INJ-DECIDE [178]
+------------------------------------------------------------------------
+     2   1.6                   FN-SCAR-AUTH-DELEGATE-PINNED [175]
+     0   0.0      2   1.6   FN-PIX-PEER-DELEGATE-PINNED [176]
+     2   1.6                   FN-NNTP-POST-STEP [177]
+------------------------------------------------------------------------
+     2   1.6                   FN-SCAR-DISPATCH [174]
+     0   0.0      2   1.6   FN-SCAR-AUTH-DELEGATE-PINNED [175]
+     2   1.6                   FN-PIX-PEER-DELEGATE-PINNED [176]
+------------------------------------------------------------------------
+     2   1.6                   FN-SCAR-DISPATCH-EVENTS [173]
+     0   0.0      2   1.6   FN-SCAR-DISPATCH [174]
+     2   1.6                   FN-SCAR-AUTH-DELEGATE-PINNED [175]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-FEED-COUNTED [139]
+     0   0.0      2   1.6   FN-SCAR-DISPATCH-EVENTS [173]
+     2   1.6                   FN-SCAR-DISPATCH [174]
+------------------------------------------------------------------------
+     2   1.6                   SB-SPROF::UNAVAILABLE-FRAMES [134]
+     2   1.6                   FN-INDEX-BUILD [169]
+     2   1.6                   FN-GIDX-BUILD [168]
+     0   0.0      2   1.6   FN-INDEX-BUILD [169]
+     1   0.8                   FN-INDEX-MEMBERSHIP-ENTRIES [170]
+     1   0.8                   SB-SPROF::UNAVAILABLE-FRAMES [134]
+     2   1.6                   FN-INDEX-BUILD [169]
+------------------------------------------------------------------------
+     1   0.8                   ACL2_*1*_ACL2::FN-BS-FRONTIER-ENCODE [214]
+     1   0.8                   FN-FRAME-SEAL [156]
+     1   0.8                   FNN-CALL [99]
+     0   0.0      2   1.6   FN-FRAME-SEAL [156]
+     1   0.8                   FN-FRAME-DIGEST [104]
+     1   0.8                   FN-FRAME-HEADER [35]
+     1   0.8                   FN-FRAME-SEAL [156]
+------------------------------------------------------------------------
+     2   1.6                   FN-OWN-REFRESH [119]
+     0   0.0      2   1.6   FN-GIDX-BUILD [168]
+     2   1.6                   FN-INDEX-BUILD [169]
+------------------------------------------------------------------------
+     2   1.6                   FN-CCAR-COMPLETION-ENABLEDP [144]
+     0   0.0      2   1.6   FN-RCON-TH-PREFIX-STEP [191]
+     1   0.8                   FN-RCON-STORE-EVENT-SEQUENCE [148]
+     1   0.8                   FN-RCON-STORE-EVENT-P [192]
+------------------------------------------------------------------------
+     2   1.6                   (FLET "CLEANUP-FUN-0" :IN FNN-FSYNC-DIR) [195]
+     0   0.0      2   1.6   FNN-CLOSE [196]
+     2   1.6                   foreign function __close [18]
+------------------------------------------------------------------------
+     2   1.6                   FNN-FSYNC-DIR [194]
+     0   0.0      2   1.6   (FLET "CLEANUP-FUN-0" :IN FNN-FSYNC-DIR) [195]
+     2   1.6                   FNN-CLOSE [196]
+------------------------------------------------------------------------
+     2   1.6                   FN-STX-DELTA [198]
+     0   0.0      2   1.6   FN-STX-PARSE [199]
+     1   0.8                   FN-ARTICLE-SYNTAX-P [224]
+     1   0.8                   FN-ARTICLE-PARSE-LINES [51]
+------------------------------------------------------------------------
+     2   1.6                   FN-CCAR-SN-FINISH [190]
+     0   0.0      2   1.6   FN-STX-DELTA [198]
+     2   1.6                   FN-STX-PARSE [199]
+------------------------------------------------------------------------
+     1   0.8                   SB-IMPL::%QUERY-FILE-SYSTEM [81]
+     0   0.0      1   0.8   SB-UNIX:UNIX-STAT [82]
+     1   0.8                   foreign function fstatat [20]
+------------------------------------------------------------------------
+     1   0.8                   SB-IMPL::QUERY-FILE-SYSTEM [80]
+     0   0.0      1   0.8   SB-IMPL::%QUERY-FILE-SYSTEM [81]
+     1   0.8                   SB-UNIX:UNIX-STAT [82]
+------------------------------------------------------------------------
+     1   0.8                   SB-IMPL::INTERN-PATHNAME [86]
+     0   0.0      1   0.8   SB-IMPL::PATTERN-HASH [87]
+     1   0.8                   SB-IMPL::HASH-PATHNAME-PIECE [21]
+------------------------------------------------------------------------
+     1   0.8                   SB-IMPL::%PARSE-NAMESTRING [85]
+     0   0.0      1   0.8   SB-IMPL::INTERN-PATHNAME [86]
+     1   0.8                   SB-IMPL::PATTERN-HASH [87]
+------------------------------------------------------------------------
+     1   0.8                   SB-IMPL::PARSE-UNIX-NAMESTRING [88]
+     0   0.0      1   0.8   SB-IMPL::MAYBE-MAKE-PATTERN [89]
+     1   0.8                   SB-KERNEL:VECTOR-SUBSEQ [22]
+------------------------------------------------------------------------
+     1   0.8                   SB-IMPL::%PARSE-NAMESTRING [85]
+     0   0.0      1   0.8   SB-IMPL::PARSE-UNIX-NAMESTRING [88]
+     1   0.8                   SB-IMPL::MAYBE-MAKE-PATTERN [89]
+------------------------------------------------------------------------
+     1   0.8                   FN-OWN-REFRESH [119]
+     0   0.0      1   0.8   FN-STATE-ARTICLES [120]
+     1   0.8                   FN-AG-CDR [12]
+------------------------------------------------------------------------
+     1   0.8                   FN-OWN-SUBMISSION-RESOLUTION-RECORDS [101]
+     0   0.0      1   0.8   FN-OWN-FEED-STAMP [125]
+     1   0.8                   FN-CLOCK-MONOTONIC [27]
+------------------------------------------------------------------------
+     1   0.8                   FN-RETAIN-ADMISSIBLEP [132]
+     0   0.0      1   0.8   FN-RETAIN-KNOWN-IDP [133]
+     1   0.8                   FN-RETAIN-OBLIGATION-IDS [28]
+------------------------------------------------------------------------
+     1   0.8                   FN-RETAIN-ADMIT [131]
+     0   0.0      1   0.8   FN-RETAIN-ADMISSIBLEP [132]
+     1   0.8                   FN-RETAIN-KNOWN-IDP [133]
+------------------------------------------------------------------------
+     1   0.8                   FN-NODE-PREPARE [130]
+     0   0.0      1   0.8   FN-RETAIN-ADMIT [131]
+     1   0.8                   FN-RETAIN-ADMISSIBLEP [132]
+------------------------------------------------------------------------
+     1   0.8                   FN-PCAR-SPC-PREPARE [129]
+     0   0.0      1   0.8   FN-NODE-PREPARE [130]
+     1   0.8                   FN-RETAIN-ADMIT [131]
+------------------------------------------------------------------------
+     1   0.8                   FN-CCAR-COMPLETION-ENABLEDP [144]
+     0   0.0      1   0.8   FN-CCAR-COMPLETION-CORE-ENABLEDP [145]
+     1   0.8                   FN-CCAR-SEEK [146]
+------------------------------------------------------------------------
+     1   0.8                   FN-PROV-DURABLEP [152]
+     0   0.0      1   0.8   FN-RECORD-OCTETS-STRING [153]
+     1   0.8                   FN-RECORD-OCTETS-CHARS [32]
+------------------------------------------------------------------------
+     1   0.8                   FN-STORE-PROV-POST [151]
+     0   0.0      1   0.8   FN-PROV-DURABLEP [152]
+     1   0.8                   FN-RECORD-OCTETS-STRING [153]
+------------------------------------------------------------------------
+     1   0.8                   FNN-CALL [99]
+     0   0.0      1   0.8   FN-STORE-PROV-POST [151]
+     1   0.8                   FN-PROV-DURABLEP [152]
+------------------------------------------------------------------------
+     1   0.8                   FN-WIRE-FEED-BYTE [33]
+     0   0.0      1   0.8   FN-WIRE-STATE-LINE-LEN [154]
+     1   0.8                   FN-WIRE-AG-CDR [34]
+------------------------------------------------------------------------
+     1   0.8                   FNN-CALL [99]
+     0   0.0      1   0.8   ACL2_*1*_ACL2::FN-STORE-SUBJECT-ID-OF-PAYLOAD [157]
+     1   0.8                   ACL2_*1*_ACL2::LEN [36]
+------------------------------------------------------------------------
+     1   0.8                   FNN-METADATA [111]
+     0   0.0      1   0.8   FNN-PROVENANCE-POST [150]
+     1   0.8                   FNN-CORE-STATE [98]
+------------------------------------------------------------------------
+     1   0.8                   (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK) [96]
+     0   0.0      1   0.8   FNN-OWNER-ADVANCE-CLOCK [161]
+     1   0.8                   GET-INTERNAL-REAL-TIME [38]
+------------------------------------------------------------------------
+     1   0.8                   CONCATENATE [39]
+     0   0.0      1   0.8   SB-KERNEL:%CONCATENATE-TO-STRING [165]
+------------------------------------------------------------------------
+     1   0.8                   FNN-COUNTERPART [171]
+     0   0.0      1   0.8   SB-IMPL::%FIND-SYMBOL [172]
+     1   0.8                   SB-IMPL::%LOOKUP-SYMBOL [44]
+------------------------------------------------------------------------
+     1   0.8                   FNN-CALL [99]
+     0   0.0      1   0.8   FNN-COUNTERPART [171]
+     1   0.8                   SB-IMPL::%FIND-SYMBOL [172]
+------------------------------------------------------------------------
+     1   0.8                   FN-INJ-INSTANT-OF [179]
+     0   0.0      1   0.8   FN-INJ-YEAR-OF [180]
+     1   0.8                   FN-INJ-YEAR-DAYS [45]
+------------------------------------------------------------------------
+     1   0.8                   FN-INJ-DECIDE [178]
+     0   0.0      1   0.8   FN-INJ-INSTANT-OF [179]
+     1   0.8                   FN-INJ-YEAR-OF [180]
+------------------------------------------------------------------------
+     1   0.8                   FNN-RETRY-EINTR [184]
+     0   0.0      1   0.8   SB-UNIX:UNIX-WRITE [185]
+     1   0.8                   foreign function __write [47]
+------------------------------------------------------------------------
+     1   0.8                   FNN-WRITE-PROGRESS [183]
+     0   0.0      1   0.8   FNN-RETRY-EINTR [184]
+     1   0.8                   SB-UNIX:UNIX-WRITE [185]
+------------------------------------------------------------------------
+     1   0.8                   FNN-SEND-ALL [182]
+     0   0.0      1   0.8   FNN-WRITE-PROGRESS [183]
+     1   0.8                   FNN-RETRY-EINTR [184]
+------------------------------------------------------------------------
+     1   0.8                   FNN-OWNER-CONNECTION-CALL [181]
+     0   0.0      1   0.8   FNN-SEND-ALL [182]
+     1   0.8                   FNN-WRITE-PROGRESS [183]
+------------------------------------------------------------------------
+     1   0.8                   FNN-OWNER-SERVE-CLIENT [91]
+     0   0.0      1   0.8   FNN-OWNER-CONNECTION-CALL [181]
+     1   0.8                   FNN-SEND-ALL [182]
+------------------------------------------------------------------------
+     1   0.8                   FN-ARTICLE-FIELDP [187]
+     0   0.0      1   0.8   FN-ARTICLE-LOWER-NAMEP [188]
+     1   0.8                   FN-ARTICLE-ASCII-DOWNCASE [49]
+------------------------------------------------------------------------
+     1   0.8                   FN-ARTICLE-FIELD-LISTP [186]
+     0   0.0      1   0.8   FN-ARTICLE-FIELDP [187]
+     1   0.8                   FN-ARTICLE-LOWER-NAMEP [188]
+------------------------------------------------------------------------
+     1   0.8                   FN-INJ-DECIDE [178]
+     0   0.0      1   0.8   FN-ARTICLE-FIELD-LISTP [186]
+     1   0.8                   FN-ARTICLE-FIELDP [187]
+------------------------------------------------------------------------
+     1   0.8                   FN-RECORD-GROUP-LISTP [211]
+     0   0.0      1   0.8   FN-RECORD-GROUP-NAMEP [212]
+     1   0.8                   FN-RECORD-STRING-OCTETS [58]
+------------------------------------------------------------------------
+     1   0.8                   FN-RECORD-GROUPSP [210]
+     0   0.0      1   0.8   FN-RECORD-GROUP-LISTP [211]
+     1   0.8                   FN-RECORD-GROUP-NAMEP [212]
+------------------------------------------------------------------------
+     1   0.8                   FN-RCON-TH-PREFIX-STEP [191]
+     0   0.0      1   0.8   FN-RCON-STORE-EVENT-P [192]
+     1   0.8                   FN-RCON-RECORD-P [149]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-WORDS16 [193]
+     1   0.8                   FN-SHA256-COMPRESS [107]
+     0   0.0      1   0.8   FN-SHA256-WORDS16 [193]
+     1   0.8                   FN-SHA256-NTHX [2]
+     1   0.8                   FN-SHA256-WORDS16 [193]
+------------------------------------------------------------------------
+     1   0.8                   FN-PCAR-CANDIDATEP [201]
+     0   0.0      1   0.8   FN-RCON-STORE-EVENT-GENERATION [202]
+     1   0.8                   FN-RCON-RECORD-P [149]
+------------------------------------------------------------------------
+     1   0.8                   FN-SHA256-OF-OCTETS [105]
+     0   0.0      1   0.8   FN-SHA256-PAD [203]
+     1   0.8                   FN-SHA256-APPX [9]
+------------------------------------------------------------------------
+     1   0.8                   FN-FRAME-DIGEST [104]
+     0   0.0      1   0.8   FN-SHA256 [204]
+     1   0.8                   FN-SHA256-FIX-OCTETS [55]
+------------------------------------------------------------------------
+     1   0.8                   FN-CCAR-OWN-FINISH [143]
+     0   0.0      1   0.8   FN-CCAR-COMPLETION-NAMES-SUBMISSION-P [205]
+     1   0.8                   FN-CCAR-SEEK [146]
+------------------------------------------------------------------------
+     1   0.8                   FN-PCAR-CANDIDATEP [201]
+     0   0.0      1   0.8   FN-PCAR-NEXT-LOWER [206]
+     1   0.8                   FN-RCON-STORE-EVENT-TXID [167]
+------------------------------------------------------------------------
+     1   0.8                   FN-OWN-FEED-PATH-OF [208]
+     0   0.0      1   0.8   FN-OWN-FEED-ARTICLE-OF [209]
+     1   0.8                   FN-ARTICLE-PARSE-LINES [51]
+------------------------------------------------------------------------
+     1   0.8                   FN-OWN-SUBMISSION-TARGETS [207]
+     0   0.0      1   0.8   FN-OWN-FEED-PATH-OF [208]
+     1   0.8                   FN-OWN-FEED-ARTICLE-OF [209]
+------------------------------------------------------------------------
+     1   0.8                   FN-OWN-SUBMISSION-INTENT-RESULT [123]
+     0   0.0      1   0.8   FN-OWN-SUBMISSION-TARGETS [207]
+     1   0.8                   FN-OWN-FEED-PATH-OF [208]
+------------------------------------------------------------------------
+     1   0.8                   FN-RCON-RECORD-P [149]
+     0   0.0      1   0.8   FN-RECORD-GROUPSP [210]
+     1   0.8                   FN-RECORD-GROUP-LISTP [211]
+------------------------------------------------------------------------
+     1   0.8                   FNN-CALL [99]
+     0   0.0      1   0.8   ACL2_*1*_ACL2::FN-BS-FRONTIER-ENCODE [214]
+     1   0.8                   FN-FRAME-SEAL [156]
+------------------------------------------------------------------------
+     1   0.8                   FN-CFG-VALUEP [219]
+     0   0.0      1   0.8   FN-CFG-PEERS [220]
+     1   0.8                   FN-CFG-AG-CDR [60]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-PEER-SESSIONP [218]
+     0   0.0      1   0.8   FN-CFG-VALUEP [219]
+     1   0.8                   FN-CFG-PEERS [220]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-AUTH-SESSIONP [217]
+     0   0.0      1   0.8   FN-SCAR-PEER-SESSIONP [218]
+     1   0.8                   FN-CFG-VALUEP [219]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-CONN-BOUNDEDP [216]
+     0   0.0      1   0.8   FN-SCAR-AUTH-SESSIONP [217]
+     1   0.8                   FN-SCAR-PEER-SESSIONP [218]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-FINISH-READ [215]
+     0   0.0      1   0.8   FN-SCAR-CONN-BOUNDEDP [216]
+     1   0.8                   FN-SCAR-AUTH-SESSIONP [217]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-OWN-READ-TLS-PREFIX [137]
+     0   0.0      1   0.8   FN-SCAR-FINISH-READ [215]
+     1   0.8                   FN-SCAR-CONN-BOUNDEDP [216]
+------------------------------------------------------------------------
+     1   0.8                   FN-WILDMAT-DECODE-AUX [222]
+     0   0.0      1   0.8   FN-PATH-TRIM-LEADING [223]
+     1   0.8                   FN-WILDMAT-OCTETP [61]
+------------------------------------------------------------------------
+     1   0.8                   FN-FRAME-TEXTP [221]
+     0   0.0      1   0.8   FN-WILDMAT-DECODE-AUX [222]
+     1   0.8                   FN-PATH-TRIM-LEADING [223]
+------------------------------------------------------------------------
+     1   0.8                   FN-OWN-SUBMISSION-INTENT-RESULT [123]
+     0   0.0      1   0.8   FN-FRAME-TEXTP [221]
+     1   0.8                   FN-WILDMAT-DECODE-AUX [222]
+------------------------------------------------------------------------
+     1   0.8                   FN-STX-PARSE [199]
+     0   0.0      1   0.8   FN-ARTICLE-SYNTAX-P [224]
+     1   0.8                   FN-ARTICLE-BODY [62]
+------------------------------------------------------------------------
+     1   0.8                   FN-RECORD-ENCODE [226]
+     0   0.0      1   0.8   FN-RCON-RECORD-ENCODE-IMPL [227]
+     1   0.8                   FN-RECORD-STRING-OCTETS-AUX [63]
+------------------------------------------------------------------------
+     1   0.8                   FN-OWNER-PENDING-OCTETS [225]
+     0   0.0      1   0.8   FN-RECORD-ENCODE [226]
+     1   0.8                   FN-RCON-RECORD-ENCODE-IMPL [227]
+------------------------------------------------------------------------
+     1   0.8                   FNN-CALL [99]
+     0   0.0      1   0.8   FN-OWNER-PENDING-OCTETS [225]
+     1   0.8                   FN-RECORD-ENCODE [226]
+------------------------------------------------------------------------
+     1   0.8                   FN-RCON-SN-IO [229]
+     0   0.0      1   0.8   FN-RCON-SF-RECORD-DIR-RESULT [230]
+     1   0.8                   FN-SF-RECORD-CANDIDATE [65]
+------------------------------------------------------------------------
+     1   0.8                   FN-RCON-OWN-STORE-IO [228]
+     0   0.0      1   0.8   FN-RCON-SN-IO [229]
+     1   0.8                   FN-RCON-SF-RECORD-DIR-RESULT [230]
+------------------------------------------------------------------------
+     1   0.8                   FN-RCON-OCFG-IO [118]
+     0   0.0      1   0.8   FN-RCON-OWN-STORE-IO [228]
+     1   0.8                   FN-RCON-SN-IO [229]
+------------------------------------------------------------------------
+     1   0.8                   FN-WIRE-LIST-LENGTH [234]
+     1   0.8                   FN-WIRE-LINE-COST [233]
+     0   0.0      1   0.8   FN-WIRE-LIST-LENGTH [234]
+     1   0.8                   GENERIC-+ [67]
+     1   0.8                   FN-WIRE-LIST-LENGTH [234]
+------------------------------------------------------------------------
+     1   0.8                   FN-WIRE-AFTER-LINE [232]
+     0   0.0      1   0.8   FN-WIRE-LINE-COST [233]
+     1   0.8                   FN-WIRE-LIST-LENGTH [234]
+------------------------------------------------------------------------
+     1   0.8                   FN-SCAR-FEED-BYTE [29]
+     0   0.0      1   0.8   FN-WIRE-AFTER-LINE [232]
+     1   0.8                   FN-WIRE-LINE-COST [233]
+------------------------------------------------------------------------
+     1   0.8                   FNN-ADVANCE-FRONTIER [115]
+     0   0.0      1   0.8   FNN-METADATA-FRONTIER-FRAME [213]
+     1   0.8                   FNN-CORE [112]
+------------------------------------------------------------------------
+     1   0.8                   FNN-ADVANCE-FRONTIER [115]
+     0   0.0      1   0.8   FNN-METADATA-FRONTIER-NEXT [231]
+     1   0.8                   FNN-CORE [112]
+------------------------------------------------------------------------
+     1   0.8                   SB-THREAD::%MUTEX-TIMEDLOCK [239]
+     0   0.0      1   0.8   (FLET SB-UNIX::BODY :IN SB-THREAD::FUTEX-WAIT) [240]
+     1   0.8                   foreign function syscall [70]
+------------------------------------------------------------------------
+     1   0.8                   SB-THREAD::MUTEX-WAIT [238]
+     0   0.0      1   0.8   SB-THREAD::%MUTEX-TIMEDLOCK [239]
+     1   0.8                   (FLET SB-UNIX::BODY :IN SB-THREAD::FUTEX-WAIT) [240]
+------------------------------------------------------------------------
+     1   0.8                   (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX) [94]
+     0   0.0      1   0.8   SB-THREAD::MUTEX-WAIT [238]
+     1   0.8                   SB-THREAD::%MUTEX-TIMEDLOCK [239]
+------------------------------------------------------------------------
+     1   0.8                   FNN-FEED-WORKER [236]
+     0   0.0      1   0.8   FNN-FEED-REFRESH-LINKS [237]
+     1   0.8                   FNN-OWNER-SERIALIZED [92]
+------------------------------------------------------------------------
+
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     10   8.0     10   8.0     10   8.0        -  foreign function fsync
+   4      9   7.2      9   7.2     19  15.2        -  FN-SHA256-NTHX
+   6      8   6.4      8   6.4     27  21.6        -  FN-SHA256-W32
+   8      5   4.0     19  15.2     32  25.6        -  FN-SHA256-ROUNDS
+  10      5   4.0     11   8.8     37  29.6        -  FN-SHA256-ROTR32
+  12      5   4.0      5   4.0     42  33.6        -  ASH
+  14      3   2.4      8   6.4     45  36.0        -  FN-SHA256-SSIG1
+  16      3   2.4      6   4.8     48  38.4        -  FN-SHA256-MAJ
+  18      3   2.4      6   4.8     51  40.8        -  FN-SHA256-APPX
+  20      3   2.4      3   2.4     54  43.2        -  foreign function __open64
+  22      2   1.6      4   3.2     56  44.8        -  FN-CBOR-OCTET-LISTP
+  24      2   1.6      4   3.2     58  46.4        -  FN-SHA256-FIRSTN
+  26      2   1.6      2   1.6     60  48.0        -  SB-KERNEL:VECTOR-TO-LIST
+  28      2   1.6      2   1.6     62  49.6        -  FN-AG-CDR
+  30      2   1.6      2   1.6     64  51.2        -  FN-SHA256-REVX
+  32      2   1.6      2   1.6     66  52.8        -  FN-CBOR-OCTETP
+  34      2   1.6      2   1.6     68  54.4        -  foreign function rename
+  36      2   1.6      2   1.6     70  56.0        -  foreign function __close
+  38      2   1.6      2   1.6     72  57.6        -  FN-RCON-ASCII-FROM
+  40      1   0.8    104  83.2     73  58.4        -  FNN-OWNER-DRAIN-ONE
+  42      1   0.8     21  16.8     74  59.2        -  FN-SHA256-SCHEDULE-AUX
+  44      1   0.8     16  12.8     75  60.0        -  FNN-SUBJECT-ID
+  46      1   0.8     10   8.0     76  60.8        -  FN-SCAR-FEED-BYTE
+  48      1   0.8      5   4.0     77  61.6        -  FN-RECORD-PAYLOADP
+  50      1   0.8      4   3.2     78  62.4        -  FN-WIRE-FEED-BYTE
+  52      1   0.8      3   2.4     79  63.2        -  CONCATENATE
+  54      1   0.8      2   1.6     80  64.0        -  FN-RETAIN-OBLIGATION-IDS
+  56      1   0.8      2   1.6     81  64.8        -  FN-RECORD-OCTETS-CHARS
+  58      1   0.8      2   1.6     82  65.6        -  FN-SHA256-WORDS-OCTETS
+  60      1   0.8      2   1.6     83  66.4        -  FN-ARTICLE-PARSE-LINES
+------------------------------------------------------------------------
+          1   0.8                                     elsewhere

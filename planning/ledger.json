@@ -559,6 +559,9 @@
     "books/owner-commit-carried",
     "books/owner-prepare-carried",
     "books/records-concrete",
+    "books/records-concrete-owner",
+    "books/records-attach-concrete",
+    "books/msgid-index-concrete",
     "books/owner-advance-carried",
     "books/owner-intent-carried",
     "books/owner-commit-ocl",
@@ -593,6 +596,7 @@
     "tests/acl2/owner-commit-carried-tests",
     "tests/acl2/owner-prepare-carried-tests",
     "tests/acl2/records-concrete-tests",
+    "tests/acl2/msgid-index-concrete-tests",
     "tests/acl2/owner-advance-carried-tests",
     "tests/acl2/owner-intent-carried-tests",
     "tests/acl2/owner-recover-ocl-tests",
@@ -767,26 +771,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 775,
-    "books_in_root_closure": 773,
-    "roots": 763,
-    "theorems": 10250,
-    "functions": 7265,
-    "assert_events": 11255,
-    "must_fails": 1011,
+    "books": 780,
+    "books_in_root_closure": 778,
+    "roots": 767,
+    "theorems": 10281,
+    "functions": 7289,
+    "assert_events": 11320,
+    "must_fails": 1014,
     "encapsulates": 41,
     "guards": {
-      "verified": 2085,
+      "verified": 2093,
       "declared-off": 526,
-      "default-guarded": 3612,
-      "default-unguarded": 1042
+      "default-guarded": 3624,
+      "default-unguarded": 1046
     },
     "suspect_theorems": 91,
-    "export_hygiene_warnings": 127,
+    "export_hygiene_warnings": 131,
     "enabled_projection_warnings": 42,
     "teeth_form_warnings": 69,
-    "include_hygiene_warnings": 765,
-    "host_names_warnings": 860,
+    "include_hygiene_warnings": 768,
+    "host_names_warnings": 867,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -7706,6 +7710,33 @@
       "read_error": null
     },
     {
+      "book": "books/msgid-index-concrete.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "msgid-index"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/msgid-index.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -9777,15 +9808,15 @@
       "book": "books/peer-offer-indexed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
-      "functions": 4,
+      "theorems": 20,
+      "functions": 10,
       "guards": {
-        "verified": 3,
+        "verified": 9,
         "declared-off": 0,
         "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 3,
+      "verify_guards_events": 9,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -9793,6 +9824,7 @@
       "encapsulates": 0,
       "includes": [
         "msgid-index",
+        "msgid-index-concrete",
         "peer-inbound"
       ],
       "system_includes": [],
@@ -10024,6 +10056,32 @@
       "read_error": null
     },
     {
+      "book": "books/records-attach-concrete.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "records-attach",
+        "records-codec-concrete"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/records-attach.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10078,18 +10136,71 @@
       "read_error": null
     },
     {
+      "book": "books/records-codec-concrete.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 18,
+      "functions": 5,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "records"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/records-concrete-owner.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-config",
+        "records-concrete"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/records-concrete.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
-      "functions": 12,
+      "theorems": 13,
+      "functions": 13,
       "guards": {
-        "verified": 3,
+        "verified": 4,
         "declared-off": 0,
         "default-guarded": 9,
         "default-unguarded": 0
       },
-      "verify_guards_events": 3,
+      "verify_guards_events": 6,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -10097,6 +10208,8 @@
       "encapsulates": 0,
       "includes": [
         "consumer-store-projection",
+        "records-codec-concrete",
+        "store-budget-naming",
         "store-node",
         "topic-history-prefix"
       ],
@@ -17871,6 +17984,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/msgid-index-concrete-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 1,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/msgid-index-concrete"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/msgid-index-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19374,15 +19515,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 6,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 6
+        "default-unguarded": 8
       },
       "verify_guards_events": 0,
-      "assert_events": 31,
+      "assert_events": 37,
       "must_fails": 6,
       "defconsts": 5,
       "defmacros": 0,
@@ -19430,17 +19571,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 33,
+      "assert_events": 43,
       "must_fails": 4,
-      "defconsts": 5,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -19574,13 +19715,15 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 25,
-      "must_fails": 1,
-      "defconsts": 7,
+      "assert_events": 59,
+      "must_fails": 3,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/records-attach-concrete",
         "../../books/records-concrete",
+        "../../books/records-concrete-owner",
         "owner-served-invariants-tests"
       ],
       "system_includes": [
@@ -22129,7 +22272,7 @@
     {
       "theorem": "fn-pix-msgid-argp-forward",
       "book": "books/peer-offer-indexed.lisp",
-      "line": 229,
+      "line": 243,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-msgid-argp"
       ]
@@ -22674,6 +22817,12 @@
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
+        "theorem": "fn-midx-concrete-build-is-build",
+        "book": "books/msgid-index-concrete.lisp",
+        "line": 150,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
         "line": 547,
@@ -22789,50 +22938,68 @@
       },
       {
         "theorem": "fn-rcon-metadata-bytes-p-is-metadata-bytes-p",
-        "book": "books/records-concrete.lisp",
-        "line": 101,
+        "book": "books/records-codec-concrete.lisp",
+        "line": 96,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-msgidp-is-msgidp",
-        "book": "books/records-concrete.lisp",
-        "line": 156,
+        "book": "books/records-codec-concrete.lisp",
+        "line": 151,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-record-p-is-record-p",
-        "book": "books/records-concrete.lisp",
-        "line": 164,
+        "book": "books/records-codec-concrete.lisp",
+        "line": 159,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-record-encode-impl-is-record-encode-impl",
+        "book": "books/records-codec-concrete.lisp",
+        "line": 207,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-store-event-p-is-store-event-p",
         "book": "books/records-concrete.lisp",
-        "line": 184,
+        "line": 70,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-store-event-sequence-is-store-event-sequence",
         "book": "books/records-concrete.lisp",
-        "line": 202,
+        "line": 88,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-store-event-txid-is-store-event-txid",
         "book": "books/records-concrete.lisp",
-        "line": 220,
+        "line": 106,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-store-event-generation-is-store-event-generation",
         "book": "books/records-concrete.lisp",
-        "line": 238,
+        "line": 124,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-sf-record-pair-is-sf-record-pair",
         "book": "books/records-concrete.lisp",
-        "line": 252,
+        "line": 138,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-store-event-encode-is-store-event-encode",
+        "book": "books/records-concrete.lisp",
+        "line": 306,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
+        "book": "books/records-concrete.lisp",
+        "line": 318,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -25504,6 +25671,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/msgid-index-concrete.lisp",
+        "line": 36,
+        "include": "msgid-index",
+        "included": "books/msgid-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/native-admin-peer.lisp",
         "line": 13,
         "include": "native-admin-shape",
@@ -25809,6 +25983,13 @@
         "line": 41,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/records-attach-concrete.lisp",
+        "line": 27,
+        "include": "records-attach",
+        "included": "books/records-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -28711,7 +28892,14 @@
       },
       {
         "book": "tests/acl2/records-concrete-tests.lisp",
-        "line": 5,
+        "line": 6,
+        "include": "../../books/records-attach-concrete",
+        "included": "books/records-attach-concrete.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/records-concrete-tests.lisp",
+        "line": 8,
         "include": "owner-served-invariants-tests",
         "included": "tests/acl2/owner-served-invariants-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -35314,31 +35502,59 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 505,
+        "line": 347,
+        "name": "fn-rcon-ocfg-io",
+        "source": "books/records-concrete-owner.lisp",
+        "reason": "defined in books/records-concrete-owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 511,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 505,
+        "line": 511,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1002,
+        "line": 1013,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1581,
+        "line": 1592,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/store-host.lisp",
+        "line": 104,
+        "name": "fn-rcon-store-event-p",
+        "source": "books/records-concrete.lisp",
+        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-host.lisp",
+        "line": 115,
+        "name": "fn-rcon-store-event-sequence",
+        "source": "books/records-concrete.lisp",
+        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-host.lisp",
+        "line": 123,
+        "name": "fn-rcon-store-event-txid",
+        "source": "books/records-concrete.lisp",
+        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
@@ -35353,6 +35569,27 @@
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 473,
+        "name": "fn-rcon-sn-io",
+        "source": "books/records-concrete.lisp",
+        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 579,
+        "name": "fn-rcon-store-event-encode",
+        "source": "books/records-concrete.lisp",
+        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 588,
+        "name": "fn-rcon-sbud-pending-sequence",
+        "source": "books/records-concrete.lisp",
+        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       }
     ],
     "hand_written_record": [

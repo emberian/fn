@@ -1,0 +1,8 @@
+{"image": "/tank/fn/scratch/rep-records-2/after-tree/build/fn-host-developer", "launcher_sha256": "ecbe87a826ff74315ecaaf5575176d47a4329ba305e1ddbeb518091b2ac1faa0", "core_sha256": "830fc2f2bcec15a7f0c663ae4c8c77aa006c694645e92de959a873eeb69a4dd9", "articles": 120, "samples": 64, "port": 47425, "nodelay": false, "load_seconds": 0.21967416908591986, "rss_after_load_kib": 432548, "rss_after_stat_kib": 440420, "peer_mode_stream": "203 streaming permitted", "rss_after_peer_kib": 1547108}
+post_first_quarter median 1.798 ms  p95 1.961 ms  max 3.997 ms
+post_last_quarter median 1.820 ms  p95 1.862 ms  max 1.923 ms
+stat_present median 0.090 ms  p95 0.115 ms  max 0.159 ms
+stat_absent median 0.081 ms  p95 0.101 ms  max 0.163 ms
+ihave_duplicate median 0.097 ms  p95 0.253 ms  max 0.354 ms
+check_duplicate median 0.115 ms  p95 0.117 ms  max 0.148 ms
+check_absent median 0.120 ms  p95 0.141 ms  max 0.166 ms

@@ -98,12 +98,15 @@
 ; (books/byte-store-compaction-correspondence), whose namespace gate is
 ; `fn-profile-txn-observation'; host/native/checkpoint.lisp calls it directly.
 
+; The record wrappers recognise and dispatch through the concrete twins of
+; books/records-concrete.lisp (fn-rcon-store-event-p-is-store-event-p,
+; -sequence-is-, -txid-is-: each equal to its list reference on every input).
 (defun fn-store-decode-records (octet-records)
   (declare (xargs :mode :program))
   (if (consp octet-records)
       (let ((decoded (fn-store-event-decode-exact (car octet-records))))
         (if (and (consp decoded) (equal (car decoded) :ok)
-                 (consp (cdr decoded)) (fn-store-event-p (car (cdr decoded))))
+                 (consp (cdr decoded)) (fn-rcon-store-event-p (car (cdr decoded))))
             (let ((rest (fn-store-decode-records (cdr octet-records))))
               (if (equal rest :bad) :bad (cons (car (cdr decoded)) rest)))
           :bad))
@@ -113,16 +116,16 @@
   (declare (xargs :mode :program))
   (let ((decoded (fn-store-event-decode-exact octets)))
     (if (and (consp decoded) (equal (car decoded) :ok)
-             (consp (cdr decoded)) (fn-store-event-p (car (cdr decoded))))
-        (fn-store-event-sequence (car (cdr decoded)))
+             (consp (cdr decoded)) (fn-rcon-store-event-p (car (cdr decoded))))
+        (fn-rcon-store-event-sequence (car (cdr decoded)))
       -1)))
 
 (defun fn-store-record-txid (octets)
   (declare (xargs :mode :program))
   (let ((decoded (fn-store-event-decode-exact octets)))
     (if (and (consp decoded) (equal (car decoded) :ok)
-             (consp (cdr decoded)) (fn-store-event-p (car (cdr decoded))))
-        (fn-store-event-txid (car (cdr decoded)))
+             (consp (cdr decoded)) (fn-rcon-store-event-p (car (cdr decoded))))
+        (fn-rcon-store-event-txid (car (cdr decoded)))
       -1)))
 
 ; -----------------------------------------------------------------------------

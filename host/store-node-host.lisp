@@ -472,7 +472,9 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 (defun fn-store-sn-io (operation result state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((next (fn-sn-io (f-get-global 'fn-store-sn state) operation result)))
+  ; fn-rcon-sn-io-is-sn-io (books/records-concrete): fn-sn-io with the
+  ; concrete record dispatchers.
+  (let ((next (fn-rcon-sn-io (f-get-global 'fn-store-sn state) operation result)))
     (let ((state (f-put-global 'fn-store-sn next state)))
       (value (fn-sf-phase (fn-sn-files next))))))
 
@@ -578,13 +580,15 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (let ((record (fn-sf-record-candidate
                  (fn-sn-files (f-get-global 'fn-store-sn state)))))
-    (value (if record (fn-store-event-encode record) nil))))
+    ; fn-rcon-store-event-encode-is-store-event-encode (books/records-concrete).
+    (value (if record (fn-rcon-store-event-encode record) nil))))
 
 ; The staged record's sequence: the developer `store post' names its
 ; transaction file from it (books/store-budget-naming.lisp).
 (defun fn-store-sn-pending-sequence (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-sbud-pending-sequence (f-get-global 'fn-store-sn state))))
+  ; fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence (books/records-concrete).
+  (value (fn-rcon-sbud-pending-sequence (f-get-global 'fn-store-sn state))))
 
 (defun fn-store-sn-finish (state)
   (declare (xargs :stobjs state :mode :program))
