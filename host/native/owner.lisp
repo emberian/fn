@@ -907,7 +907,10 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                      (setq *fnn-owner-transit-detail* :carried)
                      (return-from fnn-owner-attempt-transit
                        (fnn-owner-identity-commit service event)))))
-               (unless (and (consp plan) (eq (first plan) :ok))
+               ;; PRF-098: the :revoked arm (NNTP transit only) takes the
+               ;; same two primitive observations as :ok, over the carrier's
+               ;; keys, and commits fn-pa-revoked-event's composite.
+               (unless (and (consp plan) (member (first plan) '(:ok :revoked)))
                  (return-from fnn-owner-attempt-transit
                    (fnn-owner-transit-refused plan)))
              (unless (eq (fnn-owner-advance-clock) :observed)
@@ -940,7 +943,10 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                           (fnn-owner-core 'fn-owner-next-store-coordinates))
                         (event
                           (fnn-owner-core
-                           'fn-owner-peer-carried-event coordinates
+                           (if (eq (first plan) :revoked)
+                               'fn-owner-peer-revoked-event
+                             'fn-owner-peer-carried-event)
+                           coordinates
                            (fnn-octet-list msgid) (fnn-octet-list payload)
                            codes (fnn-octet-list obligation)
                            (fnn-octet-list subject) (fnn-octet-list evidence)
@@ -953,7 +959,48 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                      (unless (eq boundary :ok)
                        (return-from fnn-owner-attempt-transit
                          (fnn-owner-transit-refused boundary))))
-                   (fnn-owner-identity-commit service event)))))))))))
+                   (when (eq (first plan) :revoked)
+                     ;; A log detail only: the Store record's token.
+                     (setq *fnn-owner-transit-detail* :revoked))
+                   (let ((word (fnn-owner-identity-commit service event)))
+                     (when (and (eq word :durable) (eq (first plan) :ok))
+                       (fnn-owner-key-statement service event))
+                     word)))))))))))
+
+;;; PRF-098: the key-statement executor, run by the owner right after it
+;;; committed a :verified kind-4 composite (books/key-statements.lisp,
+;;; through host/owner-host.lisp).  ACL2 names the one primitive observation
+;;; (the proof of possession's D09 subject) or none, decides from the stored
+;;; verdict, the live authorities rows and the Store's snapshots, and builds
+;;; the kind-3 event at its own next generation; the host observes, commits
+;;; and logs.  A composite that is no statement decides nothing.
+(defun fnn-owner-key-statement (service event)
+  (let* ((request (fnn-owner-core 'fn-owner-key-statement-request event))
+         (preimage (and request
+                        (fnn-core 'fn-hsig-host-preimage (first request)
+                                  (second request) (third request))))
+         (observations (and preimage
+                            (fnn-hsig-observe-raw
+                             (cdr (first (second request)))
+                             (cdr (second (second request)))
+                             preimage (fourth request))))
+         (ml-observation (second observations))
+         (observed-ml-key (and (consp ml-observation) (second ml-observation)
+                               (coerce (second ml-observation) 'list)))
+         (ed (first observations))
+         (ml (and (consp ml-observation) (first ml-observation)))
+         (plan (fnn-owner-core 'fn-owner-key-statement-plan event
+                               observed-ml-key ed ml)))
+    (when plan
+      (let* ((acting (and (consp plan) (member (first plan) '(:enroll :revoke))))
+             (coordinates (and acting
+                               (fnn-owner-core 'fn-owner-next-store-coordinates)))
+             (kind3 (and acting
+                         (fnn-owner-core 'fn-owner-key-statement-event event
+                                         observed-ml-key ed ml coordinates)))
+             (word (and kind3 (fnn-owner-identity-commit service kind3))))
+        (fnn-log-line (fnn-owner-core 'fn-owner-key-statement-log-line plan
+                                      (eq word :durable)))))))
 
 ;;; The served POST's attempt, and the bound local submission's.  The one
 ;;; ingress decision transit uses (fnn-owner-attempt-transit: ACL2's

@@ -1,0 +1,543 @@
+; fn: key statements -- succession and revocation executed by the owner at
+; acceptance (PRF-098; planning/evidence/spike-peering-2026-09-25.md,
+; theorems 2 and 3; the spike's reader-side poller tools/fn_peering.py
+; keys-process is what this replaces).
+;
+; A key statement is an ordinary signed article in a group the operator's
+; authorities rows grant the verb "keys" over (fn.keys by convention).  Its
+; authored source's header carries the statement:
+;
+;   FN-Key-Statement: succession-v1 | revocation-v1
+;   FN-Key-Principal: HEX64                 the principal the statement is about
+;   FN-Key-Old-Ed25519: HEX64               succession: the key it retires
+;   FN-Key-New-Ed25519: HEX64               succession: the new key pair
+;   FN-Key-New-ML-DSA-65: HEX3904           (folded; SP and HTAB are ignored)
+;   FN-Key-PoP-Ed25519: HEX128              succession: the proof of possession,
+;   FN-Key-PoP-ML-DSA-65: HEX6618           a hybrid signature by the NEW keys
+;
+; The proof of possession is the D09 hybrid signature (books/hybrid-signature
+; fn-hsig-authorize) of the principal under the NEW key set over
+; `fn-ks-pop-source': a domain tag, the statement's own Message-ID and the old
+; Ed25519 key.  So a PoP binds the new keys to exactly one statement: it does
+; not verify over another Message-ID.
+;
+; The decision is C2's shape (books/control-authority.lisp fn-ctl-authorize):
+; the statement's STORED verdict is :verified here, and a grant of the verb
+; "keys" covers every group the statement names.  Then: the statement names
+; the verified principal; the verdict's keyring generation is that
+; principal's current enrollment (so a superseded or replayed statement
+; declines); for a succession the old key is that enrollment's Ed25519 key,
+; the new key set differs from it, and the PoP's two primitive observations
+; (made by the host over the preimage ACL2 names) verified.  The resulting
+; kind-3 event is fn-hl-enroll-event / fn-hl-revoke-event at
+; fn-hl-next-generation: the generation is ACL2's.
+;
+; Host: host/owner-host.lisp fn-owner-key-statement-request and
+; fn-owner-key-statement-event, called by host/native/owner.lisp
+; fnn-owner-key-statement after the statement's kind-4 commit.
+;
+; Prefix `fn-ks-' (docs/prefixes.md).
+(in-package "ACL2")
+(include-book "control-authority")
+(include-book "peer-authored-accept")
+
+(defconst *fn-ks-verb* "keys")
+
+(defconst *fn-ks-statement-name*   ; fn-key-statement
+  '(102 110 45 107 101 121 45 115 116 97 116 101 109 101 110 116))
+(defconst *fn-ks-principal-name*   ; fn-key-principal
+  '(102 110 45 107 101 121 45 112 114 105 110 99 105 112 97 108))
+(defconst *fn-ks-old-ed-name*      ; fn-key-old-ed25519
+  '(102 110 45 107 101 121 45 111 108 100 45 101 100 50 53 53 49 57))
+(defconst *fn-ks-new-ed-name*      ; fn-key-new-ed25519
+  '(102 110 45 107 101 121 45 110 101 119 45 101 100 50 53 53 49 57))
+(defconst *fn-ks-new-ml-name*      ; fn-key-new-ml-dsa-65
+  '(102 110 45 107 101 121 45 110 101 119 45 109 108 45 100 115 97 45 54 53))
+(defconst *fn-ks-pop-ed-name*      ; fn-key-pop-ed25519
+  '(102 110 45 107 101 121 45 112 111 112 45 101 100 50 53 53 49 57))
+(defconst *fn-ks-pop-ml-name*      ; fn-key-pop-ml-dsa-65
+  '(102 110 45 107 101 121 45 112 111 112 45 109 108 45 100 115 97 45 54 53))
+(defconst *fn-ks-succession-v1*    ; succession-v1
+  '(115 117 99 99 101 115 115 105 111 110 45 118 49))
+(defconst *fn-ks-revocation-v1*    ; revocation-v1
+  '(114 101 118 111 99 97 116 105 111 110 45 118 49))
+(defconst *fn-ks-pop-tag*          ; fn-key-succession-pop-v1
+  '(102 110 45 107 101 121 45 115 117 99 99 101 115 115 105 111 110 45 112
+    111 112 45 118 49))
+
+; -----------------------------------------------------------------------------
+; Field values.  A field is read only when the header holds exactly one of
+; that name.  Hex is lowercase; folding whitespace is dropped.
+
+(defun fn-ks-drop-wsp (octets)
+  (declare (xargs :guard t))
+  (if (consp octets)
+      (if (or (equal (car octets) 32) (equal (car octets) 9))
+          (fn-ks-drop-wsp (cdr octets))
+        (cons (car octets) (fn-ks-drop-wsp (cdr octets))))
+    nil))
+
+(defun fn-ks-unhex-exact (octets n)
+  (declare (xargs :guard (natp n)))
+  (let ((hex (fn-ks-drop-wsp octets)))
+    (if (and (fn-id-hex-listp hex) (equal (len hex) (* 2 n)))
+        (fn-id-unhex hex)
+      nil)))
+
+(defun fn-ks-field (article name)
+  (declare (xargs :guard t))
+  (if (not (fn-article-syntax-p article)) nil
+    (let ((fields (fn-article-get-headers article name)))
+      (if (and (consp fields) (null (cdr fields)))
+          (fn-article-field-unfolded-value (car fields))
+        nil))))
+
+; (:succession principal old-ed new-keys pop-signatures), (:revocation
+; principal), or nil (not a statement, or a malformed one).
+(defun fn-ks-statement (source)
+  (declare (xargs :guard t))
+  (let ((parsed (fn-article-parse source)))
+    (if (not (fn-article-result-okp parsed)) nil
+      (let* ((article (fn-article-result-article parsed))
+             (kind (fn-ks-drop-wsp (fn-ks-field article *fn-ks-statement-name*)))
+             (principal (fn-ks-unhex-exact
+                         (fn-ks-field article *fn-ks-principal-name*) 32)))
+        (cond
+         ((not (fn-hsig-exact-octets-p principal 32)) nil)
+         ((equal kind *fn-ks-revocation-v1*) (list :revocation principal))
+         ((equal kind *fn-ks-succession-v1*)
+          (let ((old-ed (fn-ks-unhex-exact
+                         (fn-ks-field article *fn-ks-old-ed-name*) 32))
+                (new-ed (fn-ks-unhex-exact
+                         (fn-ks-field article *fn-ks-new-ed-name*) 32))
+                (new-ml (fn-ks-unhex-exact
+                         (fn-ks-field article *fn-ks-new-ml-name*) 1952))
+                (pop-ed (fn-ks-unhex-exact
+                         (fn-ks-field article *fn-ks-pop-ed-name*) 64))
+                (pop-ml (fn-ks-unhex-exact
+                         (fn-ks-field article *fn-ks-pop-ml-name*) 3309)))
+            (if (and (fn-hsig-exact-octets-p old-ed 32)
+                     (fn-hsig-exact-octets-p new-ed 32)
+                     (fn-hsig-exact-octets-p new-ml 1952)
+                     (fn-hsig-exact-octets-p pop-ed 64)
+                     (fn-hsig-exact-octets-p pop-ml 3309))
+                (list :succession principal old-ed
+                      (list (cons :ed25519 new-ed) (cons :ml-dsa-65 new-ml))
+                      (list (cons :ed25519 pop-ed) (cons :ml-dsa-65 pop-ml)))
+              nil)))
+         (t nil))))))
+
+; The octets the proof of possession signs (as the authored source of a D09
+; hybrid signature by the principal under the NEW keys): the tag, LF, the
+; statement's Message-ID, LF, the old Ed25519 key.  The tag line keeps it
+; from ever parsing as an article.
+(defun fn-ks-pop-source (msgid old-ed)
+  (declare (xargs :guard t))
+  (append *fn-ks-pop-tag* (list 10)
+          (fn-record-string-octets msgid) (list 10)
+          (if (true-listp old-ed) old-ed nil)))
+
+; -----------------------------------------------------------------------------
+; The statement composite: the kind-4 event the owner committed.  Its stored
+; verdict, as the reader pin would hold it, and its Message-ID.
+
+(defun fn-ks-evidence (event)
+  (declare (xargs :guard t))
+  (let ((decoded (fn-stxe-decode-exact (fn-stxa-verdict-event event))))
+    (if (and (fn-stxa-p event) (fn-stmt-okp decoded)
+             (fn-stxe-p (fn-stmt-value decoded)))
+        (fn-stmt-value decoded)
+      nil)))
+
+(defun fn-ks-verdict (event)
+  (declare (xargs :guard t))
+  (let ((e (fn-ks-evidence event)))
+    (if e
+        (fn-stx-make-verdict (fn-stxe-token e) (fn-stxe-detail e)
+                             (fn-stxe-keyring-generation e))
+      nil)))
+
+(defun fn-ks-msgid (event)
+  (declare (xargs :guard t))
+  (let ((e (fn-ks-evidence event)))
+    (if e (fn-stxe-msgid e) nil)))
+
+(defun fn-ks-source (event)
+  (declare (xargs :guard t))
+  (if (fn-stxa-p event) (fn-stxa-authored-source event) nil))
+
+; The primitive request the host serves before the decision: for a
+; succession, (principal new-keys pop-source pop-signatures), the D09
+; subject the host computes the preimage of (fn-hsig-host-preimage) and
+; observes; nil otherwise (no observation is taken).
+(defun fn-ks-pop-request (event)
+  (declare (xargs :guard t))
+  (let ((statement (fn-ks-statement (fn-ks-source event))))
+    (if (and (consp statement) (eq (car statement) :succession))
+        (list (nth 1 statement) (nth 3 statement)
+              (fn-ks-pop-source (fn-ks-msgid event) (nth 2 statement))
+              (nth 4 statement))
+      nil)))
+
+; -----------------------------------------------------------------------------
+; The decision.  nil: not a key statement (nothing to do).  (:decline
+; REASON): a statement that does not act.  (:enroll principal new-keys) or
+; (:revoke principal): the keyring change it asks for.
+
+(defun fn-ks-plan (event snapshots rows observed-ml-key ed-observation
+                         ml-observation)
+  (declare (xargs :guard t))
+  (let ((statement (fn-ks-statement (fn-ks-source event))))
+    (if (not (consp statement)) nil
+      (let* ((verdict (fn-ks-verdict event))
+             (fields (fn-hsig-authored-source-fields (fn-ks-source event)))
+             (authorized (fn-ctl-authorize verdict *fn-ks-verb*
+                                           (cadr fields) rows))
+             (principal (nth 1 statement))
+             (enrolled (fn-hl-current-enrollment
+                        (fn-stx-verdict-generation verdict) snapshots)))
+        (cond
+         ((not (equal (car authorized) :execute))
+          (list :decline (if (consp (cdr authorized)) (cadr authorized)
+                           :unauthorized)))
+         ((not (equal (fn-stx-verdict-detail verdict) principal))
+          (list :decline :another-principal))
+         ((not (and (consp enrolled) (equal (cadr enrolled) principal)))
+          (list :decline :not-current))
+         ((eq (car statement) :revocation) (list :revoke principal))
+         (t
+          (let ((old-ed (nth 2 statement))
+                (new-keys (nth 3 statement))
+                (old-keys (caddr enrolled)))
+            (cond
+             ((not (and (consp old-keys) (consp (car old-keys))
+                        (equal old-ed (cdr (car old-keys)))))
+              (list :decline :old-key))
+             ((equal new-keys old-keys) (list :decline :same-keys))
+             ((not (fn-hsig-authorize principal new-keys
+                                      (fn-ks-pop-source (fn-ks-msgid event)
+                                                        old-ed)
+                                      (nth 4 statement) observed-ml-key
+                                      ed-observation ml-observation))
+              (list :decline :proof-of-possession))
+             (t (list :enroll principal new-keys))))))))))
+
+; The kind-3 event the owner commits, or nil.
+(defun fn-ks-event (plan sequence txid store-generation snapshots)
+  (declare (xargs :guard t))
+  (cond ((and (true-listp plan) (consp plan) (eq (car plan) :enroll))
+         (fn-hl-enroll-event sequence txid store-generation
+                             (fn-hl-next-generation snapshots)
+                             (nth 1 plan) (nth 2 plan) snapshots))
+        ((and (true-listp plan) (consp plan) (eq (car plan) :revoke))
+         (fn-hl-revoke-event sequence txid store-generation
+                             (fn-hl-next-generation snapshots)
+                             (nth 1 plan) snapshots))
+        (t nil)))
+
+(defun fn-ks-execute (event snapshots rows observed-ml-key ed-observation
+                            ml-observation sequence txid store-generation)
+  (declare (xargs :guard t))
+  (fn-ks-event (fn-ks-plan event snapshots rows observed-ml-key ed-observation
+                           ml-observation)
+               sequence txid store-generation snapshots))
+
+; -----------------------------------------------------------------------------
+; Keystones.  Subject: fn-ks-plan and fn-ks-execute, which
+; host/owner-host.lisp fn-owner-key-statement-event calls.
+
+(defthm fn-ks-authorize-is-execute-or-decline
+  (let ((a (fn-ctl-authorize verdict verb groups rows)))
+    (or (equal (car a) :execute) (equal (car a) :decline)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-ctl-authorize))))
+
+(defthm fn-ks-plan-shape
+  (let ((plan (fn-ks-plan event snapshots rows observed ed ml)))
+    (or (null plan)
+        (equal (car plan) :decline)
+        (equal (car plan) :enroll)
+        (equal (car plan) :revoke)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ctl-authorize)
+                                  (fn-ks-statement fn-ks-verdict
+                                   fn-hsig-authored-source-fields
+                                   fn-hl-current-enrollment fn-hsig-authorize
+                                   fn-ctl-grant-scope fn-ctl-covers-every-p
+                                   fn-ctl-verified-principal)))))
+
+; KEYSTONE (C2 shape).  A statement acts only on its own stored :verified
+; verdict naming the principal it is about, and only when a grant of "keys"
+; covers every group it names.  So a :carried, :revoked, :unverified or
+; :absent statement never changes a keyring: carrying is not authority.
+(defthm fn-ks-plan-acts-only-on-a-verified-granted-statement
+  (let ((plan (fn-ks-plan event snapshots rows observed ed ml))
+        (verdict (fn-ks-verdict event))
+        (groups (cadr (fn-hsig-authored-source-fields (fn-ks-source event)))))
+    (implies (or (equal (car plan) :enroll) (equal (car plan) :revoke))
+             (and (equal (fn-stx-verdict-token verdict) :verified)
+                  (equal (car (fn-ctl-authorize verdict *fn-ks-verb* groups
+                                                rows))
+                         :execute)
+                  (equal (fn-stx-verdict-detail verdict) (nth 1 plan))
+                  (equal (nth 1 plan)
+                         (nth 1 (fn-ks-statement (fn-ks-source event)))))))
+  :hints (("Goal" :in-theory (e/d ()
+                                  (fn-ks-statement fn-ks-verdict fn-ctl-authorize
+                                   fn-hsig-authored-source-fields fn-ks-source
+                                   fn-stxa-p
+                                   fn-hl-current-enrollment fn-hsig-authorize))
+           :use ((:instance fn-ks-authorize-is-execute-or-decline
+                            (verdict (fn-ks-verdict event))
+                            (verb *fn-ks-verb*)
+                            (groups (cadr (fn-hsig-authored-source-fields
+                                           (fn-ks-source event)))))
+                 (:instance fn-ctl-authorize-requires-verified-verdict
+                            (verdict (fn-ks-verdict event))
+                            (verb *fn-ks-verb*)
+                            (groups (cadr (fn-hsig-authored-source-fields
+                                           (fn-ks-source event)))))))))
+
+(defthm fn-ks-execute-needs-an-acting-plan
+  (implies (fn-ks-execute event snapshots rows observed ed ml
+                          sequence txid store-generation)
+           (let ((plan (fn-ks-plan event snapshots rows observed ed ml)))
+             (or (equal (car plan) :enroll) (equal (car plan) :revoke))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ks-execute fn-ks-event)
+                                  (fn-ks-plan fn-hl-enroll-event
+                                   fn-hl-revoke-event)))))
+
+(defthm fn-ks-carried-or-revoked-statement-never-changes-a-keyring
+  (implies (not (equal (fn-stx-verdict-token (fn-ks-verdict event)) :verified))
+           (equal (fn-ks-execute event snapshots rows observed ed ml
+                                 sequence txid store-generation)
+                  nil))
+  :hints (("Goal" :in-theory (disable fn-ks-execute fn-ks-plan fn-ks-verdict)
+           :use (fn-ks-execute-needs-an-acting-plan
+                 fn-ks-plan-acts-only-on-a-verified-granted-statement))))
+
+; KEYSTONE (theorem 2, the old key was current).  A statement acts only when
+; the keyring generation its :verified verdict was made under is its
+; principal's current enrollment; a succession's old key is that
+; enrollment's Ed25519 key and its new key set differs from it.
+(defthm fn-ks-plan-old-key-was-the-current-enrollment
+  (let* ((plan (fn-ks-plan event snapshots rows observed ed ml))
+         (enrolled (fn-hl-current-enrollment
+                    (fn-stx-verdict-generation (fn-ks-verdict event))
+                    snapshots))
+         (statement (fn-ks-statement (fn-ks-source event))))
+    (implies (or (equal (car plan) :enroll) (equal (car plan) :revoke))
+             (and (consp enrolled)
+                  (equal (cadr enrolled) (nth 1 plan))
+                  (implies (equal (car plan) :enroll)
+                           (and (equal (nth 2 statement)
+                                       (cdr (car (caddr enrolled))))
+                                (equal (nth 2 plan) (nth 3 statement))
+                                (not (equal (nth 2 plan)
+                                            (caddr enrolled))))))))
+  :hints (("Goal" :in-theory (disable fn-ks-statement fn-ks-verdict
+                                      fn-ctl-authorize fn-ks-source fn-stxa-p
+                                      fn-hsig-authored-source-fields
+                                      fn-hl-current-enrollment
+                                      fn-hsig-authorize))))
+
+; KEYSTONE (the PoP binds the new keys to the statement by Message-ID).  A
+; succession acts only when both primitive observations verified a D09
+; signature of its principal under the NEW key set over fn-ks-pop-source of
+; THIS statement's Message-ID and old key.
+(defthm fn-ks-plan-pop-binds-the-new-keys-to-the-statement
+  (let ((plan (fn-ks-plan event snapshots rows observed ed ml))
+        (statement (fn-ks-statement (fn-ks-source event))))
+    (implies (equal (car plan) :enroll)
+             (and (fn-hsig-authorize (nth 1 plan) (nth 2 plan)
+                                     (fn-ks-pop-source (fn-ks-msgid event)
+                                                       (nth 2 statement))
+                                     (nth 4 statement) observed ed ml)
+                  (equal ed :verified)
+                  (equal ml :verified))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-hsig-authorize)
+                                  (fn-ks-statement fn-ks-verdict
+                                   fn-ctl-authorize fn-ks-source fn-stxa-p
+                                   fn-hsig-authored-source-fields
+                                   fn-hl-current-enrollment
+                                   fn-hsig-subject-p fn-hsig-signatures-p
+                                   fn-ks-pop-source fn-ks-msgid)))))
+
+;; The two succession facts over the event constructor, for any plan.
+(defthm fn-ks-event-of-an-enrollment-is-selected
+  (let ((ev (fn-ks-event plan sequence txid store-generation snapshots)))
+    (implies (and ev (equal (car plan) :enroll))
+             (equal (fn-hl-current-enrollment (fn-hl-next-generation snapshots)
+                                              (cons ev snapshots))
+                    (list ev (nth 1 plan) (nth 2 plan)))))
+  :hints (("Goal" :in-theory (e/d (fn-ks-event fn-hl-current-enrollment
+                                   fn-stxk-find)
+                                  (fn-hl-enroll-event
+                                   fn-hsig-keyring-snapshot-value
+                                   fn-hl-snapshot-principal fn-stxk-p
+                                   fn-hl-next-generation))
+           :use ((:instance fn-hl-enroll-event-enrolls-its-keys
+                            (keyring-generation (fn-hl-next-generation snapshots))
+                            (principal (nth 1 plan))
+                            (keys (nth 2 plan)))))))
+
+(defthm fn-ks-event-of-an-enrollment-refuses-other-keys
+  (let ((ev (fn-ks-event plan sequence txid store-generation snapshots))
+        (form (fn-pa-carrier-form received)))
+    (implies (and ev (equal (car plan) :enroll)
+                  (equal (car form) :ok)
+                  (equal (nth 2 form) (nth 1 plan))
+                  (not (equal (nth 3 form) (nth 2 plan))))
+             (equal (fn-pa-current-plan received (cons ev snapshots)
+                                        carried transitp)
+                    (list :refused :local-enrollment))))
+  :hints (("Goal" :in-theory (e/d (fn-ks-event fn-pa-current-plan
+                                   fn-pa-revoked-tombstonep
+                                   fn-hl-current-enrollment fn-stxk-find)
+                                  (fn-hl-enroll-event
+                                   fn-hsig-keyring-snapshot-value
+                                   fn-hl-snapshot-principal fn-stxk-p
+                                   fn-pa-carrier-form fn-pa-carriesp
+                                   fn-hsig-enrolled-keys-of-principalp
+                                   fn-hl-next-generation))
+           :use ((:instance fn-hl-enroll-event-enrolls-its-keys
+                            (keyring-generation (fn-hl-next-generation snapshots))
+                            (principal (nth 1 plan))
+                            (keys (nth 2 plan)))
+                 (:instance fn-hsig-keyring-snapshot-value-requires-the-key-profile
+                            (snapshot (fn-ks-event plan sequence txid
+                                                   store-generation snapshots)))))))
+
+; KEYSTONE (theorem 2, the new keys are selected).  The succession's kind-3
+; event, once it is the newest snapshot, is what fn-hl-current-enrollment
+; selects at the next generation: the principal with the new key set.
+(defthm fn-ks-succession-selects-the-new-keys
+  (let ((plan (fn-ks-plan event snapshots rows observed ed ml))
+        (ev (fn-ks-execute event snapshots rows observed ed ml
+                           sequence txid store-generation)))
+    (implies (and ev (equal (car plan) :enroll))
+             (equal (fn-hl-current-enrollment (fn-hl-next-generation snapshots)
+                                              (cons ev snapshots))
+                    (list ev (nth 1 plan) (nth 2 plan)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-ks-execute)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-ks-event-of-an-enrollment-is-selected
+                            (plan (fn-ks-plan event snapshots rows observed
+                                              ed ml)))))))
+
+; KEYSTONE (theorem 2, the old keys are refused).  After the succession's
+; event is the newest snapshot, a carrier naming the principal under any key
+; set but the new one -- in particular the old one -- is refused
+; :local-enrollment by the acceptance plan on every path: it is not :ok, not
+; :carried (the principal has a snapshot) and not :revoked (the newest
+; snapshot is a key snapshot, not a tombstone).
+(defthm fn-ks-succession-refuses-other-keys
+  (let ((plan (fn-ks-plan event snapshots rows observed ed ml))
+        (ev (fn-ks-execute event snapshots rows observed ed ml
+                           sequence txid store-generation))
+        (form (fn-pa-carrier-form received)))
+    (implies (and ev (equal (car plan) :enroll)
+                  (equal (car form) :ok)
+                  (equal (nth 2 form) (nth 1 plan))
+                  (not (equal (nth 3 form) (nth 2 plan))))
+             (equal (fn-pa-current-plan received (cons ev snapshots)
+                                        carried transitp)
+                    (list :refused :local-enrollment))))
+  :hints (("Goal" :in-theory (union-theories '(fn-ks-execute)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-ks-event-of-an-enrollment-refuses-other-keys
+                            (plan (fn-ks-plan event snapshots rows observed
+                                              ed ml)))))))
+
+(defthm fn-ks-succession-refuses-the-old-keys
+  (let* ((plan (fn-ks-plan event snapshots rows observed ed ml))
+         (ev (fn-ks-execute event snapshots rows observed ed ml
+                            sequence txid store-generation))
+         (enrolled (fn-hl-current-enrollment
+                    (fn-stx-verdict-generation (fn-ks-verdict event))
+                    snapshots))
+         (form (fn-pa-carrier-form received)))
+    (implies (and ev (equal (car plan) :enroll)
+                  (equal (car form) :ok)
+                  (equal (nth 2 form) (nth 1 plan))
+                  (equal (nth 3 form) (caddr enrolled)))
+             (equal (fn-pa-current-plan received (cons ev snapshots)
+                                        carried transitp)
+                    (list :refused :local-enrollment))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use (fn-ks-succession-refuses-other-keys
+                 fn-ks-plan-old-key-was-the-current-enrollment))))
+
+(defthm fn-ks-event-of-a-revocation-leaves-no-ok-plan
+  (let ((ev (fn-ks-event plan sequence txid store-generation snapshots)))
+    (implies (and ev (equal (car plan) :revoke)
+                  (equal (nth 2 (fn-pa-carrier-form received)) (nth 1 plan)))
+             (not (equal (car (fn-pa-current-plan received (cons ev snapshots)
+                                                  carried transitp))
+                         :ok))))
+  :hints (("Goal" :in-theory (e/d (fn-ks-event)
+                                  (fn-hl-revoke-event fn-hl-enroll-event
+                                   fn-pa-current-plan fn-pa-carrier-form
+                                   fn-hl-next-generation))
+           :use ((:instance fn-pa-revocation-leaves-no-ok-plan
+                            (g (fn-hl-next-generation snapshots))
+                            (principal (nth 1 plan)))))))
+
+; KEYSTONE (theorem 3 over the executor).  A revocation statement's event is
+; the principal's tombstone at the next generation; with it the newest
+; snapshot, no plan for that principal is :ok
+; (fn-pa-revocation-leaves-no-ok-plan applies to exactly this event).
+(defthm fn-ks-revocation-leaves-no-ok-plan
+  (let ((plan (fn-ks-plan event snapshots rows observed ed ml))
+        (ev (fn-ks-execute event snapshots rows observed ed ml
+                           sequence txid store-generation)))
+    (implies (and ev (equal (car plan) :revoke)
+                  (equal (nth 2 (fn-pa-carrier-form received)) (nth 1 plan)))
+             (not (equal (car (fn-pa-current-plan received (cons ev snapshots)
+                                                  carried transitp))
+                         :ok))))
+  :hints (("Goal" :in-theory (union-theories '(fn-ks-execute)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-ks-event-of-a-revocation-leaves-no-ok-plan
+                            (plan (fn-ks-plan event snapshots rows observed
+                                              ed ml)))))))
+
+; The owner log line for a statement's outcome (host/native/owner.lisp
+; fnn-owner-key-statement writes it and decides nothing).
+(defun fn-ks-word (x)
+  (declare (xargs :guard t))
+  (cond ((eq x :enroll) "enrol-successor")
+        ((eq x :revoke) "revoke")
+        ((eq x :decline) "declined")
+        ((eq x :unsigned) "unsigned")
+        ((eq x :carried) "carried")
+        ((eq x :legacy-verdict) "legacy-verdict")
+        ((eq x :unverified) "unverified")
+        ((eq x :verb-not-granted) "verb-not-granted")
+        ((eq x :no-grant) "no-grant")
+        ((eq x :no-groups) "no-groups")
+        ((eq x :outside-namespace) "outside-namespace")
+        ((eq x :another-principal) "another-principal")
+        ((eq x :not-current) "not-current")
+        ((eq x :old-key) "old-key")
+        ((eq x :same-keys) "same-keys")
+        ((eq x :proof-of-possession) "proof-of-possession")
+        (t "other")))
+
+(defun fn-ks-log-line (plan committed)
+  (declare (xargs :guard t))
+  (fn-record-string-octets
+   (concatenate 'string "key-statement "
+                (if (consp plan) (fn-ks-word (car plan)) "none")
+                (if (and (consp plan) (eq (car plan) :decline) (consp (cdr plan)))
+                    (concatenate 'string " " (fn-ks-word (cadr plan)))
+                  "")
+                (if committed " committed" ""))))
+
+(in-theory (disable (:d fn-ks-drop-wsp) (:d fn-ks-unhex-exact) (:d fn-ks-field)
+                    (:d fn-ks-statement) (:d fn-ks-pop-source)
+                    (:d fn-ks-evidence) (:d fn-ks-verdict) (:d fn-ks-msgid)
+                    (:d fn-ks-source) (:d fn-ks-pop-request) (:d fn-ks-plan)
+                    (:d fn-ks-event) (:d fn-ks-execute)))
