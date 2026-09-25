@@ -1233,10 +1233,47 @@ survives restarts:
   whole bundle, so a re-offered fragment is `:fresh` again at the receiver.
 - At the bound the row is **stranded**: never offered, never dropped, its
   attempt and debt retained; a session to its peer that offers nothing
-  answers `(:forward-stranded arrival peer retries)`. Nothing resumes it:
-  no later session, restart or kind 9 can re-arm the slot, and no operator
-  verb releases or re-arms it yet (an open item; see
-  [the operator guide](../docs/operator.md#stranded-forwarding-rows)).
+  answers `(:forward-stranded arrival peer retries)`. No later session,
+  restart or transfer re-arms the slot.
+- **Uncertain transfer, connection-local (2026-09-24, lane
+  bp-resume-verbs).** A connection that ends after the durable kind 8
+  without XFER_ACK or XFER_REFUSE is read by `fn-bpnp-tcpcl-outcome` as
+  `:uncertain` (it used to answer `:fence`, and the host stopped the whole
+  node, exit 3). Its kind 9 records `:uncertain` and keeps the slot, headed
+  `:uncertain` instead of `:forwarding`, with its count
+  (`fn-bpnp-forward-result-slot`; `fn-bpnp-uncertain-result-keeps-the-count`).
+  `fn-bpnp-uncertain-attemptp` classifies such a slot as uncertain at every
+  epoch, so the next session of the *same* process re-offers the row under
+  the same bound; a restart is no longer the only retry trigger. The node
+  keeps serving; only an uncertain *publication* (an issued record whose
+  persistence is uncertain) still fences the machine, and a fault while
+  that is so stops it. The kind 9's debt delta pays the attempt's reserved
+  result record, and the retry's kind 8 reserves it again. The
+  release/receipt-prepare confinement over every served event
+  (`fn-bpnp-step-emits-no-release-and-no-receipt-prepare`,
+  books/bp-node-progress-bridge.lisp) certifies unchanged with the new arm.
+- **Operator resume.** `bp-node resume JOURNAL NODE-ID ARRIVAL` steps
+  `(:operator-resume ARRIVAL)`. `fn-bpnp-resume-refusal` refuses, with a
+  reason and no state change, anything but a stranded row (`:no-row`,
+  `:not-forward-pending`, `:not-attempted`, `:not-stranded`, `:busy`,
+  `:fenced`; `:no-capacity` when the record cannot be admitted). For a
+  stranded row it proposes a kind 9 with outcome `:resumed` naming the
+  row's arrival, primary identity and last attempt
+  (`fn-bpnp-step-resume-writes-only-for-a-stranded-row`). Applying it
+  (`fn-bpnp-forward-result-apply`, live and at replay; the match requires
+  the slot stranded at the record's own epoch,
+  `fn-bpnp-resume-slot-namesp`) clears the slot and changes nothing else
+  (`fn-bpnp-resumed-result-clears-only-the-slot`), so the row is a forward
+  candidate for its next hop while its bundle is live
+  (`fn-bpnp-resumed-row-is-a-forward-candidate`), the scan offers it
+  (`fn-bpnp-forward-scan-offers-the-only-candidate`) with its unchanged
+  primary, and its next kind 8 counts from 0. The kind-8 rows that
+  exhausted the budget and the `:resumed` row stay in FNBS: the history
+  keeps the exhaustion and names the operator's decision. `:resumed` is
+  appended to the kind-9 outcome enumeration, so earlier kind-9 frames keep
+  their octets; no transfer reads as `:resumed`
+  (`fn-bpnp-no-transfer-reads-as-resumed`: the `:forward-result` host event
+  admits only `fn-bpnp-transfer-outcomep`).
 - The count is not stored in any record. Ordered replay derives it, one
   durable kind 8 at a time, through `fn-bpnp-attempt-apply` (the function the
   live `:persist-result` arm also calls), and recovery installs the replayed
@@ -3400,7 +3437,7 @@ The second review's traces (their labels; not requirement IDs):
 | N05 | repeated failed forwarding results near the reserve: every admitted cleanup keeps its credit | A1 (theorem, teeth), E (measured) |
 | N06 | publish a canonical file, deliver the uncertainty callback, then kill and recover: the visible record is admitted by the cut model with no fabricated confirmation | A2 |
 | N07 | durable attempt, restart with a different boot-domain monotonic origin: the domain gate fences before comparing retained Bundle Age anchors; autonomous cross-boot reanchoring remains open. **Present** through `fn-bpnp-step` for the seven-field recovery event that carries `fn-bpnf-clock-domain-plan`'s decision (`fn-bpnp-step-different-boot-fences`, `fn-bpnp-step-domain-disagreement-fences`, `fn-bpnp-step-ready-recovery-is-same-boot`, `books/bp-node-machine-gaps.lisp`); on the served path `fnn-bps-clock-domain-gate` returns the ACL2 plan without classifying it and `fnn-bps-open` appends it as the seventh field (host/native/bp-service.lisp), so the host's recovery is gated; the six-field form stays ungated for callers that pass no decision | A2 |
-| N08 | death after a durable kind 8 (attempt in flight), restart: the attempt is kept as uncertain; the next session to its next hop re-offers the same held bundle (retry 1); at the retry bound the row is stranded and reported, never dropped (§4.3.1) | A1 |
+| N08 | death after a durable kind 8 (attempt in flight), restart: the attempt is kept as uncertain; the next session to its next hop re-offers the same held bundle (retry 1); at the retry bound the row is stranded and reported, never dropped, until `bp-node resume` re-arms it (§4.3.1) | A1 |
 | N09 | fragment an already-fragmented parent: offsets compose; the whole-parent theorem does not apply | C1, C2 |
 | N10 | nonzero-offset fragment arrives before the offset-zero one: primary and blocks come from the offset-zero fragment | C2 |
 | N11 | decodable local administrative bundle that conflicts with a held identity: refusal and kind 14, within T5's widened class. **Present** through `fn-bpnp-step`: `:persist-conflict` of a kind-14 record (`books/bp-fnbs-conflict-codec.lisp`, round trip `fn-bpnf-conflict-record-round-trip`), then the refusal on every publication outcome (`fn-bpnp-step-identity-conflict-is-refused-or-recorded`, `fn-bpnp-step-conflict-publication-answers-refusal`); the native publisher publishes only what `fn-bpnf-conflict-publication-authorize` returns (`fn-bpnf-conflict-publication-success-binds-exact-echo`, `books/bp-fnbs-conflict-publication.lisp`), and the TCPCL receive callback settles the record before it takes the machine's final answer (`fnn-bps-receive`, host/native/bp-service.lisp) | A1 |

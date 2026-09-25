@@ -585,6 +585,10 @@
                     st attempt-epoch attempt-op session outcome observation)
   (fn-bpnp-forward-result-propose-step))
 
+(fn-bpnpp-defkeep fn-bpnpp-operator-resume-step
+  (fn-bpnp-operator-resume-step st arrival)
+  (fn-bpnp-operator-resume-step))
+
 (fn-bpnpp-defkeep fn-bpnpp-forward-result-persist-step
   (fn-bpnp-forward-result-persist-step st epoch op result)
   (fn-bpnp-forward-result-persist-step))
@@ -606,6 +610,7 @@
                          fn-bpnpp-remove-peer-session-listp
                          fn-bpnpp-open-session-listp
                          fn-bpnpp-start-one fn-bpnpp-forward-result-propose-step
+                         fn-bpnpp-operator-resume-step
                          fn-bpnpp-progress-step fn-bpnpp-dispatch-persist-step
                          fn-bpnpp-attempt-persist-step
                          fn-bpnpp-forward-result-persist-step

@@ -686,6 +686,99 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertNotIn(b"BP forwarding attempt durable", settled.stdout)
         self.assertEqual(len(tuple(journal.glob("*.fnb"))), after_cut + 2)
 
+    def resume_receiver(self, arrival):
+        return self.invoke(
+            "bp-node", "resume", self.receiver_journal, "dtn://receiver/",
+            arrival,
+        )
+
+    def test_uncertain_transfer_is_connection_local_and_resume_rearms(self):
+        """Spec 4.3.1: an uncertain transfer costs that connection only.
+
+        The relay severs every forwarding connection after 200 client octets,
+        mid-transfer, after the sender's kind 8 is durable.  ACL2 reads the
+        transfer as :uncertain; its kind 9 keeps the attempt's count and the
+        node keeps serving: the same process accepts another inbound transfer
+        and re-offers the row (retry 1, no restart).  Two more cut sessions
+        (retries 2 and 3) strand it; `bp-node resume' re-arms it with a
+        durable :resumed kind 9; the next session offers the same bundle and
+        the peer holds exactly one copy.
+        """
+        peer, peer_port = self.start_node(False, once=False)
+        self.relay.route(peer_port, cut_after=200)
+        receiver, port = self.start_node(True, once=False)
+        _, younger = self.forward_mru_bundles()
+
+        def send_younger(spool):
+            return self.invoke(
+                "tcpcl", "send", "127.0.0.1", port, younger,
+                self.tmp / spool, "dtn://sender/", "dtn://receiver/",
+                0, 65536, 1048576, 0,
+            )
+
+        self.assertEqual(send_younger("u-spool-1").returncode, 0)
+        first = self.wait_for_output(
+            receiver, b"BP forwarding result durable", timeout=120)
+        self.assertIn(b"BP forwarding attempt durable", first)
+        self.assertIn(b"BP forwarding transfer uncertain", first)
+        self.assertIn(b"status=uncertain", first)
+        self.assertIsNone(receiver.poll(), "node stopped after a connection fault")
+        # The same process serves again, and re-offers the row in-process.
+        self.assertEqual(send_younger("u-spool-2").returncode, 0)
+        second = self.wait_for_output(
+            receiver, b"BP forwarding result durable", timeout=120)
+        self.assertIn(b"BP forwarding attempt durable", second)
+        self.assertIn(b"status=uncertain", second)
+        self.assertIsNone(receiver.poll())
+        self.stop_process(receiver)
+
+        args = self.dispatch_receiver_args()
+        for _ in range(2):
+            cut = subprocess.run(args, cwd=ROOT, env=self.env,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 timeout=240, check=False)
+            self.assertEqual(cut.returncode, 0, cut.stdout + cut.stderr)
+            self.assertIn(b"status=uncertain", cut.stdout)
+        stranded = subprocess.run(args, cwd=ROOT, env=self.env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  timeout=240, check=False)
+        self.assertEqual(stranded.returncode, 0, stranded.stderr)
+        self.assertNotIn(b"BP forwarding attempt durable", stranded.stdout)
+        line = [x for x in stranded.stdout.splitlines()
+                if x.startswith(b"BP forwarding stranded")]
+        self.assertEqual(len(line), 1, stranded.stdout)
+        self.assertIn(b"retries=3", line[0])
+        arrival = int(line[0].split(b"arrival=")[1].split()[0])
+
+        # Refusals carry ACL2's reason and write nothing.
+        journal = self.receiver_journal / "lifecycle"
+        before = len(tuple(journal.glob("*.fnb")))
+        unknown = self.resume_receiver(arrival + 99)
+        self.assertEqual(unknown.returncode, 1, unknown.stdout + unknown.stderr)
+        self.assertIn(b"resume refused", unknown.stdout)
+        self.assertIn(b"reason=no-row", unknown.stdout)
+        self.assertEqual(len(tuple(journal.glob("*.fnb"))), before)
+
+        resumed = self.resume_receiver(arrival)
+        self.assertEqual(resumed.returncode, 0, resumed.stdout + resumed.stderr)
+        self.assertIn(b"status=resumed", resumed.stdout)
+        self.assertEqual(len(tuple(journal.glob("*.fnb"))), before + 1)
+        again = self.resume_receiver(arrival)
+        self.assertEqual(again.returncode, 1, again.stdout)
+        self.assertIn(b"reason=not-attempted", again.stdout)
+
+        self.relay.route(peer_port)
+        offered = subprocess.run(args, cwd=ROOT, env=self.env,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 timeout=240, check=False)
+        self.assertEqual(offered.returncode, 0, offered.stderr)
+        self.assertIn(b"BP forwarding attempt durable", offered.stdout)
+        self.assertIn(b"status=sent", offered.stdout)
+        self.stop_process(peer)
+        payload = self.acl2_lifecycle_payloads(self.receiver_journal, 5)[-1]
+        self.assertEqual(
+            self.acl2_lifecycle_payloads(self.sender_journal, 5).count(payload), 1)
+
     @staticmethod
     def acl2_lifecycle_payloads(journal, kind):
         """Ask the ACL2 frame decoders for exact durable report payloads."""
