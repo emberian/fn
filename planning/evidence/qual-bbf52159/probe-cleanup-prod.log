@@ -1,0 +1,5 @@
+post 0 b'' b'accepted operator post ACCEPTED\n'
+status 0
+stdout lines: [b'CONTROL /tank/fn/scratch/qual-bbf52159/probe-cleanup-prod/control.sock\n', b'LISTENING 44753\n', b'', b'', b'', b'', b'', b'', b'', b'', b'', b'', b'', b''] rc 0
+stderr tail: b'OWNER-OPEN open=full-replay reason=absent\naccepted post path=control message-id=<p1@example.invalid> time=2026-09-25T21:33:18Z\naccepted operator run\n'
+rc=0

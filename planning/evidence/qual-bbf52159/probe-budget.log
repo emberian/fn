@@ -1,0 +1,19 @@
+first 128: {'340 send article to be posted | 240 article received OK | ': 128}
+POST 128 -> 340 send article to be posted | 441 posting failed; the store has no capacity for this article |  owner poll None
+POST 129 -> 340 send article to be posted | 441 posting failed; the store has no capacity for this article |  owner poll None
+owner exit None
+owner.err tail: 25 message-id=<b125@example.invalid> agent=fn.example.invalid time=2026-09-25T21:33:14Z
+accepted reader connection=126 time=2026-09-25T21:33:15Z
+accepted post path=served connection=126 message-id=<b126@example.invalid> agent=fn.example.invalid time=2026-09-25T21:33:15Z
+accepted reader connection=127 time=2026-09-25T21:33:15Z
+accepted post path=served connection=127 message-id=<b127@example.invalid> agent=fn.example.invalid time=2026-09-25T21:33:15Z
+accepted reader connection=128 time=2026-09-25T21:33:16Z
+refused post path=served connection=128 message-id=<b128@example.invalid> agent=fn.example.invalid time=2026-09-25T21:33:16Z
+accepted reader connection=129 time=2026-09-25T21:33:16Z
+CHECKPOINT auto sequence=128 suffix=64 octets=171525 ms=104
+refused post path=served connection=129 message-id=<b129@example.invalid> agent=fn.example.invalid time=2026-09-25T21:33:16Z
+accepted operator run
+
+status rc 0 transactions=128 articles=128 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=128 max-history-octets=25165824 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=128 max-consumers=1048576 max-bp-row
+rc=0

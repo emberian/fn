@@ -1,0 +1,55 @@
+enroll rc 0 
+PASS U1 Date present: original -> 240 article received OK
+PASS U1 Date present: resend 1.2 s later -> 441 posting failed; this article is already stored here
+PASS U2 Date absent: original -> 240 article received OK
+PASS U2 Date absent: resend 1.2 s later -> 441 posting failed; this article is already stored here
+PASS U3 one changed authored byte -> 441 posting failed; a different article with this Message-ID is stored here
+PASS U4 authored Date changed -> 441 posting failed; a different article with this Message-ID is stored here
+PASS U5 authored Date removed -> 441 posting failed; a different article with this Message-ID is stored here
+PASS U6 identical text, new Message-ID -> 240 article received OK
+S2 signed Date-less: 1 store: source is outside the portable FN-Authorship profile
+PASS S1 signed, Date present: original -> 240 article received OK
+PASS S1 signed, Date present: resend -> 441 posting failed; this article is already stored here
+PASS S3 signed, changed byte, same Message-ID -> 441 posting failed; a different article with this Message-ID is stored here
+owner killed -9
+PASS R1 lost reply, restart, retry -> 441 posting failed; this article is already stored here
+PASS R2 Date absent: resend after restart -> 441 posting failed; this article is already stored here
+PASS R3 signed: resend after restart -> 441 posting failed; this article is already stored here
+owner stop 0
+policy set rc 0 configured generation=2 record=00000002.cfg verification=VERIFIED
+ accepted operator policy
+
+PASS I1 another path identity: resend of the Date-present article -> 441 posting failed; a different article with this Message-ID is stored here
+PASS I2 another path identity: resend of the Date-absent article -> 441 posting failed; a different article with this Message-ID is stored here
+owner stop 0
+PASS V0 v1 image: Date present original -> 240 article received OK
+PASS V0 v1 image: Date absent original -> 240 article received OK
+v1 owner stop 0
+PASS V1 v1 record, Date present: resend on this image (read under v1) -> 441 posting failed; this article is already stored here
+PASS V2 v1 record, Date absent: resend on this image (ambiguous, compared exactly) -> 441 posting failed; a different article with this Message-ID is stored here
+owner stop 0
+ROWS 21 PASS 21
+	Command being timed: "python3 ../d25b_matrix.py /tank/fn/gates/qual-bbf52159-20260925/build/images/bbf52159dcab19228bd6cd0b855b99dd6d68758d/fn-host-developer /tank/fn/scratch/d25-dup/img/build/fn-host-developer /tank/fn/scratch/qual-bbf52159/campaign/d25-work 11396 /tank/fn/scratch/qual-bbf52159/bin/test-openssl"
+	User time (seconds): 0.60
+	System time (seconds): 0.80
+	Percent of CPU this job got: 9%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:14.26
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 416320
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 66316
+	Minor (reclaiming a frame) page faults: 301661
+	Voluntary context switches: 1160
+	Involuntary context switches: 89
+	Swaps: 0
+	File system inputs: 56653
+	File system outputs: 89
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+rc=0

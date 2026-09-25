@@ -1,0 +1,122 @@
+cut frontier-created kill
+cut frontier-created eio
+cut frontier-written kill
+cut frontier-written eio
+cut frontier-staged-durable kill
+cut frontier-staged-durable eio
+cut frontier-replaced kill
+cut frontier-replaced eio
+cut frontier-attempted kill
+cut frontier-attempted eio
+cut frontier-durable kill
+cut frontier-durable eio
+cut frontier-reserved kill
+cut frontier-reserved eio
+cut record-created kill
+cut record-created eio
+cut record-written kill
+cut record-written eio
+cut record-staged-durable kill
+cut record-staged-durable eio
+cut record-linked kill
+cut record-linked eio
+cut record-attempted kill
+cut record-attempted eio
+cut record-durable kill
+cut record-durable eio
+cut record-completing kill
+cut record-completing eio
+cut record-stage-unlinked kill
+cut record-stage-unlinked eio
+cut record-staging-cleaned kill
+cut record-staging-cleaned eio
+cut marker-created kill
+cut marker-created eio
+cut marker-written kill
+cut marker-written eio
+cut marker-staged-durable kill
+cut marker-staged-durable eio
+cut marker-replaced kill
+cut marker-replaced eio
+cut marker-durable kill
+cut marker-durable eio
+cut finish-consumed kill
+cut finish-consumed eio
+cut finish-durable kill
+cut finish-durable eio
+controls
+frontier-created kill                kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-created eio                 refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+frontier-written kill                kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-written eio                 refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+frontier-staged-durable kill         kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-staged-durable eio          refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+frontier-replaced kill               kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-replaced eio                uncertain pass  rc=3    present=False reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='240 article received OK\r\n'
+frontier-attempted kill              kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-attempted eio               uncertain pass  rc=3    present=False reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='240 article received OK\r\n'
+frontier-durable kill                kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-durable eio                 uncertain pass  rc=3    present=False reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='240 article received OK\r\n'
+frontier-reserved kill               kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+frontier-reserved eio                uncertain pass  rc=3    present=False reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='240 article received OK\r\n'
+record-created kill                  kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+record-created eio                   refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+record-written kill                  kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+record-written eio                   refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+record-staged-durable kill           kill      pass  rc=-9   present=False reply='' repost='240 article received OK\r\n'
+record-staged-durable eio            refused   pass  rc=0    present=False reply='441 posting failed; the store could not write the article, nothing was stored\r\n' repost='240 article received OK\r\n'
+record-linked kill                   kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+record-linked eio                    uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+record-attempted kill                kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+record-attempted eio                 uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+record-durable kill                  kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+record-durable eio                   uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+record-completing kill               kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+record-completing eio                uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+record-stage-unlinked kill           kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+record-stage-unlinked eio            swallowed pass  rc=0    present=True  reply='240 article received OK\r\n' repost='441 posting failed; this article is already stored here\r\n'
+record-staging-cleaned kill          kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+record-staging-cleaned eio           uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+marker-created kill                  kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+marker-created eio                   uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+marker-written kill                  kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+marker-written eio                   uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+marker-staged-durable kill           kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+marker-staged-durable eio            uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+marker-replaced kill                 kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+marker-replaced eio                  uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+marker-durable kill                  kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+marker-durable eio                   uncertain pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+finish-consumed kill                 kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+finish-consumed eio                  consumed  pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+finish-durable kill                  kill      pass  rc=-9   present=True  reply='' repost='441 posting failed; this article is already stored here\r\n'
+finish-durable eio                   consumed  pass  rc=3    present=True  reply='441 posting failed; the outcome is uncertain, do not repost\r\n' repost='441 posting failed; this article is already stored here\r\n'
+dev-accepted-then-sigkill            control   pass  rc=-9   present=True  reply='240 article received OK\r\n' repost='441 posting failed; this article is already stored here\r\n'
+dev-refused-no-from                  control   pass  rc=0    present=False reply='441 posting failed; From is required\r\n' repost='441 posting failed; From is required\r\n'
+prod-accepted-then-sigkill           control   pass  rc=-9   present=True  reply='240 article received OK\r\n' repost='441 posting failed; this article is already stored here\r\n'
+prod-sigkill-mid-article             control   pass  rc=-9   present=False reply=None repost=None
+50 of 50 rows pass
+	Command being timed: "python3 -m tests.campaign.native_nntp_post_probe --images /tank/fn/gates/qual-bbf52159-20260925/build/images/bbf52159dcab19228bd6cd0b855b99dd6d68758d --work /tank/fn/scratch/qual-bbf52159/campaign/probe-work --out /tank/fn/scratch/qual-bbf52159/campaign/nntp-probe.json"
+	User time (seconds): 15.80
+	System time (seconds): 15.15
+	Percent of CPU this job got: 16%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:02.47
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 347488
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 9013220
+	Voluntary context switches: 11674
+	Involuntary context switches: 2112
+	Swaps: 0
+	File system inputs: 144821
+	File system outputs: 14301
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+rc=0
