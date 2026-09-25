@@ -1438,7 +1438,7 @@
       ]
     },
     {
-      "id": "SCN-050",
+      "id": "SCN-052",
       "title": "an operator raises max-credentials and max-config-generations on a format-8 store and a credential file above the pre-D27 cap loads",
       "milestone": "M5",
       "status": "implemented",
