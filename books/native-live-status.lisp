@@ -944,4 +944,9 @@ to ask from (len ACC), (:restart) when the report changed under the pages,
 (defthm fn-nls-cached-buffer-of-put
   (implies (posp off)
            (equal (fn-nls-cached-buffer kind off (fn-nls-cache-put kind buffer cached))
-                  buffer)))
+                  buffer))
+  ;; The two definitions and nothing else: under the book's default theory
+  ;; this took 9 s of the book's 11 (hbox, run-20260925T191541Z-026e).
+  :hints (("Goal" :induct (fn-nls-cache-put kind buffer cached)
+                  :in-theory '(fn-nls-cached-buffer fn-nls-cache-put
+                               car-cons cdr-cons))))
