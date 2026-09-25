@@ -130,6 +130,27 @@ decoded as source-address for durable command compatibility."
   (if (or (atom words) (equal (car words) "carries")) nil
     (cons (car words) (fn-native-admin-before-carries (cdr words)))))
 
+;; SPIKE (spike/peering): the opaque-carriage budget.  `peer add ... carries
+;; HEX [HEX ...] budget OCTETS COUNT' adds the rows
+;;   (name "carried-budget-octets" OCTETS 0) (name "carried-budget-count" COUNT 0)
+;; that books/peer-authored-accept.lisp fn-pa-carried-budget-decision reads.
+;; Defers to dev: typed slots in peer-config and the admission theorem.
+(defun fn-native-admin-before-budget (words)
+  (declare (xargs :guard t))
+  (if (or (atom words) (equal (car words) "budget")) nil
+    (cons (car words) (fn-native-admin-before-budget (cdr words)))))
+
+(defun fn-native-admin-budget-rows (name words)
+  (declare (xargs :guard t))
+  (let ((tail (member-equal "budget" (if (true-listp words) words nil))))
+    (cond ((not tail) nil)
+          ((and (equal (len tail) 3)
+                (fn-native-admin-decimalp (nth 1 tail))
+                (fn-native-admin-decimalp (nth 2 tail)))
+           (list (list name "carried-budget-octets" (nth 1 tail) 0)
+                 (list name "carried-budget-count" (nth 2 tail) 0)))
+          (t :bad))))
+
 (defun fn-native-admin-peer-plan (words)
   (declare (xargs :guard t))
   (let ((tail (member-equal "carries" (if (true-listp words) words nil))))
@@ -137,7 +158,14 @@ decoded as source-address for durable command compatibility."
         (fn-native-admin-peer-plan-base words)
       (let* ((base (fn-native-admin-peer-plan-base
                     (fn-native-admin-before-carries words)))
-             (rows (fn-native-admin-carries-rows (nth 2 words) (cdr tail))))
+             (budget (fn-native-admin-budget-rows (nth 2 words) (cdr tail)))
+             (hexrows (fn-native-admin-carries-rows
+                       (nth 2 words)
+                       (fn-native-admin-before-budget (cdr tail))))
+             (rows (if (or (equal budget :bad) (equal hexrows :bad)
+                           (not (true-listp hexrows)))
+                       :bad
+                     (append hexrows budget))))
         (cond ((not (equal (fn-native-admin-result-status base) :accepted)) base)
               ((or (not (consp rows)) (equal rows :bad))
                (fn-native-admin-result :refused :carries nil nil 0 nil nil))

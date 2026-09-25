@@ -14,7 +14,12 @@
 (include-book "acceptance-alloc")
 (include-book "byte-store-txn-name")
 
-(defconst *fn-native-admin-max-arguments* 16)
+;; SPIKE (spike/peering): 16 -> 32, the operator's own argv bound
+;; (*fn-nop-max-arguments*): a peer record with a carried-source list and its
+;; opaque-carriage budget needs 11 + 1 + N + 3 words.  A per-request work
+;; bound (D27), not a data bound; the dev version should let the list grow
+;; across requests instead.
+(defconst *fn-native-admin-max-arguments* 32)
 (defconst *fn-native-admin-max-argument-octets* 512)
 (defconst *fn-native-admin-config-name-width* 8)
 (defconst *fn-native-admin-config-name-limit* 100000000)
