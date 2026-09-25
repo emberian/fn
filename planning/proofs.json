@@ -2046,7 +2046,10 @@
         "fn-bpnp-resumed-result-clears-only-the-slot",
         "fn-bpnp-resumed-row-is-a-forward-candidate",
         "fn-bpnp-uncertain-result-keeps-the-count",
-        "fn-bprq-recovery-plan-unfences-and-reopens-as-live"
+        "fn-bprq-recovery-plan-unfences-and-reopens-as-live",
+        "fn-bpnp-step-rotate-is-rotate-step",
+        "fn-bpnp-step-rotation-result-is-rotation-result",
+        "fn-bpnp-step-rotation-resets-credit-only-on-durable"
       ]
     },
     {
@@ -3281,7 +3284,13 @@
         "planning/evidence/manifests/certify-20260925T050242Z-2546955.json",
         "planning/evidence/manifests/certify-20260925T051550Z-2568662.json"
       ],
-      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2."
+      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2.",
+      "events": [
+        "fn-bpnr-recover-from-checkpoint-equals-full-recover",
+        "fn-bpnr-rotation-crash-recovers-old-or-new",
+        "fn-bpnr-checkpoint-decode-of-octets",
+        "fn-bpnr-family-replay-aux-append"
+      ]
     }
   ]
 }
