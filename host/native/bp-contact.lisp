@@ -20,13 +20,20 @@
         while effects do (fnn-bps-drive-effects service effects)))
 
 (defun fnn-bpc-drive-contact (service event)
+  ;; Routing (books/bp-route-jobs): an opening contact for a peer ACL2 routes
+  ;; nowhere is not driven; its queued jobs stay held.
+  (when (and (third event) (not (fnn-bps-peer-routed-p (second event))))
+    (return-from fnn-bpc-drive-contact nil))
   (if (third event)
       (progn
         (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
               for effects = (fnn-bps-step service event)
               while effects
               do (fnn-bps-drive-effects service effects)
-              when (not (eq (fnn-bps-outcome service) :accepted))
+              when (or (not (eq (fnn-bps-outcome service) :accepted))
+                       ;; A connection-local uncertain transfer ends this
+                       ;; contact; the requeued job waits for a later one.
+                       *fnn-bps-local-uncertain-seen*)
                 do (loop-finish))
         (fnn-bps-drive-effects
          service (fnn-bps-step service (list :contact (second event) nil))))
@@ -34,7 +41,8 @@
 
 (defun fnn-command-bp-contact-tick (journal node-id peer-id start-delay end-delay
                                     lifetime crc-type hop-limit transfer-mru
-                                    wall wall-error)
+                                    wall wall-error &optional store-root)
+  (fnn-bps-use-store-routes store-root)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (peer (fnn-bp-eid peer-id))
          (obs (fnn-bp-observation wall wall-error))
@@ -64,7 +72,7 @@
   (when (< (length args) 5)
     (error 'fnn-usage-error
            :message "bp-contact: tick needs journal node peer start-delay end-delay"))
-  (when (> (length args) 11)
+  (when (> (length args) 12)
     (error 'fnn-usage-error :message "bp-contact: too many arguments"))
   (flet ((number (index default label)
            (let ((value (fnn-tcl-arg args index)))
@@ -79,6 +87,8 @@
      (number 8 +fnn-tcl-transfer-mru+ "transfer MRU")
      (let ((value (fnn-tcl-arg args 9)))
        (and value (fnn-bpc-u64-argument value "wall clock")))
-     (number 10 0 "wall error"))))
+     (number 10 0 "wall error")
+     ;; [STORE]: route the queued jobs by STORE's bp-route table.
+     (fnn-tcl-arg args 11))))
 
 (fnn-register-verb "bp-contact" #'fnn-dispatch-bp-contact)

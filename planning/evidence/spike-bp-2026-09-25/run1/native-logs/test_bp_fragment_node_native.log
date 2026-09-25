@@ -1,0 +1,6 @@
+test_nonzero_fragment_then_restart_offset_zero_dispatches_once (tests.test_bp_fragment_node_native.NativeBpFragmentNodeTests.test_nonzero_fragment_then_restart_offset_zero_dispatches_once) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 63.336s
+
+OK

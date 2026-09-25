@@ -1,0 +1,6 @@
+$ fn bp-service resume /tank/fn/scratch/spike-bp/lab3/r1-removed-native/a-fnbs dtn://sender/ 3600000 2 32 1048576 843642057578 60000 /tank/fn/scratch/spike-bp/lab3/r1-removed-native/a-store
+BP FNBS recovered held=0
+BP queue recovered jobs=1
+BP queued job no-route destination=dtn://receiver/ decision=no-route (held; the obligation stays)
+
+# rc=0

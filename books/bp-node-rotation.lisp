@@ -280,3 +280,60 @@
 ;; checkpoint operation sets the count to zero) is exercised by the N16
 ;; teeth in tests/acl2/bp-node-counterexamples-tests.lisp; its theorem is
 ;; open (the default theory takes 36 s, over the per-book budget).
+
+;; ---------------------------------------------------------------------------
+;; N16-F1 repair (spike/bp).  The checkpoint the rotation PUBLISHES carries
+;; the rotation operation's own id, (EPOCH . 0), as its operation frontier,
+;; where EPOCH is the recovered epoch the event names (field 1) and 0 the
+;; operation fn-bpnp-rotate-step allocates.  Recovery from it then takes
+;; epoch 1 + EPOCH, so the first new operation after a reopen is never the
+;; rotation's id.
+;; SPIKE: defers (a) the :rotate arm admitting and proposing these bytes (it
+;; still admits fn-bpnr-checkpoint-of-event's projection, whose prior is the
+;; replay's; the host publishes this one), and (b) the recovery keystone
+;; fn-bpnr-replay-from-checkpoint-chains restated with the event's epoch
+;; field for this checkpoint.
+(defun fn-bpnr-rotation-checkpoint (event generation)
+  (declare (xargs :guard t))
+  (let ((ck (fn-bpnr-checkpoint-of-event event generation))
+        (epoch (fn-bpn-nth 1 event)))
+    (if (natp epoch)
+        (fn-bpnr-checkpoint (fn-bpn-nth 1 ck) (fn-bpn-nth 2 ck) (fn-bpn-nth 3 ck)
+                            (cons epoch 0) (fn-bpn-nth 5 ck) (fn-bpn-nth 6 ck))
+      ck)))
+
+;; ---------------------------------------------------------------------------
+;; Retirement of old generations (spike/bp; N16 record "housekeeping").
+;; After the selection of SELECTED is durable, the names under the journal
+;; root that no recovery reads again: every generation directory below
+;; SELECTED ("lifecycle" is generation 0) and every staged selection file a
+;; killed rotation left (".bp-generation-..."; the next open never reads
+;; one).  Rotation is admitted only with no legacy outbound record
+;; (fn-bpnp-rotation-quiescentp), so an old directory holds received rows
+;; the durable checkpoint covers, and nothing else recovery needs.
+;; SPIKE: defers the retirement theorem (recovery from the selected
+;; checkpoint over a root without these names equals recovery over the root
+;; with them) and a model crash point for a partially removed directory.
+(defun fn-bpnr-stage-namep (name)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (stringp name) (< 15 (length name))
+       (equal (subseq name 0 15) ".bp-generation-")))
+
+(defun fn-bpnr-retired-names (names selected)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom names)
+      nil
+    (let ((name (car names))
+          (rest (fn-bpnr-retired-names (cdr names) selected)))
+      (if (and (natp selected) (< 0 selected)
+               (or (equal name "lifecycle")
+                   (fn-bpnr-stage-namep name)
+                   (let ((g (fn-bpnr-generation-of-name name)))
+                     (and (natp g) (< g selected)))))
+          (cons name rest)
+        rest))))
+
+;; SPIKE: defers fn-bpnr-retired-names-never-the-selected-directory (the
+;; selected generation's own directory is never retired; it needs the
+;; name round trip fn-bpnr-generation-of-name o fn-bpnr-generation-directory,
+;; which no book proves yet).  The N16 teeth witness it at generations 1, 2.

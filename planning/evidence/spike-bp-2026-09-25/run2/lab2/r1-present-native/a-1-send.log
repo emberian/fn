@@ -1,0 +1,16 @@
+BP obligation request durable attempt work=work-bp-node attempt=work-bp-node-attempt generation=0 destination=dtn://receiver/ adu=6314
+BP FNBS recovered held=0
+BP queue recovered jobs=0
+BP queue route destination=dtn://receiver/ port=45421
+BP queue accepted work=work-bp-node attempt=work-bp-node-attempt generation=0 status=durable
+BP obligation request carrier durable work=work-bp-node attempt=work-bp-node-attempt generation=0
+BP queued job routed hop=return-boundary port=45421
+TCPCL bp-service aux (:SEND :CONTACT 6)
+TCPCL bp-service event (:SEND :SESS-INIT 38)
+TCPCL bp-service event (:SESSION-UP 10 64000 64000 NIL)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 6441)
+TCPCL bp-service aux (:OUTBOUND-FAILED 0 "bp-service")
+TCPCL bp-service aux (:SESSION-DOWN)
+TCPCL bp-service uncertain outbound-failed xfer=0
+BP transport work=work-bp-node status=attempted
+BP forwarding retained reason=uncertain

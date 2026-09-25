@@ -11,6 +11,9 @@
 (verify-guards fn-bpnp-forward-frame-with)
 (verify-guards fn-bpnp-attempt-frame)
 (verify-guards fn-bpnp-result-frame)
+(verify-guards fn-bpnp-deferral-values)
+(verify-guards fn-bpnp-deferral-frame)
+(verify-guards fn-bpnp-deferral-from-values)
 
 (verify-guards fn-bpnp-routep)
 (verify-guards fn-bpnp-single-peer-routes)
@@ -57,7 +60,10 @@
 (verify-guards fn-bpnp-blockedp)
 (verify-guards fn-bpnp-credit-blockedp)
 (verify-guards fn-bpnp-busy-count)
+(verify-guards fn-bpnp-busy-strandedp)
 (verify-guards fn-bpnp-busy-blockedp)
+(verify-guards fn-bpnp-first-busy-stranded)
+(verify-guards fn-bpnp-busy-stranded-effects)
 (verify-guards fn-bpnp-oldest-eligible-with-credit)
 (verify-guards fn-bpnp-oldest-eligible)
 (verify-guards fn-bpnp-oldest-uncertain-local)
@@ -164,7 +170,15 @@
 (verify-guards fn-bpnp-conflict-propose-step)
 (verify-guards fn-bpnp-conflict-persist-step)
 (verify-guards fn-bpnp-busy-eventp)
-(verify-guards fn-bpnp-busy-wait)
+(local
+ (defthm fn-bpnp-budget-backoff-is-a-natural
+   (natp (fn-bpnp-budget-backoff b))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-bpnp-budget-backoff fn-bpnp-budgetsp
+                                      fn-frame-natp)))))
+(verify-guards fn-bpnp-busy-wait
+  :hints (("Goal" :in-theory (disable fn-bpnp-budget-backoff
+                                      fn-bpnp-budget-retries))))
 (verify-guards fn-bpnp-busy-delivery-step
   :hints (("Goal" :in-theory (disable fn-bpf-fragment-listp-is-a-true-list
                                       fn-cp-idp-true-listp
@@ -172,10 +186,33 @@
                                       fn-bpn-report-bounded-append-suffix
                                       fn-bpf-fragment-listp-car-and-cdr
                                       fn-bpf-fragmentp-fields))))
+(verify-guards fn-bpnp-deferral-effects)
+;; The durable arm writes the applied held list into a cleared-issued
+;; state; its guard needs only that the state is a list and that the apply
+;; answers a list.  The obligation is closed in the minimal theory.
+(local
+ (defthm fn-bpnpg-true-listp-of-with-issued
+   (true-listp (fn-bpnp-with-issued st i))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnp-with-issued fn-bpnp-with-runtime
+                                 fn-bpnp-with-credit fn-bpnf-with-issued
+                                 fn-bpnf-state-with-arrival true-listp-update-nth
+                                 true-listp car-cons cdr-cons (:e true-listp))
+                               (theory 'minimal-theory))))))
+(verify-guards fn-bpnp-deferral-persist-step
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnpg-true-listp-of-with-issued
+                         (:type-prescription fn-bpnp-deferral-apply)
+                         (:type-prescription nfix))
+                       (theory 'minimal-theory)))))
+(verify-guards fn-bpnp-busy-resume-step)
 (verify-guards fn-bpnr-checkpoint-of-statep)
 (verify-guards fn-bpnp-rotation-quiescentp)
 (verify-guards fn-bpnp-rotate-step)
 (verify-guards fn-bpnp-rotation-persist-step)
+(verify-guards fn-bpnp-session-via)
+(verify-guards fn-bpnp-session-base-length)
 (verify-guards fn-bpnp-host-eventp)
 (verify-guards fn-bpnp-preserve-runtime-answer)
 ;; The proposal state keeps the base it was given whenever it carries an

@@ -38,8 +38,11 @@
                           (if attempt attempt
                             (let ((result (fn-bpnp-result-unframe (cadr row))))
                               (if result result
-                                (fn-bpnf-conflict-unframe
-                                 (cadr row))))))))))))))))))
+                                (let ((conflict (fn-bpnf-conflict-unframe
+                                                 (cadr row))))
+                                  (if conflict conflict
+                                    (fn-bpnp-deferral-unframe
+                                     (cadr row))))))))))))))))))))
 
 (defun fn-bpnf-family-replay-rows-aux
   (rows base held handoffs prior next-arrival)
@@ -112,6 +115,14 @@
           (let ((applied (fn-bpnp-forward-result-apply record held)))
             (if (not (equal (car applied) :ready))
                 (list :fault :kind-nine-row)
+              (fn-bpnf-family-replay-rows-aux
+               (cdr rows) base (fn-bpn-nth 1 applied)
+               handoffs next next-arrival))))
+         ((equal (car record) :bpnf-deferred)
+          ; Kind 20: the busy count, through the apply the live arm calls.
+          (let ((applied (fn-bpnp-deferral-apply record held)))
+            (if (not (equal (car applied) :ready))
+                (list :fault :kind-twenty-row)
               (fn-bpnf-family-replay-rows-aux
                (cdr rows) base (fn-bpn-nth 1 applied)
                handoffs next next-arrival))))

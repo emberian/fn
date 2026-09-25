@@ -1,0 +1,54 @@
+test_absent_bp_trust_keeps_custody_but_refuses_request_application (tests.test_bp_node_native.NativeBpNodeTests.test_absent_bp_trust_keeps_custody_but_refuses_request_application) ... ok
+test_absent_bp_trust_refuses_receipt_release (tests.test_bp_node_native.NativeBpNodeTests.test_absent_bp_trust_refuses_receipt_release) ... ok
+test_admitted_channel_without_inbound_scope_refuses_store_request (tests.test_bp_node_native.NativeBpNodeTests.test_admitted_channel_without_inbound_scope_refuses_store_request) ... ok
+test_ambiguous_fnrj_decision_fences_until_cold_replay (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_fnrj_decision_fences_until_cold_replay) ... ok
+test_ambiguous_outbox_publication_is_uncertain_not_refused (tests.test_bp_node_native.NativeBpNodeTests.test_ambiguous_outbox_publication_is_uncertain_not_refused) ... ok
+test_busy_application_defers_and_redelivers_after_backoff (tests.test_bp_node_native.NativeBpNodeTests.test_busy_application_defers_and_redelivers_after_backoff)
+BP-R17 on the image: the owner answers the first delivery :busy. ... ok
+test_conflicting_return_job_fences_after_request_commit (tests.test_bp_node_native.NativeBpNodeTests.test_conflicting_return_job_fences_after_request_commit) ... ok
+test_death_after_durable_outbox_does_not_allocate_second_sequence (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_durable_outbox_does_not_allocate_second_sequence) ... FAIL
+test_death_after_fnrj_receipt_decision_replays_one_article (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_fnrj_receipt_decision_replays_one_article) ... ok
+test_death_after_kind_eight_retries_once_and_peer_holds_one_copy (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_eight_retries_once_and_peer_holds_one_copy)
+N08 on the image: death after a durable kind 8 whose transfer ran. ... ok
+test_death_after_kind_seven_replays_owed_outbox (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_kind_seven_replays_owed_outbox) ... ok
+test_deletion_report_intent_recovers_and_observation_does_not_release (tests.test_bp_node_native.NativeBpNodeTests.test_deletion_report_intent_recovers_and_observation_does_not_release) ... FAIL
+test_exact_receipt_with_wrong_carrier_peer_fences (tests.test_bp_node_native.NativeBpNodeTests.test_exact_receipt_with_wrong_carrier_peer_fences) ... ok
+test_expired_recovered_kind_five_never_enters_store (tests.test_bp_node_native.NativeBpNodeTests.test_expired_recovered_kind_five_never_enters_store) ... ok
+test_identity_conflict_is_refused_recorded_and_replayed (tests.test_bp_node_native.NativeBpNodeTests.test_identity_conflict_is_refused_recorded_and_replayed)
+N11 on the image: a second reception whose identity names a held ... ok
+test_kind_five_ambiguous_publication_never_delivers_to_store (tests.test_bp_node_native.NativeBpNodeTests.test_kind_five_ambiguous_publication_never_delivers_to_store) ... ok
+test_older_mru_wait_allows_younger_forward_and_replays (tests.test_bp_node_native.NativeBpNodeTests.test_older_mru_wait_allows_younger_forward_and_replays) ... ok
+test_older_unrouted_transit_does_not_block_younger_local_request (tests.test_bp_node_native.NativeBpNodeTests.test_older_unrouted_transit_does_not_block_younger_local_request) ... ok
+test_permanently_busy_application_strands_row_until_resume (tests.test_bp_node_native.NativeBpNodeTests.test_permanently_busy_application_strands_row_until_resume)
+BP-R17 at the retry budget: three :busy answers strand the row, ... ok
+test_removed_route_keeps_transit_held_and_reports_no_route (tests.test_bp_node_native.NativeBpNodeTests.test_removed_route_keeps_transit_held_and_reports_no_route)
+Spec 4.6: no route, no session; the row and its obligation stay held. ... ok
+test_request_retry_queues_distinct_receipt_carriers_and_releases_pin (tests.test_bp_node_native.NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin) ... ok
+test_restart_in_another_boot_fences_and_keeps_rows (tests.test_bp_node_native.NativeBpNodeTests.test_restart_in_another_boot_fences_and_keeps_rows)
+N07 on the image: the durable boot domain names another boot, so ... ok
+test_rotation_killed_at_each_cut_keeps_held_rows (tests.test_bp_node_native.NativeBpNodeTests.test_rotation_killed_at_each_cut_keeps_held_rows)
+N16 on the image: the journal rotates to a new generation through ... ok
+test_uncertain_transfer_is_connection_local_and_resume_rearms (tests.test_bp_node_native.NativeBpNodeTests.test_uncertain_transfer_is_connection_local_and_resume_rearms)
+Spec 4.3.1: an uncertain transfer costs that connection only. ... ok
+
+======================================================================
+FAIL: test_death_after_durable_outbox_does_not_allocate_second_sequence (tests.test_bp_node_native.NativeBpNodeTests.test_death_after_durable_outbox_does_not_allocate_second_sequence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/spike-bp-28f2e1a4b/tests/test_bp_node_native.py", line 1228, in test_death_after_durable_outbox_does_not_allocate_second_sequence
+    self.assertEqual(len(tuple(
+AssertionError: 5 != 3
+
+======================================================================
+FAIL: test_deletion_report_intent_recovers_and_observation_does_not_release (tests.test_bp_node_native.NativeBpNodeTests.test_deletion_report_intent_recovers_and_observation_does_not_release)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/spike-bp-28f2e1a4b/tests/test_bp_node_native.py", line 1362, in test_deletion_report_intent_recovers_and_observation_does_not_release
+    self.assertEqual(
+AssertionError: {'00000000000000000002.fnb': b'FNBS\x01\x04\x00\x00\x00)\x00\x[3057 chars]xb9'} != {'00000000000000000000.fnb': b'FNBS\x01\x02\x00\x00\x01\x03\x0[2565 chars]xb9'}
+Diff is 8849 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 24 tests in 927.098s
+
+FAILED (failures=2)

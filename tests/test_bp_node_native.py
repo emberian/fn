@@ -455,6 +455,14 @@ class NativeBpNodeTests(unittest.TestCase):
         code, out, err = self.rotate_receiver()
         self.assertEqual(code, 0, (out, err))
         self.assertIn(b"BP journal generation selected generation=4", out)
+        # spike/bp: once generation 4's selection is durable, the older
+        # generations (0 to 3) are retired; the held row survives on the
+        # checkpoint alone.
+        for name in (b"lifecycle",) + tuple(g.encode() for g in generations):
+            self.assertIn(b"BP journal generation retired name=" + name, out)
+        self.assertFalse((journal / "lifecycle").exists())
+        self.assertEqual(sorted(p.name for p in journal.glob("lifecycle-g*")),
+                         ["lifecycle-g00000000000000000004"])
         self.assertEqual(self.recovered_held(), 1)
         # New work lands in the new generation, after the checkpointed row.
         current = journal / "lifecycle-g00000000000000000004"
@@ -554,10 +562,12 @@ class NativeBpNodeTests(unittest.TestCase):
         self.stop_process(receiver)
         self.assertEqual(self.receiver_counts()[1], 1)
 
-    def test_permanently_busy_application_strands_row_until_recovery(self):
-        """BP-R17 at the kind-8 retry bound: three :busy answers strand the
-        row, visibly and still held; nothing is refused or stored; a cold
-        recovery clears the volatile wait and delivers it."""
+    def test_permanently_busy_application_strands_row_until_resume(self):
+        """BP-R17 at the retry budget: three :busy answers strand the row,
+        visibly and still held; nothing is refused or stored.  The count is
+        durable (kind 20): a restart keeps it at 3 and reports the strand
+        again on every pass, never redelivering; `bp-node resume' writes
+        count 0 and the next pass delivers."""
         receiver, port = self.start_node(
             True, once=False, extra_env={"FN_BP_NODE_TEST_APP_BUSY": "100"})
         sent = self.send_request(port, "stranded-request")
@@ -570,7 +580,7 @@ class NativeBpNodeTests(unittest.TestCase):
             time.sleep(5.5)
             self.send_transit(port, transit, spool)
             seen += self.wait_for_output(receiver, marker, timeout=120)
-        # A stranded row is not offered again: a later dispatch is silent.
+        # A stranded row is not offered again: a later pass only reports it.
         time.sleep(5.5)
         self.send_transit(port, transit, "p3")
         time.sleep(2)
@@ -581,9 +591,26 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertNotIn(b"request-refused", seen)
         self.assertNotIn(b"request-accepted", seen)
         self.assertEqual(self.receiver_counts()[1], 0)
-        restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
-        self.assertIn(b"BP node delivery request-accepted", restarted.stdout)
+        # Restart twice: the durable count is what it was and the report repeats.
+        arrivals = set()
+        for _ in range(2):
+            restarted = self.dispatch_receiver()
+            self.assertEqual(restarted.returncode, 0, restarted.stderr)
+            self.assertNotIn(b"request-accepted", restarted.stdout)
+            self.assertNotIn(b"delivery deferred", restarted.stdout)
+            line = [x for x in restarted.stdout.splitlines()
+                    if x.startswith(b"BP node delivery stranded busy=3 arrival=")]
+            self.assertEqual(len(line), 1, restarted.stdout)
+            arrivals.add(int(line[0].split(b"arrival=")[1].split()[0]))
+            self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertEqual(len(arrivals), 1, arrivals)
+        arrival = arrivals.pop()
+        resumed = self.resume_receiver(arrival)
+        self.assertEqual(resumed.returncode, 0, resumed.stdout + resumed.stderr)
+        self.assertIn(b"BP node delivery resumed", resumed.stdout)
+        delivered = self.dispatch_receiver()
+        self.assertEqual(delivered.returncode, 0, delivered.stderr)
+        self.assertIn(b"BP node delivery request-accepted", delivered.stdout)
         self.assertEqual(self.receiver_counts()[1], 1)
 
     def other_boot_domain_frame(self):

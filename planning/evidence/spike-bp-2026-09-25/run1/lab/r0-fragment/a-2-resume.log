@@ -1,0 +1,59 @@
+$ fn bp-service resume /tank/fn/scratch/spike-bp/lab/r0-fragment/a-fnbs dtn://sender/ 3600000 2 32 1048576 843640361594 60000 /tank/fn/scratch/spike-bp/lab/r0-fragment/a-store
+BP FNBS recovered held=0
+BP queue recovered jobs=1
+BP queued job routed hop=return-boundary port=40797
+TCPCL bp-service aux (:SEND :CONTACT 6)
+TCPCL bp-service event (:SEND :SESS-INIT 38)
+TCPCL bp-service event (:SESSION-UP 10 1024 4096 NIL)
+BP fragmenting length=10339 peer-mru=4096 fragments=3
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1059)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1034)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service event (:OUTBOUND-SENT 0 "bp-service")
+TCPCL bp-service accepted outbound xfer=0
+TCPCL bp-service aux (:SEND :SESS-TERM 3)
+TCPCL bp-service event (:PEER-TERMINATING 0)
+TCPCL bp-service event (:CLOSE)
+TCPCL bp-service aux (:SEND :CONTACT 6)
+TCPCL bp-service event (:SEND :SESS-INIT 38)
+TCPCL bp-service event (:SESSION-UP 10 1024 4096 NIL)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1059)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1036)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service event (:OUTBOUND-SENT 0 "bp-service")
+TCPCL bp-service accepted outbound xfer=0
+TCPCL bp-service aux (:SEND :SESS-TERM 3)
+TCPCL bp-service event (:PEER-TERMINATING 0)
+TCPCL bp-service event (:CLOSE)
+BP fragment 2 transfer accepted
+TCPCL bp-service aux (:SEND :CONTACT 6)
+TCPCL bp-service event (:SEND :SESS-INIT 38)
+TCPCL bp-service event (:SESSION-UP 10 1024 4096 NIL)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1059)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 357)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service aux (:SEND :KEEPALIVE 1)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service aux (:SEND-REFUSED "bp-service" :BUSY)
+TCPCL bp-service event (:OUTBOUND-SENT 0 "bp-service")
+TCPCL bp-service accepted outbound xfer=0
+TCPCL bp-service aux (:SEND :SESS-TERM 3)
+TCPCL bp-service event (:PEER-TERMINATING 0)
+TCPCL bp-service event (:CLOSE)
+BP fragment 3 transfer accepted
+BP transport work=work-bp-node status=forwarded
+
+# rc=0

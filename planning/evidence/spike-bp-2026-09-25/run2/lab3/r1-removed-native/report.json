@@ -1,0 +1,258 @@
+{
+  "a_final_status": {
+    "work-bp-node": "BP obligation owner work=work-bp-node status=restart-observed pinned=yes",
+    "work-control": "BP obligation owner work=work-control status=outstanding pinned=yes",
+    "work-cut-attempt": "BP obligation owner work=work-cut-attempt status=outstanding pinned=yes",
+    "work-cut-submit": "BP obligation owner work=work-cut-submit status=outstanding pinned=yes"
+  },
+  "a_pinned_after": "BP obligation owner work=work-bp-node status=restart-observed pinned=yes",
+  "a_pinned_before": "BP obligation owner work=work-bp-node status=outstanding pinned=yes",
+  "a_releases": "listed",
+  "b_trusts": {
+    "carried": true,
+    "eid": "dtn://dtn7-r1/",
+    "mode": "carried"
+  },
+  "dtn7_log_counts": {
+    "dtn7-r1/dtnd-0.log": {
+      "forwarded": 0,
+      "received": 0
+    },
+    "dtn7-r1/dtnd-1.log": {
+      "forwarded": 0,
+      "received": 0
+    }
+  },
+  "dtn7_revision": "4daf02d7ea927e9293753b2a5c4497457f6e5a40",
+  "dtn_time_ms": "843642057578",
+  "dtnd_processes": {
+    "dtn7-r1": [
+      {
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7-r1",
+          "-W",
+          "/tank/fn/scratch/spike-bp/lab3/r1-removed-native/dtn7-r1",
+          "-D",
+          "sled",
+          "-C",
+          "tcp:port=42663",
+          "-w",
+          "48015",
+          "-i",
+          "0",
+          "--disable_nd",
+          "-d",
+          "-s",
+          "tcp://127.0.0.1:48815/receiver",
+          "-s",
+          "tcp://127.0.0.1:46027/sender"
+        ],
+        "log": "/tank/fn/scratch/spike-bp/lab3/r1-removed-native/dtn7-r1/dtnd-0.log",
+        "pid": 2986775,
+        "stopped": "SIGKILL rc=-9"
+      },
+      {
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7-r1",
+          "-W",
+          "/tank/fn/scratch/spike-bp/lab3/r1-removed-native/dtn7-r1",
+          "-D",
+          "sled",
+          "-C",
+          "tcp:port=42663",
+          "-w",
+          "48015",
+          "-i",
+          "0",
+          "--disable_nd",
+          "-d",
+          "-s",
+          "tcp://127.0.0.1:48815/receiver",
+          "-s",
+          "tcp://127.0.0.1:46027/sender"
+        ],
+        "log": "/tank/fn/scratch/spike-bp/lab3/r1-removed-native/dtn7-r1/dtnd-1.log",
+        "pid": 2988165,
+        "stopped": "SIGTERM rc=-15"
+      }
+    ]
+  },
+  "image": "/tank/fn/gates/spike-bp-28f2e1a4b/build/fn-host-dtn-production",
+  "native": true,
+  "processes": [
+    {
+      "pid": 2986817,
+      "stopped": "SIGTERM rc=143",
+      "tag": "b-serve"
+    },
+    {
+      "pid": 2988692,
+      "stopped": "SIGTERM rc=143",
+      "tag": "a-serve"
+    }
+  ],
+  "receipt_without_tick": null,
+  "relays": 1,
+  "routes": {
+    "mode": "removed"
+  },
+  "setup_image": "/tank/fn/gates/spike-bp-28f2e1a4b/build/fn-host-dtn-developer",
+  "setup_rcs": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "steps": [
+    {
+      "bytes_forwarded_before_hold": [],
+      "fragmentation": [],
+      "held": false,
+      "logs": {
+        "a-1-send": {
+          "file": "a-1-send.log",
+          "lines": [
+            "BP obligation request durable attempt work=work-bp-node attempt=work-bp-node-attempt generation=0 destination=dtn://receiver/ adu=6314",
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=0",
+            "BP queue route destination=dtn://receiver/ decision=no-route",
+            "BP queue accepted work=work-bp-node attempt=work-bp-node-attempt generation=0 status=durable",
+            "BP obligation request carrier durable work=work-bp-node attempt=work-bp-node-attempt generation=0",
+            "BP queued job no-route destination=dtn://receiver/ decision=no-route (held; the obligation stays)"
+          ],
+          "sha256_16": "536d0dff95bfffee"
+        }
+      },
+      "outcome": "accepted",
+      "routing": [
+        "BP queue route destination=dtn://receiver/ decision=no-route",
+        "BP queued job no-route destination=dtn://receiver/ decision=no-route (held; the obligation stays)"
+      ],
+      "sigkill": {
+        "first_hop": "dtn7-r1",
+        "pid": 2986775
+      },
+      "step": "1 A request, held mid-transfer, first hop SIGKILLed"
+    },
+    {
+      "logs": {
+        "a-2-resume": {
+          "file": "a-2-resume.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=1",
+            "BP queued job no-route destination=dtn://receiver/ decision=no-route (held; the obligation stays)"
+          ],
+          "sha256_16": "8e0fe422e3a065a9"
+        }
+      },
+      "outcome": "accepted",
+      "restarted": 2988165,
+      "step": "2 first hop restarted, A resumes its durable job"
+    },
+    {
+      "application": [],
+      "b_fnbs_frame_names": [],
+      "b_fnbs_lifecycle_frames": 0,
+      "channel_refusals": [],
+      "logs": {
+        "b-serve": {
+          "file": "b-serve.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 48815"
+          ],
+          "sha256_16": "089d9be2b85d5110"
+        }
+      },
+      "outcome": "no-verdict",
+      "receipts_queued": [],
+      "source_decisions": [],
+      "step": "3 B admits, takes custody, dispatches to its application",
+      "transport_accepted": 0
+    },
+    {
+      "a_inbound_custody": [],
+      "a_obligation": "BP obligation owner work=work-bp-node status=restart-observed pinned=yes",
+      "a_receipt_lines": [],
+      "a_release_lines": [],
+      "a_source_decisions": [],
+      "b_receipt_contacts": [
+        "BP contact closed peer=dtn://sender/"
+      ],
+      "b_signed_lines": [],
+      "flipped": null,
+      "logs": {
+        "a-serve": {
+          "file": "a-serve.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=1",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP node receipt contact peer=dtn://receiver/",
+            "BP queued job no-route destination=dtn://receiver/ decision=no-route (held; the obligation stays)",
+            "BP NODE LISTENING 46027"
+          ],
+          "sha256_16": "71eba53bd21244f1"
+        },
+        "b-4-tick": {
+          "file": "b-4-tick.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=0",
+            "BP contact closed peer=dtn://sender/"
+          ],
+          "sha256_16": "a5180e4f4abc5989"
+        }
+      },
+      "outcome": "no-receipt",
+      "step": "4 B's receipt carried back and matched at A",
+      "tick_outcome": "accepted"
+    },
+    {
+      "a_obligation": "BP obligation owner work=work-control status=outstanding pinned=yes",
+      "logs": {
+        "a-status-control": {
+          "file": "a-status-control.log",
+          "lines": [
+            "BP obligation owner work=work-control status=outstanding pinned=yes"
+          ],
+          "sha256_16": "2dddbad35ba52640"
+        }
+      },
+      "outcome": "BP obligation owner work=work-control status=outstanding pinned=yes",
+      "step": "4b the control obligation, never requested"
+    }
+  ],
+  "topology": [
+    "fn-a",
+    "dtn7-r1",
+    "fn-b"
+  ]
+}
