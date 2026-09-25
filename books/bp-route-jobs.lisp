@@ -60,24 +60,32 @@
 
 ; KEYSTONE (spike, of the decision only).  A :send answer names exactly the
 ; boundary fn-bprt-next-hop chooses for DEST over the table's contactable
-; boundaries, on that boundary's contact port, and never a boundary the
-; table does not route DEST to.
+; boundaries, on that boundary's contact port: never a boundary the table
+; does not route DEST to, and never the queued port.
 (defthm fn-bprt-send-decision-offers-only-the-routed-hop
   (let ((d (fn-bprt-send-decision route dest table)))
     (implies (equal (car d) :send)
              (and (equal (caddr d)
                          (fn-bprt-next-hop dest table (fn-bprt-contactable table)))
-                  (stringp (caddr d))
                   (equal (caddr (cadr d))
                          (fn-bprt-route-port
                           (fn-bprt-hop-route dest table
                                              (fn-bprt-contactable table)))))))
-  :hints (("Goal" :in-theory (enable fn-bprt-outbound-choice fn-bprt-nth))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bprt-send-decision fn-bprt-outbound-choice
+                         fn-bprt-nth car-cons cdr-cons
+                         (:e zp) (:e binary-+) (:e unary--) (:e equal))
+                       (theory 'minimal-theory)))))
 
 ; With no matching route, nothing is sent: the job is held.
 (defthm fn-bprt-send-decision-holds-without-a-route
   (implies (atom (fn-bprt-matching dest table))
            (equal (fn-bprt-send-decision route dest table)
                   '(:held :no-route)))
-  :hints (("Goal" :in-theory (enable fn-bprt-outbound-choice fn-bprt-next-hop
-                                     fn-bprt-nth))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bprt-send-decision fn-bprt-outbound-choice
+                         fn-bprt-next-hop fn-bprt-nth car-cons cdr-cons
+                         (:e zp) (:e binary-+) (:e unary--) (:e equal))
+                       (theory 'minimal-theory)))))

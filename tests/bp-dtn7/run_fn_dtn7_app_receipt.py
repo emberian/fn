@@ -344,9 +344,9 @@ class Lab:
     def path(self, name):
         return self.work / name
 
-    def fn(self, tag, *args, timeout=180):
+    def fn(self, tag, *args, timeout=180, image=None):
         log = self.path("{}.log".format(tag))
-        out = subprocess.run([str(self.image), "--fn", *map(str, args)],
+        out = subprocess.run([str(image or self.image), "--fn", *map(str, args)],
                              capture_output=True, text=True, timeout=timeout,
                              env=self.env, cwd=str(ROOT))
         log.write_text("$ fn {}\n{}{}\n# rc={}\n".format(
@@ -419,9 +419,20 @@ def author_request(article):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--image", required=True)
+    ap.add_argument("--setup-image",
+                    help="the image that runs `store post' (setup only: the "
+                         "production DTN image has no posting surface, since an "
+                         "article reaches a node by NNTP, which that image omits); "
+                         "every BP verb runs on --image")
     ap.add_argument("--dtn7-repo", type=Path)
     ap.add_argument("--work", required=True, type=Path)
-    ap.add_argument("--relays", type=int, default=1, choices=(0, 1, 2))
+    ap.add_argument("--relays", type=int, default=1, choices=(0, 1, 2, 3))
+    ap.add_argument("--b-transfer-mru", type=int, default=1048576,
+                    help="B's TCPCL Transfer MRU; below the request's length A "
+                         "fragments it (RFC 9171 5.8) and B reassembles it")
+    ap.add_argument("--article-lines", type=int, default=120,
+                    help="lines in the requested article (its size drives "
+                         "fragmentation with --b-transfer-mru)")
     ap.add_argument("--settle", type=float, default=40.0)
     ap.add_argument("--routes", choices=("present", "removed"), default="present",
                     help="spec 4.6: enrol the topology as bp-route rows, or add "
@@ -456,7 +467,9 @@ def main(argv=None):
     if args.relays and not args.dtn7_repo:
         ap.error("--dtn7-repo is required unless --relays 0")
     lab = Lab(args)
-    report = dict(image=str(lab.image), relays=args.relays, dtn_time_ms=lab.wall, native=args.native,
+    setup_image = Path(args.setup_image).resolve() if args.setup_image else None
+    report = dict(image=str(lab.image), setup_image=str(setup_image),
+                  relays=args.relays, dtn_time_ms=lab.wall, native=args.native,
                   topology=["fn-a"] + ["dtn7-r{}".format(i + 1)
                                        for i in range(args.relays)] + ["fn-b"])
     if args.relays:
@@ -465,7 +478,7 @@ def main(argv=None):
             ["git", "-C", str(repo), "rev-parse", "HEAD"],
             capture_output=True, text=True).stdout.strip()
     body = b"".join(b"line %04d of the m4 application receipt article\r\n" % i
-                    for i in range(120))
+                    for i in range(args.article_lines))
     article = (b"Path: sender.bp.gate.invalid!not-for-mail\r\n"
                b"From: sender@example.invalid\r\nNewsgroups: fn.test\r\n"
                b"Subject: m4 application receipt across dtn7\r\n"
@@ -494,6 +507,17 @@ def main(argv=None):
         return row
 
     try:
+        # Ports are fixed before enrolment: spec 4.6 routes every queued job
+        # (request, receipt, report) to its boundary's `contact PORT` row
+        # (books/bp-route-jobs), so the rows name the relays' real ports.
+        relay_ports = [(free_port(), free_port()) for _ in range(args.relays)]
+        if args.relays:
+            first_hop, last_hop = relay_ports[0][0], relay_ports[-1][0]
+        else:
+            first_hop, last_hop = b_port, a_port
+        hold = HoldRelay(first_hop)
+        flip = FlipProxy(last_hop) if args.flip_signature else None
+        receipt_hop = flip.port if flip else last_hop
         # --- setup: stores, A's obligation, enrolment on both sides -------
         setup = []
         for store in (a_store, b_store):
@@ -509,7 +533,8 @@ def main(argv=None):
                                   WORK, MSGID.decode(), "forward-bp-node", RECEIVER,
                                   "native-policy", "terms-native")),
             ("setup-undertake", ("bp-obligation", "undertake", a_store, a_wf, WORK, 3))):
-            setup.append(lab.fn(tag, *argv).returncode)
+            setup.append(lab.fn(tag, *argv, image=(setup_image if tag == "setup-post"
+                                                   else None)).returncode)
         for i, (work, msgid) in enumerate(extra_works):
             extra = article.replace(MSGID, msgid.encode()).replace(
                 b"m4 application receipt across dtn7", work.encode())
@@ -540,6 +565,7 @@ def main(argv=None):
         # D23: the neighbour's boundary carries the far fn node's EID; the far
         # node is enrolled under its own EID (on a port nothing listens on),
         # and its request is judged under that enrolment and its scope.
+        contacts = dict(a=hold.port, b=receipt_hop)
         for side, store, path_id, name, remote, eid, port, scope, far in (
                 ("a", a_store, "sender.bp.gate.invalid", "return-boundary",
                  "r1.bp.gate.invalid" if args.relays else "receiver.bp.gate.invalid",
@@ -565,7 +591,8 @@ def main(argv=None):
                           if signed_a else [])
             setup.append(lab.fn("setup-{}-boundary".format(side), "operator", config,
                                 "bp-boundary", "add", name, remote, eid, port,
-                                *scope, *carries, *releases, *required).returncode)
+                                *scope, *carries, *releases, *required,
+                                "contact", contacts[side]).returncode)
             # Spec bp-node-machine 4.6: the topology as routes.  A reaches
             # B (and B reaches A) through the neighbour boundary, whichever
             # relay stands behind it.  In this lab the fn endpoints send
@@ -598,7 +625,7 @@ def main(argv=None):
 
         # --- relays and B --------------------------------------------------
         if args.relays:
-            ports = [(free_port(), free_port()) for _ in range(args.relays)]
+            ports = relay_ports
             for i in range(args.relays):
                 name = "dtn7-r{}".format(i + 1)
                 nxt = ("tcp://127.0.0.1:{}/dtn7-r{}".format(ports[i + 1][0], i + 2)
@@ -616,24 +643,19 @@ def main(argv=None):
                 relays.append(d)
             # relay 2 (four-node) opens its window only after relay-a's restart.
             relays[0].start(relays[0].peers)
-            first_hop = relays[0].cla_port
-            last_hop = relays[-1].cla_port
-        else:
-            first_hop, last_hop = b_port, a_port
-
-        flip = FlipProxy(last_hop) if args.flip_signature else None
-        receipt_hop = flip.port if flip else last_hop
+            for d in relays[1:3] if args.relays == 3 else []:
+                d.start(d.peers)
 
         def start_b(tag):
             proc, log = lab.spawn(
                 tag, "bp-node", "serve", b_port, b_fnbs, b_store, b_rj, b_wf,
                 RECEIVER, SENDER, RECEIVER, "native-policy", RECEIVER,
-                "127.0.0.1", receipt_hop, "0", 3600000, 2, 32, 1048576, lab.wall, 60000,
+                "127.0.0.1", receipt_hop, "0", 3600000, 2, 32, args.b_transfer_mru,
+                lab.wall, 60000,
                 *(["0", signer] if signer is not None else []))
             lab.wait_log(log, r"BP NODE LISTENING", 60)
             return proc, log
 
-        hold = HoldRelay(first_hop)
         b_serve, b_log = start_b("b-serve" if args.relays else "b-serve-0")
         # --- 1. A's request, held mid-transfer, first hop SIGKILLed ---------
         hold.arm(600)
@@ -660,14 +682,18 @@ def main(argv=None):
         a_send.wait(timeout=120)
         s1 = step("1 A request, held mid-transfer, first hop SIGKILLed", a_send.returncode,
                   ["a-1-send"], held=held, bytes_forwarded_before_hold=list(hold.forwarded),
-                  sigkill=killed)
+                  sigkill=killed,
+                  routing=[l for l in lines_of(lab.logs["a-1-send"])
+                           if l.startswith(("BP queue route", "BP queued job"))],
+                  fragmentation=[l for l in lines_of(lab.logs["a-1-send"])
+                                 if l.startswith(("BP fragment", "BP fragmenting"))])
         # --- 2. restart the first hop, resume A's durable job --------------
         if args.relays:
             relays[0].start(relays[0].peers)
         else:
             b_serve, b_log = start_b("b-serve-1")
         r = lab.fn("a-2-resume", "bp-service", "resume", a_fnbs, SENDER, 3600000, 2, 32,
-                   1048576, lab.wall, 60000)
+                   1048576, lab.wall, 60000, a_store)
         step("2 first hop restarted, A resumes its durable job", r.returncode, ["a-2-resume"],
              restarted=(relays[0].starts[-1]["pid"] if args.relays else b_serve.pid))
         if args.relays == 2:
@@ -704,7 +730,7 @@ def main(argv=None):
             b_tags = ["b-4-serve"]
         else:
             tick = lab.fn("b-4-tick", "bp-contact", "tick", b_fnbs, RECEIVER, SENDER,
-                          0, 60000, 3600000, 2, 32, 1048576, lab.wall, 60000)
+                          0, 60000, 3600000, 2, 32, 1048576, lab.wall, 60000, b_store)
             matched = lab.wait_log(a_log, r"BP node delivery (receipt-\S+)", args.settle)
             b_tags = ["b-4-tick"]
         time.sleep(1.0)
