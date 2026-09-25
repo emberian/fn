@@ -37,8 +37,8 @@
                              ; specs/reconfiguration.md section 1.6 -- a store
                              ; that has not been configured accepts nothing,
                              ; rather than accepting into a compiled-in
-                             ; default (the last `*fn-store-capacity*' read
-                             ; outside host/checkpoint-host.lisp).
+                             ; default.  The checkpoint host reads the live
+                             ; node's capacity (`fn-store-sn-capacity').
                              (fn-sn-initial nil 0) state)))
     (value :ready)))
 
@@ -189,6 +189,15 @@ reopen predicate, writer-lock observation and observed final namespace."
   ; The allocation domain the live node carries: every name ever created.
   (declare (xargs :stobjs state :mode :program))
   (fn-state-groups (fn-node-acceptance (fn-sn-node (f-get-global 'fn-store-sn state)))))
+
+(defun fn-store-sn-capacity (state)
+  ; The retention charge capacity the live node carries: the replayed
+  ; configuration's (`operator capacity'), 0 before any configuration is
+  ; replayed.  The checkpoint host captures, decodes and restores under this
+  ; value, the same node `fn-store-sn-domain' reads, so a checkpoint binds
+  ; the capacity the store actually runs under.
+  (declare (xargs :stobjs state :mode :program))
+  (fn-retain-capacity (fn-node-retention (fn-sn-node (f-get-global 'fn-store-sn state)))))
 
 (defun fn-store-cfg-generation (state)
   (declare (xargs :stobjs state :mode :program))

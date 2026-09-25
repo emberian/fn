@@ -123,6 +123,24 @@
                 (fn-nntp-string-octets
                  "441 posting failed; the article was not received"))))))
 
+; The wire's own close at the served body limit names the size: the same line
+; an injection :oversize refusal gives, not "not received".
+(assert-event
+ (equal (fn-post-result-effects
+         (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
+                            *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs*
+                            (list :reject :body-overlimit)))
+        (list (fn-nntp-reply-effect
+               (fn-nntp-crlf
+                (fn-nntp-string-octets
+                 "441 posting failed; the article exceeds the configured size"))))))
+(assert-event
+ (equal (fn-post-result-submission
+         (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
+                            *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs*
+                            (list :reject :body-overlimit)))
+        nil))
+
 ; The three durable observations stay distinct out to the wire.
 (assert-event
  (equal (fn-post-result-effects

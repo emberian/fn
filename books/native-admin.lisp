@@ -256,8 +256,8 @@
 (encapsulate ()
 (local (defthm group-name-is-label
   (implies (fn-record-group-namep s) (fn-cfg-labelp s))
-  :hints (("Goal" :in-theory (enable fn-record-group-namep fn-cfg-labelp
-                                     fn-record-nonempty-at-mostp)))))
+  :hints (("Goal" :use fn-cfg-labelp-of-record-group-name
+                  :in-theory (disable fn-record-group-namep fn-cfg-labelp)))))
 (local (defthm group-deltas-typed
   (implies (fn-record-group-namep s)
            (and (fn-cfg-delta-listp (list (fn-cfg-create-group s *fn-cfg-default-policy-id*)))

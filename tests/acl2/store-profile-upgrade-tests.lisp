@@ -12,10 +12,12 @@
 (defconst *sput-7dev* *fn-bs-meta-format-7-development-values*)
 (defconst *sput-7scale* *fn-bs-meta-format-7-scale-values*)
 ; A free-field profile no preset equals: T = 1000, K = 1000, the default's
-; 1 TiB history, and every codec-width field at its ceiling, as development's
-; are (so that it upgrades from development).
+; 1 TiB history, 64 MiB records and 16 MiB articles, and G at the codec
+; ceiling 65 535, as development's is (the defaults' 4096 is below it), so
+; that it upgrades from development.
 (defconst *sput-free*
-  (fn-bs-profile-set-fields *fn-bs-profile-defaults* '((2 . 1000) (8 . 1000))))
+  (fn-bs-profile-set-fields *fn-bs-profile-defaults*
+                            '((2 . 1000) (8 . 1000) (6 . 65535))))
 
 ; -----------------------------------------------------------------------------
 ; The relation: valid NEW, admitted OLD, different, no field smaller.

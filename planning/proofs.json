@@ -3206,6 +3206,41 @@
         "fn-bprt-next-hop-deterministic-in-the-table",
         "fn-bprt-next-hop-names-a-live-matching-route"
       ]
+    },
+    {
+      "id": "PRF-080",
+      "title": "Bounds join: an article the profile admits is a record it publishes; the group-name ceiling is the label width; a refused operator article names the profile bound",
+      "statement": "fn-bs-profile-admits-every-article-record (books/byte-store-frame.lisp): under a profile a store runs under (fn-bs-profile-admittedp), every record whose payload is at most the article field A and whose group count is at most G encodes (fn-record-encode) to at most the record field R; it rests on fn-record-encode-length-bound and the validity relation R >= fn-record-encoded-octets-ceiling A G (:max-record-octets-below-the-article-record in fn-bs-profile-validp, which the host calls through fn-bs-profile-init-verdict, host/store-host.lisp:385, fn-profile-upgrade-verdict, :429, and fn-bs-profile-admittedp at install, host/owner-host.lisp:219). The format-7 translation takes G and the group name at the codec ceilings and R as the larger of H/T and the article record of (A, G). fn-cfg-labelp-of-record-group-name (books/config.lisp): every group name the record codec admits is a configuration label, the one statement relating *fn-record-max-group-name* and *fn-cfg-max-label*. fn-native-control-refusal-status-is-a-refusal (books/native-control.lisp): the control word for a refused operator submission (:article-exceeds-profile-bound for the injection reason :oversize, else :refused) is in the FNCT reply vocabulary and of class refused; host/native/owner.lisp fnn-owner-control-submit-serialized calls it through fn-native-control-host-refusal-status. Covered scope: record encodings under a valid profile; the frame :blob width (131,072) and the owner's per-octet recursion at take are not covered.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-002",
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-072"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/byte-store-frame.lisp",
+        "books/config.lisp",
+        "books/native-control.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/byte-store-frame-tests.lisp",
+        "tests/acl2/config-tests.lisp",
+        "tests/acl2/native-control-tests.lisp",
+        "tests/acl2/nntp-post-tests.lisp",
+        "tests/test_native_bounds_join.py",
+        "planning/evidence/bounds-join-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T053008Z-1001454.json",
+        "planning/evidence/manifests/certify-20260925T050452Z-738350.json"
+      ],
+      "progress_note": "Lane bounds-join (2026-09-25). Teeth in tests/acl2/byte-store-frame-tests.lisp: a tight witness (R equal to the article record of its (A, G)); one refusal by name per argument of the relation; a concrete counterexample per hypothesis (a non-profile reads R = 0 while an empty record encodes to 70 octets; 196,609 payload octets in one group; six 256-octet groups at A). config-tests: a 256-octet group name is a 256-octet label; a 257-octet string is not a label. native-control-tests: the named status survives the sealed reply and exits 1; :uncertain and :fault are not refusals.",
+      "events": [
+        "fn-bs-profile-admits-every-article-record",
+        "fn-cfg-labelp-of-record-group-name",
+        "fn-native-control-refusal-status-is-a-refusal"
+      ]
     }
   ]
 }

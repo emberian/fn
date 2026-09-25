@@ -36,10 +36,11 @@ DEVELOPER = verbs.DEVELOPER
 EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs.EXIT_UNCERTAIN
 
 # The two preset frames `init --profile development|scale` writes in format 8
-# (planning/evidence/bounds-p1-2026-09-25.md); the format-7 frames of the same
+# (planning/evidence/bounds-join-2026-09-25.md: the translation carries the
+# codec-ceiling G and R = the article record); the format-7 frames of the same
 # presets are in planning/evidence/m5-capacity-2026-09-24.md.
-DEVELOPMENT_FRAME = "ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364"
-SCALE_FRAME = "267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3"
+DEVELOPMENT_FRAME = "e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407"
+SCALE_FRAME = "27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce"
 BUDGET = {"old": {128}, "new": {4096}, "either": {128, 4096}}
 FRAME = {128: DEVELOPMENT_FRAME, 4096: SCALE_FRAME}
 
@@ -288,6 +289,8 @@ class OperatorFieldsTests(ProfileUpgradeFixture):
         self.stop(owner)
         self.assertEqual(served[1000].returncode, EXIT_OK, served[1000].stderr.decode())
         self.assertEqual(served[20001].returncode, EXIT_REFUSED, served[20001].stderr.decode())
+        # The owner's reason crosses the control socket (the bounds join).
+        self.assertIn(b"ARTICLE-EXCEEDS-PROFILE-BOUND", served[20001].stderr)
         self.assertEqual(self.headroom()["transactions-used"], 3)
 
     def test_a_raise_of_any_field_and_a_shrink_refused_by_name(self):
