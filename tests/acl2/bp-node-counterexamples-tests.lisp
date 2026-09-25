@@ -1222,8 +1222,8 @@
          0)))
 
 ;; Teeth of fn-bpnr-recover-from-checkpoint-equals-full-recover, one per
-;; hypothesis.  Real rows: row A is the kind-5 record the trace persisted
-;; for bundle A at (1 . 0), arrival 0.  Over plan0 (:none) and rows0 (A),
+;; hypothesis.  Real rows: row A is the kind-5 row (fn-bpnf-publication-
+;; authorize's name and frame) of bundle A's held row at (1 . 0), arrival 0.  Over plan0 (:none) and rows0 (A),
 ;; the recovery event names epoch E = 2; the published checkpoint's frontier
 ;; is (2 . 0).  Row B is the kind-5 record of the second bundle at (3 . 0),
 ;; arrival 1 (written after the reopen); row B2 the same record at (2 . 0),
@@ -1231,7 +1231,9 @@
 (defun bpcx-n16-row (answer)
   (let ((effect (car (fn-bpnf-answer-effects answer))))
     (list (fn-bpnf-stored-record-name (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect))
-          (fn-bpnf-stored-record-frame (fn-bpn-nth 3 effect)))))
+          (fn-bpnf-stored-record-frame
+           (fn-bpnf-stored-record (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect)
+                                  (fn-bpn-nth 3 effect))))))
 (defun bpcx-n16-rows0 () (list (bpcx-n16-row *bpcx-a-proposal*)))
 (defun bpcx-n16-full0 ()
   (fn-bpnr-recover-auto-event *bpcx-raw-s0* nil :ready (bpcx-n16-rows0) '(:none)))
