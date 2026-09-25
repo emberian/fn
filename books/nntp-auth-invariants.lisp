@@ -471,11 +471,12 @@
   :hints (("Goal" :in-theory (enable fn-served-connp)))))
 
 (local (defthm fn-served-nine-list-rebuilt
-  (implies (and (true-listp c) (equal (len c) 9))
+  (implies (and (true-listp c) (equal (len c) 10))
            (equal (list (car c) (cadr c) (caddr c) (cadddr c)
                         (car (cddddr c)) (cadr (cddddr c))
                         (caddr (cddddr c)) (cadddr (cddddr c))
-                        (car (cddddr (cddddr c))))
+                        (car (cddddr (cddddr c)))
+                        (cadr (cddddr (cddddr c))))
                   c))
   :hints (("Goal" :in-theory (union-theories
                               '(len true-listp car-cons cdr-cons
@@ -489,7 +490,7 @@
                    (fn-served-conn-archive c) (fn-served-conn-config c)
                    (fn-served-conn-observation c)
                    (fn-served-conn-injection c) (fn-served-conn-verdicts c)
-                   (fn-served-conn-index c) (fn-served-conn-group-index c))
+                   (fn-served-conn-index c) (fn-served-conn-group-index c) (fn-served-conn-control c))
                   c))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-served-conn-shapep
@@ -500,6 +501,7 @@
                                 fn-served-conn-injection
                                 fn-served-conn-verdicts fn-served-conn-index
                                 fn-served-conn-group-index
+                                fn-served-conn-control
                                 fn-ag-car fn-ag-cdr)
                               (theory 'ground-zero))
            :use ((:instance fn-served-nine-list-rebuilt))))))

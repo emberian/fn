@@ -1,6 +1,8 @@
 ; fn: what a reader is told about a withdrawal (packet C3, brief control-c3d
-; step 1).  A kernel for the served answers; no caller yet (the wiring is
-; the continuation's, see planning/evidence/control-c3d-2026-09-25.md).
+; step 1; wired by control-c3e).  The served answers: the pinned dispatcher
+; `fn-nntp-archive-command-pinned' (books/nntp.lisp) reads the control pin
+; below from its index argument, and books/nntp-control.lisp states its three
+; arms over this kernel.
 ;
 ; A pinned view serves `fn-ctl-visible-articles' of its raw article list
 ; (books/control-visible.lisp).  What it withdrew is the rest of that list,
@@ -26,8 +28,9 @@
 ;
 ; Prefix `fn-ctl-' (docs/prefixes.md).
 (in-package "ACL2")
-(include-book "control-visible")
+(include-book "control-authority")
 (include-book "nntp-projection")
+(include-book "msgid-index")
 
 ; -----------------------------------------------------------------------------
 ; The withdrawn list.
@@ -69,10 +72,13 @@
   :hints (("Goal" :in-theory (disable fn-ctl-withdrawn-by-p))))
 
 ; The merge: RAW with the subsequence VISIBLE removed, walking both once.
+; Once VISIBLE is exhausted the rest of RAW is withdrawn; it is copied as a
+; true list (at most the withdrawn list's length) so the result is exactly
+; the withdrawn list for any RAW.
 (defun fn-ctl-subseq-diff (raw visible)
   (declare (xargs :guard t))
   (cond ((not (consp raw)) nil)
-        ((not (consp visible)) raw)
+        ((not (consp visible)) (true-list-fix raw))
         ((equal (car raw) (car visible))
          (fn-ctl-subseq-diff (cdr raw) (cdr visible)))
         (t (cons (car raw) (fn-ctl-subseq-diff (cdr raw) visible)))))
@@ -93,9 +99,8 @@
                   (fn-ctl-subseq-diff raw visible))))
 
 (defthm fn-ctl-visible-filter-nil-means-all-withdrawn
-  (implies (and (not (consp (fn-ctl-visible-filter xs ws arts verdicts)))
-                (true-listp xs))
-           (equal (fn-ctl-withdrawn-filter xs ws arts verdicts) xs))
+  (implies (not (consp (fn-ctl-visible-filter xs ws arts verdicts)))
+           (equal (fn-ctl-withdrawn-filter xs ws arts verdicts) (true-list-fix xs)))
   :hints (("Goal" :in-theory (disable fn-ctl-withdrawn-by-p))))
 
 (defthm fn-ctl-visible-filter-car-is-a-member
@@ -112,20 +117,24 @@
 ; Identical articles have the same status, so the greedy merge never pairs
 ; a dropped article with a kept one: no distinctness is needed.
 (defthm fn-ctl-subseq-diff-of-filter
-  (implies (true-listp xs)
-           (equal (fn-ctl-subseq-diff xs (fn-ctl-visible-filter xs ws arts verdicts))
-                  (fn-ctl-withdrawn-filter xs ws arts verdicts)))
+  (equal (fn-ctl-subseq-diff xs (fn-ctl-visible-filter xs ws arts verdicts))
+         (fn-ctl-withdrawn-filter xs ws arts verdicts))
   :hints (("Goal" :induct (fn-ctl-withdrawn-filter xs ws arts verdicts)
            :in-theory (disable fn-ctl-withdrawn-by-p))))
 
+(defthm fn-ctl-subseq-diff-of-visible-articles
+  (equal (fn-ctl-subseq-diff raw (fn-ctl-visible-articles raw ws verdicts))
+         (fn-ctl-withdrawn-articles raw ws verdicts))
+  :hints (("Goal" :in-theory (disable fn-ctl-subseq-diff fn-ctl-visible-filter
+                                      fn-ctl-withdrawn-filter))))
+
 ; KEYSTONE (the carried withdrawn list).  When the carried W was the merge
 ; of the old raw and visible lists and the new visible list is the view's,
-; the refresh's W is the withdrawn list of the new raw list: exactly what
+; the refresh's W is the withdrawn list of the new raw list (any RAW): exactly what
 ; the view does not serve (`fn-ctl-withdrawn-is-the-complement').
 (defthm fn-ctl-refresh-withdrawn-is-withdrawn
   (implies (and (equal old-withdrawn (fn-ctl-subseq-diff old-raw old-visible))
-                (equal visible (fn-ctl-visible-articles raw ws verdicts))
-                (true-listp raw))
+                (equal visible (fn-ctl-visible-articles raw ws verdicts)))
            (equal (fn-ctl-refresh-withdrawn raw old-raw visible old-visible
                                             old-withdrawn)
                   (fn-ctl-withdrawn-articles raw ws verdicts)))
@@ -432,7 +441,120 @@
                           "unknown")))
           (t "none"))))
 
+;; -----------------------------------------------------------------------------
+;; The control pin a served connection carries (control-c3e): the view's
+;; withdrawn list W and the withdrawal records WS it was decided under, pinned
+;; at open or advance with the archive, so a reader never sees a later
+;; decision.  The pinned dispatcher reads it from the fourth slot of the group
+;; pin (`fn-gidx-pin-with-control', books/group-bucket-index.lisp).
+
+(defun fn-ctl-pin (withdrawn ws)
+  (declare (xargs :guard t))
+  (list :fn-control withdrawn ws))
+
+(defun fn-ctl-pin-withdrawn (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr x)))
+
+(defun fn-ctl-pin-ws (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr x))))
+
+(defthm fn-ctl-pin-withdrawn-of-pin
+  (equal (fn-ctl-pin-withdrawn (fn-ctl-pin withdrawn ws)) withdrawn))
+(defthm fn-ctl-pin-ws-of-pin
+  (equal (fn-ctl-pin-ws (fn-ctl-pin withdrawn ws)) ws))
+(defthm fn-ctl-pin-withdrawn-of-nil
+  (equal (fn-ctl-pin-withdrawn nil) nil))
+
+;; The served lookups, over the pinned Message-ID trie of the visible list
+;; instead of a scan of it.  A target that is not a non-empty string (no
+;; parsed Control or Supersedes names one) takes the scan, which the trie
+;; cannot answer; the reader never reaches that case with a found target.
+
+(defun fn-ctl-served-held (msgid trie visible withdrawn)
+  (declare (xargs :guard t))
+  (or (fn-ctl-msgid-withdrawn msgid withdrawn)
+      (if (consp (fn-midx-key-chars msgid))
+          (let ((hit (fn-midx-lookup msgid trie)))
+            (if (consp hit) hit nil))
+        (fn-ctl-msgid-withdrawn msgid visible))))
+
+(defthm fn-ctl-find-article-is-msgid-withdrawn
+  (implies (stringp msgid)
+           (equal (if (consp (fn-find-article msgid xs))
+                      (fn-find-article msgid xs)
+                    nil)
+                  (fn-ctl-msgid-withdrawn msgid xs)))
+  :hints (("Goal" :in-theory (enable fn-find-article fn-ctl-msgid-withdrawn))))
+
+; KEYSTONE (the served lookup is the kernel's).  Over the trie of the
+; visible list, the served lookup finds what `fn-ctl-find-held' finds.
+(defthm fn-ctl-served-held-is-find-held
+  (implies (fn-midx-correspondencep trie visible)
+           (equal (fn-ctl-served-held msgid trie visible withdrawn)
+                  (fn-ctl-find-held msgid visible withdrawn)))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-find-held fn-midx-correspondencep
+                                   fn-midx-key-chars)
+                                  (fn-midx-lookup fn-midx-build
+                                   fn-find-article fn-ctl-msgid-withdrawn
+                                   fn-ctl-find-article-is-msgid-withdrawn))
+           :use ((:instance fn-ctl-find-article-is-msgid-withdrawn
+                            (xs visible))
+                 (:instance fn-midx-lookup-of-build-is-find-article-for-nonempty
+                            (articles visible))))))
+
+; The served :fn-control status: `fn-ctl-control-status' with the held
+; target found through the trie.
+(defun fn-ctl-served-status (c trie visible withdrawn ws verdicts)
+  (declare (xargs :guard t))
+  (let* ((msgid (and (consp c) (fn-article-msgid c)))
+         (target (and (consp c) (fn-ctl-target-octets (fn-article-payload c))))
+         (plan (fn-ctl-withdrawal-plan msgid (fn-ctl-lookup-verdict msgid verdicts)
+                                       target nil)))
+    (cond ((not target) (list :none))
+          ((not (fn-ctl-withdrawalp plan)) (list :declined (fn-ctl-at 1 plan)))
+          (t (let ((rec (fn-ctl-cause-record ws msgid target)))
+               (if (not rec)
+                   (list :declined :no-record)
+                 (let ((held (fn-ctl-served-held target trie visible withdrawn)))
+                   (if (not held)
+                       (list :owed)
+                     (let ((effect (fn-ctl-withdrawal-effect
+                                    rec (fn-article-groups held)
+                                    (fn-ctl-lookup-verdict target verdicts))))
+                       (if (fn-ctl-effect-withdrawsp effect)
+                           (list :executed effect)
+                         (list :declined (fn-ctl-at 1 effect))))))))))))
+
+(defthm fn-ctl-served-status-is-control-status
+  (implies (fn-midx-correspondencep trie visible)
+           (equal (fn-ctl-served-status c trie visible withdrawn ws verdicts)
+                  (fn-ctl-control-status c visible withdrawn ws verdicts)))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-control-status)
+                                  (fn-ctl-served-held fn-ctl-find-held
+                                   fn-midx-correspondencep
+                                   fn-ctl-withdrawal-plan fn-ctl-withdrawalp
+                                   fn-ctl-withdrawal-effect fn-ctl-effect-withdrawsp
+                                   fn-ctl-cause-record fn-ctl-target-octets
+                                   fn-ctl-lookup-verdict)))))
+
+; The article the reader names in `HDR :fn-control <msgid>': served or
+; withdrawn, found as the held target is.
+(defthm fn-ctl-find-held-is-in-raw
+  (implies (fn-ctl-find-held m (fn-ctl-visible-articles raw ws verdicts)
+                             (fn-ctl-withdrawn-articles raw ws verdicts))
+           (member-equal (fn-ctl-find-held m (fn-ctl-visible-articles raw ws verdicts)
+                                           (fn-ctl-withdrawn-articles raw ws verdicts))
+                         raw))
+  :hints (("Goal" :in-theory (disable fn-ctl-find-held fn-ctl-visible-articles
+                                      fn-ctl-withdrawn-articles)
+           :use ((:instance fn-ctl-find-held-is-held
+                            (visible (fn-ctl-visible-articles raw ws verdicts))
+                            (withdrawn (fn-ctl-withdrawn-articles raw ws verdicts)))))))
+
 (in-theory (disable (:d fn-ctl-withdrawn-filter) (:d fn-ctl-subseq-diff)
                     (:d fn-ctl-refresh-withdrawn) (:d fn-ctl-control-status)
                     (:d fn-ctl-cause-record) (:d fn-ctl-find-held)
-                    (:d fn-ctl-msgid-withdrawn)))
+                    (:d fn-ctl-msgid-withdrawn) (:d fn-ctl-served-held)
+                    (:d fn-ctl-served-status)))

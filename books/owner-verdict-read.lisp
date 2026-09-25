@@ -133,7 +133,7 @@
    wire (fn-served-conn-session conn) (fn-served-conn-archive conn)
    (fn-served-conn-config conn) (fn-served-conn-observation conn)
    (fn-served-conn-injection conn) (fn-served-conn-verdicts conn)
-   (fn-served-conn-index conn) (fn-served-conn-group-index conn)))
+   (fn-served-conn-index conn) (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
 (defthm fn-ovr-feed-byte-silent
   (implies (not (consp (fn-wire-result-events
                  (fn-wire-feed-byte (fn-served-conn-wire conn) byte))))
@@ -163,12 +163,14 @@
                               fn-served-conn-archive fn-served-conn-config
                               fn-served-conn-observation fn-served-conn-injection
                               fn-served-conn-verdicts fn-served-conn-index
-                              fn-served-conn-group-index)
+                              fn-served-conn-group-index fn-served-conn-control)
            :expand ((len conn) (len (cdr conn)) (len (cddr conn)) (len (cdddr conn))
                     (len (cddddr conn)) (len (cdr (cddddr conn)))
                     (len (cddr (cddddr conn))) (len (cdddr (cddddr conn)))
                     (len (cddddr (cddddr conn)))
                     (len (cdr (cddddr (cddddr conn))))
+                    (len (cddr (cddddr (cddddr conn))))
+                    (true-listp (cddr (cddddr (cddddr conn))))
                     (true-listp conn) (true-listp (cdr conn)) (true-listp (cddr conn))
                     (true-listp (cdddr conn)) (true-listp (cddddr conn))
                     (true-listp (cdr (cddddr conn))) (true-listp (cddr (cddddr conn)))
@@ -473,7 +475,7 @@
                          (fn-own-clock o)
                          (fn-own-conn-verdicts (fn-own-find-conn id (fn-own-conns o)))
                          (fn-own-conn-index (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-group-index (fn-own-find-conn id (fn-own-conns o)))))))
+                         (fn-own-conn-group-index (fn-own-find-conn id (fn-own-conns o))) (fn-own-conn-control (fn-own-find-conn id (fn-own-conns o)))))))
            :in-theory (e/d (fn-own-read fn-own-finish-read)
                            (fn-served-step-hdr-fn-verified-is-the-pinned-verdict
                             fn-served-step fn-own-conn-live-session

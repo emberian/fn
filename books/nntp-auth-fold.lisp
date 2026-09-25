@@ -774,7 +774,7 @@
    (fn-served-conn-injection conn)
    (fn-served-conn-verdicts conn)
    (fn-served-conn-index conn)
-   (fn-served-conn-group-index conn)))
+   (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
 
 (defthm fn-auth-fold-fed-conn-is-a-connection
   (implies (fn-served-connp conn)

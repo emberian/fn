@@ -208,7 +208,7 @@
                           (fn-served-conn-injection conn)
                           (fn-served-conn-verdicts conn)
                           (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn))
+                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
      (mbe :logic (append effects
                          (if submission
                              (list (fn-served-submit-effect submission))
@@ -288,7 +288,7 @@
                           (fn-served-conn-injection conn)
                           (fn-served-conn-verdicts conn)
                           (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn))
+                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
      (fn-wire-result-events fed) live trie arts)))
 
 (defthm fn-scar-feed-byte-is-served-feed-byte
@@ -325,7 +325,7 @@
                               (fn-served-conn-injection conn)
                               (fn-served-conn-verdicts conn)
                               (fn-served-conn-index conn)
-                              (fn-served-conn-group-index conn)))
+                              (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
                             (events
                              (fn-wire-result-events
                               (fn-wire-feed-byte

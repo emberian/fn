@@ -132,6 +132,18 @@
 ; -----------------------------------------------------------------------------
 ; The owner relation (proof vocabulary; never executed)
 
+; A connection's control pin (control-c3e) is its view's: the pinned archive
+; serves RAW's visible list under the pinned records, and W is the rest of
+; RAW (`fn-ctl-subseq-diff', which is `fn-ctl-withdrawn-articles' by
+; `fn-ctl-subseq-diff-of-filter').  RAW is the connection's pinned prefix.
+(defun fn-own-control-okp (control archive verdicts raw)
+  (declare (xargs :guard t :verify-guards nil))
+  (or (null control)
+      (and (equal (fn-state-articles archive)
+                  (fn-ctl-visible-articles raw (fn-ctl-pin-ws control) verdicts))
+           (equal (fn-ctl-pin-withdrawn control)
+                  (fn-ctl-subseq-diff raw (fn-state-articles archive))))))
+
 (defun fn-own-conn-okp (conn groups capacity records)
   (declare (xargs :guard t))
   (and (fn-own-conn-shapep conn)
@@ -150,6 +162,13 @@
                 (equal (fn-own-conn-group-index conn)
                        (fn-gidx-build
                         (fn-state-articles (fn-own-conn-archive conn)))))
+       (fn-own-control-okp (fn-own-conn-control conn)
+                           (fn-own-conn-archive conn)
+                           (fn-own-conn-verdicts conn)
+                           (fn-state-articles
+                            (fn-own-prefix-archive groups capacity records
+                                                   (fn-own-conn-version conn)
+                                                   (fn-own-conn-frontier conn))))
        (fn-own-conn-boundedp conn groups)))
 
 (defun fn-own-conns-okp (conns groups capacity records)
@@ -183,7 +202,27 @@
        (implies (fn-own-view-group-index view)
                 (equal (fn-own-view-group-index view)
                        (fn-gidx-build
-                        (fn-state-articles (fn-own-view-archive view)))))))
+                        (fn-state-articles (fn-own-view-archive view)))))
+       (equal (fn-own-view-withdrawn view)
+              (fn-ctl-subseq-diff (fn-own-view-raw view)
+                                  (fn-state-articles (fn-own-view-archive view))))))
+
+; The control pin a connection takes from its view at open or advance.
+(defthm fn-own-view-control-okp
+  (implies (fn-own-view-okp view groups capacity records)
+           (fn-own-control-okp (fn-own-view-control view)
+                               (fn-own-view-archive view)
+                               (fn-own-view-verdicts view)
+                               (fn-state-articles
+                                (fn-own-prefix-archive
+                                 groups capacity records
+                                 (fn-own-view-version view)
+                                 (fn-own-view-frontier view)))))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-visible-state)
+                                  (fn-own-prefix-archive fn-ctl-visible-articles
+                                   fn-ctl-subseq-diff)))))
+
+(in-theory (disable fn-own-control-okp))
 
 (defun fn-own-ledger-durablep (ledger records)
   (declare (xargs :guard t))
@@ -739,7 +778,7 @@
   (equal (fn-own-conn-boundedp
           (fn-own-conn-make-group-indexed id version frontier wire session
                                           archive config observation verdicts
-                                          index buckets)
+                                          index buckets control)
           groups)
          (fn-own-conn-boundedp
           (fn-own-conn-make-indexed id version frontier wire session archive
@@ -1518,7 +1557,10 @@
                                                 (fn-state-articles archive))
                                                (fn-gidx-build
                                                 (fn-state-articles archive))
-                                               nil (fn-state-articles prefix)))
+                                               nil (fn-state-articles prefix)
+                                               (fn-ctl-subseq-diff
+                                                (fn-state-articles prefix)
+                                                (fn-state-articles archive))))
                                             nil 0 max-conns nil nil nil nil
                                             nil nil nil nil))))
            :in-theory (e/d (fn-own-relation fn-midx-correspondencep
@@ -1609,7 +1651,7 @@
                        (fn-own-clock o)
                        (fn-own-conn-verdicts conn)
                        (fn-own-conn-index conn)
-                       (fn-own-conn-group-index conn))
+                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
                       octets)))))
   :hints (("Goal"
            :use (fn-own-conn-serves-a-projection
@@ -1645,7 +1687,7 @@
                        (fn-own-clock final)
                        (fn-own-conn-verdicts conn)
                        (fn-own-conn-index conn)
-                       (fn-own-conn-group-index conn))
+                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
                       octets)))))
   :hints (("Goal" :use (fn-own-run-preserves-relation
                         (:instance fn-own-read-is-served-step-on-pinned-prefix
@@ -1686,7 +1728,7 @@
                        (fn-own-clock o)
                        (fn-own-conn-verdicts conn)
                        (fn-own-conn-index conn)
-                       (fn-own-conn-group-index conn))
+                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
                       event)))))
   :hints (("Goal"
            :use (fn-own-conn-serves-a-projection
@@ -1722,7 +1764,7 @@
                        (fn-own-clock final)
                        (fn-own-conn-verdicts conn)
                        (fn-own-conn-index conn)
-                       (fn-own-conn-group-index conn))
+                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
                       event)))))
   :hints (("Goal" :use (fn-own-run-preserves-relation
                         (:instance fn-own-reader-sees-pinned-prefix-replay
@@ -2453,7 +2495,7 @@
                                 (fn-own-find-conn id (fn-own-conns o)))
                                (fn-own-view-verdicts (fn-own-view o))
                                (fn-own-view-index (fn-own-view o))
-                               (fn-own-view-group-index (fn-own-view o))))))
+                               (fn-own-view-group-index (fn-own-view o)) (fn-own-view-control (fn-own-view o))))))
             :in-theory (e/d (fn-own-relation fn-own-advance fn-own-set-conns)
                             (fn-own-conn-boundedp fn-own-find-conn-okp
                              fn-own-conn-make-group-indexed
@@ -2618,7 +2660,7 @@
                        (fn-own-conn-archive conn) (fn-own-conn-config conn)
                        (fn-own-conn-observation conn) (fn-own-clock o)
                        (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
-                       (fn-own-conn-group-index conn))
+                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
                       (if (equal word :durable) :durable :uncertain))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-outcome fn-own-outcome-completion

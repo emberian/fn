@@ -244,6 +244,67 @@
 (in-theory (disable fn-gidx-counts-line fn-gidx-counts-lines
                     fn-gidx-list-counts-command))
 
+; Withdrawal answers (packet C3, control-c3e).  The group pin's fourth slot
+; carries the control pin of the view the connection is pinned to
+; (`fn-ctl-pin': its withdrawn list W and withdrawal records WS,
+; books/control-served.lisp).  A number or Message-ID the pinned archive does
+; not hold but W does is answered `423 withdrawn' or `430 withdrawn' instead
+; of the plain "no article" (RFC 3977 section 6.2.1.2 lets a removed article
+; become unavailable; the text says why), and `HDR :fn-control <msgid>'
+; states the withdrawing article's status (design 2026-09-25 section 2.5).
+; Cost: one walk of W per retrieval by number or Message-ID (W holds only
+; withdrawn articles), then the archive scan the retrieval already performs
+; or one trie lookup; HDR :fn-control is two lookups for the article, two
+; for its target, and one walk of WS.  books/nntp-control.lisp states the
+; arms over the kernel.
+(include-book "control-served")
+
+(defun fn-nntp-number-withdrawn-p (session archive index token)
+  (declare (xargs :guard t))
+  (let ((group (fn-nntp-session-group session)))
+    (and group
+         (fn-nntp-number-tokenp token)
+         (let ((number (fn-nntp-decimal-value token)))
+           ; `fn-ctl-number-withdrawn' is this lookup in W.
+           (and (consp (fn-nntp-find-group-number
+                        group number
+                        (fn-ctl-pin-withdrawn (fn-gidx-pin-control index))))
+                (not (consp (fn-nntp-find-group-number
+                             group number (fn-state-articles archive)))))))))
+
+(defun fn-nntp-msgid-withdrawn-p (index token)
+  (declare (xargs :guard t))
+  (and (fn-octet-listp token)
+       (fn-ctl-msgid-withdrawn (fn-nntp-token-string token)
+                               (fn-ctl-pin-withdrawn (fn-gidx-pin-control index)))
+       (not (consp (fn-midx-lookup (fn-nntp-token-string token)
+                                   (fn-gidx-pin-trie index))))
+       t))
+
+(defun fn-nntp-control-hdr-response (session archive index verdicts args)
+  (declare (xargs :guard t))
+  (if (and (consp args) (consp (cdr args)) (null (cddr args))
+           (fn-nntp-message-id-tokenp (cadr args))
+           (fn-octet-listp (cadr args)))
+      (let* ((control (fn-gidx-pin-control index))
+             (trie (fn-gidx-pin-trie index))
+             (visible (fn-state-articles archive))
+             (withdrawn (fn-ctl-pin-withdrawn control))
+             (c (fn-ctl-served-held (fn-nntp-token-string (cadr args))
+                                    trie visible withdrawn)))
+        (if (not (consp c))
+            (fn-nntp-single session "430 no article with that message-id")
+          (fn-nntp-multi
+           session (fn-nntp-hdr-initial nil)
+           (list (fn-nntp-hdr-line
+                  (fn-nntp-decimal-field 0)
+                  (fn-nntp-string-octets
+                   (fn-ctl-control-item
+                    (fn-ctl-served-status c trie visible withdrawn
+                                          (fn-ctl-pin-ws control) verdicts)
+                    (fn-ctl-target-octets (fn-article-payload c)))))))))
+    (fn-nntp-single session "501 syntax error")))
+
 (defun fn-nntp-archive-command-pinned
     (session archive index verdicts env keyword args)
   (cond
@@ -254,6 +315,21 @@
          (fn-nntp-keywordp (car args) "COUNTS"))
     (fn-gidx-list-counts-command
      session archive (fn-gidx-pin-buckets index) (cdr args)))
+   ((and (or (fn-nntp-keywordp keyword "ARTICLE")
+             (fn-nntp-keywordp keyword "HEAD")
+             (fn-nntp-keywordp keyword "BODY")
+             (fn-nntp-keywordp keyword "STAT"))
+         (consp args) (null (cdr args))
+         (fn-nntp-number-withdrawn-p session archive index (car args)))
+    (fn-nntp-single session "423 withdrawn"))
+   ((and (or (fn-nntp-keywordp keyword "ARTICLE")
+             (fn-nntp-keywordp keyword "HEAD")
+             (fn-nntp-keywordp keyword "BODY")
+             (fn-nntp-keywordp keyword "STAT"))
+         (consp args) (null (cdr args))
+         (fn-nntp-message-id-tokenp (car args))
+         (fn-nntp-msgid-withdrawn-p index (car args)))
+    (fn-nntp-single session "430 withdrawn"))
    ((and (or (fn-nntp-keywordp keyword "ARTICLE")
              (fn-nntp-keywordp keyword "HEAD")
              (fn-nntp-keywordp keyword "BODY")
@@ -283,6 +359,10 @@
          (consp args)
          (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
     (fn-nntp-verdict-hdr-response session archive verdicts args))
+   ((and (fn-nntp-keywordp keyword "HDR")
+         (consp args)
+         (fn-nntp-keywordp (car args) ":FN-CONTROL"))
+    (fn-nntp-control-hdr-response session archive index verdicts args))
    (t (fn-nntp-archive-command session archive env keyword args))))
 
 (defun fn-nntp-command-pinned (session archive index verdicts env tokens)
@@ -315,6 +395,14 @@
                    session archive index verdicts env tokens)
                 (fn-nntp-single session "501 syntax error")))))
       (fn-nntp-single session "501 syntax error"))))
+
+(defthm fn-nntp-control-hdr-response-preserves-session
+  (equal (fn-nntp-result-session
+          (fn-nntp-control-hdr-response session archive index verdicts args))
+         session))
+
+(in-theory (disable fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p
+                    fn-nntp-control-hdr-response))
 
 (verify-guards fn-nntp-archive-command-pinned)
 (verify-guards fn-nntp-command-pinned)
