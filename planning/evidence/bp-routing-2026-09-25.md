@@ -82,24 +82,82 @@ Over 10 s at 2 jobs:
 - native-admin-peer: 12.7 s in run af19, against 8.2 s before. The
   `contact` peel adds a case to its plan theorems.
 
-## Native
+## Certification, continued (two runs granted by the coordinator)
 
-**Not run.** The DTN developer image needs the whole dtn-profile closure
-certified, and native-admin plus native-operator have no certificate at the
-final bytes (above). Staged but not run:
-- tests/test_bp_node_native.py. Every node now enrols `contact <relay port>`
-  and `bp-route add <peer>* <boundary>`. The new
-  `test_removed_route_keeps_transit_held_and_reports_no_route` removes the
-  route and expects `BP forwarding no-route destination=dtn://sender/
-  decision=no-route` with no kind 8 and the kind 5 held. It then adds the
-  route back and expects the forward to settle as `status=sent`.
-- tests/bp-dtn7/run_fn_dtn7_app_receipt.py adds the topology as route rows.
+| Run | Manifest (sha256/16) | Result |
+| --- | --- | --- |
+| 7e3e @ 1bf6d8e1 | certify-20260925T044231Z-2513080 (a98ee5e71515b9ec) | 30/30 passed: native-admin 8.3 s, bridge, premises, guards 10.8 s, counterexamples, and the native-operator tests. |
+| 390d @ cca6f61b | certify-20260925T045027Z-2521559 (5f179842916c1f2c) | 4/4 passed: native-operator, native-operator-host and their tests, each about 4 s. |
 
-The lab log SHAs are owed with the run.
+091f8f78 (`bp-route remove` gets its own kind) has **no manifest**. Both
+granted runs were used. bp-route and native-admin load fully in a proof
+REPL on hbox. The owed run is `--affected-by books/bp-route.lisp
+--affected-by books/native-admin.lisp`.
+
+## Native (hbox, gate /tank/fn/gates/bp-routing-cca6f61b)
+
+**Image.** DTN developer image built from the composed artifact set
+664f12f3 (304 books, `proof_artifacts acquire --profile dtn`) under
+`swarm-build`:
+- launcher `5dc6446636f3d543`;
+- core `2e898f11e1cac104`;
+- build log `7c021081ad622b4c`.
+
+The first image attempt, on 1bf6d8e1, failed only because the environment
+lacked `FN_OPENSSL_PREFIX`. With the image built, `tests.test_bp_node_native`
+went 1/23 on that image: `fn operator … bp-route` was refused
+`:unsupported-command` by `fn-nop-parse-command`. That is fixed in
+cca6f61b.
+
+**`tests.test_bp_node_native` on cca6f61b.** 23 tests, **22 passed, 1
+failed**, 558 s, log `df160b61e98a207d`.
+- Passed: every existing forwarding case. These include the MRU wait, death
+  after kind 8, the uncertain transfer with resume, and the older unrouted
+  transit. They all now run with contact rows and route rows, through the
+  routed session.
+- Failed: `test_removed_route_keeps_transit_held_and_reports_no_route`.
+  `bp-route remove` was refused `:no-such-peer`, because the offline
+  `fn-store-cfg-remove-peer` requires a typed peer. It is fixed in 091f8f78
+  (kind `:remove-bp-route`), which has no manifest and no image. **The
+  removed-route native test has therefore not passed on an image.**
+
+**dtn7 app-receipt lab** (`--relays 1 --native`, dtn7-rs 0.21.0,
+/tank/fn/dtn7/repo):
+- **`--routes present`** (report out `3da324fba80252d0`): all 23 setup rc 0.
+  | Step | Outcome | Log SHA (16) |
+  | --- | --- | --- |
+  | 1 | uncertain | `7945ee97f8d017f6` |
+  | 2 | accepted | `578c18833c05c360` |
+  | 3 | request-accepted | `9cf365e01bcfb318` |
+  | 4 | receipt-accepted | a-serve `4800a8262f6a7ff1`, b-tick `517132e208f7f4b9` |
+  | 4b | control obligation `outstanding pinned=yes` | `c36b3ce3e6059da0` |
+  | 5 | both cuts `pinned=yes` | |
+  | end | `work-bp-node receipted pinned=no` | |
+
+  Route rows break nothing on this path.
+- **`--routes removed`** (report out `8a479ae4440ef9f5`): the remove in
+  setup was refused (setup rc 1), the same `:no-such-peer` defect. The run
+  went on with A's route in place:
+  | Step | Outcome | Log SHA (16) |
+  | --- | --- | --- |
+  | 1 | uncertain | `7945ee97f8d017f6` |
+  | 2 | accepted | `48383a3a029fef6a` |
+  | 3 | request-accepted | `bf0b13ad46095ffa` |
+  | 4 | receipt-accepted | a-serve `301ac7e6390b6dda`, b-tick `bb81006276683448` |
+  | end | `receipted pinned=no` | |
+
+  **Not demonstrated in this lab: "the pin stays and `no-route` is logged".**
+  Even with the remove fixed, it would not happen here. A's request is a
+  queued FNBS base job (`bp-obligation request`), and base jobs are not
+  routed (finding 1). The held-transit no-route behaviour is shown by the
+  ACL2 witness in bp-route-tests and staged in the native test above.
+
+Logs are in /tank/fn/scratch/bp-routing/logs; the first attempt's are in
+logs-1.
 
 ## Findings
 
-1. **FNBS base jobs are not routed.** These are `bp-obligation request`,
+1. **The routing gap that remains: FNBS base jobs are not routed.** These are `bp-obligation request`,
    receipts and reports sent by `bp-contact tick`, and `bp-service`. Each
    still carries the CONTACT-HOST:PORT it was queued with. In the dtn7 labs
    the fn endpoints send only through base jobs, so a removed route there
