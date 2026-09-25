@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 751 |
-| Certification roots in the Makefile | 740 |
-| Books inside the root closure | 749 |
-| `defthm` and `defthmd` events | 9998 |
-| `defun` events | 7083 |
+| Books read | 752 |
+| Certification roots in the Makefile | 741 |
+| Books inside the root closure | 750 |
+| `defthm` and `defthmd` events | 10007 |
+| `defun` events | 7092 |
 | Functions with verified guards | 2086 |
 | Functions declared `:verify-guards nil` and never verified | 480 |
-| Functions left at the default with an explicit guard | 3522 |
-| Functions left at the default with no guard | 995 |
-| `assert-event` checks | 11065 |
-| `must-fail` checks | 956 |
+| Functions left at the default with an explicit guard | 3527 |
+| Functions left at the default with no guard | 999 |
+| `assert-event` checks | 11067 |
+| `must-fail` checks | 966 |
 | `encapsulate` events | 31 |
 | Theorems flagged SUSPECT by shape | 89 |
 | Export-hygiene warnings | 118 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 66 |
-| Include-hygiene warnings | 739 |
+| Include-hygiene warnings | 741 |
 | Host-names warnings | 853 |
 | Hand-written-record warnings | 18 |
 
@@ -155,6 +155,7 @@ that `make certify` requests.
 | `books/bp-limits.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-native-app-fast.lisp` | root | 30 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/bp-native-app.lisp` | root | 6 | 43 | 0/0/43/0 | 0 | 0 | 0 |
+| `books/bp-node-busy-delivery.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-debt-cache-invariants.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-debt.lisp` | root | 2 | 17 | 0/0/17/0 | 0 | 0 | 0 |
 | `books/bp-node-dispatch.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -176,9 +177,9 @@ that `make certify` requests.
 | `books/bp-node-progress-bridge.lisp` | root | 17 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-guards.lisp` | root | 29 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/bp-node-progress-premises.lisp` | root | 43 | 5 | 0/3/0/2 | 0 | 0 | 1 |
+| `books/bp-node-progress-premises.lisp` | root | 45 | 5 | 0/3/0/2 | 0 | 0 | 1 |
 | `books/bp-node-progress-selection-invariants.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-node-progress.lisp` | root | 0 | 69 | 0/5/64/0 | 0 | 0 | 0 |
+| `books/bp-node-progress.lisp` | root | 0 | 74 | 0/5/69/0 | 0 | 0 | 0 |
 | `books/bp-node-receive-boundary.lisp` | root | 1 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-records.lisp` | root | 4 | 13 | 12/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-report-step.lisp` | root | 2 | 4 | 0/3/1/0 | 0 | 0 | 0 |
@@ -572,7 +573,7 @@ that `make certify` requests.
 | `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
-| `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 13 | 0/12/1/0 | 37 | 38 | 0 |
+| `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 17 | 0/12/1/4 | 39 | 48 | 0 |
 | `tests/acl2/bp-node-debt-cache-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 2 | 0 |
 | `tests/acl2/bp-node-debt-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 6 | 4 | 0 |
 | `tests/acl2/bp-node-forward-retry-tests.lisp` | root | 0 | 12 | 0/12/0/0 | 22 | 16 | 0 |
