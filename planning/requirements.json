@@ -1906,7 +1906,7 @@
     {
       "id": "STO-011",
       "title": "Open reads the newest verified exact-state checkpoint and replays at most K records after it, else replays in full and says so",
-      "specification": "specs/storage.md#checkpointing",
+      "specification": "specs/storage.md#checkpointing-the-store-checkpoint-that-open-reads-p3-2026-09-25",
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
