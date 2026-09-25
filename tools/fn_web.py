@@ -13,6 +13,9 @@ and verdict shown is the node's answer, never this process's decision.
 from __future__ import annotations
 
 import argparse
+import datetime
+import email.utils
+import subprocess
 from collections import OrderedDict
 import fcntl
 import getpass
@@ -46,6 +49,12 @@ MAX_ARTICLE_NUMBER = 9_999_999_999
 MAX_SUBMISSIONS = 128
 MAX_READ_NUMBERS = 4096
 MAX_REFERENCES = 800
+# Work per search request (numbers the node is asked to scan in one XPAT);
+# a bound on work, not on the group, which the next page continues past.
+SEARCH_SPAN = 2000
+MAX_SEARCH_HITS = 200
+MAX_RECORD = 65536
+MAX_SIGNED_EXTRA = 24576
 LOOPBACK = ("127.0.0.1", "::1")
 
 
@@ -82,10 +91,75 @@ class FormErrors:
         raise ValueError(message)
 
 
+class SigningError(Exception):
+    """Local signing failed; nothing was sent to the node."""
+
+
+class Signer:
+    """The login's hybrid key on this machine, and the fn image that signs with it.
+
+    The honest choice among the three (D28 spike record): the secret key stays
+    on the author's machine in a 0700 directory, and the signed preimage and
+    FN-Authorship carrier are rendered by ACL2 inside the local fn image
+    (`hybrid-sign-carrier`, which verifies both signatures before writing).
+    A browser-held key would need a JavaScript re-implementation of the ACL2
+    preimage and carrier codec (a second owner) and an unreviewed ML-DSA-65
+    library; a node signing verb would give the node custody of the secret,
+    so `verified` would mean only "the node says this login posted".  Trust
+    implied here: this machine, its fn image and the key directory's mode.
+
+    ;; SPIKE: defers the login-to-principal binding.  The node relates no
+    ;; AUTHINFO user to a hybrid principal; this client signs with whatever
+    ;; key directory it was given, and the node judges the carrier only
+    ;; against its enrollment of the principal inside it.
+    """
+
+    FILES = ("principal.bin", "ed-public.bin", "ed-secret.bin", "ml-public.pem",
+             "ml-private.pem")
+
+    def __init__(self, directory: Path, image: Path, tree: Optional[Path] = None):
+        self.directory = directory.expanduser().absolute()
+        self.image, self.tree = Path(image).absolute(), tree
+        info = self.directory.stat()
+        if stat.S_IMODE(info.st_mode) & 0o077 or info.st_uid != os.getuid():
+            raise SigningError("signing key directory must be private to this user")
+        for name in self.FILES:
+            if not (self.directory / name).is_file():
+                raise SigningError("signing key directory lacks " + name)
+        self.principal = (self.directory / "principal.bin").read_bytes().hex()
+        if len(self.principal) != 64:
+            raise SigningError("principal.bin must be 32 octets")
+
+    def sign(self, lines: list) -> list:
+        with tempfile.TemporaryDirectory(prefix="fn-web-sign-") as work:
+            source, out = Path(work) / "source.eml", Path(work) / "carrier.eml"
+            source.write_bytes(("\r\n".join(lines) + "\r\n").encode("utf-8"))
+            try:
+                done = subprocess.run(
+                    [str(self.image), "--fn", "hybrid-sign-carrier",
+                     *[str(self.directory / name) for name in self.FILES],
+                     str(source), str(out)],
+                    cwd=str(self.tree) if self.tree else None, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, timeout=120, check=False)
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                raise SigningError("the local fn image did not sign: %s" % exc) from exc
+            if done.returncode != 0 or not out.is_file():
+                raise SigningError("the local fn image refused to sign: " +
+                                   (done.stderr or done.stdout).decode("utf-8", "replace")
+                                   .strip()[-400:])
+            octets = out.read_bytes()
+        text = octets.decode("utf-8", "strict")
+        if text.endswith("\r\n"):
+            text = text[:-2]
+        return text.split("\r\n")
+
+
 class Backend:
-    def __init__(self, args, user: str, password: str, sender: str = ""):
+    def __init__(self, args, user: str, password: str, sender: str = "",
+                 signer: Optional[Signer] = None):
         self.args, self.user, self.password = args, user, password
         self.sender = sender
+        self.signer = signer
 
     @property
     def node(self) -> str:
@@ -219,6 +293,21 @@ class Backend:
             wanted = {row["number"] for row in rows}
             if rows:
                 try:
+                    # In-Reply-To is not an OVER field: one bounded HDR over
+                    # the same window, accepted per numeric slot.
+                    irt, lines = client.cmd("HDR In-Reply-To %d-%d"
+                                            % (window_start, window_end), multiline=True)
+                    if irt.startswith("225"):
+                        by_number = {row["number"]: row for row in rows}
+                        for line in lines[:MAX_RECENT]:
+                            number, _, value = line.partition(" ")
+                            one = fn_client.number(number)
+                            if one in by_number:
+                                ids = re.findall(r"<[^<>\s]+>", value)
+                                by_number[one]["in_reply_to"] = ids[0] if ids else ""
+                except fn_client.Stop:
+                    pass
+                try:
                     # One bounded HDR over the same window; each row's report
                     # is accepted only under its own numeric slot.
                     hdr, lines = client.cmd("HDR :fn-verified %d-%d"
@@ -263,11 +352,90 @@ class Backend:
         return self.using(query)
 
     def prepare(self, group: str, subject: str, sender: str, references: str,
-                body: str):
+                body: str, sign: bool = False):
         form = SimpleNamespace(group=group, subject=subject, sender=sender or self.sender,
                                references=references, message_id="", body_file="",
                                host=self.args.host)
-        return fn_client.compose(form, self.user, FormErrors(), body)
+        lines, msgid = fn_client.compose(form, self.user, FormErrors(), body)
+        if sign and self.signer is not None:
+            # The signed source carries the author's Date (identity spec,
+            # "the signed bytes"); the node adds Path and Injection-* outside it.
+            cut = lines.index("")
+            lines = lines[:cut] + ["Date: " + email.utils.format_datetime(
+                datetime.datetime.now(datetime.timezone.utc))] + lines[cut:]
+            lines = self.signer.sign(lines)
+        return lines, msgid
+
+    def search(self, group: str, field: str, query: str, before: Optional[int] = None):
+        """Articles in one bounded number window whose field matches, as the node says.
+
+        The node answers with `XPAT <field> <low>-<high> <wildmat>` (RFC 2980
+        section 2.9): the web layer builds `*query*`, turning each character
+        the wildmat grammar reserves into `?`, and keeps no index.  The window
+        is SEARCH_SPAN numbers ending at `before` (default the high-water
+        mark); the page links the next older window.  Matching is the node's:
+        case-sensitive, one pattern per request.
+        """
+        if field not in ("subject", "from"):
+            raise ValueError("search field is subject or from")
+        query = query.strip()
+        if not query or len(query) > 120 or any(ord(c) < 32 for c in query):
+            raise ValueError("search text must be 1 to 120 printable characters")
+        pattern = "*" + "".join("?" if c in "!*,?[\\] \t" else c for c in query) + "*"
+
+        def run(client):
+            status, _ = client.cmd("GROUP " + group)
+            if not status.startswith("211"):
+                return fn_client.Result(fn_client.REFUSED, status, {}, "")
+            fields = status.split()
+            low, high = fn_client.number(fields[2]), fn_client.number(fields[3])
+            if low is None or high is None:
+                raise fn_client.Stop(fn_client.UNCERTAIN, "invalid GROUP range: " + status)
+            end = min(high, before) if before is not None else high
+            start = max(low, end - SEARCH_SPAN + 1)
+            hits, command = [], ""
+            if end >= start and high >= low:
+                command = "XPAT %s %d-%d %s" % (field.title(), start, end, pattern)
+                answer, lines = client.cmd(command, multiline=True)
+                if not answer.startswith("221"):
+                    return fn_client.Result(fn_client.REFUSED, answer, {"command": command}, "")
+                for line in lines[:MAX_SEARCH_HITS]:
+                    number, _, value = line.partition(" ")
+                    one = fn_client.number(number)
+                    if one is not None and start <= one <= end:
+                        hits.append({"number": one, "value": value})
+                if hits:
+                    first, last = min(h["number"] for h in hits), max(h["number"] for h in hits)
+                    overview, body = client.cmd("OVER %d-%d" % (first, last), multiline=True)
+                    rows = {}
+                    if overview.startswith("224"):
+                        for row in body:
+                            parts = row.split("\t")
+                            if parts and len(parts) > 4:
+                                rows[fn_client.number(parts[0])] = parts
+                    for hit in hits:
+                        parts = rows.get(hit["number"])
+                        hit["subject"] = parts[1] if parts else hit["value"]
+                        hit["from"] = parts[2] if parts else ""
+                        hit["date"] = parts[3] if parts else ""
+            return fn_client.Result(fn_client.DONE, status,
+                                    {"hits": hits, "start": start, "end": end, "low": low,
+                                     "high": high, "command": command,
+                                     "pattern": pattern}, "")
+        return self.using(run)
+
+    def overview_counts(self):
+        """LIST COUNTS, CAPABILITIES and DATE: what any login can see of the node."""
+        def run(client):
+            caps, capability_lines = client.cmd("CAPABILITIES", multiline=True)
+            date, _ = client.cmd("DATE")
+            counted = client.counts()
+            return fn_client.Result(fn_client.DONE, date,
+                                    {"capabilities": capability_lines if caps.startswith("101") else [],
+                                     "date": date,
+                                     "groups": counted.data.get("groups", []) if counted.word == fn_client.DONE else [],
+                                     "counts": counted.detail}, "")
+        return self.using(run)
 
     def post(self, group: str, lines: tuple[str, ...], msgid: str):
         try:
@@ -301,7 +469,7 @@ class SubmissionBook:
             return self.entries.get(token)
 
     def submit(self, token: str, group: str, subject: str, sender: str,
-               references: str, body: str):
+               references: str, body: str, sign: bool = False):
         # Hold the lock through the finite NNTP operation. Two HTTP requests
         # with this token cannot both issue POST, even when they race.
         with self.lock:
@@ -313,7 +481,7 @@ class SubmissionBook:
             if entry["result"] is not None:
                 return entry
             lines, msgid = self.backend.prepare(group, subject, sender,
-                                                 references, body)
+                                                 references, body, sign)
             entry["lines"] = tuple(lines)
             entry["message_id"] = msgid
             try:
@@ -433,11 +601,11 @@ class DurableSubmissionBook(SubmissionBook):
         try:
             info = os.fstat(fd)
             if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or \
-                    stat.S_IMODE(info.st_mode) != 0o600 or info.st_size > 32768:
+                    stat.S_IMODE(info.st_mode) != 0o600 or info.st_size > MAX_RECORD:
                 raise OutboxError("outbox record is not a bounded private file")
             raw = bytearray()
-            while len(raw) <= 32768:
-                chunk = os.read(fd, 32769 - len(raw))
+            while len(raw) <= MAX_RECORD:
+                chunk = os.read(fd, MAX_RECORD + 1 - len(raw))
                 if not chunk:
                     break
                 raw.extend(chunk)
@@ -466,7 +634,7 @@ class DurableSubmissionBook(SubmissionBook):
                         "record_error": None}
             if not isinstance(saved["lines"], list) or not saved["lines"] or \
                     not all(isinstance(line, str) for line in saved["lines"]) or \
-                    len("\r\n".join(saved["lines"]).encode()) > MAX_BODY + 4096 or \
+                    len("\r\n".join(saved["lines"]).encode()) > MAX_BODY + MAX_SIGNED_EXTRA or \
                     not isinstance(saved["message_id"], str) or \
                     not saved["message_id"].startswith("<") or \
                     not saved["message_id"].endswith(">"):
@@ -506,8 +674,8 @@ class DurableSubmissionBook(SubmissionBook):
                  "message_id": entry["message_id"], "result": original,
                  "settlement": settlement, "draft": entry.get("draft")}
         data = json.dumps(saved, ensure_ascii=True, separators=(",", ":")).encode()
-        if len(data) > 32768:
-            raise OutboxError("outbox record exceeds 32 KiB")
+        if len(data) > MAX_RECORD:
+            raise OutboxError("outbox record exceeds 64 KiB")
         fd, temporary = tempfile.mkstemp(prefix=".record-", dir=self.directory)
         try:
             with os.fdopen(fd, "wb") as stream:
@@ -558,7 +726,7 @@ class DurableSubmissionBook(SubmissionBook):
                 raise OutboxError(entry["record_error"]) from exc
             return entry
 
-    def submit(self, token, group, subject, sender, references, body):
+    def submit(self, token, group, subject, sender, references, body, sign=False):
         with self.lock:
             entry = self.entries.get(token)
             if entry is None:
@@ -569,7 +737,7 @@ class DurableSubmissionBook(SubmissionBook):
                 return entry
             if self.fenced:
                 raise OutboxError(self.fenced)
-            lines, msgid = self.backend.prepare(group, subject, sender, references, body)
+            lines, msgid = self.backend.prepare(group, subject, sender, references, body, sign)
             entry["lines"], entry["message_id"] = tuple(lines), msgid
             entry["draft"] = None
             if sum(one["lines"] is not None for one in self.entries.values()) > MAX_SUBMISSIONS:
@@ -781,6 +949,10 @@ def thread_rows(rows: list) -> list:
             by_id[row["message_id"]] = row
     for row in rows:
         refs = row["references"].split()
+        if not refs and row.get("in_reply_to"):
+            # RFC 5322 section 3.6.4: a reply with no References names its
+            # parent in In-Reply-To (mail gateways and some readers do this).
+            refs = [row["in_reply_to"]]
         parent[row["number"]] = next((by_id[ref]["number"] for ref in reversed(refs)
                                       if ref in by_id and ref != row["message_id"]), None)
     children = {row["number"]: [] for row in rows}
@@ -797,7 +969,8 @@ def thread_rows(rows: list) -> list:
     ordered, stack = [], [(row, 0) for row in reversed(roots)]
     while stack:
         row, depth = stack.pop()
-        ordered.append((row, depth, bool(row["references"].split()) and depth == 0))
+        ordered.append((row, depth, bool(row["references"].split() or row.get("in_reply_to"))
+                        and depth == 0))
         stack.extend((child, depth + 1) for child in reversed(children[row["number"]]))
     return ordered
 
@@ -868,6 +1041,24 @@ def parse_verdict_hdr(line: str, expected_number: int):
         return None
     if outcome == "absent" and len(fields) == 3 and fields[2] in {"no-field", "no-record"}:
         return "absent: " + fields[2]
+    if outcome == "carried" and len(fields) == 3 and re.fullmatch(r"[0-9a-fA-F]{64}", fields[2]):
+        # D23 (identity spec, "Carried, not verified"): held for a neighbour
+        # whose boundary lists this principal; the node verified nothing.
+        return ("carried for principal " + fields[2].lower() +
+                "; this node verified nothing")
+    if outcome == "revoked":
+        # spike/peering's renderer (tools/fn_verify.py there): revoked at
+        # keyring generation G; not `verified`.
+        if len(fields) == 5 and re.fullmatch(r"[0-9a-fA-F]{64}", fields[2]) and \
+                fields[3] == "keyring" and fields[4].isascii() and fields[4].isdecimal():
+            return ("revoked: principal " + fields[2].lower() + " revoked at keyring "
+                    "generation " + fields[4])
+        return None
+    if outcome == "withdrawn" and 3 <= len(fields) <= 8 and \
+            all(len(one) <= 80 and one.isprintable() for one in fields[2:]):
+        # SPIKE: defers the grammar of these tokens to the control spike's
+        # ACL2 renderer; the reader shows the node's words and infers nothing.
+        return outcome + ": " + " ".join(fields[2:])
     return None
 
 
@@ -933,7 +1124,54 @@ button:hover,.button:hover { background:#0b4439 } .muted { color:#52645d }
 .identity { font-size:.85rem } .resume code { overflow-wrap:anywhere } form.inline { display:inline }
 form.inline button { padding:.35rem .7rem; font-size:.85rem } .row { display:flex; gap:.6rem; flex-wrap:wrap }
 .row label { flex:1 1 12rem }
+.carried { background:#e3e9f7; color:#1f3a73 } .revoked,.withdrawn { background:#f3dff0; color:#6b1f5e }
+.depth-1 { margin-left:18px } .depth-2 { margin-left:36px } .depth-3 { margin-left:54px }
+.depth-4,.depth-5,.depth-6,.depth-7,.depth-8 { margin-left:72px }
+.search { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end } .search label { flex:1 1 10rem }
+.search select { padding:.6rem; margin:.2rem 0 .9rem } table.ops { border-collapse:collapse; width:100% }
+table.ops td,table.ops th { text-align:left; padding:.3rem .5rem; border-bottom:1px solid #d9e1d9; overflow-wrap:anywhere }
+.signing { border-left:3px solid #1f3a73; padding:.4rem .8rem; background:#eef2fb }
+.check { display:flex; gap:.5rem; align-items:center; font-weight:400 } .check input { width:auto; margin:0 }
+@media (max-width: 600px) {
+  body { padding: .8rem .75rem 4rem } h1 { font-size:1.4rem } h2 { font-size:1.15rem }
+  header { flex-wrap:wrap; gap:.3rem } .identity { flex-basis:100% }
+  .card, article { padding:.75rem .8rem; border-radius:8px }
+  .depth-1 { margin-left:8px } .depth-2 { margin-left:16px } .depth-3 { margin-left:24px }
+  .depth-4,.depth-5,.depth-6,.depth-7,.depth-8 { margin-left:32px }
+  nav a { display:inline-block; margin:.2rem .8rem .2rem 0 } button,.button { width:100%; margin:.2rem 0 }
+  form.inline button { width:auto } textarea { min-height:9rem }
+}
 """
+
+# Served as /static/draft.js (script-src 'self'). Restores a draft kept in
+# this browser's origin storage and saves it on
+# every edit. Per-viewer convenience only: the durable outbox (Save draft)
+# is the record that survives a client restart.
+DRAFT_SCRIPT = """
+(function(){var f=document.querySelector('form[data-draft-key]');if(!f)return;
+var k='fn-draft:'+f.getAttribute('data-draft-key');var names=['subject','sender','body'];
+function get(){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}
+var d=get();if(d){var empty=names.every(function(n){var el=f.elements[n];return !el||!el.value||el.defaultValue===el.value});
+ if(empty&&!f.hasAttribute('data-seeded')){names.forEach(function(n){if(f.elements[n]&&d[n]!=null)f.elements[n].value=d[n]});
+ var note=document.getElementById('draft-note');if(note)note.textContent='Restored the draft this browser kept for this form.'}}
+f.addEventListener('input',function(){var o={};names.forEach(function(n){if(f.elements[n])o[n]=f.elements[n].value});
+ try{localStorage.setItem(k,JSON.stringify(o))}catch(e){}});})();
+"""
+CLEAR_SCRIPT = """
+(function(){var m=document.querySelector('[data-clear-draft]');if(!m)return;
+try{localStorage.removeItem('fn-draft:'+m.getAttribute('data-clear-draft'))}catch(e){}})();
+"""
+
+
+def draft_key(group: str, references: str) -> str:
+    refs = references.split()
+    return group + "|" + (refs[-1] if refs else "new")
+
+
+def verdict_badge(report) -> str:
+    kind = verdict_kind(report)
+    return ("<span class='badge " + e(kind) + "' title='" +
+            e(report or "server report unavailable") + "'>" + e(kind) + "</span>")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -948,7 +1186,7 @@ class Handler(BaseHTTPRequestHandler):
         # content. The local UI does not put requests into access logs.
         pass
 
-    def page(self, title: str, content: str, status: int = 200):
+    def page(self, title: str, content: str, status: int = 200, script: str = ""):
         page = ("<!doctype html><html lang='en'><meta charset='utf-8'>"
                 "<meta name='viewport' content='width=device-width,initial-scale=1'>"
                 "<title>" + e(title) + " · fn</title><style>" + STYLE + "</style>"
@@ -957,7 +1195,9 @@ class Handler(BaseHTTPRequestHandler):
                 + ("<a href='/outbox'>Local outbox</a>" if getattr(
                     self.server.submissions, "durable", False) else
                    "<span class='muted'>local reader</span>") +
-                "</header>" + content + "</body></html>")
+                "</header><nav class='top'><a href='/'>Groups</a><a href='/operator'>Node</a></nav>"
+                + content + ("<script src='/static/" + script + ".js'></script>"
+                             if script else "") + "</body></html>")
         encoded = page.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -967,7 +1207,7 @@ class Handler(BaseHTTPRequestHandler):
         # is set; same-origin still prevents a referrer going to another site.
         self.send_header("Referrer-Policy", "same-origin")
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
         self.end_headers()
         self.wfile.write(encoded)
 
@@ -1012,7 +1252,11 @@ class Handler(BaseHTTPRequestHandler):
         word, msgid = result.word, entry["message_id"]
         group = entry["group"]
         source = "\n".join(entry["lines"] or ())
+        clear = ""
         if word == fn_client.ACCEPTED:
+            fields = frozen_fields(entry["lines"])
+            clear = ("<span data-clear-draft='" + e(draft_key(group, fields["references"])) +
+                     "'></span>")
             meaning = "The node answered that it accepted this article."
             said = ("<p>The node's answer:</p><p class='reason'>" +
                     e(result.detail.rsplit(msgid, 1)[-1].strip() or result.detail) + "</p>"
@@ -1020,7 +1264,8 @@ class Handler(BaseHTTPRequestHandler):
                     "</a></p>")
         elif word == fn_client.REFUSED:
             meaning = "The node refused this exact article. This form will not post it again."
-            said = ("<p>The node's reason, as it sent it:</p><p class='reason'>" +
+            said = ("<p>The node's reason, as it sent it (the 441 text is the node's ACL2 "
+                    "decision word, not this client's):</p><p class='reason'>" +
                     e(result.detail) + "</p><p>Nothing was stored. You can edit the text "
                     "into a new post; it gets a new Message-ID.</p><p><a class='button' href='" +
                     e(href("/compose", group=group, edit=token)) +
@@ -1044,10 +1289,13 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 finding = "The lookup could not establish whether the article is served."
             observed = "<p class='hint'>" + e(finding) + "</p>"
-        self.page("Post " + word, "<nav><a href='/'>Groups</a></nav><article>"
+        signed = any(line.lower().startswith("fn-authorship:") for line in (entry["lines"] or ()))
+        self.page("Post " + word, clear + "<article>"
                   "<span class='badge " + e(word) + "'>" + e(word) + "</span>"
                   "<h2>" + e(meaning) + "</h2>"
-                  "<p class='meta'>Message-ID: <code>" + e(msgid) + "</code></p>" + said
+                  "<p class='meta'>Message-ID: <code>" + e(msgid) + "</code> · " +
+                  ("signed on this machine (FN-Authorship carrier)" if signed else "unsigned") +
+                  "</p>" + said
                   + observed + "<p><a href='" + e(href("/settle", id=token)) +
                   "'>Check whether the node serves this Message-ID</a></p>"
                   "<details" + (" open" if word == fn_client.UNCERTAIN else "") +
@@ -1064,7 +1312,7 @@ class Handler(BaseHTTPRequestHandler):
                      if getattr(self.server.submissions, "durable", False) else
                      "This client keeps the exact submitted source and result only while "
                      "this process runs and the form remains in its bounded memory.") + "</p>"
-                  "</article>")
+                  "</article>", script="clear" if clear else "")
 
     def article_html(self, group, number, one, verdict, has_verdict_lookup):
         fields = one["headers"]
@@ -1125,6 +1373,76 @@ class Handler(BaseHTTPRequestHandler):
         error = self.server.marks.error
         return "<p class='hint'>" + e(error) + ".</p>" if error else ""
 
+    def search_form(self, group, field="subject", query="") -> str:
+        return ("<form class='search' method='get' action='/search'>"
+                "<input type='hidden' name='group' value='" + e(group) + "'>"
+                "<label>Search " + e(group) + "<input name='q' maxlength='120' value='" +
+                e(query) + "' placeholder='text in the subject or author'></label>"
+                "<select name='field' aria-label='field'>" +
+                "".join("<option value='%s'%s>%s</option>" % (value, " selected" if value == field
+                                                              else "", label)
+                        for value, label in (("subject", "Subject"), ("from", "Author"))) +
+                "</select><button type='submit'>Search</button></form>")
+
+    def search_page(self, values):
+        group, field, query = values.get("group", ""), values.get("field", "subject"), values.get("q", "")
+        if not group_token(group):
+            raise ValueError("invalid group name")
+        before = None
+        if "before" in values:
+            raw = values["before"]
+            if not raw.isascii() or not raw.isdecimal() or len(raw) > 10 or int(raw) < 1:
+                raise ValueError("invalid search window")
+            before = int(raw)
+        result = self.run_backend(lambda: self.server.backend.search(group, field, query, before))
+        if result is None:
+            return
+        if result.word != fn_client.DONE:
+            self.outcome(result.word, result.detail + (" (" + result.data["command"] + ")"
+                                                       if result.data.get("command") else ""))
+            return
+        data, marks = result.data, self.server.marks
+        rows = "".join(
+            "<article><h2" + ("" if marks.is_read(group, hit["number"]) else " class='unread'") +
+            "><a href='" + e(href("/a", group=group, number=hit["number"])) + "'>" +
+            e(hit["subject"]) + "</a></h2><p class='meta'>" +
+            e(" · ".join(x for x in (hit["from"], hit["date"], "local #%d" % hit["number"]) if x)) +
+            "</p></article>" for hit in sorted(data["hits"], key=lambda h: -h["number"]))
+        older = ("<a rel='prev' href='" + e(href("/search", group=group, field=field, q=query,
+                                                  before=data["start"] - 1)) +
+                 "'>Search older articles</a>" if data["start"] > data["low"] else "")
+        self.page("Search " + group, "<nav><a href='" + e(href("/g", name=group)) + "'>" +
+                  e(group) + "</a></nav>" + self.search_form(group, field, query) +
+                  "<p class='muted'>The node answered <code>" + e(data["command"] or
+                  "nothing: the window is empty") + "</code> over local numbers " +
+                  e("%d–%d" % (data["start"], data["end"])) + " (at most %d numbers per page, "
+                  "case-sensitive, reserved wildmat characters and spaces match any one "
+                  "character). This page keeps no index.</p>" % SEARCH_SPAN +
+                  (rows or "<p>No matches in this window.</p>") + "<nav>" + older + "</nav>")
+
+    def operator_page(self):
+        result = self.run_backend(self.server.backend.overview_counts)
+        if result is None:
+            return
+        data = result.data
+        groups = "".join("<tr><td>" + e(row["group"]) + "</td><td>" + e(row.get("count")) +
+                         "</td><td>" + e("%s–%s" % (row["first"], row["last"])) + "</td><td>" +
+                         e(row["status"]) + "</td></tr>" for row in data["groups"])
+        local = ""
+        for label, command, output, code in self.server.operator_reports():
+            local += ("<tr><th>" + e(label) + "</th><td><code>" + e(command) + "</code><br>exit " +
+                      e(code) + "<pre>" + e(output) + "</pre></td></tr>")
+        self.page("Node", "<h2>Node</h2><p class='muted'>Read-only. Every value here is the "
+                  "node's answer or a local command's output, shown verbatim.</p>"
+                  "<article><h2>Over NNTP</h2><p class='meta'>" + e(data["date"]) + "</p>"
+                  "<table class='ops'><tr><th>group</th><th>articles</th><th>numbers</th>"
+                  "<th>status</th></tr>" + groups + "</table><details><summary>Capabilities"
+                  "</summary><pre>" + e("\n".join(data["capabilities"])) + "</pre></details>"
+                  "</article><article><h2>On this machine</h2>" +
+                  ("<table class='ops'>" + local + "</table>" if local else
+                   "<p class='meta'>No --operator-store was given; status, headroom, peers and "
+                   "pins need the operator's local Store and image.</p>") + "</article>")
+
     def resume_form(self) -> str:
         return ("<details><summary>Resume from a (group, local number, Message-ID)</summary>"
                 "<form method='get' action='/resume'><div class='row'>"
@@ -1140,7 +1458,19 @@ class Handler(BaseHTTPRequestHandler):
         save = ("<button name='action' value='save' type='submit' formnovalidate>"
                 "Save draft</button> "
                 if getattr(self.server.submissions, "durable", False) else "")
-        return ("<form method='post' action='/post'>"
+        signer = self.server.backend.signer
+        signing = ("<div class='signing'><label class='check'><input type='checkbox' name='sign' "
+                   "value='1' checked> Sign with principal <code>" + e(signer.principal[:16]) +
+                   "…</code></label><p class='meta'>The key stays on this machine; the local fn "
+                   "image renders and signs ACL2's preimage. The node then judges the carrier "
+                   "against its own enrollment and answers 240 or 441 with its reason.</p></div>"
+                   if signer is not None else
+                   "<p class='meta'>Unsigned: this client has no signing key "
+                   "(start it with --signing-key).</p>")
+        seeded = " data-seeded" if (subject and not references) or body else ""
+        return ("<form method='post' action='/post' data-draft-key='" +
+                e(draft_key(group, references)) + "'" + seeded + ">"
+                "<p id='draft-note' class='meta'></p>"
                 "<input type='hidden' name='csrf' value='" + e(self.server.token) + "'>"
                 "<input type='hidden' name='group' value='" + e(group) + "'>"
                 "<input type='hidden' name='submission_id' value='" + e(token) + "'>"
@@ -1154,7 +1484,7 @@ class Handler(BaseHTTPRequestHandler):
                 e(sender) + "' placeholder='" + e(self.server.backend.default_from()) +
                 "'></label>"
                 "<label>Message<textarea name='body' maxlength='16384' required>" +
-                e(body) + "</textarea></label>" + save +
+                e(body) + "</textarea></label>" + signing + save +
                 "<button name='action' value='post' type='submit'>Post to " + e(group) +
                 "</button></form>")
 
@@ -1207,6 +1537,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.page("Groups", "<h2>Groups</h2>" + self.marks_note() +
                           ("".join(cards) or "<p>No groups are served.</p>") +
                           self.resume_form())
+            elif path in ("/static/draft.js", "/static/clear.js"):
+                body = (DRAFT_SCRIPT if path.endswith("draft.js") else CLEAR_SCRIPT).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/javascript; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(body)
+            elif path == "/search":
+                self.search_page(values)
+            elif path == "/operator":
+                self.operator_page()
             elif path == "/outbox" and getattr(self.server.submissions, "durable", False):
                 with self.server.submissions.lock:
                     rows = [(token, entry["message_id"],
@@ -1244,16 +1586,13 @@ class Handler(BaseHTTPRequestHandler):
                 has_group_numbers = high >= low
                 marks = self.server.marks
                 cards = "".join(
-                    "<article class='thread' style='margin-left:" + str(min(depth, 8) * 18) +
-                    "px'><h2" + ("" if marks.is_read(group, row["number"]) else
+                    "<article class='thread depth-" + str(min(depth, 8)) + "'><h2" + ("" if marks.is_read(group, row["number"]) else
                                  " class='unread'") + ">" +
                     ("" if marks.is_read(group, row["number"]) else
                      "<span class='unread-dot' title='not opened in this client'>● </span>") +
                     "<a href='" + e(href("/a", group=group, number=row["number"])) + "'>" +
-                    e(row["subject"]) + "</a> <span class='badge " +
-                    e(verdict_kind(row.get("verdict"))) + "' title='" +
-                    e(row.get("verdict") or "server report unavailable") + "'>" +
-                    e(verdict_kind(row.get("verdict"))) + "</span></h2><p class='meta'>" +
+                    e(row["subject"]) + "</a> " + verdict_badge(row.get("verdict")) +
+                    "</h2><p class='meta'>" +
                     e(" · ".join(x for x in (row["from"], row["date"],
                                              "local #%s" % row["number"],
                                              "reply to an article outside this window"
@@ -1281,8 +1620,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.page(group, "<nav><a href='/'>Groups</a><a href='" +
                           e(href("/compose", group=group)) + "'>Write a post</a></nav>"
                           "<h2>" + e(group) + "</h2><p class='muted'>" +
-                          e(page_window + frontier) + " · viewing does not acknowledge processing</p>"
-                          "<p class='muted'>Threaded by References within this window. "
+                          e(page_window + frontier) + " · viewing does not acknowledge processing</p>" +
+                          self.search_form(group) +
+                          "<p class='muted'>Threaded by References (In-Reply-To when a reply "
+                          "has none) within this window. "
                           "Unread marks are this client's, not the node's.</p>" +
                           self.marks_note() +
                           "<nav aria-label='Article number windows'>" + older + " " + newer +
@@ -1347,7 +1688,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.page("Compose", "<nav><a href='" + e(href("/g", name=group)) +
                           "'>" + e(group) + "</a></nav><h2>Write a post</h2>"
                           "<p class='muted'>One form sends one exact article. If the reply "
-                          "is uncertain, keep its Message-ID and check it before trying again.</p>" + form)
+                          "is uncertain, keep its Message-ID and check it before trying again.</p>" + form,
+                          script="draft")
             elif path == "/draft" and getattr(self.server.submissions, "durable", False):
                 token = values.get("id", "")
                 if not token or len(token) > 64:
@@ -1367,7 +1709,8 @@ class Handler(BaseHTTPRequestHandler):
                            ". This draft's latest local save is uncertain.</p>"
                            if record_error else "") +
                           self.compose_form(token, group, draft["subject"], draft["sender"],
-                                            draft["references"], draft["body"]))
+                                            draft["references"], draft["body"]),
+                          script="draft")
             elif path in ("/result", "/settle"):
                 token = values.get("id", "")
                 if not token or len(token) > 64:
@@ -1475,7 +1818,7 @@ class Handler(BaseHTTPRequestHandler):
             raw = self.rfile.read(length)
             values = {k: v[0] for k, v in parse_qs(raw.decode("utf-8", "strict"),
                                                     keep_blank_values=True,
-                                                    max_num_fields=16).items()}
+                                                    max_num_fields=17).items()}
             if not hmac.compare_digest(values.get("csrf", ""), self.server.token):
                 self.page("Refused", "<p>Form token is invalid.</p>", 403)
                 return
@@ -1511,13 +1854,17 @@ class Handler(BaseHTTPRequestHandler):
                     submission_id, group, subject, sender, references, body)
             else:
                 entry = self.server.submissions.submit(
-                    submission_id, group, subject, sender, references, body)
+                    submission_id, group, subject, sender, references, body,
+                    values.get("sign") == "1")
             if entry is None:
                 self.page("Submission unavailable", "<p>This form's local record "
                           "expired or the web client restarted. No POST was sent.</p>", 410)
                 return
             self.redirect(href("/draft" if action == "save"
                                else "/result", id=submission_id))
+        except SigningError as exc:
+            self.page("Not signed", "<p class='hint'>" + e(exc) + ". Nothing was sent to the "
+                      "node.</p>", 500)
         except (ValueError, UnicodeDecodeError) as exc:
             self.page("Invalid post", "<p>" + e(exc) + "</p>", 400)
         except OutboxFull as exc:
@@ -1546,6 +1893,35 @@ class WebServer(ThreadingHTTPServer):
             if outbox:
                 self.submissions.close()
             raise
+
+    operator = None
+
+    def operator_reports(self):
+        """Read-only local status commands, run only when the operator named a Store.
+
+        SPIKE: defers a live read-only status verb to the owner.  While an
+        owner holds the Store these commands answer `store is already locked`
+        and the page shows exactly that.
+        """
+        op = self.operator
+        if not op:
+            return []
+        image, tree = op["image"], op.get("tree") or None
+        commands = [("status and headroom", [image, "--fn", "store", op["store"], "status"]),
+                    ("retention pins", [image, "--fn", "store", op["store"], "retention"])]
+        if op.get("config") and tree:
+            commands.append(("peers", [sys.executable, str(Path(tree) / "bin" / "fn"),
+                                       "--config", op["config"], "peer", "list"]))
+        out = []
+        for label, command in commands:
+            try:
+                done = subprocess.run(command, cwd=tree, stdout=subprocess.PIPE,
+                                      stderr=subprocess.STDOUT, timeout=60, check=False)
+                out.append((label, " ".join(command[1:] if command[0] == image else command[1:]),
+                            done.stdout.decode("utf-8", "replace")[-2000:], done.returncode))
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                out.append((label, " ".join(command), str(exc), "none"))
+        return out
 
     def server_close(self):
         super().server_close()
@@ -1605,6 +1981,14 @@ def main(argv=None):
     parser.add_argument("--no-marks", action="store_true",
                         help="keep read marks in memory only")
     parser.add_argument("--timeout", type=float, default=15.0)
+    parser.add_argument("--signing-key", type=Path,
+                        help="private directory with principal.bin, ed-public.bin, ed-secret.bin, "
+                             "ml-public.pem, ml-private.pem")
+    parser.add_argument("--fn-image", type=Path,
+                        help="the local fn image that signs (hybrid-sign-carrier) and reports status")
+    parser.add_argument("--fn-tree", type=Path, help="the source tree the image runs from")
+    parser.add_argument("--operator-store", help="the node's Store, for the read-only Node page")
+    parser.add_argument("--operator-config", help="the node's operator config, for its peer list")
     args = parser.parse_args(argv)
     fn_client.resolve(args, parser)
     if args.plain and args.host not in LOOPBACK:
@@ -1615,7 +1999,15 @@ def main(argv=None):
     if args.plain and args.user:
         parser.error("--plain sends no login, so --user cannot apply")
     user, password = web_credentials(args, parser)
-    backend = Backend(args, user, password, args.sender)
+    signer = None
+    if args.signing_key:
+        if not args.fn_image:
+            parser.error("--signing-key needs --fn-image (the image that signs)")
+        try:
+            signer = Signer(args.signing_key, args.fn_image, args.fn_tree)
+        except (OSError, SigningError) as exc:
+            parser.error("signing key: %s" % exc)
+    backend = Backend(args, user, password, args.sender, signer)
     checked = backend.login_check()
     if checked.word != fn_client.DONE:
         detail = checked.detail.replace(password, "[password]") if password else checked.detail
@@ -1630,6 +2022,12 @@ def main(argv=None):
                       backend.node, user)
     try:
         with WebServer(args.http_port, backend, args.outbox, marks, identity) as server:
+            if args.operator_store and args.fn_image:
+                server.operator = {"image": str(args.fn_image.absolute()),
+                                   "tree": str(args.fn_tree.absolute()) if args.fn_tree else "",
+                                   "store": str(Path(args.operator_store).absolute()),
+                                   "config": (str(Path(args.operator_config).absolute())
+                                              if args.operator_config else None)}
             print("fn web client: %s; open http://127.0.0.1:%d/" % (identity, server.server_port),
                   flush=True)
             if marks.error:
