@@ -119,7 +119,13 @@
                              fn-bpb-make-bundle fn-bpb-encode
                              fn-bpnp-forward-anchor fn-bpah-held-expiry
                              fn-bpp-previous-nodep fn-clock-observationp
-                             fn-cbor-octet-listp fn-bpnf-held-bundle))))
+                             fn-cbor-octet-listp fn-bpnf-held-bundle
+                             fn-bpf-fragment-listp-is-a-true-list
+                             fn-cp-idp-true-listp
+                             fn-nntp-response-text-true-listp
+                             fn-bpn-report-bounded-append-suffix
+                             fn-bpf-fragment-listp-car-and-cdr
+                             fn-bpf-fragmentp-fields))))
    :rule-classes nil))
 (verify-guards fn-bpnp-forward-scan
   :hints (("Goal" :do-not-induct t
@@ -159,7 +165,13 @@
 (verify-guards fn-bpnp-conflict-persist-step)
 (verify-guards fn-bpnp-busy-eventp)
 (verify-guards fn-bpnp-busy-wait)
-(verify-guards fn-bpnp-busy-delivery-step)
+(verify-guards fn-bpnp-busy-delivery-step
+  :hints (("Goal" :in-theory (disable fn-bpf-fragment-listp-is-a-true-list
+                                      fn-cp-idp-true-listp
+                                      fn-nntp-response-text-true-listp
+                                      fn-bpn-report-bounded-append-suffix
+                                      fn-bpf-fragment-listp-car-and-cdr
+                                      fn-bpf-fragmentp-fields))))
 (verify-guards fn-bpnr-checkpoint-of-statep)
 (verify-guards fn-bpnp-rotation-quiescentp)
 (verify-guards fn-bpnp-rotate-step)
@@ -184,7 +196,13 @@
          (equal (fn-bpnf-answer-state (fn-bpnf-answer s effects)) s)
          (equal (fn-bpnf-base (fn-bpnf-with-issued st i)) (fn-bpnf-base st))
          (equal (fn-bpnf-issued (fn-bpnf-with-issued st i)) i)
-         (equal (fn-bpnf-issued (fn-bpnf-with-base st b)) (fn-bpnf-issued st))))
+         (equal (fn-bpnf-issued (fn-bpnf-with-base st b)) (fn-bpnf-issued st)))
+    :hints (("Goal" :in-theory (disable fn-bpf-fragment-listp-is-a-true-list
+                                        fn-cp-idp-true-listp
+                                        fn-nntp-response-text-true-listp
+                                        fn-bpn-report-bounded-append-suffix
+                                        fn-bpf-fragment-listp-car-and-cdr
+                                        fn-bpf-fragmentp-fields))))
   (local (in-theory (disable fn-bpnf-base fn-bpnf-issued fn-bpnf-answer-state
                       fn-bpnf-answer fn-bpnf-state-with-arrival
                       fn-bpnf-with-issued fn-bpnf-with-base)))
@@ -342,7 +360,13 @@
             :in-theory (e/d (fn-bpnp-host-eventp fn-frame-natp)
                             (fn-bpp-eidp fn-bpnp-session-idp
                              fn-clock-observationp fn-bpnf-host-eventp
-                             fn-bpnp-routesp))))))
+                             fn-bpnp-routesp fn-bprt-viap
+                             fn-bpf-fragment-listp-is-a-true-list
+                             fn-cp-idp-true-listp
+                             fn-nntp-response-text-true-listp
+                             fn-bpn-report-bounded-append-suffix
+                             fn-bpf-fragment-listp-car-and-cdr
+                             fn-bpf-fragmentp-fields))))))
 (local
  (defthm fn-bpnp-delegate-event-guard
    (implies (and (fn-bpnp-host-eventp event)
@@ -364,7 +388,13 @@
  (defthm fn-bpnp-held-list-of-with-runtime-for-guard
    (equal (fn-bpnf-held-list (fn-bpnp-with-runtime st sessions pending-image))
           (fn-bpnf-held-list st))
-   :hints (("Goal" :in-theory (enable fn-bpnp-with-runtime fn-bpnf-held-list)))))
+   :hints (("Goal" :in-theory (e/d (fn-bpnp-with-runtime fn-bpnf-held-list)
+                                   (fn-bpf-fragment-listp-is-a-true-list
+                                    fn-cp-idp-true-listp
+                                    fn-nntp-response-text-true-listp
+                                    fn-bpn-report-bounded-append-suffix
+                                    fn-bpf-fragment-listp-car-and-cdr
+                                    fn-bpf-fragmentp-fields))))))
 (verify-guards fn-bpnp-step
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bpnp-delegate-event-guard)

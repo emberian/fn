@@ -228,6 +228,23 @@
   (equal (fn-native-admin-result-name (fn-native-admin-result s r k n c p v)) n)))
 (local (in-theory (disable fn-native-admin-result fn-native-admin-result-kind
                            fn-native-admin-result-status fn-native-admin-result-name)))
+; The bp-boundary arm, closed: an accepted boundary plan is a boundary.
+; Opening fn-native-admin-bp-boundary-plan inside the theorem below cost
+; 5.1 s of its 5.1 s (hbox, 2 jobs).
+(local (defthm accepted-bp-boundary-plan-is-a-boundary
+  (implies (equal (fn-native-admin-result-status
+                   (fn-native-admin-bp-boundary-plan words))
+                  :accepted)
+           (equal (fn-native-admin-result-kind
+                   (fn-native-admin-bp-boundary-plan words))
+                  :set-bp-boundary))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-native-admin-bp-boundary-plan
+                               fn-native-admin-bp-with-contact
+                               fn-native-admin-bp-with-receipt-options
+                               fn-native-admin-bp-boundary-base-plan
+                               kind-of-result status-of-result
+                               (:executable-counterpart equal))))))
 (defthm fn-native-admin-plan-group-name-is-a-group-name
   (implies (and (equal (fn-native-admin-result-status (fn-native-admin-plan argv)) :accepted)
                 (member-equal (fn-native-admin-result-kind (fn-native-admin-plan argv))
@@ -239,8 +256,11 @@
                                    fn-path-identityp fn-native-admin-decimalp
                                    fn-native-admin-decimal-value fn-native-admin-argvp
                                    fn-native-admin-bp-boundary-split
-                                   fn-native-admin-bp-boundary-rows))
+                                   fn-native-admin-bp-boundary-rows
+                                   fn-native-admin-bp-boundary-plan))
            :use ((:instance fn-native-admin-peer-plan-kind
+                            (words (fn-native-admin-words argv)))
+                 (:instance accepted-bp-boundary-plan-is-a-boundary
                             (words (fn-native-admin-words argv)))))))
 )
 
