@@ -10,6 +10,7 @@
 (include-book "identity")
 (include-book "records-stamp")
 (include-book "hybrid-carrier")
+(include-book "control-classify")
 
 (defun fn-hsig-octet-fields-to-strings (fields)
   (declare (xargs :guard t))
@@ -33,6 +34,25 @@
               (list (fn-record-octets-string (fn-inj-nth 1 check))
                     (fn-hsig-octet-fields-to-strings
                      (fn-inj-nth 2 check))))))))))
+
+;; The groups a signed article's Store record must list: for a control
+;; article (C1, books/control-classify.lisp), exactly its filing group
+;; control.<verb> or control, the one group `fn-pa-filing-plan' files it in;
+;; for an ordinary article, the Newsgroups of the exact signed source
+;; (FIELDS is `fn-hsig-authored-source-fields' of it).  A malformed control
+;; article (two Control fields, Control beside Supersedes, a command outside
+;; the grammar) has no filing group and binds no record: the filing plan
+;; refuses it before any Store call, and replay admits no record of it.  The
+;; classification reads the signed source, so the group a record names is
+;; the one the author's signature covers the Control field of.
+(defun fn-hsig-source-filed-groups (source fields)
+  (declare (xargs :guard t))
+  (let ((classified (fn-ctl-classify-octets source)))
+    (cond ((and (consp classified) (eq (car classified) :control))
+           (list (fn-ctl-filing-group (cadr classified))))
+          ((and (consp classified) (eq (car classified) :malformed))
+           :malformed)
+          (t (cadr fields)))))
 
 ; A keyring snapshot is deliberately narrow: one principal and the exact
 ; ordered public-key set used by the signed-preimage function.  Custody and
@@ -208,7 +228,7 @@
                          obligation-id content-subject release-evidence charge stamp)))
     (if (and (natp stamp) fields
              (equal msgid (car fields))
-             (equal groups (cadr fields))
+             (equal groups (fn-hsig-source-filed-groups source fields))
              (equal charge (fn-charge-for-payload (len source)))
              (fn-record-p record))
         (fn-hsig-authorized-article-event
@@ -250,6 +270,7 @@
                   :guard-hints
                   (("Goal" :in-theory
                     (disable fn-hsig-authored-source-fields
+                             fn-hsig-source-filed-groups
                              fn-id-subject-of-payload
                              fn-id-obligation-of)))))
   (if (not (and (fn-record-p record)
@@ -270,7 +291,8 @@
            (fn-cbor-octet-listp subject)
            (fn-cbor-octet-listp obligation)
            (equal msgid (car fields))
-           (equal (fn-record-groups record) (cadr fields))
+           (equal (fn-record-groups record)
+                  (fn-hsig-source-filed-groups source fields))
            (equal (fn-record-payload record) received)
            (equal (fn-record-charge record)
                   (fn-charge-for-payload (len received)))
@@ -299,7 +321,7 @@
          (source-id (fn-hsig-authored-source-id source)))
     (if (and (natp stamp) fields source-id projection-ok
              (equal msgid (car fields))
-             (equal groups (cadr fields))
+             (equal groups (fn-hsig-source-filed-groups source fields))
              (equal charge (fn-charge-for-payload (len received)))
              (fn-hsig-carried-record-metadatap source received record)
              (equal enrolled-snapshot
@@ -505,7 +527,52 @@
                                    fn-hsig-carried-record-metadatap
                                    fn-hsig-authored-source-id)))))
 
+;; KEYSTONE (C3 prerequisite, 2026-09-25).  The replay binding every signed
+;; Store event passes -- `fn-hsig-carried-record-metadatap' is a conjunct of
+;; `fn-hsig-article-event-snapshot-bindsp-v1' and of
+;; `fn-hsig-article-event-carried-bindsp', which replay's identity step
+;; (books/replay.lisp `fn-replay-identity-step') calls for every schema-1
+;; composite, and which the native constructor
+;; `fn-hsig-authorized-carried-submission-event-base' requires -- makes a
+;; signed control article's record list exactly its filing group, the group
+;; `fn-pa-filing-plan' files it in.  So a signed cancel is stored in
+;; control.cancel, never in the groups its Newsgroups field names.
+(defthm fn-hsig-signed-control-record-lists-its-filing-group
+  (implies (and (fn-hsig-carried-record-metadatap source received record)
+                (equal (car (fn-ctl-classify-octets source)) :control))
+           (equal (fn-record-groups record)
+                  (list (fn-ctl-filing-group
+                         (cadr (fn-ctl-classify-octets source))))))
+  :hints (("Goal" :in-theory (e/d (fn-hsig-carried-record-metadatap
+                                   fn-hsig-source-filed-groups)
+                                  (fn-hsig-authored-source-fields
+                                   fn-ctl-classify-octets
+                                   fn-id-subject-of-payload
+                                   fn-id-obligation-of)))))
+
+;; A malformed control article binds no record: no filing group exists and
+;; the list :malformed is no group list.
+(defthm fn-hsig-malformed-control-binds-no-record
+  (implies (equal (car (fn-ctl-classify-octets source)) :malformed)
+           (not (fn-hsig-carried-record-metadatap source received record)))
+  :hints (("Goal" :in-theory (e/d (fn-hsig-carried-record-metadatap
+                                   fn-hsig-source-filed-groups)
+                                  (fn-hsig-authored-source-fields
+                                   fn-ctl-classify-octets
+                                   fn-id-subject-of-payload
+                                   fn-id-obligation-of)))))
+
+;; An ordinary signed article keeps the binding it always had.
+(defthm fn-hsig-ordinary-source-filed-groups-by-definition
+  (implies (not (member-equal (car (fn-ctl-classify-octets source))
+                              '(:control :malformed)))
+           (equal (fn-hsig-source-filed-groups source fields)
+                  (cadr fields)))
+  :hints (("Goal" :in-theory (e/d (fn-hsig-source-filed-groups)
+                                  (fn-ctl-classify-octets)))))
+
 (in-theory (disable (:d fn-hsig-keyring-snapshot)
+                    (:d fn-hsig-source-filed-groups)
                     (:d fn-hsig-evidence-tag)
                     (:d fn-hsig-octet-fields-to-strings)
                     (:d fn-hsig-authored-source-fields)
