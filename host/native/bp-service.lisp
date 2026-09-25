@@ -718,11 +718,14 @@ its outcome, which is the refusal to the offering ingress."
       (:restart-ready
        (fnn-out "BP FNBS recovered held=~d" (second effect)))
       (:persist-checkpoint
-       ;; (:persist-checkpoint EPOCH OP GENERATION): publish the selection
-       ;; of GENERATION, then answer the machine with the program's outcome.
+       ;; (:persist-checkpoint EPOCH OP GENERATION CHECKPOINT): publish
+       ;; ACL2's CHECKPOINT (fn-bpnr-rotation-checkpoint, whose operation
+       ;; frontier is (EPOCH . OP)) as the selection of GENERATION, then
+       ;; answer the machine with the program's outcome.
        (let* ((epoch (second effect))
               (operation-id (third effect))
-              (outcome (fnn-bps-publish-generation service (fourth effect))))
+              (outcome (fnn-bps-publish-generation service (fourth effect)
+                                                   (fifth effect))))
          (when (eq outcome :uncertain)
            (setf (fnn-bps-outcome service) :uncertain))
          (fnn-bps-drive-effects
@@ -749,15 +752,14 @@ so a test can kill it there (N16)."
     (finish-output)
     (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop)))
 
-(defun fnn-bps-publish-generation (service generation)
-  "Publish GENERATION's selection file under ACL2's phase driver
-fn-bpnr-publish-action/-step/-outcome: the generation directory and its
-barriers, then the staged selection file and its barrier, the rename over
-the final name, and the root barrier.  Every octet is ACL2's."
+(defun fnn-bps-publish-generation (service generation ck)
+  "Publish CK, the checkpoint fn-bpnp-rotate-step proposed, as GENERATION's
+selection file under ACL2's phase driver fn-bpnr-publish-action/-step/-outcome:
+the generation directory and its barriers, then the staged selection file and
+its barrier, the rename over the final name, and the root barrier.  Every
+octet is ACL2's."
   (let* ((root (fnn-bps-root service))
          (jobs (fnn-core 'fn-bpn-host-machine-max-jobs))
-         (ck (fnn-core 'fn-bpnr-checkpoint-of-event
-                       (fnn-bps-recovery-event service) generation))
          (octet-list (fnn-core 'fn-bpnr-checkpoint-octets
                                ck (fnn-core 'fn-bpnr-depth-budget jobs)))
          (octets (and octet-list (fnn-octets octet-list)))

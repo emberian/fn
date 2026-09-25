@@ -786,34 +786,6 @@ uncertain, as it does everywhere else."
                 bp (fnn-bpnode-budgeted (list :operator-resume arrival))))
            (fnn-bps-exit-code bp))
       (fnn-bps-release bp))))
-;;; `bp-node checkpoint JOURNAL NODE-ID [WALL WALL-ERROR]': rotate the FNBS
-;;; journal (spec bp-node-machine 3.6, N16).  Open recovers; ACL2 names the
-;;; next generation (fn-bpnr-next-generation over the selected one and every
-;;; generation directory observed) and the checkpoint of the replay the
-;;; recovery event carried (fn-bpnr-checkpoint-of-event); fn-bpnp-step's
-;;; :rotate arm admits it only when it is the recovered state's own durable
-;;; projection, and resets the record count only on the durable answer of
-;;; the selection publication.  Run it with the node stopped.
-(defun fnn-command-bp-node-checkpoint (journal-root node-id wall wall-error)
-  (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
-                                +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
-         (bp (fnn-bps-open journal-root config wall wall-error)))
-    (unwind-protect
-         (let* ((root (fnn-bps-root bp))
-                (names (fnn-list-directory-bounded
-                        root (fnn-core 'fn-bpnf-namespace-max-entries)
-                        "bp journal root"))
-                (generation (fnn-core 'fn-bpnr-next-generation
-                                      (fnn-core 'fn-bpnr-plan-generation
-                                                (fnn-bps-plan bp))
-                                      names))
-                (ck (fnn-core 'fn-bpnr-checkpoint-of-event
-                              (fnn-bps-recovery-event bp) generation)))
-           (fnn-out "BP journal rotation generation=~d" generation)
-           (fnn-bps-drive-effects
-            bp (fnn-bps-foundation-step bp (list :rotate generation ck)))
-           (fnn-bps-exit-code bp))
-      (fnn-bps-release bp))))
 
 (defvar *fnn-bpnode-receipt-signer* nil
   "Directory of B's receipt-signing material, or nil for bare receipts:
