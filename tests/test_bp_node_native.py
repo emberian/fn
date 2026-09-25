@@ -455,6 +455,14 @@ class NativeBpNodeTests(unittest.TestCase):
         code, out, err = self.rotate_receiver()
         self.assertEqual(code, 0, (out, err))
         self.assertIn(b"BP journal generation selected generation=4", out)
+        # spike/bp: once generation 4's selection is durable, the older
+        # generations (0 to 3) are retired; the held row survives on the
+        # checkpoint alone.
+        for name in (b"lifecycle",) + tuple(g.encode() for g in generations):
+            self.assertIn(b"BP journal generation retired name=" + name, out)
+        self.assertFalse((journal / "lifecycle").exists())
+        self.assertEqual(sorted(p.name for p in journal.glob("lifecycle-g*")),
+                         ["lifecycle-g00000000000000000004"])
         self.assertEqual(self.recovered_held(), 1)
         # New work lands in the new generation, after the checkpointed row.
         current = journal / "lifecycle-g00000000000000000004"
