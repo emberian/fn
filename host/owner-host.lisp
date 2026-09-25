@@ -55,6 +55,8 @@
 ; service log lines (fn-olog-*): both ACL2's, read here and nowhere computed.
 (include-book "../books/owner-agent")
 (include-book "../books/owner-log")
+; The served article bound installed with the profile (PKT-103).
+(include-book "../books/owner-served-bound")
 (include-book "../books/topic-history-local-proposals")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
@@ -64,6 +66,9 @@
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
+(include-book "../books/login-binding")
+; PRF-099: the opaque-carriage budget and the refusal classes.
+(include-book "../books/peer-carriage")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -169,10 +174,9 @@
 ;; carried served keystones to what is installed here.  The extended value is
 ;; the capture of the whole history; the owner keeps it as the base of its
 ;; next publication (`fn-owner-sco-base').
-(defun fn-owner-recover-extended (extended config-records frontier max-conns state)
+(defun fn-owner-install-extended (oc extended state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((oc (fn-ock-recover-extended extended config-records frontier max-conns)))
-    (if (equal oc :fault)
+  (if (equal oc :fault)
         (value :fault)
       (let* ((state (fn-owner-install-ocfg oc state))
              ; Rebuilt exclusively by successful FNFD scans after
@@ -195,9 +199,33 @@
              ; fn-owner-sco-note-durable), and the count of the last attempt.
              (state (f-put-global 'fn-owner-sco-base extended state))
              (state (f-put-global 'fn-owner-sco-durable nil state))
-             (state (f-put-global 'fn-owner-sco-attempted nil state))
-             (state (f-put-global 'fn-owner-sco-pending nil state)))
-        (value :recovering)))))
+             (state (f-put-global 'fn-owner-sco-attempted nil state)))
+        (value :recovering))))
+
+(defun fn-owner-recover-extended (extended config-records frontier max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-owner-install-extended
+   (fn-ock-recover-extended extended config-records frontier max-conns)
+   extended state))
+
+; The owner from the Store open this process just ran
+; (fn-store-sn-open-extended, host/store-node-host.lisp): its extended
+; checkpoint E and (fn-sco-store-open E ...) = (REPLAYED OPENED), kept in the
+; global `fn-store-sco-open'.  fn-ock-install over that pair is
+; fn-ock-recover-extended of E (fn-ock-install-of-store-open-by-definition),
+; so the keystone fn-owner-recover-from-checkpoint-equals-full-recover and
+; fn-ock-recover-installs-ocl-relation hold of what is installed here, on
+; both paths, with no second extension or finalization.
+(defun fn-owner-recover-from-store-open (max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((opened (and (boundp-global 'fn-store-sco-open state)
+                     (f-get-global 'fn-store-sco-open state))))
+    (if (not (and (consp opened) (consp (cdr opened)) (consp (cddr opened))))
+        (value :fault)
+      (let ((state (f-put-global 'fn-store-sco-open nil state)))
+        (fn-owner-install-extended
+         (fn-ock-install (cadr opened) (caddr opened) max-conns)
+         (car opened) state)))))
 
 (defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
   (declare (xargs :stobjs state :mode :program))
@@ -234,13 +262,23 @@
 ; ACL2); anything that is not one of the named profiles is refused and the
 ; budget stays 0.  The profile is never changed while the owner runs:
 ; books/store-budget.lisp says why it is fixed at init.
+; The served article bound is installed here too, on every run path
+; (books/owner-served-bound.lisp fn-osb-install-serves-the-profile-bound): the
+; developer `owner run' never reaches fn-owner-posting-configure, and served
+; its connections with the codec ceiling recovery installed.
 (defun fn-owner-install-profile (values state)
   (declare (xargs :stobjs state :mode :program))
-  (if (fn-bs-profile-admittedp values)
-      (let* ((state (f-put-global 'fn-owner-store-profile values state))
-             (state (f-put-global 'fn-owner-record-octets nil state)))
-        (value :installed))
-    (value :refused)))
+  (mv-let (verdict next)
+    (fn-osb-install (fn-owner-core state) values)
+    (if (equal verdict :installed)
+        (let* ((state (fn-owner-replace-core next state))
+               (state (f-put-global 'fn-owner-store-profile values state))
+               (state (f-put-global 'fn-owner-record-octets nil state))
+               ; PRF-099: the carried-usage cache restarts from the Store
+               ; this open replayed (fn-pcb-usage-extend walks it once).
+               (state (f-put-global 'fn-owner-carried-usage nil state)))
+          (value :installed))
+      (value :refused))))
 
 (defun fn-owner-store-profile (state)
   (declare (xargs :stobjs state :mode :program))
@@ -248,10 +286,21 @@
       (f-get-global 'fn-owner-store-profile state)
     nil))
 
+; The carried profile's article bound A and group bound G, for the control
+; socket's read bound (host/native/control.lisp `fnn-control-start').  Both
+; are 0 before a profile is installed, and the read bound is then the
+; command-frame bound: no article is accepted without a profile anyway.
+(defun fn-owner-control-profile-bounds (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((profile (fn-owner-store-profile state)))
+    (value (list (nfix (fn-sbud-payload-bound profile))
+                 (nfix (fn-sbud-group-bound profile))))))
+
 (defun fn-owner-served-post-bound (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((bound (fn-sbud-payload-bound (fn-owner-store-profile state))))
     (if (posp bound) bound *fn-record-max-payload*)))
+
 
 ;; The owner's publication (books/owner-checkpoint-open.lisp).  These read
 ;; the owner and write only the four fn-owner-sco-* globals: the served
@@ -284,37 +333,44 @@
                      (fn-owner-sco-global 'fn-owner-sco-attempted state)))
                :due :idle))))
 
-; The next checkpoint's file octets: (OCTETS S SUFFIX) or :unencodable.  The
-; attempt is recorded at this count, and the base becomes the new capture
-; (it is the capture of the owner's history whether or not the write
-; succeeds: fn-ock-next-checkpoint-is-the-capture).
-(defun fn-owner-sco-publish-octets (state)
+; The publication in three steps (checkpoint-cost): the capture under the
+; owner mutex, the encoding outside it, the result back under it.
+;
+; fn-owner-sco-capture (under the mutex): the values the publication reads,
+; (BASE CONFIGS RECORDS SEGMENT COUNT SUFFIX), and the attempt is recorded at
+; COUNT.  They are ACL2 values; a later commit makes new ones and changes none
+; of these.
+(defun fn-owner-sco-capture (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (fn-own-store (fn-owner-core state)))
          (records (fn-sf-records (fn-sn-files st)))
-         (configs (fn-sn-config-history st))
          (count (len records))
          (durable (fn-owner-sco-global 'fn-owner-sco-durable state))
-         (next (fn-ock-next-checkpoint (fn-owner-sco-global 'fn-owner-sco-base state)
-                                       configs records))
-         (segment (fn-bs-profile-max-record-octets (fn-owner-store-profile state)))
-         (octets (fn-scc-file-octets next segment))
-         (state (f-put-global 'fn-owner-sco-attempted count state))
-         (state (f-put-global 'fn-owner-sco-base next state)))
-    (if (equal octets :unencodable)
-        (value :unencodable)
-      (let ((state (f-put-global 'fn-owner-sco-pending (fn-sco-sequence next) state)))
-        (value (list octets (fn-sco-sequence next)
-                     (- count (if (natp durable) durable 0))))))))
+         (state (f-put-global 'fn-owner-sco-attempted count state)))
+    (value (list (fn-owner-sco-global 'fn-owner-sco-base state)
+                 (fn-sn-config-history st)
+                 records
+                 (fn-bs-profile-max-record-octets (fn-owner-store-profile state))
+                 count
+                 (- count (if (natp durable) durable 0))))))
 
-; The host wrote the pending checkpoint durably (fn-bs-scp-program's last
-; cut): it is now the newest durable one.
-(defun fn-owner-sco-published (state)
+; Outside the mutex, the host calls `fn-ock-publication' (a state-free ACL2
+; function, books/owner-checkpoint-open.lisp) on the captured values:
+; (NEXT OCTETS), NEXT the capture of the captured history
+; (fn-ock-publication-is-the-capture-at-the-capture-point) and OCTETS its
+; frozen file.  It reads no global and writes none.
+
+; fn-owner-sco-publication-done (under the mutex): NEXT becomes the base,
+; whether or not the write succeeded (it is the capture of a prefix of the
+; owner's history either way), and on a durable write its S is the newest
+; durable checkpoint.  Answers S, or :none.
+(defun fn-owner-sco-publication-done (next durablep state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((pending (fn-owner-sco-global 'fn-owner-sco-pending state))
-         (state (f-put-global 'fn-owner-sco-durable pending state))
-         (state (f-put-global 'fn-owner-sco-pending nil state)))
-    (value (if (natp pending) :published :none))))
+  (let* ((state (f-put-global 'fn-owner-sco-base next state))
+         (state (if durablep
+                    (f-put-global 'fn-owner-sco-durable (fn-sco-sequence next) state)
+                  state)))
+    (value (if durablep (fn-sco-sequence next) :none))))
 
 ; The served POST bound (D27): the carried Store profile's payload bound
 ; (`fn-sbud-payload-bound', books/store-budget-naming, which never exceeds the
@@ -920,6 +976,12 @@
   (let* ((owner (fn-owner-core state))
          (result (fn-own-operator-submit-result owner msgid-octets
                                                  group-octets payload))
+         ; The refusal's service-log line, NIL unless RESULT is :refused
+         ; (fn-olog-control-refusal-line-says-refused-iff-submit-refused).
+         (state (f-put-global 'fn-owner-log-line
+                              (fn-olog-control-refusal-line
+                               owner msgid-octets group-octets payload)
+                              state))
          (state (fn-owner-step (list :operator-submit msgid-octets
                                      group-octets payload)
                                state)))
@@ -1149,6 +1211,13 @@
                  ; for this transit attempt (books/peer-authored-accept).
                  (state (f-put-global 'fn-owner-transit-carried
                                       (fn-pa-peer-carried-sources
+                                       peer (fn-cfg-peers (fn-cfg-value cfg)))
+                                      state))
+                 ; PRF-099: the same boundary's opaque-carriage budget
+                 ; (books/peer-carriage-rows.lisp fn-pcb-peer-budget), read
+                 ; from the same configuration as its carried list.
+                 (state (f-put-global 'fn-owner-transit-budget
+                                      (fn-pcb-peer-budget
                                        peer (fn-cfg-peers (fn-cfg-value cfg)))
                                       state))
                  ; (nth 2 args) is the payload fn-node-prepare is given:
@@ -1484,6 +1553,36 @@
       (f-get-global 'fn-owner-transit-carried state)
     nil))
 
+;; The login-binding table the native auth profile loaded
+;; (books/native-auth-profile.lisp fn-native-auth-load-bindings), installed
+;; beside the auth configuration before the listener opens.  Transport only:
+;; ACL2 built it, and fn-lb-owner-gate is the only reader.
+(defun fn-owner-set-login-bindings (bindings state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-login-bindings bindings state)))
+    (value :ok)))
+
+(defun fn-owner-login-bindings (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-login-bindings state)
+      (f-get-global 'fn-owner-login-bindings state)
+    nil))
+
+;; The posting policy's gate for the served submission in flight
+;; (books/login-binding.lisp fn-lb-owner-gate over the owner, its LIVE
+;; configuration and the binding table), called by host/native/owner.lisp
+;; fnn-owner-attempt-served before the transit attempt.  The verdict's
+;; service-log line is left in fn-owner-login-log-line (nil: no login).
+(defun fn-owner-login-gate (received state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((verdict (fn-lb-owner-gate (fn-owner-core state)
+                                    (fn-ocfg-config (fn-owner-ocfg state))
+                                    (fn-owner-login-bindings state)
+                                    received))
+         (state (f-put-global 'fn-owner-login-log-line
+                              (fn-lb-verdict-line verdict) state)))
+    (value verdict)))
+
 (defun fn-owner-peer-carrier-plan (received transitp state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-current-plan
@@ -1509,8 +1608,29 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-served-word word detail)))
 
-; D23: the carried arm's kind-4 event (fn-pa-carried-event), for the NNTP
-; transit attempt only.  No primitive observation is taken or claimed.
+; PRF-099: the carried usage of the boundary whose release evidence is
+; EVIDENCE (a string), from the owner's (K . TALLY) cache over the committed
+; records extended by the records committed since
+; (books/peer-carriage.lisp fn-pcb-usage-extend; equal to the replay
+; projection fn-pcb-usage when the cache is valid,
+; fn-pcb-carried-usage-is-the-projection, and kept valid,
+; fn-pcb-extended-cache-is-valid).  Reset at open (fn-owner-install-profile).
+(defun fn-owner-carried-usage (evidence state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((records (fn-sf-records (fn-sn-files (fn-owner-store state))))
+         (cache (if (boundp-global 'fn-owner-carried-usage state)
+                    (f-get-global 'fn-owner-carried-usage state)
+                  nil))
+         (tally (fn-pcb-usage-extend cache records))
+         (state (f-put-global 'fn-owner-carried-usage
+                              (cons (len records) tally) state)))
+    (mv (fn-pcb-tally-get evidence tally) state)))
+
+; D23 and PRF-099: the carried arm's kind-4 event, for the NNTP transit
+; attempt only, gated by the delivering boundary's opaque-carriage budget
+; over its carried usage (books/peer-carriage.lisp fn-pcb-carried-event):
+; the event, (:refused REASON) naming the exhausted bound, or nil.  No
+; primitive observation is taken or claimed.
 (defun fn-owner-peer-carried-relay-event
     (coordinates msgid received group-codes obligation subject evidence charge
                  state)
@@ -1518,18 +1638,34 @@
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes
-                  (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
-    (value
-     (if (equal groups :bad) nil
-       (fn-pa-carried-event
-        (first coordinates) (second coordinates) (third coordinates)
-        (fn-store-octets->string msgid) received groups
-        (fn-store-octets->string obligation)
-        (fn-store-octets->string subject)
-        (fn-store-octets->string evidence) charge
-        (fn-sn-keyring-snapshots s)
-        (fn-owner-transit-carried-list t state)
-        (fn-own-clock (fn-owner-core state)))))))
+                  (fn-state-groups (fn-node-acceptance (fn-sn-node s)))))
+         (evidence-string (fn-store-octets->string evidence)))
+    (mv-let (usage state) (fn-owner-carried-usage evidence-string state)
+      (value
+       (if (equal groups :bad) nil
+         (fn-pcb-carried-event
+          (first coordinates) (second coordinates) (third coordinates)
+          (fn-store-octets->string msgid) received groups
+          (fn-store-octets->string obligation)
+          (fn-store-octets->string subject)
+          evidence-string charge
+          (fn-sn-keyring-snapshots s)
+          (fn-owner-transit-carried-list t state)
+          (fn-own-clock (fn-owner-core state))
+          (if (boundp-global 'fn-owner-transit-budget state)
+              (f-get-global 'fn-owner-transit-budget state)
+            nil)
+          usage))))))
+
+; PRF-099: the refusal class of a present carrier on transit
+; (books/peer-carriage.lisp fn-pcb-refusal-class): :no-local-binding,
+; :unsupported-profile, :signature-failed or :malformed, or nil.  ED and ML
+; are the host's two primitive outcomes (nil when not observed).
+(defun fn-owner-transit-refusal-class (received transitp ed ml state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pcb-refusal-class
+          received (fn-sn-keyring-snapshots (fn-owner-store state))
+          (fn-owner-transit-carried-list transitp state) ed ml)))
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge
@@ -1615,6 +1751,22 @@
                      (fn-store-octets->string msgid-octets) fn-octets groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
+
+; The subject identity of the payload in the octet buffer.  fn-shb-subject-id
+; (books/sha256-buffer.lisp) digests the subject preimage straight from the
+; buffer (the fixed head for the buffer's length as a list, the payload by
+; index), so the served POST hands the digest no octet list
+; (host/native/owner.lisp fnn-owner-attempt through fnn-metadata-buffer,
+; host/native/io.lisp).  fn-shb-subject-id-is-id-subject-of-sha256-preimage:
+; it is fn-id-subject of fn-sha256 over fn-id-subject-preimage, which is
+; fn-id-subject-of-payload (host/store-host.lisp fn-store-subject-id-of-payload,
+; the list entry) under books/crypto-attach.lisp.  The length test is the
+; list entry's.
+(defun fn-owner-subject-id-buffer (fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (value (if (<= (fn-octets-len fn-octets) *fn-cbor-max-uint*)
+             (fn-shb-subject-id fn-octets)
+           nil)))
 
 ; -----------------------------------------------------------------------------
 ; Connections
@@ -1705,7 +1857,14 @@
              (state (fn-owner-install-effects
                      (fn-own-tls-result-effects result) state))
              (state (f-put-global 'fn-owner-consumed
-                                  (fn-own-tls-result-consumed result) state)))
+                                  (fn-own-tls-result-consumed result) state))
+             ; One line per 441 the effects send (books/owner-log.lisp
+             ; fn-olog-served-refusal-lines-one-per-441).
+             (state (f-put-global 'fn-owner-refusal-lines
+                                  (fn-olog-served-refusal-lines
+                                   (fn-owner-core state) id
+                                   (fn-own-tls-result-effects result))
+                                  state)))
         (value :ok)))))
 
 (defun fn-owner-close (id state)

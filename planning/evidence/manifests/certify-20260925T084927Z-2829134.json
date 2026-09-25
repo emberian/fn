@@ -1,0 +1,257 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "books/reclaim-rule": 0,
+    "books/reclaim-tombstone": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-gates/reclaim-d13-1d379609/build/acl2/certify-20260925T084927Z-2829134",
+  "book_failures": {},
+  "book_provenance": {
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/clock": "installed",
+    "books/config": "installed",
+    "books/defrecord": "installed",
+    "books/reclaim-rule": "certified",
+    "books/reclaim-tombstone": "certified",
+    "books/records": "installed",
+    "books/records-invariants": "installed",
+    "books/records-shape": "installed"
+  },
+  "book_results": {
+    "books/reclaim-rule": "passed",
+    "books/reclaim-tombstone": "passed"
+  },
+  "book_wall_seconds": {
+    "books/reclaim-rule": 0.417,
+    "books/reclaim-tombstone": 0.115
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 300,
+  "cache_install": {
+    "directory": "/home/ember/fn-certcache",
+    "fasl_installed": 8,
+    "fasl_missing": 0,
+    "installed": 0,
+    "kept": 8,
+    "origins": {
+      "/home/ember/fn-gates/fasl-cache-5d268b56-warm": 8
+    },
+    "recertified": [],
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286"
+  },
+  "cert_cache": {
+    "already_cached": 2,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/reclaim-tombstone",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/reclaim-rule",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 2,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/reclaim-rule": "f853198e4cfe41bd08e426ea6fb52b8745c2f52dca308e04af1fa09564838b43",
+    "books/reclaim-tombstone": "5218fe6b17ae2469914c93e889ecc80bcaacca297fe9b6cf120e7fe92d0ba323"
+  },
+  "certify_wall_seconds": 0.421,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "compiled_digests_sha256": {
+    "books/reclaim-rule": "52bb7d7ae923ed6c9251d695b7663ebbecb435db46fc71f68a40e846f16f0cd4",
+    "books/reclaim-tombstone": "0f2615637217110311842f8f6dc26c1542724e9d88cd91c1027ff0077edd6997"
+  },
+  "driver_digests_sha256": {
+    "books/reclaim-rule": "a8702d0c9ffd855d2d0108c2ccad3aa26bafc1f20c075ff7be1e5f889b826fbb",
+    "books/reclaim-tombstone": "7bb70fa5a9ba2032725731ed9120cdb872f3d8fef2a59026b4ea9de0ca7b8987"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null,
+    "SBCL_USER_ARGS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 20bd0c0a91f02b1797fd6e61bb6f2964 0f10b2a35d45",
+    "FN_CERTIFY_SUCCESS 20bd0c0a91f02b1797fd6e61bb6f2964 bca74f19895d"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-25T08:49:28+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "incremental": true,
+  "installed_books": {
+    "books/cbor": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/cbor-invariants": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/clock": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/config": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/defrecord": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/records": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/records-invariants": "/home/ember/fn-gates/fasl-cache-5d268b56-warm",
+    "books/records-shape": "/home/ember/fn-gates/fasl-cache-5d268b56-warm"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 20bd0c0a91f02b1797fd6e61bb6f2964 0f10b2a35d45",
+    "FN_CERTIFY_SUCCESS 20bd0c0a91f02b1797fd6e61bb6f2964 bca74f19895d"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "recertify": [],
+  "requested_before_filter": [
+    "books/reclaim-tombstone",
+    "books/reclaim-rule"
+  ],
+  "requested_books": [
+    "books/reclaim-tombstone",
+    "books/reclaim-rule"
+  ],
+  "roots": [
+    "books/reclaim-tombstone",
+    "books/reclaim-rule"
+  ],
+  "run_id": "certify-20260925T084927Z-2829134",
+  "runner_sha256": "90b2edaa07d592042c78cd213ca6da391657ef71db3a4fed66078ec25be3f683",
+  "runner_unchanged": true,
+  "schedule": {
+    "books_with_archived_wall": 0,
+    "policy": "critical-path-first",
+    "predicted_critical_path_seconds": 1.0
+  },
+  "slot_wait_seconds": {
+    "books/reclaim-rule": 0.0,
+    "books/reclaim-tombstone": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/config.lisp": "5cdd0a1f86ba846812ffdac1880ecda598427095b2b70b3fb78f7dc032d15045",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/reclaim-rule.lisp": "9fc0a7e474bb5dd7072dac0f3f2dd57862bdc1cdb1072360a048f040eca0b758",
+    "books/reclaim-tombstone.lisp": "3f9c7d49f19c76d4ffa9fb58e03e7a6592c3a0d3d47ce6313387433b1551a794",
+    "books/records-invariants.lisp": "3e0202fd63ec5eb418f949635400609514f7891183cad72da58dfb2fb56a76b8",
+    "books/records-shape.lisp": "c3c4114ef6cf4b9a1c01888c7a9c65d5abfd93feca53010a950b7e94315170cd",
+    "books/records.lisp": "bc4003d968bdd440fed58a0c5cee054d6cdf4c77229cebd3a12dd02d09b39bf5"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/config.lisp": "5cdd0a1f86ba846812ffdac1880ecda598427095b2b70b3fb78f7dc032d15045",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/reclaim-rule.lisp": "9fc0a7e474bb5dd7072dac0f3f2dd57862bdc1cdb1072360a048f040eca0b758",
+    "books/reclaim-tombstone.lisp": "3f9c7d49f19c76d4ffa9fb58e03e7a6592c3a0d3d47ce6313387433b1551a794",
+    "books/records-invariants.lisp": "3e0202fd63ec5eb418f949635400609514f7891183cad72da58dfb2fb56a76b8",
+    "books/records-shape.lisp": "c3c4114ef6cf4b9a1c01888c7a9c65d5abfd93feca53010a950b7e94315170cd",
+    "books/records.lisp": "bc4003d968bdd440fed58a0c5cee054d6cdf4c77229cebd3a12dd02d09b39bf5"
+  },
+  "start_order": [
+    "books/reclaim-rule",
+    "books/reclaim-tombstone"
+  ],
+  "started_utc": "2026-09-25T08:49:27+00:00",
+  "status": "passed",
+  "timeout_seconds": 300,
+  "tree": "/home/ember/fn-gates/reclaim-d13-1d379609"
+}

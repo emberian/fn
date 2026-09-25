@@ -329,3 +329,44 @@
 (assert-event (not (fn-bs-publication-admissiblep
                     *sbnt-r-at* (fn-bs-profile-max-transactions *sbnt-r-at*)
                     (len (fn-store-event-encode *sbnt-composite*)))))
+
+; -----------------------------------------------------------------------------
+; PKT-091: the POST boundary's refusal text is ACL2's.
+; fn-sbud-post-boundary-refusal-is-nil-exactly-when-admitted (no hypothesis):
+; an admitted post renders nothing; each refused post renders its own line,
+; the octets host/native/io.lisp fnn-validate-post-boundary prints.
+(assert-event (equal (fn-sbud-post-boundary-refusal
+                      (fn-sbud-post-boundary *sbnt-dev* *sbnt-msgid* 32768 1 9))
+                     nil))
+(assert-event (equal (fn-sbud-post-boundary-refusal
+                      (fn-sbud-post-boundary *sbnt-dev* *sbnt-msgid* 32769 1 9))
+                     (sbnt-codes (coerce "payload exceeds the modelled bound" 'list))))
+(assert-event (equal (fn-sbud-post-boundary-refusal
+                      (fn-sbud-post-boundary *sbnt-dev* '(97) 10 1 9))
+                     (sbnt-codes (coerce "Message-ID is not a valid RFC 5536 message identifier"
+                                         'list))))
+(assert-event (equal (fn-sbud-post-boundary-refusal
+                      (fn-sbud-post-boundary *sbnt-four* *sbnt-msgid* 10 5 9))
+                     (sbnt-codes (coerce "group count exceeds codec bound" 'list))))
+(assert-event (equal (fn-sbud-post-boundary-refusal
+                      (fn-sbud-post-boundary *sbnt-dev* *sbnt-msgid* 10 1 0))
+                     (sbnt-codes (coerce "charge must be a positive uint32" 'list))))
+; A word the boundary never returns still refuses (the unreachable branch
+; fails closed); it is not evidence for the keystone.
+(assert-event (equal (fn-sbud-post-boundary-refusal :something-else)
+                     *fn-sbud-refusal-unnamed*))
+; fn-sbud-post-boundary-refusals-are-distinct: each hypothesis is needed.
+; Without the named-word hypothesis two unnamed words share the unnamed text.
+(assert-event (equal (fn-sbud-post-boundary-refusal :x)
+                     (fn-sbud-post-boundary-refusal :y)))
+(must-fail
+ (defthm sbnt-refusals-distinct-without-a-named-word
+   (implies (not (equal v1 v2))
+            (not (equal (fn-sbud-post-boundary-refusal v1)
+                        (fn-sbud-post-boundary-refusal v2))))))
+(must-fail
+ (defthm sbnt-refusals-distinct-without-distinct-words
+   (implies (or (fn-sbud-post-boundary-verdictp v1)
+                (fn-sbud-post-boundary-verdictp v2))
+            (not (equal (fn-sbud-post-boundary-refusal v1)
+                        (fn-sbud-post-boundary-refusal v2))))))

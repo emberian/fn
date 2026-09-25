@@ -1379,12 +1379,14 @@
       "steps": [
         "On a running owner run `control grant P cancel fn.mod.*` and `control grant Q cancel fn.test`; then grants with a reserved namespace, a malformed principal, the verb newgroup and a malformed pattern.",
         "Stop the owner and run `control list`; restart, revoke P's grant, revoke it again, stop and list.",
-        "(Open, C3 served view.) With control.cancel created, an authority's signed cancel of an unsigned fn.mod.a article on two nodes; a reader pinned before it and a fresh reader; an unauthorized cancel; a cross-post outside the grant; the cancel before its target, with a kill between the two arrivals."
+        "(Open, C3 served view.) With control.cancel created, an authority's signed cancel of an unsigned fn.mod.a article on two nodes; a reader pinned before it and a fresh reader; an unauthorized cancel; a cross-post outside the grant; the cancel before its target, with a kill between the two arrivals.",
+        "(Run, control-c3b/c3c, hbox developer image 5c873f21.) One node, one signing principal P: P's signed T; a reader pinned before; P's signed cancel of T; a fresh reader; P's cancel of a not-yet-arrived L, then L; an unsigned U posted over NNTP and P's cancel of it (no grant); restart."
       ],
       "expected": [
         "The two grants are accepted; the four are refused by name (reserved-group-name, principal, verb-not-grantable, namespace-pattern) and the owner keeps serving.",
         "`control list` shows both grants after the restart, then only Q's; the second revoke is refused (no-such-grant).",
-        "(Open.) The fresh reader answers 430 by Message-ID and 423 `withdrawn` by number and the target is absent from listings; the pinned reader still reads it until it advances; the unauthorized cancel and the cross-post withdraw nothing; the early-cancelled target never appears, across the kill."
+        "(Open.) The fresh reader answers 430 by Message-ID and 423 `withdrawn` by number and the target is absent from listings; the pinned reader still reads it until it advances; the unauthorized cancel and the cross-post withdraw nothing; the early-cancelled target never appears, across the kill.",
+        "(control-c3b, passed natively: planning/evidence/control-c3b-2026-09-25/native-control-filing-a541e90f.log) The fresh reader answers 430 for T and for L; U stays 220; LISTGROUP fn.test lists only U (number 3); after the restart the same; the pinned reader answers 220 for T after the cancel (its pinned view)."
       ],
       "evidence": [
         "tests/acl2/control-authority-tests.lisp",
@@ -1437,6 +1439,189 @@
       ],
       "evidence": [
         "planning/evidence/live-status-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-048",
+      "title": "Reclaim under released-by-all-holders removes exactly the unheld payloads, and a reclaimed Message-ID stays a duplicate",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-014"
+      ],
+      "steps": [
+        "On a store of N=5,000 articles in one group, run `admin retention set released-by-all-holders`; hold article 100 by a reader pin, articles above 2,000 by a consumer cursor at 2,000, and articles 3,000 to 3,100 by an undelivered feed to a live peer.",
+        "Run `store reclaim --dry-run`, then `store reclaim`; record the disk use of the store before and after.",
+        "Re-post the Message-ID of a reclaimed article with its original bytes, and with changed bytes; ARTICLE it by Message-ID and by number; STAT and ARTICLE a held one.",
+        "Kill `store reclaim` at each cut of its program (SIGKILL and EIO) and reopen after each."
+      ],
+      "expected": [
+        "The dry run names every article with its verdict; exactly articles 1 to 2,000 except 100 are reclaimable, and 100 is held-reader-pin, 2,001 to 5,000 held-consumer-cursor.",
+        "After the run the same numbers are tombstones (verified by number), the others are byte-identical, and disk use falls by the reclaimed payload octets less the tombstones.",
+        "The original bytes are refused as a duplicate, the changed bytes as a conflict; ARTICLE answers 430 and 423 article reclaimed; the held article is served unchanged.",
+        "Every reopen replays to a state whose Message-IDs, numbers and group bindings equal the state before; each article is either its original payload or its tombstone."
+      ],
+      "evidence": [
+        "tests/acl2/store-reclaim-tests.lisp",
+        "planning/evidence/reclaim-d13-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-050",
+      "title": "A stock third-party reader (tin) posts, replies and cancels its own post: its supplied Path is accepted and prefixed",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-012"
+      ],
+      "steps": [
+        "Start a developer-image node with a posting login; point tin 2.6.2 (NNTP-only) at it through the wire logger.",
+        "Post a new article from tin, reply to it, and cancel the new post with tin's cancel command.",
+        "Resend one POST's exact octets; resend it with a changed Path."
+      ],
+      "expected": [
+        "Each tin POST is answered 240; ARTICLE shows `Path: IDENTITY!not-for-mail` (the node's identity prefixed to tin's Path) and no other Path.",
+        "The cancel is filed under the control rules in force (C1).",
+        "The exact resend is `441 posting failed; this article is already stored here`; the changed Path is `441 posting failed; a different article with this Message-ID is stored here`."
+      ],
+      "evidence": [
+        "tests/acl2/injection-tests.lisp",
+        "tests/acl2/poster-bytes-tests.lisp",
+        "planning/evidence/path-and-login-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-051",
+      "title": "A bound login posts only as its bound principal under the bound-logins policy; an unbound login and a policy-off node post as before",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-013"
+      ],
+      "steps": [
+        "Enrol logins ember and guest with posting and hybrid keys; `principal bind ember EMBER-HEX`; restart; `policy set posting-policy bound-logins`.",
+        "As ember, POST an article signed with ember's key, one signed with guest's key, and one unsigned.",
+        "As guest (unbound), POST an unsigned article; then `policy set posting-policy open` and repeat ember's guest-signed and unsigned POSTs."
+      ],
+      "expected": [
+        "`principal list` prints signing=EMBER-HEX for ember only.",
+        "240 with HDR :fn-verified naming ember's principal; `441 posting failed; the login is not bound to this signing principal`; `441 posting failed; this login posts only articles signed by its bound principal`. The service log names login=ember for each.",
+        "240 for guest; with the policy open, 240 for both of ember's articles (the guest-signed one verified for guest's principal)."
+      ],
+      "evidence": [
+        "tests/acl2/login-binding-tests.lisp",
+        "planning/evidence/path-and-login-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-052",
+      "title": "an operator raises max-credentials and max-config-generations on a format-8 store and a credential file above the pre-D27 cap loads",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-015"
+      ],
+      "steps": [
+        "Copy a format-8 store; run `operator CONFIG store upgrade-profile --max-credentials 200 --max-config-generations 9000`, then `status`.",
+        "Write an auth.toml of 129 credentials with `principal set-password` and start the owner.",
+        "Run `store upgrade-profile --max-credentials 150` on the upgraded store."
+      ],
+      "expected": [
+        "The upgrade exits 0; status prints max-credentials=200 and max-config-generations=9000.",
+        "The 129th login is accepted and the owner starts (the pre-D27 cap was 128); under a profile of 128 the 129th set-password is refused too-many-credentials.",
+        "The shrink is refused (exit 1) naming max-credentials."
+      ],
+      "evidence": [
+        "planning/evidence/bounds-profile-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-054",
+      "title": "a carrying boundary holds articles only within its budget, and a refused present carrier is named by its class",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-015"
+      ],
+      "steps": [
+        "Relay R adds peer A with no carried list, then `peer carries A HEX` and `peer budget A OCTETS 1`; A posts two signed articles by a principal R never enrolled.",
+        "Without `peer budget`, A's signed article reaches R.",
+        "From A's address, offer R by IHAVE an article whose FN-Authorship items name suite 2, and one by a principal R never enrolled and does not carry."
+      ],
+      "expected": [
+        "R stores the first with a carried verdict and refuses the second with detail=carried-count-exhausted.",
+        "R refuses it with detail=carried-budget-unset.",
+        "R answers 437 to each, logging detail=unsupported-profile and detail=no-local-binding."
+      ],
+      "evidence": [
+        "planning/evidence/peer-carriage-2026-09-25.md",
+        "tests/test_native_hybrid_author.py"
+      ]
+    },
+    {
+      "id": "SCN-055",
+      "title": "XPAT is listed, joins its pattern arguments, ORs comma alternatives and matches case-sensitively on the served node",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-016"
+      ],
+      "steps": [
+        "CAPABILITIES on a served connection.",
+        "In a group holding an article with Subject `probe root`: XPAT Subject 1-9 *root*, *Root*, *zzz*,*root*, *zzz* *root*, probe root.",
+        "Search the group from the web reader with the wildmat *root*."
+      ],
+      "expected": [
+        "The capability block lists XPAT.",
+        "221 with the article's line for *root*, *zzz*,*root* and probe root; 221 with an empty list for *Root* and *zzz* *root*.",
+        "The web page names the XPAT command it sent, carrying the wildmat as typed, and lists the article."
+      ],
+      "evidence": [
+        "tests/acl2/nntp-xpat-tests.lisp",
+        "tests/test_fn_web.py",
+        "planning/evidence/reader-surface-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-047",
+      "title": "A store written by an image before the u64 record codec opens under the new image with the same records and bytes; a u64 charge commits as schema 2",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-013"
+      ],
+      "steps": [
+        "With the previous image, init a store and post two articles; hash every file.",
+        "Open it with the new image (recover, status) and hash every file again.",
+        "With the new image post an article with charge 2^40 and recover."
+      ],
+      "expected": [
+        "The new image recovers the same transaction and article counts; every file hash is unchanged by the open.",
+        "The u64 charge commits (schema-2 record) and recovers; the previous image refuses the store's new record fail-closed by its version octet."
+      ],
+      "evidence": [
+        "planning/evidence/bounds-p6-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-056",
+      "title": "The checkpoint open is cheaper than full replay and an automatic publication does not hold served commands",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-016"
+      ],
+      "steps": [
+        "On scale-profile stores of N = 1000 and N = 4096 records (2 KiB articles), time `status` and the owner's start to LISTENING with no checkpoint and from `operator store checkpoint`'s file, on the image before and after the change.",
+        "Start the owner on the N = 4096 store whose checkpoint is at S = 2048 (due at its first tick) and send STAT in a loop while it publishes S = 4096."
+      ],
+      "expected": [
+        "The open from the checkpoint takes less wall time than the full replay on the same image, the file is smaller than before, and both opens serve the same state (fn-sco-store-open-of-extended-capture).",
+        "No STAT waits for the publication: the largest STAT latency during it stays at the served-command scale, not the publication's seconds."
+      ],
+      "evidence": [
+        "planning/evidence/checkpoint-cost-2026-09-25.md",
+        "tests/acl2/owner-checkpoint-open-tests.lisp"
       ]
     }
   ]

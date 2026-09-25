@@ -17,6 +17,8 @@
 (include-book "bp-eid-shape")
 ; fn-nntp-decimal-field (the peer port and capacity words).
 (include-book "nntp-syntax")
+; PRF-099: the opaque-carriage budget rows and the row extension.
+(include-book "peer-carriage-rows")
 
 ; A decimal word is a string, which is all the guards below need of it; with
 ; this the guard proofs keep the decimal recognizer and its value closed.
@@ -153,6 +155,68 @@ decoded as source-address for durable command compatibility."
               (t (fn-native-admin-result
                   :accepted nil :set-peer nil 0
                   (fn-native-admin-result-peer base) rows)))))))
+
+;; PRF-099: a boundary's carried list and opaque-carriage budget change by
+;; request, never by a longer argv (the argv bound is a per-request work
+;; bound, D27):
+;;
+;;   peer carries NAME HEX [HEX ...]   ; adds principals to NAME's list
+;;   peer budget NAME OCTETS COUNT     ; sets NAME's budget
+;;
+;; Both are :extend-peer plans: the rows ride in the value slot and the
+;; delta is built over the live peer table (books/native-admin.lisp
+;; fn-native-admin-plan-deltas-over, books/peer-carriage-rows.lisp
+;; fn-pcb-extend-delta), so a request for a peer that does not exist is
+;; refused there.  OCTETS is the operator's octet budget, at most twenty
+;; decimal digits (a work bound on the word); it is kept in whole Store
+;; charge pages, floor(OCTETS / 4096), which must fit the row's uint32, the
+;; width of the Store's own charge capacity.  COUNT is a uint32.
+(defun fn-native-admin-octets-wordp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (let ((chars (coerce text 'list)))
+         (and (consp chars)
+              (<= (len chars) 20)
+              (not (and (consp (cdr chars)) (equal (car chars) #\0)))
+              (<= 0 (fn-native-admin-decimal-value chars))))))
+
+(defun fn-native-admin-budget-pages (octets)
+  (declare (xargs :guard t))
+  (floor (nfix octets) *fn-id-charge-page-octets*))
+
+(defun fn-native-admin-peer-extend-plan (words)
+  (declare (xargs :guard t))
+  (let ((words (if (true-listp words) words nil)))
+    (cond
+     ((not (and (<= 4 (len words))
+                (fn-cfg-labelp (nth 2 words))
+                (not (equal (nth 2 words) ""))))
+      (fn-native-admin-result :refused :syntax nil nil 0 nil nil))
+     ((equal (nth 1 words) "budget")
+      (if (and (equal (len words) 5)
+               (fn-native-admin-octets-wordp (nth 3 words))
+               (fn-record-uint32p
+                (fn-native-admin-budget-pages
+                 (fn-native-admin-decimal-value (coerce (nth 3 words) 'list))))
+               (fn-native-admin-decimalp (nth 4 words)))
+          (fn-native-admin-result
+           :accepted nil :extend-peer
+           (fn-record-string-octets (nth 2 words)) 0 nil
+           (fn-pcb-budget-rows
+            (nth 2 words)
+            (fn-native-admin-budget-pages
+             (fn-native-admin-decimal-value (coerce (nth 3 words) 'list)))
+            (fn-native-admin-decimal-value (coerce (nth 4 words) 'list))))
+        (fn-native-admin-result :refused :budget nil nil 0 nil nil)))
+     ((equal (nth 1 words) "carries")
+      (let ((rows (fn-native-admin-carries-rows (nth 2 words)
+                                                (nthcdr 3 words))))
+        (if (and (consp rows) (not (equal rows :bad)))
+            (fn-native-admin-result
+             :accepted nil :extend-peer
+             (fn-record-string-octets (nth 2 words)) 0 nil rows)
+          (fn-native-admin-result :refused :carries nil nil 0 nil nil))))
+     (t (fn-native-admin-result :refused :syntax nil nil 0 nil nil)))))
 
 (defun fn-native-admin-set-peer-delta (plan)
   (declare (xargs :guard t))

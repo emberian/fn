@@ -1,0 +1,7 @@
+profile default articles 120 payload 2048 load_s 1.358 last_q_median_ms 3.336 rss_kib 395500 slope_kib 211.2 counts_per_post {'fn-octets$c-list': 1.0, 'fn-owner-chunk': 6.0, 'fn-owner-existing-action-buffer': 1.0, 'fn-owner-prepare-buffer': 1.0, 'fn-pbb-existing-action': 2.0, 'fn-sha256-stobj': 9.0, 'fnn-frame': 1.0, 'fnn-metadata': 2.0, 'fnn-obligation-id': 2.0, 'fnn-octet-list': 30.0, 'fnn-octets-fill': 1.0, 'fnn-owner-attempt': 1.0, 'fnn-owner-handle-chunk': 6.0, 'fnn-subject-id': 2.0, 'fnn-trailer': 1.0} error None
+profile default articles 120 payload 32768 load_s 4.354 last_q_median_ms 23.573 rss_kib 473536 slope_kib 696.7 counts_per_post None error None
+profile default articles 120 payload 2048 load_s 0.455 last_q_median_ms 3.404 rss_kib 393860 slope_kib 219.7 counts_per_post None error None
+profile default articles 10000 payload 2048 load_s 80.111 last_q_median_ms 12.745 rss_kib 732748 slope_kib 29.5 counts_per_post None error None
+profile default articles 120 payload 32768 load_s 3.169 last_q_median_ms 26.712 rss_kib 470780 slope_kib 680.5 counts_per_post None error None
+profile default articles 10000 payload 32768 load_s 305.649 last_q_median_ms 29.186 rss_kib 5666880 slope_kib 521.2 counts_per_post None error None
+ 06:48:21 up 71 days, 12:32, 59 users,  load average: 9.72, 10.39, 10.89

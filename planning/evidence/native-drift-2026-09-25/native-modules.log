@@ -1,0 +1,57 @@
+....................FF......................<frozen importlib._bootstrap_external>:753: ResourceWarning: unclosed <socket.socket [closed] fd=6, family=2, type=1, proto=6>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+....ssssF....................store post 19999 0 committed sequence=0 charge=6 
+store post 20000 0 committed sequence=1 charge=6 
+store post 20001 1  store: payload exceeds the modelled bound
+operator post 1000 0  accepted operator post ACCEPTED
+operator post 20001 1  refused operator post ARTICLE-EXCEEDS-PROFILE-BOUND
+profile cuts: [(('profile-created', 'eio', 'operator'), 128), (('profile-created', 'eio', 'store'), 128), (('profile-created', 'kill', 'operator'), 128), (('profile-created', 'kill', 'store'), 128), (('profile-durable', 'eio', 'operator'), 4096), (('profile-durable', 'eio', 'store'), 4096), (('profile-durable', 'kill', 'operator'), 4096), (('profile-durable', 'kill', 'store'), 4096), (('profile-replaced', 'eio', 'operator'), 4096), (('profile-replaced', 'eio', 'store'), 4096), (('profile-replaced', 'kill', 'operator'), 4096), (('profile-replaced', 'kill', 'store'), 4096), (('profile-staged-durable', 'eio', 'operator'), 128), (('profile-staged-durable', 'eio', 'store'), 128), (('profile-staged-durable', 'kill', 'operator'), 128), (('profile-staged-durable', 'kill', 'store'), 128), (('profile-written', 'eio', 'operator'), 128), (('profile-written', 'eio', 'store'), 128), (('profile-written', 'kill', 'operator'), 128), (('profile-written', 'kill', 'store'), 128)]
+POST 33792 ('240 article received OK', True)
+POST 204800 ('240 article received OK', True)
+POST 3145728 ('240 article received OK', True)
+........../usr/lib/python3.12/unittest/case.py:669: ResourceWarning: unclosed file <_io.FileIO name=3 mode='rb' closefd=True>
+  function, args, kwargs = self._cleanups.pop()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.12/unittest/case.py:669: ResourceWarning: unclosed file <_io.FileIO name=5 mode='rb' closefd=True>
+  function, args, kwargs = self._cleanups.pop()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..
+======================================================================
+FAIL: test_init_writes_the_operators_fields_and_status_prints_them (tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_writes_the_operators_fields_and_status_prints_them)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-drift/src2/tests/test_native_operator_verbs.py", line 597, in test_init_writes_the_operators_fields_and_status_prints_them
+    self.assertEqual(fields["max-history-octets"], 1 << 40)
+AssertionError: 0 != 1099511627776
+
+======================================================================
+FAIL: test_the_development_profile_budget_is_reported_and_refused_by_name (tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_the_development_profile_budget_is_reported_and_refused_by_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-drift/src2/tests/test_native_operator_verbs.py", line 554, in test_the_development_profile_budget_is_reported_and_refused_by_name
+    refused = self.post_many(ids[128:130] + ids[:1])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/native-drift/src2/tests/test_native_operator_verbs.py", line 499, in post_many
+    self.assertTrue(stream.readline().startswith(b"340"))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_a_raise_of_any_field_and_a_shrink_refused_by_name (tests.test_native_profile_upgrade.OperatorFieldsTests.test_a_raise_of_any_field_and_a_shrink_refused_by_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/native-drift/src2/tests/test_native_profile_upgrade.py", line 304, in test_a_raise_of_any_field_and_a_shrink_refused_by_name
+    self.assertEqual((fields["max-transactions"], fields["max-history-octets"]),
+AssertionError: Tuples differ: (100000, 0) != (100000, 1099511627776)
+
+First differing element 1:
+0
+1099511627776
+
+- (100000, 0)
++ (100000, 1099511627776)
+
+----------------------------------------------------------------------
+Ran 85 tests in 250.719s
+
+FAILED (failures=3, skipped=4)
+state checkpoint cuts: [(('state-checkpoint-created', 'eio', 'operator'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-created', 'eio', 'store'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-created', 'kill', 'operator'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-created', 'kill', 'store'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-durable', 'eio', 'operator'), 'open=checkpoint:5 suffix=0'), (('state-checkpoint-durable', 'eio', 'store'), 'open=checkpoint:5 suffix=0'), (('state-checkpoint-durable', 'kill', 'operator'), 'open=checkpoint:5 suffix=0'), (('state-checkpoint-durable', 'kill', 'store'), 'open=checkpoint:5 suffix=0'), (('state-checkpoint-replaced', 'eio', 'operator'), 'open=checkpoint:5 suffix=0'), (('state-checkpoint-replaced', 'eio', 'store'), 'open=checkpoint:5 suffix=0'), (('state-checkpoint-replaced', 'kill', 'operator'), 'open=checkpoint:5 suffix=0'), (('state-checkpoint-replaced', 'kill', 'store'), 'open=checkpoint:5 suffix=0'), (('state-checkpoint-staged-durable', 'eio', 'operator'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-staged-durable', 'eio', 'store'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-staged-durable', 'kill', 'operator'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-staged-durable', 'kill', 'store'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-written', 'eio', 'operator'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-written', 'eio', 'store'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-written', 'kill', 'operator'), 'open=checkpoint:3 suffix=2'), (('state-checkpoint-written', 'kill', 'store'), 'open=checkpoint:3 suffix=2')]

@@ -298,6 +298,13 @@ observation into the outcome and this function only carries it out."
                          (fnn-command-upgrade-profile root profile)))
                       (:compact (funcall *fnn-compact-callback* root))
                       (:checkpoint (fnn-command-state-checkpoint root))
+                      (:needs-upgrade (fnn-command-needs-upgrade root))
+                      (:rollback-check
+                       (fnn-command-rollback-check
+                        root
+                        (fnn-octets-string
+                         (fnn-core 'fn-native-operator-host-result-rollback-path-octets
+                                   result))))
                       (t +fnn-exit-fault+))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
                                     (string-downcase (symbol-name action)))
@@ -354,13 +361,31 @@ observation into the outcome and this function only carries it out."
           (return code))
         (sleep watch)))))
 
+(defun fnn-operator-store-max-credentials (root)
+  "The store profile's max-credentials (D27, PRF-102), read from config.json
+without the writer lock: principal administration does not open the store.
+The profile only rises (fn-profile-upgradep), so a read that races an
+upgrade sees a bound no larger than the one the owner will load under."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (fnn-profile-nat 'fn-store-profile-max-credentials store)))
+
 (defun fnn-operator-execute-principal (result)
-  "Execute only the credential plan and credential path projected by ACL2."
-  (fnn-native-auth-admin-execute
-   (fnn-core 'fn-native-operator-host-result-principal-plan result)
-   (fnn-octets-string
-    (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
-              result))))
+  "Execute only the credential plan and credential path projected by ACL2.
+The configured store is the one whose writer lock says whether an owner is
+serving the old credentials (fn-native-auth-admin-effect-word), and whose
+profile bounds the credentials (max-credentials, D27, PRF-102)."
+  (let ((*fnn-native-auth-admin-store-root*
+          (fnn-octets-string
+           (fnn-core 'fn-native-operator-host-result-principal-store-octets
+                     result))))
+    (fnn-native-auth-admin-execute
+     (fnn-core 'fn-native-operator-host-result-principal-plan result)
+     (fnn-octets-string
+      (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
+                result))
+     (fnn-operator-store-max-credentials
+      (fnn-core 'fn-native-operator-host-result-store-root result)))))
 
 (defun fnn-operator-read-config (path maximum)
   "Classify only ordinary configuration-file defects as usage before reading.
@@ -402,7 +427,8 @@ configuration usage result."
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
           (:status (fnn-operator-execute-status result))
-          ((:recover :upgrade-profile :compact :checkpoint)
+          ((:recover :upgrade-profile :compact :checkpoint :needs-upgrade
+            :rollback-check)
            (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
           (:principal (fnn-operator-execute-principal result))

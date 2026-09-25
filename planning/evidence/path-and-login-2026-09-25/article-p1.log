@@ -1,0 +1,14 @@
+201 fn-nntp experimental reader ready
+381 password required
+281 authentication accepted
+220 0 <pl-resend-052746@example.org> article follows
+Injection-Info: fn.example.invalid
+Path: fn.example.invalid!not-for-mail
+From: ember <ember@example.org>
+Newsgroups: fn.test
+Subject: resend with a supplied Path
+Date: Fri, 25 Sep 2026 10:00:00 +0000
+Message-ID: <pl-resend-052746@example.org>
+
+body
+205 closing connection

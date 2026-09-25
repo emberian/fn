@@ -6,41 +6,41 @@
 (include-book "byte-store-k0-step")
 
 
-(defthm fn-bs-k0b-has-root-marker-is-a-root-op
-  (implies (fn-bs-k0m-has-root-marker ops)
-           (fn-bs-k0m-has-root-marker (fn-bs-ops-for-dir ops :root)))
-  :hints (("Goal" :in-theory (enable fn-bs-k0m-has-root-marker fn-bs-ops-for-dir))))
-(defthm fn-bs-k0b-shape-has-no-root-marker
+(defthm fn-bs-k0b-has-root-rename-is-a-root-op
+  (implies (fn-bs-k0m-has-root-rename ops)
+           (fn-bs-k0m-has-root-rename (fn-bs-ops-for-dir ops :root)))
+  :hints (("Goal" :in-theory (enable fn-bs-k0m-has-root-rename fn-bs-ops-for-dir))))
+(defthm fn-bs-k0b-shape-has-no-root-rename
   (implies (fn-bs-pending-shape-okp b)
-           (not (fn-bs-k0m-has-root-marker (fn-bs-ops-for-dir (fn-bs-pending b) :root))))
-  :hints (("Goal" :in-theory (e/d (fn-bs-pending-shape-okp fn-bs-k0m-has-root-marker)
+           (not (fn-bs-k0m-has-root-rename (fn-bs-ops-for-dir (fn-bs-pending b) :root))))
+  :hints (("Goal" :in-theory (e/d (fn-bs-pending-shape-okp fn-bs-k0m-has-root-rename)
                                   (fn-bs-fencedp fn-bs-inop fn-bs-durable-names)))))
-(defthm fn-bs-k0b-relation-has-no-root-marker
+(defthm fn-bs-k0b-relation-has-no-root-rename
   (implies (fn-bs-store-relation b k)
-           (not (fn-bs-k0m-has-root-marker (fn-bs-pending b))))
+           (not (fn-bs-k0m-has-root-rename (fn-bs-pending b))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-window-unfolds (bs b) (ks k))
-                 (:instance fn-bs-k0b-has-root-marker-is-a-root-op (ops (fn-bs-pending b)))
-                 fn-bs-k0b-shape-has-no-root-marker)
+                 (:instance fn-bs-k0b-has-root-rename-is-a-root-op (ops (fn-bs-pending b)))
+                 fn-bs-k0b-shape-has-no-root-rename)
            :in-theory (e/d (fn-bs-pending-matches-phase fn-bs-replay-matches-scan)
-                           (fn-bs-store-relation fn-bs-k0b-has-root-marker-is-a-root-op
-                            fn-bs-k0b-shape-has-no-root-marker fn-bs-statep fn-bs-pending-shape-okp
-                            fn-bs-k0m-has-root-marker fn-bs-ops-for-dir fn-sf-crash-imagep fn-bs-scan-store
+                           (fn-bs-store-relation fn-bs-k0b-has-root-rename-is-a-root-op
+                            fn-bs-k0b-shape-has-no-root-rename fn-bs-statep fn-bs-pending-shape-okp
+                            fn-bs-k0m-has-root-rename fn-bs-ops-for-dir fn-sf-crash-imagep fn-bs-scan-store
                             fn-bs-scan-okp)))))
-(defthm fn-bs-k0b-covered-without-root-marker-is-related
-  (implies (and (fn-bs-k0-coveredp b k) (not (fn-bs-k0m-has-root-marker (fn-bs-pending b))))
+(defthm fn-bs-k0b-covered-without-root-rename-is-related
+  (implies (and (fn-bs-k0-coveredp b k) (not (fn-bs-k0m-has-root-rename (fn-bs-pending b))))
            (fn-bs-store-relation b k))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp) (fn-bs-store-relation)))))
-(defthm fn-bs-k0b-covered-with-root-marker-is-pending
-  (implies (and (fn-bs-k0-coveredp b k) (fn-bs-k0m-has-root-marker (fn-bs-pending b)))
-           (fn-bs-k0s-marker-pendingp b k))
+  :hints (("Goal" :in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation)))))
+(defthm fn-bs-k0b-covered-with-root-rename-is-pending
+  (implies (and (fn-bs-k0-coveredp b k) (fn-bs-k0m-has-root-rename (fn-bs-pending b)))
+           (fn-bs-k0s-root-rename-pendingp b k))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-bs-k0-coveredp) (fn-bs-store-relation fn-bs-k0s-marker-pendingp)))))
-(defthm fn-bs-k0b-root-quiet-has-no-root-marker
+  :hints (("Goal" :in-theory (e/d (fn-bs-k0-coveredp) (fn-bs-store-relation fn-bs-k0s-root-rename-pendingp)))))
+(defthm fn-bs-k0b-root-quiet-has-no-root-rename
   (implies (not (fn-bs-ops-for-dir ops :root))
-           (not (fn-bs-k0m-has-root-marker ops)))
-  :hints (("Goal" :in-theory (enable fn-bs-k0m-has-root-marker fn-bs-ops-for-dir))))
+           (not (fn-bs-k0m-has-root-rename ops)))
+  :hints (("Goal" :in-theory (enable fn-bs-k0m-has-root-rename fn-bs-ops-for-dir))))
 (defthm fn-bs-k0b-completing-transactions-quiet
   (implies (and (fn-bs-store-relation bs ks) (fn-bs-finish-inputp ks sequence txid))
            (not (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
@@ -103,7 +103,7 @@
                          (fn-bs-k0-step-inputp (fn-bs-marker-b3 bs stage octets) ks
                                                (list :rename :staging stage :root *fn-bs-history-marker-name*)
                                                outcome))
-                (implies (fn-bs-k0s-marker-pendingp (fn-bs-marker-b4 bs stage octets) ks)
+                (implies (fn-bs-k0s-root-rename-pendingp (fn-bs-marker-b4 bs stage octets) ks)
                          (fn-bs-k0-step-inputp (fn-bs-marker-b4 bs stage octets) ks
                                                (list :fsync-dir :root) outcome))))
   :rule-classes nil
@@ -113,7 +113,7 @@
            :in-theory (e/d (fn-bs-k0-step-inputp fn-bs-k0b-marker-fsync-outcomep fn-bs-inop
                             fn-bs-marker-b1 fn-bs-marker-b2 fn-bs-marker-b3 fn-bs-ops-for-dir-of-append)
                            (fn-bs-store-relation fn-bs-lookup fn-bs-authority-inode-list
-                            fn-bs-k0s-marker-pendingp fn-bs-k0-coveredp fn-bs-replay-visiblep
+                            fn-bs-k0s-root-rename-pendingp fn-bs-k0-coveredp fn-bs-replay-visiblep
                             fn-bs-finish-inputp fn-bs-crash-choicesp fn-bs-ops-for-ino fn-bs-k0-observation-inputp)))))
 (defthm fn-bs-k0b-marker-rename-b3
   (implies (and (equal (fn-bs-lookup (fn-bs-marker-b3 bs stage octets) :staging stage) (fn-bs-next-ino bs))
@@ -156,53 +156,53 @@
                             fn-bs-create fn-bs-write fn-bs-unlink fn-bs-fence-dir fn-bs-k0s-fsync-dir-ok-is-fence
                             fn-bs-statep fn-bs-marker-b1 fn-bs-marker-b2 fn-bs-marker-b3 fn-bs-marker-b4 fn-bs-marker-b5
                             fn-bs-authority-inode-list fn-bs-finish-inputp)))))
-(defthm fn-bs-k0b-marker-root-markers
+(defthm fn-bs-k0b-marker-root-renames
   (implies (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
-           (and (not (fn-bs-k0m-has-root-marker (fn-bs-pending (fn-bs-marker-b1 bs stage))))
-                (not (fn-bs-k0m-has-root-marker (fn-bs-pending (fn-bs-marker-b2 bs stage octets))))
-                (not (fn-bs-k0m-has-root-marker (fn-bs-pending (fn-bs-marker-b3 bs stage octets))))
-                (fn-bs-k0m-has-root-marker (fn-bs-pending (fn-bs-marker-b4 bs stage octets)))
-                (not (fn-bs-k0m-has-root-marker (fn-bs-pending (fn-bs-marker-b5 bs stage octets))))))
+           (and (not (fn-bs-k0m-has-root-rename (fn-bs-pending (fn-bs-marker-b1 bs stage))))
+                (not (fn-bs-k0m-has-root-rename (fn-bs-pending (fn-bs-marker-b2 bs stage octets))))
+                (not (fn-bs-k0m-has-root-rename (fn-bs-pending (fn-bs-marker-b3 bs stage octets))))
+                (fn-bs-k0m-has-root-rename (fn-bs-pending (fn-bs-marker-b4 bs stage octets)))
+                (not (fn-bs-k0m-has-root-rename (fn-bs-pending (fn-bs-marker-b5 bs stage octets))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-bs-marker-b1 fn-bs-marker-b2 fn-bs-marker-b3 fn-bs-marker-b4
-                                     fn-bs-marker-b5 fn-bs-k0m-has-root-marker))))
+                                     fn-bs-marker-b5 fn-bs-k0m-has-root-rename))))
 (defthm fn-bs-k0b-marker-pairs-by-step
   (implies (fn-bs-k0b-marker-hyps)
            (and (fn-bs-store-relation (fn-bs-marker-b1 bs stage) ks)
                 (fn-bs-store-relation (fn-bs-marker-b2 bs stage octets) ks)
                 (fn-bs-store-relation (fn-bs-marker-b3 bs stage octets) ks)
-                (fn-bs-k0s-marker-pendingp (fn-bs-marker-b4 bs stage octets) ks)
+                (fn-bs-k0s-root-rename-pendingp (fn-bs-marker-b4 bs stage octets) ks)
                 (fn-bs-store-relation (fn-bs-marker-b5 bs stage octets) ks)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0b-marker-step-inputs (outcome :ok))
                  (:instance fn-bs-k0b-marker-steps (g nil) (c nil))
-                 fn-bs-k0m-completing-window-facts fn-bs-k0b-marker-root-markers
+                 fn-bs-k0m-completing-window-facts fn-bs-k0b-marker-root-renames
                  (:instance fn-bs-step-preserves-k0-coverage (bs bs) (step (list :create :staging stage)) (outcome :ok) (groups nil) (capacity nil))
                  (:instance fn-bs-step-preserves-k0-coverage (bs (fn-bs-marker-b1 bs stage)) (step (list :write-all :staging stage octets)) (outcome :ok) (groups nil) (capacity nil))
                  (:instance fn-bs-step-preserves-k0-coverage (bs (fn-bs-marker-b2 bs stage octets)) (step (list :fsync-file :staging stage)) (outcome :ok) (groups nil) (capacity nil))
                  (:instance fn-bs-step-preserves-k0-coverage (bs (fn-bs-marker-b3 bs stage octets)) (step (list :rename :staging stage :root *fn-bs-history-marker-name*)) (outcome :ok) (groups nil) (capacity nil))
                  (:instance fn-bs-step-preserves-k0-coverage (bs (fn-bs-marker-b4 bs stage octets)) (step (list :fsync-dir :root)) (outcome :ok) (groups nil) (capacity nil))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b (fn-bs-marker-b1 bs stage)) (k ks))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b (fn-bs-marker-b2 bs stage octets)) (k ks))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b (fn-bs-marker-b3 bs stage octets)) (k ks))
-                 (:instance fn-bs-k0b-covered-with-root-marker-is-pending (b (fn-bs-marker-b4 bs stage octets)) (k ks))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b (fn-bs-marker-b5 bs stage octets)) (k ks)))
-           :in-theory (e/d () (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0-step-inputp
-                               fn-bs-step fn-bs-lookup fn-bs-finish-inputp fn-bs-k0m-has-root-marker
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b (fn-bs-marker-b1 bs stage)) (k ks))
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b (fn-bs-marker-b2 bs stage octets)) (k ks))
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b (fn-bs-marker-b3 bs stage octets)) (k ks))
+                 (:instance fn-bs-k0b-covered-with-root-rename-is-pending (b (fn-bs-marker-b4 bs stage octets)) (k ks))
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b (fn-bs-marker-b5 bs stage octets)) (k ks)))
+           :in-theory (e/d () (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0-step-inputp
+                               fn-bs-step fn-bs-lookup fn-bs-finish-inputp fn-bs-k0m-has-root-rename
                                fn-bs-marker-b1 fn-bs-marker-b2 fn-bs-marker-b3 fn-bs-marker-b4 fn-bs-marker-b5
                                fn-bs-replay-visiblep)))))
 (defthm fn-bs-k0b-marker-landed-b4
   (implies (fn-bs-k0b-marker-hyps)
-           (equal (fn-bs-k0s-marker-landed (fn-bs-marker-b4 bs stage octets))
+           (equal (fn-bs-k0s-root-rename-landed (fn-bs-marker-b4 bs stage octets))
                   (fn-bs-marker-b5 bs stage octets)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0m-syscall-states fn-bs-k0m-resolutions fn-bs-k0m-completing-window-facts
                  (:instance fn-bs-store-relation-unfolds))
-           :in-theory (e/d (fn-bs-k0s-marker-landed fn-bs-k0s-root-target fn-bs-ops-for-dir-of-append)
+           :in-theory (e/d (fn-bs-k0s-root-rename-landed fn-bs-k0s-root-target fn-bs-ops-for-dir-of-append)
                            (fn-bs-store-relation fn-bs-statep fn-bs-lookup fn-bs-marker-b1 fn-bs-marker-b2
-                            fn-bs-marker-b3 fn-bs-marker-b5 fn-bs-k0m-with-root-entry fn-bs-marker-rename-dropped
+                            fn-bs-marker-b3 fn-bs-marker-b5 fn-bs-k0m-with-root-entry fn-bs-root-rename-dropped
                             fn-bs-unlink fn-bs-write fn-bs-fsync-file fn-bs-fsync-dir fn-bs-create
                             fn-bs-finish-inputp fn-bs-replay-visiblep))
            :expand ((fn-bs-marker-b4 bs stage octets)))))
@@ -216,18 +216,18 @@
              (and (fn-bs-store-relation (car (nth 1 run)) (cdr (nth 1 run)))
                   (fn-bs-store-relation (car (nth 3 run)) (cdr (nth 3 run)))
                   (fn-bs-store-relation (car (nth 5 run)) (cdr (nth 5 run)))
-                  (fn-bs-store-relation (fn-bs-marker-rename-dropped (car (nth 7 run)))
+                  (fn-bs-store-relation (fn-bs-root-rename-dropped (car (nth 7 run)))
                                         (cdr (nth 7 run)))
                   (fn-bs-store-relation (car (nth 9 run)) (cdr (nth 9 run))))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0b-marker-pairs-by-step fn-bs-k0m-completing-window-facts
                  (:instance fn-bs-store-relation-unfolds))
-           :in-theory (e/d (fn-bs-marker-run-shape fn-bs-k0s-marker-pendingp)
+           :in-theory (e/d (fn-bs-marker-run-shape fn-bs-k0s-root-rename-pendingp)
                            (fn-bs-store-relation fn-bs-statep fn-bs-lookup fn-bs-marker-program fn-bs-run
                             fn-bs-marker-b1 fn-bs-marker-b2 fn-bs-marker-b3 fn-bs-marker-b4 fn-bs-marker-b5
-                            fn-bs-marker-rename-dropped fn-bs-k0s-marker-landed fn-bs-k0m-has-root-marker
-                            fn-bs-k0m-root-marker-onlyp fn-bs-finish-inputp fn-bs-replay-visiblep)))))
+                            fn-bs-root-rename-dropped fn-bs-k0s-root-rename-landed fn-bs-k0m-has-root-rename
+                            fn-bs-k0m-root-rename-onlyp fn-bs-finish-inputp fn-bs-replay-visiblep)))))
 (defthm fn-bs-k0-marker-replaced-cut-relation-by-step
   (implies (and (fn-bs-store-relation bs ks)
                 (fn-bs-finish-inputp ks sequence txid)
@@ -237,10 +237,10 @@
            (let* ((run (fn-bs-run bs ks (fn-bs-marker-program stage octets) nil groups capacity))
                   (b (car (nth 7 run))) (k (cdr (nth 7 run)))
                   (landed (mv-nth 1 (fn-bs-fsync-dir b :root :ok))))
-             (and (fn-bs-store-relation (fn-bs-marker-rename-dropped b) k)
+             (and (fn-bs-store-relation (fn-bs-root-rename-dropped b) k)
                   (fn-bs-store-relation landed k)
                   (implies (fn-bs-crash-imagep b image)
-                           (or (fn-bs-crash-imagep (fn-bs-marker-rename-dropped b) image)
+                           (or (fn-bs-crash-imagep (fn-bs-root-rename-dropped b) image)
                                (fn-bs-crash-imagep landed image))))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -248,11 +248,11 @@
                  fn-bs-k0m-resolutions
                  (:instance fn-bs-k0-covered-crash-image-is-a-related-image (bs (fn-bs-marker-b4 bs stage octets)))
                  (:instance fn-bs-store-relation-unfolds))
-           :in-theory (e/d (fn-bs-marker-run-shape fn-bs-k0s-marker-pendingp fn-bs-k0-coveredp)
+           :in-theory (e/d (fn-bs-marker-run-shape fn-bs-k0s-root-rename-pendingp fn-bs-k0-coveredp)
                            (fn-bs-store-relation fn-bs-statep fn-bs-lookup fn-bs-marker-program fn-bs-run
                             fn-bs-marker-b1 fn-bs-marker-b2 fn-bs-marker-b3 fn-bs-marker-b4 fn-bs-marker-b5
-                            fn-bs-marker-rename-dropped fn-bs-k0s-marker-landed fn-bs-k0m-has-root-marker
-                            fn-bs-k0m-root-marker-onlyp fn-bs-finish-inputp fn-bs-replay-visiblep
+                            fn-bs-root-rename-dropped fn-bs-k0s-root-rename-landed fn-bs-k0m-has-root-rename
+                            fn-bs-k0m-root-rename-onlyp fn-bs-finish-inputp fn-bs-replay-visiblep
                             fn-bs-crash-imagep fn-bs-fsync-dir fn-bs-k0s-fsync-dir-ok-is-fence)))))
 (defun fn-bs-k0b-marker-step-coveredp (pre step outcome ks groups capacity)
   (declare (xargs :guard t :verify-guards nil))
@@ -296,5 +296,5 @@
                             fn-bs-k0s-syscall-step-keeps-kernel fn-bs-finish-inputp)
                            (fn-bs-store-relation fn-bs-statep fn-bs-lookup fn-bs-run fn-bs-step fn-bs-marker-program
                             fn-bs-marker-b1 fn-bs-marker-b2 fn-bs-marker-b3 fn-bs-marker-b4 fn-bs-marker-b5
-                            fn-bs-k0-coveredp fn-bs-k0-step-inputp fn-bs-k0s-marker-pendingp
+                            fn-bs-k0-coveredp fn-bs-k0-step-inputp fn-bs-k0s-root-rename-pendingp
                             fn-bs-k0b-marker-fsync-outcomep fn-bs-replay-visiblep)))))

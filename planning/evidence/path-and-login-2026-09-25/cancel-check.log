@@ -1,0 +1,32 @@
+$ HEAD <00000000843644983145.00000000000000056629.fn@fn.example.invalid>
+221 0 <00000000843644983145.00000000000000056629.fn@fn.example.invalid> headers follow
+Injection-Date: Fri, 25 Sep 2026 09:49:43 +0000
+Message-ID: <00000000843644983145.00000000000000056629.fn@fn.example.invalid>
+Date: Fri, 25 Sep 2026 09:49:43 +0000
+Injection-Info: fn.example.invalid
+Path: fn.example.invalid!not-for-mail
+From: ember <ember@example.org>
+Subject: tin run five zqx
+Newsgroups: fn.test
+User-Agent: tin/2.6.2-20221225 ("Pittyvaich") (Linux/6.11.0-29-generic (x86_64))
+$ GROUP control.cancel
+211 1 1 1 control.cancel
+$ GROUP fn.test
+211 19 1 19 fn.test
+$ LISTGROUP control.cancel
+211 1 1 1 control.cancel list follows
+1
+$ HDR :fn-control 1
+501 syntax error
+$ HEAD 1
+221 1 <00000000843645013198.00000000000000086683.fn@fn.example.invalid> headers follow
+Injection-Date: Fri, 25 Sep 2026 09:50:13 +0000
+Message-ID: <00000000843645013198.00000000000000086683.fn@fn.example.invalid>
+Date: Fri, 25 Sep 2026 09:50:13 +0000
+Injection-Info: fn.example.invalid
+Path: fn.example.invalid!not-for-mail
+From: ember <ember@example.org>
+Subject: cmsg cancel <00000000843644983145.00000000000000056629.fn@fn.example.invalid>
+Newsgroups: fn.test
+Control: cancel <00000000843644983145.00000000000000056629.fn@fn.example.invalid>
+User-Agent: tin/2.6.2-20221225 ("Pittyvaich") (Linux/6.11.0-29-generic (x86_64))

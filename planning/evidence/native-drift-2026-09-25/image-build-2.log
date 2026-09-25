@@ -1,0 +1,21 @@
+== acquire default
+attempt 93b6c5c60b1d8120 composed: loaded
+profile=default image=build/fn-host artifact-set=93b6c5c60b1d8120e8561b91abff3feaeed9b7c89c13b349497a5061734e74b0 origin=composed books=337 source=741759151e62dc093604f03dee58ab3ec53da0c5bc79d2147d6ad7fe62434307 toolchain=d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0 rejected=0
+== acquire dtn
+attempt c924dda674c0e12c composed: loaded
+profile=dtn image=build/fn-host-dtn artifact-set=c924dda674c0e12ceccc964aeff298cd920162f1d72212ce59b40d69115ca454 origin=composed books=329 source=5ea258f3b41e1ac2ddf7b686e32132e387f468895c42264f72a3605e6cfdf131 toolchain=d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0 rejected=0
+== validate default
+profile=default image=build/fn-host roots=141 result=loaded
+== validate dtn
+profile=dtn image=build/fn-host-dtn roots=125 result=loaded
+== build production
+built build/fn-host profile=production (128M core)
+== build developer
+built build/fn-host-developer profile=developer (128M core)
+== build dtn
+build_native_host: error or uncertified-book marker in build/freeze/native-build-dtn.log
+12589:ACL2 Error in ( DEFUN FN-OWNER-PREPARE-BUFFER ...):  Every name used
+12601:ACL2 Error [Failure] in ( DEFUN FN-OWNER-PREPARE-BUFFER ...):  See
+13071:ACL2 Error [Translate] in ( DEFUN FN-NATIVE-LIVE-STATUS-HOST-REPLY
+13083:ACL2 Error [Failure] in ( DEFUN FN-NATIVE-LIVE-STATUS-HOST-REPLY ...):
+13939:ACL2 Error [Translate] in ( DEFUN FN-OWNER-WORKFLOW-INSTALL-REPLAY

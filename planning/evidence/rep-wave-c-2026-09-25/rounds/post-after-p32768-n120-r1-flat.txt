@@ -1,0 +1,54 @@
+
+Number of samples:   1044
+Sample interval:     0.001 seconds
+Total sampling time: 1.044 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=3197372 "fn-prof" RUNNING {120FE58543}> (144/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=3197375 "fn owner client" RUNNING {1210424F13}> (321984/1048576 bytes, 828 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2     90   8.6    144  13.8     90   8.6        -  FN-CBOR-OCTET-LISTP
+   4     88   8.4     88   8.4    178  17.0        -  FN-WIRE-AG-CDR
+   6     83   8.0     83   8.0    261  25.0        -  FN-AG-CDR
+   8     62   5.9     62   5.9    323  30.9        -  FN-CBOR-OCTETP
+  10     45   4.3    123  11.8    368  35.2        -  FN-RECORD-PAYLOADP
+  12     43   4.1    633  60.6    411  39.4        -  FN-SCAR-FEED-COUNTED
+  14     32   3.1    190  18.2    443  42.4        -  FN-WIRE-FEED-BYTE
+  16     27   2.6     27   2.6    470  45.0        -  FN-AG-CAR
+  18     25   2.4     25   2.4    495  47.4        -  FN-SHS-ROUNDS
+  20     23   2.2     33   3.2    518  49.6        -  FN-INJ-NTH
+  22     21   2.0     21   2.0    539  51.6        -  FN-WIRE-AG-CAR
+  24     21   2.0     21   2.0    560  53.6        -  FN-ARTICLE-BODY-CRLFP
+  26     19   1.8     42   4.0    579  55.5        -  FN-WIRE-LIST-LENGTH
+  28     19   1.8     25   2.4    598  57.3        -  REPLACE
+  30     18   1.7     18   1.7    616  59.0        -  FN-CBOR-AT-MOSTP
+  32     17   1.6    386  37.0    633  60.6        -  FN-SCAR-FEED-BYTE
+  34     14   1.3     28   2.7    647  62.0        -  FN-INJ-APPEND
+  36     14   1.3     14   1.3    661  63.3        -  foreign function pthread_sigmask
+  38     13   1.2     24   2.3    674  64.6        -  FN-SERVED-CONN-INDEX
+  40     12   1.1     15   1.4    686  65.7        -  FN-SHS-LOAD-LIST-WORD
+  42     12   1.1     12   1.1    698  66.9        -  FN-SHS-EXTEND
+  44     11   1.1     21   2.0    709  67.9        -  SB-KERNEL:VECTOR-TO-LIST
+  46     10   1.0     38   3.6    719  68.9        -  FN-WIRE-STATE-LINE-LIMIT
+  48     10   1.0     18   1.7    729  69.8        -  FN-SERVED-CONN-INJECTION
+  50      9   0.9     20   1.9    738  70.7        -  FN-SERVED-CONN-VERDICTS
+  52      9   0.9     12   1.1    747  71.6        -  FN-WIRE-STATE-BODY-REV
+  54      9   0.9      9   0.9    756  72.4        -  GENERIC--
+  56      8   0.8      8   0.8    764  73.2        -  (SB-VM::OPTIMIZED-DATA-VECTOR-REF (UNSIGNED-BYTE 8))
+  58      8   0.8      8   0.8    772  73.9        -  FN-INJ-CDR
+  60      8   0.8      8   0.8    780  74.7        -  FN-SERVED-MAKE-CONN-GROUP-INDEXED
+  62      8   0.8      8   0.8    788  75.5        -  foreign function __write
+  64      7   0.7     15   1.4    795  76.1        -  FN-SERVED-CONN-GROUP-INDEX
+  66      7   0.7     14   1.3    802  76.8        -  FN-WIRE-STATE-PENDING-CRP
+  68      7   0.7     12   1.1    809  77.5        -  FN-WIRE-STATE-LINE-LEN
+  70      7   0.7      8   0.8    816  78.2        -  FN-SERVED-COUNTED-RESULT
+  72      7   0.7      7   0.7    823  78.8        -  (SB-VM::OPTIMIZED-DATA-VECTOR-SET (UNSIGNED-BYTE 8))
+  74      7   0.7      7   0.7    830  79.5        -  GENERIC-+
+  76      6   0.6     21   2.0    836  80.1        -  FN-WIRE-STATE-BODY-LIMIT
+  78      6   0.6      7   0.7    842  80.7        -  FN-WIRE-MAKE-STATE
+  80      6   0.6      6   0.6    848  81.2        -  LENGTH
+------------------------------------------------------------------------
+          3   0.3                                     elsewhere

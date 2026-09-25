@@ -141,8 +141,14 @@
 ; younger row proposes a kind-8 attempt on the same session.  No debt is
 ; spent until the kind-8 final is durable.
 (defconst *bpfx-session* (cons 1 1))
+;; The routed session (spec 4.6): the host opens an outbound session only to
+;; the boundary the route table names, and a :session without VIA offers
+;; nothing.  This fixture's table sends dtn://bp-dest/ to the boundary "relay".
+(defconst *bpfx-via*
+  (list :via "relay" (fn-record-string-octets "dtn://relay/")
+        (list (fn-bprt-route 100 "dtn://bp-dest/" "relay" "dtn://relay/" 4556))))
 (defconst *bpfx-session-event*
-  (list :session *bpfx-dest* *bpfx-session* t 32768 *bpfx-observation*))
+  (list :session *bpfx-dest* *bpfx-session* t 32768 *bpfx-observation* *bpfx-via*))
 (make-event
  `(defconst *bpfx-open*
     ',(fn-bpnp-step *bpfx-s4* *bpfx-session-event*)))
@@ -165,7 +171,7 @@
 ; the selected arrival.  The small-MRU younger selection is therefore a
 ; consequence of the negotiated limit, not the held-list storage order.
 (defconst *bpfx-wide-session-event*
-  (list :session *bpfx-dest* *bpfx-session* t 65536 *bpfx-observation*))
+  (list :session *bpfx-dest* *bpfx-session* t 65536 *bpfx-observation* *bpfx-via*))
 (make-event
  `(defconst *bpfx-wide-open*
     ',(fn-bpnp-step *bpfx-s4* *bpfx-wide-session-event*)))

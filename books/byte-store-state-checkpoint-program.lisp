@@ -10,10 +10,10 @@
 ; (fn-sn-recover-from-checkpoint-equals-full-recover).
 ;
 ; K0: the checkpoint is derived, not authority; no step of this program
-; touches the kernel's names.  fn-bs-k0-step-inputp (byte-store-k0-step)
-; does not yet admit a :rename from :staging to a non-authority :root name
-; nor a :root fsync outside the marker rename, so K0 coverage at these cuts is
-; an open item, the same one the profile program has.
+; touches the kernel's names.  K0 at its five cuts, and at every step with
+; any outcome, is byte-store-k0-step-bridge-root
+; (fn-bs-k0-state-checkpoint-cuts-relation-by-step), by the general step
+; theorem whose coverage is generic over the root name.
 (in-package "ACL2")
 (include-book "byte-store-programs")
 (local (include-book "byte-store-invariants"))

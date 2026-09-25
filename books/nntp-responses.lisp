@@ -6,6 +6,14 @@
 (include-book "nntp-projection")
 (include-book "article-fields")
 (include-book "clock")
+; D13: a reclaimed article's payload is a tombstone (STO-014).
+(include-book "reclaim-tombstone")
+; Closed here and for every book above: its recognizer walks 89 conses,
+; and opened inside every proof about a retrieval it multiplied
+; nntp-responses' own proof time thirty-fold (1.7 s to 56.6 s at 2 jobs,
+; persvati); left open for the books above, nntp-invariants went from
+; 4.5 s to 16.0 s.  A proof that needs it enables it in a hint.
+(in-theory (disable fn-rcl-tombstonep))
 
 ; The books below this one withdraw their definitions at their export events
 ; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
@@ -41,6 +49,14 @@
 (defun fn-nntp-article-response (session article number kind updatep group)
   (if (not (fn-nntp-article-idp article))
       (fn-nntp-single session "503 stored article identifier unavailable")
+    ; D13 (STO-014): a reclaimed article's history stays -- its Message-ID
+    ; is still held and its number never reused -- but its bytes are gone.
+    ; By number or as the current article it is 423, by Message-ID 430,
+    ; and the text says why.  The cursor does not move.
+    (if (fn-rcl-tombstonep (fn-article-payload article))
+        (fn-nntp-single session (if updatep
+                                    "423 article reclaimed"
+                                  "430 article reclaimed"))
     (let ((next-session (if updatep
                             (fn-nntp-set-cursor session group number)
                           session)))
@@ -58,7 +74,21 @@
                       (append (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article))
                               (fn-nntp-stuff-lines (car (cdr section)))
                               '(46 13 10)))))
-            (fn-nntp-single session "503 stored article framing unavailable")))))))
+            (fn-nntp-single session "503 stored article framing unavailable"))))))))
+
+;  KEYSTONE (D13 served projection).  A stored article whose payload is a
+; tombstone is answered 423 (by number or as the current article) or 430
+; (by Message-ID), "article reclaimed", for ARTICLE, HEAD, BODY and STAT,
+; and the session is unchanged.
+(defthm fn-nntp-reclaimed-article-answers-reclaimed
+  (implies (and (fn-nntp-article-idp article)
+                (fn-rcl-tombstonep (fn-article-payload article)))
+           (equal (fn-nntp-article-response session article number kind
+                                            updatep group)
+                  (fn-nntp-single session (if updatep
+                                              "423 article reclaimed"
+                                            "430 article reclaimed"))))
+  :hints (("Goal" :in-theory (disable fn-rcl-tombstonep fn-nntp-article-idp))))
 
 (defun fn-nntp-current-retrieval (session archive kind)
   (let ((group (fn-nntp-session-group session))
@@ -421,7 +451,11 @@
   ; capability is advertised, and this reader is not mode-switching
   ; (section 3.4.2).  XOVER and XHDR carry no capability
   ; label: RFC 2980 predates section 3.3 and names no label for them, and a
-  ; client discovers them by trying them.
+  ; client discovers them by trying them.  XPAT is listed (PKT-110): section
+  ; 3.3.3 lets a private extension appear under a label beginning with "X",
+  ; and XPAT has no RFC 3977 equivalent a client could discover instead
+  ; (XOVER and XHDR have OVER and HDR).  The label promises RFC 2980
+  ; section 2.9 in both its forms (books/nntp-xpat.lisp).
   ; Two ground lists rather than an append of a conditional: every caller's
   ; block-text obligation then evaluates one constant list per branch, which
   ; is what keeps books/nntp-effects.lisp's effect theorems cheap.
@@ -432,6 +466,7 @@
             (fn-nntp-string-octets "POST")
             (fn-nntp-string-octets "OVER MSGID")
             (fn-nntp-string-octets "HDR")
+            (fn-nntp-string-octets "XPAT")
             (fn-nntp-string-octets "NEWNEWS")
             (fn-nntp-string-octets
              "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT")
@@ -440,6 +475,7 @@
           (fn-nntp-string-octets "READER")
           (fn-nntp-string-octets "OVER MSGID")
           (fn-nntp-string-octets "HDR")
+          (fn-nntp-string-octets "XPAT")
           (fn-nntp-string-octets "NEWNEWS")
           (fn-nntp-string-octets
            "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT")
