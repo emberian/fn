@@ -435,6 +435,8 @@ class Acl2Store:
             # Every codec seam's attachment: the books call the constrained
             # encoders and decoders; this makes them evaluate.
             self.call('(include-book "books/codec-attach")')
+            # The record encoder's attachment over the concrete recognizer.
+            self.call('(include-book "books/records-attach-concrete")')
             # The store bridge's record dispatchers call the concrete twins.
             self.call('(include-book "books/records-concrete")')
             self.call('(ld "host/store-host.lisp" :ld-error-action :return :ld-error-triples t)')

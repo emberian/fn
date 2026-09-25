@@ -21,7 +21,10 @@
 ; Every definition below is its reference with fn-sf-candidatep replaced by
 ; fn-pcar-candidatep, keeps the reference's guard, is guard-verified, and is
 ; proved EQUAL to the reference with no hypothesis.  host/owner-host.lisp
-; fn-owner-prepare calls fn-pcar-sbud-prepare.
+; fn-owner-prepare calls fn-pcar-sbud-prepare.  fn-pcar-next-lower reads the
+; last record's txid and fn-pcar-spc-prepare recognises the record through
+; the concrete twins of books/records-concrete.lisp (lane/rep-records-2),
+; so the prepare walks no record string as an octet list.
 
 (in-package "ACL2")
 (include-book "owner-store-budget")
@@ -32,7 +35,7 @@
   (if (consp records)
       (if (consp (cdr records))
           (fn-pcar-next-lower (cdr records))
-        (1+ (fn-store-event-txid (car records))))
+        (1+ (fn-rcon-store-event-txid (car records))))
     0))
 
 (local
@@ -132,19 +135,23 @@
 
 (in-theory (disable fn-pcar-stage-record))
 
-; fn-spc-prepare, carried.  The body is the reference's.
+; fn-spc-prepare, carried.  The body is the reference's, with the record
+; recognised, projected and bound through the concrete twins
+; (books/records-concrete.lisp: fn-rcon-record-p-is-record-p,
+; fn-rcon-cpe-projection-step-is-cpe-projection-step,
+; fn-rcon-sn-record-bindsp-is-sn-record-bindsp, each with no hypothesis).
 (defun fn-pcar-spc-prepare (s record)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
-           (fn-record-p record)
+           (fn-rcon-record-p record)
            (not (equal (fn-record-stamp record) :legacy))
-           (eq (car (fn-cpe-projection-step
+           (eq (car (fn-rcon-cpe-projection-step
                      (fn-sn-consumer s) record (fn-sn-identity-next s))) :ok))
       (let* ((node (fn-sn-prepare-node (fn-sn-node s) record))
              (files (fn-pcar-stage-record (fn-sn-files s) record)))
-        (if (and (fn-sn-record-bindsp node record)
+        (if (and (fn-rcon-sn-record-bindsp node record)
                  (equal (fn-sf-phase files) :record-staged))
             (fn-sn-update s files node)
           s))

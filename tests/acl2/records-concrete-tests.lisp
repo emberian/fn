@@ -1,7 +1,9 @@
-; Teeth for books/records-concrete.lisp and books/records-concrete-owner.lisp.
+; Teeth for books/records-concrete.lisp, books/records-concrete-owner.lisp,
+; books/records-codec-concrete.lisp and books/records-attach-concrete.lisp.
 (in-package "ACL2")
 (include-book "../../books/records-concrete")
 (include-book "../../books/records-concrete-owner")
+(include-book "../../books/records-attach-concrete")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "owner-served-invariants-tests")
 
@@ -278,3 +280,45 @@
                           (guard 'fn-sf-record-dir-result nil (w state)))
                    (equal (guard 'fn-rcon-store-event-encode nil (w state))
                           (guard 'fn-store-event-encode nil (w state)))))
+
+; -----------------------------------------------------------------------------
+; The codec's encoder behind the seam (books/records-codec-concrete.lisp),
+; attached by books/records-attach-concrete.lisp, which this book includes
+; after codec-attach as the host images do.  On the staged record of the POST
+; above it is the implementation's encoding, non-empty, and the encoding
+; every ground fn-record-encode now evaluates through; on a record the
+; recognizer refuses and on non-records it is nil, as the implementation.
+
+(assert-event (consp (fn-rcon-record-encode-impl *rcon-t-staged*)))
+(assert-event (equal (fn-rcon-record-encode-impl *rcon-t-staged*)
+                     (fn-record-encode-impl *rcon-t-staged*)))
+(assert-event (equal (fn-record-encode *rcon-t-staged*)
+                     (fn-rcon-record-encode-impl *rcon-t-staged*)))
+(assert-event (equal (fn-rcon-record-encode-impl *rcon-t-retention*) nil))
+(assert-event (and (null (fn-rcon-record-encode-impl nil))
+                   (null (fn-rcon-record-encode-impl "x"))
+                   (null (fn-rcon-record-encode-impl (list 1 2)))))
+; The recognizer is what refuses: a 251-character Message-ID keeps the
+; record's shape, and neither encoder encodes it; the 250-character one is
+; encoded by both.
+(defconst *rcon-t-msgid-251* (rcon-t-with-msgid *rcon-t-r* *rcon-t-s251*))
+(defconst *rcon-t-msgid-250* (rcon-t-with-msgid *rcon-t-r* *rcon-t-s250*))
+(assert-event (and (fn-record-shapep *rcon-t-msgid-251*)
+                   (null (fn-rcon-record-encode-impl *rcon-t-msgid-251*))
+                   (null (fn-record-encode-impl *rcon-t-msgid-251*))))
+(assert-event (and (consp (fn-rcon-record-encode-impl *rcon-t-msgid-250*))
+                   (equal (fn-rcon-record-encode-impl *rcon-t-msgid-250*)
+                          (fn-record-encode-impl *rcon-t-msgid-250*))))
+; So the encoder does not encode every shaped record.
+(must-fail
+ (defthm rcon-t-encode-every-shaped-record
+   (implies (fn-record-shapep r) (consp (fn-rcon-record-encode-impl r)))))
+; The attachment: fn-record-encode evaluates through the twin.
+(assert-event
+ (eq (cdr (assoc-eq 'fn-record-encode
+                    (getpropc 'fn-record-decode-exact 'attachment nil (w state))))
+     'fn-rcon-record-encode-impl))
+(assert-event
+ (and (eq (symbol-class 'fn-rcon-record-encode-impl (w state)) :common-lisp-compliant)
+      (equal (guard 'fn-rcon-record-encode-impl nil (w state))
+             (guard 'fn-record-encode-impl nil (w state)))))

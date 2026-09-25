@@ -27,6 +27,10 @@
 ; host/owner-host.lisp fn-owner-finish-submission) and
 ; books/owner-prepare-carried.lisp (the prepare) call the twins.
 ;
+; The recognizer and its keystone fn-rcon-record-p-is-record-p are in
+; books/records-codec-concrete.lisp, beside the codec's encoder twin that
+; books/records-attach.lisp attaches; this book is the store's twins.
+;
 ; The second section (lane/rep-records-2) carries the same replacement to
 ; the list dispatchers the host still reached at write: the encoder of the
 ; staged record (fn-rcon-store-event-encode), the staged record's sequence
@@ -39,148 +43,16 @@
 ;
 ; What stays on the octet lists: the payload (fn-record-payloadp walks it,
 ; O(L)) and the group names (fn-record-group-namep converts each name for
-; the RFC 5536 grammar).  Those are the next boundaries in the design.  The
-; codec behind the seam, fn-record-encode-impl (books/records.lisp, attached
-; in books/records-attach.lisp), still recognises its argument with
-; fn-record-p; replacing that is an attachment change with the image-wide
-; closure of records-attach, not a twin here.
+; the RFC 5536 grammar).  Those are the next boundaries in the design.
 
 (in-package "ACL2")
+(include-book "records-codec-concrete")
 (include-book "store-node")
 (include-book "consumer-store-projection")
 (include-book "topic-history-prefix")
 
-; -----------------------------------------------------------------------------
-; The string domain, read in place.
-
-; Every character of TEXT at index I or beyond has a code at most 127.
-(defun fn-rcon-ascii-from (text i)
-  (declare (xargs :guard (and (stringp text) (natp i) (<= i (length text)))
-                  :measure (nfix (- (length text) (nfix i)))))
-  (if (and (stringp text) (natp i) (< i (length text)))
-      (and (<= (char-code (char text i)) 127)
-           (fn-rcon-ascii-from text (1+ i)))
-    t))
-
-(defun fn-rcon-msgidp (text)
-  (declare (xargs :guard t))
-  (and (stringp text)
-       (< 0 (length text))
-       (<= (length text) *fn-record-max-msgid*)
-       (fn-rcon-ascii-from text 0)))
-
-(defun fn-rcon-metadata-bytes-p (text)
-  (declare (xargs :guard t))
-  (and (stringp text)
-       (< 0 (length text))
-       (<= (length text) *fn-record-max-metadata*)))
-
-; fn-record-p's conjuncts in its order, with the three string tests
-; replaced.  The payload and the group names are tested as before.
-(defun fn-rcon-record-p (x)
-  (declare (xargs :guard t))
-  (and (fn-record-shapep x)
-       (fn-record-uint32p (fn-record-sequence x))
-       (fn-record-uint32p (fn-record-txid x))
-       (fn-record-uint32p (fn-record-generation x))
-       (fn-rcon-msgidp (fn-record-msgid x))
-       (fn-record-payloadp (fn-record-payload x))
-       (fn-record-groups-validp (fn-record-groups x))
-       (fn-rcon-metadata-bytes-p (fn-record-obligation-id x))
-       (fn-rcon-metadata-bytes-p (fn-record-content-subject x))
-       (fn-rcon-metadata-bytes-p (fn-record-release-evidence x))
-       (fn-record-uint32p (fn-record-charge x))
-       (fn-record-stampp (fn-record-stamp x))))
-
-; -----------------------------------------------------------------------------
-; The correspondence, field by field.
-
-(local (defthm fn-rcon-string-octets-aux-is-octets
-  (fn-cbor-octet-listp (fn-record-string-octets-aux chars))))
-
-(local (defthm fn-rcon-string-octets-aux-len
-  (equal (len (fn-record-string-octets-aux chars)) (len chars))))
-
-(local (defthm fn-rcon-string-octets-aux-consp
-  (equal (consp (fn-record-string-octets-aux chars)) (consp chars))))
-
-(local (defthm fn-rcon-positive-len-is-consp
-  (equal (< 0 (len x)) (consp x))))
-
-; KEYSTONE (the octet domain).  A string's characters are octets.
-(defthm fn-rcon-octet-stringp-is-stringp
-  (equal (fn-record-octet-stringp text) (stringp text))
-  :hints (("Goal" :in-theory (enable fn-record-octet-stringp))))
-
-(defthm fn-rcon-metadata-bytes-p-is-metadata-bytes-p
-  (equal (fn-rcon-metadata-bytes-p text) (fn-record-metadata-bytes-p text))
-  :hints (("Goal" :in-theory (enable fn-record-metadata-bytes-p
-                                     fn-record-nonempty-at-mostp))))
-
 (local (include-book "arithmetic/top" :dir :system))
 
-(local (defthm fn-rcon-shift-less
-  (implies (and (integerp i) (integerp n))
-           (equal (< (+ -1 i) n) (< i (+ 1 n))))
-  :hints (("Goal" :cases ((< i (+ 1 n)))))))
-
-(local (defthm fn-rcon-consp-of-nthcdr
-  (implies (natp i)
-           (equal (consp (nthcdr i l)) (< i (len l))))
-  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr len)))))
-
-(local (defthm fn-rcon-nthcdr-past-true-list
-  (implies (and (true-listp l) (natp i) (<= (len l) i))
-           (equal (nthcdr i l) nil))
-  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr len)))))
-
-(local (defthm fn-rcon-car-of-nthcdr
-  (equal (car (nthcdr i l)) (nth i l))
-  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr nth)))))
-
-(local (defthm fn-rcon-cdr-of-nthcdr
-  (equal (cdr (nthcdr i l)) (nthcdr i (cdr l)))
-  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr)))))
-
-(local (defthm fn-rcon-nthcdr-of-1+
-  (implies (natp i)
-           (equal (nthcdr (+ 1 i) l) (nthcdr i (cdr l))))
-  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr)))))
-
-(local (defthm fn-rcon-character-listp-true-listp
-  (implies (character-listp l) (true-listp l))))
-
-(local (defthm fn-rcon-coerce-true-listp
-  (true-listp (coerce text 'list))))
-
-; The index walk is the list walk from index I: char I is nth I of the
-; character list, and the rest of the walk is the rest of the list.
-(local (defthm fn-rcon-ascii-from-is-ascii-octet-listp-of-nthcdr
-  (implies (and (stringp text) (natp i))
-           (equal (fn-rcon-ascii-from text i)
-                  (fn-record-ascii-octet-listp
-                   (fn-record-string-octets-aux (nthcdr i (coerce text 'list))))))
-  :hints (("Goal" :induct (fn-rcon-ascii-from text i)
-           :in-theory (e/d (fn-rcon-ascii-from) (nth fn-rcon-shift-less))
-           :expand ((fn-record-string-octets-aux (nthcdr i (coerce text 'list)))
-                    (fn-record-ascii-octet-listp
-                     (fn-record-string-octets-aux
-                      (nthcdr i (coerce text 'list)))))))))
-
-(defthm fn-rcon-msgidp-is-msgidp
-  (equal (fn-rcon-msgidp text) (fn-record-msgidp text))
-  :hints (("Goal" :in-theory (enable fn-record-msgidp fn-record-ascii-stringp
-                                     fn-record-nonempty-at-mostp))))
-
-; KEYSTONE (the recognizer).  The concrete recognizer is fn-record-p, on
-; every input.  Both are guard-verified with guard t, so the host's compiled
-; code computes this one.
-(defthm fn-rcon-record-p-is-record-p
-  (equal (fn-rcon-record-p x) (fn-record-p x))
-  :hints (("Goal" :in-theory (e/d (fn-record-p) (fn-record-shapep)))))
-
-(in-theory (disable fn-rcon-ascii-from fn-rcon-msgidp fn-rcon-metadata-bytes-p
-                    fn-rcon-record-p))
 
 ; -----------------------------------------------------------------------------
 ; The twins: each reference with fn-record-p replaced, equal to it with no
