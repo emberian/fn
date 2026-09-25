@@ -1,0 +1,104 @@
+== control  out 335b5ca41c162289  report ec0a74620e36b503
+   a_releases direct b_trusts carried native False | before: BP obligation owner work=work-bp-node status=outstanding pinned=yes | after: BP obligation owner work=work-bp-node status=receipted pinned=no
+   processes [('b-serve-0', 2350959, 'SIGKILL rc=-9'), ('b-serve-1', 2350969, 'SIGTERM rc=143'), ('a-serve', 2351276, 'SIGTERM rc=143')]
+   [1 A request, held mid-transfer, first hop SIGKILLed] -> uncertain  {'held': True}  a-1-send=206f7afb3b4b0677
+   [2 first hop restarted, A resumes its durable job] -> accepted  {'restarted': 2350969}  a-2-resume=bac9b739a5fcebc9
+   [3 B admits, takes custody, dispatches to its application] -> request-accepted  {'b_fnbs_lifecycle_frames': 3, 'transport_accepted': 1}  b-serve-1=fa8f1abea1c9a956
+   [4 B's receipt carried back and matched at A] -> receipt-accepted  {'a_obligation': 'BP obligation owner work=work-bp-node status=receipted pinned=no', 'tick_outcome': 'accepted'}  a-serve=460a04cecd7dc2ee b-4-tick=02ccc1c1935f0a63
+   A: BP node release self-issued carrier=return-boundary issuer=dtn://receiver/
+   A: BP node delivery receipt-accepted
+== relay1-listed  out 95a6065971e3f1bf  report 091b6a66ab475f8a
+   a_releases listed b_trusts carried native False | before: BP obligation owner work=work-bp-node status=outstanding pinned=yes | after: BP obligation owner work=work-bp-node status=receipted pinned=no
+   processes [('b-serve', 2351523, 'SIGTERM rc=143'), ('a-serve', 2351744, 'SIGTERM rc=143')]
+   [1 A request, held mid-transfer, first hop SIGKILLed] -> uncertain  {'held': True}  a-1-send=9c1a668c253762d8
+   [2 first hop restarted, A resumes its durable job] -> accepted  {'restarted': 2351567}  a-2-resume=fec641f74de241a1
+   [3 B admits, takes custody, dispatches to its application] -> request-accepted  {'b_fnbs_lifecycle_frames': 3, 'transport_accepted': 1}  b-serve=68aa8ecacd1c866d
+   [4 B's receipt carried back and matched at A] -> receipt-accepted  {'a_obligation': 'BP obligation owner work=work-bp-node status=receipted pinned=no', 'tick_outcome': 'accepted'}  a-serve=9d88b42f56830f14 b-4-tick=a554e7810d6a4484
+   A: BP node release listed-issuer carrier=return-boundary issuer=dtn://receiver/
+   A: BP node delivery receipt-accepted
+== relay1-none  out 5426dccc2cc0f204  report c66c9df56400cc27
+   a_releases none b_trusts carried native False | before: BP obligation owner work=work-bp-node status=outstanding pinned=yes | after: BP obligation owner work=work-bp-node status=outstanding pinned=yes
+   processes [('b-serve', 2352224, 'SIGTERM rc=143'), ('a-serve', 2352690, 'SIGTERM rc=143')]
+   [1 A request, held mid-transfer, first hop SIGKILLed] -> uncertain  {'held': True}  a-1-send=9c1a668c253762d8
+   [2 first hop restarted, A resumes its durable job] -> accepted  {'restarted': 2352261}  a-2-resume=e3612e5de650e312
+   [3 B admits, takes custody, dispatches to its application] -> request-accepted  {'b_fnbs_lifecycle_frames': 3, 'transport_accepted': 1}  b-serve=799d7d07df134a10
+   [4 B's receipt carried back and matched at A] -> receipt-refused  {'a_obligation': 'BP obligation owner work=work-bp-node status=outstanding pinned=yes', 'tick_outcome': 'accepted'}  a-serve=08814661a6e41d33 b-4-tick=c22c0303c8812c49
+   A: BP node release carried-not-released carrier=return-boundary issuer=dtn://receiver/
+   A: BP node delivery receipt-refused
+== relay2-listed  out 150781bf83045a33  report e22b2d17111e8600
+   a_releases listed b_trusts carried native False | before: BP obligation owner work=work-bp-node status=outstanding pinned=yes | after: BP obligation owner work=work-bp-node status=receipted pinned=no
+   processes [('b-serve', 2353084, 'SIGTERM rc=143'), ('a-serve', 2353497, 'SIGTERM rc=143')]
+   [1 A request, held mid-transfer, first hop SIGKILLed] -> uncertain  {'held': True}  a-1-send=9c1a668c253762d8
+   [2 first hop restarted, A resumes its durable job] -> accepted  {'restarted': 2353144}  a-2-resume=395011272958624a
+   [3 B admits, takes custody, dispatches to its application] -> request-accepted  {'b_fnbs_lifecycle_frames': 3, 'transport_accepted': 1}  b-serve=c7a9a5ac5a5eed51
+   [4 B's receipt carried back and matched at A] -> receipt-accepted  {'a_obligation': 'BP obligation owner work=work-bp-node status=receipted pinned=no', 'tick_outcome': 'accepted'}  a-serve=79e82fb283a22a7d b-4-tick=9accfd666c3d4513
+   A: BP node release listed-issuer carrier=return-boundary issuer=dtn://receiver/
+   A: BP node delivery receipt-accepted
+== relay1-signed  out 3c6ff8dbff54663b  report 21742cebb8d8be2c
+   a_releases listed b_trusts carried native False | before: BP obligation owner work=work-bp-node status=outstanding pinned=yes | after: BP obligation owner work=work-bp-node status=outstanding pinned=yes
+   processes [('b-serve', 2366557, 'SIGTERM rc=143'), ('a-serve', 2366848, 'SIGTERM rc=143')]
+   signed_receipts {"flip_signature": false, "principal": "4242424242424242424242424242424242424242424242424242424242424242"}
+   [1 A request, held mid-transfer, first hop SIGKILLed] -> uncertain  {'held': True}  a-1-send=9c1a668c253762d8
+   [2 first hop restarted, A resumes its durable job] -> accepted  {'restarted': 2366575}  a-2-resume=9a2928240c5dc08d
+   [3 B admits, takes custody, dispatches to its application] -> request-accepted  {'b_fnbs_lifecycle_frames': 3, 'transport_accepted': 1}  b-serve=6a7ab1ce16062319
+   [4 B's receipt carried back and matched at A] -> receipt-refused  {'a_obligation': 'BP obligation owner work=work-bp-node status=outstanding pinned=yes', 'flipped': None, 'tick_outcome': 'accepted'}  a-serve=44f3fa3e95809c9e b-4-tick=c44f7ac8e4d7ed6b
+   A: BP node release generation carrier= issuer=dtn://receiver/
+   A: BP node delivery receipt-refused
+== n-control  out aeb17121293c8672  report e6b1031f3c468bf5
+   a_releases direct b_trusts carried native True | before: BP obligation owner work=work-bp-node status=outstanding pinned=yes | after: BP obligation owner work=work-bp-node status=receipted pinned=no
+   processes [('b-serve-0', 2367564, 'SIGKILL rc=-9'), ('b-serve-1', 2367601, 'SIGTERM rc=143'), ('a-serve', 2367686, 'SIGTERM rc=143'), ('a-5-work-cut-submit', 2367757, 'SIGKILL rc=-9'), ('a-5-work-cut-attempt', 2367776, 'SIGKILL rc=-9')]
+   [1 A request, held mid-transfer, first hop SIGKILLed] -> uncertain  {'held': True}  a-1-send=fdbee5bd5d311b06
+   [2 first hop restarted, A resumes its durable job] -> accepted  {'restarted': 2367601}  a-2-resume=aa1191e50764c5ba
+   [3 B admits, takes custody, dispatches to its application] -> request-accepted  {'b_fnbs_lifecycle_frames': 3, 'transport_accepted': 1}  b-serve-1=a27522bd183221cc
+   [4 B's receipt carried back and matched at A] -> receipt-accepted  {'a_obligation': 'BP obligation owner work=work-bp-node status=receipted pinned=no', 'tick_outcome': 'accepted'}  a-serve=089cb7fcbcd58c9b b-4-tick=8e26cbe2185dee93
+   [4b the control obligation, never requested] -> BP obligation owner work=work-control status=outstanding pinned=yes  {'a_obligation': 'BP obligation owner work=work-control status=outstanding pinned=yes'}  a-status-control=4d9b07ce101dbb0b
+   [5 A SIGKILLed at BP OBLIGATION SUBMIT TAKEN] -> BP obligation owner work=work-cut-submit status=restart-observed pinned=yes  {'marker_reached': True, 'request_again': 'uncertain', 'status_after_again': 'BP obligation owner work=work-cut-submit status=restart-observed pinned=yes', 'status_after_kill': 'BP obligation owner work=work-cut-submit status=restart-observed pinned=yes'}  a-5-work-cut-submit=0b2d725410d27322 a-5-work-cut-submit-again=3c1c25b6f482c7d3 a-5-work-cut-submit-status=a513593e5d50e60e a-5-work-cut-submit-status-2=a513593e5d50e60e
+   [5 A SIGKILLed at BP OBLIGATION ATTEMPT DURABLE] -> BP obligation owner work=work-cut-attempt status=outstanding pinned=yes  {'marker_reached': True, 'request_again': 'refused', 'status_after_again': 'BP obligation owner work=work-cut-attempt status=outstanding pinned=yes', 'status_after_kill': 'BP obligation owner work=work-cut-attempt status=outstanding pinned=yes'}  a-5-work-cut-attempt=0375ab5c0b73304f a-5-work-cut-attempt-again=84226f773eb3035e a-5-work-cut-attempt-status=4a627bee1d68be3a a-5-work-cut-attempt-status-2=4a627bee1d68be3a
+   A: BP node release self-issued carrier=return-boundary issuer=dtn://receiver/
+   A: BP node delivery receipt-accepted
+== n-relay1-listed  out 677f2ae8f4387830  report 834d443fdd741a61
+   a_releases listed b_trusts carried native True | before: BP obligation owner work=work-bp-node status=outstanding pinned=yes | after: BP obligation owner work=work-bp-node status=receipted pinned=no
+   processes [('b-serve', 2368079, 'SIGTERM rc=143'), ('a-serve', 2368341, 'SIGTERM rc=143'), ('a-5-work-cut-submit', 2368565, 'SIGKILL rc=-9'), ('a-5-work-cut-attempt', 2368654, 'SIGKILL rc=-9')]
+   [1 A request, held mid-transfer, first hop SIGKILLed] -> uncertain  {'held': True}  a-1-send=7945ee97f8d017f6
+   [2 first hop restarted, A resumes its durable job] -> accepted  {'restarted': 2368096}  a-2-resume=2f22120cb0015f52
+   [3 B admits, takes custody, dispatches to its application] -> request-accepted  {'b_fnbs_lifecycle_frames': 3, 'transport_accepted': 1}  b-serve=0d254644988fa169
+   [4 B's receipt carried back and matched at A] -> receipt-accepted  {'a_obligation': 'BP obligation owner work=work-bp-node status=receipted pinned=no', 'tick_outcome': 'accepted'}  a-serve=70e1896b35a80c99 b-4-tick=f4ae45f5345c431e
+   [4b the control obligation, never requested] -> BP obligation owner work=work-control status=outstanding pinned=yes  {'a_obligation': 'BP obligation owner work=work-control status=outstanding pinned=yes'}  a-status-control=a58e19554f463d48
+   [5 A SIGKILLed at BP OBLIGATION SUBMIT TAKEN] -> BP obligation owner work=work-cut-submit status=restart-observed pinned=yes  {'marker_reached': True, 'request_again': 'uncertain', 'status_after_again': 'BP obligation owner work=work-cut-submit status=restart-observed pinned=yes', 'status_after_kill': 'BP obligation owner work=work-cut-submit status=restart-observed pinned=yes'}  a-5-work-cut-submit=e73938e024258443 a-5-work-cut-submit-again=c7592a78b491fe61 a-5-work-cut-submit-status=821932fc63203693 a-5-work-cut-submit-status-2=821932fc63203693
+   [5 A SIGKILLed at BP OBLIGATION ATTEMPT DURABLE] -> BP obligation owner work=work-cut-attempt status=outstanding pinned=yes  {'marker_reached': True, 'request_again': 'refused', 'status_after_again': 'BP obligation owner work=work-cut-attempt status=outstanding pinned=yes', 'status_after_kill': 'BP obligation owner work=work-cut-attempt status=outstanding pinned=yes'}  a-5-work-cut-attempt=ad9ff3f09e76b482 a-5-work-cut-attempt-again=5fe3468950368de6 a-5-work-cut-attempt-status=d681861b0e45048b a-5-work-cut-attempt-status-2=d681861b0e45048b
+   A: BP node release listed-issuer carrier=return-boundary issuer=dtn://receiver/
+   A: BP node delivery receipt-accepted
+== n-relay1-none  out f55c5ab18ca8dcbe  report da89951e063e2433
+   a_releases none b_trusts carried native True | before: BP obligation owner work=work-bp-node status=outstanding pinned=yes | after: BP obligation owner work=work-bp-node status=restart-observed pinned=yes
+   processes [('b-serve', 2369239, 'SIGTERM rc=143'), ('a-serve', 2369709, 'SIGTERM rc=143'), ('a-5-work-cut-submit', 2370041, 'SIGKILL rc=-9'), ('a-5-work-cut-attempt', 2370108, 'SIGKILL rc=-9')]
+   [1 A request, held mid-transfer, first hop SIGKILLed] -> uncertain  {'held': True}  a-1-send=7945ee97f8d017f6
+   [2 first hop restarted, A resumes its durable job] -> accepted  {'restarted': 2369306}  a-2-resume=a87240b1d050d37c
+   [3 B admits, takes custody, dispatches to its application] -> request-accepted  {'b_fnbs_lifecycle_frames': 3, 'transport_accepted': 1}  b-serve=9e01dc000d699892
+   [4 B's receipt carried back and matched at A] -> receipt-refused  {'a_obligation': 'BP obligation owner work=work-bp-node status=restart-observed pinned=yes', 'tick_outcome': 'accepted'}  a-serve=da67b31741c5bf6e b-4-tick=e8dab13b8d96135b
+   [4b the control obligation, never requested] -> BP obligation owner work=work-control status=outstanding pinned=yes  {'a_obligation': 'BP obligation owner work=work-control status=outstanding pinned=yes'}  a-status-control=60724f0575b0d89b
+   [5 A SIGKILLed at BP OBLIGATION SUBMIT TAKEN] -> BP obligation owner work=work-cut-submit status=restart-observed pinned=yes  {'marker_reached': True, 'request_again': 'uncertain', 'status_after_again': 'BP obligation owner work=work-cut-submit status=restart-observed pinned=yes', 'status_after_kill': 'BP obligation owner work=work-cut-submit status=restart-observed pinned=yes'}  a-5-work-cut-submit=998d697635c16e0d a-5-work-cut-submit-again=9663cb23f5b32ece a-5-work-cut-submit-status=d19d7d7b0f0db5a2 a-5-work-cut-submit-status-2=d19d7d7b0f0db5a2
+   [5 A SIGKILLed at BP OBLIGATION ATTEMPT DURABLE] -> BP obligation owner work=work-cut-attempt status=outstanding pinned=yes  {'marker_reached': True, 'request_again': 'refused', 'status_after_again': 'BP obligation owner work=work-cut-attempt status=outstanding pinned=yes', 'status_after_kill': 'BP obligation owner work=work-cut-attempt status=outstanding pinned=yes'}  a-5-work-cut-attempt=4e7f11257c20ac6e a-5-work-cut-attempt-again=140e0a5949637599 a-5-work-cut-attempt-status=60d7d0972933095e a-5-work-cut-attempt-status-2=60d7d0972933095e
+   A: BP node release carried-not-released carrier=return-boundary issuer=dtn://receiver/
+   A: BP node delivery receipt-refused
+== n-relay2-listed  out 53c5f09d620cc383  report fe2aee4d002ecc7d
+   a_releases listed b_trusts carried native True | before: BP obligation owner work=work-bp-node status=outstanding pinned=yes | after: BP obligation owner work=work-bp-node status=receipted pinned=no
+   processes [('b-serve', 2370583, 'SIGTERM rc=143'), ('a-serve', 2371295, 'SIGTERM rc=143'), ('a-5-work-cut-submit', 2371763, 'SIGKILL rc=-9'), ('a-5-work-cut-attempt', 2371812, 'SIGKILL rc=-9')]
+   [1 A request, held mid-transfer, first hop SIGKILLed] -> uncertain  {'held': True}  a-1-send=7945ee97f8d017f6
+   [2 first hop restarted, A resumes its durable job] -> accepted  {'restarted': 2370627}  a-2-resume=79125a21e282008a
+   [3 B admits, takes custody, dispatches to its application] -> request-accepted  {'b_fnbs_lifecycle_frames': 3, 'transport_accepted': 1}  b-serve=2dcc999c0d36ec48
+   [4 B's receipt carried back and matched at A] -> receipt-accepted  {'a_obligation': 'BP obligation owner work=work-bp-node status=receipted pinned=no', 'tick_outcome': 'accepted'}  a-serve=37b961664d367ff5 b-4-tick=52f8cba9a2db731a
+   [4b the control obligation, never requested] -> BP obligation owner work=work-control status=outstanding pinned=yes  {'a_obligation': 'BP obligation owner work=work-control status=outstanding pinned=yes'}  a-status-control=4108be144e52df8c
+   [5 A SIGKILLed at BP OBLIGATION SUBMIT TAKEN] -> BP obligation owner work=work-cut-submit status=restart-observed pinned=yes  {'marker_reached': True, 'request_again': 'uncertain', 'status_after_again': 'BP obligation owner work=work-cut-submit status=restart-observed pinned=yes', 'status_after_kill': 'BP obligation owner work=work-cut-submit status=restart-observed pinned=yes'}  a-5-work-cut-submit=311dec0acac64fc0 a-5-work-cut-submit-again=d195e5be2efaed86 a-5-work-cut-submit-status=6e1c0f960e6d3e59 a-5-work-cut-submit-status-2=6e1c0f960e6d3e59
+   [5 A SIGKILLed at BP OBLIGATION ATTEMPT DURABLE] -> BP obligation owner work=work-cut-attempt status=outstanding pinned=yes  {'marker_reached': True, 'request_again': 'refused', 'status_after_again': 'BP obligation owner work=work-cut-attempt status=outstanding pinned=yes', 'status_after_kill': 'BP obligation owner work=work-cut-attempt status=outstanding pinned=yes'}  a-5-work-cut-attempt=ef989ce2d9404419 a-5-work-cut-attempt-again=4312a6a901c88f61 a-5-work-cut-attempt-status=bfe1ea1f6a1bb1fd a-5-work-cut-attempt-status-2=bfe1ea1f6a1bb1fd
+   A: BP node release listed-issuer carrier=return-boundary issuer=dtn://receiver/
+   A: BP node delivery receipt-accepted
+== n-unauthorized  out c30d5fe93523949e  report 6a7b9b504d91422b
+   a_releases direct b_trusts neighbour native True | before: BP obligation owner work=work-bp-node status=outstanding pinned=yes | after: BP obligation owner work=work-bp-node status=restart-observed pinned=yes
+   processes [('b-serve', 2372179, 'SIGTERM rc=143'), ('a-serve', 2372494, 'SIGTERM rc=143'), ('a-5-work-cut-submit', 2373374, 'SIGKILL rc=-9'), ('a-5-work-cut-attempt', 2373396, 'SIGKILL rc=-9')]
+   [1 A request, held mid-transfer, first hop SIGKILLed] -> uncertain  {'held': True}  a-1-send=7945ee97f8d017f6
+   [2 first hop restarted, A resumes its durable job] -> accepted  {'restarted': 2372270}  a-2-resume=3967896249203fc5
+   [3 B admits, takes custody, dispatches to its application] -> request-refused  {'b_fnbs_lifecycle_frames': 2, 'transport_accepted': 1}  b-serve=fef3aadaecb4bc2a
+   [4 B's receipt carried back and matched at A] -> no-receipt  {'a_obligation': 'BP obligation owner work=work-bp-node status=restart-observed pinned=yes', 'tick_outcome': 'accepted'}  a-serve=3e28ba31ef95350a b-4-tick=c4f73610060530df
+   [4b the control obligation, never requested] -> BP obligation owner work=work-control status=outstanding pinned=yes  {'a_obligation': 'BP obligation owner work=work-control status=outstanding pinned=yes'}  a-status-control=c06a7dd6ba06a523
+   [5 A SIGKILLed at BP OBLIGATION SUBMIT TAKEN] -> BP obligation owner work=work-cut-submit status=restart-observed pinned=yes  {'marker_reached': True, 'request_again': 'uncertain', 'status_after_again': 'BP obligation owner work=work-cut-submit status=restart-observed pinned=yes', 'status_after_kill': 'BP obligation owner work=work-cut-submit status=restart-observed pinned=yes'}  a-5-work-cut-submit=99efbd8a386f75fa a-5-work-cut-submit-again=040f949d58fec226 a-5-work-cut-submit-status=2f33c39616bcd35f a-5-work-cut-submit-status-2=2f33c39616bcd35f
+   [5 A SIGKILLed at BP OBLIGATION ATTEMPT DURABLE] -> BP obligation owner work=work-cut-attempt status=outstanding pinned=yes  {'marker_reached': True, 'request_again': 'refused', 'status_after_again': 'BP obligation owner work=work-cut-attempt status=outstanding pinned=yes', 'status_after_kill': 'BP obligation owner work=work-cut-attempt status=outstanding pinned=yes'}  a-5-work-cut-attempt=dab2080caeae4709 a-5-work-cut-attempt-again=8e0b893ff99c9f41 a-5-work-cut-attempt-status=1112402cd4ca4cd4 a-5-work-cut-attempt-status-2=1112402cd4ca4cd4

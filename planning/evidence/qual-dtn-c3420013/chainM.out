@@ -1,0 +1,16 @@
+chainM pid 2350666 start 2026-09-25T01:41:41Z
+test_bp_service_native.dtn-developer rc=0 OK
+test_bp_receive_integrity_native.dtn-developer rc=0 OK
+test_bp_contact_native.dtn-developer rc=0 OK
+test_bp_obligation_native.dtn-developer rc=0 OK
+test_bp_app_native.dtn-developer rc=0 OK
+test_native_app_journal.dtn-developer rc=0 OK
+test_bp_node_native.dtn-developer rc=0 OK
+test_bp_service_native.dtn rc=1 FAILED (failures=7)
+test_bp_receive_integrity_native.dtn rc=1 FAILED (failures=2)
+test_bp_contact_native.dtn rc=0 OK
+test_bp_contact_relay_native.dtn rc=0 OK
+test_bp_obligation_native.dtn rc=1 FAILED (failures=3)
+test_bp_app_native.dtn rc=1 FAILED (failures=4)
+test_native_image_profiles.four rc=0 OK
+chainM end 2026-09-25T01:51:15Z
