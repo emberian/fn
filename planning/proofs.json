@@ -3755,7 +3755,7 @@
       "statement": "Over fn-nntp-step-pinned (books/nntp.lisp), which fn-nntp-post-step-pinned calls for every non-POST command on the served path (fn-served-step, fn-served-dispatch, fn-auth-step-pinned; host/native/owner.lisp through host/owner-host.lisp fn-owner-chunk): fn-nntp-step-pinned-xpat-is-the-xpat-response, for an open, well-formed, projected session and a command line within the preflight whose keyword is XPAT, the step's result is fn-nntp-xpat-response over the line's arguments (the pinned dispatcher adds no XPAT arm). fn-nntp-xpat-alternation-is-or: appending non-negated wildmat alternatives q to a pattern list p ORs them in the matcher the XPAT arm calls (fn-nntp-xpat-matchesp), over every header content; RFC 2980 section 2.9's join of additional arguments into one pattern is kept. fn-auth-capability-lines-advertise-xpat: the served CAPABILITIES block (fn-auth-capability-lines-for-peer) lists XPAT for every configuration. Over fn-sbud-post-boundary-refusal (books/store-budget-naming.lisp), which host/native/io.lisp fnn-validate-post-boundary calls: fn-sbud-post-boundary-refusal-is-nil-exactly-when-admitted, the rendered refusal is NIL exactly when fn-sbud-post-boundary admits, with fn-sbud-post-boundary-refusals-are-distinct (two different words, one of them a boundary word, never share a text) and fn-sbud-post-boundary-refusal-is-a-printable-line; the host keeps no text table.",
       "milestone": "M6",
       "requirements": [
-        "NNT-014",
+        "NNT-016",
         "STO-005"
       ],
       "depends_on": [],
