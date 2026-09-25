@@ -146,9 +146,12 @@
            :in-theory (disable fn-bpnp-forward-scan fn-bpnp-stranded-effects
                                fn-bpn-machine-statep
                                fn-bpb-bundlep fn-bpnf-heldp))))
+(verify-guards fn-bpnp-held-dest)
+(verify-guards fn-bpnp-routed-rows)
 (verify-guards fn-bpnp-routed-start
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-bpnp-forward-scan fn-bpnp-start-one
+                               fn-bpnp-routed-rows fn-bpnp-held-dest
                                fn-bprt-offer-decision fn-bpaj-eid-text
                                fn-bpnp-primary fn-bpn-machine-statep
                                fn-bpb-bundlep fn-bpnf-heldp))))
@@ -213,6 +216,8 @@
 (verify-guards fn-bpnp-rotation-persist-step)
 (verify-guards fn-bpnp-session-via)
 (verify-guards fn-bpnp-session-base-length)
+(verify-guards fn-bpnp-resume-via)
+(verify-guards fn-bpnp-resume-base-length)
 (verify-guards fn-bpnp-host-eventp)
 (verify-guards fn-bpnp-preserve-runtime-answer)
 ;; The proposal state keeps the base it was given whenever it carries an

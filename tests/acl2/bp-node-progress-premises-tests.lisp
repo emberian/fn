@@ -46,8 +46,14 @@
 
 ; A session to the destination opens through the served step.
 (defconst *bpsp-session* (cons 1 1))
+;; The routed session (spec 4.6): the host opens an outbound session only to
+;; the boundary the route table names, and a :session without VIA offers
+;; nothing.  This fixture's table sends dtn://bp-dest/ to the boundary "relay".
+(defconst *bpsp-via*
+  (list :via "relay" (fn-record-string-octets "dtn://relay/")
+        (list (fn-bprt-route 100 "dtn://bp-dest/" "relay" "dtn://relay/" 4556))))
 (defconst *bpsp-session-event*
-  (list :session *bpsp-dest* *bpsp-session* t 32768 *bpsp-observation*))
+  (list :session *bpsp-dest* *bpsp-session* t 32768 *bpsp-observation* *bpsp-via*))
 (defconst *bpsp-s2*
   (fn-bpnf-answer-state (fn-bpnp-step *bpsp-s1* *bpsp-session-event*)))
 
@@ -86,7 +92,7 @@
 ; is not a host event; logically stepped, it installs a malformed session
 ; row, so the premises fail afterwards.
 (defconst *bpsp-bad-session-event*
-  (list :session *bpsp-dest* *bpsp-session* t 0 *bpsp-observation*))
+  (list :session *bpsp-dest* *bpsp-session* t 0 *bpsp-observation* *bpsp-via*))
 (make-event
  `(defconst *bpsp-bad-event-after*
     ',(with-guard-checking

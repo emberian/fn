@@ -189,7 +189,7 @@
 ; lock.  This separates the raw lock observation from the ACL2 authority it
 ; must satisfy before a fn-jpub state is returned.
 (assert-event (equal (fn-native-admin-publication-status
-                      (fn-native-admin-publication-authorize nil 0 nil nil nil nil))
+                      (fn-native-admin-publication-authorize nil 0 nil nil nil nil 1048576))
                      :refused))
 
 ; A second, admissible configuration record is authorized only for the exact
@@ -201,7 +201,7 @@
    (fn-clock-observation 7 9 0 t)))
 (defconst *fn-na-publication*
   (fn-native-admin-publication-authorize
-   nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t nil))
+   nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t nil 1048576))
 (assert-event (equal (fn-native-admin-publication-status *fn-na-publication*)
                      :accepted))
 (assert-event (equal (fn-native-admin-publication-generation *fn-na-publication*) 2))
@@ -214,7 +214,7 @@
  (equal (fn-native-admin-publication-status
          (fn-native-admin-publication-authorize
           nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t
-          '("00000002.cfg")))
+          '("00000002.cfg") 1048576))
         :refused))
 
 ; Teeth for `fn-native-admin-publication-is-authorized-only-under-the-lock'.
@@ -226,7 +226,7 @@
 ; the record, the generation or the namespace.
 (defconst *fn-na-unlocked-publication*
   (fn-native-admin-publication-authorize
-   nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* nil nil))
+   nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* nil nil 1048576))
 (assert-event (equal (fn-native-admin-publication-status *fn-na-unlocked-publication*)
                      :refused))
 (assert-event (equal (fn-native-admin-publication-reason *fn-na-unlocked-publication*)
@@ -243,7 +243,8 @@
 (must-fail
  (defthm fn-na-lock-without-acceptance
    (let ((result (fn-native-admin-publication-authorize
-                  records frontier config-records record lock-owned observed-names)))
+                  records frontier config-records record lock-owned observed-names
+                  max-generations)))
      (declare (ignorable result))
      lock-owned)
    :rule-classes nil
@@ -256,13 +257,40 @@
 (must-fail
  (defthm fn-na-lock-without-a-publication-state
    (let ((result (fn-native-admin-publication-authorize
-                  records frontier config-records record lock-owned observed-names)))
+                  records frontier config-records record lock-owned observed-names
+                  max-generations)))
      (implies (not (fn-native-admin-publication-jpub result))
               lock-owned))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
                                    (fn-cnode-config-replay fn-native-admin-candidate-openp
                                     fn-native-admin-config-name fn-cfg-recordp))))))
+
+;; D27, PRF-102: teeth for `fn-native-admin-publication-within-the-operator-bound'.
+;; The same admissible second record: accepted at generation 2 when the
+;; operator's max-config-generations is 2, refused by name when it is 1 --
+;; the bound, not the record or the lock, decides.  The accepted witness is
+;; the one above (`*fn-na-publication*', bound 2^20, the default profile's).
+(defconst *fn-na-at-bound*
+  (fn-native-admin-publication-authorize
+   nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t nil 2))
+(assert-event (equal (fn-native-admin-publication-status *fn-na-at-bound*) :accepted))
+(assert-event (equal (fn-native-admin-publication-generation *fn-na-at-bound*) 2))
+(defconst *fn-na-past-bound*
+  (fn-native-admin-publication-authorize
+   nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t nil 1))
+(assert-event (equal (fn-native-admin-publication-reason *fn-na-past-bound*)
+                     :max-config-generations))
+(assert-event (null (fn-native-admin-publication-jpub *fn-na-past-bound*)))
+;; The acceptance hypothesis dropped: the refused value carries no natural
+;; generation, so the conclusion fails at it.
+(must-fail
+ (defthm fn-na-bound-without-acceptance
+   (let ((result (fn-native-admin-publication-authorize
+                  nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t nil 1)))
+     (and (natp (fn-native-admin-publication-generation result))
+          (<= (fn-native-admin-publication-generation result) 1)))
+   :rule-classes nil))
 
 ; Length alone does not establish a proper argument vector.
 (assert-event
@@ -1218,3 +1246,63 @@
  (let ((rows (fn-na-test-plan-rows (fn-na-bp-eid-plan "dtn://relay/" "dtn://a b/"))))
    (equal rows nil)))
 
+
+;; PRF-099: `peer budget NAME OCTETS COUNT' and `peer carries NAME HEX ...'
+;; extend an existing boundary over the live table; OCTETS is kept in whole
+;; charge pages, and past a uint32 of pages it is refused.
+(defconst *fn-na-pcb-peers*
+  (list (list "relay" "path-identity" "relay.example" 0)
+        (list "relay" "carried-budget-charge" "" 1)
+        (list "relay" "carried-budget-count" "" 1)))
+(defconst *fn-na-pcb-budget*
+  (fn-native-admin-plan (fn-na-test-argv '("peer" "budget" "relay"
+                                           "1048576" "3"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-pcb-budget*) :accepted))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-pcb-budget*) :extend-peer))
+(assert-event
+ (equal (fn-pcb-peer-budget
+         "relay"
+         (fn-cfg-peers
+          (fn-cfg-apply-delta
+           (fn-cfg-value-make nil 0 nil nil nil *fn-na-pcb-peers* nil nil) 1 nil
+           (car (fn-native-admin-plan-deltas-over *fn-na-pcb-budget*
+                                                  *fn-na-pcb-peers*)))))
+        '(256 3)))
+; No such boundary: no delta.
+(assert-event (null (fn-native-admin-plan-deltas-over *fn-na-pcb-budget* nil)))
+; Past a uint32 of pages (2^32 pages is 2^44 octets), and a malformed word.
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan (fn-na-test-argv '("peer" "budget" "relay"
+                                                  "17592186044416" "3"))))
+        :refused))
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan (fn-na-test-argv '("peer" "budget" "relay"
+                                                  "12x" "3"))))
+        :refused))
+; Past uint32 octets is admitted: the octet word is not capped at 4 GiB.
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan (fn-na-test-argv '("peer" "budget" "relay"
+                                                  "8589934592" "3"))))
+        :accepted))
+(defconst *fn-na-pcb-carries*
+  (fn-native-admin-plan
+   (fn-na-test-argv
+    '("peer" "carries" "relay"
+      "0707070707070707070707070707070707070707070707070707070707070707"))))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-pcb-carries*) :extend-peer))
+(assert-event
+ (equal (fn-cfg-delta-rows
+         (car (fn-native-admin-plan-deltas-over *fn-na-pcb-carries*
+                                                *fn-na-pcb-peers*)))
+        (append *fn-na-pcb-peers*
+                (list (list "relay" "carries-principal"
+                            "0707070707070707070707070707070707070707070707070707070707070707"
+                            0)))))
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan (fn-na-test-argv '("peer" "carries" "relay"
+                                                  "07"))))
+        :refused))

@@ -54,6 +54,9 @@
 ;; (host/owner-host.lisp) call fn-pbb-existing-action.
 (include-book "books/octets-stobj")
 (include-book "books/poster-bytes-buffer")
+;; The subject digest over the buffer (D27 wave C): fn-owner-subject-id-buffer
+;; (host/owner-host.lisp) calls fn-shb-subject-id.
+(include-book "books/sha256-buffer")
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-intent-carried")
 (include-book "books/owner-commit-ocl")
@@ -117,6 +120,8 @@
 (include-book "books/bp-fnbs-dispatch-publication")
 (include-book "books/bp-fnbs-forward-publication")
 (include-book "books/bp-node-receipt-send")
+;; Routed queued jobs, offered once per contact (PRF-103).
+(include-book "books/bp-node-contact-driver")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")

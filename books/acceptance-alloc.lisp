@@ -114,6 +114,122 @@
 
 (verify-guards fn-string-listp)
 
+; -----------------------------------------------------------------------------
+; Linear duplicate and subset checks (checkpoint-cost, PKT-142).
+;
+; `fn-no-duplicatesp' and `fn-subsetp' are member-equal folds, quadratic in
+; the list.  They run over whole-state lists (message IDs, binding and
+; obligation identities) when a recognizer checks a state decoded from bytes
+; at open.  Their :exec path uses a hash set in a local stobj when the list
+; has at least eight elements: `fn-ks-distinctp' and `fn-ks-subsetp', equal
+; to the member-equal definitions by `fn-ks-distinctp-is-nodupp' and
+; `fn-ks-subsetp-is-subset-logic' (and so to `fn-no-duplicatesp' and
+; `fn-subsetp' by `fn-no-duplicatesp-is-ks-nodupp' and
+; `fn-subsetp-is-ks-subset-logic' below).  The stobj is local to each call,
+; so the check is safe from any thread.  No logical definition changes.
+
+(defstobj fn-keyset (fn-keyset-tab :type (hash-table equal)))
+
+(defun fn-ks-nodupp (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp xs)
+      (and (not (member-equal (car xs) (cdr xs)))
+           (fn-ks-nodupp (cdr xs)))
+    t))
+
+(defun fn-ks-any-boundp (keys tab)
+  (declare (xargs :guard t))
+  (if (consp keys)
+      (or (consp (hons-assoc-equal (car keys) tab))
+          (fn-ks-any-boundp (cdr keys) tab))
+    nil))
+
+(defun fn-ks-scan (keys fn-keyset)
+  (declare (xargs :stobjs fn-keyset :guard t))
+  (if (consp keys)
+      (if (fn-keyset-tab-boundp (car keys) fn-keyset)
+          (mv nil fn-keyset)
+        (let ((fn-keyset (fn-keyset-tab-put (car keys) t fn-keyset)))
+          (fn-ks-scan (cdr keys) fn-keyset)))
+    (mv t fn-keyset)))
+
+(defthm fn-ks-any-boundp-of-cons
+  (equal (fn-ks-any-boundp keys (cons (cons k v) tab))
+         (or (if (member-equal k keys) t nil)
+             (fn-ks-any-boundp keys tab))))
+
+(defthm fn-ks-scan-is-nodupp
+  (equal (mv-nth 0 (fn-ks-scan keys fn-keyset))
+         (and (fn-ks-nodupp keys)
+              (not (fn-ks-any-boundp keys (nth 0 fn-keyset)))))
+  :hints (("Goal" :induct (fn-ks-scan keys fn-keyset))))
+
+(defun fn-ks-distinctp (keys)
+  (declare (xargs :guard t))
+  (with-local-stobj fn-keyset
+    (mv-let (ok fn-keyset)
+      (fn-ks-scan keys fn-keyset)
+      ok)))
+
+(defthm fn-ks-distinctp-is-nodupp
+  (equal (fn-ks-distinctp keys) (fn-ks-nodupp keys)))
+
+(defun fn-ks-fill (keys fn-keyset)
+  (declare (xargs :stobjs fn-keyset :guard t))
+  (if (consp keys)
+      (let ((fn-keyset (fn-keyset-tab-put (car keys) t fn-keyset)))
+        (fn-ks-fill (cdr keys) fn-keyset))
+    fn-keyset))
+
+(defun fn-ks-all-boundp (keys fn-keyset)
+  (declare (xargs :stobjs fn-keyset :guard t))
+  (if (consp keys)
+      (and (fn-keyset-tab-boundp (car keys) fn-keyset)
+           (fn-ks-all-boundp (cdr keys) fn-keyset))
+    t))
+
+(defun fn-ks-subset-logic (xs ys)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp xs)
+      (and (member-equal (car xs) ys)
+           (fn-ks-subset-logic (cdr xs) ys))
+    t))
+
+(defthm fn-ks-tab-of-put
+  (equal (nth 0 (fn-keyset-tab-put k v fn-keyset))
+         (cons (cons k v) (nth 0 fn-keyset))))
+
+(defthm fn-ks-bound-after-fill
+  (iff (consp (hons-assoc-equal k (nth 0 (fn-ks-fill ys fn-keyset))))
+       (or (member-equal k ys)
+           (consp (hons-assoc-equal k (nth 0 fn-keyset)))))
+  :hints (("Goal" :induct (fn-ks-fill ys fn-keyset)
+           :in-theory (disable fn-keyset-tab-put nth))))
+
+(defthm fn-ks-all-boundp-is-subset
+  (implies (not (consp (nth 0 fn-keyset)))
+           (equal (fn-ks-all-boundp xs (fn-ks-fill ys fn-keyset))
+                  (fn-ks-subset-logic xs ys)))
+  :hints (("Goal" :induct (fn-ks-subset-logic xs ys)
+           :in-theory (disable fn-ks-fill nth))))
+
+(defun fn-ks-subsetp (xs ys)
+  (declare (xargs :guard t))
+  (with-local-stobj fn-keyset
+    (mv-let (ok fn-keyset)
+      (let ((fn-keyset (fn-ks-fill ys fn-keyset)))
+        (mv (fn-ks-all-boundp xs fn-keyset) fn-keyset))
+      ok)))
+
+(defthm fn-ks-subsetp-is-subset-logic
+  (equal (fn-ks-subsetp xs ys) (fn-ks-subset-logic xs ys)))
+
+(defun fn-ks-longp (xs)
+  (declare (xargs :guard t))
+  (and (consp xs) (consp (cdr xs)) (consp (cddr xs)) (consp (cdddr xs))
+       (consp (cddddr xs)) (consp (cdr (cddddr xs))) (consp (cddr (cddddr xs)))
+       (consp (cdddr (cddddr xs)))))
+
 (defun fn-no-duplicatesp (xs)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic
@@ -122,12 +238,18 @@
                 (fn-no-duplicatesp (cdr xs)))
          t)
        :exec
-       (if (consp xs)
-           (and (not (fn-ag-member (fn-ag-car xs) (fn-ag-cdr xs)))
-                (fn-no-duplicatesp (fn-ag-cdr xs)))
-         t)))
+       (if (fn-ks-longp xs)
+           (fn-ks-distinctp xs)
+         (if (consp xs)
+             (and (not (fn-ag-member (fn-ag-car xs) (fn-ag-cdr xs)))
+                  (fn-no-duplicatesp (fn-ag-cdr xs)))
+           t))))
 
-(verify-guards fn-no-duplicatesp)
+(defthmd fn-no-duplicatesp-is-ks-nodupp
+  (equal (fn-no-duplicatesp xs) (fn-ks-nodupp xs)))
+
+(verify-guards fn-no-duplicatesp
+  :hints (("Goal" :in-theory (enable fn-no-duplicatesp-is-ks-nodupp))))
 
 (defun fn-subsetp (xs ys)
   (declare (xargs :guard t :verify-guards nil))
@@ -137,12 +259,18 @@
                 (fn-subsetp (cdr xs) ys))
          t)
        :exec
-       (if (consp xs)
-           (and (fn-ag-member (fn-ag-car xs) ys)
-                (fn-subsetp (fn-ag-cdr xs) ys))
-         t)))
+       (if (fn-ks-longp ys)
+           (fn-ks-subsetp xs ys)
+         (if (consp xs)
+             (and (fn-ag-member (fn-ag-car xs) ys)
+                  (fn-subsetp (fn-ag-cdr xs) ys))
+           t))))
 
-(verify-guards fn-subsetp)
+(defthmd fn-subsetp-is-ks-subset-logic
+  (equal (fn-subsetp xs ys) (fn-ks-subset-logic xs ys)))
+
+(verify-guards fn-subsetp
+  :hints (("Goal" :in-theory (enable fn-subsetp-is-ks-subset-logic))))
 
 (defun fn-selection-validp (selection configured)
   (declare (xargs :guard t :verify-guards nil))

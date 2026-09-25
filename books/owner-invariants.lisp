@@ -139,10 +139,10 @@
        (natp (fn-own-conn-version conn))
        (<= (fn-own-conn-version conn) (len records))
        (natp (fn-own-conn-frontier conn))
-       (equal (fn-own-conn-archive conn)
-              (fn-own-prefix-archive groups capacity records
-                                     (fn-own-conn-version conn)
-                                     (fn-own-conn-frontier conn)))
+       (fn-ctl-projectionp (fn-own-conn-archive conn)
+                           (fn-own-prefix-archive groups capacity records
+                                                  (fn-own-conn-version conn)
+                                                  (fn-own-conn-frontier conn)))
        (fn-midx-correspondencep
         (fn-own-conn-index conn)
         (fn-state-articles (fn-own-conn-archive conn)))
@@ -166,9 +166,17 @@
        (<= (fn-own-view-version view) (len records))
        (natp (fn-own-view-frontier view))
        (equal (fn-own-view-archive view)
-              (fn-own-prefix-archive groups capacity records
-                                     (fn-own-view-version view)
-                                     (fn-own-view-frontier view)))
+              (fn-ctl-visible-state
+               (fn-own-prefix-archive groups capacity records
+                                      (fn-own-view-version view)
+                                      (fn-own-view-frontier view))
+               (fn-own-view-withdrawals view)
+               (fn-own-view-verdicts view)))
+       (equal (fn-own-view-raw view)
+              (fn-state-articles
+               (fn-own-prefix-archive groups capacity records
+                                      (fn-own-view-version view)
+                                      (fn-own-view-frontier view))))
        (fn-midx-correspondencep
         (fn-own-view-index view)
         (fn-state-articles (fn-own-view-archive view)))
@@ -579,19 +587,71 @@
        (equal (fn-own-inflight (fn-own-refresh o)) (fn-own-inflight o)))
   :hints (("Goal" :in-theory (disable fn-own-store-idlep))))
 
+; The refresh keystone's one fact about the archive: distinct Message-IDs,
+; from the acceptance state the related Store carries.
+(defthm fn-own-related-node-statep
+  (implies (fn-snt-relation s)
+           (fn-node-statep (fn-sn-node s)))
+  :hints (("Goal" :use fn-snt-relation-implies-structural-state
+           :in-theory (e/d (fn-sn-statep)
+                           (fn-node-statep fn-snt-relation
+                            fn-snt-relation-implies-structural-state)))))
+
+(defthm fn-own-node-statep-acceptance-articles
+  (implies (fn-node-statep node)
+           (fn-article-listp (fn-state-groups (fn-node-acceptance node))
+                             (fn-state-articles (fn-node-acceptance node))))
+  :hints (("Goal" :in-theory (enable fn-node-statep fn-statep))))
+
+(defthm fn-own-related-acceptance-msgids-distinct
+  (implies (fn-snt-relation s)
+           (no-duplicatesp-equal
+            (fn-article-msgids (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+  :hints (("Goal" :in-theory (disable fn-snt-relation fn-node-statep fn-article-listp)
+           :use ((:instance fn-own-related-node-statep)
+                 (:instance fn-own-node-statep-acceptance-articles
+                            (node (fn-sn-node s)))
+                 (:instance fn-ctl-article-listp-msgids-distinct
+                            (configured (fn-state-groups (fn-node-acceptance (fn-sn-node s))))
+                            (xs (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))))))
+
+; The refresh publishes the visible state: the archive it installs is the
+; visible state of the grown prefix under the records it carries
+; (fn-ctl-refresh-state-is-visible, books/control-visible.lisp), so the
+; restated view conjunct holds after it.
 (defthm fn-own-refresh-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (fn-own-refresh o)))
   :hints (("Goal"
            :use ((:instance fn-own-related-records-true-list (s (fn-own-store o)))
                  (:instance fn-own-related-frontier-natural (s (fn-own-store o)))
-                 (:instance fn-own-idle-node-is-replay (s (fn-own-store o))))
+                 (:instance fn-own-idle-node-is-replay (s (fn-own-store o)))
+                 (:instance fn-own-related-acceptance-msgids-distinct (s (fn-own-store o)))
+                 (:instance fn-ctl-refresh-state-is-visible
+                            (old-archive (fn-own-view-archive (fn-own-view o)))
+                            (old-p (fn-own-prefix-archive
+                                    (fn-sn-groups (fn-own-store o))
+                                    (fn-sn-capacity (fn-own-store o))
+                                    (fn-sf-records (fn-sn-files (fn-own-store o)))
+                                    (fn-own-view-version (fn-own-view o))
+                                    (fn-own-view-frontier (fn-own-view o))))
+                            (ws (fn-own-view-withdrawals (fn-own-view o)))
+                            (old-verdicts (fn-own-view-verdicts (fn-own-view o)))
+                            (old-raw (fn-own-view-raw (fn-own-view o)))
+                            (new-p (fn-node-acceptance (fn-sn-node (fn-own-store o))))
+                            (verdicts (fn-sn-verdicts (fn-own-store o)))
+                            (cfg (fn-own-refresh-config
+                                  (fn-own-store o)
+                                  (fn-node-acceptance (fn-sn-node (fn-own-store o)))))))
            :in-theory (e/d (fn-own-relation fn-midx-correspondencep
                             fn-gidx-build)
                            (fn-own-conns-okp fn-own-view-make-group-indexed
                             fn-own-store-idlep fn-own-idle-node-is-replay
                             fn-own-related-records-true-list
-                            fn-own-related-frontier-natural))
+                            fn-own-related-frontier-natural
+                            fn-own-related-acceptance-msgids-distinct
+                            fn-ctl-refresh-state-is-visible
+                            fn-ctl-refresh-visible-is-visible))
            :cases ((fn-own-store-idlep (fn-own-store o))))))
 
 ; -----------------------------------------------------------------------------
@@ -1444,19 +1504,22 @@
   :hints (("Goal"
            :use ((:instance fn-own-refresh-preserves-relation
                             (o (fn-own-make store
-                                            (let ((archive
-                                                   (fn-own-prefix-archive
-                                                    (fn-sn-groups store)
-                                                    (fn-sn-capacity store)
-                                                    (fn-sf-records
-                                                     (fn-sn-files store))
-                                                    0 0)))
-                                              (fn-own-view-make-group-indexed
+                                            (let* ((prefix
+                                                    (fn-own-prefix-archive
+                                                     (fn-sn-groups store)
+                                                     (fn-sn-capacity store)
+                                                     (fn-sf-records
+                                                      (fn-sn-files store))
+                                                     0 0))
+                                                   (archive (fn-ctl-visible-state
+                                                             prefix nil nil)))
+                                              (fn-own-view-make-visible
                                                0 0 archive nil
                                                (fn-midx-build
                                                 (fn-state-articles archive))
                                                (fn-gidx-build
-                                                (fn-state-articles archive))))
+                                                (fn-state-articles archive))
+                                               nil (fn-state-articles prefix)))
                                             nil 0 max-conns nil nil nil nil
                                             nil nil nil nil))))
            :in-theory (e/d (fn-own-relation fn-midx-correspondencep
@@ -1488,7 +1551,41 @@
 ; K1, served port: one socket read of a connection is one fn-served-step over
 ; the connection's wire and session and the acceptance projection of
 ; fn-sf-replay-node over the first `version` durable records, advanced to the
-; pinned frontier.  The effects the host writes are exactly this call's.
+; pinned frontier, with the connection's article list in place of the
+; projection's (C3: the visible list of the view it pinned, which withdrew
+; targets; fn-own-conn-serves-a-projection below says that list is a
+; subsequence of the prefix's and nothing else of the state differs).  The
+; effects the host writes are exactly this call's.
+
+; KEYSTONE (C3, K1 restated).  A connection serves a withdrawal projection
+; of its pinned prefix: the prefix's acceptance state with a subsequence of
+; its articles (nothing added, nothing reordered, every number and
+; watermark the prefix's own).  The view it pinned is exactly the visible
+; state of that prefix under the records it carried (fn-own-view-okp).
+(defthm fn-own-conn-serves-a-projection
+  (implies (and (fn-own-relation o)
+                (fn-own-find-conn id (fn-own-conns o)))
+           (let* ((conn (fn-own-find-conn id (fn-own-conns o)))
+                  (s (fn-own-store o))
+                  (p (fn-node-acceptance
+                      (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                                         (fn-own-take (fn-own-conn-version conn)
+                                                      (fn-sf-records (fn-sn-files s)))
+                                         (fn-own-conn-frontier conn)))))
+             (and (equal (fn-own-conn-archive conn)
+                         (fn-ctl-visible-state-of
+                          p (fn-state-articles (fn-own-conn-archive conn))))
+                  (fn-ctl-subseqp (fn-state-articles (fn-own-conn-archive conn))
+                                  (fn-state-articles p)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-own-find-conn-okp
+                            (conns (fn-own-conns o))
+                            (groups (fn-sn-groups (fn-own-store o)))
+                            (capacity (fn-sn-capacity (fn-own-store o)))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
+           :in-theory (e/d (fn-own-relation fn-ctl-projectionp)
+                           (fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
 (defthm fn-own-read-is-served-step-on-pinned-prefix
   (implies (and (fn-own-relation o)
@@ -1501,11 +1598,13 @@
                       (fn-served-make-conn-group-indexed
                        (fn-own-conn-wire conn)
                        (fn-own-conn-live-session o conn)
-                       (fn-node-acceptance
-                        (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                       (fn-ctl-visible-state-of
+                        (fn-node-acceptance
+                         (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                            (fn-own-take (fn-own-conn-version conn)
                                                         (fn-sf-records (fn-sn-files s)))
                                            (fn-own-conn-frontier conn)))
+                        (fn-state-articles (fn-own-conn-archive conn)))
                        (fn-own-conn-config conn)
                        (fn-own-conn-observation conn)
                        (fn-own-clock o)
@@ -1514,7 +1613,8 @@
                        (fn-own-conn-group-index conn))
                       octets)))))
   :hints (("Goal"
-           :use ((:instance fn-own-find-conn-okp
+           :use (fn-own-conn-serves-a-projection
+                 (:instance fn-own-find-conn-okp
                             (conns (fn-own-conns o))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
@@ -1534,11 +1634,13 @@
                       (fn-served-make-conn-group-indexed
                        (fn-own-conn-wire conn)
                        (fn-own-conn-live-session final conn)
-                       (fn-node-acceptance
-                        (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                       (fn-ctl-visible-state-of
+                        (fn-node-acceptance
+                         (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                            (fn-own-take (fn-own-conn-version conn)
                                                         (fn-sf-records (fn-sn-files s)))
                                            (fn-own-conn-frontier conn)))
+                        (fn-state-articles (fn-own-conn-archive conn)))
                        (fn-own-conn-config conn)
                        (fn-own-conn-observation conn)
                        (fn-own-clock final)
@@ -1559,7 +1661,8 @@
 ; fn-served-dispatch (the byte fold's step: fn-nntp-post-step with the
 ; article-mode switch) over the connection's wire, session, config and
 ; observation and the acceptance projection of fn-sf-replay-node over the
-; first `version` durable records, advanced to the pinned frontier.
+; first `version` durable records, advanced to the pinned frontier, with the
+; connection's (visible) article list in place of the projection's.
 
 (defthm fn-own-reader-sees-pinned-prefix-replay
   (implies (and (fn-own-relation o)
@@ -1572,11 +1675,13 @@
                       (fn-served-make-conn-group-indexed
                        (fn-own-conn-wire conn)
                        (fn-own-conn-session conn)
-                       (fn-node-acceptance
-                        (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                       (fn-ctl-visible-state-of
+                        (fn-node-acceptance
+                         (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                            (fn-own-take (fn-own-conn-version conn)
                                                         (fn-sf-records (fn-sn-files s)))
                                            (fn-own-conn-frontier conn)))
+                        (fn-state-articles (fn-own-conn-archive conn)))
                        (fn-own-conn-config conn)
                        (fn-own-conn-observation conn)
                        (fn-own-clock o)
@@ -1585,7 +1690,8 @@
                        (fn-own-conn-group-index conn))
                       event)))))
   :hints (("Goal"
-           :use ((:instance fn-own-find-conn-okp
+           :use (fn-own-conn-serves-a-projection
+                 (:instance fn-own-find-conn-okp
                             (conns (fn-own-conns o))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
@@ -1605,11 +1711,13 @@
                       (fn-served-make-conn-group-indexed
                        (fn-own-conn-wire conn)
                        (fn-own-conn-session conn)
-                       (fn-node-acceptance
-                        (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                       (fn-ctl-visible-state-of
+                        (fn-node-acceptance
+                         (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                            (fn-own-take (fn-own-conn-version conn)
                                                         (fn-sf-records (fn-sn-files s)))
                                            (fn-own-conn-frontier conn)))
+                        (fn-state-articles (fn-own-conn-archive conn)))
                        (fn-own-conn-config conn)
                        (fn-own-conn-observation conn)
                        (fn-own-clock final)

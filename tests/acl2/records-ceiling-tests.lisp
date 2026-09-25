@@ -63,6 +63,39 @@
  (thm (<= (len (fn-record-encode record))
           (len (fn-record-payload record)))))
 
+; `fn-record-encode-narrow-length-bound' (records-seam; packet P6).  A record
+; with a 250-octet Message-ID, three 256-octet metadata strings, a 65 536-octet
+; payload and one 256-octet group: with its five integer fields at 2^32 - 1
+; it is narrow and encodes 19 octets inside the ceiling; at 2^32 it is wide
+; and encodes one octet past it, within the wide ceiling.  The first
+; narrow-bound attempt without the hypothesis fails.
+(defun rct-full-record (n)
+  (fn-record-make n n n (coerce (make-list 250 :initial-element #\m) 'string)
+                  (make-list 65536 :initial-element 65)
+                  (list (coerce (make-list 256 :initial-element #\a) 'string))
+                  (coerce (make-list 256 :initial-element #\o) 'string)
+                  (coerce (make-list 256 :initial-element #\s) 'string)
+                  (coerce (make-list 256 :initial-element #\e) 'string)
+                  n n))
+(assert-event (equal (fn-record-encoded-octets-ceiling 65536 1) 66880))
+(assert-event (equal (fn-record-wide-encoded-octets-ceiling 65536 1) 66908))
+(assert-event
+ (let ((r (rct-full-record 4294967295)))
+   (and (fn-record-p r) (not (fn-record-widep r))
+        (equal (len (fn-record-encode r)) 66861))))
+(assert-event
+ (let ((r (rct-full-record 4294967296)))
+   (and (fn-record-p r) (fn-record-widep r)
+        (equal (len (fn-record-encode r)) 66881)
+        (< (fn-record-encoded-octets-ceiling 65536 1) (len (fn-record-encode r)))
+        (<= (len (fn-record-encode r))
+            (fn-record-wide-encoded-octets-ceiling 65536 1)))))
+(must-fail
+ (thm (<= (len (fn-record-encode record))
+          (fn-record-encoded-octets-ceiling
+           (len (fn-record-payload record))
+           (len (fn-record-groups record))))))
+
 ; The ceilings compose: the worst-case record at the payload and group
 ; ceilings fits the u32 record width, and one more payload octet at the
 ; group ceiling does not.

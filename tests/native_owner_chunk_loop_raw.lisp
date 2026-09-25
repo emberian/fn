@@ -145,6 +145,9 @@
     (fn-owner-submittedp nil)))
 (defun fnn-global (name)
   (ecase name
+    ;; No read in these scenarios sends a 441 (books/owner-log.lisp
+    ;; fn-olog-served-refusal-lines), so the refusal log lines are empty.
+    (fn-owner-refusal-lines nil)
     (fn-owner-consumed
      (if (eq (first *step*) :all) (length (first *chunks*)) (first *step*)))))
 

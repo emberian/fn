@@ -213,47 +213,54 @@
            (fn-bs-store-relation (mv-nth 1 (fn-bs-unlink b dir name outcome)) k))
   :hints (("Goal" :use (fn-bs-k0-staging-unlink-preserves-relation)
            :in-theory (e/d (fn-bs-unlink) (fn-bs-store-relation fn-bs-lookup)))))
-; The pending marker rename (a root entry the relation's shape does not name)
-; is covered by its two resolutions.
+; A pending root rename onto a name other than the allocation frontier (the
+; committed-history marker, the state checkpoint, config.json: a root entry
+; the relation's pending shape does not name) is covered by its two
+; resolutions.  The name and the inode are the first pending root operation's.
+(defun fn-bs-k0s-root-name (bs)
+  (declare (xargs :guard t :verify-guards nil))
+  (nth 2 (car (fn-bs-ops-for-dir (fn-bs-pending bs) :root))))
 (defun fn-bs-k0s-root-target (bs)
   (declare (xargs :guard t :verify-guards nil))
   (nth 3 (car (fn-bs-ops-for-dir (fn-bs-pending bs) :root))))
-(defun fn-bs-k0s-marker-landed (bs)
+(defun fn-bs-k0s-root-rename-landed (bs)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-bs-k0m-with-root-entry (fn-bs-marker-rename-dropped bs) *fn-bs-history-marker-name*
+  (fn-bs-k0m-with-root-entry (fn-bs-root-rename-dropped bs) (fn-bs-k0s-root-name bs)
                              (fn-bs-k0s-root-target bs)))
-(defun fn-bs-k0s-marker-pendingp (bs ks)
+(defun fn-bs-k0s-root-rename-pendingp (bs ks)
   (declare (xargs :guard t :verify-guards nil))
-  (and (fn-bs-k0m-has-root-marker (fn-bs-pending bs))
-       (fn-bs-k0m-root-marker-onlyp (fn-bs-pending bs) (fn-bs-k0s-root-target bs))
+  (and (fn-bs-k0m-has-root-rename (fn-bs-pending bs))
+       (fn-bs-k0m-root-rename-onlyp (fn-bs-pending bs) (fn-bs-k0s-root-name bs) (fn-bs-k0s-root-target bs))
        (consp (assoc-equal :root (fn-bs-dirs bs)))
-       (fn-bs-store-relation (fn-bs-marker-rename-dropped bs) ks)
-       (fn-bs-store-relation (fn-bs-k0s-marker-landed bs) ks)))
+       (fn-bs-store-relation (fn-bs-root-rename-dropped bs) ks)
+       (fn-bs-store-relation (fn-bs-k0s-root-rename-landed bs) ks)))
 (defun fn-bs-k0-coveredp (bs ks)
   (declare (xargs :guard t :verify-guards nil))
-  (or (fn-bs-store-relation bs ks) (fn-bs-k0s-marker-pendingp bs ks)))
+  (or (fn-bs-store-relation bs ks) (fn-bs-k0s-root-rename-pendingp bs ks)))
 (defthm fn-bs-k0-covered-crash-image-is-a-related-image
   (implies (and (fn-bs-k0-coveredp bs ks) (fn-bs-crash-imagep bs image))
            (or (fn-bs-store-relation bs ks)
-               (and (fn-bs-store-relation (fn-bs-marker-rename-dropped bs) ks)
-                    (fn-bs-crash-imagep (fn-bs-marker-rename-dropped bs) image))
-               (and (fn-bs-store-relation (fn-bs-k0s-marker-landed bs) ks)
-                    (fn-bs-crash-imagep (fn-bs-k0s-marker-landed bs) image))))
+               (and (fn-bs-store-relation (fn-bs-root-rename-dropped bs) ks)
+                    (fn-bs-crash-imagep (fn-bs-root-rename-dropped bs) image))
+               (and (fn-bs-store-relation (fn-bs-k0s-root-rename-landed bs) ks)
+                    (fn-bs-crash-imagep (fn-bs-k0s-root-rename-landed bs) image))))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-bs-k0m-marker-rename-crash-is-a-resolution-crash
-                         (s bs) (ino (fn-bs-k0s-root-target bs))))
-           :in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed)
-                           (fn-bs-store-relation fn-bs-crash-imagep fn-bs-marker-rename-dropped
-                            fn-bs-k0m-with-root-entry fn-bs-k0m-root-marker-onlyp fn-bs-k0s-root-target)))))
-(defthm fn-bs-k0s-marker-rename-dropped-is-unlink
+  :hints (("Goal" :use ((:instance fn-bs-k0m-root-rename-crash-is-a-resolution-crash
+                         (s bs) (name (fn-bs-k0s-root-name bs)) (ino (fn-bs-k0s-root-target bs))))
+           :in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed)
+                           (fn-bs-store-relation fn-bs-crash-imagep fn-bs-root-rename-dropped
+                            fn-bs-k0m-with-root-entry fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target
+                            fn-bs-k0s-root-name)))))
+(defthm fn-bs-k0s-root-rename-dropped-is-unlink
   (implies (and (fn-bs-statep b)
                 (not (fn-bs-ops-for-dir (fn-bs-pending b) :root))
+                (not (equal name *fn-bs-scan-frontier-name*))
                 (fn-bs-inop (fn-bs-lookup b :staging stage)))
-           (equal (fn-bs-marker-rename-dropped
-                   (mv-nth 1 (fn-bs-rename b :staging stage :root *fn-bs-history-marker-name* :ok)))
+           (equal (fn-bs-root-rename-dropped
+                   (mv-nth 1 (fn-bs-rename b :staging stage :root name :ok)))
                   (mv-nth 1 (fn-bs-unlink b :staging stage :ok))))
   :hints (("Goal" :use ((:instance fn-bs-op-listp-implies-true-listp (x (fn-bs-pending b))))
-           :in-theory (e/d (fn-bs-rename fn-bs-unlink fn-bs-marker-rename-dropped fn-bs-k0m-drop-root-marker fn-bs-statep)
+           :in-theory (e/d (fn-bs-rename fn-bs-unlink fn-bs-root-rename-dropped fn-bs-k0m-drop-root-rename fn-bs-statep)
                            (fn-bs-lookup fn-bs-op-listp-implies-true-listp)))))
 (defthm fn-bs-k0s-issued-rename-is-ok-rename
   (implies (and (consp outcome) (equal (cdr outcome) :issued))
@@ -264,34 +271,135 @@
   (implies (not (or (equal outcome :ok) (and (consp outcome) (equal (cdr outcome) :issued))))
            (equal (mv-nth 1 (fn-bs-rename b sdir sname ddir dname outcome)) b))
   :hints (("Goal" :in-theory (e/d (fn-bs-rename) (fn-bs-lookup)))))
-(defthm fn-bs-k0s-marker-rename-covered
+; config.json is authority: its landed resolution is related when the new
+; inode is fenced, allocated and holds a configuration the check admits.
+(defthm fn-bs-k0s-with-config-entry-facts
+  (let ((b1 (fn-bs-k0m-with-root-entry b *fn-bs-scan-config-name* ino)))
+    (and (equal (fn-bs-durable-entry b1 :root *fn-bs-scan-config-name*) ino)
+         (equal (fn-bs-authority-inode-list b1) (cons ino (cdr (fn-bs-authority-inode-list b))))))
+  :hints (("Goal" :in-theory (enable fn-bs-k0m-with-root-entry fn-bs-durable-entry fn-bs-authority-inode-list
+                                     fn-bs-assoc-of-put-assoc-other fn-bs-assoc-of-put-assoc-same))))
+(defthm fn-bs-k0s-all-fencedp-cdr
+  (implies (fn-bs-all-fencedp b l) (fn-bs-all-fencedp b (cdr l)))
+  :hints (("Goal" :in-theory (enable fn-bs-all-fencedp))))
+(defthm fn-bs-k0s-knownp-cdr
+  (implies (fn-bs-inode-list-knownp b l) (fn-bs-inode-list-knownp b (cdr l)))
+  :hints (("Goal" :in-theory (enable fn-bs-inode-list-knownp))))
+(defthm fn-bs-k0s-with-config-entry-preserves-relation
+  (implies (and (fn-bs-store-relation b k)
+                (not (fn-bs-replay-visiblep k))
+                (fn-bs-inop ino)
+                (fn-bs-fencedp b ino)
+                (consp (assoc-equal ino (fn-bs-inodes b)))
+                (fn-bs-config-okp (fn-bs-durable-content b ino))
+                (fn-bs-statep (fn-bs-k0m-with-root-entry b *fn-bs-scan-config-name* ino)))
+           (fn-bs-store-relation (fn-bs-k0m-with-root-entry b *fn-bs-scan-config-name* ino) k))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-bs-all-fencedp b (cons ino (cdr (fn-bs-authority-inode-list b))))
+                    (fn-bs-inode-list-knownp b (cons ino (cdr (fn-bs-authority-inode-list b)))))
+           :use ((:instance fn-bs-k0m-with-root-entry-projections (name *fn-bs-scan-config-name*)
+                  (n2 *fn-bs-scan-frontier-name*) (y (fn-bs-durable-entry b :root *fn-bs-scan-frontier-name*)))
+                 (:instance fn-bs-store-relation-unfolds (bs b) (ks k))
+                 (:instance fn-bs-store-relation-window-unfolds (bs b) (ks k)))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-authority-fencedp fn-bs-authority-knownp
+                            fn-bs-pending-matches-phase fn-bs-pending-shape-okp
+                            fn-bs-k8-record-of-durable-is-durable-content fn-bs-durable-frontier
+                            fn-bs-k0s-all-fencedp-cdr fn-bs-k0s-knownp-cdr fn-bs-k0s-with-config-entry-facts)
+                           (fn-bs-durable fn-bs-durable-names fn-bs-statep fn-bs-k0m-with-root-entry
+                            fn-bs-durable-records fn-bs-durable-content fn-bs-record-of fn-bs-durable-entry
+                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-sf-statep fn-bs-authority-inode-list
+                            fn-bs-contiguous-namesp fn-bs-replay-visiblep fn-bs-fencedp
+                            fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
+; The rename's precondition on its target name: not the frontier (that rename
+; is related, fn-bs-k0s-frontier-rename-preserves-relation), and onto
+; config.json only from a fenced, allocated inode whose content passes the
+; configuration check.
+(defun fn-bs-k0s-root-rename-targetp (bs name ino)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-bs-namep name)
+       (not (equal name *fn-bs-scan-frontier-name*))
+       (fn-bs-inop ino)
+       (or (not (equal name *fn-bs-scan-config-name*))
+           (and (fn-bs-fencedp bs ino)
+                (consp (assoc-equal ino (fn-bs-inodes bs)))
+                (fn-bs-config-okp (fn-bs-durable-content bs ino))))))
+(defthm fn-bs-k0s-root-rename-landed-preserves-relation
+  (implies (and (fn-bs-store-relation b k)
+                (not (fn-bs-replay-visiblep k))
+                (fn-bs-k0s-root-rename-targetp b name ino)
+                (fn-bs-statep (fn-bs-k0m-with-root-entry b name ino)))
+           (fn-bs-store-relation (fn-bs-k0m-with-root-entry b name ino) k))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t :cases ((equal name *fn-bs-scan-config-name*))
+           :use (fn-bs-k0m-with-root-entry-preserves-relation
+                 (:instance fn-bs-k0s-with-config-entry-preserves-relation))
+           :in-theory (e/d (fn-bs-k0s-root-rename-targetp)
+                           (fn-bs-store-relation fn-bs-statep fn-bs-k0m-with-root-entry fn-bs-fencedp
+                            fn-bs-durable-content fn-bs-replay-visiblep)))))
+(defthm fn-bs-k0s-root-rename-targetp-of-unlink
+  (equal (fn-bs-k0s-root-rename-targetp (mv-nth 1 (fn-bs-unlink b dir stage :ok)) name ino)
+         (fn-bs-k0s-root-rename-targetp b name ino))
+  :hints (("Goal" :in-theory (e/d (fn-bs-unlink fn-bs-k0s-root-rename-targetp fn-bs-fencedp fn-bs-durable-content
+                                   fn-bs-ops-for-ino-of-append fn-bs-ops-for-ino)
+                                  (fn-bs-lookup)))))
+(defthm fn-bs-k0s-rename-ok-root-facts
+  (implies (and (not (fn-bs-ops-for-dir (fn-bs-pending b) :root))
+                (fn-bs-inop (fn-bs-lookup b :staging stage))
+                (not (equal name *fn-bs-scan-frontier-name*)))
+           (let ((s1 (mv-nth 1 (fn-bs-rename b :staging stage :root name :ok))))
+             (and (equal (fn-bs-k0s-root-name s1) name)
+                  (equal (fn-bs-k0s-root-target s1) (fn-bs-lookup b :staging stage))
+                  (fn-bs-k0m-has-root-rename (fn-bs-pending s1))
+                  (fn-bs-k0m-root-rename-onlyp (fn-bs-pending s1) name (fn-bs-lookup b :staging stage))
+                  (equal (fn-bs-dirs s1) (fn-bs-dirs b)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bs-rename fn-bs-k0s-root-name fn-bs-k0s-root-target
+                                   fn-bs-ops-for-dir-of-append fn-bs-k0m-has-root-rename-of-append
+                                   fn-bs-k0m-root-rename-onlyp-of-append fn-bs-k0m-root-quiet-is-rename-only)
+                                  (fn-bs-lookup fn-bs-inop)))
+          (and stable-under-simplificationp
+               '(:in-theory (e/d (fn-bs-rename fn-bs-k0s-root-name fn-bs-k0s-root-target fn-bs-ops-for-dir
+                                  fn-bs-ops-for-dir-of-append fn-bs-k0m-has-root-rename-of-append
+                                  fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp
+                                  fn-bs-k0m-root-rename-onlyp-of-append fn-bs-k0m-root-quiet-is-rename-only)
+                                 (fn-bs-lookup))))))
+(defthm fn-bs-k0s-root-rename-ok-pending
   (implies (and (fn-bs-store-relation b k)
                 (not (fn-bs-replay-visiblep k))
                 (not (fn-bs-ops-for-dir (fn-bs-pending b) :root))
-                (fn-bs-inop (fn-bs-lookup b :staging stage)))
-           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-rename b :staging stage :root *fn-bs-history-marker-name* outcome)) k))
+                (fn-bs-k0s-root-rename-targetp b name (fn-bs-lookup b :staging stage)))
+           (fn-bs-k0s-root-rename-pendingp (mv-nth 1 (fn-bs-rename b :staging stage :root name :ok)) k))
+  :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :cases ((or (equal outcome :ok) (and (consp outcome) (equal (cdr outcome) :issued))))
-           :use (fn-bs-k0s-marker-rename-dropped-is-unlink
+           :use ((:instance fn-bs-k0s-root-rename-dropped-is-unlink)
+                 fn-bs-k0s-rename-ok-root-facts
                  fn-bs-k0s-relation-facts
                  (:instance fn-bs-k0-staging-unlink-preserves-relation (dir :staging) (name stage))
                  (:instance fn-bs-store-relation-unfolds (bs b) (ks k))
                  (:instance fn-bs-k0m-root-entry-means-root-dir (name *fn-bs-scan-config-name*))
-                 (:instance fn-bs-k0m-with-root-entry-preserves-relation
+                 (:instance fn-bs-k0s-root-rename-landed-preserves-relation
                   (b (mv-nth 1 (fn-bs-unlink b :staging stage :ok)))
-                  (name *fn-bs-history-marker-name*) (ino (fn-bs-lookup b :staging stage)))
+                  (ino (fn-bs-lookup b :staging stage)))
                  (:instance fn-bs-k0m-with-root-entry-statep
                   (b (mv-nth 1 (fn-bs-unlink b :staging stage :ok)))
-                  (name *fn-bs-history-marker-name*) (ino (fn-bs-lookup b :staging stage))))
-           :in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed fn-bs-k0s-root-target
-                            fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp)
-                           (fn-bs-store-relation fn-bs-lookup fn-bs-unlink fn-bs-marker-rename-dropped
-                            fn-bs-k0m-with-root-entry fn-bs-statep fn-bs-inop fn-bs-durable-entry)))
-          (and stable-under-simplificationp
-               '(:in-theory (e/d (fn-bs-rename fn-bs-ops-for-dir-of-append fn-bs-ops-for-dir fn-bs-k0-coveredp fn-bs-k0s-marker-pendingp fn-bs-k0s-marker-landed fn-bs-k0s-root-target
-                            fn-bs-k0m-has-root-marker fn-bs-k0m-root-marker-onlyp fn-bs-inop)
-                           (fn-bs-store-relation fn-bs-lookup fn-bs-unlink fn-bs-marker-rename-dropped
-                            fn-bs-k0m-with-root-entry fn-bs-statep fn-bs-durable-entry))))))
+                  (ino (fn-bs-lookup b :staging stage)))
+                 (:instance fn-bs-unlink-preserves-statep (s b) (dir :staging) (name stage) (outcome :ok))
+                 (:instance fn-bs-k0s-root-rename-targetp-of-unlink (dir :staging) (ino (fn-bs-lookup b :staging stage))))
+           :in-theory '(fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed fn-bs-k0s-root-rename-targetp
+                        fn-bs-namep fn-bs-inop natp))))
+(defthm fn-bs-k0s-root-rename-covered
+  (implies (and (fn-bs-store-relation b k)
+                (not (fn-bs-replay-visiblep k))
+                (not (fn-bs-ops-for-dir (fn-bs-pending b) :root))
+                (fn-bs-k0s-root-rename-targetp b name (fn-bs-lookup b :staging stage)))
+           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-rename b :staging stage :root name outcome)) k))
+  :hints (("Goal" :do-not-induct t
+           :cases ((or (equal outcome :ok) (and (consp outcome) (equal (cdr outcome) :issued))))
+           :use (fn-bs-k0s-root-rename-ok-pending
+                 (:instance fn-bs-k0s-issued-rename-is-ok-rename (sdir :staging) (sname stage) (ddir :root) (dname name))
+                 (:instance fn-bs-k0s-failed-rename-is-identity (sdir :staging) (sname stage) (ddir :root) (dname name)))
+           :in-theory '(fn-bs-k0-coveredp))))
 (defthm fn-bs-k0s-frontier-rename-preserves-relation
   (let ((ino (fn-bs-lookup b :staging stage)))
     (implies (and (fn-bs-store-relation b k)
@@ -314,68 +422,68 @@
                   (b6 b) (k6 k) (ino (fn-bs-lookup b :staging stage)) (sdir :staging) (sname stage)))
            :in-theory (e/d (fn-bs-rename) (fn-bs-store-relation fn-bs-lookup fn-bs-statep)))))
 
-; The root barrier over a pending marker rename, every outcome: it lands the
-; marker entry (the landed resolution) or drops it (the dropped resolution).
-(defun fn-bs-k0s-all-marker-sets (ops ino)
+; The root barrier over a pending root rename, every outcome: it lands the
+; rename's entry (the landed resolution) or drops it (the dropped resolution).
+(defun fn-bs-k0s-all-root-sets (ops name ino)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp ops)
       (and (consp (car ops)) (equal (car (car ops)) :set-entry) (equal (nth 1 (car ops)) :root)
-           (equal (nth 2 (car ops)) *fn-bs-history-marker-name*) (equal (nth 3 (car ops)) ino)
-           (fn-bs-k0s-all-marker-sets (cdr ops) ino))
+           (equal (nth 2 (car ops)) name) (equal (nth 3 (car ops)) ino)
+           (fn-bs-k0s-all-root-sets (cdr ops) name ino))
     t))
-(defthm fn-bs-k0s-all-marker-sets-of-append
-  (equal (fn-bs-k0s-all-marker-sets (append a b) ino)
-         (and (fn-bs-k0s-all-marker-sets a ino) (fn-bs-k0s-all-marker-sets b ino))))
-(defthm fn-bs-k0s-marker-onlyp-root-ops
-  (implies (fn-bs-k0m-root-marker-onlyp ops ino)
-           (fn-bs-k0s-all-marker-sets (fn-bs-ops-for-dir ops :root) ino))
-  :hints (("Goal" :in-theory (enable fn-bs-k0m-root-marker-onlyp fn-bs-ops-for-dir))))
-(defthm fn-bs-k0s-has-root-marker-root-ops
-  (implies (fn-bs-k0m-has-root-marker ops) (consp (fn-bs-ops-for-dir ops :root)))
-  :hints (("Goal" :in-theory (enable fn-bs-k0m-has-root-marker fn-bs-ops-for-dir))))
-(defthm fn-bs-k0s-all-marker-sets-crash-select
-  (implies (fn-bs-k0s-all-marker-sets ops ino)
-           (fn-bs-k0s-all-marker-sets (fn-bs-crash-select ops ch u) ino))
+(defthm fn-bs-k0s-all-root-sets-of-append
+  (equal (fn-bs-k0s-all-root-sets (append a b) name ino)
+         (and (fn-bs-k0s-all-root-sets a name ino) (fn-bs-k0s-all-root-sets b name ino))))
+(defthm fn-bs-k0s-rename-onlyp-root-ops
+  (implies (fn-bs-k0m-root-rename-onlyp ops name ino)
+           (fn-bs-k0s-all-root-sets (fn-bs-ops-for-dir ops :root) name ino))
+  :hints (("Goal" :in-theory (enable fn-bs-k0m-root-rename-onlyp fn-bs-ops-for-dir))))
+(defthm fn-bs-k0s-has-root-rename-root-ops
+  (implies (fn-bs-k0m-has-root-rename ops) (consp (fn-bs-ops-for-dir ops :root)))
+  :hints (("Goal" :in-theory (enable fn-bs-k0m-has-root-rename fn-bs-ops-for-dir))))
+(defthm fn-bs-k0s-all-root-sets-crash-select
+  (implies (fn-bs-k0s-all-root-sets ops name ino)
+           (fn-bs-k0s-all-root-sets (fn-bs-crash-select ops ch u) name ino))
   :hints (("Goal" :induct (fn-bs-crash-select ops ch u) :in-theory (enable fn-bs-crash-select))))
-(defthm fn-bs-k0s-all-marker-sets-writes
-  (implies (fn-bs-k0s-all-marker-sets ops ino) (equal (fn-bs-apply-writes inodes ops) inodes))
+(defthm fn-bs-k0s-all-root-sets-writes
+  (implies (fn-bs-k0s-all-root-sets ops name ino) (equal (fn-bs-apply-writes inodes ops) inodes))
   :hints (("Goal" :in-theory (enable fn-bs-apply-writes))))
-(defthm fn-bs-k0s-all-marker-sets-entries
-  (implies (and (fn-bs-k0s-all-marker-sets ops ino) (consp ops))
+(defthm fn-bs-k0s-all-root-sets-entries
+  (implies (and (fn-bs-k0s-all-root-sets ops name ino) (consp ops))
            (equal (fn-bs-apply-entries dirs ops)
-                  (fn-bs-put-assoc :root (fn-bs-put-assoc *fn-bs-history-marker-name* ino
+                  (fn-bs-put-assoc :root (fn-bs-put-assoc name ino
                                                           (cdr (assoc-equal :root dirs)))
                                    dirs)))
   :hints (("Goal" :induct (fn-bs-apply-entries dirs ops) :in-theory (enable fn-bs-apply-entries))))
-(defthm fn-bs-k0s-marker-onlyp-not-for-root
-  (implies (fn-bs-k0m-root-marker-onlyp ops ino)
-           (equal (fn-bs-ops-not-for-dir ops :root) (fn-bs-k0m-drop-root-marker ops)))
-  :hints (("Goal" :in-theory (enable fn-bs-k0m-root-marker-onlyp fn-bs-ops-not-for-dir fn-bs-k0m-drop-root-marker))))
-(defthm fn-bs-k0s-marker-barrier-resolves
-  (implies (and (fn-bs-k0m-root-marker-onlyp (fn-bs-pending m) (fn-bs-k0s-root-target m))
-                (fn-bs-k0m-has-root-marker (fn-bs-pending m)))
-           (and (equal (mv-nth 1 (fn-bs-fsync-dir m :root :ok)) (fn-bs-k0s-marker-landed m))
+(defthm fn-bs-k0s-rename-onlyp-not-for-root
+  (implies (fn-bs-k0m-root-rename-onlyp ops name ino)
+           (equal (fn-bs-ops-not-for-dir ops :root) (fn-bs-k0m-drop-root-rename ops)))
+  :hints (("Goal" :in-theory (enable fn-bs-k0m-root-rename-onlyp fn-bs-ops-not-for-dir fn-bs-k0m-drop-root-rename))))
+(defthm fn-bs-k0s-root-rename-barrier-resolves
+  (implies (and (fn-bs-k0m-root-rename-onlyp (fn-bs-pending m) (fn-bs-k0s-root-name m) (fn-bs-k0s-root-target m))
+                (fn-bs-k0m-has-root-rename (fn-bs-pending m)))
+           (and (equal (mv-nth 1 (fn-bs-fsync-dir m :root :ok)) (fn-bs-k0s-root-rename-landed m))
                 (member-equal (mv-nth 1 (fn-bs-fsync-dir m :root outcome))
-                              (list (fn-bs-marker-rename-dropped m) (fn-bs-k0s-marker-landed m)))))
+                              (list (fn-bs-root-rename-dropped m) (fn-bs-k0s-root-rename-landed m)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bs-k0s-marker-onlyp-root-ops (ops (fn-bs-pending m)) (ino (fn-bs-k0s-root-target m)))
-                 (:instance fn-bs-k0s-all-marker-sets-crash-select (ops (fn-bs-ops-for-dir (fn-bs-pending m) :root))
-                            (ino (fn-bs-k0s-root-target m)) (ch (cdr outcome)) (u (fn-bs-unit m)))
-                 (:instance fn-bs-k0s-all-marker-sets-writes (ops (fn-bs-ops-for-dir (fn-bs-pending m) :root))
-                            (ino (fn-bs-k0s-root-target m)) (inodes (fn-bs-inodes m)))
-                 (:instance fn-bs-k0s-all-marker-sets-entries (ops (fn-bs-ops-for-dir (fn-bs-pending m) :root))
-                            (ino (fn-bs-k0s-root-target m)) (dirs (fn-bs-dirs m)))
-                 (:instance fn-bs-k0s-all-marker-sets-writes (ops (fn-bs-crash-select (fn-bs-ops-for-dir (fn-bs-pending m) :root) (cdr outcome) (fn-bs-unit m)))
-                            (ino (fn-bs-k0s-root-target m)) (inodes (fn-bs-inodes m)))
-                 (:instance fn-bs-k0s-all-marker-sets-entries (ops (fn-bs-crash-select (fn-bs-ops-for-dir (fn-bs-pending m) :root) (cdr outcome) (fn-bs-unit m)))
-                            (ino (fn-bs-k0s-root-target m)) (dirs (fn-bs-dirs m))))
+           :use ((:instance fn-bs-k0s-rename-onlyp-root-ops (ops (fn-bs-pending m)) (name (fn-bs-k0s-root-name m)) (ino (fn-bs-k0s-root-target m)))
+                 (:instance fn-bs-k0s-all-root-sets-crash-select (ops (fn-bs-ops-for-dir (fn-bs-pending m) :root))
+                            (name (fn-bs-k0s-root-name m)) (ino (fn-bs-k0s-root-target m)) (ch (cdr outcome)) (u (fn-bs-unit m)))
+                 (:instance fn-bs-k0s-all-root-sets-writes (ops (fn-bs-ops-for-dir (fn-bs-pending m) :root))
+                            (name (fn-bs-k0s-root-name m)) (ino (fn-bs-k0s-root-target m)) (inodes (fn-bs-inodes m)))
+                 (:instance fn-bs-k0s-all-root-sets-entries (ops (fn-bs-ops-for-dir (fn-bs-pending m) :root))
+                            (name (fn-bs-k0s-root-name m)) (ino (fn-bs-k0s-root-target m)) (dirs (fn-bs-dirs m)))
+                 (:instance fn-bs-k0s-all-root-sets-writes (ops (fn-bs-crash-select (fn-bs-ops-for-dir (fn-bs-pending m) :root) (cdr outcome) (fn-bs-unit m)))
+                            (name (fn-bs-k0s-root-name m)) (ino (fn-bs-k0s-root-target m)) (inodes (fn-bs-inodes m)))
+                 (:instance fn-bs-k0s-all-root-sets-entries (ops (fn-bs-crash-select (fn-bs-ops-for-dir (fn-bs-pending m) :root) (cdr outcome) (fn-bs-unit m)))
+                            (name (fn-bs-k0s-root-name m)) (ino (fn-bs-k0s-root-target m)) (dirs (fn-bs-dirs m))))
            :cases ((consp (fn-bs-crash-select (fn-bs-ops-for-dir (fn-bs-pending m) :root) (cdr outcome) (fn-bs-unit m))))
-           :in-theory (e/d (fn-bs-fsync-dir fn-bs-fence-dir fn-bs-k0s-marker-landed fn-bs-marker-rename-dropped
+           :in-theory (e/d (fn-bs-fsync-dir fn-bs-fence-dir fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped
                             fn-bs-k0m-with-root-entry
                             fn-bs-apply-ops-inodes-are-apply-writes fn-bs-apply-ops-dirs-are-apply-entries)
                            (fn-bs-apply-ops fn-bs-apply-entries fn-bs-apply-writes fn-bs-crash-select
-                            fn-bs-k0s-root-target fn-bs-k0m-root-marker-onlyp fn-bs-k0m-has-root-marker)))
+                            fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0m-root-rename-onlyp fn-bs-k0m-has-root-rename)))
           (and stable-under-simplificationp '(:expand ((:free (i) (fn-bs-apply-writes i nil)) (:free (d) (fn-bs-apply-entries d nil)))))))
 
 ; The transaction link with every outcome, and the step-shape facts the
