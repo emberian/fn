@@ -461,6 +461,7 @@ class NativeControlFilingTests(unittest.TestCase):
                           keys["ml_private"]])
             self.command([openssl, "pkey", "-in", keys["ml_private"], "-pubout", "-out",
                           keys["ml_public"]])
+            keys["generation"] = "1" if label == "p" else "2"
             return keys
 
         # RFC 8032 section 7.1, TEST 1 and TEST 2.
@@ -491,7 +492,8 @@ class NativeControlFilingTests(unittest.TestCase):
             ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
             ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
             done = subprocess.run(
-                [str(IMAGE), "--fn", "hybrid-author", str(node["control"]), "1", str(path),
+                [str(IMAGE), "--fn", "hybrid-author", str(node["control"]),
+                 keys["generation"], str(path),
                  str(ed_sig), str(ml_sig), str(keys["ml_public"])], cwd=ROOT, env=self.env,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180, check=False)
             codes[node["name"] + " " + message_id] = done.returncode
@@ -533,8 +535,9 @@ class NativeControlFilingTests(unittest.TestCase):
         for node in (a, b):
             self.start(node)
             for keys in (p, q):
-                self.command([IMAGE, "--fn", "hybrid-enroll", node["control"], "1",
-                              keys["principal"], keys["ed_public"], keys["ml_public"]])
+                self.command([IMAGE, "--fn", "hybrid-enroll", node["control"],
+                              keys["generation"], keys["principal"], keys["ed_public"],
+                              keys["ml_public"]])
         granted = self.command([IMAGE, "--fn", "operator", b["config"], "control", "grant",
                                 "66" * 32, "cancel", "fn.mod.*"])
         witness = {"grant-q-on-b": granted.returncode}
@@ -555,7 +558,7 @@ class NativeControlFilingTests(unittest.TestCase):
                         pass
                 return line.decode().strip()[:3]
             witness["b-pinned-before"] = pinned_article(t1)
-            author(a, p, c1, "control.cancel", "Control: cancel " + t1)
+            author(a, p, c1, "fn.test", "Control: cancel " + t1)
             relay(a, b, c1)
             witness["a-t1-after-cancel"] = reply(a, t1)
             witness["b-t1-fresh-after-cancel"] = reply(b, t1)
@@ -565,21 +568,23 @@ class NativeControlFilingTests(unittest.TestCase):
         u, cq = "<cd-u@example.invalid>", "<cd-cq@example.invalid>"
         witness["a-post-u"] = self.post(a, source(u, "fn.mod.a")).decode().strip()[:3]
         relay(a, b, u)
-        author(b, q, cq, "control.cancel", "Control: cancel " + u)
+        author(b, q, cq, "fn.mod.a", "Control: cancel " + u)
         relay(b, a, cq)
         witness["b-u-authority"] = reply(b, u)
         witness["a-u-no-grant"] = reply(a, u)
 
         # 3. Cancel before target, B killed between the two arrivals.
         t2, c2 = "<cd-t2@example.invalid>", "<cd-c2@example.invalid>"
-        author(a, p, c2, "control.cancel", "Control: cancel " + t2)
+        author(a, p, c2, "fn.test", "Control: cancel " + t2)
         relay(a, b, c2)
         b["process"].kill()
         b["process"].communicate(timeout=60)
         self.processes.remove(b.pop("process"))
         self.start(b)
+        # A withdraws T2 on arrival, so it cannot serve T2 to relay: the
+        # same signed source reaches B through B's own author ingress.
         author(a, p, t2, "fn.test")
-        relay(a, b, t2)
+        author(b, p, t2, "fn.test")
         witness["a-t2-early-cancel"] = reply(a, t2)
         witness["b-t2-after-kill-and-recovery"] = reply(b, t2)
 
