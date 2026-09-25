@@ -1948,7 +1948,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-083"
+        "PRF-083",
+        "PRF-104"
       ],
       "verification": [
         "proof",
@@ -1986,6 +1987,29 @@
       ],
       "implementation_note": "`operator CONFIG status|pins|obligations|peer list` asks the owner whose control socket the configuration names (FNLS frames); the owner renders the report from the Store, configuration and connection pins it carries (fn-nls-live-report) under its mutex and returns no state; with no owner the Store is opened read-only and the same renderer runs (fn-nls-offline-report). fn-nls-route: no socket, or a socket nothing accepts on, is the offline path, whose shared lock refuses behind a live owner; any other failure is uncertain (3), an owner refusal is refused (1). `status --watch N` re-asks every N seconds (1..86400).",
       "note": "Spike deferral 'live status, obligations, pins' (planning/evidence/spike-operator-2026-09-25.md). Held BP forwarding obligations are the DTN image's `bp-obligation status`, not this report: the NNTP owner carries no BP node."
+    },
+    {
+      "id": "STO-012",
+      "title": "The checkpoint open costs less than the full replay it replaces, and a publication does not hold served commands",
+      "specification": "specs/storage.md#checkpointing-the-store-checkpoint-that-open-reads-p3-2026-09-25",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-104"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-checkpoint-open.lisp",
+        "books/owner-checkpoint-open.lisp",
+        "books/acceptance-alloc.lisp",
+        "tests/acl2/linear-recognizers-tests.lisp",
+        "tests/acl2/owner-checkpoint-open-tests.lisp",
+        "planning/evidence/checkpoint-cost-2026-09-25.md"
+      ],
+      "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list, and fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic (planning/evidence/checkpoint-cost-2026-09-25.md)."
     }
   ]
 }
