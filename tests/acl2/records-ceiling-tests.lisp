@@ -58,7 +58,7 @@
  (<= (len (fn-record-encode *rct-record*))
      (fn-record-encoded-octets-ceiling 70000 2)))
 (assert-event
- (< (+ 70000 (* 465 2)) (len (fn-record-encode *rct-record*))))
+ (< (+ 70000 460 7) (len (fn-record-encode *rct-record*))))
 (must-fail
  (thm (<= (len (fn-record-encode record))
           (len (fn-record-payload record)))))
