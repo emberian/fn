@@ -3240,12 +3240,22 @@
         {
           "kind": "theorem",
           "name": "fn-bpnp-receipt-contact-offers-the-queued-job",
-          "note": "KEYSTONE. Over the called fn-bpnp-step (host/native/bp-service.lisp:174) on (:base E) with E = fn-bpnp-receipt-contact-event, the event host/native/bp-node.lisp fnn-bpnode-send-receipts (called from bp-node serve at :781 and :845) asks for: with a well-formed base, a non-nil event and the journal token below its bound, the event is (:contact PEER t), the first queued job for PEER is :queued and names PEER, the one effect persists that job's :attempting record, and the pending success effect is exactly that job's :cl-send (route, peer, key, wire). Teeth: tests/acl2/bp-node-receipt-send-tests (reachable witness; must-fail without the event and at the token bound)."
+          "note": "KEYSTONE. Over the called fn-bpnp-step (host/native/bp-service.lisp:174) on (:base E) with E = fn-bpnp-receipt-contact-event, the event host/native/bp-node.lisp fnn-bpnode-send-receipts (called from bp-node serve and dispatch at :793 and :857) asks for: with a well-formed base, a non-nil event and the journal token below its bound, the event is (:contact PEER t), the first queued job for PEER is :queued and names PEER, the one effect persists that job's :attempting record, and the pending success effect is exactly that job's :cl-send (route, peer, key, wire). Teeth: tests/acl2/bp-node-receipt-send-tests (reachable witness; must-fail without the event and at the token bound)."
         },
         {
           "kind": "theorem",
           "name": "fn-bpnp-receipt-contact-event-needs-a-queued-job",
           "note": "fn-bpnp-receipt-contact-event, called by fnn-bpnode-send-receipts, is non-nil exactly when the peer is an EID, nothing is issued, no delivery is uncertain, the base is neither fenced nor pending, and a :queued job for that peer exists. Teeth: tests/acl2/bp-node-receipt-send-tests (one separating state per conjunct; after the durable :attempting record the job is no longer :queued and the event is nil)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed",
+          "note": "KEYSTONE (spec 4.3.2). Over the called fn-bpnp-step on (:base (:forward-result KEY :uncertain)), the event fnn-bps-send-effect (host/native/bp-service.lisp:490) reports after the receipt contact's :cl-send: for a well-formed base with nothing issued, no delivery uncertain, the base neither fenced nor pending, an :attempting job at KEY and the token below its bound, the one effect persists (:requeued TOKEN W A G :uncertain :requeued), the jobs are unchanged (the job keeps its durable :attempting record), the base stays unfenced, nothing is issued, no delivery becomes uncertain, the proposal's success effects are exactly the :attempted transport and the (:forward-refused ... :uncertain) retention report, and neither the effects nor the success effects contain :release or :receipt-prepare. Teeth: tests/acl2/bp-node-receipt-send-tests (reachable witness after a durable :attempting; one must-fail per hypothesis, each with a positive assert showing the step answered)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-receipt-reoffer-after-uncertain",
+          "note": "KEYSTONE (spec 4.3.2). Under the lower machine's lifecycle invariant and the same hypotheses, after the uncertain transfer and the durable :requeued record (both through the called fn-bpnp-step), the second step's effects are exactly the :attempted transport and the :uncertain retention report, the job at KEY is fn-bpn-job-with-status of the same job :queued (same work, attempt, generation, peer, route, wire), and fn-bpnp-receipt-contact-event (fnn-bpnode-send-receipts) answers (:contact PEER t) for its peer again, so the next contact offers it by the same identity. Teeth: tests/acl2/bp-node-receipt-send-tests (witness through the re-offered :attempting record; must-fail for a malformed base, issued, uncertain delivery, fenced, and at the token bound)."
         }
       ]
     }

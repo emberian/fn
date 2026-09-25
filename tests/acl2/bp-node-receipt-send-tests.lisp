@@ -1,7 +1,9 @@
 ; Teeth of books/bp-node-receipt-send.lisp: a reachable queued base job, the
 ; contact event `bp-node serve' asks for (fnn-bpnode-send-receipts), and one
 ; separating state per conjunct of fn-bpnp-receipt-contact-event-needs-a-
-; queued-job and per hypothesis of fn-bpnp-receipt-contact-offers-the-queued-job.
+; queued-job and per hypothesis of fn-bpnp-receipt-contact-offers-the-queued-job,
+; fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed and
+; fn-bpnp-receipt-reoffer-after-uncertain.
 (in-package "ACL2")
 (include-book "../../books/bp-node-receipt-send")
 (include-book "../../books/bp-node-receive-boundary")
@@ -108,3 +110,151 @@
                                  (fn-bpnp-step *rs-full*
                                                (list :base (list :contact *rs-peer* t))))))
                       :persist)))
+
+; ---------------------------------------------------------------------
+; Teeth of fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed and
+; fn-bpnp-receipt-reoffer-after-uncertain (spec bp-node-machine 4.3.2).
+; The reachable state is *rs-after*: the job's :attempting record is
+; durable, its :cl-send ran, and the connection ended without an answer.
+(defconst *rs-attempting-job*
+  (fn-bpn-find-job *rs-key* (fn-bpn-machine-state-jobs (fn-bpnf-base *rs-after*))))
+(assert-event (equal (fn-bpn-job-status *rs-attempting-job*) :attempting))
+(assert-event (fn-bpn-lifecycle-invariantp (fn-bpnf-base *rs-after*)))
+(defconst *rs-tok2* (fn-bpn-machine-state-next-token (fn-bpnf-base *rs-after*)))
+
+; The step's answer to an uncertain transfer of KEY on state ST owes the job:
+; its one effect persists the :requeued record naming the transfer :uncertain.
+(defun rs-owes-requeue-p (st key)
+  (let ((tok (fn-bpn-machine-state-next-token (fn-bpnf-base st))))
+    (equal (fn-bpnf-answer-effects
+            (fn-bpnp-step st (list :base (list :forward-result key :uncertain))))
+           (list (list :persist tok
+                       (list :requeued tok (nth 0 key) (nth 1 key) (nth 2 key)
+                             :uncertain :requeued))))))
+
+; Witness of keystone (d).
+(defconst *rs-u*
+  (fn-bpnf-answer-state
+   (fn-bpnp-step *rs-after* (list :base (list :forward-result *rs-key* :uncertain)))))
+(assert-event (rs-owes-requeue-p *rs-after* *rs-key*))
+(assert-event (equal (fn-bpn-machine-state-jobs (fn-bpnf-base *rs-u*))
+                     (fn-bpn-machine-state-jobs (fn-bpnf-base *rs-after*))))
+(assert-event (not (fn-bpn-machine-state-fenced (fn-bpnf-base *rs-u*))))
+(assert-event (null (fn-bpnf-issued *rs-u*)))
+(assert-event (not (fn-bpah-delivery-uncertainp *rs-u*)))
+(defconst *rs-requeue-success*
+  (list (list :transport (nth 0 *rs-key*) (nth 1 *rs-key*) (nth 2 *rs-key*) :attempted)
+        (list :forward-refused (nth 0 *rs-key*) (nth 1 *rs-key*) (nth 2 *rs-key*)
+              :uncertain)))
+(assert-event (equal (fn-bpn-pending-success-effects
+                      (fn-bpn-machine-state-pending (fn-bpnf-base *rs-u*)))
+                     *rs-requeue-success*))
+
+; Witness of keystone (e): the durable :requeued record queues the same job
+; again, and the next contact offers it by its own identity.
+(defconst *rs-r-ans*
+  (fn-bpnp-step *rs-u* (list :base (list :persist-result *rs-tok2* :durable))))
+(defconst *rs-r* (fn-bpnf-answer-state *rs-r-ans*))
+(assert-event (equal (fn-bpnf-answer-effects *rs-r-ans*) *rs-requeue-success*))
+(assert-event (equal (fn-bpn-find-job *rs-key* (fn-bpn-machine-state-jobs (fn-bpnf-base *rs-r*)))
+                     (fn-bpn-job-with-status *rs-attempting-job* :queued *rs-tok2*)))
+(assert-event (equal (fn-bpn-job-wire
+                      (fn-bpn-find-job *rs-key* (fn-bpn-machine-state-jobs (fn-bpnf-base *rs-r*))))
+                     (fn-bpn-job-wire *rs-job*)))
+(assert-event (equal (fn-bpnp-receipt-contact-event *rs-r* *rs-peer*)
+                     (list :contact *rs-peer* t)))
+(defconst *rs-tok3* (fn-bpn-machine-state-next-token (fn-bpnf-base *rs-r*)))
+(assert-event (equal (fn-bpnf-answer-effects
+                      (fn-bpnp-step *rs-r* (list :base (list :contact *rs-peer* t))))
+                     (list (list :persist *rs-tok3*
+                                 (list :attempting *rs-tok3* (nth 0 *rs-key*)
+                                       (nth 1 *rs-key*) (nth 2 *rs-key*))))))
+
+; One must-fail per hypothesis of keystone (d); each separating state is
+; *rs-after* with only that hypothesis falsified, and the positive assert
+; beside it shows the step answered (no requeue owed), not that it errored.
+;   nothing issued
+(defconst *rs-x-issued* (fn-bpnf-with-issued *rs-after* '(0 0 0 :deferral nil :pending)))
+(assert-event (null (fn-bpnf-answer-effects
+                     (fn-bpnp-step *rs-x-issued*
+                                   (list :base (list :forward-result *rs-key* :uncertain))))))
+(must-fail (assert-event (rs-owes-requeue-p *rs-x-issued* *rs-key*)))
+;   no delivery uncertain
+(defconst *rs-x-delivery* (update-nth 7 '(:delivery-uncertain 0) *rs-after*))
+(assert-event (null (fn-bpnf-answer-effects
+                     (fn-bpnp-step *rs-x-delivery*
+                                   (list :base (list :forward-result *rs-key* :uncertain))))))
+(must-fail (assert-event (rs-owes-requeue-p *rs-x-delivery* *rs-key*)))
+;   base not fenced
+(defconst *rs-x-fenced*
+  (fn-bpnf-with-base *rs-after*
+                     (fn-bpn-state-with (fn-bpnf-base *rs-after*)
+                                        (fn-bpn-machine-state-jobs (fn-bpnf-base *rs-after*))
+                                        (fn-bpn-machine-state-contacts (fn-bpnf-base *rs-after*))
+                                        nil t *rs-tok2*)))
+(assert-event (null (fn-bpnf-answer-effects
+                     (fn-bpnp-step *rs-x-fenced*
+                                   (list :base (list :forward-result *rs-key* :uncertain))))))
+(must-fail (assert-event (rs-owes-requeue-p *rs-x-fenced* *rs-key*)))
+;   base not pending: the requeue itself in flight
+(assert-event (null (fn-bpnf-answer-effects
+                     (fn-bpnp-step *rs-u*
+                                   (list :base (list :forward-result *rs-key* :uncertain))))))
+(must-fail (assert-event (rs-owes-requeue-p *rs-u* *rs-key*)))
+;   a job with that key
+(defconst *rs-x-key* (list '(119 111 114 107 45 50) (nth 1 *rs-key*) (nth 2 *rs-key*)))
+(assert-event (null (fn-bpnf-answer-effects
+                     (fn-bpnp-step *rs-after*
+                                   (list :base (list :forward-result *rs-x-key* :uncertain))))))
+(must-fail (assert-event (rs-owes-requeue-p *rs-after* *rs-x-key*)))
+;   the job is :attempting: the same job still :queued (before its contact)
+(assert-event (null (fn-bpnf-answer-effects
+                     (fn-bpnp-step *rs-st*
+                                   (list :base (list :forward-result *rs-key* :uncertain))))))
+(must-fail (assert-event (rs-owes-requeue-p *rs-st* *rs-key*)))
+;   token below the journal bound: at the bound the answer is the refusal
+(defconst *rs-x-full*
+  (fn-bpnf-with-base *rs-after*
+                     (fn-bpn-state-with (fn-bpnf-base *rs-after*)
+                                        (fn-bpn-machine-state-jobs (fn-bpnf-base *rs-after*))
+                                        (fn-bpn-machine-state-contacts (fn-bpnf-base *rs-after*))
+                                        nil nil *fn-bpn-machine-max-records*)))
+(assert-event (equal (car (car (fn-bpnf-answer-effects
+                                (fn-bpnp-step *rs-x-full*
+                                              (list :base (list :forward-result *rs-key* :uncertain))))))
+                     :bundle-queue-refused))
+(must-fail (assert-event (rs-owes-requeue-p *rs-x-full* *rs-key*)))
+;   the machine state (keystone d) and the lifecycle invariant (keystone e):
+;   a base whose configuration is not one.  The step's guard excludes it,
+;   so these evaluate the logical definition with guard checking off: the
+;   logical step answers nothing, and the job is never offered again.
+(defconst *rs-x-malformed*
+  (fn-bpnf-with-base *rs-after*
+                     (fn-bpn-make-machine-state
+                      nil (fn-bpn-machine-state-jobs (fn-bpnf-base *rs-after*))
+                      nil nil nil *rs-tok2* 4 1048576)))
+(assert-event (not (fn-bpn-machine-statep (fn-bpnf-base *rs-x-malformed*))))
+(assert-event (null (with-guard-checking
+                     :none
+                     (fn-bpnf-answer-effects
+                      (fn-bpnp-step *rs-x-malformed*
+                                    (list :base (list :forward-result *rs-key*
+                                                      :uncertain)))))))
+(must-fail (assert-event (with-guard-checking
+                          :none (rs-owes-requeue-p *rs-x-malformed* *rs-key*))))
+(defun rs-reoffered-p (st key peer)
+  (let* ((tok (fn-bpn-machine-state-next-token (fn-bpnf-base st)))
+         (s1 (fn-bpnf-answer-state
+              (fn-bpnp-step st (list :base (list :forward-result key :uncertain)))))
+         (s2 (fn-bpnf-answer-state
+              (fn-bpnp-step s1 (list :base (list :persist-result tok :durable))))))
+    (equal (fn-bpnp-receipt-contact-event s2 peer) (list :contact peer t))))
+(assert-event (rs-reoffered-p *rs-after* *rs-key* *rs-peer*))
+(must-fail (assert-event (with-guard-checking
+                          :none (rs-reoffered-p *rs-x-malformed* *rs-key* *rs-peer*))))
+; Keystone (e) under the other hypotheses (issued, uncertain delivery,
+; fenced, not :attempting): the job is never queued again by the pair.
+(must-fail (assert-event (rs-reoffered-p *rs-x-issued* *rs-key* *rs-peer*)))
+(must-fail (assert-event (rs-reoffered-p *rs-x-delivery* *rs-key* *rs-peer*)))
+(must-fail (assert-event (rs-reoffered-p *rs-x-fenced* *rs-key* *rs-peer*)))
+(must-fail (assert-event (rs-reoffered-p *rs-x-full* *rs-key* *rs-peer*)))
