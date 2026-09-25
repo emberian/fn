@@ -708,7 +708,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "peer")
                (equal (fn-native-operator-result-command result) "bp-boundary")
                (equal (fn-native-operator-result-command result) "bp-route")
-               (equal (fn-native-operator-result-command result) "policy")) :admin)
+               (equal (fn-native-operator-result-command result) "policy")
+               (equal (fn-native-operator-result-command result) "control")) :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           (t :owner-required))))
 
