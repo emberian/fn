@@ -176,6 +176,61 @@ the carrier. This is a local trust policy, not an RFC requirement. The list
 admits an item. It does not vouch for the item. The BP boundary's list is
 the BP lane's (D23, `bp-session-admission`); this list is NNTP only.
 
+#### 1.2.3 The opaque-carriage budget and the refusal classes
+
+Carriage without enrollment still spends this node's Store, so a boundary
+carries only under a budget of its own (gpt-6 direction review, 2026-09-24,
+"Opaque carriage"). The budget is two typed rows of the peer's group, the
+natural slot of each a uint32 (books/peer-carriage-rows.lisp):
+
+```
+(name "carried-budget-charge" "" CHARGE)   ; Store charge units (4096-octet pages)
+(name "carried-budget-count"  "" COUNT)    ; carried articles
+```
+
+`fn operator CONFIG peer budget NAME OCTETS COUNT` sets them, CHARGE being
+floor(OCTETS / 4096); `peer carries NAME HEX ...` adds principals to the
+list. Both extend an existing boundary's rows over the live table
+(`fn-pcb-extend-delta`), so a list grows across requests while the argv
+bound stays a per-request work bound (D27). A boundary with a list and no
+budget carries nothing: `fn-pcb-carried-event`, the constructor the host
+calls for the carried arm, answers `(:refused :carried-budget-unset)`, and
+each exhausted bound is refused by its own name (`:carried-count-exhausted`,
+`:carried-octets-exhausted`). This is a behaviour change from D23 as first
+implemented, where a listed principal was carried without bound.
+
+The usage a decision reads is the projection of the committed records: the
+carried kind-4 composites whose article record's release evidence is the
+boundary's `peer-transit:NAME`, their charges and their count
+(`fn-pcb-usage`). The owner carries it as a cache over the first K committed
+records, extended by the records committed since, and
+`fn-pcb-carried-usage-is-the-projection` says the carried value is the
+projection; there is no host counter. Across any committed history whose
+carried records for a boundary were admitted, their charge sum is at most
+the charge budget and their count at most the count budget
+(`fn-pcb-carried-history-within-budget`); the constructor keeps a history
+admitted (`fn-pcb-carried-event-keeps-history-admitted`). Since a record's
+charge is one more than its payload's page count, the carried payload octets
+are then at most OCTETS.
+
+A present carrier this node does not accept on NNTP transit is refused with
+one of four classes, a function of the received octets, the keyring
+snapshots, the delivering boundary's list and the two primitive
+observations (`fn-pcb-refusal-class`): `no-local-binding` (no current
+enrollment names these keys: never enrolled, re-keyed or revoked, and not
+carried), `unsupported-profile` (the carrier's items decode but name another
+version, suite or algorithm), `signature-failed` (a binding exists and a
+primitive refused) and `malformed` (anything else about the article or
+carrier). None is `verified`, and a present carrier is never the unsigned
+arm (`fn-pcb-present-carrier-not-accepted-has-a-class`). The class is the
+transit refusal's log detail; the served POST keeps its own words.
+
+NNT-015: a boundary carries articles of principals this node has not
+enrolled only within its operator-set charge and count budget, whose usage
+is the projection of the committed carried records, each exhaustion refused
+by name; and a present carrier refused on transit is named by exactly one of
+no-local-binding, unsupported-profile, signature-failed and malformed.
+
 #### 1.2.1 Peer changes are not transport-only
 
 Reconfiguration §2.3 and theorem §3.7 call listener and peer changes "effects,
@@ -1204,10 +1259,20 @@ and succession are decided. What the node does:
   authority decision `fn-ctl-authorize` (paragraph "Authority" below).
 - *C3, the decision implemented, the served withdrawal open:* the
   withdrawal record, its effect on the target and the visible article list
-  are ACL2 definitions with keystones (paragraph "Cancel" below); the
-  served view does not yet apply them, a signed control article is still
-  refused `:control-signed`, and Supersedes is not handled. Until those
-  land, a filed cancel withdraws nothing.
+  are ACL2 definitions with keystones (paragraph "Cancel" below), and a
+  signed control article is filed in `control.<verb>` (its Store record's
+  binding names the filing group, `fn-hsig-source-filed-groups`), so a
+  cancel can now be verified here. Since lane control-c3b the committed
+  view serves the visible state: `fn-own-refresh` decides the record for a
+  cancel it first publishes (`fn-ctl-refresh-withdrawals`, which calls
+  `fn-ctl-cancel-plan`) and extends the visible list incrementally
+  (`fn-ctl-refresh-visible`, keystone `fn-ctl-refresh-visible-is-visible`),
+  and K1 is restated over it (the view is the visible state of its prefix;
+  a connection serves its prefix with a subsequence of its articles). A
+  withdrawn target answers 430 by Message-ID and is absent from the
+  listings of every view published after its cancel. Open: 423 `withdrawn`
+  by number (today a plain 423), `HDR :fn-control`, Supersedes, and the
+  durable binding at recovery (below).
 
 **The rule.** A control article (RFC 5536 §3.2.3; RFC 5537 §5) is
 executed only when all of these hold:
@@ -1279,14 +1344,20 @@ them, and the configuration in force after every record is the replay
 a byte: retention, the duplicate history and the Store are neither inputs
 nor outputs of these functions.
 
-*Open (C3):* (1) the served view: `fn-ctl-visible-articles` applied where the
-committed view is refreshed (`fn-own-refresh`), with K1
-(`fn-own-read-is-served-step-on-pinned-prefix`) restated over it, 430 and
-423 `withdrawn`, the listings, and `HDR :fn-control`; (2) the signed filing
-below (`:control-signed`), without which no cancel is ever verified; (3)
-the host calling `fn-ctl-cancel-plan` at commit and
-`fn-ctl-journal-withdrawals` at recovery; (4) Supersedes as a cancel plus
-the replacement; (5) feed suppression, a later transition by D29.
+*Open (C3):* (1) the served view: done 2026-09-25 (control-c3b) for 430
+and the listings, with K1 restated; open are 423 `withdrawn` by number and
+`HDR :fn-control`; (2) done 2026-09-25: the signed filing below; (3) the
+records are decided in ACL2 at the refresh that first publishes a cancel
+(`fn-own-refresh` calls `fn-ctl-cancel-plan` through
+`fn-ctl-refresh-withdrawals`) under the store's configuration journal
+through the archive's next txid; at recovery the first refresh rebuilds
+them under the same rule, not `fn-ctl-journal-withdrawals` at each cancel's
+own txid, which differs only when a configuration record falls between a
+cancel's commit and its refresh (open); (4) Supersedes as a cancel plus the
+replacement; (5) feed suppression, a later transition by D29; (6) the peer
+IHAVE/CHECK history reads the view's trie, which is keyed to the visible
+list, so once a target is withdrawn it answers by the scan
+(`fn-pix-history-hasp`'s fallback; correct, not incremental).
 
 RFC 5537 §5.1 leaves authentication to "local authorization policy". The
 rule above is fn's policy, and signature verification over the exact
@@ -1328,19 +1399,27 @@ kept as a requirement; `fn-ctl-control-article-is-filed-only-in-control`).
 Otherwise it is refused with a distinct reason, and nothing is stored:
 `:control-not-filed` (the group is not configured), `:control-malformed`
 (two `Control` fields, `Control` beside `Supersedes`, or a command outside
-the `verb *( 1*WSP argument )` grammar) or `:control-signed`. A served POST
+the `verb *( 1*WSP argument )` grammar). A served POST
 answers each with its own 441 line; transit answers its ordinary refusal
 code and the service log line names the reason. The stored bytes are the
 received bytes, `Newsgroups` included; the feed still offers the article by
 the groups its `Newsgroups` field names.
 
-*Open (C1):* a control article carrying an `FN-Authorship` carrier is
-refused `:control-signed`, because a signed article's Store record must list
-exactly its source's `Newsgroups` (`books/hybrid-store.lisp`, the event
-constructors and the replay binding), so it cannot yet be recorded under
-`control.<verb>`. Filing it needs that binding to name the filing group,
-which recertifies everything above `hybrid-store`; C2 needs it, since only a
-verified (signed) control article can ever execute.
+*Signed control articles (C3 prerequisite, 2026-09-25).* A control
+article carrying an `FN-Authorship` carrier is filed exactly as an unsigned
+one. A signed article's Store record must list the groups
+`fn-hsig-source-filed-groups` (`books/hybrid-store.lisp`) derives from the
+exact signed source: the filing group for a control article, the source's
+`Newsgroups` otherwise, and nothing for a malformed control article. Every
+signed constructor and replay's binding (`fn-hsig-carried-record-metadatap`)
+test it; `fn-hsig-signed-control-record-lists-its-filing-group` and
+`fn-hsig-malformed-control-binds-no-record` are the keystones. The binding
+classifies the signed source and the filing plan the received carrier;
+where they disagree no event is built and the attempt is refused, never
+filed elsewhere. A signed control article stored under its `Newsgroups`
+before C1 (2026-09-25 morning, when every ingress began filing or refusing
+control articles) would no longer replay: its record binds no filing group.
+Whether any deployed store holds one has not been checked.
 
 **Per verb.**
 

@@ -33,25 +33,25 @@
                   (k 11) (steps (fn-bs-frontier-program stage octets)) (g groups) (c capacity))
                  (:instance fn-bs-k0b-run-consp-backward (k 12) (steps (fn-bs-frontier-program stage octets)) (outs nil) (g groups) (c capacity))
                  (:instance fn-bs-k0b-syscall-carries-kernel (k 11) (steps (fn-bs-frontier-program stage octets)) (g groups) (c capacity))
-                 (:instance fn-bs-k0b-relation-has-no-root-marker
+                 (:instance fn-bs-k0b-relation-has-no-root-rename
                   (b (car (nth 11 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
                   (k (cdr (nth 11 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity)))))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related
                   (b (car (nth 13 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
                   (k (cdr (nth 13 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))))
            :in-theory (e/d (fn-bs-k0b-frontier-program-steps fn-bs-k0f-frontier-program-root-barrier fn-bs-k0-step-inputp
                             fn-bs-replay-visiblep fn-bs-k0c-ok-kinds-return-ok fn-bs-k0b-fsync-ok-results
-                            fn-bs-k0s-fsync-dir-ok-is-fence fn-bs-k0b-fence-dir-keeps-no-root-marker)
+                            fn-bs-k0s-fsync-dir-ok-is-fence fn-bs-k0b-fence-dir-keeps-no-root-rename)
                            (fn-bs-run fn-bs-store-relation fn-bs-frontier-program nth nthcdr fn-bs-frontier-inputp
                             fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir
-                            fn-bs-k0m-has-root-marker fn-bs-k0s-marker-pendingp)))
+                            fn-bs-k0m-has-root-rename fn-bs-k0s-root-rename-pendingp)))
           (and stable-under-simplificationp
                '(:in-theory (e/d (fn-bs-k0b-frontier-program-steps fn-bs-k0f-frontier-program-root-barrier
                                   fn-bs-replay-visiblep fn-bs-k0c-ok-kinds-return-ok fn-bs-k0b-fsync-ok-results
-                                  fn-bs-k0s-fsync-dir-ok-is-fence fn-bs-k0b-fence-dir-keeps-no-root-marker fn-bs-step fn-bs-fsync-dir)
+                                  fn-bs-k0s-fsync-dir-ok-is-fence fn-bs-k0b-fence-dir-keeps-no-root-rename fn-bs-step fn-bs-fsync-dir)
                            (fn-bs-run fn-bs-store-relation fn-bs-frontier-program nth nthcdr fn-bs-frontier-inputp
                             fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir
-                            fn-bs-k0m-has-root-marker fn-bs-k0s-marker-pendingp))))))
+                            fn-bs-k0m-has-root-rename fn-bs-k0s-root-rename-pendingp))))))
 (defthm fn-bs-k0-frontier-reserved-cut-relation-by-step
   (implies (and (fn-bs-store-relation bs ks)
                 (fn-bs-frontier-inputp ks stage octets)
@@ -70,10 +70,10 @@
                   (k 13) (steps (fn-bs-frontier-program stage octets)) (g groups) (c capacity))
                  (:instance fn-bs-k0b-cut-after-step-pair
                   (k 13) (steps (fn-bs-frontier-program stage octets)) (g groups) (c capacity))
-                 (:instance fn-bs-k0b-relation-has-no-root-marker
+                 (:instance fn-bs-k0b-relation-has-no-root-rename
                   (b (car (nth 13 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
                   (k (cdr (nth 13 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity)))))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related
                   (b (car (nth 15 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
                   (k (cdr (nth 15 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))))
            :in-theory (e/d (fn-bs-k0b-frontier-program-steps fn-bs-k0-step-inputp fn-bs-k0-observation-inputp

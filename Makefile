@@ -74,6 +74,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-stamp \
 	books/records-canonicality \
 	books/records-seam \
+	books/records-schema-v1 \
 	books/records-attach \
 	books/store-events \
 	tests/acl2/store-events-tests \
@@ -91,6 +92,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-poll-projection-tests \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
+	tests/acl2/records-schema-v1-teeth-tests \
 	tests/acl2/records-ceiling-tests \
 	tests/acl2/records-shape-tests \
 	books/provenance-codec \
@@ -177,11 +179,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-profile-upgrade \
 	books/byte-store-profile-program \
 	tests/acl2/store-profile-upgrade-tests \
+	books/store-profile-namespace \
+	tests/acl2/store-profile-namespace-tests \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
+	tests/acl2/linear-recognizers-tests \
 	books/byte-store-state-checkpoint-program \
 	books/byte-store-range-read \
 	tests/acl2/byte-store-state-checkpoint-program-tests \
@@ -214,6 +219,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-k0 \
 	books/byte-store-k0-staging \
 	books/byte-store-k0-staging-error \
+	books/byte-store-k0-authority-error \
 	books/byte-store-k0-recovery \
 	tests/acl2/byte-store-k0-tests \
 	tests/acl2/byte-store-k0-recovery-tests \
@@ -238,6 +244,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-tests \
 	books/byte-store-frame \
 	tests/acl2/byte-store-frame-tests \
+	books/byte-store-profile-v1 \
+	tests/acl2/byte-store-profile-v1-tests \
 	books/byte-store-txn-name \
 	tests/acl2/byte-store-txn-name-tests \
 	books/byte-store-initializer \
@@ -269,6 +277,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
 	books/store-history-marker \
+	books/reclaim-tombstone \
+	books/reclaim-rule \
+	books/store-reclaim \
+	books/nntp-reclaimed \
+	tests/acl2/store-reclaim-tests \
 	tests/acl2/store-history-marker-tests \
 	books/store-history-required \
 	tests/acl2/store-history-required-tests \
@@ -285,6 +298,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-k0-step-bridge-tests \
 	books/byte-store-k0-step-bridge-frontier \
 	tests/acl2/byte-store-k0-cuts-tests \
+	books/byte-store-k0-step-bridge-root \
+	tests/acl2/byte-store-k0-step-bridge-root-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -402,6 +417,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-route-step \
 	tests/acl2/bp-route-tests \
 	tests/acl2/bp-node-receipt-send-tests \
+	books/bp-route-jobs \
+	tests/acl2/bp-route-jobs-tests \
+	books/bp-node-contact-driver \
+	tests/acl2/bp-node-contact-driver-tests \
 	books/bp-node-forward-resume \
 	tests/acl2/bp-node-forward-resume-tests \
 	books/bp-fnbs-dispatch-codec \
@@ -559,6 +578,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp \
 	books/nntp-overview \
 	books/nntp-legacy \
+	books/nntp-xpat \
 	books/nntp-newnews \
 	books/nntp-invariants \
 	books/nntp-effects \
@@ -567,6 +587,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-teeth-tests \
 	books/mailbox \
 	books/injection-shape \
+	books/injection-path \
 	books/injection \
 	books/injection-invariants \
 	tests/acl2/injection-tests \
@@ -602,6 +623,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-concrete-owner \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
+	books/octets-stobj \
+	books/poster-bytes-buffer \
+	tests/acl2/octets-stobj-tests \
+	books/sha256-buffer \
+	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -660,6 +686,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-range-indexed-tests \
 	tests/acl2/nntp-reader-profile-tests \
 	tests/acl2/nntp-legacy-tests \
+	tests/acl2/nntp-xpat-tests \
 	tests/acl2/nntp-newnews-tests \
 	books/bp-release \
 	books/bp-release-invariants \
@@ -693,6 +720,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-retention-preparation \
 	books/owner-agent \
 	books/owner-log \
+	books/owner-served-bound \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
 	books/consumer-poll-index \
@@ -715,6 +743,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-operator-tests \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
+	tests/acl2/owner-served-bound-tests \
 	tests/acl2/owner-config-tests \
 	tests/acl2/owner-prepare-correspondence-tests \
 	books/owner-store-budget \
@@ -736,11 +765,18 @@ ACL2_BOOKS ?= books/defrecord \
 	books/control-classify \
 	books/peer-authored-accept \
 	tests/acl2/peer-authored-accept-tests \
+	books/peer-carriage-rows \
+	books/peer-carriage \
+	tests/acl2/peer-carriage-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
 	books/key-statements \
 	tests/acl2/key-statements-tests \
+	books/control-visible \
+	tests/acl2/control-visible-tests \
+	books/login-binding \
+	tests/acl2/login-binding-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \
@@ -920,6 +956,8 @@ check:
 # its reason, as DTN-omitted; and no name an omitted file defines is spelled
 # as a counterpart in a raw module the DTN image loads.  At 6c0626c5 the DTN
 # images omitted host/checkpoint-host.lisp and could not `store init'.
+# And every book a DTN-loaded host file calls is included before its `ld`:
+# at 32842f50 build-dtn.lisp lacked books/octets-stobj and the image failed.
 # Static, under a second, with its teeth test.
 	$(PYTHON) tools/build_lists_check.py
 	$(PYTHON) -m unittest -q tests.test_build_lists_check

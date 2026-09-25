@@ -51,6 +51,37 @@ The write is the byte program `fn-bs-profile-program`
 (books/byte-store-profile-program.lisp), whose crash images name the old frame or
 the new one at every cut. This is a local-policy choice of fn; no RFC governs it.
 
+STO-015: a namespace the store holds is bounded by the operator's profile,
+never by a constant (D27). Configuration generations and AUTHINFO
+credentials are bounded by the profile's `max-config-generations` and
+`max-credentials` (format 8 fields 11 and 12, read through
+books/store-profile-namespace.lisp). The writer refuses exactly past the
+bound, by name (`:max-config-generations`, `:too-many-credentials`), and
+the reader admits every namespace within it: the configuration listing
+(`fn-nco-observe`) and the credential loader (`fn-native-auth-load`). An
+upgrade never lowers a count (`fn-profile-upgrade-keeps-namespace-counts`),
+so a namespace written under the old profile is admitted under the new one.
+The credential file's octet and line bounds follow its count: 512 octets and
+8 lines per credential, plus one unit for the header, a work bound per
+credential. fn.toml's size bounds stay constants. They bound the work of
+reading a fixed-schema file that names the store, and the file holds no
+collection. Consumers, BP rows and policy members are not yet read from the
+profile (planning/evidence/bounds-profile-2026-09-25.md).
+
+STO-013: a record's sequence, transaction ID, generation, charge and stamp
+are u64 (design 2026-09-25-bounds §2.3, packet P6). A record that needs a
+field above 2^32 - 1 carries schema octet 2 and eight-octet CBOR uint heads
+(RFC 8949 §3.1); every other record keeps its schema-0 or schema-1 octet and
+its bytes, and a store written under schemas 0 and 1 opens to the same
+records (`fn-record-v1-bytes-decode-identically`,
+`fn-record-v1-bytes-are-their-translation`). A profile's record bound R is
+checked against the record ceiling at the widths the runtime produces (u32
+heads, 1 083 octets of fixed overhead), so a format-8 profile saved before
+P6 is admitted unchanged (`fn-bs-profile-v1-valid-stays-valid`); a schema-2
+record is at most 28 octets past that ceiling and the publish gate refuses
+it. The frontier and the profile's T field still cap transaction IDs at
+2^32 - 1. The widths are a stronger fn guarantee; no RFC requires them.
+
 STO-002: acceptance publishes one transaction containing the source references,
 duplicate-history effects, all local group allocations, and any obligations or
 reservations accepted in that operation. No partially committed cross-post or
@@ -211,9 +242,35 @@ stays authoritative, and the file may be deleted at any time.
   Otherwise it replays in full. Status prints `open=checkpoint:S suffix=k`
   or `open=full-replay reason=R` (absent, corrupt, ahead-of-history,
   suffix-exceeds-k).
-- **Not yet.** The owner's serve path (`fnn-owner-install`) still replays
-  the whole history; the owner does not yet publish at K/2; K0 coverage of
-  the publish program's root rename is open.
+- **Not yet.** K0 coverage of the publish program's root rename is open.
+  (The owner opens from the checkpoint and publishes at K/2 since
+  owner-checkpoint-open, PRF-083.)
+
+STO-016: The checkpoint open costs less than the full replay it replaces,
+and a publication does not hold served commands.
+
+- **The file carries the count.** The event index maps every sequence below
+  S to its record, so the file writes S in the record slot when the index
+  yields exactly the record list (`fn-sco-freeze`), and the decoder reads
+  the list back out of the index (`fn-sco-thaw`; `fn-sco-thaw-of-freeze`,
+  every checkpoint value). Past the index's u32 keys the list stays in the
+  file: nothing is capped. The header's sequence field is S either way. The
+  Store state itself still holds the record list (`fn-sf-records`).
+- **One open.** Both host opens extend a checkpoint once (the decoded file
+  over the suffix, or the empty capture over the whole history) and read the
+  configuration and the opened Store off the extension (`fn-sco-store-open`,
+  `fn-sco-store-open-of-extended-capture`); the owner installs from that
+  value (`fn-ock-install-of-store-open-by-definition`), so the suffix is
+  replayed once per process start.
+- **Linear list checks.** The whole-node recognizer a decoded checkpoint's
+  node is checked by uses linear checks for its Message-ID, binding and
+  obligation-identity lists (a hash set in a local stobj, `fn-ks-distinctp`,
+  `fn-ks-subsetp`), each equal to its quadratic `:logic` definition.
+- **Publication off the mutex.** The owner captures the base, the
+  configuration history and the record list under its mutex, then extends,
+  encodes and writes on its own thread, and installs the result under the
+  mutex again. What it writes is the capture of the history at the capture
+  point (`fn-ock-publication-is-the-capture-at-the-capture-point`).
 
 ## History classes and lifetimes
 
@@ -407,6 +464,57 @@ witness written after the commit:
   freshness anchor (D14); the configuration history and the BP stores. A
   shared-lock reader may serve a record above the marker until the next
   writable open.
+
+### Content reclamation under D13 (STO-014)
+
+STO-014: Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs.
+
+Status: decision, tombstone and served projection proved (PRF-088); the
+durable `store reclaim` verb is not implemented.
+
+**The rule** is the operator's, set through the ordinary reconfiguration
+record: `admin retention set keep-forever | released-by-all-holders |
+release-after DAYS` stages two `:set-limit` rows, `retention` (0, 1, 2)
+and `retention-days` (`books/reclaim-rule`). No row reads keep-forever,
+D03's default, so a store written before this section behaves as before.
+An unrecognised row is refused by name and reclaims nothing. The rule is
+the authorized release of the article's own archive pin; it releases no
+other obligation.
+
+**The decision** (`fn-rcl-verdict`, `books/store-reclaim`) answers one
+article with `:reclaimable` or the first reason it stays:
+`already-reclaimed`, `rule-keeps`, `rule-refused`, `too-recent`
+(release-after: stamp plus DAYS × 86,400 s after now; a legacy stamp never
+qualifies), `verdict-needs-payload` (an authorship verdict is re-verified
+at recovery, STO-008), `held-reader-pin`, `held-consumer-cursor` (a
+consumer that acknowledged number A in the group holds every number above
+A), `held-feed` (a live peer not yet delivered it; a retired peer holds
+nothing) and `held-bp-obligation`. The keystone says the executable test is
+exactly "no obligation in the flattened list names the article" together
+with the rule.
+
+**The tombstone** replaces the payload octets of the article record and
+nothing else: NUL `FN-RCL1`, a source flag, the payload's SHA-256, the
+SHA-256 of its D25 source under its own agent, the payload length and that
+agent (`books/reclaim-tombstone`). The record keeps its Message-ID,
+sequence, txid, generation, groups, memberships, obligation identity,
+content subject, release evidence, charge and stamp, so the history entry,
+the numbers, the group bindings and the content identity stay.
+Acceptance never reads a stored payload, so replaying the record with the
+tombstone reaches the reclaimed state, and every other record's step
+commutes with reclamation (`fn-rcl-prepare-commutes-with-reclaim`).
+
+**What stays the same** (the decisions this table lists): the duplicate
+history (`fn-acceptedp` for every Message-ID; a reclaimed ID is refused
+again, never resurrected), group numbering (per-group next numbers), each
+article's bindings, and the D25 duplicate-versus-conflict verdict the host
+calls (`fn-rcl-existing-action`) up to a SHA-256 collision on the compared
+pair. Verdict lookup reads the Store's verdict slot, which reclamation does
+not touch, and an article with a verdict is not reclaimed.
+
+**Served**: ARTICLE, HEAD, BODY and STAT of a reclaimed article answer
+`423 article reclaimed` by number and `430 article reclaimed` by
+Message-ID. OVER answers 503 for it and NEWNEWS still lists it (open).
 
 ### Chained packs (not implemented)
 

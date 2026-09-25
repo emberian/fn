@@ -18,8 +18,10 @@
     (fn-store-cfg-native-admin-authorize
      ;; A seventh argument would be ACL2's state, accidentally supplied by
      ;; fnn-core-state. Also pin the list conversion at the byte boundary.
+     ;; The last argument is the profile the store opened, handed opaque:
+     ;; ACL2 reads its max-config-generations (D27, PRF-102).
      (assert (equal args (list '((1 2)) 7 '((3 4)) '(5 6) *expected-lock*
-                               '((99 102 103)))))
+                               '((99 102 103)) :profile-values)))
      (incf *authorization-calls*)
      (list *authorization-result*))
     (fn-native-admin-host-publication-status
@@ -30,7 +32,7 @@
      (list (second *authorization-result*)))
     (otherwise (error "Unexpected core call ~s" name))))
 
-(let ((store (%make-fnn-store :frontier 7 :writable t :lock-fd 3)))
+(let ((store (%make-fnn-store :frontier 7 :writable t :lock-fd 3 :config :profile-values)))
   (assert (eq (fnn-admin-authorize store (list #(1 2)) (list #(3 4))
                                  #(5 6) '("cfg"))
               *authorization-result*))
@@ -47,8 +49,8 @@
   ;; refusal (here `:lock') is reported as a refusal, never a publication.
   (setf *expected-lock* nil
         *authorization-result* '(:refused :lock))
-  (dolist (unlocked (list (%make-fnn-store :frontier 7 :writable nil :lock-fd 3)
-                          (%make-fnn-store :frontier 7 :writable t :lock-fd nil)))
+  (dolist (unlocked (list (%make-fnn-store :frontier 7 :writable nil :lock-fd 3 :config :profile-values)
+                          (%make-fnn-store :frontier 7 :writable t :lock-fd nil :config :profile-values)))
     (assert (handler-case
                 (progn (fnn-admin-authorize unlocked (list #(1 2)) (list #(3 4))
                                             #(5 6) '("cfg"))

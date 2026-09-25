@@ -352,6 +352,381 @@
   :hints (("Goal" :use fn-cbor-decode-reencode-prefix
            :in-theory (disable fn-cbor-decode fn-cbor-encode))))
 
+; ---------------------------------------------------------------------------
+; The wide uint (packet P6): round trip, agreement with the narrow profile,
+; and reverse canonicality.
+
+(local (defthm fn-cbor-u32-from-of-u32-bytes-append
+         (equal (fn-cbor-u32-from (append (fn-cbor-u32-bytes x) y))
+                (fn-cbor-u32-from (fn-cbor-u32-bytes x)))
+         :hints (("Goal" :in-theory (e/d (fn-cbor-u32-from fn-cbor-u32-bytes)
+                                         (floor mod))))))
+
+(local (defthm fn-cbor-cddddr-of-u32-bytes-append
+         (equal (cddddr (append (fn-cbor-u32-bytes x) y)) y)
+         :hints (("Goal" :in-theory (e/d (fn-cbor-u32-bytes) (floor mod))))))
+
+(local (defthm fn-cbor-u64-halves
+         (implies (natp n)
+                  (equal (+ (* 4294967296 (floor n 4294967296))
+                            (mod n 4294967296))
+                         n))))
+
+(local (defthm fn-cbor-wide-append-assoc
+         (equal (append (append a b) c) (append a (append b c)))))
+
+(local (defthm fn-cbor-u64-half-bounds
+         (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
+                  (and (<= (floor n 4294967296) *fn-cbor-max-uint*)
+                       (<= (mod n 4294967296) *fn-cbor-max-uint*)
+                       (natp (floor n 4294967296))
+                       (natp (mod n 4294967296))))
+         :hints (("Goal" :use ((:instance floor-bounded-by-/
+                                          (x n) (y 4294967296))
+                               (:instance mod-bounded-by-modulus
+                                          (x n) (y 4294967296)))
+                  :in-theory (disable floor-bounded-by-/ mod-bounded-by-modulus
+                                      floor mod)))))
+
+(defthm fn-cbor-u64-from-u64-bytes
+  (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
+           (equal (fn-cbor-u64-from (append (fn-cbor-u64-bytes n) rest)) n))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-u64-from fn-cbor-u64-bytes
+                                   fn-cbor-u32-from-u32-bytes)
+                                  (floor mod fn-cbor-u32-from fn-cbor-u32-bytes)))))
+
+(defthm fn-cbor-u64-bytes-are-octets
+  (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
+           (fn-cbor-octet-listp (fn-cbor-u64-bytes n)))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-u64-bytes fn-cbor-octet-listp-append)
+                                  (floor mod fn-cbor-u32-bytes))
+           :use ((:instance fn-cbor-u32-bytes-are-octets (n (floor n 4294967296)))
+                 (:instance fn-cbor-u32-bytes-are-octets (n (mod n 4294967296)))))))
+
+(local (defthm fn-cbor-wide-len-of-append
+         (equal (len (append x y)) (+ (len x) (len y)))))
+
+(local (defthm fn-cbor-wide-len-of-u32-bytes
+         (equal (len (fn-cbor-u32-bytes n)) 4)
+         :hints (("Goal" :in-theory (e/d (fn-cbor-u32-bytes) (floor mod))))))
+
+(defthm fn-cbor-u64-bytes-length
+  (equal (len (fn-cbor-u64-bytes n)) 8)
+  :hints (("Goal" :in-theory (e/d (fn-cbor-u64-bytes)
+                                  (floor mod fn-cbor-u32-bytes)))))
+
+(local (defthm fn-cbor-wide-nthcdr-of-append
+         (implies (equal (len x) k)
+                  (equal (nthcdr k (append x y)) y))))
+
+(local (defthm fn-cbor-wide-at-leastp-of-append
+         (implies (and (natp k) (<= k (len x)))
+                  (fn-cbor-at-leastp (append x y) k))
+         :hints (("Goal" :in-theory (enable fn-cbor-at-leastp-is-length-lower-bound)))))
+
+; The wide encoder writes the narrow encoder's bytes for every narrow value.
+(defthm fn-cbor-encode-uint-wide-is-narrow
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (equal (fn-cbor-encode-uint-wide n)
+                  (fn-cbor-encode (cons :uint n)))))
+
+; Whenever the narrow one-item decoder accepts, the wide one returns the
+; same result: no accepted encoding changes meaning.
+(defthm fn-cbor-decode-prechecked-wide-extends-narrow
+  (implies (fn-cbor-result-okp (fn-cbor-decode-prechecked octets budget))
+           (equal (fn-cbor-decode-prechecked-wide octets budget)
+                  (fn-cbor-decode-prechecked octets budget))))
+
+(local (defthm fn-cbor-wide-u32-prefix-fields
+  (and (consp (append (fn-cbor-u32-bytes n) xs))
+       (consp (cdr (append (fn-cbor-u32-bytes n) xs)))
+       (consp (cddr (append (fn-cbor-u32-bytes n) xs)))
+       (consp (cdddr (append (fn-cbor-u32-bytes n) xs)))
+       (equal (cddddr (append (fn-cbor-u32-bytes n) xs)) xs)
+       (equal (fn-cbor-u32-from (append (fn-cbor-u32-bytes n) xs))
+              (fn-cbor-u32-from (fn-cbor-u32-bytes n))))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-u32-bytes fn-cbor-u32-from)
+                                  (floor mod))))))
+
+(local (defthm fn-cbor-narrow-prechecked-uint-round-trip
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*)
+                (fn-cbor-octet-listp rest))
+           (equal (fn-cbor-decode-prechecked
+                   (append (fn-cbor-encode (cons :uint n)) rest) budget)
+                  (fn-cbor-ok (cons :uint n) rest)))
+  :hints (("Goal" :cases ((< n 24) (< n 256) (< n 65536))
+           :in-theory (disable fn-cbor-u16-bytes fn-cbor-u32-bytes
+                               fn-cbor-u16-from fn-cbor-u32-from
+                               fn-cbor-at-mostp)))))
+
+(local (defthm fn-cbor-wide-u64-uint-round-trip
+  (implies (and (natp n) (< *fn-cbor-max-uint* n) (<= n *fn-cbor-max-uint64*)
+                (fn-cbor-octet-listp rest))
+           (equal (fn-cbor-decode-unsigned-wide 27 (append (fn-cbor-u64-bytes n) rest))
+                  (fn-cbor-ok (cons :uint n) rest)))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-decode-unsigned-wide)
+                                  (fn-cbor-u64-bytes fn-cbor-u64-from))))))
+
+(local (defthm fn-cbor-decode-prechecked-wide-of-narrow-uint
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*)
+                (fn-cbor-octet-listp rest))
+           (equal (fn-cbor-decode-prechecked-wide
+                   (append (fn-cbor-encode-uint-wide n) rest) budget)
+                  (fn-cbor-ok (cons :uint n) rest)))
+  :hints (("Goal" :use ((:instance fn-cbor-decode-prechecked-wide-extends-narrow
+                         (octets (append (fn-cbor-encode (cons :uint n)) rest))))
+           :in-theory (e/d (fn-cbor-encode-uint-wide-is-narrow)
+                           (fn-cbor-decode-prechecked-wide-extends-narrow
+                            fn-cbor-encode-uint-wide fn-cbor-encode
+                            fn-cbor-decode-prechecked fn-cbor-decode-prechecked-wide))))))
+
+(local (defthm fn-cbor-decode-prechecked-wide-of-u64-uint
+  (implies (and (natp n) (< *fn-cbor-max-uint* n) (<= n *fn-cbor-max-uint64*)
+                (fn-cbor-octet-listp rest))
+           (equal (fn-cbor-decode-prechecked-wide
+                   (append (fn-cbor-encode-uint-wide n) rest) budget)
+                  (fn-cbor-ok (cons :uint n) rest)))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-encode-uint-wide
+                                   fn-cbor-decode-prechecked-wide)
+                                  (fn-cbor-decode-unsigned-wide
+                                   fn-cbor-u64-bytes fn-cbor-u64-from))))))
+
+(defthm fn-cbor-decode-prechecked-wide-of-uint
+  (implies (and (natp n) (<= n *fn-cbor-max-uint64*)
+                (fn-cbor-octet-listp rest))
+           (equal (fn-cbor-decode-prechecked-wide
+                   (append (fn-cbor-encode-uint-wide n) rest) budget)
+                  (fn-cbor-ok (cons :uint n) rest)))
+  :hints (("Goal" :cases ((<= n *fn-cbor-max-uint*))
+           :in-theory (disable fn-cbor-encode-uint-wide
+                               fn-cbor-decode-prechecked-wide))))
+
+(local (defthm fn-cbor-narrow-unsigned-value-bound
+  (implies (and (fn-cbor-octet-listp tail) (natp additional)
+                (fn-cbor-result-okp (fn-cbor-decode-unsigned additional tail)))
+           (and (natp (cdr (fn-cbor-result-value (fn-cbor-decode-unsigned additional tail))))
+                (<= (cdr (fn-cbor-result-value (fn-cbor-decode-unsigned additional tail)))
+                    *fn-cbor-max-uint*)))
+  :hints (("Goal" :in-theory (disable fn-cbor-u16-from fn-cbor-u32-from)))))
+
+(local (defthm fn-cbor-decode-prechecked-wide-when-not-27
+  (implies (not (and (consp octets) (equal (car octets) 27)))
+           (equal (fn-cbor-decode-prechecked-wide octets budget)
+                  (fn-cbor-decode-prechecked octets budget)))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-decode-prechecked-wide
+                                   fn-cbor-decode-unsigned-wide
+                                   fn-cbor-decode-prechecked)
+                                  (fn-cbor-decode-unsigned
+                                   fn-cbor-decode-bytes-bounded))))))
+
+(local (defthm fn-cbor-bytes-bounded-value-is-bytes
+  (implies (fn-cbor-result-okp (fn-cbor-decode-bytes-bounded additional tail budget))
+           (equal (car (fn-cbor-result-value
+                        (fn-cbor-decode-bytes-bounded additional tail budget)))
+                  :bytes))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-decode-bytes-bounded)
+                                  (fn-cbor-decode-argument take nthcdr))))))
+
+(local (defthm fn-cbor-narrow-prechecked-uint-domain
+  (implies (and (fn-cbor-octet-listp octets)
+                (fn-cbor-result-okp (fn-cbor-decode-prechecked octets budget))
+                (equal (car (fn-cbor-result-value
+                             (fn-cbor-decode-prechecked octets budget)))
+                       :uint))
+           (and (natp (cdr (fn-cbor-result-value
+                            (fn-cbor-decode-prechecked octets budget))))
+                (<= (cdr (fn-cbor-result-value
+                          (fn-cbor-decode-prechecked octets budget)))
+                    *fn-cbor-max-uint*)))
+  :hints (("Goal" :use ((:instance fn-cbor-narrow-unsigned-value-bound
+                         (additional (car octets)) (tail (cdr octets))))
+           :in-theory (e/d (fn-cbor-decode-prechecked)
+                           (fn-cbor-narrow-unsigned-value-bound
+                            fn-cbor-decode-unsigned fn-cbor-decode-bytes-bounded))))))
+
+(defthm fn-cbor-u64-from-bounds
+  (implies (and (fn-cbor-octet-listp xs) (fn-cbor-at-leastp xs 8))
+           (and (natp (fn-cbor-u64-from xs))
+                (<= (fn-cbor-u64-from xs) *fn-cbor-max-uint64*)))
+  :hints (("Goal"
+           :expand ((fn-cbor-at-leastp xs 8) (fn-cbor-at-leastp (cdr xs) 7)
+                    (fn-cbor-at-leastp (cddr xs) 6) (fn-cbor-at-leastp (cdddr xs) 5)
+                    (fn-cbor-at-leastp (cddddr xs) 4)
+                    (fn-cbor-at-leastp (cdr (cddddr xs)) 3)
+                    (fn-cbor-at-leastp (cddr (cddddr xs)) 2)
+                    (fn-cbor-at-leastp (cdddr (cddddr xs)) 1)
+                    (fn-cbor-octet-listp xs) (fn-cbor-octet-listp (cdr xs))
+                    (fn-cbor-octet-listp (cddr xs)) (fn-cbor-octet-listp (cdddr xs)))
+           :use ((:instance fn-cbor-u32-from-bounds (xs (cddddr xs)))
+                 (:instance fn-cbor-u32-from-bounds (xs xs)))
+           :in-theory (e/d (fn-cbor-u64-from)
+                           (fn-cbor-u32-from-bounds fn-cbor-u32-from
+                            fn-cbor-at-leastp-is-length-lower-bound)))))
+
+(defthm fn-cbor-decode-prechecked-wide-uint-domain
+  (implies (and (fn-cbor-result-okp (fn-cbor-decode-prechecked-wide octets budget))
+                (equal (car (fn-cbor-result-value
+                             (fn-cbor-decode-prechecked-wide octets budget)))
+                       :uint)
+                (fn-cbor-octet-listp octets))
+           (and (natp (cdr (fn-cbor-result-value
+                            (fn-cbor-decode-prechecked-wide octets budget))))
+                (<= (cdr (fn-cbor-result-value
+                          (fn-cbor-decode-prechecked-wide octets budget)))
+                    *fn-cbor-max-uint64*)))
+  :hints (("Goal" :cases ((and (consp octets) (equal (car octets) 27))))
+          ("Subgoal 2" :use fn-cbor-narrow-prechecked-uint-domain
+           :in-theory (disable fn-cbor-narrow-prechecked-uint-domain
+                               fn-cbor-decode-prechecked-wide
+                               fn-cbor-decode-prechecked))
+          ("Subgoal 1" :use ((:instance fn-cbor-u64-from-bounds (xs (cdr octets))))
+           :in-theory (e/d (fn-cbor-decode-prechecked-wide fn-cbor-decode-unsigned-wide)
+                           (fn-cbor-u64-from-bounds fn-cbor-u64-from
+                            fn-cbor-decode-prechecked)))))
+
+(local (defthm fn-cbor-u64-floor-of-halves
+  (implies (and (natp hi) (natp lo) (< lo 4294967296))
+           (equal (floor (+ lo (* 4294967296 hi)) 4294967296) hi))
+  :hints (("Goal" :in-theory (disable floor mod)
+           :use ((:instance floor-mod-elim (x (+ lo (* 4294967296 hi))) (y 4294967296))
+                 (:instance mod-bounded-by-modulus (x (+ lo (* 4294967296 hi))) (y 4294967296))
+)))))
+
+(local (defthm fn-cbor-u64-split-of-halves
+  (implies (and (natp hi) (natp lo) (< lo 4294967296))
+           (and (equal (floor (+ lo (* 4294967296 hi)) 4294967296) hi)
+                (equal (mod (+ lo (* 4294967296 hi)) 4294967296) lo)))
+  :hints (("Goal" :in-theory (e/d (mod) (floor))))))
+
+(defthm fn-cbor-u64-to-from-octets
+  (implies (and (fn-cbor-octet-listp xs) (fn-cbor-at-leastp xs 8))
+           (equal (fn-cbor-u64-bytes (fn-cbor-u64-from xs))
+                  (take 8 xs)))
+  :hints (("Goal"
+           :expand ((fn-cbor-at-leastp xs 8) (fn-cbor-at-leastp (cdr xs) 7)
+                    (fn-cbor-at-leastp (cddr xs) 6) (fn-cbor-at-leastp (cdddr xs) 5)
+                    (fn-cbor-at-leastp (cddddr xs) 4)
+                    (fn-cbor-at-leastp (cdr (cddddr xs)) 3)
+                    (fn-cbor-at-leastp (cddr (cddddr xs)) 2)
+                    (fn-cbor-at-leastp (cdddr (cddddr xs)) 1)
+                    (fn-cbor-octet-listp xs) (fn-cbor-octet-listp (cdr xs))
+                    (fn-cbor-octet-listp (cddr xs)) (fn-cbor-octet-listp (cdddr xs)))
+           :use ((:instance fn-cbor-u32-to-from-octets (xs (cddddr xs)))
+                 (:instance fn-cbor-u32-to-from-octets (xs xs))
+                 (:instance fn-cbor-u32-from-bounds (xs (cddddr xs)))
+                 (:instance fn-cbor-u32-from-bounds (xs xs))
+                 (:instance fn-cbor-u64-split-of-halves
+                  (hi (fn-cbor-u32-from xs)) (lo (fn-cbor-u32-from (cddddr xs)))))
+           :in-theory (e/d (fn-cbor-u64-bytes fn-cbor-u64-from)
+                           (fn-cbor-u64-split-of-halves fn-cbor-u32-from-bounds
+                            fn-cbor-u32-to-from-octets
+                            fn-cbor-u32-from fn-cbor-u32-bytes floor mod
+                            fn-cbor-at-leastp-is-length-lower-bound)))))
+
+(local (defthm fn-cbor-wide-cons-uint-of-cdr
+  (implies (equal (car v) :uint)
+           (equal (cons :uint (cdr v)) v))))
+
+(local (defthm fn-cbor-narrow-prechecked-uint-reencode
+  (implies (and (fn-cbor-octet-listp octets)
+                (fn-cbor-result-okp (fn-cbor-decode-prechecked octets budget))
+                (equal (car (fn-cbor-result-value
+                             (fn-cbor-decode-prechecked octets budget)))
+                       :uint))
+           (equal (append (fn-cbor-encode
+                           (cons :uint (cdr (fn-cbor-result-value
+                                             (fn-cbor-decode-prechecked octets budget)))))
+                          (fn-cbor-result-rest
+                           (fn-cbor-decode-prechecked octets budget)))
+                  octets))
+  :hints (("Goal" :use ((:instance fn-cbor-unsigned-reencode-prefix
+                         (additional (car octets)) (tail (cdr octets))))
+           :in-theory (e/d (fn-cbor-decode-prechecked)
+                           (fn-cbor-unsigned-reencode-prefix fn-cbor-encode
+                            fn-cbor-decode-unsigned fn-cbor-decode-bytes-bounded))))))
+
+(local (defthm fn-cbor-wide-27-reencode
+  (implies (and (fn-cbor-octet-listp octets)
+                (consp octets) (equal (car octets) 27)
+                (fn-cbor-result-okp (fn-cbor-decode-prechecked-wide octets budget)))
+           (equal (append (fn-cbor-encode-uint-wide
+                           (cdr (fn-cbor-result-value
+                                 (fn-cbor-decode-prechecked-wide octets budget))))
+                          (fn-cbor-result-rest
+                           (fn-cbor-decode-prechecked-wide octets budget)))
+                  octets))
+  :hints (("Goal" :use ((:instance fn-cbor-u64-to-from-octets (xs (cdr octets)))
+                        (:instance fn-cbor-u64-from-bounds (xs (cdr octets)))
+                        (:instance fn-cbor-take-and-rest-reconstruct (n 8) (xs (cdr octets))))
+           :in-theory (e/d (fn-cbor-decode-prechecked-wide fn-cbor-decode-unsigned-wide
+                            fn-cbor-encode-uint-wide)
+                           (fn-cbor-u64-to-from-octets fn-cbor-u64-from-bounds
+                            fn-cbor-take-and-rest-reconstruct
+                            fn-cbor-u64-bytes fn-cbor-u64-from take nthcdr))))))
+
+; Reverse canonicality: an accepted uint is exactly the wide encoding of its
+; value followed by the returned rest.
+(defthm fn-cbor-decode-prechecked-wide-uint-reencode-prefix
+  (implies (and (fn-cbor-octet-listp octets)
+                (fn-cbor-result-okp (fn-cbor-decode-prechecked-wide octets budget))
+                (equal (car (fn-cbor-result-value
+                             (fn-cbor-decode-prechecked-wide octets budget)))
+                       :uint))
+           (equal (append (fn-cbor-encode-uint-wide
+                           (cdr (fn-cbor-result-value
+                                 (fn-cbor-decode-prechecked-wide octets budget))))
+                          (fn-cbor-result-rest
+                           (fn-cbor-decode-prechecked-wide octets budget)))
+                  octets))
+  :hints (("Goal" :cases ((and (consp octets) (equal (car octets) 27))))
+          ("Subgoal 2" :use (fn-cbor-narrow-prechecked-uint-reencode
+                             fn-cbor-narrow-prechecked-uint-domain)
+           :in-theory (e/d (fn-cbor-encode-uint-wide-is-narrow)
+                           (fn-cbor-narrow-prechecked-uint-reencode
+                            fn-cbor-narrow-prechecked-uint-domain
+                            fn-cbor-encode-uint-wide fn-cbor-encode
+                            fn-cbor-decode-prechecked-wide
+                            fn-cbor-decode-prechecked)))
+          ("Subgoal 1" :use fn-cbor-wide-27-reencode
+           :in-theory (disable fn-cbor-wide-27-reencode fn-cbor-encode-uint-wide
+                               fn-cbor-decode-prechecked-wide
+                               fn-cbor-decode-prechecked))))
+
+(local (defthm fn-cbor-wide-octet-listp-of-nthcdr
+  (implies (fn-cbor-octet-listp xs)
+           (fn-cbor-octet-listp (nthcdr n xs)))))
+
+(local (defthm fn-cbor-narrow-prechecked-rest-octets
+  (implies (and (fn-cbor-octet-listp octets)
+                (fn-cbor-result-okp (fn-cbor-decode-prechecked octets budget)))
+           (fn-cbor-octet-listp
+            (fn-cbor-result-rest (fn-cbor-decode-prechecked octets budget))))
+  :hints (("Goal" :in-theory (disable fn-cbor-u16-from fn-cbor-u32-from take)))))
+
+(defthm fn-cbor-decode-prechecked-wide-rest-octets
+  (implies (and (fn-cbor-octet-listp octets)
+                (fn-cbor-result-okp (fn-cbor-decode-prechecked-wide octets budget)))
+           (fn-cbor-octet-listp
+            (fn-cbor-result-rest (fn-cbor-decode-prechecked-wide octets budget))))
+  :hints (("Goal" :cases ((and (consp octets) (equal (car octets) 27))))
+          ("Subgoal 2" :in-theory (disable fn-cbor-decode-prechecked-wide
+                                           fn-cbor-decode-prechecked))
+          ("Subgoal 1" :in-theory (e/d (fn-cbor-decode-prechecked-wide
+                                        fn-cbor-decode-unsigned-wide)
+                                       (fn-cbor-u64-from fn-cbor-decode-prechecked)))))
+
+(defthm fn-cbor-encode-uint-wide-octets
+  (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
+           (and (fn-cbor-octet-listp (fn-cbor-encode-uint-wide n))
+                (true-listp (fn-cbor-encode-uint-wide n))
+                (consp (fn-cbor-encode-uint-wide n))))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-encode-uint-wide)
+                                  (fn-cbor-u64-bytes fn-cbor-u16-bytes
+                                   fn-cbor-u32-bytes))
+           :use (fn-cbor-u64-bytes-are-octets
+                 (:instance fn-cbor-u32-bytes-are-octets)
+                 (:instance fn-cbor-u16-bytes-are-octets)))))
+
 ; -----------------------------------------------------------------------------
 ; Export theory.
 ;

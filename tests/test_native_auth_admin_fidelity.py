@@ -65,7 +65,7 @@ def publish_driver(root: Path) -> str:
         (secret (map 'list #'char-code \"correct-horse\"))
         (salt '(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
         (result (fnn-core 'fn-native-auth-admin-host-set-password
-                          nil nil name secret secret salt nil nil t))
+                          nil nil name secret secret salt nil nil t 1048576))
         (octets (fnn-core 'fn-native-auth-admin-host-result-octets result))
         (*fnn-native-auth-admin-cut-callback*
           (fnn-native-auth-admin-test-cut))
@@ -87,8 +87,8 @@ def recover_driver(root: Path) -> str:
         (stage (fnn-concat final \".stage\")))
    (unless (fnn-native-auth-admin-recover stage final root)
      (error \"fresh process did not recover published final\"))
-   (let* ((octets (fnn-native-auth-admin-read-held final t))
-          (listed (fnn-core 'fn-native-auth-admin-host-list octets t))
+   (let* ((octets (fnn-native-auth-admin-read-held final t 1048576))
+          (listed (fnn-core 'fn-native-auth-admin-host-list octets t 1048576))
           (report (fnn-core 'fn-native-auth-admin-host-result-report listed)))
      (unless (and (eq (fnn-core
                        'fn-native-auth-admin-host-result-status listed)

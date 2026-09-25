@@ -870,8 +870,8 @@ squeamish.
   `control.<verb>` if the operator configured that group, refused
   `:control-not-filed` otherwise, never stored in the groups they name, and
   executed never (implemented by packet C1, peering §8 "Filing"; a signed
-  control article is refused `:control-signed` until its Store binding can
-  name the filing group).
+  control article is filed the same way, its Store binding naming the
+  filing group).
 - **Unsigned control is a remote root shell.** Anything that reaches the feed
   can forge a `From` and a `Control` field. This is not hypothetical; it is why
   pgpverify exists at all. fn's answer is not "sign the control message"; it is

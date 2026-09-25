@@ -12,6 +12,8 @@ import tempfile
 import time
 import unittest
 
+from tests.native_process import runtime_sbcl
+
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get(
     "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
@@ -123,13 +125,14 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         # fnn-owner-serve-client, fnn-owner-handle-chunk and
         # fnn-owner-advance-clock against recording stubs, so the two 915
         # defects have a check that needs no image.
-        sbcl = shutil.which("sbcl")
-        if sbcl is None:
-            raise unittest.SkipTest("sbcl is not on PATH")
+        runtime = runtime_sbcl(IMAGE)
+        if runtime is None:
+            raise unittest.SkipTest("no SBCL runtime for the image and none on PATH")
+        sbcl, sbcl_env = runtime
         result = subprocess.run(
             [sbcl, "--noinform", "--script",
              "tests/native_owner_chunk_loop_raw.lisp"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            cwd=ROOT, env=sbcl_env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=180, check=False)
         self.assertEqual(result.returncode, 0,
                          result.stdout.decode("utf-8", "replace"))
@@ -141,13 +144,14 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         # fnn-owner-run-normalized, the control reply and the control stop
         # against recording stubs; the stop itself runs for real in forked
         # children.  Campaign dabebb84 findings F1 and F3 to F7.
-        sbcl = shutil.which("sbcl")
-        if sbcl is None:
-            raise unittest.SkipTest("sbcl is not on PATH")
+        runtime = runtime_sbcl(IMAGE)
+        if runtime is None:
+            raise unittest.SkipTest("no SBCL runtime for the image and none on PATH")
+        sbcl, sbcl_env = runtime
         result = subprocess.run(
             [sbcl, "--noinform", "--script",
              "tests/native_developer_selectors_raw.lisp"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            cwd=ROOT, env=sbcl_env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=300, check=False)
         output = result.stdout.decode("utf-8", "replace")
         self.assertEqual(result.returncode, 0, output)

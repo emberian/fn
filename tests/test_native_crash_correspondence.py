@@ -96,8 +96,15 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
         ])
 
     def test_native_observation_wrapper_calls_composed_subject(self):
+        # The host calls the concrete-record twin; the composed subject is
+        # fn-sn-io through the equality books/records-concrete proves.
         body = function_body(self.bridge, "fn-store-sn-io")
-        self.assertIn("(fn-sn-io ", body)
+        self.assertIn("(fn-rcon-sn-io ", body)
+        concrete = (ROOT / "books" / "records-concrete.lisp").read_text()
+        start = concrete.index("(defthm fn-rcon-sn-io-is-sn-io")
+        self.assertIn(
+            "(equal (fn-rcon-sn-io s operation result) (fn-sn-io s operation result))",
+            concrete[start:concrete.index(":hints", start)])
 
     def test_allocator_observations_and_cuts_follow_syscalls(self):
         body = function_body(self.io, "fnn-advance-frontier")
