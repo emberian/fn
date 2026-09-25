@@ -162,6 +162,45 @@ input the core's string entries read in place, with no list in between."
   (map '(simple-array character (*)) #'code-char octets))
 
 ;;; ---------------------------------------------------------------------------
+;;; The octet buffer (books/octets-stobj.lisp, D27 boundary 6).  `fn-octets'
+;;; is an abstract stobj whose logical value is an octet list and whose
+;;; executable is a resizable byte array with a fill count; the live object
+;;; is the state's user-stobj-alist entry, a two-slot vector (the array, the
+;;; count).  `fnn-octets-fill' is the host boundary of that book: one
+;;; `replace' of a byte vector into the array, then the count, so the core
+;;; reads the bytes in place and no list is built.  It stands at the same
+;;; trust as `fnn-octet-list' handing a list to the core (A-HOST): the host
+;;; asserts the buffer's logical value is the list of the bytes it wrote,
+;;; and nothing else reaches the array.  One buffer, one owner thread: the
+;;; served attempt fills it and reads it under the service mutex
+;;; (host/native/owner.lisp fnn-owner-attempt).
+
+(defvar *fnn-octets* nil)
+
+(defun fnn-live-octets ()
+  (or *fnn-octets*
+      (setq *fnn-octets*
+            (or (cdr (assoc 'fn-octets (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the octet buffer stobj is not in this image")))))
+
+(defun fnn-octets-fill (vector)
+  "Make VECTOR's bytes the buffer's contents; return the live stobj."
+  (let* ((st (fnn-live-octets)) (n (length vector)))
+    (fn-octets$c-reserve n st)
+    (replace (the fnn-octets (svref st 0)) vector)
+    (setf (svref st 1) n)
+    st))
+
+(defun fnn-core-buffer-state (name &rest args)
+  "A `state`-returning wrapper over the buffer, (mv erp value state) with the
+live buffer passed before state: its value."
+  (destructuring-bind (erp val &rest ignored)
+      (apply #'fnn-call name (append args (list (fnn-live-octets) *the-live-state*)))
+    (declare (ignore ignored))
+    (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
+    val))
+
+;;; ---------------------------------------------------------------------------
 ;;; POSIX.  Every syscall failure becomes fnn-os-error with its errno; the
 ;;; callers classify exactly as tools/run_store.py classifies OSError.
 

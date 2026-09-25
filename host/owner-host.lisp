@@ -542,6 +542,57 @@
         (value :refused)
       (value :fault))))
 
+; fn-owner-prepare with the payload in the octet buffer (books/octets-stobj.lisp;
+; host/native/owner.lisp fnn-owner-attempt).  Three things differ from the
+; list entry above, each by a theorem of books/poster-bytes-buffer.lisp:
+; the fn-octet-listp test is discharged by the buffer's recognizer
+; (fn-pbb-buffer-is-octet-listp); the length is the fill count
+; (fn-octets-len); the existing-article test reads the buffer by index
+; (fn-pbb-existing-action-is-pb-existing-action).  The record's payload is
+; the buffer's list (fn-octets-list), consed once here: it is the store
+; record's own field, held for the record's life, until wave C gives the
+; owner state a concrete representation.  Everything after the record is
+; the same prepare (fn-pcar-sbud-prepare) on the same record.
+(defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
+                                 subject-octets evidence-octets charge
+                                 fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
+    (if (or (not (fn-store-msgid-octetsp msgid-octets))
+            (> (fn-octets-len fn-octets) *fn-record-max-payload*)
+            (equal groups :bad) (null groups)
+            (not (fn-store-text-octetsp id-octets))
+            (not (fn-store-text-octetsp subject-octets))
+            (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
+        (value :invalid)
+      (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
+          (value :refused)
+      (let* ((msgid (fn-store-octets->string msgid-octets))
+             (existing (fn-pbb-existing-action msgid fn-octets groups s)))
+        (if existing
+            (value existing)
+          (let* ((record (fn-sn-article-record
+                          s (fn-own-clock (fn-owner-core state))
+                          msgid (fn-octets-list fn-octets) groups
+                          (fn-store-octets->string id-octets)
+                          (fn-store-octets->string subject-octets)
+                          (fn-store-octets->string evidence-octets)
+                          charge))
+                 (budget (fn-sbud-budget (fn-owner-store-profile state) :article))
+                 (before (fn-owner-ocfg state))
+                 (state (if (equal record :clock-unusable)
+                            state
+                          (fn-owner-install-ocfg
+                           (fn-pcar-sbud-prepare before record budget)
+                           state))))
+            (if (equal record :clock-unusable)
+                (value :clock-unusable)
+              (if (equal (fn-owner-store state) s)
+                (value (fn-sbud-refusal-kind before budget))
+              (value :prepared))))))))))
+
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge state)
   (declare (xargs :stobjs state :mode :program))
@@ -1540,6 +1591,28 @@
         (value :absent)
       (let ((action (fn-pb-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
+                     (fn-owner-store state))))
+        (value (if action action :absent))))))
+
+; The same question with the submitted payload in the octet buffer
+; (books/octets-stobj.lisp): host/native/owner.lisp fnn-owner-attempt fills
+; the buffer once from the byte vector the owner handed back and asks this
+; and fn-owner-prepare-buffer over it, so the payload is not consed into a
+; list for either.  The decision is fn-pbb-existing-action
+; (books/poster-bytes-buffer.lisp), equal to fn-pb-existing-action on the
+; buffer's logical value (fn-pbb-existing-action-is-pb-existing-action);
+; the list entry's fn-octet-listp test is the buffer's recognizer
+; (fn-pbb-buffer-is-octet-listp).
+(defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let ((groups (fn-store-groups-from-codes
+                 group-codes
+                 (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
+    (if (or (not (fn-store-msgid-octetsp msgid-octets))
+            (equal groups :bad) (null groups))
+        (value :absent)
+      (let ((action (fn-pbb-existing-action
+                     (fn-store-octets->string msgid-octets) fn-octets groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
 
