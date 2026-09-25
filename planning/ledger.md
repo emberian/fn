@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 856 |
-| Certification roots in the Makefile | 840 |
-| Books inside the root closure | 852 |
-| `defthm` and `defthmd` events | 11660 |
-| `defun` events | 8172 |
+| Books read | 858 |
+| Certification roots in the Makefile | 842 |
+| Books inside the root closure | 854 |
+| `defthm` and `defthmd` events | 11701 |
+| `defun` events | 8188 |
 | Functions with verified guards | 2162 |
-| Functions declared `:verify-guards nil` and never verified | 610 |
-| Functions left at the default with an explicit guard | 4212 |
+| Functions declared `:verify-guards nil` and never verified | 611 |
+| Functions left at the default with an explicit guard | 4227 |
 | Functions left at the default with no guard | 1188 |
-| `assert-event` checks | 12470 |
+| `assert-event` checks | 12494 |
 | `must-fail` checks | 1273 |
 | `encapsulate` events | 51 |
-| Theorems flagged SUSPECT by shape | 101 |
-| Export-hygiene warnings | 142 |
+| Theorems flagged SUSPECT by shape | 102 |
+| Export-hygiene warnings | 143 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 103 |
 | Include-hygiene warnings | 859 |
-| Host-names warnings | 917 |
+| Host-names warnings | 918 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -495,6 +495,7 @@ that `make certify` requests.
 | `books/served-carried.lisp` | root | 17 | 12 | 1/0/11/0 | 0 | 0 | 0 |
 | `books/served-tls-prefix.lisp` | root | 12 | 7 | 1/0/6/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 109 | 51 | 2/4/45/0 | 0 | 0 | 0 |
+| `books/sha256-buffer.lisp` | root | 40 | 9 | 0/0/9/0 | 0 | 0 | 1 |
 | `books/sha256-stobj.lisp` | closure | 153 | 40 | 0/0/26/14 | 0 | 0 | 1 |
 | `books/sha256.lisp` | root | 26 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/source-projection-bridge.lisp` | root | 23 | 3 | 0/1/1/1 | 0 | 0 | 0 |
@@ -868,6 +869,7 @@ that `make certify` requests.
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 116 | 0 | 0 |
 | `tests/acl2/served-tls-prefix-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 9 | 1 | 0 |
+| `tests/acl2/sha256-buffer-tests.lisp` | root | 1 | 7 | 0/1/6/0 | 24 | 0 | 0 |
 | `tests/acl2/sha256-stobj-tests.lisp` | - | 3 | 0 | 0/0/0/0 | 26 | 1 | 0 |
 | `tests/acl2/sha256-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 21 | 0 | 0 |
 | `tests/acl2/source-projection-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 5 | 3 | 0 |
@@ -1031,6 +1033,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 327 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
 | `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 411 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
 | `fn-sf-stable-records-outside-the-window` | `books/store-files-invariants.lisp` | 91 | branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value |
+| `fn-shb-digest-list-is-digest` | `books/sha256-buffer.lisp` | 434 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-shs-revx-of-atom` | `books/sha256-stobj.lisp` | 1038 | branch-of-definition: the hypothesis negates a branch test of fn-sha256-revx and the conclusion is that branch's value |
 | `fn-sn-article-record-without-a-usable-clock-is-refused` | `books/store-node.lisp` | 1024 | branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value |
 | `fn-sn-composite-delta-of-typed-article` | `books/store-node-invariants.lisp` | 1446 | branch-of-definition: the hypothesis is a branch test of fn-sn-composite-delta and the conclusion is that branch's value |
