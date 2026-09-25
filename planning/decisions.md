@@ -956,7 +956,7 @@ converging afterwards. This changed sequencing, not the required end state or
 the standard for an assurance claim: intermediate failures are recorded,
 never silently removed or replaced with a claim about an easier API. The wave's
 targets are in the archived [capability wave](archive/capability-wave-2026-09-24.md);
-its convergence obligations now live in [how we work](how-we-work.md#convergence-obligations).
+its convergence obligations now live in [how we work](how-we-work.md#the-loop).
 
 ### 2026-09-24: bounded implementers hand proof work to the proof owner
 
@@ -966,7 +966,7 @@ against an explicit contract and ran prescribed checks, and handed a failed
 certification's exact source, failed event and log to Sol rather than
 searching for proofs themselves. The trial record is
 [luna-feature-trial-2026-09-24](experiments/luna-feature-trial-2026-09-24.md).
-The rule is kept model-neutrally in [how we work](how-we-work.md#who-implements-and-who-proves).
+The rule is kept model-neutrally in [how we work](how-we-work.md#width-and-who-proves).
 
 ### 2026-09-24: wind-down and consolidation (06:23 UTC)
 
