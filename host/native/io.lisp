@@ -1712,16 +1712,14 @@ after recording why not in open-mode (the caller then replays in full)."
       (:checkpoint (format nil "open=checkpoint:~d suffix=~d" (second mode) (third mode)))
       (t (format nil "open=full-replay reason=~(~a~)" (second mode))))))
 
-(defun fnn-state-checkpoint-file-report (store)
-  "The newest published checkpoint file: its size and modification time.  The
-open above says whether it served (open=checkpoint:S) and why not otherwise.
-While an owner runs it is the only publisher (the verb needs the store lock),
-so after a run this is the owner's last automatic publication."
+(defun fnn-state-checkpoint-file-observation (store)
+  "The newest published checkpoint file's lstat, (OCTETS MODIFIED), or NIL
+when there is none.  The status report (books/native-live-status.lisp
+`fn-nls-checkpoint-file-words') renders it."
   (handler-case
       (let ((st (sb-posix:lstat (fnn-state-checkpoint-path store))))
-        (format nil "checkpoint-file octets=~d modified=~d"
-                (sb-posix:stat-size st) (sb-posix:stat-mtime st)))
-    (sb-posix:syscall-error () "checkpoint-file=absent")))
+        (list (sb-posix:stat-size st) (max 0 (sb-posix:stat-mtime st))))
+    (sb-posix:syscall-error () nil)))
 
 (defparameter +fnn-state-checkpoint-model-cuts+
   '("state-checkpoint-created" "state-checkpoint-written"
@@ -2524,7 +2522,8 @@ retention ledger's reserved charge of its capacity."
 the staging orphans, whether their listing stopped at its bound, and how
 the Store was opened (checkpoint or full replay, and why)."
   (list (fnn-store-orphans store) (fnn-store-orphans-more store)
-        (fnn-store-open-mode store)))
+        (fnn-store-open-mode store)
+        (fnn-state-checkpoint-file-observation store)))
 
 (defun fnn-write-report (report)
   "Write the octets of one ACL2 status report; render nothing."

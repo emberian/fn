@@ -15,16 +15,22 @@
 ;   fn-nls-live-report-is-the-offline-report   the owner's words are the
 ;       offline words of the same state (carried octet sum valid, no open
 ;       connection);
-;   fn-nls-client-step-of-owner-reply          every page the owner answers
-;       extends the client's prefix of the one report, to the whole report.
+;   fn-nls-client-step-of-owner-reply          every page of a report
+;       extends the client's prefix of the one report, to the whole report;
+;   fn-nls-client-step-of-owner-page           the same of the page the
+;       owner answers from the report it rendered once per request
+;       (`fn-nls-page-of-buffer-is-reply', the string twin).
 ;
 ; Answering changes no state: the owner's entry (host/native-live-status-
-; host.lisp `fn-native-live-status-host-reply') takes `state' and returns a
-; single value, so ACL2 admits no update of it, and unlike
+; host.lisp `fn-native-live-status-host-answer') takes `state' and returns a
+; single value (the page and the rendered buffers, which the host carries),
+; so ACL2 admits no update of it, and unlike
 ; `fn-owner-headroom' it extends the carried octet sum without storing it.
 ;
-; Representation (D27): the report and both frames are octet lists, like the
-; rest of the FNCT control codec; the concrete twin is open.
+; Representation (D27): the owner pages from a string buffer rendered once
+; per request (`fn-nls-page', proved equal to the octet-list page).  The
+; renderer and both frames are still octet lists, like the rest of the FNCT
+; control codec; their twin is open.
 ;
 ; This book owns the prefix `fn-nls-' (docs/prefixes.md).
 
@@ -41,16 +47,26 @@
   (declare (xargs :guard t))
   (fn-record-string-octets text))
 
+; Every natural in decimal.  `fn-nntp-decimal-field' is the NNTP response
+; renderer, which answers 0 past ten digits (RFC 3977 section 6 bounds what
+; it renders); a status value is the operator's and has no such bound: a
+; max-history-octets of 2^40 is thirteen digits (PKT-156).
 (defun fn-nls-nat (n)
   (declare (xargs :guard t))
-  (fn-nntp-decimal-field (nfix n)))
+  (let ((digits (fn-nntp-decimal (nfix n))))
+    (if (consp digits) digits '(48))))
+
+(defun fn-nls-value (v)
+  "A reported value: a word (the profile's `history-marker') or a natural."
+  (declare (xargs :guard t))
+  (if (stringp v) (fn-nls-text v) (fn-nls-nat v)))
 
 (defconst *fn-nls-lf* '(10))
 
 (defun fn-nls-field (name n)
   "` NAME=N'."
   (declare (xargs :guard t))
-  (append (fn-nls-text " ") (fn-nls-text name) (fn-nls-text "=") (fn-nls-nat n)))
+  (append (fn-nls-text " ") (fn-nls-text name) (fn-nls-text "=") (fn-nls-value n)))
 
 (defun fn-nls-profile-words (report)
   "The `fn-bs-profile-report' pairs as ` NAME=VALUE' words, in its order."
@@ -62,6 +78,25 @@
               (fn-nls-profile-words (cdr report)))
     nil))
 
+; The pessimistic open cost of the profile, printed beside its values
+; (planning/design-2026-09-25-bounds.md sections 3.3 and 4; PKT-105).  The
+; worst open is a full replay: a checkpoint may be absent or refused, and
+; then every committed record is read, at most max-transactions of them.
+; Its memory is the record payloads as octet lists: two long-lived copies,
+; 16 octets of cons per payload octet on a 64-bit SBCL, so 32 per octet of
+; max-history-octets.  Both are what the profile admits, not what the Store
+; holds (`headroom' carries that) nor what an open measured.
+(defconst *fn-nls-open-list-octets-per-octet* 32)
+
+(defun fn-nls-open-cost-words (profile)
+  "`open-cost replay-records=T list-memory-octets=M', M = 32 H."
+  (declare (xargs :guard t))
+  (append (fn-nls-text "open-cost")
+          (fn-nls-field "replay-records" (fn-bs-profile-max-transactions profile))
+          (fn-nls-field "list-memory-octets"
+                        (* *fn-nls-open-list-octets-per-octet*
+                           (nfix (fn-bs-profile-max-history-octets profile))))))
+
 (defun fn-nls-names (names)
   (declare (xargs :guard t))
   (if (consp names)
@@ -70,15 +105,34 @@
               (fn-nls-names (cdr names)))
     nil))
 
-; OBS is the host's observation at its own open, carried unchanged:
-;   (ORPHANS MOREP MODE), ORPHANS the staging names the sweep found, MOREP
-;   whether it stopped at its bound, MODE (:checkpoint G S) or
-;   (:full-replay REASON).
+; OBS is the host's observation, carried unchanged:
+;   (ORPHANS MOREP MODE CHECKPOINT-FILE), ORPHANS the staging names the sweep
+;   found at its own open, MOREP whether it stopped at its bound, MODE
+;   (:checkpoint G S) or (:full-replay REASON), and CHECKPOINT-FILE the
+;   lstat of the newest published state checkpoint when the report is asked
+;   for: (OCTETS MODIFIED), or nil when there is none.
 (defun fn-nls-obs-orphans (obs) (declare (xargs :guard t)) (fn-ag-car obs))
 (defun fn-nls-obs-morep (obs) (declare (xargs :guard t)) (fn-ag-car (fn-ag-cdr obs)))
 (defun fn-nls-obs-mode (obs)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr obs))))
+
+(defun fn-nls-obs-checkpoint-file (obs)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr obs)))))
+
+(defun fn-nls-checkpoint-file-words (obs)
+  "`checkpoint-file octets=N modified=T', or `checkpoint-file=absent'.  While
+an owner runs it is the only publisher (the verb needs the Store lock), so
+after a run this is the owner's last automatic publication; the `open=' line
+says whether a checkpoint served this process's open."
+  (declare (xargs :guard t))
+  (let ((file (fn-nls-obs-checkpoint-file obs)))
+    (if (consp file)
+        (append (fn-nls-text "checkpoint-file")
+                (fn-nls-field "octets" (fn-ag-car file))
+                (fn-nls-field "modified" (fn-ag-car (fn-ag-cdr file))))
+      (fn-nls-text "checkpoint-file=absent"))))
 
 (defun fn-nls-orphan-words (obs)
   "`staging-orphans=N[+] [NAME ...]', or `staging-orphans=0'."
@@ -200,8 +254,10 @@ configuration pins (nil with no owner), OBS the host's open observation."
             (fn-nls-text " unsigned-legacy-experiment") *fn-nls-lf*
             (fn-nls-text "profile")
             (fn-nls-profile-words (fn-bs-profile-report profile)) *fn-nls-lf*
+            (fn-nls-open-cost-words profile) *fn-nls-lf*
             (fn-nls-headroom-words (fn-sbud-headroom-at profile s bytes)) *fn-nls-lf*
             (fn-nls-open-words obs) *fn-nls-lf*
+            (fn-nls-checkpoint-file-words obs) *fn-nls-lf*
             (fn-nls-pins-line s pins)))))
 
 (defun fn-nls-offline-report (kind profile s cfg obs)
@@ -222,7 +278,7 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 
 ; KEYSTONE (the live words are the offline words).  The subject is
 ; `fn-nls-live-report', which the owner's control handler reaches through
-; host/native-live-status-host.lisp `fn-native-live-status-host-reply'
+; host/native-live-status-host.lisp `fn-native-live-status-host-answer'
 ; (host/native/control.lisp `fnn-control-handle-client'), and
 ; `fn-nls-offline-report', which `fn-native-live-status-host-offline' calls
 ; (host/native/io.lisp `fnn-command-live-report').  With the carried octet
@@ -393,6 +449,56 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
                            (take (fn-nls-page-width report offset)
                                  (nthcdr offset report)))
     (fn-nls-reply-encode :refused 0 nil nil)))
+
+; The concrete twin of the owner's pages (D27, PKT-145).  The owner renders
+; a report once per request and keeps it as a string with its frame digest
+; (`fn-nls-buffer'); each page of that request is a substring of the buffer
+; (`fn-nls-page'), so a page costs its chunk, not a render and a SHA-256 of
+; the whole report.  `fn-nls-page-of-buffer-is-reply' equates it to the
+; octet-list page `fn-nls-reply', whatever the report.  The renderer itself
+; still builds octet lists; its twin is open.
+(defun fn-nls-buffer (report)
+  "(TEXT . DIGEST): REPORT as one string and the frame trailer over it, or
+:bad for a report that is not octets."
+  (declare (xargs :guard t :verify-guards nil))
+  (if (fn-cbor-octet-listp report)
+      (cons (fn-record-octets-string report) (fn-frame-trailer report))
+    :bad))
+
+(defun fn-nls-page (buffer offset)
+  "The owner's page of the buffered report from OFFSET."
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (consp buffer)
+           (stringp (car buffer))
+           (fn-record-uint32p (length (car buffer)))
+           (natp offset)
+           (<= offset (length (car buffer))))
+      (let ((text (car buffer)))
+        (fn-nls-reply-encode
+         :accepted (length text) (cdr buffer)
+         (fn-record-string-octets
+          (subseq text offset
+                  (+ offset (min *fn-nls-chunk-octets* (- (length text) offset)))))))
+    (fn-nls-reply-encode :refused 0 nil nil)))
+
+(defun fn-nls-cached-buffer (kind offset cached)
+  "The buffer an earlier page of this request rendered, or nil (render anew).
+CACHED is the owner's (KIND . BUFFER) list; a request from offset 0 always
+renders, so a new report starts from the state the owner holds then."
+  (declare (xargs :guard t))
+  (cond ((not (posp offset)) nil)
+        ((atom cached) nil)
+        ((and (consp (car cached)) (equal (car (car cached)) kind))
+         (cdr (car cached)))
+        (t (fn-nls-cached-buffer kind offset (cdr cached)))))
+
+(defun fn-nls-cache-put (kind buffer cached)
+  "CACHED with KIND's buffer replaced: at most one buffer per report kind."
+  (declare (xargs :guard t))
+  (cond ((atom cached) (list (cons kind buffer)))
+        ((and (consp (car cached)) (equal (car (car cached)) kind))
+         (cons (cons kind buffer) (cdr cached)))
+        (t (cons (car cached) (fn-nls-cache-put kind buffer (cdr cached))))))
 
 (defun fn-nls-client-step (acc total digest reply)
   "The client's word on one page, with ACC the report octets so far and
@@ -639,8 +745,9 @@ to ask from (len ACC), (:restart) when the report changed under the pages,
 (local
  (defthm fn-nls-take-0 (equal (take 0 r) nil)))
 ; KEYSTONE (the pages join to the report).  The subjects are
-; `fn-nls-reply', which the owner answers with
-; (host/native-live-status-host.lisp `fn-native-live-status-host-reply'), and
+; `fn-nls-reply', which the owner's buffered page equals
+; (`fn-nls-page-of-buffer-is-reply'; host/native-live-status-host.lisp
+; `fn-native-live-status-host-answer'), and
 ; `fn-nls-client-step', which the client folds every page through
 ; (host/native/control.lisp `fnn-control-live-status').  When the client
 ; holds a prefix ACC of an octet REPORT (and, past the first page, the
@@ -664,3 +771,87 @@ to ask from (len ACC), (:restart) when the report changed under the pages,
            :in-theory (e/d (fn-nls-client-step fn-nls-page-width fn-record-uint32p)
                            (fn-nls-reply fn-nls-reply-encode fn-nls-reply-decode fn-frame-trailer
                             take nthcdr fn-cbor-encode fn-record-item-encode))))))
+
+; -----------------------------------------------------------------------------
+; The buffered page (D27 twin, PKT-145), proved
+
+(encapsulate ()
+(local
+ (defthm fn-nls-chars-len
+   (equal (len (fn-record-octets-chars r)) (len r))))
+(local
+ (defthm fn-nls-chars-are-characters
+   (character-listp (fn-record-octets-chars r))))
+(local
+ (defthm fn-nls-take-of-chars
+   (implies (<= (nfix k) (len r))
+            (equal (take k (fn-record-octets-chars r))
+                   (fn-record-octets-chars (take k r))))
+   :hints (("Goal" :induct (nthcdr k r) :in-theory (enable take nthcdr)))))
+(local
+ (defthm fn-nls-nthcdr-of-chars
+   (equal (nthcdr k (fn-record-octets-chars r))
+          (fn-record-octets-chars (nthcdr k r)))
+   :hints (("Goal" :in-theory (enable nthcdr)))))
+(local
+ (defthm fn-nls-len-nthcdr
+   (equal (len (nthcdr k r)) (nfix (- (len r) (nfix k))))
+   :hints (("Goal" :induct (nthcdr k r) :in-theory (enable nthcdr)))))
+(local
+ (defthm fn-nls-plus-cancel
+   (equal (+ x (+ (- x) y)) (fix y))))
+(local
+ (defthm fn-nls-octets-of-chars
+   (implies (fn-cbor-octet-listp r)
+            (equal (fn-record-string-octets-aux (fn-record-octets-chars r)) r))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp)))))
+(local
+ (defthm fn-nls-octets-of-take-nthcdr-b
+   (implies (and (fn-cbor-octet-listp r) (natp off) (natp k) (<= (+ off k) (len r)))
+            (fn-cbor-octet-listp (take k (nthcdr off r))))
+   :hints (("Goal" :induct (nthcdr off r) :in-theory (enable take nthcdr)))))
+; The owner's buffered page is the octet-list page of the same report, for
+; every report and offset.  The subject is `fn-nls-page' over
+; `fn-nls-buffer', which the owner answers with
+; (host/native-live-status-host.lisp `fn-native-live-status-host-answer',
+; called by host/native/control.lisp `fnn-control-live-status-answer').
+(defthm fn-nls-page-of-buffer-is-reply
+  (equal (fn-nls-page (fn-nls-buffer report) off)
+         (fn-nls-reply report off))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nls-page fn-nls-buffer fn-nls-reply fn-nls-page-width
+                            fn-record-octets-string fn-record-string-octets
+                            subseq subseq-list)
+                           (fn-nls-reply-encode fn-frame-trailer take nthcdr
+                            fn-record-octets-chars fn-record-string-octets-aux))))))
+
+; KEYSTONE (the pages the owner answers from its buffer join to the report).
+; `fn-nls-client-step-of-owner-reply' restated over the function the owner
+; calls: the client's step on the buffered page from (len ACC) is its step
+; on `fn-nls-reply', which that keystone decides.
+(defthm fn-nls-client-step-of-owner-page
+  (implies (and (fn-cbor-octet-listp report)
+                (fn-record-uint32p (len report))
+                (<= (len acc) (len report))
+                (equal acc (take (len acc) report))
+                (or (not (consp acc))
+                    (and (equal total (len report))
+                         (equal digest (fn-frame-trailer report)))))
+           (equal (fn-nls-client-step acc total digest
+                                      (fn-nls-page (fn-nls-buffer report) (len acc)))
+                  (if (<= (len report) (+ (len acc) *fn-nls-chunk-octets*))
+                      (list :done report)
+                    (list :next (take (+ (len acc) *fn-nls-chunk-octets*) report)
+                          (len report) (fn-frame-trailer report)))))
+  :hints (("Goal" :use (fn-nls-client-step-of-owner-reply
+                        (:instance fn-nls-page-of-buffer-is-reply (off (len acc))))
+           :in-theory nil)))
+
+; Every later page of one request reads the buffer its first page rendered:
+; a request from offset 0 renders and stores it, and a positive offset of
+; the same kind finds it.  (`fn-nls-cached-buffer' is the owner's choice
+; between the stored buffer and a fresh render.)
+(defthm fn-nls-cached-buffer-of-put
+  (implies (posp off)
+           (equal (fn-nls-cached-buffer kind off (fn-nls-cache-put kind buffer cached))
+                  buffer)))

@@ -250,7 +250,8 @@
                      (fnn-fault "transaction namespace exceeds ACL2 observation bound"))
                    names)
                  (symbol-function 'fnn-bridge-transaction-observation)
-                 (lambda (observed limit)
+                 (lambda (observed limit &optional (selected-lower 0))
+                   (declare (ignore selected-lower))
                    (unless (and (= (length observed) (length names))
                                 (>= limit (length observed)))
                      (fnn-fault "transaction observation lost its ACL2 bound"))
@@ -266,20 +267,33 @@
         (setf (symbol-function (car pair)) (cdr pair))))))
 
 (defun nio-transaction-enumeration-bound-is-exact ()
-  (flet ((name (n) (format nil "~20,'0d.txn" n))
-         (store () (%make-fnn-store :root "/native-io-test"
-                                     :config (list nil 0 0 0 3))))
-    (nio-with-transaction-scan-stubs
-     (loop for n below 3 collect (name n))
-     (lambda ()
-       (nio-check (equal (mapcar #'car (fnn-transaction-files (store))) '(0 1 2))
-                  "transaction enumeration changed accepted bound behavior")))
-    (nio-with-transaction-scan-stubs
-     (loop for n below 4 collect (name n))
-     (lambda ()
-       (nio-check (nio-expects 'fnn-store-fault
-                               (lambda () (fnn-transaction-files (store))))
-                  "transaction enumeration did not reject the first excess entry")))))
+  ;; The bound is the profile's max-transactions, which ACL2 reads from the
+  ;; persisted values (fn-store-profile-max-transactions).  This raw test
+  ;; loads no ACL2, so the one wrapper the enumeration asks answers T = 3
+  ;; here; the host's own fnn-profile-nat check and readdir bound still run.
+  (let ((saved (symbol-function 'fnn-core))
+        (profile (list :profile-with-max-transactions 3)))
+    (unwind-protect
+         (flet ((name (n) (format nil "~20,'0d.txn" n))
+                (store () (%make-fnn-store :root "/native-io-test" :config profile)))
+           (setf (symbol-function 'fnn-core)
+                 (lambda (wrapper &rest args)
+                   (unless (and (eq wrapper 'fn-store-profile-max-transactions)
+                                (equal args (list profile)))
+                     (error "unexpected ACL2 call ~a" wrapper))
+                   3))
+           (nio-with-transaction-scan-stubs
+            (loop for n below 3 collect (name n))
+            (lambda ()
+              (nio-check (equal (mapcar #'car (fnn-transaction-files (store))) '(0 1 2))
+                         "transaction enumeration changed accepted bound behavior")))
+           (nio-with-transaction-scan-stubs
+            (loop for n below 4 collect (name n))
+            (lambda ()
+              (nio-check (nio-expects 'fnn-store-fault
+                                      (lambda () (fnn-transaction-files (store))))
+                         "transaction enumeration did not reject the first excess entry"))))
+      (setf (symbol-function 'fnn-core) saved))))
 
 (defun nio-bounded-directory-actual-boundary ()
   "Exercise readdir(3), not a substituted name list, at the BP evidence bound."
@@ -665,7 +679,8 @@
                    (declare (ignore limit))
                    (fnn-octets (if (search "00000001.cfg" path) '(1) '(2))))
                  (symbol-function 'fnn-bridge-config-observation)
-                 (lambda (observed)
+                 (lambda (observed &optional initializing)
+                   (declare (ignore initializing))
                    (nio-check (= (length observed) (length names))
                               "config observer lost an observed entry")
                    ;; The raw code must consume this ACL2-issued ordering,
