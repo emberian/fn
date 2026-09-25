@@ -24,6 +24,8 @@
 ; group-name rules, the plan, its deltas and the publication decision.
 (include-book "native-admin-shape")
 (include-book "native-admin-peer")
+; `bp-route add|remove', the BP route table (books/bp-route.lisp).
+(include-book "bp-route")
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is
@@ -172,6 +174,8 @@
          (t (fn-native-admin-peer-plan words))))
        ((and (consp words) (equal (car words) "bp-boundary"))
         (fn-native-admin-bp-boundary-plan words))
+       ((and (consp words) (equal (car words) "bp-route"))
+        (fn-bprt-admin-plan words))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
 
 ; The delta list the LIVE owner stages for an accepted plan.
@@ -198,7 +202,7 @@
           (name (fn-record-octets-string (fn-native-admin-result-name plan))))
       (cond ((equal kind :set-peer)
              (list (fn-native-admin-set-peer-delta plan)))
-            ((equal kind :set-bp-boundary)
+            ((member-equal kind '(:set-bp-boundary :set-bp-route))
              (list (fn-cfg-set-peer name
                                     (fn-native-admin-result-value plan))))
             ((equal kind :remove-peer)
@@ -237,6 +241,8 @@
                                    fn-native-admin-bp-boundary-split
                                    fn-native-admin-bp-boundary-rows))
            :use ((:instance fn-native-admin-peer-plan-kind
+                            (words (fn-native-admin-words argv)))
+                 (:instance fn-bprt-admin-plan-kind
                             (words (fn-native-admin-words argv)))))))
 )
 
@@ -304,6 +310,8 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
                                    fn-native-admin-decimal-value fn-native-admin-argvp
                                    fn-native-admin-words))
            :use ((:instance fn-native-admin-peer-plan-kind
+                            (words (fn-native-admin-words argv)))
+                 (:instance fn-bprt-admin-plan-kind
                             (words (fn-native-admin-words argv))))))))
 (local (defthm delta-rows-of-set-bp-boundary
   (implies (and (equal (fn-native-admin-result-status plan) :accepted)
