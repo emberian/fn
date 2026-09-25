@@ -375,6 +375,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-conflict-publication \
 	books/bp-node-machine-gaps \
 	books/bp-node-busy-delivery \
+	books/bp-node-receipt-send \
 	books/bp-fnbs-replay-append \
 	books/bp-node-rotation-codec \
 	books/bp-node-rotation \
@@ -387,6 +388,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-route \
 	books/bp-route-step \
 	tests/acl2/bp-route-tests \
+	tests/acl2/bp-node-receipt-send-tests \
 	books/bp-node-forward-resume \
 	tests/acl2/bp-node-forward-resume-tests \
 	books/bp-fnbs-dispatch-codec \
