@@ -134,6 +134,16 @@ heap census (`room`, or `sb-vm::instance-usage`) is taken on a loaded
 owner. That census is the first measurement the next memory lane should
 make.
 
+**Census and correction (rep-heap lane, `planning/evidence/rep-heap-2026-09-25.md`).**
+The census was taken. The 2 MiB per article RSS slope was SBCL's garbage
+headroom filling toward its 1,600 MiB collection trigger, not live data; the
+live slope is 6.1 KiB per 160-octet article and 260 KiB per 16 KiB article,
+and the payload is held once (records, archive, views and trie share the one
+list). Correction to the sizes above: an ACL2 string on SBCL is a
+`simple-character-string`, 4 octets per character (`(coerce ... 'string)`
+never makes a base string), so a payload as a string costs 4 L + 16 bytes,
+not L + 16; only a byte array (stobj) is L + 16.
+
 ## 4. The obligations, and the risk
 
 Every theorem stated over the list model stays true: no definition in

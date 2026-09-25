@@ -1761,10 +1761,22 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                     (fnn-owner-service-stopping service))
           (error condition))))))
 
+;;; Garbage between collections in the owner process.  SBCL's default
+;;; trigger is 5% of the dynamic space the launcher reserves (32,000 MB,
+;;; so 1,600 MiB): the heap census of 2026-09-25
+;;; (planning/evidence/rep-heap-2026-09-25.md) found that headroom to be the
+;;; largest term of the owner's resident set at every size measured, 1.4 to
+;;; 1.6 GiB of dead objects on top of a live heap of 0.25 to 0.52 GB.  This
+;;; bounds collection work and dead memory, not data: the live heap is the
+;;; store's and grows with it; only the garbage allowed to pile up between
+;;; two collections is capped.  It decides nothing ACL2 decides.
+(defparameter +fnn-owner-gc-nursery-octets+ (* 64 1024 1024))
+
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
                         connection-fault-operation)
   "Run one service from already-normalized boundary values."
+  (setf (sb-ext:bytes-consed-between-gcs) +fnn-owner-gc-nursery-octets+)
   (let ((service nil) (listener nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
