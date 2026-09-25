@@ -83,6 +83,25 @@ keystone book `books/bp-node-machine-gaps.lisp` times out at the local lemma
 TCPCL receive callback, and the N07 gate at :75-114 / :752) before any image
 carries the branch. Its LANEDUMP has the exact list.
 
+**Stopped mid-flight by the laptop's OOM crash (2026-09-25 ~03:05 UTC),
+each with its work committed in its worktree; resume by re-briefing from the
+worktree's commits and LANEDUMP (the coordinator's SendMessage ids died with
+the session):**
+
+| Lane (worktree under build/lanes/) | State at the crash |
+| --- | --- |
+| rep-sha256 (Fable): SHA-256 on a word stobj | 0 commits; REPL work only; restart from the brief in the merge message of planning/design-2026-09-25-representation.md §5 |
+| rep-records-2: records-concrete-2 and the trie | 2 commits ahead |
+| rep-heap: the heap census and the payload holder | 1 commit ahead, 2 files modified (uncommitted) |
+| bounds-p1-profile: the operator's profile (format 8) | 0 commits, 4 files modified (uncommitted) |
+| bounds-p2-ceilings: data constants become codec ceilings | 3 commits ahead |
+| bounds-p4-carrier: carrier v2 | 2 commits ahead; its persvati run (hybrid-* affected-by) was still certifying |
+| control-c1: file control articles, never execute | 5 commits ahead |
+
+Rule from the crash: no lane runs ACL2, an image, an owner or a heap census
+on the laptop; only on hbox (under `swarm-build` or a `systemd-run` memory
+cap) or persvati. The coordinator writes that into every brief.
+
 ## Where to read next
 
 - [Current view](current.md): per capability, the four evidence

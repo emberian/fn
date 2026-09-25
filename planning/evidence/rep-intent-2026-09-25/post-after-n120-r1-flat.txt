@@ -1,0 +1,56 @@
+
+Number of samples:   126
+Sample interval:     0.001 seconds
+Total sampling time: 0.126 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2398254 "fn-sprof" RUNNING {120F5805C3}> (784/1048576 bytes, 6 hash buckets)
+   #<THREAD tid=2398257 "fn owner client" RUNNING {120FB4D163}> (30224/1048576 bytes, 109 hash buckets)
+   #<THREAD tid=2398256 "fn local control accept" RUNNING {120FAAB433}> (136/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2398255 "fn outbound feed" RUNNING {120F9E3303}> (592/1048576 bytes, 4 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2      9   7.1      9   7.1      9   7.1        -  ASH
+   4      8   6.3      8   6.3     17  13.5        -  foreign function fsync
+   6      5   4.0     14  11.1     22  17.5        -  FN-SHA256-ROTR32
+   8      5   4.0     10   7.9     27  21.4        -  FN-RECORD-STRING-OCTETS-AUX
+  10      5   4.0      5   4.0     32  25.4        -  FN-SHA256-W32
+  12      4   3.2      4   3.2     36  28.6        -  foreign function __close
+  14      4   3.2      4   3.2     40  31.7        -  FN-RECORD-STRING-OCTETS
+  16      3   2.4      6   4.8     43  34.1        -  FN-SHA256-FIX-OCTETS
+  18      3   2.4      3   2.4     46  36.5        -  foreign function clock_nanosleep
+  20      3   2.4      3   2.4     49  38.9        -  FN-SHA256-NTHCDRX
+  22      3   2.4      3   2.4     52  41.3        -  foreign function __open64
+  24      2   1.6     15  11.9     54  42.9        -  FN-SHA256-ROUNDS
+  26      2   1.6      4   3.2     56  44.4        -  FN-CBOR-OCTET-LISTP
+  28      2   1.6      3   2.4     58  46.0        -  FN-RECORD-PAYLOADP
+  30      2   1.6      2   1.6     60  47.6        -  foreign function fstatat
+  32      2   1.6      2   1.6     62  49.2        -  SB-IMPL::PARSE-UNIX-NAMESTRING
+  34      2   1.6      2   1.6     64  50.8        -  FN-WIRE-STATE-BODY-LIMIT
+  36      2   1.6      2   1.6     66  52.4        -  foreign function rename
+  38      2   1.6      2   1.6     68  54.0        -  FN-INDEX-ENTRY
+  40      2   1.6      2   1.6     70  55.6        -  SB-KERNEL:VECTOR-TO-LIST
+  42      2   1.6      2   1.6     72  57.1        -  FN-CBOR-OCTETP
+  44      2   1.6      2   1.6     74  58.7        -  FN-SHA256-NTHX
+  46      2   1.6      2   1.6     76  60.3        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  48      2   1.6      2   1.6     78  61.9        -  SB-IMPL::LIST-REVERSE
+  50      2   1.6      2   1.6     80  63.5        -  FN-AG-CAR
+  52      1   0.8     56  44.4     81  64.3        -  FNN-OWNER-ACTION
+  54      1   0.8     12   9.5     82  65.1        -  FN-SHA256-SCHEDULE-AUX
+  56      1   0.8      6   4.8     83  65.9        -  FN-INDEX-BUILD
+  58      1   0.8      4   3.2     84  66.7        -  FN-SHA256-BSIG0
+  60      1   0.8      2   1.6     85  67.5        -  FN-ARTICLE-ASCII-DOWNCASE
+  62      1   0.8      2   1.6     86  68.3        -  FN-INJ-NTH
+  64      1   0.8      2   1.6     87  69.0        -  FN-ID-HEX-OCTETS
+  66      1   0.8      2   1.6     88  69.8        -  FN-RETAIN-OBLIGATION-IDS
+  68      1   0.8      2   1.6     89  70.6        -  FN-SHA256-FIRSTN
+  70      1   0.8      1   0.8     90  71.4        -  TRANSLATE-LOGICAL-PATHNAME
+  72      1   0.8      1   0.8     91  72.2        -  FN-NNTP-KEYWORDP
+  74      1   0.8      1   0.8     92  73.0        -  FN-SN-MAKE-V6
+  76      1   0.8      1   0.8     93  73.8        -  FN-RECORD-NONEMPTY-AT-MOSTP
+  78      1   0.8      1   0.8     94  74.6        -  (LAMBDA NIL :IN FNN-OWNER-SERVE-CLIENT)
+  80      1   0.8      1   0.8     95  75.4        -  FN-SF-MAKE
+------------------------------------------------------------------------
+          1   0.8                                     elsewhere

@@ -10,7 +10,7 @@
 (include-book "records-invariants")
 (include-book "injection")
 (include-book "native-config")
-(include-book "native-admin")
+(include-book "native-admin-shape")
 
 (defconst *fn-nctrl-magic* '(70 78 67 84)) ; FNCT
 (defconst *fn-nctrl-version* 1)
