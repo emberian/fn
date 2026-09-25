@@ -54,16 +54,14 @@
        (fn-bs-k0b-marker-fsync-outcomep bs stage octets outcome)))
 (defun bskb-b () (car (bskm-pair)))
 (defun bskb-k () (cdr (bskm-pair)))
-; Witnesses: the completing pair, every step, an :ok outcome and the error
-; outcomes the host sees (EIO from create, fsync and the root barrier; a
-; short write; an issued and an unissued failed rename).
+; Witnesses: the completing pair, every step, :ok and a plain EIO (one
+; outcome for all five steps; a short write or an issued rename is not an
+; outcome of the file barrier, and byte-store-k0-step-tests witnesses those
+; kinds at these same pairs).
 (assert-event (bskb-hyps (bskb-b) (bskb-k) *bskb-stage* (bskb-octets) :ok))
 (assert-event (bskb-concl (bskb-b) (bskb-k) *bskb-stage* (bskb-octets) :ok))
 (assert-event (bskb-hyps (bskb-b) (bskb-k) *bskb-stage* (bskb-octets) '(:eio . nil)))
 (assert-event (bskb-concl (bskb-b) (bskb-k) *bskb-stage* (bskb-octets) '(:eio . nil)))
-(assert-event (bskb-concl (bskb-b) (bskb-k) *bskb-stage* (bskb-octets) '(:eio . 3)))
-(assert-event (bskb-concl (bskb-b) (bskb-k) *bskb-stage* (bskb-octets) '(:eio . :issued)))
-(assert-event (bskb-concl (bskb-b) (bskb-k) *bskb-stage* (bskb-octets) '(:eio . :lost)))
 ; Teeth, one per hypothesis that has one.
 ; The relation: the initial byte image under the completing kernel.
 (must-fail (assert-event (bskb-concl (bsk5-initial) (bskb-k) *bskb-stage* (bskb-octets) :ok)))
