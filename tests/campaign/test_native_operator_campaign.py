@@ -164,23 +164,38 @@ class NativeOperatorCampaignTests(unittest.TestCase):
         self.assertEqual(orphans["recover"]["rc"], 0, orphans["recover"])
         self.assertEqual(orphans["opened"]["staging"], {})
         self.assertIn("ACCEPTED", orphans["post"]["stderr"])
-        # D25: one payload through the two entries is its own duplicate
-        # either way round (exit 0, no new transaction: the transactions,
-        # staging and frontier are byte-identical), and one changed authored
-        # byte under the same Message-ID is the conflict (exit 1, nothing
-        # written).
-        for order, second in (("store-then-operator", "operator"),
-                              ("operator-then-store", "store")):
-            retry = faults["cross-entry-retry-" + order]
-            self.assertEqual(retry["first"]["rc"], 0, retry["first"])
-            self.assertEqual(retry["second"]["rc"], 0, retry["second"])
-            if second == "operator":
-                self.assertIn("DUPLICATE", retry["second"]["stderr"])
+        # D25 with the injection inverse: one payload again through the same
+        # entry is its duplicate (exit 0, no new transaction: transactions,
+        # staging and frontier byte-identical).  Through the other entry it
+        # is the conflict (exit 1, nothing written): `store ROOT post` keeps
+        # the payload as read, with no injection block, so the owner cannot
+        # read a poster's source back from it and the two copies are
+        # compared octet for octet, never widened across injection profiles
+        # (books/poster-bytes.lisp fn-pb-same-articlep).  One changed
+        # authored byte under the same Message-ID through the first entry is
+        # the conflict too.
+        def conflict(entry, result):
+            self.assertEqual(result["rc"], 1, result)
+            if entry == "operator":
+                self.assertIn("REFUSED", result["stderr"])
             else:
-                self.assertEqual(retry["second"]["stdout"], "duplicate\n")
-            self.assertEqual(retry["after_second"], retry["after_first"])
-            self.assertEqual(retry["changed"]["rc"], 1, retry["changed"])
-            self.assertEqual(retry["after_changed"], retry["after_first"])
+                self.assertIn("conflicting immutable Message-ID", result["stderr"])
+
+        for order, first, second in (("store-then-operator", "store", "operator"),
+                                     ("operator-then-store", "operator", "store")):
+            with self.subTest(order=order):
+                retry = faults["cross-entry-retry-" + order]
+                self.assertEqual(retry["first"]["rc"], 0, retry["first"])
+                self.assertEqual(retry["again"]["rc"], 0, retry["again"])
+                if first == "operator":
+                    self.assertIn("DUPLICATE", retry["again"]["stderr"])
+                else:
+                    self.assertEqual(retry["again"]["stdout"], "duplicate\n")
+                self.assertEqual(retry["after_again"], retry["after_first"])
+                conflict(second, retry["second"])
+                self.assertEqual(retry["after_second"], retry["after_first"])
+                conflict(first, retry["changed"])
+                self.assertEqual(retry["after_changed"], retry["after_first"])
         refused = faults["prod-selectors-refused-at-start"]
         self.assertTrue(refused["unchanged"])
         self.assertEqual(len(refused["starts"]), len(native_cuts.developer_selectors()))

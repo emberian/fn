@@ -161,6 +161,21 @@ def article(msgid: str, subject: str, date: str, path: str | None = None,
     return ("\r\n".join(lines) + "\r\n").encode("ascii")
 
 
+def expected_injection(posted: bytes) -> dict:
+    """Which injection fields fn's copy of POSTED must carry (RFC 5537 3.5).
+
+    Path (items 8, 9) and Injection-Info (item 10, fn always adds it) are
+    always there.  Item 11: an Injection-Date the proto-article had stays; one
+    is added only when the proto-article lacked Date or Message-ID, since
+    with both it MUST NOT be added."""
+    had = {name: bool(header_value(posted, name))
+           for name in ("Date", "Message-ID", "Injection-Date")}
+    return {"Path": True,
+            "Injection-Date": had["Injection-Date"]
+            or not (had["Date"] and had["Message-ID"]),
+            "Injection-Info": True}
+
+
 # --------------------------------------------------------------------------
 # reading octets: what the tap saw, and what two copies of an article differ in
 
@@ -764,8 +779,9 @@ class InnLab(deploy_gate.DeployGate):
             "permits a relay to change it (Path, Xref)", ("",)),
         "operator-post-feeds-inn": (
             "an article submitted through `operator post` reaches innd through "
-            "fn's outbound feed, injected: Path naming fn, Injection-Date and "
-            "Injection-Info", ("",)),
+            "fn's outbound feed, injected: Path naming fn and Injection-Info, and "
+            "Injection-Date only when the submission lacked Date or Message-ID "
+            "(RFC 5537 3.5 item 11)", ("",)),
         "fn-post-from-invalid-441": (
             "a POST whose From names no address (`From: yue`) draws 441 from fn "
             "and is not served (RFC 5536 3.1.2)", ("",)),
@@ -1427,26 +1443,33 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
             "is {}".format(step.rc, step.output.strip().splitlines()[-1]
                            if step.output.strip() else "", self.reply_summary(found),
                            "`{}`".format(path_header) if path_header else "ABSENT")
-        injected = [name for name in ("Path", "Injection-Date", "Injection-Info")
-                    if fed and header_value(fed, name)]
+        want = expected_injection(payload)
+        present = {name: bool(fed and header_value(fed, name))
+                   for name in ("Path", "Injection-Date", "Injection-Info")}
         if fed:
             self.facts["operator post vs fed"] = "{}; the fed Path is {}".format(
                 describe_differences(header_differences(payload, fed)),
                 "`{}`".format(path_header) if path_header else "ABSENT")
+        self.facts["operator post injection"] = "expected {}; fed {}".format(
+            ", ".join("{}={}".format(k, "yes" if v else "no") for k, v in want.items()),
+            ", ".join("{}={}".format(k, "yes" if v else "no") for k, v in present.items()))
         ok = bool(found and found["offer"][:3] in ("335", "238")
                   and found["result"][:3] in ("235", "239")
-                  and len(injected) == 3
+                  and present == want
                   and FN_PATH_IDENTITY in path_header.split("!")[:-1])
         self.check("operator-post-feeds-inn", ok,
                    "`operator post` accepted {} (rc={}) and fn's feed offered it to innd, "
-                   "which answered {}. The octets fed carry {} Path header. `operator "
-                   "post` is a posting agent's submission, so fn is its injecting "
-                   "agent and must add Path, Injection-Date and Injection-Info as "
-                   "for a served POST (RFC 5537 3.5; RFC 5536 3.1.6 makes Path "
-                   "mandatory); books/owner.lisp fn-own-operator-submit is where "
-                   "fn does that.".format(
-                       msgid, step.rc, self.reply_summary(found),
-                       "a `{}`".format(path_header) if path_header else "NO"),
+                   "which answered {}. The octets fed carry {} Path header and {}, where "
+                   "{} was expected. `operator post` is a posting agent's submission, "
+                   "so fn is its injecting agent: it adds Path and Injection-Info "
+                   "(RFC 5537 3.5 items 8 to 10; RFC 5536 3.1.6 makes Path mandatory) "
+                   "and adds Injection-Date only when the submission lacks Date or "
+                   "Message-ID (3.5 item 11: MUST NOT when it had both). "
+                   "books/owner.lisp fn-own-operator-submit is where fn does that."
+                   .format(msgid, step.rc, self.reply_summary(found),
+                           "a `{}`".format(path_header) if path_header else "NO",
+                           self.facts["operator post injection"].split("; fed ")[1],
+                           ", ".join(k for k, v in want.items() if v)),
                    observed=self.reply_summary(found))
 
     def scenario_from_invalid(self):
