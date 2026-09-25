@@ -16,9 +16,24 @@
 (include-book "nntp-auth")
 (include-book "identity")
 
-(defconst *fn-native-auth-max-octets* 65536)
-(defconst *fn-native-auth-max-lines* 1024)
-(defconst *fn-native-auth-max-credentials* 128)
+; D27, PRF-102.  The number of credentials is the operator's: the store
+; profile's `max-credentials' (books/byte-store-frame.lisp field 12,
+; `fn-bs-profile-max-credentials'), which the host reads from the store and
+; passes as MAX-CREDENTIALS (pre-D27: 128).  The file's octet and line
+; bounds follow it.  The two constants below bound work per credential, not
+; data: one canonical table (`fn-native-auth-admin-serialize-cred') is six
+; lines and under 320 octets, and the per-credential figure leaves room for
+; the operator's comments; one extra unit covers the writer's header.
+(defconst *fn-native-auth-octets-per-credential* 512)
+(defconst *fn-native-auth-lines-per-credential* 8)
+
+(defun fn-native-auth-max-octets (max-credentials)
+  (declare (xargs :guard t))
+  (* *fn-native-auth-octets-per-credential* (+ 1 (nfix max-credentials))))
+
+(defun fn-native-auth-max-lines (max-credentials)
+  (declare (xargs :guard t))
+  (* *fn-native-auth-lines-per-credential* (+ 1 (nfix max-credentials))))
 
 (defun fn-native-auth-line-count (xs)
   ; Count conventional text lines: every LF ends one line, and nonempty bytes
@@ -168,14 +183,14 @@
           (fn-native-auth-name-memberp name (cdr creds)))
     nil))
 
-(defun fn-native-auth-parse-lines (lines name fields creds)
+(defun fn-native-auth-parse-lines (lines name fields creds max-credentials)
   (declare (xargs :guard t
                   :measure (acl2-count lines)))
   (if (consp lines)
       (let ((line (fn-ncfg-trim (car lines))))
         (cond
          ((or (null line) (equal (car line) 35))
-          (fn-native-auth-parse-lines (cdr lines) name fields creds))
+          (fn-native-auth-parse-lines (cdr lines) name fields creds max-credentials))
          ((equal (car line) 91)
           (let ((next-name (fn-native-auth-table-name line))
                 (done (fn-native-auth-finish name fields)))
@@ -189,10 +204,11 @@
                        (cond
                         ((fn-native-auth-name-memberp next-name next-creds)
                          (list :refused :duplicate-login))
-                        ((<= *fn-native-auth-max-credentials* (len next-creds))
+                        ((<= (nfix max-credentials) (len next-creds))
                          (list :refused :too-many-credentials))
                         (t (fn-native-auth-parse-lines
-                            (cdr lines) next-name nil next-creds))))))))
+                            (cdr lines) next-name nil next-creds
+                            max-credentials))))))))
          (t
           (let ((field (fn-native-auth-field line)))
             (cond ((equal field :bad) (list :refused :field))
@@ -200,7 +216,8 @@
                   ((fn-native-auth-assoc (fn-ncfg-first field) fields)
                    (list :refused :duplicate-field))
                   (t (fn-native-auth-parse-lines
-                      (cdr lines) name (cons field fields) creds)))))))
+                      (cdr lines) name (cons field fields) creds
+                      max-credentials)))))))
     (let ((done (fn-native-auth-finish name fields)))
       (cond ((equal (fn-ncfg-first done) :refused) done)
             ((equal (fn-ncfg-first done) :credential)
@@ -208,13 +225,14 @@
               ((fn-native-auth-name-memberp
                 (fn-auth-cred-name (fn-ncfg-second done)) creds)
                (list :refused :duplicate-login))
-              ((<= *fn-native-auth-max-credentials* (len creds))
+              ((<= (nfix max-credentials) (len creds))
                (list :refused :too-many-credentials))
               (t (list :accepted
                        (fn-ncfg-reverse (cons (fn-ncfg-second done) creds))))))
             (t (list :accepted (fn-ncfg-reverse creds)))))))
 
-(defun fn-native-auth-load (octets presentp requiredp protected-onlyp tls-availablep)
+(defun fn-native-auth-load (octets presentp requiredp protected-onlyp tls-availablep
+                                   max-credentials)
   ; The host-called semantic subject.  A missing file is the existing empty
   ; credential registry.  Protected-only without a real TLS facility refuses
   ; the profile before any connection can be opened.
@@ -226,13 +244,14 @@
                (fn-auth-make-config (and requiredp t) (and protected-onlyp t)
                                     (and tls-availablep t) nil)))
         ((or (not (fn-ncfg-ascii-octetsp octets))
-             (< *fn-native-auth-max-octets* (len octets)))
+             (< (fn-native-auth-max-octets max-credentials) (len octets)))
          (list :refused :bounds-or-encoding))
         (t (let ((lines (fn-ncfg-lines octets)))
-             (if (< *fn-native-auth-max-lines*
+             (if (< (fn-native-auth-max-lines max-credentials)
                     (fn-native-auth-line-count octets))
                  (list :refused :bounds-or-encoding)
-               (let ((parsed (fn-native-auth-parse-lines lines nil nil nil)))
+               (let ((parsed (fn-native-auth-parse-lines lines nil nil nil
+                                                         max-credentials)))
                  (if (not (equal (fn-ncfg-first parsed) :accepted)) parsed
                    (let ((config
                           (fn-auth-make-config
@@ -291,28 +310,36 @@
               (fn-native-auth-binding-lines (cdr lines) name acc))))))
     (fn-ncfg-reverse acc)))
 
-(defun fn-native-auth-load-bindings (octets presentp)
+(defun fn-native-auth-load-bindings (octets presentp max-credentials)
   ; The host-called subject for the binding table: nil unless the very
-  ; profile fn-native-auth-load accepts.
+  ; profile fn-native-auth-load accepts under the same MAX-CREDENTIALS (the
+  ; store profile's, D27 PRF-102), so a binding is never read from a file
+  ; the bounded load refuses.
   (declare (xargs :guard t))
   (if (and presentp
            (equal (fn-native-auth-result-status
-                   (fn-native-auth-load octets presentp nil nil nil))
+                   (fn-native-auth-load octets presentp nil nil nil
+                                        max-credentials))
                   :accepted))
       (fn-native-auth-binding-lines (fn-ncfg-lines octets) nil nil)
     nil))
 
 (defthm fn-native-auth-load-protected-without-tls-refuses
-  (equal (fn-native-auth-load octets presentp requiredp t nil)
+  (equal (fn-native-auth-load octets presentp requiredp t nil max-credentials)
          '(:refused :protected-transport-unavailable)))
 
 (defthm fn-native-auth-load-accepted-is-config
   (implies (equal (fn-native-auth-result-status
-                   (fn-native-auth-load octets presentp requiredp protected tls))
+                   (fn-native-auth-load octets presentp requiredp protected tls max-credentials))
                   :accepted)
            (fn-auth-configp
             (fn-native-auth-result-config
-             (fn-native-auth-load octets presentp requiredp protected tls)))))
+             (fn-native-auth-load octets presentp requiredp protected tls max-credentials))))
+  ; The loader checks fn-auth-configp before it accepts; the parser, the
+  ; line count and the octet bound are not needed (5.6 s -> 0.1 s).
+  :hints (("Goal" :in-theory (disable fn-native-auth-parse-lines fn-native-auth-max-octets
+                                      fn-native-auth-max-lines fn-native-auth-line-count
+                                      fn-ncfg-lines fn-ncfg-ascii-octetsp))))
 
 ; Local projection fact: when the parser accepts, its model result carries the
 ; caller's three normalized policy observations exactly.  Host installation
@@ -321,12 +348,73 @@
 (defthm fn-native-auth-load-accepted-pins-policy
   (implies
    (equal (fn-native-auth-result-status
-           (fn-native-auth-load octets presentp requiredp protected tls))
+           (fn-native-auth-load octets presentp requiredp protected tls max-credentials))
           :accepted)
    (let ((config
           (fn-native-auth-result-config
-           (fn-native-auth-load octets presentp requiredp protected tls))))
+           (fn-native-auth-load octets presentp requiredp protected tls max-credentials))))
      (and (equal (fn-auth-config-requiredp config) (and requiredp t))
           (equal (fn-auth-config-protected-onlyp config) (and protected t))
           (equal (fn-auth-config-tls-availablep config) (and tls t)))))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-native-auth-parse-lines fn-native-auth-max-octets
+                                      fn-native-auth-max-lines fn-native-auth-line-count
+                                      fn-ncfg-lines fn-ncfg-ascii-octetsp fn-auth-configp))))
+
+(local
+ (defthm fn-native-auth-len-of-reverse-aux
+   (equal (len (fn-ncfg-reverse-aux xs acc)) (+ (len xs) (len acc)))))
+
+; A refused finish carries its reason, a symbol, never a credential list.
+(local
+ (defthm fn-native-auth-finish-refusal-has-no-credentials
+   (implies (equal (car (fn-native-auth-finish name fields)) :refused)
+            (equal (len (cadr (fn-native-auth-finish name fields))) 0))
+   :hints (("Goal" :in-theory (e/d (fn-native-auth-finish)
+                                   (fn-native-auth-string-field fn-native-auth-bool-field
+                                    fn-native-auth-hex fn-native-auth-assoc
+                                    fn-auth-credp fn-auth-make-cred fn-authsec-verifier))))))
+
+; KEYSTONE (D27, PRF-102: the credential count is refused exactly past the
+; operator's bound).  The parser the host-called loader runs
+; (`fn-native-auth-load', host/native-auth-host.lisp
+; `fn-native-auth-host-load', called by host/native/auth.lisp
+; `fnn-native-auth-install' with the store profile's `max-credentials')
+; never accepts more than MAX-CREDENTIALS credentials, whatever lines it is
+; given.  (A refusal's second element is its reason, a symbol, so the
+; statement needs no acceptance hypothesis.)  (The loader
+; calls it with no credentials collected, so the hypothesis on CREDS holds
+; there for every bound, 0 included.)
+(defthm fn-native-auth-parse-lines-within-the-operator-bound
+  (implies (<= (len creds) (nfix max-credentials))
+           (<= (len (fn-ncfg-second
+                     (fn-native-auth-parse-lines lines name fields creds
+                                                 max-credentials)))
+               (nfix max-credentials)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-native-auth-parse-lines lines name fields creds
+                                                      max-credentials)
+           :in-theory (e/d (fn-native-auth-parse-lines)
+                           (fn-native-auth-finish fn-native-auth-table-name
+                            fn-native-auth-field fn-native-auth-name-memberp
+                            fn-native-auth-assoc fn-ncfg-trim)))))
+
+; The same bound at the loader the host calls: the configuration the host
+; installs (`fn-native-auth-result-config', an accepted file's or the open
+; configuration of a refused one) holds at most MAX-CREDENTIALS credentials.
+; It needs no hypothesis: a refusal installs no credential.
+(defthm fn-native-auth-load-within-the-operator-bound
+  (<= (len (fn-auth-config-creds
+            (fn-native-auth-result-config
+             (fn-native-auth-load octets presentp requiredp protected tls
+                                  max-credentials))))
+      (nfix max-credentials))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-native-auth-parse-lines-within-the-operator-bound
+                                   (lines (fn-ncfg-lines octets))
+                                   (name nil) (fields nil) (creds nil)))
+           :in-theory (e/d (fn-native-auth-load fn-native-auth-result-status
+                            fn-native-auth-result-config fn-auth-open-config)
+                           (fn-native-auth-parse-lines fn-ncfg-lines
+                            fn-auth-configp fn-native-auth-line-count
+                            fn-ncfg-ascii-octetsp)))))

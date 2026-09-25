@@ -1555,14 +1555,22 @@ nothing.
    is the negotiated node ID octets.
 
 **Call site.** `fn-bpnp-step`'s `:session` arm, given a `:via` field, calls
-`fn-bpnp-routed-start`. That function runs the arrival-order scan that
-`fn-bpnp-start-one` runs, then asks `fn-bprt-offer-decision` about the chosen
-row's destination (`fn-bpaj-eid-text` of the primary block's destination):
+`fn-bpnp-routed-start`; so does the `:resume` arm, which takes the same
+optional field (`(:resume PEER S OBS [VIA] [BUDGETS])`). A `:session` open or
+a `:resume` without VIA offers nothing (2026-09-25, lane bp-routing-2).
+`fn-bpnp-routed-start` runs the arrival-order scan of `fn-bpnp-start-one` over
+the held rows `fn-bprt-offer-decision` offers on this session
+(`fn-bpnp-routed-rows`, the rows whose destination, `fn-bpaj-eid-text` of the
+primary block's destination, is routed to HOP with the contact announcing
+HOP's enrolled EID):
 - `:offer` requires the decision over LIVE = (HOP) to name HOP, and ANNOUNCED
-  to be the octets of that route's EID. Only then is start-one called.
-- Otherwise the answer is `(:forward-no-route ARRIVAL HOP DECISION)` with
-  DECISION one of `:no-route`, `:no-live-hop` or `:announced-mismatch`.
-  Nothing is proposed and no held row changes.
+  to be the octets of that route's EID.
+- A row routed elsewhere or nowhere is not in the scanned list, so it never
+  blocks a younger routed row under the same dispatch key.
+- When no routed row is ready but the scan over every row is, the answer is
+  `(:forward-no-route ARRIVAL HOP DECISION)` for that row, with DECISION one
+  of `:no-route`, `:no-live-hop` or `:announced-mismatch`. Nothing is proposed
+  and no held row changes.
 
 **Theorems.**
 
@@ -1584,22 +1592,78 @@ Over `fn-bpnp-step`, in `books/bp-route-step.lisp`:
 The teeth are in `tests/acl2/bp-route-tests.lisp`.
 
 **Covered scope, stated.**
-- The dispatch key is still `fn-bpnp-single-peer-routes PEER-ID`, and the
-  scan still selects by that key. The routing gate reads the row's own
-  destination, so the theorem holds for any key. If an older row under the
-  key has no route to HOP, it blocks younger rows under the same key on that
-  session. With single-peer routes, every row under a key has that key as its
-  destination.
-- The unrouted 6-field `:session` form remains in the machine. The host no
-  longer sends it open. The theorem covers the 7-field form.
-- `:resume` (never sent by the host) reaches start-one without the gate.
+- The dispatch key is still `fn-bpnp-single-peer-routes PEER-ID`. The routed
+  scan reads each row's own destination, so the theorems hold for any key
+  (`fn-bpnp-routed-rows-skip-an-unrouted-row`; the teeth witness two rows of
+  different destinations under one key).
 - LIVE is (HOP): the host holds one outbound session at a time. Priority
   therefore chooses among boundaries with a contact
   (`fn-bprt-outbound-choice`), not among concurrent sessions.
-- FNBS base jobs are not routed: `bp-obligation request`, the queued receipt
-  outboxes and reports that `bp-contact tick` sends, and `bp-service`. Each
-  still carries the CONTACT-HOST:PORT given when it was queued.
+- Queued FNBS base jobs are routed by §4.8.
 - Inbound admission is unchanged (`fn-bpaj-session-principal`).
+
+### 4.8 Routed queued jobs and the base contact driver (2026-09-25, lane bp-routing-2)
+
+REP-007 covers the queued FNBS base jobs too: A's request carrier (`bp-obligation
+request`), B's receipts and status reports (`bp-node serve`/dispatch, `bp-contact
+tick`) and `bp-service resume`. Before this section each job kept the
+CONTACT-HOST:PORT it was queued with (bp-routing finding 1).
+
+**Queue time.** With a route table in force, the host queues a job only on the
+route `fn-bprt-job-route DEST TABLE NODE KEEPALIVE SEGMENT TRANSFER` answers
+(`books/bp-route-jobs.lisp`): the loopback contact of the boundary
+`fn-bprt-outbound-choice` names, with this node's session parameters. A
+destination the table routes nowhere is not queued; the obligation stays owed
+where it is (the FNRJ receipt, the report intent, the durable request attempt
+with its pin) and `BP queue route destination=… decision=…` is logged. That
+route is the job's durable route (its `:queued` record).
+
+**Contact time.** `fn-bpnp-contact-next ST PEER ROUTING OFFERED`
+(`books/bp-node-contact-driver.lisp`) is the one question the host asks before
+each offer of a base contact (`fnn-bpc-drive-contact`, which `bp-service
+run/resume`, `bp-obligation request`, `bp-contact tick` and `bp-node serve`
+all drive). ROUTING is `(:table TABLE)`, or nil for a verb without a Store,
+which keeps the queued address. The answer is:
+- `(:offer (:base (:contact PEER t)) OFFERED' EID)` when the peer's first
+  queued job is offerable (`fn-bpnp-receipt-contact-event`), is not in
+  OFFERED, and `fn-bprt-send-decision` over the current table names the job's
+  own durable route; EID is the node ID the hop's contact must announce, which
+  the host passes to the TCPCL session machine;
+- `(:held KEY DECISION)` with DECISION `:no-route`, `:no-live-hop` or
+  `:route-changed` (the table now names another hop than the durable route);
+- `(:close)` otherwise.
+
+**Once per contact.** The host threads OFFERED and stops at the first answer
+that is not an offer. A job whose transfer was not accepted is `:queued` again
+(its `:requeued` record, §4.3.2) and is in OFFERED, so it waits for the next
+contact; an accepted one is `:forwarded`, which no record returns to
+`:queued`.
+
+**Theorems** (`books/bp-node-contact-driver.lisp`):
+- `fn-bpnp-contact-offer-is-the-routed-hop`: over `fn-bpnp-step` on the
+  driver's event, the one effect persists the first queued job's `:attempting`
+  record, its `:cl-send` carries the job's durable route, and that route is
+  the contact port of the boundary `fn-bprt-next-hop` chooses for the
+  destination among the boundaries with a contact.
+- `fn-bpnp-contact-holds-an-unrouted-job`: with no matching route the driver
+  never offers.
+- `fn-bpnp-contact-offers-each-job-at-most-once`: along any sequence of
+  states, the keys one contact offers are distinct and none was already in
+  OFFERED.
+- `fn-bpnp-contact-closes-only-when-nothing-owed-remains`: with the gates
+  open, a close means the peer's first queued job was already offered on this
+  contact.
+- `fn-bpn-apply-record-keeps-forwarded`: no lifecycle record returns a
+  `:forwarded` job to `:queued`.
+
+**Covered scope, stated.**
+- A table change after queueing holds the job (`:route-changed`) until the
+  table routes it back; a durable re-route record is open. The lower machine
+  offers the first queued job for a peer, so such a held job also holds the
+  younger jobs to that peer on that contact.
+- Verbs without a Store (`bp-service run`, `resume` and `bp-contact tick`
+  without STORE) keep the queued address.
+- The contact host is loopback.
 
 ## 5. The theorems
 

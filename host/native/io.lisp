@@ -697,11 +697,16 @@ here.  The host supplies octets and decides nothing about them."
   (fnn-action (fnn-core-state 'fn-store-sn-recover
                               (mapcar #'fnn-octet-list records) frontier
                               (mapcar #'fnn-octet-list config-records))))
-(defun fnn-bridge-config-observation-limit ()
-  "The config reader consumes an ACL2-owned bound before readdir retains names."
-  (fnn-nat (fnn-core 'fn-store-config-observation-limit)))
+(defun fnn-bridge-config-observation-limit (store)
+  "The config reader consumes an ACL2-owned bound before readdir retains names:
+the operator's max-config-generations of the profile STORE opened."
+  (let ((value (fnn-core 'fn-store-config-observation-limit
+                         (fnn-store-config store))))
+    (unless (and (integerp value) (> value 0))
+      (fnn-fault "ACL2 returned a malformed configuration generation bound"))
+    value))
 
-(defun fnn-bridge-config-observation (observed &optional initializing)
+(defun fnn-bridge-config-observation (observed limit &optional initializing)
   "Return ACL2-issued (canonical basename . octets) config history entries.
 
 OBSERVED is a bounded physical list.  The core decodes each octet record,
@@ -714,7 +719,8 @@ returned representation; it is not a second filename policy."
                     (mapcar (lambda (entry)
                               (list (fnn-octet-list (fnn-string-octets (car entry)))
                                     (fnn-octet-list (cdr entry))))
-                            observed))))
+                            observed)
+                    limit)))
     (unless (and (true-listp value) (= (length value) 3)
                  (eq (first value) :ok) (null (second value))
                  (listp (third value)))
@@ -962,6 +968,15 @@ which `fn-store-sn-prepare' then refuses."
   (fnn-as-octets (fnn-core 'fn-store-subject-id-of-payload
                            (fnn-octet-list payload))))
 
+(defun fnn-subject-id-buffer ()
+  "FNN-SUBJECT-ID of the payload in the octet buffer, digested in place.
+host/owner-host.lisp `fn-owner-subject-id-buffer' calls books/sha256-buffer.lisp
+`fn-shb-subject-id': the subject preimage's fixed head is a short list and
+the payload is read from the buffer by index, so no octet list of the
+payload is built for the digest (D27 wave C; the served POST,
+host/native/owner.lisp fnn-owner-attempt)."
+  (fnn-as-octets (fnn-core-buffer-state 'fn-owner-subject-id-buffer)))
+
 (defun fnn-obligation-id (msgid subject)
   "Obligation identity v1, preimage and digest both ACL2's.  See FNN-SUBJECT-ID."
   (fnn-as-octets (fnn-core 'fn-store-obligation-id-of
@@ -1123,7 +1138,7 @@ record byte bound before ACL2 decodes its generation and compares the native
 writer codec name.  A malformed/gapped namespace remains a fault; no suffix
 filter turns it into an absent or shorter history."
   (when test-fault-point (fnn-at store test-fault-point))
-  (let* ((limit (fnn-bridge-config-observation-limit))
+  (let* ((limit (fnn-bridge-config-observation-limit store))
          (names (handler-case
                     (sort (fnn-list-directory-bounded (fnn-config-dir store) limit
                                                       "configuration namespace")
@@ -1138,7 +1153,7 @@ filter turns it into an absent or shorter history."
                        (cons name
                              (fnn-read-regular-bounded path +fnn-config-record-bytes+))))
                    names)))
-    (fnn-bridge-config-observation observed initializing)))
+    (fnn-bridge-config-observation observed limit initializing)))
 
 (defun fnn-config-record-names (store &optional test-fault-point initializing)
   "Canonical config basenames from one bounded ACL2-bound observation."
@@ -2107,6 +2122,20 @@ from the live ACL2 configuration; the native host does not name a provenance."
     (values (fnn-identity-text obligation) (fnn-identity-text subject)
             (fnn-provenance-post))))
 
+(defun fnn-metadata-buffer (msgid)
+  "FNN-METADATA with the payload in the octet buffer (the served POST): the
+subject identity is FNN-SUBJECT-ID-BUFFER, the rest as FNN-METADATA."
+  (let* ((subject (handler-case (fnn-subject-id-buffer)
+                    (fnn-store-indeterminate (e) (error e))
+                    (fnn-store-fault (e) (error e))
+                    (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity"))))
+         (obligation (handler-case (fnn-obligation-id msgid subject)
+                       (fnn-store-indeterminate (e) (error e))
+                       (fnn-store-fault (e) (error e))
+                       (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity")))))
+    (values (fnn-identity-text obligation) (fnn-identity-text subject)
+            (fnn-provenance-post))))
+
 (defun fnn-group-codes-for (store groups)
   (when (null groups) (fnn-refuse "provide one or more distinct configured groups"))
   (fnn-group-codes groups (fnn-store-config-domain store)))
@@ -2116,14 +2145,15 @@ from the live ACL2 configuration; the native host does not name a provenance."
 
 The developer `store post' asks it over the profile it opened
 (fnn-post-boundary); the served owner over the profile it was handed
-(fn-owner-post-boundary).  The host compares no bound of its own."
-  (case verdict
-    (:ok nil)
-    (:bad-message-id (fnn-refuse "Message-ID is not a valid RFC 5536 message identifier"))
-    (:payload-bound (fnn-refuse "payload exceeds the modelled bound"))
-    (:group-bound (fnn-refuse "group count exceeds codec bound"))
-    (:charge-bound (fnn-refuse "charge must be a positive uint32"))
-    (t (fnn-refuse "ACL2 refused the post boundary: ~(~a~)" verdict))))
+(fn-owner-post-boundary).  The host compares no bound of its own and keeps
+no text of its own: `fn-sbud-post-boundary-refusal' (books/store-budget-
+naming.lisp) renders the refusal, NIL exactly when the boundary admits
+(fn-sbud-post-boundary-refusal-is-nil-exactly-when-admitted), and the host
+prints its octets."
+  (let ((text (fnn-core 'fn-sbud-post-boundary-refusal verdict)))
+    (cond ((null text) nil)
+          ((fnn-octet-list-p text) (fnn-refuse "~a" (fnn-octets-string text)))
+          (t (fnn-fault "ACL2 returned a malformed POST boundary refusal")))))
 
 (defun fnn-open-live-store (root writable &optional fault)
   (let ((store (make-fnn-store root :writable writable :fault fault)))

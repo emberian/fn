@@ -152,28 +152,38 @@
     (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit
                                   transfer-mru))
            (service (fnn-bps-open fnbs config wall wall-error)))
+      ;; Routing: the carrier's hop is ACL2's choice over this Store's
+      ;; bp-route table, at queue time (fn-bprt-job-route) and before the
+      ;; offer (fn-bpnp-contact-next).
       (unwind-protect
-           (let* ((work-octets (fnn-octet-list (fnn-string-octets (first key))))
+           (let* ((routed (fnn-bps-use-store-routes service store))
+                  (work-octets (fnn-octet-list (fnn-string-octets (first key))))
                   (attempt-octets
                     (fnn-octet-list (fnn-string-octets (second key))))
                   (generation (third key))
                   (existing (fnn-core 'fn-bpn-host-existing-sequence
                                       (fnn-bps-base service) work-octets
                                       attempt-octets generation))
+                  (route (fnn-bps-queue-route service (fnn-bp-eid destination)
+                                              node-id transfer-mru
+                                              contact-host contact-port))
                   (sequence
                     (if (eq (fnn-core 'fn-bpn-host-existing-sequence-p existing)
                             t)
                         (fnn-core 'fn-bpn-host-existing-sequence-value existing)
-                      (fnn-bp-reserve-sequence (fnn-bps-tally service))))
-                  (route (list :route
-                               (fnn-octet-list (fnn-string-octets contact-host))
-                               contact-port
-                               (fnn-octet-list (fnn-string-octets node-id))
-                               +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
-                               transfer-mru))
+                      (if route
+                          (fnn-bp-reserve-sequence (fnn-bps-tally service))
+                        0)))
                   (event (list :enqueue work-octets attempt-octets generation
                                sequence route (fnn-bp-eid destination) adu
                                (fnn-bp-observation wall wall-error))))
+             (declare (ignore routed))
+             (unless route
+               ;; No route: nothing is queued.  The durable attempt keeps the
+               ;; obligation pinned; the carrier was refused by routing.
+               (fnn-out "BP obligation request carrier no-route work=~a attempt=~a generation=~d"
+                        (first key) (second key) generation)
+               (return-from fnn-command-bpo-owner-request +fnn-exit-refused+))
              (fnn-bps-drive-effects service (fnn-bps-step service event))
              (case (fnn-bps-outcome service)
                (:uncertain

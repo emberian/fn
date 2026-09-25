@@ -121,6 +121,9 @@
 ; by its dense generation; the Store prefix by the connection's journal
 ; version. This proof-only comparison runs over neither served command nor
 ; native open. It also checks the reader's selected group against its pin.
+; Since control-c3b a reader's archive is a withdrawal projection of that
+; reconstruction (fn-ctl-projectionp: the same state with a subsequence of
+; its articles), the form books/owner-invariants gives fn-own-conn-okp.
 (defun fn-ocl-conn-historyp (oc conn)
   (declare (xargs :guard t))
   (let* ((st (fn-own-store (fn-ocfg-owner oc)))
@@ -143,8 +146,28 @@
          (equal (fn-replay-result-kind replayed) :ok)
          (equal (fn-cnode-config (fn-replay-result-node replayed)) pin)
          (fn-node-statep node)
-         (equal (fn-own-conn-archive conn) (fn-node-acceptance node))
+         (fn-ctl-projectionp (fn-own-conn-archive conn) (fn-node-acceptance node))
          (fn-own-conn-boundedp conn (fn-cnode-domain-of pin)))))
+
+; A reader archive is a projection of its reconstruction (above); these two
+; rules read the projection off an equality with a visible state, and the
+; state fields (all but the article list) off a projection.
+(defthm fn-ocl-projectionp-of-a-visible-state
+  (implies (equal a (fn-ctl-visible-state p ws verdicts))
+           (fn-ctl-projectionp a p))
+  :hints (("Goal" :use fn-ctl-visible-state-is-a-projection
+           :in-theory (disable fn-ctl-visible-state-is-a-projection
+                               fn-ctl-visible-state fn-ctl-projectionp))))
+
+(defthm fn-ocl-projection-keeps-state-fields
+  (implies (fn-ctl-projectionp a p)
+           (and (equal (fn-state-groups a) (fn-state-groups p))
+                (equal (fn-state-nexts a) (fn-state-nexts p))
+                (equal (fn-state-next-txid a) (fn-state-next-txid p))
+                (equal (fn-state-pending a) (fn-state-pending p))
+                (equal (fn-state-fenced a) (fn-state-fenced p))))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-projectionp) (fn-ctl-subseqp fn-ctl-visible-state-of))
+           :use ((:instance fn-ctl-visible-state-of-fields (vis (fn-state-articles a)) (a p))))))
 
 (defun fn-ocl-conns-historyp (oc conns)
   (declare (xargs :guard t))
@@ -273,7 +296,12 @@
 
 ; The current owner view is the full configured history at its last refresh.
 ; During a pending Store transaction that view can be an earlier Store-event
-; prefix; the configuration cannot overlap that transaction.
+; prefix; the configuration cannot overlap that transaction.  Since
+; control-c3b the view serves the visible state of that history's acceptance
+; state under the withdrawal records and verdicts the view carries
+; (fn-ctl-visible-state, books/control-visible.lisp), and its raw list is that
+; state's article list; the refresh builds both incrementally from the old
+; view's, so preserving this needs it of the old owner.
 (defun fn-ocl-view-historyp (o)
   (declare (xargs :guard t))
   (let* ((st (fn-own-store o))
@@ -287,7 +315,68 @@
          (natp (fn-own-view-version view))
          (<= (fn-own-view-version view) (len events))
          (fn-node-statep node)
-         (equal (fn-own-view-archive view) (fn-node-acceptance node)))))
+         (equal (fn-own-view-archive view)
+                (fn-ctl-visible-state (fn-node-acceptance node)
+                                      (fn-own-view-withdrawals view)
+                                      (fn-own-view-verdicts view)))
+         (equal (fn-own-view-raw view)
+                (fn-state-articles (fn-node-acceptance node))))))
+
+; The view's own consistency, the one fact the incremental refresh needs of
+; the view it replaces: its archive's articles are the visible list of its
+; raw list under the records and verdicts it carries.
+(defun fn-ocl-view-visiblep (view)
+  (declare (xargs :guard t))
+  (equal (fn-state-articles (fn-own-view-archive view))
+         (fn-ctl-visible-articles (fn-own-view-raw view)
+                                  (fn-own-view-withdrawals view)
+                                  (fn-own-view-verdicts view))))
+
+(defthm fn-ocl-view-historyp-is-visible
+  (implies (fn-ocl-view-historyp o)
+           (fn-ocl-view-visiblep (fn-own-view o)))
+  :hints (("Goal" :in-theory (e/d (fn-ocl-view-historyp fn-ctl-visible-state)
+                                  (fn-cst-replay-node fn-ctl-visible-articles)))))
+
+; A refresh at an idle Store related to its configuration history publishes
+; that history's visible state, from any consistent view.
+(defthm fn-ocl-refreshed-idle-view-history
+  (implies (and (fn-ocl-view-visiblep view)
+                (fn-cst-relation st)
+                (fn-snt-idle-phasep (fn-sf-phase (fn-sn-files st)))
+                (true-listp (fn-sf-records (fn-sn-files st))))
+           (fn-ocl-view-historyp
+            (fn-own-refresh
+             (fn-own-make st view conns next-id max-conns pending ledger
+                          clock facts config queue inflight feeds))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-own-take-of-len
+                            (xs (fn-sf-records (fn-sn-files st))))
+                 (:instance fn-own-node-statep-acceptance-articles
+                            (node (fn-sn-node st)))
+                 (:instance fn-ctl-article-listp-msgids-distinct
+                            (configured (fn-state-groups (fn-node-acceptance (fn-sn-node st))))
+                            (xs (fn-state-articles (fn-node-acceptance (fn-sn-node st)))))
+                 (:instance fn-ctl-refresh-visible-is-visible
+                            (new (fn-state-articles (fn-node-acceptance (fn-sn-node st))))
+                            (old (fn-own-view-raw view))
+                            (old-visible (fn-state-articles (fn-own-view-archive view)))
+                            (ws (fn-own-view-withdrawals view))
+                            (old-verdicts (fn-own-view-verdicts view))
+                            (verdicts (fn-sn-verdicts st))
+                            (cfg (fn-own-refresh-config
+                                  st (fn-node-acceptance (fn-sn-node st))))))
+           :in-theory (e/d (fn-ocl-view-historyp fn-ocl-view-visiblep
+                            fn-own-refresh fn-own-store-idlep fn-cst-relation
+                            fn-ctl-visible-state)
+                           (fn-cst-replay-node fn-cpr-replay fn-own-take
+                            fn-own-view-make-group-indexed fn-ctl-refresh-visible-is-visible
+                            fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
+                            fn-ctl-visible-articles fn-ctl-visible-state-of
+                            fn-own-node-statep-acceptance-articles
+                            fn-ctl-article-listp-msgids-distinct
+                            fn-node-statep fn-article-listp fn-snt-idle-phasep)))))
 
 (defun fn-ocl-config-historyp (oc)
   (declare (xargs :guard t))
@@ -350,18 +439,44 @@
                                      (fn-ocfg-config oc))))))))))
 
 (defthm fn-ocl-view-historyp-of-ready-owner-with-store
-  (implies (and (fn-cst-relation st)
+  (implies (and (fn-ocl-view-historyp o)
+                (fn-cst-relation st)
                 (equal (fn-sf-phase (fn-sn-files st)) :ready)
                 (true-listp (fn-sf-records (fn-sn-files st))))
            (fn-ocl-view-historyp (fn-ocl-owner-with-store o st)))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-own-take-of-len
-                            (xs (fn-sf-records (fn-sn-files st)))))
+                            (xs (fn-sf-records (fn-sn-files st))))
+                 (:instance fn-own-node-statep-acceptance-articles
+                            (node (fn-sn-node st)))
+                 (:instance fn-ctl-article-listp-msgids-distinct
+                            (configured (fn-state-groups (fn-node-acceptance (fn-sn-node st))))
+                            (xs (fn-state-articles (fn-node-acceptance (fn-sn-node st)))))
+                 (:instance fn-ctl-refresh-state-is-visible
+                            (old-archive (fn-own-view-archive (fn-own-view o)))
+                            (old-p (fn-node-acceptance
+                                    (fn-cst-replay-node
+                                     (fn-sn-config-history (fn-own-store o))
+                                     (fn-own-take (fn-own-view-version (fn-own-view o))
+                                                  (fn-sf-records (fn-sn-files (fn-own-store o))))
+                                     (fn-own-view-frontier (fn-own-view o)))))
+                            (ws (fn-own-view-withdrawals (fn-own-view o)))
+                            (old-verdicts (fn-own-view-verdicts (fn-own-view o)))
+                            (old-raw (fn-own-view-raw (fn-own-view o)))
+                            (new-p (fn-node-acceptance (fn-sn-node st)))
+                            (verdicts (fn-sn-verdicts st))
+                            (cfg (fn-own-refresh-config
+                                  st (fn-node-acceptance (fn-sn-node st))))))
            :in-theory (e/d (fn-ocl-view-historyp fn-ocl-owner-with-store
                             fn-own-refresh fn-own-store-idlep fn-cst-relation)
                            (fn-cst-replay-node fn-cpr-replay fn-own-take
-                            fn-own-view-make-group-indexed)))))
+                            fn-own-view-make-group-indexed fn-ctl-refresh-state-is-visible
+                            fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
+                            fn-ctl-visible-state fn-ctl-visible-state-of
+                            fn-own-node-statep-acceptance-articles
+                            fn-ctl-article-listp-msgids-distinct
+                            fn-node-statep fn-article-listp)))))
 
 (defthm fn-ocl-complete-success-store-ready
   (implies (and (fn-ocfg-staged oc)
@@ -609,11 +724,23 @@
                                      (fn-sf-records
                                       (fn-sn-files
                                        (fn-own-store (fn-ocfg-owner oc))))))
-                            (frontier (fn-own-conn-frontier conn))))
+                            (frontier (fn-own-conn-frontier conn)))
+                 (:instance fn-ctl-visible-state-is-a-projection
+                            (p (fn-node-acceptance
+                                (fn-cst-replay-node
+                                 (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc)))
+                                 (fn-own-take (fn-own-conn-version conn)
+                                              (fn-sf-records
+                                               (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
+                                 (fn-own-conn-frontier conn))))
+                            (ws (fn-own-view-withdrawals (fn-own-view (fn-ocfg-owner oc))))
+                            (verdicts (fn-own-view-verdicts (fn-own-view (fn-ocfg-owner oc))))))
            :in-theory (e/d (fn-ocl-relation fn-ocl-conn-historyp
                             fn-ocl-view-historyp fn-ocl-view-configp)
                            (fn-cst-replay-node fn-cpr-replay
-                            fn-ocl-conns-historyp fn-own-take)))))
+                            fn-ocl-conns-historyp fn-own-take
+                            fn-ctl-visible-state fn-ctl-projectionp
+                            fn-ctl-visible-state-is-a-projection)))))
 
 (defthm fn-ocl-unchanged-view-new-pin-is-historical
   (implies

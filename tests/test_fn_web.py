@@ -694,5 +694,51 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/compose?group=fn.agents")[0], 503)
 
 
+
+class ReaderSearchTests(unittest.TestCase):
+    """PKT-110: search is one XPAT carrying the reader's wildmat verbatim."""
+
+    def test_search_sends_the_readers_wildmat_and_builds_none(self):
+        sent = []
+
+        class Client:
+            def cmd(self, text, multiline=False):
+                sent.append(text)
+                if text.startswith("GROUP"):
+                    return "211 3 1 3000 fn.test", []
+                if text.startswith("XPAT"):
+                    return "221 header follows", ["2999 a [b] c", "12 outside"]
+                return "500 unexpected", []
+
+        args = SimpleNamespace(host="127.0.0.1", port=1, timeout=1.0, plain=True, cafile=None)
+        backend = fn_web.Backend(args, "", "")
+        backend.using = lambda operation: operation(Client())
+        result = backend.search("fn.test", "subject", "*[b]*,*zzz*")
+        self.assertEqual(sent[1], "XPAT Subject 1001-3000 *[b]*,*zzz*")
+        self.assertEqual([hit["number"] for hit in result.data["hits"]], [2999])
+        self.assertEqual(result.data["start"], 1001)
+        sent.clear()
+        backend.search("fn.test", "from", "probe root", before=1000)
+        self.assertEqual(sent[1], "XPAT From 1-1000 probe root")
+        for bad in ("", "a\r\nQUIT", "x" * 401):
+            with self.assertRaises(ValueError):
+                backend.search("fn.test", "subject", bad)
+        with self.assertRaises(ValueError):
+            backend.search("fn.test", "body", "x")
+
+    def test_a_node_refusal_is_the_nodes_line(self):
+        class Client:
+            def cmd(self, text, multiline=False):
+                if text.startswith("GROUP"):
+                    return "211 3 1 3 fn.test", []
+                return "501 syntax error", []
+
+        args = SimpleNamespace(host="127.0.0.1", port=1, timeout=1.0, plain=True, cafile=None)
+        backend = fn_web.Backend(args, "", "")
+        backend.using = lambda operation: operation(Client())
+        result = backend.search("fn.test", "subject", "!bad")
+        self.assertEqual(result.word, fn_web.fn_client.REFUSED)
+        self.assertEqual(result.detail, "501 syntax error")
+
 if __name__ == "__main__":
     unittest.main()

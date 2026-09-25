@@ -317,10 +317,12 @@
               (fn-native-auth-admin-public-report (cdr credentials) bindings))
     nil))
 
-(defun fn-native-auth-admin-list (octets presentp)
+(defun fn-native-auth-admin-list (octets presentp max-credentials)
   ; Host-called list subject.  It projects only public credential fields.
+  ; MAX-CREDENTIALS is the store profile's `max-credentials' (D27, PRF-102).
   (declare (xargs :guard t))
-  (let ((loaded (fn-native-auth-load octets presentp nil nil nil)))
+  (let ((loaded (fn-native-auth-load octets presentp nil nil nil
+                                     max-credentials)))
     (if (not (equal (fn-native-auth-result-status loaded) :accepted))
       (list :refused (fn-native-auth-result-reason loaded))
       (list :accepted nil
@@ -328,13 +330,16 @@
              (fn-native-auth-admin-sort-credentials
               (fn-auth-config-creds
                (fn-native-auth-result-config loaded)))
-             (fn-native-auth-load-bindings octets presentp))))))
+             (fn-native-auth-load-bindings octets presentp max-credentials))))))
 
 (defun fn-native-auth-admin-set-password
   (octets presentp name secret confirmation salt
-          principal-text principal-presentp postingp)
+          principal-text principal-presentp postingp max-credentials)
   ; Host-called mutation subject.  SALT is an observation, not an ACL2 claim
   ; about OS entropy.  The output contains the derived verifier, never SECRET.
+  ; MAX-CREDENTIALS is the store profile's `max-credentials' (D27, PRF-102):
+  ; a new login past it is refused `:too-many-credentials', so the file this
+  ; writes is one the owner's loader admits under the same field.
   (declare (xargs :guard t))
   (cond
    ((not (fn-native-auth-login-namep name))
@@ -348,7 +353,8 @@
    (t
     (let* ((principal (fn-native-auth-admin-principal
                        name principal-text principal-presentp))
-           (loaded (fn-native-auth-load octets presentp nil nil nil)))
+           (loaded (fn-native-auth-load octets presentp nil nil nil
+                                        max-credentials)))
       (cond
        ((equal principal :bad) (list :refused :principal))
        ((not (equal (fn-native-auth-result-status loaded) :accepted))
@@ -357,7 +363,7 @@
         (let* ((old (fn-auth-config-creds
                      (fn-native-auth-result-config loaded)))
                (newp (not (fn-native-auth-name-memberp name old))))
-          (if (and newp (<= *fn-native-auth-max-credentials* (len old)))
+          (if (and newp (<= (nfix max-credentials) (len old)))
               (list :refused :too-many-credentials)
             (let* ((credential
                     (fn-auth-make-cred name principal
@@ -369,12 +375,13 @@
                    ; A password change keeps the login's binding, and every
                    ; other login's (fn-native-auth-load-bindings of the file
                    ; read under the writer lock).
-                   (bindings (fn-native-auth-load-bindings octets presentp))
+                   (bindings (fn-native-auth-load-bindings octets presentp max-credentials))
                    (serialized (fn-native-auth-admin-serialize
                                 credentials bindings)))
               (if (or (not (fn-auth-credp credential))
                       (not (fn-ncfg-ascii-octetsp serialized))
-                      (< *fn-native-auth-max-octets* (len serialized)))
+                      (< (fn-native-auth-max-octets max-credentials)
+                         (len serialized)))
                   (list :fault :serialized-profile)
                 (list :accepted serialized
                       (fn-native-auth-admin-public-row credential bindings))))))))))))
@@ -390,12 +397,15 @@
               (fn-native-auth-admin-rebind name principal (cdr bindings))))
     (if principal (list (cons name principal)) nil)))
 
-(defun fn-native-auth-admin-bind (octets presentp name signing-text)
+(defun fn-native-auth-admin-bind (octets presentp name signing-text
+                                        max-credentials)
   ; Host-called mutation subject for `principal bind' / `unbind'.  The login
   ; must already be enrolled; its credential row is unchanged and only its
-  ; `signing' field is written or removed.
+  ; `signing' field is written or removed.  MAX-CREDENTIALS is the store
+  ; profile's (D27, PRF-102): the file is loaded and rewritten under it.
   (declare (xargs :guard t))
-  (let ((loaded (fn-native-auth-load octets presentp nil nil nil))
+  (let ((loaded (fn-native-auth-load octets presentp nil nil nil
+                                     max-credentials))
         (principal (if signing-text
                        (if (and (true-listp signing-text)
                                 (equal (len signing-text) 64)
@@ -415,12 +425,13 @@
             (list :refused :unknown-login)
           (let* ((bindings (fn-native-auth-admin-rebind
                             name principal
-                            (fn-native-auth-load-bindings octets presentp)))
+                            (fn-native-auth-load-bindings octets presentp max-credentials)))
                  (serialized (fn-native-auth-admin-serialize
                               (fn-native-auth-admin-sort-credentials creds)
                               bindings)))
             (if (or (not (fn-ncfg-ascii-octetsp serialized))
-                    (< *fn-native-auth-max-octets* (len serialized)))
+                    (< (fn-native-auth-max-octets max-credentials)
+                       (len serialized)))
                 (list :fault :serialized-profile)
               (list :accepted serialized
                     (fn-native-auth-admin-public-row

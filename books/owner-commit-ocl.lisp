@@ -116,7 +116,8 @@
   :hints (("Goal" :in-theory (e/d (fn-ocl-config-historyp)
                                   (fn-cpr-replay)))))
 (defthm fn-ocmt-refreshed-ready-view-history
-  (implies (and (fn-cst-relation st)
+  (implies (and (fn-ocl-view-visiblep view)
+                (fn-cst-relation st)
                 (equal (fn-sf-phase (fn-sn-files st)) :ready)
                 (true-listp (fn-sf-records (fn-sn-files st))))
            (fn-ocl-view-historyp
@@ -124,13 +125,9 @@
              (fn-own-make st view conns next-id max-conns pending ledger
                           clock facts config queue inflight feeds))))
   :rule-classes nil
-  :hints (("Goal"
-           :use ((:instance fn-own-take-of-len
-                            (xs (fn-sf-records (fn-sn-files st)))))
-           :in-theory (e/d (fn-ocl-view-historyp
-                            fn-own-refresh fn-own-store-idlep fn-cst-relation)
-                           (fn-cst-replay-node fn-cpr-replay fn-own-take
-                            fn-own-view-make-group-indexed)))))
+  :hints (("Goal" :use fn-ocl-refreshed-idle-view-history
+           :in-theory (disable fn-own-refresh fn-ocl-view-historyp
+                               fn-ocl-view-visiblep fn-cst-relation))))
 (defthm fn-ocmt-refreshed-ready-view-config
   (implies (and (fn-ocl-config-historyp
                  (fn-ocfg-make
@@ -205,6 +202,7 @@
                   (oc2 (fn-ocfg-make (fn-own-complete (fn-ocfg-owner oc))
                                      (fn-ocfg-config oc) (fn-ocfg-pins oc)
                                      (fn-ocfg-staged oc))))
+                 (:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc)))
                  (:instance fn-ocmt-refreshed-ready-view-history
                   (st (fn-sn-finish (fn-own-store (fn-ocfg-owner oc))))
                   (view (fn-own-view (fn-ocfg-owner oc)))
@@ -244,6 +242,7 @@
                             fn-own-refresh fn-cst-relation
                             fn-ocl-conns-historyp fn-ocl-config-historyp
                             fn-ocl-view-configp fn-ocl-view-historyp
+                            fn-ocl-view-visiblep fn-ocl-view-historyp-is-visible
                             fn-ocl-unique-conn-idsp fn-ocfg-pins-okp
                             fn-ocfg-conns-pinnedp fn-ocfg-pins-pin-conns-only
                             fn-own-ids-below-next-p fn-own-facts-okp

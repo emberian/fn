@@ -18,9 +18,15 @@
 ;   fn-own-served-watermarks-never-decrease
 ;     for every group, the next local number of the committed view after
 ;     the writer events and the outcome is at least what it was before;
+;   fn-own-raw-local-number-is-never-reassigned
+;     a (group . number) that names an article of the committed view's raw
+;     list (the acceptance articles, withdrawn ones included) names the same
+;     Message-ID after the writer events and the outcome;
 ;   fn-own-served-local-number-is-never-reassigned
-;     a (group . number) that names an article of the committed view names
-;     the same Message-ID after the writer events and the outcome.
+;     a (group . number) that names an article of the served (visible) list
+;     names, after them, that same Message-ID or nothing: a withdrawal
+;     (books/control-visible.lisp) can hide the article, never give its
+;     number to another.
 ; Teeth: tests/acl2/owner-numbering-tests.lisp.
 ;
 ; How.  Under fn-own-relation the committed view is the acceptance
@@ -31,8 +37,14 @@
 ; longer prefix only adds articles at the front of the committed list and
 ; only raises watermarks: each replayed record is a prepare, which changes
 ; neither, and a durable completion, which installs the pending article
-; (cons) and advances the watermarks of its groups.  The Message-ID half then
-; follows from fn-state-has-fresh-local-numbers on the new view.
+; (cons) and advances the watermarks of its groups.  The raw Message-ID half
+; then follows from fn-state-has-fresh-local-numbers on the new raw list.
+; Since control-c3b the served archive is the visible state of that prefix
+; (fn-ctl-visible-state: the same groups, watermarks and txid, a subsequence
+; of the articles), so the watermark half reads the archive and the served
+; half goes through the raw list: the visible list is a subsequence of the
+; raw one, and in a fresh list a subsequence's holder is the list's holder
+; (fn-own-holder-of-fresh-subseq).
 
 (in-package "ACL2")
 (include-book "owner-served-invariants")
@@ -308,10 +320,12 @@
       (and (fn-own-store-idlep (fn-own-store o))
            (equal (fn-own-view-version (fn-own-view (fn-own-refresh o)))
                   (len (fn-sf-records (fn-sn-files (fn-own-store o)))))
-           (equal (fn-own-view-archive (fn-own-view (fn-own-refresh o)))
-                  (fn-node-acceptance (fn-sn-node (fn-own-store o))))))
+           (equal (fn-own-view-raw (fn-own-view (fn-own-refresh o)))
+                  (fn-state-articles (fn-node-acceptance (fn-sn-node (fn-own-store o)))))
+           (equal (fn-state-nexts (fn-own-view-archive (fn-own-view (fn-own-refresh o))))
+                  (fn-state-nexts (fn-node-acceptance (fn-sn-node (fn-own-store o)))))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-own-view-version fn-own-view-archive fn-own-view-make-group-indexed) (fn-own-store-idlep fn-midx-refresh fn-gidx-build))))))
+  :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-own-view-version fn-own-view-archive fn-own-view-raw fn-own-view-make-visible) (fn-own-store-idlep fn-midx-refresh fn-gidx-build fn-ctl-refresh-visible fn-ctl-refresh-withdrawals))))))
 
 (local (defthm fn-own-writer-step-view-is-kept-or-the-idle-node
   (implies (fn-ocfg-writer-eventp event)
@@ -320,8 +334,10 @@
                  (and (fn-own-store-idlep (fn-own-store o2))
                       (equal (fn-own-view-version (fn-own-view o2))
                              (len (fn-sf-records (fn-sn-files (fn-own-store o2)))))
-                      (equal (fn-own-view-archive (fn-own-view o2))
-                             (fn-node-acceptance (fn-sn-node (fn-own-store o2))))))))
+                      (equal (fn-own-view-raw (fn-own-view o2))
+                             (fn-state-articles (fn-node-acceptance (fn-sn-node (fn-own-store o2)))))
+                      (equal (fn-state-nexts (fn-own-view-archive (fn-own-view o2)))
+                             (fn-state-nexts (fn-node-acceptance (fn-sn-node (fn-own-store o2)))))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-step fn-own-take-submission fn-own-begin
                                    fn-own-store-step fn-own-complete fn-ocfg-writer-eventp fn-own-refresh-keeps-fields)
@@ -372,16 +388,26 @@
 
 (local (defthm fn-own-view-okp-archive
   (implies (fn-own-view-okp view groups capacity records)
-           (and (natp (fn-own-view-version view))
-                (<= (fn-own-view-version view) (len records))
-                (equal (fn-own-view-archive view)
-                       (fn-node-acceptance
-                        (fn-sf-replay-node groups capacity
-                                           (fn-own-take (fn-own-view-version view) records)
-                                           (fn-own-view-frontier view))))))
+           (let ((p (fn-node-acceptance
+                     (fn-sf-replay-node groups capacity
+                                        (fn-own-take (fn-own-view-version view) records)
+                                        (fn-own-view-frontier view)))))
+             (and (natp (fn-own-view-version view))
+                  (<= (fn-own-view-version view) (len records))
+                  (equal (fn-own-view-raw view) (fn-state-articles p))
+                  (equal (fn-state-nexts (fn-own-view-archive view)) (fn-state-nexts p))
+                  (fn-ctl-subseqp (fn-state-articles (fn-own-view-archive view))
+                                  (fn-own-view-raw view)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-own-view-okp fn-own-prefix-archive)
-                                  (fn-sf-replay-node fn-midx-correspondencep fn-gidx-build))))))
+  :hints (("Goal" :use ((:instance fn-ctl-visible-state-is-a-projection
+                                   (p (fn-own-prefix-archive groups capacity records
+                                                             (fn-own-view-version view)
+                                                             (fn-own-view-frontier view)))
+                                   (ws (fn-own-view-withdrawals view))
+                                   (verdicts (fn-own-view-verdicts view))))
+           :in-theory (e/d (fn-own-view-okp fn-own-prefix-archive fn-ctl-projectionp)
+                           (fn-sf-replay-node fn-midx-correspondencep fn-gidx-build
+                            fn-ctl-visible-state fn-ctl-subseqp fn-ctl-visible-state-is-a-projection))))))
 
 (local (defthm fn-own-related-node-is-statep
   (implies (fn-snt-relation s) (fn-node-statep (fn-sn-node s)))
@@ -395,13 +421,13 @@
 (local (defthm fn-own-writer-step-view-archive-grows
   (implies (and (fn-own-relation o)
                 (fn-ocfg-writer-eventp event))
-           (let ((a1 (fn-own-view-archive (fn-own-view o)))
-                 (a2 (fn-own-view-archive (fn-own-view (fn-own-step o event)))))
-             (and (fn-own-tailp (fn-state-articles a1) (fn-state-articles a2))
-                  (<= (fn-next-number g (fn-state-nexts a1))
-                      (fn-next-number g (fn-state-nexts a2)))
-                  (or (equal (fn-own-view (fn-own-step o event)) (fn-own-view o))
-                      (fn-statep a2)))))
+           (let ((v1 (fn-own-view o))
+                 (v2 (fn-own-view (fn-own-step o event))))
+             (and (fn-own-tailp (fn-own-view-raw v1) (fn-own-view-raw v2))
+                  (<= (fn-next-number g (fn-state-nexts (fn-own-view-archive v1)))
+                      (fn-next-number g (fn-state-nexts (fn-own-view-archive v2))))
+                  (or (equal v2 v1)
+                      (fn-articles-freshp (fn-own-view-raw v2))))))
   :rule-classes nil
   :hints (("Goal"
            :do-not-induct t
@@ -417,6 +443,8 @@
                             (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
                  (:instance fn-own-idle-node-is-replay (s (fn-own-store (fn-own-step o event))))
                  (:instance fn-own-related-node-is-statep (s (fn-own-store (fn-own-step o event))))
+                 (:instance fn-own-statep-committed-facts
+                            (a (fn-node-acceptance (fn-sn-node (fn-own-store (fn-own-step o event))))))
                  (:instance fn-own-relation-records-true-list (o (fn-own-step o event)))
                  (:instance fn-own-take-of-prefix
                             (n (fn-own-view-version (fn-own-view o)))
@@ -466,19 +494,19 @@
                 (fn-ocfg-writer-eventsp events))
            (let* ((o1 (fn-ocfg-owner oc))
                   (o2 (fn-ocfg-owner (fn-ocfg-run oc events)))
-                  (a1 (fn-own-view-archive (fn-own-view o1)))
-                  (a2 (fn-own-view-archive (fn-own-view o2))))
+                  (v1 (fn-own-view o1))
+                  (v2 (fn-own-view o2)))
              (and (fn-own-relation o2)
-                  (fn-own-tailp (fn-state-articles a1) (fn-state-articles a2))
-                  (<= (fn-next-number g (fn-state-nexts a1))
-                      (fn-next-number g (fn-state-nexts a2)))
-                  (or (equal (fn-own-view o2) (fn-own-view o1))
-                      (fn-statep a2)))))
+                  (fn-own-tailp (fn-own-view-raw v1) (fn-own-view-raw v2))
+                  (<= (fn-next-number g (fn-state-nexts (fn-own-view-archive v1)))
+                      (fn-next-number g (fn-state-nexts (fn-own-view-archive v2))))
+                  (or (equal v2 v1)
+                      (fn-articles-freshp (fn-own-view-raw v2))))))
   :rule-classes nil
   :hints (("Goal" :induct (fn-ocfg-run oc events)
            :in-theory (e/d (fn-ocfg-run fn-ocfg-writer-eventsp)
                            (fn-ocfg-step fn-own-step fn-own-relation fn-ocfg-writer-eventp
-                            fn-next-number fn-own-tailp fn-statep)))
+                            fn-next-number fn-own-tailp fn-statep fn-articles-freshp)))
           ("Subgoal *1/1"
            :use ((:instance fn-ocfg-writer-step-owner (event (car events)))
                  (:instance fn-own-writer-step-view-archive-grows
@@ -486,13 +514,13 @@
                  (:instance fn-own-step-preserves-relation
                             (o (fn-ocfg-owner oc)) (event (car events)))
                  (:instance fn-own-tailp-transitive
-                            (x (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc)))))
-                            (y (fn-state-articles (fn-own-view-archive
-                                                   (fn-own-view (fn-ocfg-owner (fn-ocfg-step oc (car events)))))))
-                            (z (fn-state-articles (fn-own-view-archive
-                                                   (fn-own-view (fn-ocfg-owner
-                                                                 (fn-ocfg-run (fn-ocfg-step oc (car events))
-                                                                              (cdr events))))))))))))
+                            (x (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc))))
+                            (y (fn-own-view-raw
+                                (fn-own-view (fn-ocfg-owner (fn-ocfg-step oc (car events))))))
+                            (z (fn-own-view-raw
+                                (fn-own-view (fn-ocfg-owner
+                                              (fn-ocfg-run (fn-ocfg-step oc (car events))
+                                                           (cdr events)))))))))))
 )
 
 ; -----------------------------------------------------------------------------
@@ -535,6 +563,64 @@
                                            (articles (cdr ys)))
                                 (:instance fn-own-holder-has-the-pair (articles (cdr ys))))))))
 
+(local (defthm fn-own-freshp-of-tail
+  (implies (and (fn-own-tailp xs ys) (fn-articles-freshp ys))
+           (fn-articles-freshp xs))
+  :hints (("Goal" :induct (fn-own-tailp xs ys)
+           :in-theory (disable fn-memberships-conflictsp fn-article-memberships)))))
+
+(local (defthm fn-own-number-holder-of-atom
+  (implies (atom xs) (equal (fn-own-number-holder group number xs) nil))))
+
+(local (defthm fn-own-fresh-head-does-not-hold
+  (implies (and (not (fn-memberships-conflictsp (fn-article-memberships y) ys))
+                (fn-own-number-holder group number ys))
+           (not (fn-pair-memberp (cons group number) (fn-article-memberships y))))
+  :hints (("Goal" :use ((:instance fn-own-member-pair-conflicts
+                                   (p (cons group number))
+                                   (ms (fn-article-memberships y))
+                                   (articles ys))
+                        (:instance fn-own-holder-has-the-pair (articles ys)))
+           :in-theory (disable fn-own-member-pair-conflicts fn-own-holder-has-the-pair
+                               fn-pair-memberp fn-all-article-memberships
+                               fn-article-memberships fn-own-number-holder
+                               fn-memberships-conflictsp)))))
+
+(local (defun fn-own-subseq-induct (xs ys)
+  (declare (xargs :measure (+ (acl2-count xs) (acl2-count ys))))
+  (if (or (atom xs) (atom ys))
+      (list xs ys)
+    (list (fn-own-subseq-induct (cdr xs) (cdr ys))
+          (fn-own-subseq-induct xs (cdr ys))))))
+
+(local (defthm fn-own-holder-of-fresh-subseq
+  (implies (and (fn-ctl-subseqp xs ys)
+                (fn-articles-freshp ys)
+                (fn-own-number-holder group number xs))
+           (equal (fn-own-number-holder group number ys)
+                  (fn-own-number-holder group number xs)))
+  :hints (("Goal" :induct (fn-own-subseq-induct xs ys)
+           :expand ((fn-ctl-subseqp xs ys)
+                    (fn-own-number-holder group number ys)
+                    (fn-own-number-holder group number xs)
+                    (fn-articles-freshp ys))
+           :in-theory (disable fn-ctl-subseqp fn-own-number-holder fn-articles-freshp
+                               fn-pair-memberp fn-all-article-memberships
+                               fn-memberships-conflictsp
+                               fn-article-memberships fn-article-msgid)))))
+
+(local (defthm fn-own-relation-view-is-a-subsequence-of-raw
+  (implies (fn-own-relation o)
+           (fn-ctl-subseqp (fn-state-articles (fn-own-view-archive (fn-own-view o)))
+                           (fn-own-view-raw (fn-own-view o))))
+  :hints (("Goal" :use ((:instance fn-own-relation-parts)
+                        (:instance fn-own-view-okp-archive
+                                   (view (fn-own-view o))
+                                   (groups (fn-sn-groups (fn-own-store o)))
+                                   (capacity (fn-sn-capacity (fn-own-store o)))
+                                   (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
+           :in-theory (disable fn-own-relation fn-own-view-okp fn-ctl-subseqp)))))
+
 ; -----------------------------------------------------------------------------
 ; KEYSTONES (P3, PRF-002).
 
@@ -562,9 +648,37 @@
                             fn-own-tailp fn-statep)))))
 
 ; Over the same host calls: a local number (group . number) that names an
-; article of the committed view before names an article with the same
-; Message-ID after.  With the watermark theorem this is PRF-002's "never
+; article of the committed view's raw list before names an article with
+; the same Message-ID after.  With the watermark theorem this is PRF-002's "never
 ; reuses an allocated number for another article" over the served path.
+(defthm fn-own-raw-local-number-is-never-reassigned
+  (implies (and (fn-own-relation (fn-ocfg-owner oc))
+                (fn-ocfg-writer-eventsp events)
+                (fn-own-number-holder
+                 group number (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc)))))
+           (let* ((oc1 (fn-ocfg-run oc events))
+                  (oc2 (fn-ocfg-with-owner
+                        oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
+             (equal (fn-own-number-holder
+                     group number (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc2))))
+                    (fn-own-number-holder
+                     group number (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc)))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ocfg-writer-run-view-archive-grows (g group))
+                        (:instance fn-own-holder-of-fresh-extension
+                                   (xs (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc))))
+                                   (ys (fn-own-view-raw
+                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events)))))))
+           :in-theory (e/d (fn-ocfg-with-owner)
+                           (fn-own-outcome fn-ocfg-run fn-own-relation fn-next-number
+                            fn-own-tailp fn-statep fn-own-number-holder
+                            fn-own-holder-of-fresh-extension
+                            fn-articles-freshp)))))
+
+; What a reader is served: a number held in the visible list is, after the
+; same calls, held by the same Message-ID or by nothing (withdrawn).  Before
+; control-c3b the served list was the raw list and the conclusion was the
+; equality; a withdrawal now hides an article, which is the "nothing" arm.
 (defthm fn-own-served-local-number-is-never-reassigned
   (implies (and (fn-own-relation (fn-ocfg-owner oc))
                 (fn-ocfg-writer-eventsp events)
@@ -573,27 +687,42 @@
                  (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))))
            (let* ((oc1 (fn-ocfg-run oc events))
                   (oc2 (fn-ocfg-with-owner
-                        oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
-             (equal (fn-own-number-holder
-                     group number
-                     (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc2)))))
-                    (fn-own-number-holder
-                     group number
-                     (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))))))
+                        oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word))))
+                  (after (fn-own-number-holder
+                          group number
+                          (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc2)))))))
+             (or (null after)
+                 (equal after
+                        (fn-own-number-holder
+                         group number
+                         (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc)))))))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-ocfg-writer-run-view-archive-grows (g group))
-                        (:instance fn-own-holder-of-fresh-extension
+                        (:instance fn-own-relation-view-is-a-subsequence-of-raw
+                                   (o (fn-ocfg-owner oc)))
+                        (:instance fn-own-relation-view-is-a-subsequence-of-raw
+                                   (o (fn-ocfg-owner (fn-ocfg-run oc events))))
+                        (:instance fn-own-freshp-of-tail
+                                   (xs (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc))))
+                                   (ys (fn-own-view-raw
+                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events))))))
+                        (:instance fn-own-holder-of-fresh-subseq
                                    (xs (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc)))))
-                                   (ys (fn-state-articles (fn-own-view-archive
-                                                           (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events)))))))
-                        (:instance fn-own-statep-committed-facts
-                                   (g group)
-                                   (a (fn-own-view-archive
-                                       (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events)))))))
+                                   (ys (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc)))))
+                        (:instance fn-own-holder-of-fresh-extension
+                                   (xs (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc))))
+                                   (ys (fn-own-view-raw
+                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events))))))
+                        (:instance fn-own-holder-of-fresh-subseq
+                                   (xs (fn-state-articles (fn-own-view-archive
+                                                           (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events))))))
+                                   (ys (fn-own-view-raw
+                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events)))))))
            :in-theory (e/d (fn-ocfg-with-owner)
                            (fn-own-outcome fn-ocfg-run fn-own-relation fn-next-number
                             fn-own-tailp fn-statep fn-own-number-holder
-                            fn-own-holder-of-fresh-extension fn-own-statep-committed-facts
-                            fn-articles-freshp)))))
+                            fn-own-holder-of-fresh-extension fn-own-holder-of-fresh-subseq
+                            fn-own-freshp-of-tail fn-own-relation-view-is-a-subsequence-of-raw
+                            fn-ctl-subseqp fn-articles-freshp)))))
 
 (in-theory (disable fn-own-tailp fn-own-number-holder))
