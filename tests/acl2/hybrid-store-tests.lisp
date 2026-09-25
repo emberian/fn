@@ -359,7 +359,7 @@
 ; is not a theorem (a list may be longer than any carrier admits).
 (assert-event (equal (fn-hsig-source-version (make-list 70000 :initial-element 65))
                      *fn-hsig-v2-version*))
-(assert-event (< 32768 70000 *fn-stxa-max-authored-source*))
+(assert-event (and (< 32768 70000) (< 70000 *fn-stxa-max-authored-source*)))
 (must-fail
  (defthm hst-source-bound-without-a-subject
    (<= (len source) *fn-stxa-max-authored-source*)))
