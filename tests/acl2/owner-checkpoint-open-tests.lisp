@@ -132,9 +132,12 @@
 (defconst *ock-t-not-shape* (list :fn-store-checkpoint 2 nil nil nil nil nil))
 (assert-event (not (equal (fn-sco-thaw (fn-sco-freeze *ock-t-not-shape*))
                           *ock-t-not-shape*)))
+; (Stated at the concrete value, so ACL2 refutes it by evaluation instead of
+; searching.)
 (must-fail
  (defthm ock-t-thaw-without-shape
-   (equal (fn-sco-thaw (fn-sco-freeze c)) c)))
+   (implies (equal c *ock-t-not-shape*)
+            (equal (fn-sco-thaw (fn-sco-freeze c)) c))))
 ; A checkpoint whose index does not hold its records keeps the list.
 (defconst *ock-t-unindexed*
   (fn-sco-make *ock-t-events* (fn-sco-cpr *ock-t-capture*)
@@ -157,7 +160,8 @@
 (assert-event (equal (fn-scc-segments (fn-sco-freeze *ock-t-untree*) 64) :unencodable))
 (must-fail
  (defthm ock-t-decode-without-tree
-   (implies (and (fn-sco-shapep c)
+   (implies (and (equal c *ock-t-untree*)
+                 (fn-sco-shapep c)
                  (< (+ 1 (len (fn-scc-encode (fn-sco-freeze c)))) *fn-scc-u64-bound*)
                  (< (fn-scc-value-sequence (fn-sco-freeze c)) *fn-scc-u64-bound*))
             (equal (fn-sco-thaw (cadr (fn-scc-decode-segments
