@@ -5,13 +5,18 @@
 
 (in-package "ACL2")
 
-(defconstant +fnn-hsig-max-message-octets+ 34820)
 (defconstant +fnn-hsig-ed-secret-key-octets+ 64)
 (defconstant +fnn-hsig-ed-public-key-octets+ 32)
 (defconstant +fnn-hsig-ed-signature-octets+ 64)
 (defconstant +fnn-hsig-ml-public-key-octets+ 1952)
 (defconstant +fnn-hsig-ml-signature-octets+ 3309)
 (defconstant +fnn-hsig-openssl-3-5+ #x30500000)
+
+;;; The preimage bound is ACL2's (fn-hsig-host-max-preimage-octets): the v2
+;;; layout over the widest v2 source.  Every message here is an ACL2-produced
+;;; preimage, so this refuses only a caller outside that contract.
+(defun fnn-hsig-max-message-octets ()
+  (fnn-core 'fn-hsig-host-max-preimage-octets))
 
 (define-condition fnn-hsig-error (error)
   ((detail :initarg :detail :reader fnn-hsig-error-detail))
@@ -155,7 +160,7 @@
   (fnn-crypto-initialize)
   (let ((key (fnn-crypto-octets secret-key +fnn-hsig-ed-secret-key-octets+
                                 "Ed25519 secret key"))
-        (text (fnn-crypto-octets message +fnn-hsig-max-message-octets+
+        (text (fnn-crypto-octets message (fnn-hsig-max-message-octets)
                                  "hybrid signed preimage"))
         (signature (make-array +fnn-hsig-ed-signature-octets+
                                :element-type '(unsigned-byte 8))))
@@ -199,7 +204,7 @@
 
 (defun fnn-hsig-ml-dsa-65-sign (private-key-path message)
   (fnn-hsig-initialize)
-  (let ((text (fnn-crypto-octets message +fnn-hsig-max-message-octets+
+  (let ((text (fnn-crypto-octets message (fnn-hsig-max-message-octets)
                                  "hybrid signed preimage"))
         (key nil) (context nil) (algorithm nil)
         (signature (make-array +fnn-hsig-ml-signature-octets+
@@ -229,7 +234,7 @@
 
 (defun fnn-hsig-ml-dsa-65-verify-key (key message signature)
   "Verify with an already imported public key and report its actual raw bytes."
-  (let ((text (fnn-crypto-octets message +fnn-hsig-max-message-octets+
+  (let ((text (fnn-crypto-octets message (fnn-hsig-max-message-octets)
                                  "hybrid signed preimage"))
         (sig (fnn-crypto-octets signature +fnn-hsig-ml-signature-octets+
                                 "ML-DSA-65 signature"))
@@ -293,7 +298,7 @@ the other, and unsupported ML-DSA is never mapped to :VERIFIED."
         (ml-signature (and (consp (cdr signatures))
                            (cdr (car (cdr signatures))))))
     (list (fnn-crypto-ed25519-observe
-           ed-public-key message ed-signature +fnn-hsig-max-message-octets+)
+           ed-public-key message ed-signature (fnn-hsig-max-message-octets))
           (handler-case
               (multiple-value-bind (verified observed-key)
                   (fnn-hsig-ml-dsa-65-verify
@@ -309,7 +314,7 @@ the other, and unsupported ML-DSA is never mapped to :VERIFIED."
         (ml-signature (and (consp (cdr signatures))
                            (cdr (car (cdr signatures))))))
     (list (fnn-crypto-ed25519-observe
-           ed-public-key message ed-signature +fnn-hsig-max-message-octets+)
+           ed-public-key message ed-signature (fnn-hsig-max-message-octets))
           (handler-case
               (multiple-value-bind (verified observed-key)
                   (fnn-hsig-ml-dsa-65-verify-raw

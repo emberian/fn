@@ -22,6 +22,9 @@
   "The production call convention: one scalar value, unlike FNN-CALL's list."
   (case name
     (fn-hsig-host-preimage *fnn-hsig-test-preimage*)
+    ;; The production value: host/hybrid-signature-host.lisp over the v2
+    ;; layout (2054 fixed octets) and the u32 source width.
+    (fn-hsig-host-max-preimage-octets (+ 2054 4294967295))
     (fn-hsig-host-received-carrier-plan *fnn-hsig-test-carrier-plan*)
     (fn-hsig-host-authorize
      (setq *fnn-hsig-test-authorize-args* args)
@@ -55,15 +58,16 @@
   (fnn-hsig-check (fnn-crypto-ed25519-verify ed-public message ed-signature)
                   "libsodium Ed25519 sign/verify")
   (let* ((large-message
-          (make-array +fnn-hsig-max-message-octets+
+          ;; A 200 KiB v2 source's preimage: over the old 34820-octet cap.
+          (make-array (+ 2054 (* 200 1024))
                       :element-type '(unsigned-byte 8) :initial-element 42))
          (large-signature (fnn-hsig-ed25519-sign ed-secret large-message)))
     (fnn-hsig-check
      (eq (fnn-crypto-ed25519-observe
           ed-public large-message large-signature
-          +fnn-hsig-max-message-octets+)
+          (fnn-hsig-max-message-octets))
          :verified)
-     "hybrid Ed25519 observation accepts the maximum profile preimage"))
+     "hybrid Ed25519 observation accepts a 200 KiB v2 preimage"))
   (fnn-hsig-check (fnn-hsig-ml-dsa-65-verify public message ml-signature)
                   "OpenSSL ML-DSA-65 sign/verify")
   (multiple-value-bind (verified observed)

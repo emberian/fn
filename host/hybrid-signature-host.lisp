@@ -30,6 +30,18 @@
   (declare (xargs :mode :program))
   *fn-hsig-v2-max-source*)
 
+;; The widest preimage ACL2 hands the primitives: the v2 layout of
+;; specs/identity.md "The signed bytes" (CBOR head 2, tag, version, suite,
+;; principal 32, algorithm, Ed25519 key, algorithm, ML-DSA-65 key, u32 length
+;; 4) over the widest v2 source.  A v1 preimage is two octets shorter than
+;; the v2 one over the same source.  host/native/signatures.lisp enforces it.
+(defun fn-hsig-host-max-preimage-octets ()
+  (declare (xargs :mode :program))
+  (+ 2 (len *fn-hsig-v2-domain-tag*) 1 1 32
+     1 *fn-hsig-ed25519-public-key-octets*
+     1 *fn-hsig-ml-dsa-65-public-key-octets*
+     4 *fn-hsig-v2-max-source*))
+
 (defun fn-hsig-host-max-received-octets ()
   (declare (xargs :mode :program))
   *fn-article-max-octets*)
