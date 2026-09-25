@@ -2447,4 +2447,4 @@ existing port only after fn-fc has made this connection ready."
 ; drives each round through the pure fn-pull-* functions.
 (defun fn-owner-pull-plans (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-pull-plans (fn-cfg-peers (fn-owner-config state)))))
+  (value (fn-pull-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
