@@ -7,7 +7,7 @@
 ; and proves it by instantiating the keystone at the pair before the cut's
 ; step, after discharging fn-bs-k0-step-inputp there.  A covered pair with
 ; no committed-history rename pending is related
-; (fn-bs-k0b-covered-without-root-marker-is-related).
+; (fn-bs-k0b-covered-without-root-rename-is-related).
 ;
 ; Marker program (in byte-store-k0-step-bridge-marker): every pair is derived from the entry pair by the keystone
 ; alone (fn-bs-k0b-marker-pairs-by-step), then
@@ -28,11 +28,11 @@
 (in-package "ACL2")
 (include-book "byte-store-k0-step-bridge-prefix")
 
-(defthm fn-bs-k0b-rename-keeps-root-marker-status
-  (implies (not (equal dname *fn-bs-history-marker-name*))
-           (equal (fn-bs-k0m-has-root-marker (fn-bs-pending (mv-nth 1 (fn-bs-rename b sdir sname ddir dname outcome))))
-                  (fn-bs-k0m-has-root-marker (fn-bs-pending b))))
-  :hints (("Goal" :in-theory (enable fn-bs-rename fn-bs-k0m-has-root-marker))))
+(defthm fn-bs-k0b-rename-keeps-root-rename-status
+  (implies (or (not (equal ddir :root)) (equal dname *fn-bs-scan-frontier-name*))
+           (equal (fn-bs-k0m-has-root-rename (fn-bs-pending (mv-nth 1 (fn-bs-rename b sdir sname ddir dname outcome))))
+                  (fn-bs-k0m-has-root-rename (fn-bs-pending b))))
+  :hints (("Goal" :in-theory (enable fn-bs-rename fn-bs-k0m-has-root-rename))))
 (defthm fn-bs-k0b-frontier-program-steps
   (let ((prog (fn-bs-frontier-program stage octets)))
     (and (equal (car (nth 7 prog)) :cut)
@@ -72,10 +72,10 @@
                   (k 7) (steps (fn-bs-frontier-program stage octets)) (g groups) (c capacity))
                  (:instance fn-bs-k0b-cut-after-step-pair
                   (k 7) (steps (fn-bs-frontier-program stage octets)) (g groups) (c capacity))
-                 (:instance fn-bs-k0b-relation-has-no-root-marker
+                 (:instance fn-bs-k0b-relation-has-no-root-rename
                   (b (car (nth 7 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
                   (k (cdr (nth 7 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity)))))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related
                   (b (car (nth 9 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
                   (k (cdr (nth 9 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))))
            :in-theory (e/d (fn-bs-frontier-inputp fn-bs-k0-step-inputp fn-bs-step
@@ -83,7 +83,7 @@
                             fn-bs-dir-idp fn-bs-inop)
                            (fn-bs-frontier-program nth nthcdr fn-bs-run fn-bs-store-relation fn-sf-statep fn-bs-statep fn-bs-durable-frontier
                             fn-bs-durable-records fn-bs-durable-content fn-bs-lookup fn-bs-fencedp
-                            fn-bs-make fn-bs-rename fn-bs-k0-coveredp fn-bs-k0m-has-root-marker)))))
+                            fn-bs-make fn-bs-rename fn-bs-k0-coveredp fn-bs-k0m-has-root-rename)))))
 (defthm fn-bs-k0b-frontier-attempted-kernel
   (implies (and (fn-bs-store-relation bs ks)
                 (fn-bs-frontier-inputp ks stage octets)
@@ -118,10 +118,10 @@
                   (k 9) (steps (fn-bs-frontier-program stage octets)) (g groups) (c capacity))
                  (:instance fn-bs-k0b-cut-after-step-pair
                   (k 9) (steps (fn-bs-frontier-program stage octets)) (g groups) (c capacity))
-                 (:instance fn-bs-k0b-relation-has-no-root-marker
+                 (:instance fn-bs-k0b-relation-has-no-root-rename
                   (b (car (nth 9 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
                   (k (cdr (nth 9 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity)))))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related
                   (b (car (nth 11 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
                   (k (cdr (nth 11 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))))
            :in-theory (e/d (fn-bs-k0b-frontier-program-steps fn-bs-k0-step-inputp fn-bs-k0-observation-inputp
@@ -132,10 +132,10 @@
   (implies (fn-bs-lookup b dir name)
            (equal (mv-nth 0 (fn-bs-unlink b dir name :ok)) :ok))
   :hints (("Goal" :in-theory (e/d (fn-bs-unlink) (fn-bs-lookup)))))
-(defthm fn-bs-k0b-unlink-keeps-root-marker-status
-  (equal (fn-bs-k0m-has-root-marker (fn-bs-pending (mv-nth 1 (fn-bs-unlink b dir name outcome))))
-         (fn-bs-k0m-has-root-marker (fn-bs-pending b)))
-  :hints (("Goal" :in-theory (enable fn-bs-unlink fn-bs-k0m-has-root-marker))))
+(defthm fn-bs-k0b-unlink-keeps-root-rename-status
+  (equal (fn-bs-k0m-has-root-rename (fn-bs-pending (mv-nth 1 (fn-bs-unlink b dir name outcome))))
+         (fn-bs-k0m-has-root-rename (fn-bs-pending b)))
+  :hints (("Goal" :in-theory (enable fn-bs-unlink fn-bs-k0m-has-root-rename))))
 (defthm fn-bs-k0b-first-syscall-keeps-kernel
   (implies (and (consp steps) (not (equal (car (car steps)) :observe)))
            (equal (cdr (nth 0 (fn-bs-run bs ks steps nil g c))) ks))
@@ -214,10 +214,10 @@
                   (k 8) (steps (fn-bs-record-program stage name frame)) (g groups) (c capacity))
                  (:instance fn-bs-k0b-cut-after-step-pair
                   (k 8) (steps (fn-bs-record-program stage name frame)) (g groups) (c capacity))
-                 (:instance fn-bs-k0b-relation-has-no-root-marker
+                 (:instance fn-bs-k0b-relation-has-no-root-rename
                   (b (car (nth 8 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))
                   (k (cdr (nth 8 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related
                   (b (car (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))
                   (k (cdr (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))))
            :in-theory (e/d (fn-bs-k0b-record-program-steps fn-bs-k0-step-inputp fn-bs-k0-observation-inputp
@@ -226,13 +226,13 @@
                            (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr
                             fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-step fn-bs-k0-coveredp
                             fn-bs-frontier-noncommit-observationp)))))
-(defthm fn-bs-k0b-ops-not-for-dir-keeps-no-root-marker
-  (implies (not (fn-bs-k0m-has-root-marker ops))
-           (not (fn-bs-k0m-has-root-marker (fn-bs-ops-not-for-dir ops d))))
-  :hints (("Goal" :in-theory (enable fn-bs-k0m-has-root-marker fn-bs-ops-not-for-dir))))
-(defthm fn-bs-k0b-fence-dir-keeps-no-root-marker
-  (implies (not (fn-bs-k0m-has-root-marker (fn-bs-pending b)))
-           (not (fn-bs-k0m-has-root-marker (fn-bs-pending (fn-bs-fence-dir b d)))))
+(defthm fn-bs-k0b-ops-not-for-dir-keeps-no-root-rename
+  (implies (not (fn-bs-k0m-has-root-rename ops))
+           (not (fn-bs-k0m-has-root-rename (fn-bs-ops-not-for-dir ops d))))
+  :hints (("Goal" :in-theory (enable fn-bs-k0m-has-root-rename fn-bs-ops-not-for-dir))))
+(defthm fn-bs-k0b-fence-dir-keeps-no-root-rename
+  (implies (not (fn-bs-k0m-has-root-rename (fn-bs-pending b)))
+           (not (fn-bs-k0m-has-root-rename (fn-bs-pending (fn-bs-fence-dir b d)))))
   :hints (("Goal" :in-theory (enable fn-bs-fence-dir))))
 (defthm fn-bs-k0-record-durable-cut-relation-by-step
   (implies (and (fn-bs-store-relation bs ks)
@@ -253,10 +253,10 @@
                   (k 10) (steps (fn-bs-record-program stage name frame)) (g groups) (c capacity))
                  (:instance fn-bs-k0b-cut-after-step-pair
                   (k 10) (steps (fn-bs-record-program stage name frame)) (g groups) (c capacity))
-                 (:instance fn-bs-k0b-relation-has-no-root-marker
+                 (:instance fn-bs-k0b-relation-has-no-root-rename
                   (b (car (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))
                   (k (cdr (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related
                   (b (car (nth 12 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))
                   (k (cdr (nth 12 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))))
            :in-theory (e/d (fn-bs-k0b-record-program-steps fn-bs-k0-step-inputp
@@ -267,7 +267,7 @@
           (and stable-under-simplificationp
                '(:in-theory (e/d (fn-bs-step fn-bs-fsync-dir fn-bs-k0s-fsync-dir-ok-is-fence)
                                  (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp
-                                  fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-marker))))))
+                                  fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-rename))))))
 (defthm fn-bs-k0b-fence-dir-quiets-its-dir
   (fn-bs-dir-quietp (fn-bs-fence-dir b d) d)
   :hints (("Goal" :in-theory (enable fn-bs-dir-quietp fn-bs-fence-dir fn-bs-ops-for-dir-of-ops-not-for-dir))))
@@ -295,7 +295,7 @@
                  (:instance fn-bs-pending-matches-phase-unfolds (bs (car (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (ks (cdr (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
                  (:instance fn-bs-k8-pending-link-fence-durable-records (bs (car (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (ks (cdr (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))))
            :in-theory (e/d (fn-bs-k0b-record-program-steps fn-bs-record-directory-committedp fn-bs-replay-visiblep)
-                           (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result fn-bs-durable-records fn-bs-apply-ops fn-bs-unlink fn-bs-pending-matches-phase)))))
+                           (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result fn-bs-durable-records fn-bs-apply-ops fn-bs-unlink fn-bs-pending-matches-phase)))))
 (defthm fn-bs-k0-record-completing-cut-relation-by-step
   (implies (and (fn-bs-store-relation bs ks)
                 (fn-bs-record-inputp ks stage name frame)
@@ -313,11 +313,11 @@
                  (:instance fn-bs-k0b-observe-kernel-in-run (k 12) (steps (fn-bs-record-program stage name frame)) (g groups) (c capacity))
                  (:instance fn-bs-record-directory-commit-observation-preserves-relation
                   (bs (car (nth 12 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (ks (cdr (nth 12 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
-                 (:instance fn-bs-k0b-relation-has-no-root-marker (b (car (nth 12 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (k (cdr (nth 12 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b (car (nth 14 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (k (cdr (nth 14 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))))
+                 (:instance fn-bs-k0b-relation-has-no-root-rename (b (car (nth 12 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (k (cdr (nth 12 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b (car (nth 14 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (k (cdr (nth 14 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))))
            :in-theory (e/d (fn-bs-k0b-record-program-steps fn-bs-k0-step-inputp fn-bs-k0-observation-inputp
                             fn-bs-replay-visiblep fn-bs-k0c-ok-kinds-return-ok fn-sf-dispatch)
-                           (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result fn-bs-durable-records fn-bs-apply-ops fn-bs-unlink fn-bs-pending-matches-phase fn-bs-step fn-bs-record-directory-committedp fn-bs-frontier-noncommit-observationp)))))
+                           (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result fn-bs-durable-records fn-bs-apply-ops fn-bs-unlink fn-bs-pending-matches-phase fn-bs-step fn-bs-record-directory-committedp fn-bs-frontier-noncommit-observationp)))))
 (defthm fn-bs-k0b-next-ino-natp
   (implies (fn-bs-statep b) (natp (fn-bs-next-ino b)))
   :rule-classes nil
@@ -325,13 +325,13 @@
 (defthm fn-bs-k0b-cleanup-step-facts
   (and (implies (fn-bs-lookup b d n)
                 (equal (mv-nth 0 (fn-bs-step b k (list :unlink d n) :ok g c)) :ok))
-       (equal (fn-bs-k0m-has-root-marker (fn-bs-pending (mv-nth 1 (fn-bs-step b k (list :unlink d n) o g c))))
-              (fn-bs-k0m-has-root-marker (fn-bs-pending b)))
+       (equal (fn-bs-k0m-has-root-rename (fn-bs-pending (mv-nth 1 (fn-bs-step b k (list :unlink d n) o g c))))
+              (fn-bs-k0m-has-root-rename (fn-bs-pending b)))
        (equal (mv-nth 0 (fn-bs-step b k '(:fsync-dir :staging) :ok g c)) :ok)
-       (implies (not (fn-bs-k0m-has-root-marker (fn-bs-pending b)))
-                (not (fn-bs-k0m-has-root-marker
+       (implies (not (fn-bs-k0m-has-root-rename (fn-bs-pending b)))
+                (not (fn-bs-k0m-has-root-rename
                       (fn-bs-pending (mv-nth 1 (fn-bs-step b k '(:fsync-dir :staging) :ok g c)))))))
-  :hints (("Goal" :in-theory (e/d (fn-bs-step fn-bs-fsync-dir) (fn-bs-unlink fn-bs-lookup fn-bs-fence-dir fn-bs-k0m-has-root-marker)))))
+  :hints (("Goal" :in-theory (e/d (fn-bs-step fn-bs-fsync-dir) (fn-bs-unlink fn-bs-lookup fn-bs-fence-dir fn-bs-k0m-has-root-rename)))))
 (defthm fn-bs-k0-record-cleanup-cut-relation-by-step
   (implies (and (fn-bs-store-relation bs ks)
                 (fn-bs-record-inputp ks stage name frame)
@@ -349,10 +349,10 @@
                  (:instance fn-bs-k0b-cut-after-step-pair (k 14) (steps (fn-bs-record-program stage name frame)) (g groups) (c capacity))
                  (:instance fn-bs-k0b-cut-after-step (k 16) (steps (fn-bs-record-program stage name frame)) (g groups) (c capacity))
                  (:instance fn-bs-k0b-cut-after-step-pair (k 16) (steps (fn-bs-record-program stage name frame)) (g groups) (c capacity))
-                 (:instance fn-bs-k0b-relation-has-no-root-marker (b (car (nth 14 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (k (cdr (nth 14 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b (car (nth 16 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (k (cdr (nth 16 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
-                 (:instance fn-bs-k0b-covered-without-root-marker-is-related (b (car (nth 18 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (k (cdr (nth 18 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))))
+                 (:instance fn-bs-k0b-relation-has-no-root-rename (b (car (nth 14 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (k (cdr (nth 14 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b (car (nth 16 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (k (cdr (nth 16 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
+                 (:instance fn-bs-k0b-covered-without-root-rename-is-related (b (car (nth 18 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (k (cdr (nth 18 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))))
            :in-theory (e/d (fn-bs-k0b-record-program-steps fn-bs-k0-step-inputp
                             fn-bs-replay-visiblep fn-bs-k0c-ok-kinds-return-ok fn-bs-k0b-fsync-ok-results
                             fn-bs-k0s-syscall-step-keeps-kernel fn-bs-k0b-cleanup-step-facts)
-                           (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-marker fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result fn-bs-durable-records fn-bs-apply-ops fn-bs-unlink fn-bs-pending-matches-phase)))))
+                           (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result fn-bs-durable-records fn-bs-apply-ops fn-bs-unlink fn-bs-pending-matches-phase)))))
