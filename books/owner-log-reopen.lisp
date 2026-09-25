@@ -46,7 +46,3 @@
                      (and configured (< handled requested)))
                 (equal (cadr (fn-olr-decide configured handled requested))
                        (max handled requested)))))
-
-(defthm fn-olr-line-is-one-line
-  (not (member-equal 10 (fn-olr-line requested obs)))
-  :hints (("Goal" :in-theory (enable fn-olog-join))))

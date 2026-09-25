@@ -1014,3 +1014,11 @@
   :hints (("Goal" :in-theory (disable fn-native-config-show-wfp
                                       fn-native-config-show-octets
                                       fn-native-config-load))))
+
+; Every consumer reasons about these through the theorems above, never by
+; unfolding the rendering (books/native-operator.lisp's command grammar
+; mentions `fn-native-config-show' in one branch).
+(in-theory (disable fn-native-config-show fn-native-config-show-octets
+                    fn-native-config-show-wfp fn-native-config-show-lines
+                    fn-ncfg-show-pairs fn-native-mission-plan
+                    fn-native-mission-config))

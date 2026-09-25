@@ -3736,6 +3736,39 @@
       ]
     },
     {
+      "id": "PRF-094",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-show-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-mission-profiles-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-mission-store-opens-with-its-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-init-under-a-mission"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olr-reopen-iff-requested"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obc-commit-only-after-filing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obc-control-commits-only-in-its-filing-group"
+        }
+      ]
+    },
+    {
       "id": "PRF-095",
       "events": [
         {
