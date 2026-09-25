@@ -87,9 +87,31 @@
 (assert-event (equal (car (car (fn-bpnf-answer-effects
                                 (fn-bpnp-step *rt-s2* *rt-routed-budgeted*))))
                      :persist-attempt))
-;; The unrouted 6-field form (never sent open by the host) offers the same row.
-(assert-event (equal (car (car (fn-bpnf-answer-effects (fn-bpnp-step *rt-s2* *rt-session-event*))))
+;; The 6-field form without VIA (never sent open by the host) is gated: it
+;; installs the session and offers nothing (bp-routing finding 2).
+(assert-event (null (fn-bpnf-answer-effects (fn-bpnp-step *rt-s2* *rt-session-event*))))
+(assert-event (equal (fn-bpnf-held-list (fn-bpnf-answer-state
+                                         (fn-bpnp-step *rt-s2* *rt-session-event*)))
+                     (fn-bpnf-held-list *rt-s2*)))
+;; :resume on that session without VIA offers nothing; with VIA it is the
+;; routed arm and offers the row the table sends to the hop.
+(defconst *rt-opened*
+  (fn-bpnf-answer-state (fn-bpnp-step *rt-s2* *rt-session-event*)))
+(assert-event (null (fn-bpnf-answer-effects
+                     (fn-bpnp-step *rt-opened* (list :resume *rt-dest* *rt-session* *rt-obs*)))))
+(defconst *rt-resume-routed*
+  (list :resume *rt-dest* *rt-session* *rt-obs*
+        (list :via "relay" (fn-record-string-octets "dtn://relay/")
+              (list (fn-bprt-route 100 "dtn://bp-dest/" "relay" "dtn://relay/" 4556)))))
+(assert-event (fn-bpnp-host-eventp *rt-resume-routed*))
+(assert-event (equal (car (car (fn-bpnf-answer-effects
+                                (fn-bpnp-step *rt-opened* *rt-resume-routed*))))
                      :persist-attempt))
+(must-fail (assert-event (equal (car (car (fn-bpnf-answer-effects
+                                           (fn-bpnp-step *rt-opened*
+                                                         (list :resume *rt-dest* *rt-session*
+                                                               *rt-obs*)))))
+                                :persist-attempt)))
 ;; Hypothesis "the table names HOP": a session to an unlisted neighbour
 ;; proposes nothing, whatever it announces (even the listed hop's EID).
 (must-fail (assert-event (equal (car (rt-first-effect "other" *rt-relay-octets* *rt-table*))
@@ -201,3 +223,59 @@
 (assert-event (equal (fn-native-admin-result-status
                       (fn-bprt-admin-plan (list "bp-route" "add" "dtn://bp-dest/" "")))
                      :refused))
+;; ---------------------------------------------------------------------
+;; No blocking (bp-routing finding 3; fn-bpnp-routed-rows-skip-an-unrouted-row
+;; and fn-bpnp-step-session-offer-is-the-scan-choice).  Two held rows under
+;; one dispatch key: an OLDER bundle to dtn://elsewhere/, which the progress
+;; routes also send to dtn://bp-dest/'s key, and the YOUNGER bundle to
+;; dtn://bp-dest/.  The table routes only dtn://bp-dest/.  The unfiltered
+;; scan would choose the older row; the routed session offers the younger.
+(defconst *rt-else* (cons :dtn '(47 47 101 108 115 101 119 104 101 114 101 47)))
+(assert-event (equal (fn-bpaj-eid-text *rt-else*) "dtn://elsewhere/"))
+(defconst *rt-x*
+  (fn-bpn-send-bundle *rt-sender-config* *rt-else* '(9 9 9) 6 *rt-obs*))
+(defconst *rt-ingress-2*
+  (list :cl (cons 0 2) 1 *rt-sender* '(115 101 110 100 101 114) 0))
+(defun rt-receive-event-2 (wire)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bpnf-receive-wire-event-value
+   (fn-bpnf-receive-wire-event *rt-config* wire *rt-obs* *rt-ingress-2*)))
+(defconst *rt-b-s1*
+  (fn-bpnf-answer-state
+   (rt-durable (fn-bpnp-step *rt-s0* (rt-receive-event (fn-bpb-encode *rt-x*))))))
+(defconst *rt-b-s2*
+  (fn-bpnf-answer-state
+   (rt-durable (fn-bpnp-step *rt-b-s1* (rt-receive-event-2 *rt-a-wire*)))))
+(defconst *rt-b-routes* (list (list *rt-else* *rt-dest*) (list *rt-dest* *rt-dest*)))
+(defconst *rt-b-progress* (list :progress *rt-local* *rt-obs* *rt-b-routes* 1))
+(make-event `(defconst *rt-b-s3*
+   ',(fn-bpnf-answer-state (rt-durable (fn-bpnp-step *rt-b-s2* *rt-b-progress*)))))
+(make-event `(defconst *rt-b-s4*
+   ',(fn-bpnf-answer-state (rt-durable (fn-bpnp-step *rt-b-s3* *rt-b-progress*)))))
+(defconst *rt-b-held* (reverse (fn-bpnf-held-list *rt-b-s4*)))
+(assert-event (equal (len *rt-b-held*) 2))
+(assert-event (equal (fn-bpnp-held-dest (car *rt-b-held*)) "dtn://elsewhere/"))
+(assert-event (equal (fn-bpnp-held-dest (cadr *rt-b-held*)) "dtn://bp-dest/"))
+(assert-event (equal (fn-bpn-nth 11 (car *rt-b-held*)) *rt-dest*))
+(assert-event (equal (fn-bpn-nth 11 (cadr *rt-b-held*)) *rt-dest*))
+;; The unfiltered scan chooses the older, unrouted row.
+(assert-event (equal (fn-bpn-nth 1 (fn-bprts-scan-all *rt-b-s4* *rt-dest* 32768 *rt-obs* 3))
+                     (car *rt-b-held*)))
+;; The routed session offers the younger row: its attempt names that arrival.
+(make-event `(defconst *rt-b-open*
+   ',(fn-bpnp-step *rt-b-s4* (rt-routed-event "relay" *rt-relay-octets* *rt-table*))))
+(assert-event (equal (car (car (fn-bpnf-answer-effects *rt-b-open*))) :persist-attempt))
+(assert-event (equal (fn-bpn-nth 3 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *rt-b-open*))))
+                     (fn-bpn-nth 3 (cadr *rt-b-held*))))
+;; Without the filter (the scan over every row, the old routed gate) the
+;; chosen row is the older one, whose decision is :no-route: it blocked.
+(must-fail (assert-event (equal (fn-bpn-nth 1 (fn-bprts-scan-all *rt-b-s4* *rt-dest* 32768
+                                                                *rt-obs* 3))
+                                (cadr *rt-b-held*))))
+(assert-event (equal (fn-bprt-offer-decision (fn-bpnp-held-dest (car *rt-b-held*))
+                                             (list :via "relay" *rt-relay-octets* *rt-table*))
+                     :no-route))
+;; The older row is not in the list the session scans.
+(assert-event (equal (fn-bpnp-routed-rows *rt-b-held*
+                                          (list :via "relay" *rt-relay-octets* *rt-table*))
+                     (list (cadr *rt-b-held*))))

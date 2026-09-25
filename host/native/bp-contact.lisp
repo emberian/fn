@@ -19,28 +19,13 @@
         for effects = (fnn-bps-step service (list :clock obs))
         while effects do (fnn-bps-drive-effects service effects)))
 
-(defun fnn-bpc-drive-contact (service event)
-  ; One contact offers queued jobs until the first transfer that is not
-  ; :accepted (its job is requeued by ACL2 and waits for the next contact)
-  ; or the first outcome that is not :accepted.
-  (setf (fnn-bps-transfer service) nil)
-  (if (third event)
-      (progn
-        (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
-              for effects = (fnn-bps-step service event)
-              while effects
-              do (fnn-bps-drive-effects service effects)
-              when (or (not (eq (fnn-bps-outcome service) :accepted))
-                       (and (fnn-bps-transfer service)
-                            (not (eq (fnn-bps-transfer service) :accepted))))
-                do (loop-finish))
-        (fnn-bps-drive-effects
-         service (fnn-bps-step service (list :contact (second event) nil))))
-    (fnn-bps-drive-effects service (fnn-bps-step service event))))
+;; fnn-bpc-drive-contact is in bp-service.lisp: `bp-service run/resume',
+;; `bp-obligation request', this verb and `bp-node serve' drive every base
+;; contact through it, and ACL2 (fn-bpnp-contact-next) decides each offer.
 
 (defun fnn-command-bp-contact-tick (journal node-id peer-id start-delay end-delay
                                     lifetime crc-type hop-limit transfer-mru
-                                    wall wall-error)
+                                    wall wall-error &optional store-root)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (peer (fnn-bp-eid peer-id))
          (obs (fnn-bp-observation wall wall-error))
@@ -50,6 +35,8 @@
     (let ((service (fnn-bps-open journal config wall wall-error)))
       (unwind-protect
            (progn
+             ;; [STORE]: route the queued jobs by that Store's bp-route table.
+             (fnn-bps-use-store-routes service store-root)
              (fnn-bpc-advance-clock service obs)
              (let* ((ready (fnn-core 'fn-bpn-host-ready-peers
                                      (fnn-bps-base service)))
@@ -75,7 +62,7 @@
   (when (< (length args) 5)
     (error 'fnn-usage-error
            :message "bp-contact: tick needs journal node peer start-delay end-delay"))
-  (when (> (length args) 11)
+  (when (> (length args) 12)
     (error 'fnn-usage-error :message "bp-contact: too many arguments"))
   (flet ((number (index default label)
            (let ((value (fnn-tcl-arg args index)))
@@ -90,6 +77,8 @@
      (number 8 +fnn-tcl-transfer-mru+ "transfer MRU")
      (let ((value (fnn-tcl-arg args 9)))
        (and value (fnn-bpc-u64-argument value "wall clock")))
-     (number 10 0 "wall error"))))
+     (number 10 0 "wall error")
+     ;; [STORE]: route the queued jobs by STORE's bp-route table.
+     (fnn-tcl-arg args 11))))
 
 (fnn-register-verb "bp-contact" #'fnn-dispatch-bp-contact)

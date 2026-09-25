@@ -13,10 +13,16 @@
     *bpnfl-base* (list *bpnfa-h1*) nil nil nil nil nil 9 3 1)
    2 2))
 (defconst *bpnfl-session* (cons 1 1))
+;; The routed session (spec 4.6): the host opens an outbound session only to
+;; the boundary the route table names, and a :session without VIA offers
+;; nothing.  This fixture's table sends dtn://bp-peer/ to the boundary "relay".
+(defconst *bpnfl-via*
+  (list :via "relay" (fn-record-string-octets "dtn://relay/")
+        (list (fn-bprt-route 100 "dtn://bp-peer/" "relay" "dtn://relay/" 4556))))
 (defun bpnfl-open ()
   (fn-bpnp-step
    *bpnfl-s0*
-   (list :session *bpnfa-peer* *bpnfl-session* t 32768 *bpnfa-obs*)))
+   (list :session *bpnfa-peer* *bpnfl-session* t 32768 *bpnfa-obs* *bpnfl-via*)))
 (defun bpnfl-proposal () (car (fn-bpnf-answer-effects (bpnfl-open))))
 (defun bpnfl-attempt-durable ()
   (fn-bpnp-step
@@ -36,7 +42,7 @@
 
 (assert-event
  (equal (fn-bpnp-host-eventp
-         (list :session *bpnfa-peer* *bpnfl-session* t 32768 *bpnfa-obs*))
+         (list :session *bpnfa-peer* *bpnfl-session* t 32768 *bpnfa-obs* *bpnfl-via*))
         t))
 (assert-event (equal (car (bpnfl-proposal)) :persist-attempt))
 (assert-event (equal (fn-bpnp-used (fn-bpnf-answer-state (bpnfl-open))) 2))
