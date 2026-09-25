@@ -1753,18 +1753,33 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-ks-pop-request event)))
 
+;; The grants a statement is decided under.  At acceptance: the live
+;; configuration's.  At open (AT-OPEN, the newest-record recovery): packet
+;; 7's `fn-ks-reopen-rows' under `*fn-ks-reopen-policy*' -- by default the
+;; configuration in force at the statement's own txid, the fold of the
+;; Store's configuration journal (books/key-statements.lisp
+;; fn-ks-recover-recorded).
+(defun fn-owner-key-statement-rows (event at-open state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((live (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))))
+    (if at-open
+        (fn-ks-reopen-rows *fn-ks-reopen-policy* event live
+                           (fn-sn-config-history (fn-owner-store state)))
+      live)))
+
 (defun fn-owner-key-statement-plan
-    (event observed-ml-key ed-observation ml-observation state)
+    (event observed-ml-key ed-observation ml-observation at-open state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-ks-plan event (fn-sn-keyring-snapshots (fn-owner-store state))
-                     (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                     (fn-owner-key-statement-rows event at-open state)
                      observed-ml-key ed-observation ml-observation)))
 
 (defun fn-owner-key-statement-event
-    (event observed-ml-key ed-observation ml-observation coordinates state)
+    (event observed-ml-key ed-observation ml-observation coordinates at-open
+           state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-ks-execute event (fn-sn-keyring-snapshots (fn-owner-store state))
-                        (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                        (fn-owner-key-statement-rows event at-open state)
                         observed-ml-key ed-observation ml-observation
                         (first coordinates) (second coordinates)
                         (third coordinates))))

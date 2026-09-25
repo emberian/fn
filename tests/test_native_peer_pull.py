@@ -403,6 +403,91 @@ class NativePeerPullTests(unittest.TestCase):
         self.assertTrue(after, "B asked nothing after restart")
         self.assertEqual(after[0], dead_newnews)
 
+    def test_cursor_publication_cuts(self):
+        """Packet 5 (PRF-124): SIGKILL at every write of the cursor's
+        publication.  A fresh cursor journals its first instant before the
+        round dials (append 1) and the round's close journals the advanced
+        cursor (append 2); each is cut before the write, after the write and
+        after the fsync.  After a restart without the fault, every article A
+        held is stored at B exactly once (no skipped accepted work), and what
+        B re-offered to itself is bounded by the dead round's listing (the
+        duplicates draw 435 and change nothing)."""
+        results = {}
+        for append in (1, 2):
+            for cut in ("before-write", "after-write", "after-fsync"):
+                label = "{}:{}".format(cut, append)
+                a, b, proxy = self.two_nodes_named("A" + label.replace(":", "-"),
+                                                   "B" + label.replace(":", "-"))
+                ids = ["<cut-{}-{}@example.invalid>".format(label.replace(":", "-"), k)
+                       for k in range(2)]
+                for n, message_id in enumerate(ids):
+                    self.post(a, article(message_id, "cut-{}".format(n)))
+                self.env["FN_PULL_TEST_KILL"] = label
+                try:
+                    self.start(b)
+                except Exception:  # died before announcing LISTENING
+                    pass
+                finally:
+                    del self.env["FN_PULL_TEST_KILL"]
+                process = b["process"]
+                code = process.wait(timeout=120)
+                b.pop("process")
+                process.communicate(timeout=60)
+                self.processes.remove(process)
+                self.assertEqual(code, -signal.SIGKILL, label)
+                stored_at_death = {i: self.stored(b, i) for i in ids}
+                mark = proxy.mark()
+                self.start(b)
+                for message_id in ids:
+                    self.await_article(b, message_id)
+                self.await_log(b, "cursor=advanced", 1)
+                after = proxy.since(mark)
+                articles = [c for c in after if c.upper().startswith("ARTICLE")]
+                newnews = [c for c in after if c.upper().startswith("NEWNEWS")]
+                counts = {i: self.count_article(b, i) for i in ids}
+                self.stop(b)
+                self.stop(a)
+                results[label] = {"stored_at_death": stored_at_death,
+                                  "newnews_after": newnews[:2],
+                                  "article_after": articles, "counts": counts,
+                                  "pull_lines": self.pull_lines(b)}
+                for message_id in ids:
+                    self.assertEqual(counts[message_id], 1, (label, counts))
+                # Only ids the peer listed are fetched, each at most once per
+                # round: the duplicate replay is bounded by the listing.
+                self.assertLessEqual(len(articles), len(ids), (label, articles))
+        self.witness("cursor-cuts", results, [])
+
+    def two_nodes_named(self, name_a, name_b):
+        a = self.initialize(name_a, ["fn.test"], "a.pull.example.invalid")
+        b = self.initialize(name_b, ["fn.test"], "b.pull.example.invalid")
+        self.start(a)
+        proxy = RecordingProxy(a["port"])
+        self.addCleanup(proxy.close)
+        self.pull_from(b, "A", "a.pull.example.invalid", proxy.port)
+        return a, b, proxy
+
+    def stored(self, node, message_id):
+        return self.article_code(node, message_id) == b"223"
+
+    def count_article(self, node, message_id):
+        """How many local articles of fn.test carry MESSAGE_ID (XOVER 1-)."""
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
+            stream = client.makefile("rwb", buffering=0)
+            stream.readline()
+            stream.write(b"GROUP fn.test\r\n")
+            stream.readline()
+            stream.write(b"XOVER 1-\r\n")
+            head = stream.readline()
+            lines = []
+            if head.startswith(b"224"):
+                while True:
+                    line = stream.readline()
+                    if not line or line == b".\r\n":
+                        break
+                    lines.append(line)
+        return sum(1 for line in lines if message_id.encode("ascii") in line)
+
     @unittest.skipUnless(INN_READY, "set FN_INN_SRC to an installed INN 2.7 tree")
     def test_pull_from_inn(self):
         inn = InnLab(self.base / "inn", Path(INN_SRC))

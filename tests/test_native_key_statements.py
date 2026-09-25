@@ -303,6 +303,60 @@ class NativeKeyStatementTests(unittest.TestCase):
         self.assertEqual(self.history(c), recovered)
         witness("second open: unchanged")
 
+    def test_a_decline_across_a_restart_with_a_grant_added(self):
+        """Packet 7 (PRF-124): a statement that declined for want of a `keys'
+        grant, then a grant added live, then a restart.  Under the recorded
+        disposition (books/key-statements.lisp *fn-ks-reopen-policy*
+        :recorded) the open decides the statement under the grants in force at
+        its txid and it declines again; under the pre-packet behaviour the
+        open's live grant made it act.  FN_KS_REOPEN_EXPECT=acts runs the
+        trace against an image of the old behaviour."""
+        expect = os.environ.get("FN_KS_REOPEN_EXPECT", "declines")
+        d = self.node("d")
+        self.start(d)
+        try:
+            old = self.keys["old"]
+            self.fn("hybrid-enroll", d["control"], "1", self.principal_file,
+                    old["ed_public"], old["ml_public"])
+            new = self.keys["new"]
+            statement = self.carrier(self.principal_file, old,
+                                     self.succession("<declined@keys.invalid>", P, old, new),
+                                     "declined")
+            reply = self.post(d, statement)
+            witness("statement POST without a grant", reply.strip())
+            self.assertTrue(reply.startswith(b"240 "), reply)
+            declined = [line for line in self.log(d).splitlines() if "key-statement" in line]
+            witness("log at acceptance", declined)
+            self.assertEqual(len(declined), 1)
+            self.assertIn("key-statement declined", declined[0])
+            # The grant the statement lacked, added live after it.
+            self.fn("operator", d["config"], "control", "grant", P.hex(), "keys", "fn.keys")
+        finally:
+            self.stop(d)
+        self.assertEqual(self.history(d), ["generation=1 state=active principal=" + P.hex()])
+        self.start(d)
+        self.stop(d)
+        lines = [line for line in self.log(d).splitlines() if "key-statement" in line]
+        history = self.history(d)
+        witness("log after the restart", lines)
+        witness("history after the restart", history)
+        if expect == "acts":
+            self.assertEqual(lines[1:], ["key-statement enrol-successor committed at-open"])
+            self.assertEqual(history, ["generation=2 state=active principal=" + P.hex(),
+                                       "generation=1 state=retired principal=" + P.hex()])
+        else:
+            self.assertEqual(len(lines), 2)
+            self.assertTrue(lines[1].startswith("key-statement declined")
+                            and lines[1].endswith(" at-open"), lines)
+            self.assertEqual(history, ["generation=1 state=active principal=" + P.hex()])
+            # And again: the disposition is a function of durable records.
+            self.start(d)
+            self.stop(d)
+            again = [line for line in self.log(d).splitlines() if "key-statement" in line]
+            witness("log after a second restart", again)
+            self.assertEqual(again[2:], [lines[1]])
+            self.assertEqual(self.history(d), history)
+
 
 if __name__ == "__main__":
     unittest.main()
