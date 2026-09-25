@@ -201,7 +201,7 @@
                                        (fn-own-conn-observation conn)
                                        (fn-own-view-verdicts view)
                                        (fn-own-view-index view)
-                                       (fn-own-view-group-index view))))
+                                       (fn-own-view-group-index view) (fn-own-view-control view))))
           (if (fn-scar-conn-boundedp next (fn-sn-groups (fn-own-store o))
                                      (fn-acar-session-node conn))
               (cons :advanced
@@ -253,7 +253,7 @@
                                        (fn-own-clock o)
                                        (fn-own-conn-verdicts conn)
                                        (fn-own-conn-index conn)
-                                       (fn-own-conn-group-index conn))
+                                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
                   (fn-own-outcome-rendering o word)))
                 (if (equal completion :durable)
                     (cdr (fn-acar-own-advance-result next id))

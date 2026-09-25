@@ -149,7 +149,9 @@
                            0 0 archive nil
                            (fn-midx-build (fn-state-articles archive))
                            (fn-gidx-build (fn-state-articles archive))
-                           nil (fn-state-articles prefix))))
+                           nil (fn-state-articles prefix)
+                           (fn-ctl-subseq-diff (fn-state-articles prefix)
+                                               (fn-state-articles archive)))))
                   (conns nil) (next-id 0) (max-conns max-conns) (pending nil) (ledger nil)
                   (clock nil) (facts nil) (config nil) (queue nil) (inflight nil) (feeds nil)))
            :in-theory (e/d (fn-own-start fn-ocl-view-visiblep

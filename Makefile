@@ -804,6 +804,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-visible-tests \
 	books/control-served \
 	tests/acl2/control-served-tests \
+	books/nntp-control \
+	tests/acl2/nntp-control-tests \
+	books/owner-control-read \
 	books/login-binding \
 	tests/acl2/login-binding-tests \
 	books/topic-history-metadata \
