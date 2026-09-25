@@ -179,7 +179,7 @@
 
 ; The hypothesis dropped, for the schema octet: the right magic followed by
 ; a version octet no grammar has (refused as `:unknown-version').
-(defconst *rec-teeth-unknown-version* '(68 102 110 45 114 2))
+(defconst *rec-teeth-unknown-version* '(68 102 110 45 114 3))
 (assert-event (equal (fn-record-decode-exact *rec-teeth-unknown-version*)
                      '(:error :unknown-version)))
 
