@@ -706,9 +706,7 @@
         "fn-rcon-store-event-encode-is-store-event-encode",
         "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
         "fn-rcon-sn-io-is-sn-io",
-        "fn-rcon-ocfg-io-is-ocfg-step",
-        "fn-ock-recover-installs-ocl-relation",
-        "fn-cpr-apply-event-statep-iff-consp"
+        "fn-rcon-ocfg-io-is-ocfg-step"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -3383,15 +3381,7 @@
         "fn-cei-build-append",
         "fn-scc-decode-segments-of-segments",
         "fn-bs-scp-program-crash-is-old-or-new",
-        "fn-bs-read-ranges-concatenate",
-        "fn-owner-recover-from-checkpoint-equals-full-recover",
-        "fn-ock-recover-installs-ocl-relation",
-        "fn-ock-next-checkpoint-is-the-capture",
-        "fn-ock-published-checkpoint-opens-to-the-full-open",
-        "fn-ock-not-due-keeps-the-checkpoint-open",
-        "fn-sco-extend-of-capture-when-history",
-        "fn-cpr-apply-event-preserves-cnode-statep",
-        "fn-cpr-loop-preserves-cnode-statep"
+        "fn-bs-read-ranges-concatenate"
       ]
     },
     {
