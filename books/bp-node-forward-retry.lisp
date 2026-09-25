@@ -282,6 +282,7 @@
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpnp-attempted-held-counts-one-more
                                 fn-bpnp-under-budgetp nfix natp
+                                (:type-prescription fn-bpnp-attempt-retries)
                                 (:e nfix) (:e natp) (:e <) (:e binary-+))
                               (theory 'ground-zero)))))
 
