@@ -33,7 +33,9 @@
   (implies (equal (fn-obc-commit-gate received groups domain) :commit)
            (equal (fn-pa-filing-plan received groups domain)
                   (list :file groups)))
-  :hints (("Goal" :in-theory (disable fn-pa-filing-plan))))
+  :hints (("Goal" :in-theory (e/d (fn-pa-filing-plan)
+                                  (fn-ctl-classify-octets fn-ctl-filing-group
+                                   fn-ctl-memberp fn-record-string-octets)))))
 
 ; With C1's keystone: a control article commits only in its filing group,
 ; which is in the operator's domain, never in a group its Newsgroups names.
@@ -45,6 +47,7 @@
              (and (equal groups (list (fn-record-string-octets group)))
                   (fn-ctl-control-group-namep group)
                   (fn-ctl-memberp group domain))))
+  :rule-classes nil
   :hints (("Goal" :use ((:instance fn-obc-commit-only-after-filing)
                         (:instance fn-ctl-control-article-is-filed-only-in-control))
            :in-theory (disable fn-obc-commit-gate fn-pa-filing-plan
