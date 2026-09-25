@@ -1182,3 +1182,20 @@ Order: the representation boundaries by measured share, and the profile
 fields with the codec widths, run in parallel; whole-history replay at open
 (the checkpoint slice) follows, because a large transaction bound without
 it only makes open slow.
+
+### 2026-09-25: D28 — the megaspike branch (~07:40 UTC)
+
+ember: "i wonder if we can skip ahead (maybe in a speculative side branch)
+and do a megaspike where we try and build as much more functionality and
+integration as we can."
+
+`spike/mega` branches from `dev`; spike lanes branch from it as
+`spike/<name>` and the coordinator merges them into `spike/mega`; the spike
+never merges into `dev`. On the spike, `skip-proofs`, `:program` mode and a
+host-side decision are allowed when marked `;; SPIKE` with one line saying
+what proof or ACL2 owner it defers, and every lane's record lists its
+deferrals, so the proved re-implementation on `dev` has a specification of
+what works. Everything else stands: box safety, the laptop rule, no touching
+the live node, native results with log SHAs. The deliverable is an
+integrated system running on hbox with a demo, and the list of what `dev`
+must prove to own it.
