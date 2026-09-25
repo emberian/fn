@@ -780,7 +780,7 @@
     "roots": 771,
     "theorems": 10425,
     "functions": 7364,
-    "assert_events": 11455,
+    "assert_events": 11461,
     "must_fails": 1035,
     "encapsulates": 41,
     "guards": {
@@ -19833,9 +19833,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 59,
+      "assert_events": 65,
       "must_fails": 3,
-      "defconsts": 13,
+      "defconsts": 17,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -23080,25 +23080,25 @@
       {
         "theorem": "fn-rcon-metadata-bytes-p-is-metadata-bytes-p",
         "book": "books/records-codec-concrete.lisp",
-        "line": 96,
+        "line": 98,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-msgidp-is-msgidp",
         "book": "books/records-codec-concrete.lisp",
-        "line": 151,
+        "line": 153,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-record-p-is-record-p",
         "book": "books/records-codec-concrete.lisp",
-        "line": 159,
+        "line": 161,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-record-encode-impl-is-record-encode-impl",
         "book": "books/records-codec-concrete.lisp",
-        "line": 207,
+        "line": 209,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

@@ -19,7 +19,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 542 |
 | Functions left at the default with an explicit guard | 3673 |
 | Functions left at the default with no guard | 1055 |
-| `assert-event` checks | 11455 |
+| `assert-event` checks | 11461 |
 | `must-fail` checks | 1035 |
 | `encapsulate` events | 41 |
 | Theorems flagged SUSPECT by shape | 92 |
@@ -793,7 +793,7 @@ that `make certify` requests.
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
 | `tests/acl2/records-ceiling-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 12 | 4 | 0 |
-| `tests/acl2/records-concrete-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 59 | 3 | 0 |
+| `tests/acl2/records-concrete-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 65 | 3 | 0 |
 | `tests/acl2/records-shape-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 25 | 7 | 0 |
 | `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 9 | 0 |
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
