@@ -206,3 +206,13 @@
       (eq (symbol-class 'fn-pix-post-step-pinned (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pix-peer-delegate-pinned (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-scar-peer-step-pinned (w state)) :common-lisp-compliant)))
+
+; The history test's non-empty test is by length (no character list): the
+; empty Message-ID takes the scan, and both answer nil; the empty trie with
+; the matching list answers nil for the held one (the lookup answers), where
+; the scan answers t.
+(assert-event (equal (fn-pix-history-hasp "" *pt-node1* *pix-t-trie* *pix-t-arts*)
+                     (fn-peer-history-hasp "" *pt-node1*)))
+(assert-event (null (fn-pix-history-hasp "" *pt-node1* *pix-t-trie* *pix-t-arts*)))
+(assert-event (and (null (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* nil *pix-t-arts*))
+                   (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*)))
