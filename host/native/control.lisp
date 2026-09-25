@@ -14,6 +14,7 @@
   path listener accept-thread service
   (lock (sb-thread:make-mutex :name "fn local control"))
   (workers nil) (clients nil) (stopping nil) (max-clients 0)
+  (read-maximum 0)
   device inode lease-path lease-fd)
 
 (defmacro fnn-with-control ((control) &body body)
@@ -263,9 +264,7 @@ joins it before the process exits."
 
 (defun fnn-control-handle-client (control socket)
   (let* ((service (fnn-control-state-service control))
-         (maximum (if (fboundp 'fn-native-hybrid-control-host-max-frame)
-                      (fnn-core 'fn-native-hybrid-control-host-max-frame)
-                    (fnn-core 'fn-native-control-host-max-frame)))
+         (maximum (fnn-control-state-read-maximum control))
          (status
            (handler-case
                (let* ((frame (prog1 (fnn-control-read-frame socket maximum)
@@ -413,6 +412,20 @@ joins it before the process exits."
              (fnn-owner-action 'fn-owner-posting-configure posting-enabledp)))))
     (unless (eq configured :configured)
       (fnn-fault "owner refused ACL2 posting policy")))
+  ;; The read bound of one control connection, from the profile the owner
+  ;; carries (fixed while it runs): ACL2's `fn-nctrl-read-bound-for' of the
+  ;; profile's article and group bounds, or its hybrid twin when hybrid
+  ;; control is built in.
+  (let* ((bounds (fnn-owner-serialized
+                  service nil
+                  (lambda () (fnn-owner-core 'fn-owner-control-profile-bounds))))
+         (a (first bounds)) (g (second bounds))
+         (maximum (if (fboundp 'fn-native-hybrid-control-host-read-bound)
+                      (fnn-core 'fn-native-hybrid-control-host-read-bound a g)
+                    (fnn-core 'fn-native-control-host-read-bound a g))))
+    (unless (and (integerp maximum) (> maximum 0))
+      (fnn-fault "ACL2 returned no control read bound"))
+    (setf (fnn-control-state-read-maximum control) maximum))
   (fnn-control-acquire-lease control)
   (let* ((path (fnn-control-state-path control))
          (listener (fnn-control-listen path))

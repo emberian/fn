@@ -31,12 +31,12 @@
 ; Field-level caps.  A text field is node-generated (names, reasons,
 ; Message-IDs), bounded by construction.
 (defconst *fn-frame-max-text* 512)
-; A blob field's length is a u32, but this cap stays: the frame-field length
-; lemmas bound a schema's payload by its field count times this cap, and a
-; journal spec of seven fields at a u32 blob cap no longer fits the u32 frame
-; (verify-guards fn-frame-workflow-encode, books/frame-journal).  Raising it
-; is a per-schema blob width (design 2026-09-25-bounds §2.3, open under P2);
-; until then the control socket carries an article of at most this size.
+; The width of the plain `:blob' field, the one the node's own fields use
+; (identities, labels, signatures, chunks).  A schema whose blob carries
+; operator data names its own width with `(:blob . W)' (books/frame-fields,
+; D27): the FNCT article field is the record codec's payload ceiling
+; (books/native-control).  A schema's payload bound is the sum of its field
+; widths (`fn-frame-specs-width').
 (defconst *fn-frame-max-blob* 131072)
 (defconst *fn-frame-max-nat* 18446744073709551615)
 

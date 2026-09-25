@@ -285,6 +285,7 @@
 (defvar *fnn-hybrid-control-handler* nil)
 (defvar *sent* nil)
 (defun fnn-control-state-service (control) (declare (ignore control)) :service)
+(defun fnn-control-state-read-maximum (control) (declare (ignore control)) 4096)
 (defun fnn-control-read-frame (socket maximum) (declare (ignore socket maximum)) :frame)
 (defun fnn-control-answering (control socket) (declare (ignore control socket)) nil)
 (defun fnn-control-send-reply (socket status)

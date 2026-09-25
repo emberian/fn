@@ -61,9 +61,6 @@
     :bounds :unknown-label :invalid-offset :invalid-chunk :invalid-label
     :invalid-state))
 
-; A chunk record is the largest: two maximal blobs, a u64 and an enum octet.
-; 4 + 131072 + 8 + 4 + 131072 + 1.
-(defconst *fn-tj-max-payload* 262161)
 
 ; The field specification of each kind, in the `fn-frame-` field grammar.
 (defun fn-tj-spec-for (kind)
@@ -80,6 +77,12 @@
   (implies (not (equal (fn-tj-spec-for kind) :none))
            (fn-frame-spec-listp (fn-tj-spec-for kind)))
   :hints (("Goal" :in-theory (enable fn-tj-spec-for fn-frame-spec-listp))))
+
+; The journal's payload cap is its widest kind's width (D27): a chunk record,
+; two `:blob' fields, a u64 and an enumeration octet, 262 161 octets.  It
+; bounds work, not data: one record carries one chunk, and an object of any
+; size the transfer profile admits is carried as many chunks.
+(defconst *fn-tj-max-payload* (fn-frame-specs-width (fn-tj-spec-for :chunk)))
 
 (in-theory (disable fn-tj-spec-for))
 
