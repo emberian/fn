@@ -1835,6 +1835,16 @@
         {
           "kind": "theorem",
           "name": "fn-bs-marker-program-crash-is-old-or-new"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0m-marker-rename-crash-is-a-resolution-crash",
+          "note": "For any byte state whose every pending root entry operation is the rename of inode INO onto committed-history.json and whose directory table holds the root directory: every crash image of it is a crash image of the state with that rename's root entry dropped from the pending list, or of that state with the entry durable. Under the same choices for every other pending operation (fn-bs-k0m-crash-of-pending-marker-rename)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-marker-replaced-cut-relation",
+          "note": "K0 at marker-replaced: from a related state in the completion window, a free string stage and non-empty octets, at the marker program's pair 7 the state with the rename dropped and the root barrier's state are both related to the pair's kernel, and every crash image of the pair's byte state is a crash image of one of the two."
         }
       ]
     },
