@@ -3363,6 +3363,30 @@
         "fn-bs-scp-program-crash-is-old-or-new",
         "fn-bs-read-ranges-concatenate"
       ]
+    },
+    {
+      "id": "PRF-084",
+      "title": "Control authority requires a verified principal and a covering grant; a withdrawal record is decided once and serves no view that holds its cancel",
+      "statement": "fn-ctl-authorize-requires-verified-verdict: an :execute from fn-ctl-authorize VERDICT VERB GROUPS ROWS (books/control-authority.lisp) has verdict token :verified with a 32-octet principal. fn-ctl-authorize-requires-a-covering-grant: under :execute, for every GROUP of GROUPS, fn-ctl-covering-row is a member of ROWS whose principal is the verified one, whose verb is VERB and whose namespace pattern covers GROUP. fn-cfg-grant-control-admissible-iff: fn-cfg-delta-reason admits (fn-cfg-grant-control NS P VERB) iff NS is a namespace pattern, P 64 lowercase hex characters and VERB is cancel. fn-ctl-revoke-changes-decisions-not-records: when every cancel entry's txid is below the first appended configuration record's, fn-ctl-journal-withdrawals ENTRIES (append CONFIGS MORE) equals fn-ctl-journal-withdrawals ENTRIES CONFIGS. fn-ctl-cancel-executes-only-for-author-or-authority: a withdrawing fn-ctl-withdrawal-effect W T-GROUPS T-VERDICT means the target's verdict names W's principal, or W's scope is nonempty and covers every one of the nonempty T-GROUPS. fn-ctl-target-is-never-visible-beside-its-cancel: an article targeted by a record of WS whose cause is among ARTICLES and whose effect withdraws is not in fn-ctl-visible-articles ARTICLES WS VERDICTS. fn-ctl-pinned-view-keeps-its-archive: a record whose cause is absent from ARTICLES leaves the visible articles unchanged. fn-ctl-visible-is-arrival-order-independent: (T C . REST) and (C T . REST) serve the same articles. Covered scope: the decision functions and the operator's grant path; the served view, the host's commit-time call and signed control filing are open, so no theorem here is yet over a function the reader port calls.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-011"
+      ],
+      "depends_on": [
+        "PRF-078"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/control-authority.lisp",
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/control-authority-tests.lisp",
+        "tests/test_native_control_authority.py",
+        "planning/evidence/control-c2c3-2026-09-25.md"
+      ],
+      "progress_note": "Lane control-c2c3 (2026-09-25), packets C2 and C3 of planning/design-2026-09-25-control-messages.md under D29. Teeth in tests/acl2/control-authority-tests.lisp: per keystone a reachable witness asserting antecedent and conclusion, and per hypothesis a removal witness (the carried verdict; the cross-post outside the grant; the wrong principal; the revoke before the cancel; the view pinned before the cancel; the early cancel). The two reconfiguration headlines (fn-ocl-no-reader-observes-a-half-change, fn-ocl-crash-at-any-instant-recovers-the-live-generation) are universally quantified over delta lists and were recertified with the new slot and kinds. Open: the served view (K1 restated over fn-ctl-visible-articles at fn-own-refresh), signed control filing, the host's commit-time call, Supersedes."
     }
   ]
 }
