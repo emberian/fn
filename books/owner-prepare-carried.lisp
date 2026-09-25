@@ -25,6 +25,7 @@
 
 (in-package "ACL2")
 (include-book "owner-store-budget")
+(include-book "records-concrete")
 
 (defun fn-pcar-next-lower (records)
   (declare (xargs :guard (fn-sf-record-valuesp records) :verify-guards nil))
@@ -66,11 +67,11 @@
   (declare (xargs :guard (and (fn-sf-record-valuesp records)
                               (natp frontier))
                   :verify-guards nil))
-  (and (fn-store-event-p record)
-       (equal (fn-store-event-sequence record) (len records))
-       (equal (1+ (fn-store-event-txid record)) frontier)
-       (<= (fn-pcar-next-lower records) (fn-store-event-txid record))
-       (equal (fn-store-event-generation record) (fn-store-event-txid record))))
+  (and (fn-rcon-store-event-p record)
+       (equal (fn-rcon-store-event-sequence record) (len records))
+       (equal (1+ (fn-rcon-store-event-txid record)) frontier)
+       (<= (fn-pcar-next-lower records) (fn-rcon-store-event-txid record))
+       (equal (fn-rcon-store-event-generation record) (fn-rcon-store-event-txid record))))
 
 (defthm fn-pcar-candidatep-is-candidatep
   (equal (fn-pcar-candidatep record records frontier)
