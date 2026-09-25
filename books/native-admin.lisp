@@ -230,6 +230,19 @@
   :hints (("Goal" :use fn-native-admin-control-plan-kind
            :in-theory (disable fn-native-admin-control-plan-kind))))
 
+(defthm fn-native-admin-control-plan-caddr-is-not-another-kind
+  (let ((k (caddr (fn-native-admin-control-plan words))))
+    (and (not (equal k :create-group)) (not (equal k :remove-group))
+         (not (equal k :set-peer)) (not (equal k :remove-peer))
+         (not (equal k :set-capacity)) (not (equal k :list-peers))
+         (not (equal k :set-bp-boundary)) (not (equal k :set-bp-route))
+         (not (equal k :remove-bp-route))))
+  :hints (("Goal" :use fn-native-admin-control-plan-is-not-another-kind
+           :in-theory (e/d (fn-native-admin-result-kind)
+                           (fn-native-admin-control-plan-is-not-another-kind
+                            fn-native-admin-control-plan-kind
+                            fn-native-admin-control-plan)))))
+
 (in-theory (disable fn-native-admin-control-plan))
 
 (defun fn-native-admin-plan (argv)
