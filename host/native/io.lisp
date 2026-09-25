@@ -2123,14 +2123,15 @@ from the live ACL2 configuration; the native host does not name a provenance."
 
 The developer `store post' asks it over the profile it opened
 (fnn-post-boundary); the served owner over the profile it was handed
-(fn-owner-post-boundary).  The host compares no bound of its own."
-  (case verdict
-    (:ok nil)
-    (:bad-message-id (fnn-refuse "Message-ID is not a valid RFC 5536 message identifier"))
-    (:payload-bound (fnn-refuse "payload exceeds the modelled bound"))
-    (:group-bound (fnn-refuse "group count exceeds codec bound"))
-    (:charge-bound (fnn-refuse "charge must be a positive uint32"))
-    (t (fnn-refuse "ACL2 refused the post boundary: ~(~a~)" verdict))))
+(fn-owner-post-boundary).  The host compares no bound of its own and keeps
+no text of its own: `fn-sbud-post-boundary-refusal' (books/store-budget-
+naming.lisp) renders the refusal, NIL exactly when the boundary admits
+(fn-sbud-post-boundary-refusal-is-nil-exactly-when-admitted), and the host
+prints its octets."
+  (let ((text (fnn-core 'fn-sbud-post-boundary-refusal verdict)))
+    (cond ((null text) nil)
+          ((fnn-octet-list-p text) (fnn-refuse "~a" (fnn-octets-string text)))
+          (t (fnn-fault "ACL2 returned a malformed POST boundary refusal")))))
 
 (defun fnn-open-live-store (root writable &optional fault)
   (let ((store (make-fnn-store root :writable writable :fault fault)))

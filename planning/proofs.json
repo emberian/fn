@@ -3932,6 +3932,34 @@
       ]
     },
     {
+      "id": "PRF-110",
+      "title": "XPAT on the served reader step: the arm is fn-nntp-xpat-response, comma alternatives OR, the label is listed; the POST boundary's refusal text is ACL2's",
+      "statement": "Over fn-nntp-step-pinned (books/nntp.lisp), which fn-nntp-post-step-pinned calls for every non-POST command on the served path (fn-served-step, fn-served-dispatch, fn-auth-step-pinned; host/native/owner.lisp through host/owner-host.lisp fn-owner-chunk): fn-nntp-step-pinned-xpat-is-the-xpat-response, for an open, well-formed, projected session and a command line within the preflight whose keyword is XPAT, the step's result is fn-nntp-xpat-response over the line's arguments (the pinned dispatcher adds no XPAT arm). fn-nntp-xpat-alternation-is-or: appending non-negated wildmat alternatives q to a pattern list p ORs them in the matcher the XPAT arm calls (fn-nntp-xpat-matchesp), over every header content; RFC 2980 section 2.9's join of additional arguments into one pattern is kept. fn-auth-capability-lines-advertise-xpat: the served CAPABILITIES block (fn-auth-capability-lines-for-peer) lists XPAT for every configuration. Over fn-sbud-post-boundary-refusal (books/store-budget-naming.lisp), which host/native/io.lisp fnn-validate-post-boundary calls: fn-sbud-post-boundary-refusal-is-nil-exactly-when-admitted, the rendered refusal is NIL exactly when fn-sbud-post-boundary admits, with fn-sbud-post-boundary-refusals-are-distinct (two different words, one of them a boundary word, never share a text) and fn-sbud-post-boundary-refusal-is-a-printable-line; the host keeps no text table.",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-016",
+        "STO-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/nntp-xpat.lisp",
+        "tests/acl2/nntp-xpat-tests.lisp",
+        "books/store-budget-naming.lisp",
+        "tests/acl2/store-budget-naming-tests.lisp",
+        "planning/evidence/reader-surface-2026-09-25.md"
+      ],
+      "progress_note": "See planning/evidence/reader-surface-2026-09-25.md for the farm manifest and native logs.",
+      "events": [
+        "fn-nntp-step-pinned-xpat-is-the-xpat-response",
+        "fn-nntp-xpat-alternation-is-or",
+        "fn-auth-capability-lines-advertise-xpat",
+        "fn-sbud-post-boundary-refusal-is-nil-exactly-when-admitted",
+        "fn-sbud-post-boundary-refusals-are-distinct"
+      ]
+    },
+    {
       "id": "PRF-085",
       "title": "A chain of packs reconstructs the history: contiguous digest-linked links compose one prefix, compaction extends it over the uncovered suffix, the open over the walked chain answers the history, reclaim and publication cuts keep it",
       "statement": "Over the functions host/checkpoint-host.lisp calls for host/native/checkpoint.lisp (fnn-pack-walk, fnn-pack-extend-chain, fnn-pack-recover-records, fnn-pack-retire-older-generations): fn-ccc-links-okp-composes-a-prefix (a walked chain is BOUNDARY exact Store events from sequence 0 under the newest frontier); fn-ccc-capture-extends-the-chain (fn-ccc-capture-link from the chain's boundary, frontier, generation and digest yields a link that, consed on, is again a chain whose records are a prefix of the history and strictly longer; the old chain is its tail); fn-ccc-capture-link-succeeds (it succeeds on a valid suffix); fn-ccc-chain-reconstructs-the-history (fn-ccc-observe-chain over the decoded chain and a complete observation of H answers (:ok H frontier) when the chain's records are a prefix of H and the suffix is valid); fn-ccc-reclaim-preserves-reconstructed-history (PRF-073 over a chain); fn-ccc-retire-plan-keeps-the-chain; fn-ccc-publication-crash-walks-old-or-new-chain (under the marker-old-or-complete-candidate and files-kept facts of the pack program, the walk reads the old chain or the new link on it); fn-ccc-links-count-within-boundary (walk fuel T suffices); fn-cverb-pack-decision-capture-succeeds restated over the chain capture.",
