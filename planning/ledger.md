@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 812 |
-| Certification roots in the Makefile | 796 |
-| Books inside the root closure | 808 |
-| `defthm` and `defthmd` events | 10980 |
-| `defun` events | 7731 |
+| Books read | 814 |
+| Certification roots in the Makefile | 798 |
+| Books inside the root closure | 810 |
+| `defthm` and `defthmd` events | 11011 |
+| `defun` events | 7774 |
 | Functions with verified guards | 2146 |
-| Functions declared `:verify-guards nil` and never verified | 566 |
-| Functions left at the default with an explicit guard | 3900 |
+| Functions declared `:verify-guards nil` and never verified | 581 |
+| Functions left at the default with an explicit guard | 3928 |
 | Functions left at the default with no guard | 1119 |
-| `assert-event` checks | 11863 |
-| `must-fail` checks | 1120 |
-| `encapsulate` events | 44 |
+| `assert-event` checks | 11896 |
+| `must-fail` checks | 1127 |
+| `encapsulate` events | 49 |
 | Theorems flagged SUSPECT by shape | 94 |
 | Export-hygiene warnings | 137 |
 | Enabled-projection warnings | 42 |
 | Teeth-form warnings | 88 |
-| Include-hygiene warnings | 813 |
-| Host-names warnings | 883 |
+| Include-hygiene warnings | 816 |
+| Host-names warnings | 892 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -372,7 +372,8 @@ that `make certify` requests.
 | `books/native-config.lisp` | root | 2 | 65 | 0/0/65/0 | 0 | 0 | 0 |
 | `books/native-control.lisp` | root | 8 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/native-hybrid-control.lisp` | root | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
-| `books/native-operator.lisp` | root | 21 | 67 | 0/0/67/0 | 0 | 0 | 1 |
+| `books/native-live-status.lisp` | root | 31 | 34 | 0/11/23/0 | 0 | 0 | 0 |
+| `books/native-operator.lisp` | root | 21 | 72 | 0/0/72/0 | 0 | 0 | 1 |
 | `books/nntp-auth-fold.lisp` | root | 51 | 4 | 0/3/1/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 31 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-auth.lisp` | root | 122 | 60 | 42/3/14/1 | 0 | 0 | 3 |
@@ -764,8 +765,9 @@ that `make certify` requests.
 | `tests/acl2/native-control-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 53 | 0 | 0 |
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/native-live-status-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 20 | 7 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
-| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 153 | 9 | 0 |
+| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 166 | 9 | 0 |
 | `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/nntp-auth-teeth-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 336 | 83 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 145 | 0 | 0 |
@@ -955,7 +957,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-recover-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 171 | closed-theory-corollary: proved only by fn-node-recover-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 320 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
-| `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 896 | branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
+| `fn-nop-native-action-of-unaccepted` | `books/native-operator.lisp` | 924 | branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 847 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
 | `fn-olc-pin-trie-of-unpinned` | `books/owner-list-counts-read.lisp` | 50 | branch-of-definition: the hypothesis negates a branch test of fn-gidx-pin-trie and the conclusion is that branch's value |
