@@ -1924,6 +1924,30 @@
         "planning/evidence/bounds-p3-2026-09-25.md"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
+    },
+    {
+      "id": "STO-014",
+      "title": "Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs",
+      "specification": "specs/storage.md#content-reclamation-under-d13-sto-014",
+      "milestone": "M5",
+      "status": "in-progress",
+      "proof_targets": [
+        "PRF-088"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/reclaim-rule.lisp",
+        "books/reclaim-tombstone.lisp",
+        "books/store-reclaim.lisp",
+        "books/nntp-responses.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/store-reclaim-tests.lisp",
+        "planning/evidence/reclaim-d13-2026-09-25.md"
+      ],
+      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-rcl-existing-action for D25 and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. Not yet implemented: the host `store reclaim` verb, its byte program and cuts, status counts, the native N=5,000 scenario; holders are an argument, not yet read from the consumer projection, feed state or FNBS rows; the retention ledger keeps the reclaimed article's charge."
     }
   ]
 }
