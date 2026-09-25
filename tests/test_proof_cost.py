@@ -309,11 +309,18 @@ class ProofCostTests(unittest.TestCase):
         self.assertEqual(proof_cost.regression_baseline(selected, 10), {})
 
     def test_two_job_measurement_over_the_limit_fails(self):
+        # D30: ten to eleven seconds is the NEAR band (a warning that names
+        # the run); above eleven an unbaselined book fails.
         for jobs in (1, 2):
             selected = self.measurement("books/scoped", 10.5, jobs=jobs)
             verdict = proof_cost.ratchet(selected, {"books/scoped"}, {}, 10)
+            self.assertEqual(verdict.failing, [])
+            self.assertTrue(any(f"NEAR books/scoped: worst=10.500s" in line and f"jobs={jobs}" in line
+                                for line in verdict.kept), verdict.kept)
+            selected = self.measurement("books/scoped", 11.5, jobs=jobs)
+            verdict = proof_cost.ratchet(selected, {"books/scoped"}, {}, 10)
             self.assertEqual(len(verdict.failing), 1)
-            self.assertIn(f"FAIL books/scoped: worst=10.500s > 10s host=hbox jobs={jobs}",
+            self.assertIn(f"FAIL books/scoped: worst=11.500s > 10s host=hbox jobs={jobs}",
                           verdict.failing[0])
 
     def test_scoped_number_ratchets_while_a_wider_one_is_recorded(self):
