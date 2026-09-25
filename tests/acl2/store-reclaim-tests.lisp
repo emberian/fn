@@ -2,7 +2,7 @@
 ; served projection in books/nntp-responses (D13, STO-014, PRF-088).
 (in-package "ACL2")
 (include-book "../../books/store-reclaim")
-(include-book "../../books/nntp-responses")
+(include-book "../../books/nntp-reclaimed")
 (include-book "std/testing/must-fail" :dir :system)
 
 ; Two stored articles in group "g", numbers 1 and 2, stamped at second 100.
@@ -163,3 +163,26 @@
 (assert-event (not (fn-nntp-article-idp *rt-noid*)))
 (must-fail (assert-event (equal (fn-nntp-article-response *rt-session* *rt-noid* 1 :article t "g")
                                 (fn-nntp-single *rt-session* "423 article reclaimed"))))
+
+; fn-nntp-number-retrieval-answers-reclaimed: ARTICLE 1 in "g".
+(defconst *rt-tok1* '(49))
+(assert-event (and (fn-nntp-number-tokenp *rt-tok1*)
+                   (fn-nntp-session-group *rt-session*)
+                   (consp *rt-r1*)
+                   (equal (fn-nntp-find-group-number "g" 1 (fn-state-articles *rt-s1*)) *rt-r1*)))
+(assert-event (equal (fn-nntp-number-retrieval *rt-session* *rt-s1* :article *rt-tok1*)
+                     (fn-nntp-single *rt-session* "423 article reclaimed")))
+; Tooth (tombstone hypothesis): article 2 is live and is not answered so.
+(must-fail (assert-event (equal (fn-nntp-number-retrieval *rt-session* *rt-s1* :article '(50))
+                                (fn-nntp-single *rt-session* "423 article reclaimed"))))
+; Tooth (a selected group): with none, 412.
+(must-fail (assert-event (equal (fn-nntp-number-retrieval (fn-nntp-make-session t nil nil t)
+                                                          *rt-s1* :article *rt-tok1*)
+                                (fn-nntp-single *rt-session* "423 article reclaimed"))))
+; By Message-ID over the scan the indexed lookup refines: 430.
+(assert-event (equal (fn-nntp-msgid-retrieval *rt-session* *rt-s1* :article
+                                              (fn-record-string-octets "<a1@x>"))
+                     (fn-nntp-single *rt-session* "430 article reclaimed")))
+(must-fail (assert-event (equal (fn-nntp-msgid-retrieval *rt-session* *rt-s1* :article
+                                                         (fn-record-string-octets "<a2@x>"))
+                                (fn-nntp-single *rt-session* "430 article reclaimed"))))

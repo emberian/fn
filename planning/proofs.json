@@ -3363,6 +3363,29 @@
         "fn-bs-scp-program-crash-is-old-or-new",
         "fn-bs-read-ranges-concatenate"
       ]
+    },
+    {
+      "id": "PRF-088",
+      "title": "Content reclamation removes only unheld payload bytes and every history decision reads the same afterwards",
+      "statement": "fn-rcl-reclaimable-is-no-obligation-names-it: (fn-rcl-reclaimable rule now h verdicts article) equals: not a tombstone, rule not keep-forever and a rule, the rule permits the article's stamp at now, no authorship verdict, and no obligation of (fn-rcl-obligations h) -- reader pin, consumer cursor, undelivered feed to a live peer, BP obligation -- names the article; no hypothesis. fn-rcl-reclaim-never-touches-a-held-article: if an obligation names the article or the rule is keep-forever, fn-rcl-reclaim-if-permitted is the identity. fn-rcl-reclaim-keeps-the-duplicate-history: fn-acceptedp of every Message-ID is unchanged, no hypothesis. fn-rcl-reclaim-keeps-every-binding and fn-rcl-reclaim-keeps-the-numbering: groups, memberships, pin, stamp, per-group next numbers, next txid and pending unchanged; every other article unchanged. fn-rcl-reclaim-preserves-statep: under fn-statep. fn-rcl-prepare-commutes-with-reclaim: under fn-statep, fn-accept-prepare after reclaiming equals reclaiming after fn-accept-prepare. fn-rcl-existing-action-after-reclaim: for an article M present and not already a tombstone, the D25 verdict fn-rcl-action-over (host subject fn-rcl-existing-action) for every Message-ID, submission and groups is unchanged, or SHA-256 collides on the compared pair, or the submission names another agent under which the removed payload gives back a source. fn-rcl-config-rule-after-retention-set: under fn-rcl-rulep, the rule read after fn-cfg-apply of fn-rcl-rule-deltas is the rule, on any prior value. fn-nntp-reclaimed-article-answers-reclaimed: fn-nntp-article-response on an article with a usable identifier and a tombstone payload answers 423 (number or current) or 430 (Message-ID) article reclaimed.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-014"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/reclaim-rule.lisp",
+        "books/reclaim-tombstone.lisp",
+        "books/store-reclaim.lisp",
+        "books/nntp-responses.lisp",
+        "tests/acl2/store-reclaim-tests.lisp",
+        "planning/evidence/reclaim-d13-2026-09-25.md"
+      ],
+      "progress_note": "Open: the reclaimed record's own replay step (replaying M's record with the tombstone reaches the reclaimed state; the direct proof did not return in 60 s); the whole-replay statement over fn-replay-apply-record; the durable byte program of `store reclaim` with its cuts under K0; holders read from their subsystems; the retention charge released with the payload; articles with an authorship verdict are refused (the tombstone does not carry the verdict for replay); OVER by Message-ID and NEWNEWS still list a reclaimed article (OVER answers 503 framing unavailable for it)."
     }
   ]
 }
