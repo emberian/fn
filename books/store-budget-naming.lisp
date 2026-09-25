@@ -190,6 +190,91 @@ max_groups_per_article field G, or 0 when PROFILE is not admitted."
                                       fn-af-message-idp))))
 
 ; -----------------------------------------------------------------------------
+; The POST boundary's refusal text (PKT-091)
+;
+; host/native/io.lisp `fnn-validate-post-boundary' kept its own table from
+; the verdicts above to refusal text: a host-Lisp twin of a rendering ACL2
+; owns (AGENTS.md, one owner per decision).  The text is decided here and the
+; host prints the octets it is given.  Every word `fn-sbud-post-boundary'
+; returns has its own text (`fn-sbud-post-boundary-verdicts-are-named'), and
+; an admitted boundary has none (`fn-sbud-post-boundary-refusal-is-nil-exactly-
+; when-admitted').  The last branch is unreachable-in-composition: no verdict
+; of `fn-sbud-post-boundary' reaches it; it refuses rather than admits a word
+; this book did not name.
+
+(defconst *fn-sbud-refusal-bad-message-id*
+  (fn-record-string-octets
+   "Message-ID is not a valid RFC 5536 message identifier"))
+(defconst *fn-sbud-refusal-payload-bound*
+  (fn-record-string-octets "payload exceeds the modelled bound"))
+(defconst *fn-sbud-refusal-group-bound*
+  (fn-record-string-octets "group count exceeds codec bound"))
+(defconst *fn-sbud-refusal-charge-bound*
+  (fn-record-string-octets "charge must be a positive uint32"))
+(defconst *fn-sbud-refusal-unnamed*
+  (fn-record-string-octets "the POST boundary returned an unnamed verdict"))
+
+(defun fn-sbud-post-boundary-refusal (verdict)
+  "The refusal text of the POST boundary VERDICT as octets, or NIL for :ok."
+  (declare (xargs :guard t))
+  (case verdict
+    (:ok nil)
+    (:bad-message-id *fn-sbud-refusal-bad-message-id*)
+    (:payload-bound *fn-sbud-refusal-payload-bound*)
+    (:group-bound *fn-sbud-refusal-group-bound*)
+    (:charge-bound *fn-sbud-refusal-charge-bound*)
+    (otherwise *fn-sbud-refusal-unnamed*)))
+
+(defun fn-sbud-post-boundary-verdictp (verdict)
+  (declare (xargs :guard t))
+  (if (member-equal verdict '(:ok :bad-message-id :payload-bound :group-bound
+                                  :charge-bound))
+      t
+    nil))
+
+; The range of the boundary: five words, each named above.
+(defthm fn-sbud-post-boundary-verdicts-are-named
+  (fn-sbud-post-boundary-verdictp
+   (fn-sbud-post-boundary profile msgid payload-length group-count charge))
+  :hints (("Goal" :in-theory (disable fn-sbud-payload-bound fn-sbud-group-bound
+                                      fn-af-message-idp))))
+
+; Keystone: the host refuses exactly when the boundary does.  The host's
+; `fnn-validate-post-boundary' refuses with this text when it is non-NIL and
+; returns otherwise, so over every input the boundary admits the host prints
+; nothing, and over every input it refuses the host prints a refusal.
+(defthm fn-sbud-post-boundary-refusal-is-nil-exactly-when-admitted
+  (iff (fn-sbud-post-boundary-refusal
+        (fn-sbud-post-boundary profile msgid payload-length group-count charge))
+       (not (equal (fn-sbud-post-boundary profile msgid payload-length
+                                          group-count charge)
+                   :ok)))
+  :hints (("Goal" :in-theory (disable fn-sbud-payload-bound fn-sbud-group-bound
+                                      fn-af-message-idp))))
+
+; Each refusal is one line of printable ASCII (32 to 126), so the host's
+; line never carries a CR, LF or control octet.
+(defun fn-sbud-printable-ascii-p (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (natp (car xs)) (<= 32 (car xs)) (<= (car xs) 126)
+           (fn-sbud-printable-ascii-p (cdr xs)))
+    (null xs)))
+
+(defthm fn-sbud-post-boundary-refusal-is-a-printable-line
+  (fn-sbud-printable-ascii-p (fn-sbud-post-boundary-refusal verdict)))
+
+; Two different words, at least one of them a boundary word, never share a
+; text: the reader of a refusal can tell which bound refused.
+(defthm fn-sbud-post-boundary-refusals-are-distinct
+  (implies (and (or (fn-sbud-post-boundary-verdictp v1)
+                    (fn-sbud-post-boundary-verdictp v2))
+                (not (equal v1 v2)))
+           (not (equal (fn-sbud-post-boundary-refusal v1)
+                       (fn-sbud-post-boundary-refusal v2))))
+  :hints (("Goal" :in-theory (enable fn-sbud-post-boundary-verdictp))))
+
+; -----------------------------------------------------------------------------
 ; The signed article's record bound (D27)
 ;
 ; A signed POST is stored as one kind-4 composite: its article record, its

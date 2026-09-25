@@ -6,10 +6,40 @@
 (defconst *fn-nhctrl-enroll-kind* 4)
 (defconst *fn-nhctrl-author-kind* 5)
 (defconst *fn-nhctrl-revoke-kind* 6)
-(defconst *fn-nhctrl-max-payload* 65536)
-(defconst *fn-nhctrl-enroll-spec* '(:nat :blob :blob :blob))
-(defconst *fn-nhctrl-author-spec* '(:nat :blob :blob :blob :text))
-(defconst *fn-nhctrl-revoke-spec* '(:nat :blob))
+; Field widths are the exact values each field carries (D27): the enrolment
+; keys (32, 32 and 1 952 octets), the v1 authored source (at most
+; `*fn-hsig-v1-max-source*'), the Ed25519 and ML-DSA signatures (64 and 3 309)
+; and the principal (32).  A value of those sizes encodes to the same octets
+; as under the earlier `:blob' specs, and the decoders still check each size.
+(defconst *fn-nhctrl-enroll-spec*
+  '(:nat (:blob . 32) (:blob . 32) (:blob . 1952)))
+(defconst *fn-nhctrl-author-spec*
+  (list :nat (cons :blob *fn-hsig-v1-max-source*) '(:blob . 64)
+        '(:blob . 3309) :text))
+(defconst *fn-nhctrl-revoke-spec* '(:nat (:blob . 32)))
+; The hybrid payload cap is its widest spec's width, the author request at
+; the v1 source ceiling (a codec width; before D27 a fixed 65 536, which
+; refused a v1 source above about 62 000 octets).
+(defconst *fn-nhctrl-max-payload*
+  (max (fn-frame-specs-width *fn-nhctrl-author-spec*)
+       (max (fn-frame-specs-width *fn-nhctrl-enroll-spec*)
+            (fn-frame-specs-width *fn-nhctrl-revoke-spec*))))
+
+; The owner's read bound for one control connection when hybrid control is
+; loaded: an ordinary FNCT request under the profile's A and G, or a hybrid
+; request (host/native/control.lisp `fnn-control-start').  Before D27 the
+; hybrid bound replaced the ordinary one, which capped `operator post' at
+; 65 536 octets whenever hybrid control was built in.
+(defun fn-nhctrl-read-bound-for (a g)
+  (declare (xargs :guard t))
+  (max (fn-nctrl-read-bound-for a g)
+       (+ *fn-frame-overhead-octets* *fn-nhctrl-max-payload*)))
+
+(defthm fn-nhctrl-read-bound-covers-both
+  (and (<= (fn-nctrl-read-bound-for a g) (fn-nhctrl-read-bound-for a g))
+       (<= (+ *fn-frame-overhead-octets* *fn-nhctrl-max-payload*)
+           (fn-nhctrl-read-bound-for a g)))
+  :rule-classes nil)
 
 (defun fn-native-hybrid-control-uint32 (text)
   (declare (xargs :guard t))

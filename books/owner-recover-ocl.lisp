@@ -123,23 +123,41 @@
                                    fn-own-refresh-keeps-fields)
                                   (fn-own-refresh)))))
 
+(defthm fn-orec-view-historyp-of-configure
+  (equal (fn-ocl-view-historyp (fn-own-configure o config))
+         (fn-ocl-view-historyp o))
+  :hints (("Goal" :in-theory (e/d (fn-ocl-view-historyp fn-own-configure)
+                                  (fn-cst-replay-node fn-own-take)))))
+
 ; fn-own-start refreshes at every idle phase, :recovering among them, so the
-; view is the whole journal's replay at the store's frontier: the store node.
+; view is the whole journal's replay at the store's frontier: the store node,
+; served as its visible state (the start view is consistent by construction:
+; no records, no verdicts, the visible list of the empty prefix).
 (defthm fn-orec-start-view-historyp
   (implies (and (fn-cst-relation st)
                 (fn-snt-idle-phasep (fn-sf-phase (fn-sn-files st))))
            (fn-ocl-view-historyp
             (fn-own-configure (fn-own-start st max-conns) post)))
   :hints (("Goal"
-           :use ((:instance fn-own-take-of-len
-                            (xs (fn-sf-records (fn-sn-files st))))
-                 fn-ocl-cst-events-are-proper)
-           :in-theory (e/d (fn-ocl-view-historyp fn-own-start fn-own-configure
-                            fn-own-refresh fn-own-store-idlep fn-cst-relation)
-                           (fn-cst-replay-node fn-cpr-replay fn-own-take
-                            fn-own-view-make-group-indexed fn-snt-idle-phasep
-                            fn-own-prefix-archive fn-midx-build
-                            fn-gidx-build)))))
+           :use (fn-ocl-cst-events-are-proper
+                 (:instance fn-ocl-refreshed-idle-view-history
+                  (view (let* ((prefix (fn-own-prefix-archive
+                                        (fn-sn-groups st) (fn-sn-capacity st)
+                                        (fn-sf-records (fn-sn-files st)) 0 0))
+                               (archive (fn-ctl-visible-state prefix nil nil)))
+                          (fn-own-view-make-visible
+                           0 0 archive nil
+                           (fn-midx-build (fn-state-articles archive))
+                           (fn-gidx-build (fn-state-articles archive))
+                           nil (fn-state-articles prefix))))
+                  (conns nil) (next-id 0) (max-conns max-conns) (pending nil) (ledger nil)
+                  (clock nil) (facts nil) (config nil) (queue nil) (inflight nil) (feeds nil)))
+           :in-theory (e/d (fn-own-start fn-ocl-view-visiblep
+                            fn-ctl-visible-state fn-own-refresh-keeps-fields)
+                           (fn-own-refresh fn-ocl-view-historyp fn-cst-relation fn-own-configure
+                            fn-cst-replay-node fn-cpr-replay fn-own-take
+                            fn-snt-idle-phasep fn-ctl-visible-articles
+                            fn-own-prefix-archive fn-midx-build fn-gidx-build)))))
 
 (defthm fn-orec-start-view-configp
   (implies (and (fn-cst-relation st)

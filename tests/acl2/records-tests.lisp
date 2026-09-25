@@ -49,7 +49,7 @@
 ; Header/version/count/type/trailing errors each have an explicit vector.
 (assert-event (equal (fn-record-decode-exact '(68 102 110 45 115 0))
                      '(:error :magic)))
-(assert-event (equal (fn-record-decode-exact '(68 102 110 45 114 2))
+(assert-event (equal (fn-record-decode-exact '(68 102 110 45 114 3))
                      '(:error :unknown-version)))
 ; A group count one past the codec ceiling `*fn-record-max-groups*' (65 535),
 ; as the canonical four-octet uint head 26 0 1 0 0.

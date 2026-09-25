@@ -160,6 +160,9 @@
    ((equal reason :xref) "441 posting failed; Xref must not be supplied")
    ((equal reason :injection-date-present) "441 posting failed; Injection-Date must not be supplied")
    ((equal reason :path-present) "441 posting failed; Path must not be supplied")
+   ((equal reason :path-malformed) "441 posting failed; Path is not a valid path")
+   ((equal reason :path-duplicate) "441 posting failed; Path appears more than once")
+   ((equal reason :path-posted) "441 posting failed; Path must not carry a POSTED diagnostic")
    ((equal reason :newsgroups-missing) "441 posting failed; Newsgroups is required")
    ((equal reason :newsgroups-duplicate) "441 posting failed; Newsgroups appears more than once")
    ((equal reason :newsgroups-invalid) "441 posting failed; Newsgroups is not a valid newsgroup list")
@@ -302,7 +305,10 @@
                        :event :signed-record
                        ;; A control article the filing plan refused
                        ;; (books/peer-authored-accept.lisp fn-pa-filing-plan).
-                       :control-not-filed :control-malformed :control-signed))
+                       :control-not-filed :control-malformed :control-signed
+                       ;; A bound login refused by the posting policy
+                       ;; (books/login-binding.lisp fn-lb-gate).
+                       :login-not-bound :login-unsigned))
        t))
 
 ; The reason text of a Store refusal, one per kind: the one table.  POST's
@@ -342,6 +348,10 @@
     "the Control header field is malformed (control-malformed)")
    ((equal kind :control-signed)
     "a signed control message cannot be filed here yet (control-signed)")
+   ((equal kind :login-not-bound)
+    "the login is not bound to this signing principal")
+   ((equal kind :login-unsigned)
+    "this login posts only articles signed by its bound principal")
    (t "the article was refused")))
 
 (defun fn-post-store-refusal-line (kind)

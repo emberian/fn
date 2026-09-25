@@ -132,9 +132,10 @@ FN_POST_ID = "<inn-lab-fn-post-{tag}@example.invalid>"
 FN_OPERATOR_ID = "<inn-lab-fn-operator-{tag}@example.invalid>"
 FN_LOOP_ID = "<inn-lab-fn-loop-{tag}@example.invalid>"
 FN_FROM_ID = "<inn-lab-fn-from-{tag}@example.invalid>"
+FN_PATH_ID = "<inn-lab-fn-path-{tag}@example.invalid>"
 ABSENT_ID = "<inn-lab-absent-{tag}@example.invalid>"
 ID_TEMPLATES = ("FED_ID", "LOOP_ID", "LOOP2_ID", "FN_POST_ID", "FN_OPERATOR_ID",
-                "FN_LOOP_ID", "FN_FROM_ID", "ABSENT_ID")
+                "FN_LOOP_ID", "FN_FROM_ID", "FN_PATH_ID", "ABSENT_ID")
 
 
 def message_ids(tag: str) -> dict:
@@ -147,9 +148,11 @@ def article(msgid: str, subject: str, date: str, path: str | None = None,
             sender: str = "lab@example.invalid") -> bytes:
     """One article's octets, CRLF lines, RFC 5536 order.
 
-    `path` None is an article as a posting agent writes it: RFC 5537 section
-    3.4.1 has the injecting agent add Path, and fn's POST refuses one that is
-    already there (books/nntp-post.lisp, `:path-present`)."""
+    `path` None is an article as a posting agent writes it without Path: RFC
+    5537 section 3.4.1 lets the injecting agent add it.  A supplied `path` is
+    accepted by fn's POST since D32 (2026-09-25) and prefixed with fn's
+    identity (books/injection.lisp, recipe v3); a malformed one is refused
+    (`:path-malformed`)."""
     lines = (["Path: {}".format(path)] if path is not None else []) + [
         "From: " + sender,
         "Newsgroups: " + group,
@@ -1494,6 +1497,30 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
                    "refused (441) and never served".format(msgid, reply, after),
                    observed="{} / ARTICLE {}".format(reply, after))
 
+    def scenario_supplied_path(self):
+        """POST with a supplied Path, as tin sends: 240, and fn prefixes it.
+
+        D32 (2026-09-25): RFC 5537 3.4.1 lets a proto-article carry Path and
+        3.2.1 has the injecting agent prepend its identity.  Until D32 fn
+        answered `441 posting failed; Path must not be supplied`."""
+        msgid = self.ids["FN_PATH_ID"]
+        posted = article(msgid, "a Path the posting agent supplied", self.date,
+                         path="not-for-mail")
+        path = self.put_article("fn-path", posted)
+        probe = self.drive_inn("post", "--port {} --msgid '{}' --file {}".format(
+            self.fn_port, msgid, path), name="POST {} (Path: not-for-mail) to the fn owner"
+            .format(msgid))
+        result = self.payload(probe)
+        reply, after = str(result.get("result", "")), str(result.get("article", ""))
+        self.facts["fn post supplied path"] = "POST='{}' article='{}' ARTICLE='{}'".format(
+            result.get("post"), reply, after)
+        self.check("fn-post-supplied-path-240",
+                   reply.startswith("240") and after.startswith("220"),
+                   "POST of {} with `Path: not-for-mail` drew '{}' and ARTICLE drew '{}': "
+                   "D32 accepts a supplied Path and prefixes it with {}!".format(
+                       msgid, reply, after, FN_PATH_IDENTITY),
+                   observed="{} / ARTICLE {}".format(reply, after))
+
     def scenario_inn_control(self):
         """INN's inbound path by hand: a transfer, a duplicate and a Path loop."""
         fed = article(self.ids["FED_ID"], "handed to INN, fed on to fn", self.date,
@@ -1830,6 +1857,7 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         self.scenario_fn_posts()
         self.scenario_operator_post()
         self.scenario_from_invalid()
+        self.scenario_supplied_path()
         self.scenario_inn_control()
         self.scenario_innfeed_to_fn()
         self.scenario_duplicates_and_loop()

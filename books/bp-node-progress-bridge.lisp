@@ -341,7 +341,7 @@
 
 (local
  (fn-bpnpb-defquiet bpnpb-start-one
-  (fn-bpnp-start-one st peer session mru observation budget)
+  (fn-bpnp-start-one st peer session mru observation budget ordered)
   (fn-bpnp-start-one bpnpb-stranded-effects-confined)))
 
 ;; The routed :session arm (spec 4.6) answers start-one's effects or one

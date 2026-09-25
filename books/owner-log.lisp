@@ -242,6 +242,104 @@ for one), or nil."
            (fn-olog-field "detail" (fn-olog-symbol-text detail))
            (fn-olog-field "time" (fn-olog-time (fn-own-clock o)))))))
 
+;; ----------------------------------------------------------------------------
+;; Refused POSTs (PKT-095)
+;;
+;; A POST refused before it becomes a submission never reaches
+;; fn-own-outcome, so fn-olog-served-post-line never ran for it and a refusal
+;; rate had no signal.  Two lines close that, both read off ACL2 values the
+;; client's reply was rendered from:
+;;
+;;  - served: every 441 reply a socket read's effects carry (the injection
+;;    refusals of fn-nntp-post-step, fn-post-refusal-line, including the
+;;    :oversize line the wire's :body-overlimit close gives).  The host
+;;    (host/owner-host.lisp fn-owner-chunk) leaves the lines in
+;;    `fn-owner-refusal-lines' after the read; host/native/owner.lisp
+;;    fnn-owner-handle-chunk writes each.  A refusal after the take is
+;;    fn-olog-served-post-line's, as before.
+;;  - control: the operator's article refused by fn-own-operator-submit-result
+;;    (the injection decision under the owner's configuration and clock).  The
+;;    host (fn-owner-operator-refusal-log-line) renders it right after
+;;    fn-owner-operator-submit answered :refused.
+
+; The injection reasons fn-post-refusal-line names.  A 441 whose text is none
+; of theirs is logged with reason `unnamed'.
+(defconst *fn-olog-post-refusal-reasons*
+  '(:unparsable :injection-info :xref :injection-date-present :path-present
+    :newsgroups-missing :newsgroups-duplicate :newsgroups-invalid
+    :message-id-duplicate :message-id-invalid :from-missing :from-duplicate
+    :from-invalid :subject-missing :subject-duplicate :date-duplicate
+    :no-groups :unknown-group :oversize :clock-unusable :clock-out-of-range
+    :posting-disallowed))
+
+(defun fn-olog-post-refusal-reply (reason)
+  ; The reply octets fn-nntp-post-step sends for REASON.
+  (declare (xargs :guard t))
+  (fn-nntp-crlf (fn-nntp-string-octets (fn-post-refusal-line reason))))
+
+(defun fn-olog-post-refusal-reason-in (reply reasons)
+  (declare (xargs :guard t))
+  (if (consp reasons)
+      (if (equal reply (fn-olog-post-refusal-reply (car reasons)))
+          (car reasons)
+        (fn-olog-post-refusal-reason-in reply (cdr reasons)))
+    :unnamed))
+
+(defun fn-olog-post-refusal-reason (reply)
+  (declare (xargs :guard t))
+  (fn-olog-post-refusal-reason-in reply *fn-olog-post-refusal-reasons*))
+
+; RFC 3977 section 6.3.1: 441 is the posting-failed code.
+(defun fn-olog-441-replyp (effect)
+  (declare (xargs :guard t))
+  (and (consp effect)
+       (equal (car effect) :reply)
+       (consp (cdr effect))
+       (let ((x (cadr effect)))
+         (and (consp x) (equal (car x) 52)
+              (consp (cdr x)) (equal (cadr x) 52)
+              (consp (cddr x)) (equal (caddr x) 49)
+              (consp (cdddr x)) (equal (cadddr x) 32)))))
+
+(defun fn-olog-served-refusal-line (o id reply)
+  "The line for one 441 REPLY a socket read sent on served connection ID."
+  (declare (xargs :guard t))
+  (fn-olog-join
+   (list (fn-olog-class-word :refused)
+         (fn-olog-text "post")
+         (fn-olog-field "path" (fn-olog-text "served"))
+         (fn-olog-field "connection" (fn-olog-decimal id))
+         (fn-olog-field "reason"
+                        (fn-olog-symbol-text (fn-olog-post-refusal-reason reply)))
+         (fn-olog-field "time" (fn-olog-time (fn-own-clock o))))))
+
+(defun fn-olog-served-refusal-lines (o id effects)
+  "One line per 441 reply in EFFECTS, in order."
+  (declare (xargs :guard t))
+  (if (consp effects)
+      (if (fn-olog-441-replyp (car effects))
+          (cons (fn-olog-served-refusal-line o id (cadr (car effects)))
+                (fn-olog-served-refusal-lines o id (cdr effects)))
+        (fn-olog-served-refusal-lines o id (cdr effects)))
+    nil))
+
+(defun fn-olog-control-refusal-line (o msgid groups octets)
+  "The line for the operator's article when fn-own-operator-submit-result
+refuses it, read from the owner the submit was decided against; NIL when the
+decision injects (the outcome line is then fn-olog-control-post-line's)."
+  (declare (xargs :guard t))
+  (let ((decision (fn-own-operator-decision-of o msgid groups octets)))
+    (if (fn-inj-injectedp decision)
+        nil
+      (fn-olog-join
+       (list (fn-olog-class-word :refused)
+             (fn-olog-text "post")
+             (fn-olog-field "path" (fn-olog-text "control"))
+             (fn-olog-field "message-id" msgid)
+             (fn-olog-field "reason"
+                            (fn-olog-symbol-text (fn-inj-decision-reason decision)))
+             (fn-olog-field "time" (fn-olog-time (fn-own-clock o))))))))
+
 ; A feed name as octets: the feed's peer is a string, its Message-ID the
 ; octets fn-feed-namep admits.
 (defun fn-olog-name-octets (x)
@@ -497,3 +595,68 @@ for one), or nil."
                                    fn-olog-class-word fn-olog-text)
                                   (fn-olog-field fn-olog-decimal
                                    fn-olog-symbol-text)))))
+
+; -----------------------------------------------------------------------------
+; Refused POSTs (PKT-095)
+
+(defthm fn-olog-served-refusal-line-is-one-line
+  (fn-olog-no-breakp (fn-olog-served-refusal-line o id reply))
+  :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-symbol-text
+                                      fn-olog-post-refusal-reason))))
+
+(defthm fn-olog-served-refusal-line-says-refused
+  (equal (fn-olog-line-word (fn-olog-served-refusal-line o id reply))
+         (fn-olog-text "refused"))
+  :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text)
+                                  (fn-olog-field fn-olog-decimal fn-olog-time
+                                   fn-olog-symbol-text fn-olog-post-refusal-reason)))))
+(defun fn-olog-441-count (effects)
+  (declare (xargs :guard t))
+  (if (consp effects)
+      (+ (if (fn-olog-441-replyp (car effects)) 1 0)
+         (fn-olog-441-count (cdr effects)))
+    0))
+(defun fn-olog-all-say-refusedp (lines)
+  (declare (xargs :guard t))
+  (if (consp lines)
+      (and (equal (fn-olog-line-word (car lines)) (fn-olog-text "refused"))
+           (fn-olog-no-breakp (car lines))
+           (fn-olog-all-say-refusedp (cdr lines)))
+    t))
+; KEYSTONE (served).  The lines a socket read logs are exactly one per 441
+; reply its effects send the client, and every one is a single line whose
+; first word is `refused'.  host/owner-host.lisp fn-owner-chunk computes them
+; over the effects it installs for the client.
+(defthm fn-olog-served-refusal-lines-one-per-441
+  (and (equal (len (fn-olog-served-refusal-lines o id effects))
+              (fn-olog-441-count effects))
+       (fn-olog-all-say-refusedp (fn-olog-served-refusal-lines o id effects)))
+  :hints (("Goal" :in-theory (disable fn-olog-served-refusal-line
+                                      fn-olog-441-replyp fn-olog-line-word))))
+; The reason field names the injection reason whose line was sent: every
+; reason fn-post-refusal-line names reads back as itself (the lines differ).
+(defthm fn-olog-post-refusal-reason-names-the-sent-reason
+  (implies (member-equal reason *fn-olog-post-refusal-reasons*)
+           (equal (fn-olog-post-refusal-reason
+                   (fn-olog-post-refusal-reply reason))
+                  reason))
+  :hints (("Goal" :in-theory (disable fn-olog-post-refusal-reply))))
+
+(defthm fn-olog-control-refusal-line-is-one-line
+  (fn-olog-no-breakp (fn-olog-control-refusal-line o msgid groups octets))
+  :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-symbol-text
+                                      fn-own-operator-decision-of))))
+; KEYSTONE (control).  The operator's article gets a `refused' line exactly
+; when fn-own-operator-submit-result -- the answer host/owner-host.lisp
+; fn-owner-operator-submit returns -- is :refused.
+(defthm fn-olog-control-refusal-line-says-refused-iff-submit-refused
+  (equal (equal (fn-olog-line-word
+                 (fn-olog-control-refusal-line o msgid groups octets))
+                (fn-olog-text "refused"))
+         (equal (fn-own-operator-submit-result o msgid groups octets)
+                :refused))
+  :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text
+                                   fn-own-operator-submit-result)
+                                  (fn-olog-field fn-olog-decimal fn-olog-time
+                                   fn-olog-symbol-text
+                                   fn-own-operator-decision-of)))))

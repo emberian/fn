@@ -84,6 +84,7 @@
 (include-book "clock")
 (include-book "owner-feed")
 (include-book "msgid-index")
+(include-book "control-visible")
 
 ; store's idle-phase predicate has no explicit guard; it is guard t and its
 ; body is one member-equal over a constant, so verify it here so that
@@ -422,11 +423,18 @@
                     (:d fn-own-sub-mark) (:d fn-own-sub-decision) (:d fn-own-sub-make)))
 
 ; -----------------------------------------------------------------------------
-; The committed view record: (version frontier archive verdicts trie buckets)
+; The committed view record:
+;   (version frontier archive verdicts trie buckets withdrawals raw)
+; ARCHIVE is the state the view serves: the acceptance state of its prefix
+; with the withdrawn targets out of its article list (C3, D29,
+; `fn-ctl-visible-state').  WITHDRAWALS are the records decided for the
+; cancels among RAW, the acceptance archive's own article list, which the
+; next refresh compares with the grown archive to extend the visible list
+; incrementally (`fn-ctl-refresh-visible').
 
 (defun fn-own-view-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 6)))
+  (and (true-listp x) (equal (len x) 8)))
 (defun fn-own-view-version (v)
   (declare (xargs :guard t))
   (mbe :logic (car v) :exec (fn-ag-car v)))
@@ -447,10 +455,22 @@
 (defun fn-own-view-group-index (v)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v)))))))
+(defun fn-own-view-withdrawals (v)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                                                         (fn-ag-cdr v))))))))
+(defun fn-own-view-raw (v)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                                                         (fn-ag-cdr (fn-ag-cdr v)))))))))
+(defun fn-own-view-make-visible
+    (version frontier archive verdicts index buckets withdrawals raw)
+  (declare (xargs :guard t))
+  (list version frontier archive verdicts index buckets withdrawals raw))
 (defun fn-own-view-make-group-indexed
     (version frontier archive verdicts index buckets)
   (declare (xargs :guard t))
-  (list version frontier archive verdicts index buckets))
+  (list version frontier archive verdicts index buckets nil nil))
 (defun fn-own-view-make-indexed (version frontier archive verdicts index)
   (declare (xargs :guard t))
   (fn-own-view-make-group-indexed version frontier archive verdicts index nil))
@@ -459,6 +479,18 @@
           (fn-own-view-make-group-indexed
            version frontier archive verdicts index buckets))
          buckets))
+(defthm fn-own-view-fields-of-make-visible
+  (let ((v (fn-own-view-make-visible version frontier archive verdicts index
+                                     buckets withdrawals raw)))
+    (and (fn-own-view-shapep v)
+         (equal (fn-own-view-version v) version)
+         (equal (fn-own-view-frontier v) frontier)
+         (equal (fn-own-view-archive v) archive)
+         (equal (fn-own-view-verdicts v) verdicts)
+         (equal (fn-own-view-index v) index)
+         (equal (fn-own-view-group-index v) buckets)
+         (equal (fn-own-view-withdrawals v) withdrawals)
+         (equal (fn-own-view-raw v) raw))))
 (defthm fn-own-view-shapep-of-group-indexed
   (fn-own-view-shapep
    (fn-own-view-make-group-indexed
@@ -573,7 +605,8 @@
                     (:d fn-own-view-frontier) (:d fn-own-view-archive)
                     (:d fn-own-view-verdicts) (:d fn-own-view-index)
                     (:d fn-own-view-make-indexed) (:d fn-own-view-make-pinned)
-                    (:d fn-own-view-make)))
+                    (:d fn-own-view-make) (:d fn-own-view-make-visible)
+                    (:d fn-own-view-withdrawals) (:d fn-own-view-raw)))
 
 ; -----------------------------------------------------------------------------
 ; The owner record
@@ -812,22 +845,43 @@
   (declare (xargs :guard t))
   (fn-snt-idle-phasep (fn-sf-phase (fn-sn-files s))))
 
+; The configuration a cancel first published by this refresh is decided
+; under: the store's configuration journal through the archive's next txid
+; (`fn-ctl-config-at').  A cancel is published by the refresh at the idle
+; phase its commit reaches, so this is the configuration in force at its
+; commit unless a configuration record is appended between the two (open:
+; planning/evidence/control-c3b-2026-09-25.md).
+(defun fn-own-refresh-config (s archive)
+  (declare (xargs :guard t))
+  (fn-ctl-config-at (fn-state-next-txid archive) (fn-sn-config-history s)))
+(in-theory (disable (:d fn-own-refresh-config)))
+
 (defun fn-own-refresh (o)
   (declare (xargs :guard t))
   (let ((s (fn-own-store o)))
     (if (fn-own-store-idlep s)
         (let* ((old-view (fn-own-view o))
-               (archive (fn-node-acceptance (fn-sn-node s)))
+               (acceptance (fn-node-acceptance (fn-sn-node s)))
+               (raw (fn-state-articles acceptance))
+               (old-raw (fn-own-view-raw old-view))
+               (verdicts (fn-sn-verdicts s))
+               (withdrawals (fn-ctl-refresh-withdrawals
+                             raw old-raw (fn-own-view-withdrawals old-view)
+                             verdicts (fn-own-refresh-config s acceptance)))
+               (old-visible (fn-state-articles (fn-own-view-archive old-view)))
+               (visible (fn-ctl-refresh-visible
+                         raw old-raw old-visible withdrawals
+                         (fn-own-view-verdicts old-view) verdicts))
+               (archive (fn-ctl-visible-state-of acceptance visible))
                (index (fn-midx-refresh
-                       (fn-own-view-index old-view)
-                       (fn-state-articles (fn-own-view-archive old-view))
-                       (fn-state-articles archive))))
+                       (fn-own-view-index old-view) old-visible visible)))
           (fn-own-make s
-                     (fn-own-view-make-group-indexed
+                     (fn-own-view-make-visible
                       (len (fn-sf-records (fn-sn-files s)))
                       (fn-sf-frontier (fn-sn-files s))
-                      archive (fn-sn-verdicts s) index
-                      (fn-gidx-build (fn-state-articles archive)))
+                      archive verdicts index
+                      (fn-gidx-build visible)
+                      withdrawals raw)
                      (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                      (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                      (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
@@ -841,13 +895,15 @@
   (declare (xargs :guard t))
   (fn-own-refresh
    (fn-own-make store
-                (let ((archive (fn-own-prefix-archive
+                (let* ((prefix (fn-own-prefix-archive
                                 (fn-sn-groups store) (fn-sn-capacity store)
-                                (fn-sf-records (fn-sn-files store)) 0 0)))
-                  (fn-own-view-make-group-indexed
+                                (fn-sf-records (fn-sn-files store)) 0 0))
+                       (archive (fn-ctl-visible-state prefix nil nil)))
+                  (fn-own-view-make-visible
                    0 0 archive nil
                    (fn-midx-build (fn-state-articles archive))
-                   (fn-gidx-build (fn-state-articles archive))))
+                   (fn-gidx-build (fn-state-articles archive))
+                   nil (fn-state-articles prefix)))
                 nil 0 max-conns nil nil nil nil nil nil nil nil)))
 
 ; -----------------------------------------------------------------------------
