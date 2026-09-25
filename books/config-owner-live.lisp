@@ -986,7 +986,7 @@
              (fn-own-conn-observation conn)
              (fn-own-conn-verdicts conn)
              (fn-own-conn-index conn)
-             (fn-own-conn-group-index conn))))
+             (fn-own-conn-group-index conn) (fn-own-conn-control conn))))
   :hints (("Goal" :in-theory (e/d (fn-own-reader-context
                                     fn-own-set-conns fn-own-find-conn
                                     fn-own-replace-conn)
@@ -1043,7 +1043,7 @@
      (fn-own-conn-observation (car (fn-own-conns o)))
      (fn-own-conn-verdicts (car (fn-own-conns o)))
      (fn-own-conn-index (car (fn-own-conns o)))
-     (fn-own-conn-group-index (car (fn-own-conns o))))))
+     (fn-own-conn-group-index (car (fn-own-conns o))) (fn-own-conn-control (car (fn-own-conns o))))))
   :hints (("Goal" :in-theory (e/d (fn-own-reader-context
                                     fn-own-set-conns fn-own-find-conn
                                     fn-own-replace-conn)
@@ -1207,7 +1207,7 @@
       (fn-own-conn-observation (car (fn-own-conns o)))
       (fn-own-conn-verdicts (car (fn-own-conns o)))
       (fn-own-conn-index (car (fn-own-conns o)))
-      (fn-own-conn-group-index (car (fn-own-conns o))))
+      (fn-own-conn-group-index (car (fn-own-conns o))) (fn-own-conn-control (car (fn-own-conns o))))
      (cdr (fn-own-conns o)))))
   :hints (("Goal" :in-theory (e/d (fn-own-reader-context
                                     fn-own-set-conns fn-own-replace-conn

@@ -3,6 +3,7 @@
 ; where the conclusion fails without it.
 (in-package "ACL2")
 (include-book "../../books/control-served")
+(include-book "../../books/control-visible")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defun csv-line (text)
@@ -91,14 +92,16 @@
          (ws (fn-ctl-articles-withdrawals new *csv-verdicts* nil nil)))
     (equal (fn-ctl-refresh-withdrawn new old new old nil)
            (fn-ctl-withdrawn-articles new ws *csv-verdicts*)))))
-; Hypothesis 3 removed (a true list): a raw list ending in 5, all withdrawn.
-(must-fail
- (assert-event
-  (let* ((raw (cons *csv-c* (cons *csv-t* 5)))
-         (ws (fn-ctl-articles-withdrawals raw *csv-verdicts* nil nil))
-         (vis (fn-ctl-visible-articles raw ws *csv-verdicts*)))
-    (equal (fn-ctl-refresh-withdrawn raw nil vis nil nil)
-           (fn-ctl-withdrawn-articles raw ws *csv-verdicts*)))))
+; control-c3e: the merge copies the withdrawn tail as a true list, so the
+; former third hypothesis (RAW a true list) is gone: a raw list ending in 5
+; now agrees too.
+(assert-event
+ (let* ((raw (cons *csv-c* (cons *csv-t* 5)))
+        (ws (fn-ctl-articles-withdrawals raw *csv-verdicts* nil nil))
+        (vis (fn-ctl-visible-articles raw ws *csv-verdicts*)))
+   (and (equal (fn-ctl-refresh-withdrawn raw nil vis nil nil) (list *csv-t*))
+        (equal (fn-ctl-refresh-withdrawn raw nil vis nil nil)
+               (fn-ctl-withdrawn-articles raw ws *csv-verdicts*)))))
 
 ; fn-ctl-number-withdrawn-is-a-withdrawn-holder (423 withdrawn).  Witness:
 ; fn.mod.a 1 finds T, held in raw, not served.  Hypothesis removed (the
