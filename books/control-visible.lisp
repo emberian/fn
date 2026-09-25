@@ -271,30 +271,53 @@
 ; The refresh kernel.  Between two refreshes the acceptance archive NEW is
 ; OLD with at most one article consed (the owner refreshes at every idle
 ; phase); anything else (start, reopen) is a discontinuity and rebuilds.
-; The records a new article causes are decided when the refresh first
-; publishes it, under CFG (the configuration in force at the refresh, see
-; fn-own-refresh); the verdict list may have grown by that article's verdict.
+; The record a withdrawing article causes (a cancel, or an ordinary article
+; with a Supersedes field) is decided under the configuration in force at
+; THAT ARTICLE'S OWN Store txid: `fn-ctl-config-at' of the txid of its
+; acceptance record in RECORDS (the Store's durable event list) over
+; CONFIGS (the Store's configuration journal).  A configuration record at
+; the same txid precedes the event (books/config-physical-replay.lisp), so
+; this is the configuration its commit saw; a record appended later carries
+; a larger txid and changes nothing (`fn-ctl-revoke-changes-decisions-not-
+; records').  The live refresh and recovery's rebuild therefore decide every
+; record alike (`fn-ctl-refresh-withdrawals-is-the-journal', below).
 ; Cost: the cons case costs |WS| plus, for an executed cancel, one pass over
-; the visible list (fn-ctl-visible-add); the checks are `equal' on shared
-; structure.
+; the visible list (fn-ctl-visible-add), plus one walk of RECORDS for the
+; txid when the new article names a target; the checks are `equal' on
+; shared structure.
 
-(defun fn-ctl-article-withdrawals (a verdicts cfg)
+; The txid of MSGID's acceptance record, nil when RECORDS holds none.
+(defun fn-ctl-record-txid (msgid records)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (if (and (fn-record-p (car records))
+               (equal (fn-record-msgid (car records)) msgid))
+          (fn-record-txid (car records))
+        (fn-ctl-record-txid msgid (cdr records)))
+    nil))
+
+(defun fn-ctl-article-withdrawals (a verdicts records configs)
   (declare (xargs :guard t))
   (if (consp a)
-      (let ((classified (fn-ctl-classify-octets (fn-article-payload a))))
-        (if (fn-ctl-cancel-target classified)
-            (let ((plan (fn-ctl-cancel-plan
+      (let ((target (fn-ctl-target-octets (fn-article-payload a))))
+        (if target
+            (let ((plan (fn-ctl-withdrawal-plan
                          (fn-article-msgid a)
                          (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts)
-                         classified cfg)))
+                         target
+                         (fn-ctl-config-at
+                          (fn-ctl-record-txid (fn-article-msgid a) records)
+                          configs))))
               (if (fn-ctl-withdrawalp plan) (list plan) nil))
           nil))
     nil))
-(defun fn-ctl-articles-withdrawals (arts verdicts cfg)
+(defun fn-ctl-articles-withdrawals (arts verdicts records configs)
   (declare (xargs :guard t))
   (if (consp arts)
-      (fn-ctl-prepend (fn-ctl-article-withdrawals (car arts) verdicts cfg)
-                      (fn-ctl-articles-withdrawals (cdr arts) verdicts cfg))
+      (fn-ctl-prepend (fn-ctl-article-withdrawals (car arts) verdicts records
+                                                  configs)
+                      (fn-ctl-articles-withdrawals (cdr arts) verdicts records
+                                                   configs))
     nil))
 (defun fn-ctl-verdicts-grow-by-p (new old a)
   (declare (xargs :guard t))
@@ -302,12 +325,14 @@
       (and (consp new) (consp (car new)) (consp a)
            (equal (cdr new) old)
            (equal (car (car new)) (fn-article-msgid a)))))
-(defun fn-ctl-refresh-withdrawals (new old ws verdicts cfg)
+(defun fn-ctl-refresh-withdrawals (new old ws verdicts records configs)
   (declare (xargs :guard t))
   (cond ((equal new old) ws)
         ((and (consp new) (equal (cdr new) old))
-         (fn-ctl-prepend (fn-ctl-article-withdrawals (car new) verdicts cfg) ws))
-        (t (fn-ctl-articles-withdrawals new verdicts cfg))))
+         (fn-ctl-prepend (fn-ctl-article-withdrawals (car new) verdicts records
+                                                     configs)
+                         ws))
+        (t (fn-ctl-articles-withdrawals new verdicts records configs))))
 (defun fn-ctl-refresh-visible (new old old-visible ws old-verdicts verdicts)
   (declare (xargs :guard t))
   (cond ((and (equal new old) (equal verdicts old-verdicts)) old-visible)
@@ -333,13 +358,17 @@
            (fn-ctl-causes-all-p (cdr recs) c))
     t))
 (defthm fn-ctl-causes-all-p-of-article-withdrawals
-  (fn-ctl-causes-all-p (fn-ctl-article-withdrawals a verdicts cfg) (fn-article-msgid a))
-  :hints (("Goal" :in-theory (disable fn-ctl-cancel-plan fn-ctl-withdrawalp
-                                      fn-ctl-classify-octets fn-ctl-cancel-target)
-           :use ((:instance fn-ctl-cancel-plan-record-is-bound
+  (fn-ctl-causes-all-p (fn-ctl-article-withdrawals a verdicts records configs) (fn-article-msgid a))
+  :hints (("Goal" :in-theory (disable fn-ctl-withdrawal-plan fn-ctl-withdrawalp
+                                      fn-ctl-target-octets fn-ctl-config-at
+                                      fn-ctl-record-txid)
+           :use ((:instance fn-ctl-withdrawal-plan-record-is-bound
                   (cause (fn-article-msgid a))
                   (verdict (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts))
-                  (classified (fn-ctl-classify-octets (fn-article-payload a))))))))
+                  (target (fn-ctl-target-octets (fn-article-payload a)))
+                  (cfg (fn-ctl-config-at
+                        (fn-ctl-record-txid (fn-article-msgid a) records)
+                        configs)))))))
 (defthm fn-ctl-withdrawn-by-p-of-absent-causes-append
   (implies (and (fn-ctl-causes-all-p recs c)
                 (not (fn-ctl-has-msgid-p c arts)))
@@ -369,7 +398,7 @@
   (implies (and (not (member-equal (fn-article-msgid a) (fn-article-msgids old)))
                 (fn-ctl-verdicts-grow-by-p verdicts old-verdicts a))
            (equal (fn-ctl-visible-articles
-                   old (fn-ctl-prepend (fn-ctl-article-withdrawals a verdicts cfg) ws)
+                   old (fn-ctl-prepend (fn-ctl-article-withdrawals a verdicts records configs) ws)
                    verdicts)
                   (fn-ctl-visible-articles old ws old-verdicts)))
   :hints (("Goal" :in-theory (disable fn-ctl-visible-filter fn-ctl-article-withdrawals
@@ -377,7 +406,7 @@
            :use ((:instance fn-ctl-has-msgid-p-means-member-msgids
                             (m (fn-article-msgid a)) (arts old))
                  (:instance fn-ctl-visible-filter-of-absent-causes-append
-                            (recs (fn-ctl-article-withdrawals a verdicts cfg))
+                            (recs (fn-ctl-article-withdrawals a verdicts records configs))
                             (c (fn-article-msgid a)) (xs old) (arts old))))))
 ; KEYSTONE (C3, the owner refresh).  The visible list the refresh carries
 ; (fn-own-refresh, books/owner.lisp) is the definition's visible list of the
@@ -387,7 +416,7 @@
 (defthm fn-ctl-refresh-visible-is-visible
   (implies (and (equal old-visible (fn-ctl-visible-articles old ws old-verdicts))
                 (no-duplicatesp-equal (fn-article-msgids new)))
-           (let ((ws2 (fn-ctl-refresh-withdrawals new old ws verdicts cfg)))
+           (let ((ws2 (fn-ctl-refresh-withdrawals new old ws verdicts records configs)))
              (equal (fn-ctl-refresh-visible new old old-visible ws2
                                             old-verdicts verdicts)
                     (fn-ctl-visible-articles new ws2 verdicts))))
@@ -404,7 +433,7 @@
                 (equal old-raw (fn-state-articles old-p))
                 (no-duplicatesp-equal (fn-article-msgids (fn-state-articles new-p))))
            (let ((ws2 (fn-ctl-refresh-withdrawals (fn-state-articles new-p) old-raw
-                                                  ws verdicts cfg)))
+                                                  ws verdicts records configs)))
              (equal (fn-ctl-visible-state-of
                      new-p
                      (fn-ctl-refresh-visible (fn-state-articles new-p) old-raw
@@ -418,6 +447,167 @@
                             (old (fn-state-articles old-p))
                             (old-visible (fn-ctl-visible-articles
                                           (fn-state-articles old-p) ws old-verdicts)))))))
+
+; -----------------------------------------------------------------------------
+; Recovery decides each record under its own txid (brief control-c3d step 2).
+; The journal a Store holds: one entry (TXID CAUSE VERDICT TARGET) per
+; withdrawing article of ARTS, newest first, the shape
+; `fn-ctl-journal-withdrawals' (books/control-authority.lisp) decides.
+
+(defun fn-ctl-archive-entries (arts verdicts records)
+  (declare (xargs :guard t))
+  (if (consp arts)
+      (let* ((a (car arts))
+             (target (and (consp a)
+                          (fn-ctl-target-octets (fn-article-payload a))))
+             (rest (fn-ctl-archive-entries (cdr arts) verdicts records)))
+        (if target
+            (cons (list (fn-ctl-record-txid (fn-article-msgid a) records)
+                        (fn-article-msgid a)
+                        (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts)
+                        target)
+                  rest)
+          rest))
+    nil))
+
+(defthm fn-ctl-journal-withdrawals-of-append
+  (equal (fn-ctl-journal-withdrawals (append xs ys) configs)
+         (append (fn-ctl-journal-withdrawals xs configs)
+                 (fn-ctl-journal-withdrawals ys configs)))
+  :hints (("Goal" :in-theory (disable fn-ctl-withdrawal-plan fn-ctl-withdrawalp
+                                      fn-ctl-config-at))))
+
+; The rebuild the owner runs at a discontinuity (start, reopen: recovery)
+; is the journal definition over the archive's entries.
+(defthm fn-ctl-articles-withdrawals-is-the-journal
+  (equal (fn-ctl-articles-withdrawals arts verdicts records configs)
+         (fn-ctl-journal-withdrawals (fn-ctl-archive-entries arts verdicts records)
+                                     configs))
+  :hints (("Goal" :induct (fn-ctl-archive-entries arts verdicts records)
+           :in-theory (disable fn-ctl-withdrawal-plan fn-ctl-withdrawalp
+                               fn-ctl-config-at fn-ctl-target-octets
+                               fn-ctl-record-txid fn-ctl-lookup-verdict))))
+
+; Stability of the entries as the Store grows.  (1) A record already found
+; keeps its txid when later records are appended.
+(defthm fn-ctl-record-txid-of-append
+  (implies (fn-ctl-record-txid m records)
+           (equal (fn-ctl-record-txid m (append records more))
+                  (fn-ctl-record-txid m records))))
+
+(defun fn-ctl-all-recorded-p (arts records)
+  (declare (xargs :guard t))
+  (if (consp arts)
+      (and (or (not (consp (car arts)))
+               (not (fn-ctl-target-octets (fn-article-payload (car arts))))
+               (fn-ctl-record-txid (fn-article-msgid (car arts)) records))
+           (fn-ctl-all-recorded-p (cdr arts) records))
+    t))
+
+(defthm fn-ctl-archive-entries-of-appended-records
+  (implies (fn-ctl-all-recorded-p arts records)
+           (equal (fn-ctl-archive-entries arts verdicts (append records more))
+                  (fn-ctl-archive-entries arts verdicts records)))
+  :hints (("Goal" :in-theory (disable fn-ctl-target-octets fn-ctl-record-txid))))
+
+; (2) A verdict recorded for a Message-ID outside ARTS changes no entry.
+(defthm fn-ctl-lookup-verdict-of-other-cons
+  (implies (not (equal m k))
+           (equal (fn-ctl-lookup-verdict k (cons (cons m v) verdicts))
+                  (fn-ctl-lookup-verdict k verdicts))))
+
+(defthm fn-ctl-archive-entries-of-new-verdict
+  (implies (not (member-equal m (fn-article-msgids arts)))
+           (equal (fn-ctl-archive-entries arts (cons (cons m v) verdicts) records)
+                  (fn-ctl-archive-entries arts verdicts records)))
+  :hints (("Goal" :in-theory (disable fn-ctl-target-octets fn-ctl-record-txid
+                                      fn-ctl-lookup-verdict))))
+
+; (3) Configuration records appended later carry larger txids than every
+; entry: `fn-ctl-revoke-changes-decisions-not-records'.
+
+; The three together: the journal of OLD's entries is unchanged by the
+; Store's growth.
+(defthm fn-ctl-journal-of-old-entries-is-stable
+  (implies (and (fn-ctl-all-recorded-p old r0)
+                (fn-ctl-entries-below-p (fn-ctl-archive-entries old v0 r0)
+                                        (fn-cfg-record-txid (car more-c))))
+           (equal (fn-ctl-journal-withdrawals
+                   (fn-ctl-archive-entries old v0 (append r0 more-r))
+                   (append c0 more-c))
+                  (fn-ctl-journal-withdrawals
+                   (fn-ctl-archive-entries old v0 r0) c0)))
+  :hints (("Goal" :in-theory (disable fn-ctl-journal-withdrawals
+                                      fn-ctl-archive-entries fn-ctl-all-recorded-p
+                                      fn-ctl-entries-below-p)
+           :use ((:instance fn-ctl-revoke-changes-decisions-not-records
+                            (entries (fn-ctl-archive-entries old v0 r0))
+                            (configs c0) (more more-c))))))
+
+(defthmd fn-ctl-archive-entries-of-grown-verdicts
+  (implies (and (consp verdicts) (consp (car verdicts))
+                (not (member-equal (car (car verdicts)) (fn-article-msgids arts))))
+           (equal (fn-ctl-archive-entries arts verdicts records)
+                  (fn-ctl-archive-entries arts (cdr verdicts) records)))
+  :hints (("Goal" :use ((:instance fn-ctl-archive-entries-of-new-verdict
+                                   (m (car (car verdicts)))
+                                   (v (cdr (car verdicts)))
+                                   (verdicts (cdr verdicts))))
+           :in-theory (disable fn-ctl-archive-entries-of-new-verdict
+                               fn-ctl-archive-entries))))
+
+(defthm fn-ctl-journal-of-consed-entries
+  (equal (fn-ctl-journal-withdrawals
+          (fn-ctl-archive-entries (cons a old) verdicts records) configs)
+         (fn-ctl-prepend (fn-ctl-article-withdrawals a verdicts records configs)
+                         (fn-ctl-journal-withdrawals
+                          (fn-ctl-archive-entries old verdicts records) configs)))
+  :hints (("Goal" :use ((:instance fn-ctl-articles-withdrawals-is-the-journal
+                                   (arts (cons a old)))
+                        (:instance fn-ctl-articles-withdrawals-is-the-journal
+                                   (arts old)))
+           :in-theory (disable fn-ctl-articles-withdrawals-is-the-journal
+                               fn-ctl-journal-withdrawals fn-ctl-archive-entries
+                               fn-ctl-article-withdrawals fn-ctl-prepend-is-append))))
+
+; KEYSTONE (C3, live equals recovery).  Let the records an old view carries
+; be the journal of its archive OLD under the durable inputs of its refresh
+; (verdicts V0, Store records R0, configuration journal C0), every
+; withdrawing article of OLD have its acceptance record in R0, the verdict
+; list have grown by at most one pair for a Message-ID outside OLD, and the
+; configuration records appended since carry txids above every entry of
+; OLD.  Then the records the next refresh carries, over the grown inputs,
+; are the journal of the new archive under those grown inputs: what
+; recovery computes from the Store at that moment.  Subject:
+; `fn-ctl-refresh-withdrawals', called by `fn-own-refresh'
+; (books/owner.lisp) with RECORDS = the Store's records and CONFIGS =
+; `fn-sn-config-history'; recovery (`fn-own-start') reaches its
+; discontinuity arm.
+(defthm fn-ctl-refresh-withdrawals-is-the-journal
+  (implies (and (equal ws (fn-ctl-journal-withdrawals
+                           (fn-ctl-archive-entries old v0 r0) c0))
+                (fn-ctl-all-recorded-p old r0)
+                (or (equal verdicts v0)
+                    (and (consp verdicts) (consp (car verdicts))
+                         (equal (cdr verdicts) v0)
+                         (not (member-equal (car (car verdicts))
+                                            (fn-article-msgids old)))))
+                (fn-ctl-entries-below-p (fn-ctl-archive-entries old v0 r0)
+                                        (fn-cfg-record-txid (car more-c))))
+           (equal (fn-ctl-refresh-withdrawals new old ws verdicts
+                                              (append r0 more-r)
+                                              (append c0 more-c))
+                  (fn-ctl-journal-withdrawals
+                   (fn-ctl-archive-entries new verdicts (append r0 more-r))
+                   (append c0 more-c))))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-refresh-withdrawals)
+                                  (fn-ctl-journal-withdrawals
+                                   fn-ctl-archive-entries fn-ctl-all-recorded-p
+                                   fn-ctl-entries-below-p fn-ctl-article-withdrawals
+                                   fn-ctl-prepend-is-append))
+           :cases ((equal verdicts v0))
+           :use ((:instance fn-ctl-archive-entries-of-grown-verdicts
+                            (arts old) (records (append r0 more-r)))))))
 
 ; Distinct Message-IDs, the fact the refresh keystone assumes, from the
 ; article-list recognizer every acceptance state carries.
@@ -434,4 +624,5 @@
                     (:d fn-ctl-article-withdrawals) (:d fn-ctl-articles-withdrawals)
                     (:d fn-ctl-verdicts-grow-by-p) (:d fn-ctl-visible-state)
                     (:d fn-ctl-visible-state-of) (:d fn-ctl-projectionp)
-                    (:d fn-ctl-subseqp)))
+                    (:d fn-ctl-subseqp) (:d fn-ctl-archive-entries)
+                    (:d fn-ctl-all-recorded-p) (:d fn-ctl-record-txid)))

@@ -205,16 +205,19 @@
 (defun fn-ctl-w-scope (w) (declare (xargs :guard t)) (fn-ctl-at 4 w))
 (defun fn-ctl-w-generation (w) (declare (xargs :guard t)) (fn-ctl-at 5 w))
 
-; The decision made when a cancel commits, under the configuration CFG it
-; commits under (generation and authorities slot).  It reads the cancel
-; only: its verdict (verified HERE), its Message-ID and its one target.  It
-; never reads the target, which may not have arrived; the target enters at
-; `fn-ctl-withdrawal-effect'.  The scope is the principal's cancel grants in
-; CFG, possibly empty (then only the author basis can apply).
-(defun fn-ctl-cancel-plan (cause-msgid cause-verdict classified cfg)
+; The decision made when a withdrawing article commits, under the
+; configuration CFG it commits under (generation and authorities slot).  It
+; reads the withdrawing article only: its verdict (verified HERE), its
+; Message-ID and its one TARGET (a cancel's argument or a Supersedes field,
+; `fn-ctl-article-target').  It never reads the target article, which may
+; not have arrived; the target enters at `fn-ctl-withdrawal-effect'.  The
+; scope is the principal's cancel grants in CFG, possibly empty (then only
+; the author basis can apply).  RFC 5537 section 5.4: a Supersedes field
+; withdraws its target "exactly as a cancel would", under the same
+; authentication, so the two share this decision.
+(defun fn-ctl-withdrawal-plan (cause-msgid cause-verdict target cfg)
   (declare (xargs :guard t))
-  (let ((principal (fn-ctl-verified-principal cause-verdict))
-        (target (fn-ctl-cancel-target classified)))
+  (let ((principal (fn-ctl-verified-principal cause-verdict)))
     (cond ((not principal)
            (list :decline (fn-ctl-unverified-reason cause-verdict)))
           ((not target) (list :decline :no-target))
@@ -224,6 +227,52 @@
               (fn-ctl-grant-scope principal "cancel"
                                   (fn-cfg-authorities (fn-cfg-value cfg)))
               (fn-cfg-generation cfg))))))
+
+(defun fn-ctl-cancel-plan (cause-msgid cause-verdict classified cfg)
+  (declare (xargs :guard t))
+  (fn-ctl-withdrawal-plan cause-msgid cause-verdict
+                          (fn-ctl-cancel-target classified) cfg))
+
+; ---------------------------------------------------------------------------
+; Supersedes (RFC 5537 section 5.4; RFC 5536 section 3.2.12:
+; Supersedes = SP msg-id).  An ordinary article (no Control field; the
+; classifier makes Control beside Supersedes malformed) with exactly one
+; Supersedes field whose value is one bracketed Message-ID names that
+; target; anything else names none.  The superseding article itself is
+; an ordinary article, filed in its Newsgroups.
+
+(defun fn-ctl-supersedes-target (fields)
+  (declare (xargs :guard t))
+  (let ((sups (fn-ctl-fields-named *fn-ctl-supersedes-name* fields)))
+    (if (and (consp sups) (atom (cdr sups))
+             (true-listp (car sups)) (equal (len (car sups)) 3))
+        (let ((words (fn-ctl-words
+                      (fn-article-field-unfolded-value (car sups)))))
+          (if (and (consp words) (atom (cdr words))
+                   (fn-ctl-msgid-octetsp (car words)))
+              (fn-record-octets-string (car words))
+            nil))
+      nil)))
+
+; The target an article withdraws: a cancel's argument, or an ordinary
+; article's Supersedes target; nil for every other article.
+(defun fn-ctl-article-target (fields)
+  (declare (xargs :guard t))
+  (let ((classified (fn-ctl-classify-fields fields)))
+    (cond ((fn-ctl-cancel-target classified))
+          ((eq classified :ordinary) (fn-ctl-supersedes-target fields))
+          (t nil))))
+
+; Over received octets, one parse.
+(defun fn-ctl-target-octets (received)
+  (declare (xargs :guard t))
+  (let ((parsed (fn-article-parse received)))
+    (if (fn-article-result-okp parsed)
+        (let ((article (fn-article-result-article parsed)))
+          (if (true-listp article)
+              (fn-ctl-article-target (fn-article-fields article))
+            nil))
+      nil)))
 
 ; The effect of a withdrawal record on its target, from the target's
 ; accepted group bindings T-GROUPS and its stored verdict T-VERDICT.
@@ -317,9 +366,9 @@
 ; The records a journal holds.  Recovery-only: a pure function of the
 ; durable configuration journal CONFIGS (each record applies before every
 ; Store event whose txid is not below its own, `fn-cpr-config-firstp') and
-; the ordered accepted cancels.  Each ENTRY is (TXID CAUSE-MSGID VERDICT
-; CLASSIFIED), the cancel's Store txid, Message-ID, stored verdict and
-; classification.  A record is decided under the configuration in force at
+; the ordered accepted withdrawing articles.  Each ENTRY is (TXID
+; CAUSE-MSGID VERDICT TARGET), the article's Store txid, Message-ID, stored
+; verdict and target (`fn-ctl-article-target').  A record is decided under the configuration in force at
 ; its cancel's txid, never under today's.
 
 (defun fn-ctl-configs-through (txid configs)
@@ -345,7 +394,7 @@
   (declare (xargs :guard t))
   (if (consp entries)
       (let* ((e (car entries))
-             (plan (fn-ctl-cancel-plan
+             (plan (fn-ctl-withdrawal-plan
                     (fn-ctl-at 1 e) (fn-ctl-at 2 e) (fn-ctl-at 3 e)
                     (fn-ctl-config-at (fn-ctl-at 0 e) configs)))
              (rest (fn-ctl-journal-withdrawals (cdr entries) configs)))
@@ -470,7 +519,7 @@
            (equal (fn-ctl-journal-withdrawals entries (append configs more))
                   (fn-ctl-journal-withdrawals entries configs)))
   :hints (("Goal" :induct (fn-ctl-journal-withdrawals entries configs)
-           :in-theory (disable fn-ctl-cancel-plan fn-ctl-withdrawalp
+           :in-theory (disable fn-ctl-withdrawal-plan fn-ctl-withdrawalp
                                fn-cfg-apply-record))))
 
 ; The configuration in force after every recorded configuration is the
@@ -531,6 +580,23 @@
                   (equal (fn-ctl-w-generation w) (fn-cfg-generation cfg)))))
   :hints (("Goal" :in-theory (disable fn-ctl-verified-principal
                                       fn-ctl-cancel-target
+                                      fn-ctl-grant-scope))))
+
+; The same binding for the general plan (a cancel or a Supersedes field).
+(defthm fn-ctl-withdrawal-plan-record-is-bound
+  (implies (fn-ctl-withdrawalp (fn-ctl-withdrawal-plan cause verdict target cfg))
+           (let ((w (fn-ctl-withdrawal-plan cause verdict target cfg)))
+             (and (equal (fn-ctl-w-cause w) cause)
+                  (equal (fn-ctl-w-target w) target)
+                  (equal (fn-ctl-w-principal w)
+                         (fn-ctl-verified-principal verdict))
+                  (fn-ctl-verified-principal verdict)
+                  (equal (fn-ctl-w-scope w)
+                         (fn-ctl-grant-scope
+                          (fn-ctl-verified-principal verdict) "cancel"
+                          (fn-cfg-authorities (fn-cfg-value cfg))))
+                  (equal (fn-ctl-w-generation w) (fn-cfg-generation cfg)))))
+  :hints (("Goal" :in-theory (disable fn-ctl-verified-principal
                                       fn-ctl-grant-scope))))
 
 ; KEYSTONE (C3).  A WITHDRAWAL TAKES EFFECT ONLY FOR THE AUTHOR OR AN
