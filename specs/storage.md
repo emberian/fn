@@ -215,7 +215,7 @@ stays authoritative, and the file may be deleted at any time.
   (The owner opens from the checkpoint and publishes at K/2 since
   owner-checkpoint-open, PRF-083.)
 
-STO-012: The checkpoint open costs less than the full replay it replaces,
+STO-016: The checkpoint open costs less than the full replay it replaces,
 and a publication does not hold served commands.
 
 - **The file carries the count.** The event index maps every sequence below

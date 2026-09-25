@@ -1989,7 +1989,7 @@
       "note": "Spike deferral 'live status, obligations, pins' (planning/evidence/spike-operator-2026-09-25.md). Held BP forwarding obligations are the DTN image's `bp-obligation status`, not this report: the NNTP owner carries no BP node."
     },
     {
-      "id": "STO-012",
+      "id": "STO-016",
       "title": "The checkpoint open costs less than the full replay it replaces, and a publication does not hold served commands",
       "specification": "specs/storage.md#checkpointing-the-store-checkpoint-that-open-reads-p3-2026-09-25",
       "milestone": "M5",
