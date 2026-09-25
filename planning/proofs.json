@@ -3335,7 +3335,10 @@
         "planning/evidence/manifests/certify-20260925T070406Z-2708294.json",
         "planning/evidence/manifests/certify-20260925T071636Z-2729359.json",
         "host/native/bp-service.lisp",
-        "specs/bp-node-machine.md"
+        "specs/bp-node-machine.md",
+        "planning/evidence/manifests/certify-20260925T080134Z-2821914.json",
+        "planning/evidence/manifests/certify-20260925T080424Z-2827312.json",
+        "tests/test_bp_node_native.py"
       ]
     }
   ]
