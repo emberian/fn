@@ -3478,11 +3478,7 @@
         "tests/acl2/native-operator-tests.lisp",
         "planning/evidence/live-status-2026-09-25.md"
       ],
-      "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. Octet lists only (D27 twin open). The open= line names each process's own open, and the offline orphan listing is the reader's own observation.",
-      "events": [
-        "fn-nls-live-report-is-the-offline-report",
-        "fn-nls-client-step-of-owner-reply"
-      ]
+      "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. Octet lists only (D27 twin open). The open= line names each process's own open, and the offline orphan listing is the reader's own observation."
     }
   ]
 }
