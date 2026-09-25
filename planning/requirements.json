@@ -471,7 +471,8 @@
         "PRF-072",
         "PRF-004",
         "PRF-080",
-        "PRF-083"
+        "PRF-083",
+        "PRF-110"
       ],
       "verification": [
         "proof",
@@ -2131,6 +2132,30 @@
         "planning/evidence/peer-carriage-2026-09-25.md"
       ],
       "implementation_note": "The carried arm's event is built by fn-pcb-carried-event (host/owner-host.lisp fn-owner-peer-carried-relay-event, called from host/native/owner.lisp fnn-owner-attempt-transit) over the boundary's typed budget rows and the owner-carried usage cache (fn-owner-carried-usage); NNTP transit refusals of a present carrier carry fn-pcb-refusal-class as their log detail. The class is not yet recorded in a durable verdict: no present-carrier article is held unverified on dev (see the evidence record)."
+    },
+    {
+      "id": "NNT-016",
+      "title": "XPAT is listed in the capability block and answers RFC 2980 section 2.9 on the served reader step",
+      "specification": "specs/nntp.md#legacy-spellings-rfc-2980",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-110"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/nntp-xpat.lisp",
+        "books/nntp-responses.lisp",
+        "tests/acl2/nntp-xpat-tests.lisp",
+        "tests/acl2/nntp-legacy-tests.lisp",
+        "tools/fn_web.py",
+        "tests/test_fn_web.py",
+        "planning/evidence/reader-surface-2026-09-25.md"
+      ],
+      "implementation_note": "RFC 2980 section 2.9 is the rule: additional pattern arguments are joined by one SP into one pattern (as INN does); the comma is the alternative (RFC 3977 section 4.2); matching is case-sensitive (RFC 3977 section 4.2). The label is a private-extension label (RFC 3977 section 3.3.3). The web reader passes the reader's wildmat verbatim."
     }
   ]
 }
