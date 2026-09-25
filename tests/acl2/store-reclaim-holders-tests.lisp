@@ -4,11 +4,11 @@
 (include-book "../../books/store-reclaim-holders")
 (include-book "../../books/native-live-status")
 (include-book "std/testing/must-fail" :dir :system)
-(include-book "octets-stobj-tests")
+(include-book "owner-served-invariants-tests")
 
 ; The owner fixture's store, its one article, and a group it is numbered in.
 (defconst *rht-s0* *ost-s*)
-(defconst *rht-art* *ost-art*)
+(defconst *rht-art* (car (fn-state-articles (fn-node-acceptance (fn-sn-node *ost-s*)))))
 (defconst *rht-m* (car (fn-article-memberships *rht-art*)))
 (defconst *rht-g* (car *rht-m*))
 (defconst *rht-n* (cdr *rht-m*))
