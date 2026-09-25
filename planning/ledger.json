@@ -111,6 +111,8 @@
     "tests/acl2/native-auth-admin-host-tests",
     "books/journal-publish",
     "books/bp-eid-shape",
+    "books/native-admin-shape",
+    "books/native-admin-peer",
     "books/native-admin",
     "tests/acl2/native-admin-tests",
     "books/native-config-observation",
@@ -525,6 +527,7 @@
     "tests/acl2/nntp-pinned-index-tests",
     "tests/acl2/nntp-teeth-tests",
     "books/mailbox",
+    "books/injection-shape",
     "books/injection",
     "books/injection-invariants",
     "tests/acl2/injection-tests",
@@ -681,6 +684,7 @@
     "tests/acl2/hybrid-signature-tests",
     "books/hybrid-carrier",
     "tests/acl2/hybrid-carrier-tests",
+    "books/hybrid-store-injected",
     "books/hybrid-store-invariants",
     "books/peer-authored-accept",
     "tests/acl2/peer-authored-accept-tests",
@@ -759,25 +763,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 767,
-    "books_in_root_closure": 765,
-    "roots": 755,
-    "theorems": 10231,
+    "books": 771,
+    "books_in_root_closure": 769,
+    "roots": 759,
+    "theorems": 10234,
     "functions": 7233,
     "assert_events": 11207,
     "must_fails": 1002,
-    "encapsulates": 39,
+    "encapsulates": 41,
     "guards": {
-      "verified": 2093,
+      "verified": 2085,
       "declared-off": 526,
-      "default-guarded": 3576,
+      "default-guarded": 3584,
       "default-unguarded": 1038
     },
     "suspect_theorems": 91,
     "export_hygiene_warnings": 127,
-    "enabled_projection_warnings": 37,
+    "enabled_projection_warnings": 42,
     "teeth_form_warnings": 66,
-    "include_hygiene_warnings": 751,
+    "include_hygiene_warnings": 763,
     "host_names_warnings": 860,
     "hand_written_record_warnings": 18
   },
@@ -2644,9 +2648,13 @@
       "encapsulates": 0,
       "includes": [
         "bp-receipt-records",
+        "clock",
         "identity",
-        "owner",
-        "provenance-codec"
+        "msgid-index",
+        "owner-feed",
+        "provenance-codec",
+        "served",
+        "store-observed"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7081,7 +7089,7 @@
       "includes": [
         "article-fields",
         "hybrid-signature",
-        "injection",
+        "injection-shape",
         "stx-carrier"
       ],
       "system_includes": [],
@@ -7220,6 +7228,32 @@
       "read_error": null
     },
     {
+      "book": "books/hybrid-store-injected.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "hybrid-store",
+        "injection"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/hybrid-store-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -7238,7 +7272,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "hybrid-store",
+        "hybrid-store-injected",
         "injection-invariants"
       ],
       "system_includes": [],
@@ -7250,11 +7284,11 @@
       "in_root_closure": true,
       "is_root": false,
       "theorems": 1,
-      "functions": 19,
+      "functions": 16,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 19,
+        "default-guarded": 16,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -7267,7 +7301,7 @@
         "hybrid-carrier",
         "hybrid-signature",
         "identity",
-        "injection",
+        "injection-shape",
         "records-stamp",
         "stx-accept-records"
       ],
@@ -7413,13 +7447,39 @@
       "read_error": null
     },
     {
+      "book": "books/injection-shape.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-fields",
+        "mailbox"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/injection.lisp",
       "in_root_closure": true,
       "is_root": true,
       "theorems": 11,
-      "functions": 80,
+      "functions": 72,
       "guards": {
-        "verified": 65,
+        "verified": 57,
         "declared-off": 0,
         "default-guarded": 15,
         "default-unguarded": 0
@@ -7427,12 +7487,13 @@
       "verify_guards_events": 65,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 16,
+      "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "article-fields",
         "clock",
+        "injection-shape",
         "mailbox"
       ],
       "system_includes": [
@@ -7641,21 +7702,80 @@
       "read_error": null
     },
     {
-      "book": "books/native-admin.lisp",
+      "book": "books/native-admin-peer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 53,
-      "functions": 84,
+      "theorems": 33,
+      "functions": 44,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 44,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 2,
+      "includes": [
+        "bp-eid-shape",
+        "identity",
+        "native-admin-shape",
+        "native-config",
+        "nntp-syntax",
+        "peer-config"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "list-octets-of-atom"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/native-admin-shape.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 16,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 83,
+        "default-guarded": 15,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 16,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-alloc",
+        "byte-store-txn-name",
+        "records-shape"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/native-admin.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 18,
+      "functions": 24,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 24,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 3,
       "includes": [
@@ -7664,15 +7784,15 @@
         "config-observed",
         "identity",
         "journal-publish",
+        "native-admin-peer",
+        "native-admin-shape",
         "native-config",
         "node-config",
         "peer-config",
         "store-observed"
       ],
       "system_includes": [],
-      "suspects": [
-        "list-octets-of-atom"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -7747,7 +7867,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "native-admin"
+        "config",
+        "native-admin-shape"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7800,7 +7921,7 @@
         "frame-invariants",
         "frame-trailer",
         "injection",
-        "native-admin",
+        "native-admin-shape",
         "native-config",
         "records-invariants"
       ],
@@ -7828,7 +7949,7 @@
       "encapsulates": 0,
       "includes": [
         "hybrid-lifecycle",
-        "native-admin",
+        "native-admin-shape",
         "native-control"
       ],
       "system_includes": [],
@@ -9548,6 +9669,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "node-config",
         "path-update-tail",
         "peer-inbound"
       ],
@@ -9574,13 +9696,17 @@
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
+        "config-invariants",
+        "config-records",
         "identity",
         "nntp-pinned-effects",
         "nntp-post",
-        "node-config",
+        "nntp-syntax",
+        "node-invariants",
         "path-update",
         "peer-config",
         "provenance-codec",
+        "records-seam",
         "records-stamp"
       ],
       "system_includes": [],
@@ -9722,6 +9848,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "injection",
         "store-node"
       ],
       "system_includes": [],
@@ -21852,7 +21979,7 @@
     {
       "theorem": "fn-peer-archive-command-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1560,
+      "line": 1566,
       "reasons": [
         "instance-corollary: the statement is fn-nntp-archive-command-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -21860,7 +21987,7 @@
     {
       "theorem": "fn-peer-nntp-command-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1575,
+      "line": 1581,
       "reasons": [
         "instance-corollary: the statement is fn-nntp-command-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -21868,7 +21995,7 @@
     {
       "theorem": "fn-peer-nntp-step-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1590,
+      "line": 1596,
       "reasons": [
         "instance-corollary: the statement is fn-nntp-step-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -21876,7 +22003,7 @@
     {
       "theorem": "fn-peer-post-step-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1603,
+      "line": 1609,
       "reasons": [
         "instance-corollary: the statement is fn-post-step-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -22109,8 +22236,8 @@
     },
     {
       "theorem": "list-octets-of-atom",
-      "book": "books/native-admin.lisp",
-      "line": 1032,
+      "book": "books/native-admin-peer.lisp",
+      "line": 673,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-native-admin-peer-list-octets and the conclusion is that branch's value"
       ]
@@ -22439,7 +22566,7 @@
       {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
-        "line": 1488,
+        "line": 547,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -23163,6 +23290,55 @@
           "books/hybrid-signature.lisp"
         ],
         "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-native-admin-result-status",
+        "book": "books/native-admin-shape.lisp",
+        "line": 96,
+        "stated_in": [
+          "books/native-admin-peer.lisp",
+          "books/native-admin.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-native-admin-result-reason",
+        "book": "books/native-admin-shape.lisp",
+        "line": 99,
+        "stated_in": [
+          "books/native-admin.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-native-admin-result-kind",
+        "book": "books/native-admin-shape.lisp",
+        "line": 102,
+        "stated_in": [
+          "books/native-admin-peer.lisp",
+          "books/native-admin.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-native-admin-result-name",
+        "book": "books/native-admin-shape.lisp",
+        "line": 105,
+        "stated_in": [
+          "books/native-admin-peer.lisp",
+          "books/native-admin.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-native-admin-result-value",
+        "book": "books/native-admin-shape.lisp",
+        "line": 117,
+        "stated_in": [
+          "books/native-admin-peer.lisp",
+          "books/native-admin.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-kind",
@@ -24183,6 +24359,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-native-app.lisp",
+        "line": 11,
+        "include": "msgid-index",
+        "included": "books/msgid-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-node-busy-delivery.lisp",
         "line": 7,
         "include": "bp-node-progress",
@@ -25157,14 +25340,21 @@
       },
       {
         "book": "books/hybrid-store.lisp",
-        "line": 8,
+        "line": 11,
         "include": "records-stamp",
         "included": "books/records-stamp.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/injection-shape.lisp",
+        "line": 17,
+        "include": "article-fields",
+        "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/injection.lisp",
-        "line": 68,
+        "line": 69,
         "include": "article-fields",
         "included": "books/article-fields.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -25177,10 +25367,38 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/native-admin-peer.lisp",
+        "line": 13,
+        "include": "native-admin-shape",
+        "included": "books/native-admin-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/native-admin-shape.lisp",
+        "line": 14,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/native-admin-shape.lisp",
+        "line": 15,
+        "include": "byte-store-txn-name",
+        "included": "books/byte-store-txn-name.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/native-admin.lisp",
         "line": 14,
         "include": "byte-store-txn-name",
         "included": "books/byte-store-txn-name.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/native-admin.lisp",
+        "line": 25,
+        "include": "native-admin-shape",
+        "included": "books/native-admin-shape.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -25191,10 +25409,38 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/native-config-observation.lisp",
+        "line": 9,
+        "include": "native-admin-shape",
+        "included": "books/native-admin-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/native-control.lisp",
+        "line": 13,
+        "include": "native-admin-shape",
+        "included": "books/native-admin-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/native-hybrid-control.lisp",
         "line": 3,
         "include": "hybrid-lifecycle",
         "included": "books/hybrid-lifecycle.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/native-hybrid-control.lisp",
+        "line": 4,
+        "include": "native-admin-shape",
+        "included": "books/native-admin-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/native-operator.lisp",
+        "line": 11,
+        "include": "native-admin",
+        "included": "books/native-admin.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -25381,14 +25627,21 @@
       },
       {
         "book": "books/peer-inbound.lisp",
-        "line": 58,
+        "line": 62,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/peer-inbound.lisp",
+        "line": 64,
         "include": "nntp-pinned-effects",
         "included": "books/nntp-pinned-effects.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/peer-inbound.lisp",
-        "line": 65,
+        "line": 71,
         "include": "records-stamp",
         "included": "books/records-stamp.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -27873,6 +28126,13 @@
       },
       {
         "book": "tests/acl2/native-admin-tests.lisp",
+        "line": 3,
+        "include": "../../books/native-admin",
+        "included": "books/native-admin.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-admin-tests.lisp",
         "line": 4,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
@@ -28939,70 +29199,70 @@
       },
       {
         "host": "host/bp-native-app-host.lisp",
-        "line": 44,
+        "line": 47,
         "name": "fn-owner-store",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-native-app-host.lisp",
-        "line": 136,
+        "line": 139,
         "name": "fn-owner-node",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-native-app-host.lisp",
-        "line": 136,
+        "line": 139,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/bp-native-app-host.lisp",
-        "line": 136,
+        "line": 139,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/bp-native-app-host.lisp",
-        "line": 182,
+        "line": 185,
         "name": "fn-owner-core",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-native-app-host.lisp",
-        "line": 182,
+        "line": 185,
         "name": "fn-oag-group-octets",
         "source": "books/owner-agent.lisp",
         "reason": "defined in books/owner-agent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-native-app-host.lisp",
-        "line": 320,
+        "line": 323,
         "name": "fn-olog-bp-app-refusal-line",
         "source": "books/owner-log.lisp",
         "reason": "defined in books/owner-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-native-app-host.lisp",
-        "line": 320,
+        "line": 323,
         "name": "fn-olog-bp-app-class",
         "source": "books/owner-log.lisp",
         "reason": "defined in books/owner-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-native-app-host.lisp",
-        "line": 338,
+        "line": 341,
         "name": "fn-owner-bp-transit-submit",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-native-app-host.lisp",
-        "line": 338,
+        "line": 341,
         "name": "fn-owner-control-submit",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -34999,7 +35259,7 @@
       },
       {
         "book": "books/injection.lisp",
-        "line": 407,
+        "line": 394,
         "shape": "fn-inj-config-shapep",
         "shapes": 2,
         "accessors": 16,
@@ -35053,7 +35313,7 @@
       },
       {
         "book": "books/peer-inbound.lisp",
-        "line": 89,
+        "line": 95,
         "shape": "fn-peer-decision-shapep",
         "shapes": 3,
         "accessors": 10,
