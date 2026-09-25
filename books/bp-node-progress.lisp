@@ -279,33 +279,62 @@
          (<= free (fn-bpn-nth 3 wait)))))
 
 ; BP-R17 (spec 4.2, the (:after m) wait).  A delivery the application
-; answered :busy leaves the row held and :dispatch-pending with the volatile
-; wait (:bpnp-wait key :busy n m): n busy answers so far, m the monotonic
-; reading before which class 3 does not offer it again.  At n equal to the
-; kind-8 retry bound the row is stranded: still held, never refused, and
-; not offered again until recovery clears the volatile wait.
-(defconst *fn-bpnp-owner-backoff* 5000)
-
-(defun fn-bpnp-busy-count (key waits)
+; answered :busy stays held and :dispatch-pending.  Its busy count n is
+; durable: the row's attempt slot (:busy n), written by the kind-20 record
+; and rebuilt by ordered replay (bp-forward-attempt.lisp).  The volatile
+; wait (:bpnp-wait key :busy m budget) holds only the monotonic reading m
+; before which class 3 does not offer the row again, and the budget the
+; busy event carried; a restart drops it (the next process reads a new
+; monotonic origin), never the count.  At n equal to the configured retry
+; budget the row is stranded: still held, never refused, reported by every
+; progress event that selects nothing else, and offered again only after
+; the operator's resume (kind 20 with count 0).
+(defun fn-bpnp-busy-count (h)
   (declare (xargs :guard t))
-  (let ((wait (fn-bpnp-wait-for key waits)))
-    (if (and (equal (fn-bpn-nth 0 wait) :bpnp-wait)
-             (equal (fn-bpn-nth 2 wait) :busy))
-        (nfix (fn-bpn-nth 3 wait))
-      0)))
+  (fn-bpnp-busy-slot-count (fn-bpn-nth 13 h)))
 
-(defun fn-bpnp-busy-blockedp (h waits observation)
+(defun fn-bpnp-busy-strandedp (h budget)
   (declare (xargs :guard t))
-  (let ((wait (fn-bpnp-wait-for (fn-bpnp-wait-key h) waits)))
-    (and (equal (fn-bpn-nth 0 wait) :bpnp-wait)
-         (equal (fn-bpn-nth 2 wait) :busy)
-         (or (<= *fn-bpnp-max-forward-retries* (nfix (fn-bpn-nth 3 wait)))
-             (not (fn-clock-observationp observation))
-             (< (nfix (fn-clock-monotonic observation))
-                (nfix (fn-bpn-nth 4 wait)))))))
+  (and (equal (fn-bpn-nth 0 h) :bpnf-held)
+       (equal (fn-bpn-nth 12 h) '(:dispatch-pending))
+       (null (fn-bpn-nth 10 h))
+       (null (fn-bpn-nth 14 h))
+       (< 0 (fn-bpnp-busy-count h))
+       (<= (nfix budget) (fn-bpnp-busy-count h))))
+
+(defun fn-bpnp-busy-blockedp (h waits observation budget)
+  (declare (xargs :guard t))
+  (or (fn-bpnp-busy-strandedp h budget)
+      (let ((wait (fn-bpnp-wait-for (fn-bpnp-wait-key h) waits)))
+        (and (equal (fn-bpn-nth 0 wait) :bpnp-wait)
+             (equal (fn-bpn-nth 2 wait) :busy)
+             (or (not (fn-clock-observationp observation))
+                 (< (nfix (fn-clock-monotonic observation))
+                    (nfix (fn-bpn-nth 3 wait))))))))
+
+; The oldest busy-stranded row: what a progress event that selects nothing
+; reports, on every such event until the operator resumes it.
+(defun fn-bpnp-first-busy-stranded (held budget selected)
+  (declare (xargs :guard t :measure (acl2-count held)))
+  (if (atom held) selected
+    (let* ((h (car held))
+           (selected
+            (if (and (fn-bpnp-busy-strandedp h budget)
+                     (or (null selected)
+                         (< (nfix (fn-bpn-nth 3 h))
+                            (nfix (fn-bpn-nth 3 selected)))))
+                h selected)))
+      (fn-bpnp-first-busy-stranded (cdr held) budget selected))))
+
+(defun fn-bpnp-busy-stranded-effects (held budget)
+  (declare (xargs :guard t))
+  (let ((h (fn-bpnp-first-busy-stranded held budget nil)))
+    (and h
+         (list (list :delivery-stranded (fn-bpnp-wait-key h)
+                     (fn-bpnp-busy-count h))))))
 
 (defun fn-bpnp-oldest-eligible-with-credit
-  (held node observation routes generation waits free selected)
+  (held node observation routes generation waits free budget selected)
   (declare (xargs :guard t :measure (acl2-count held)))
   (if (atom held) selected
     (let* ((h (car held))
@@ -314,13 +343,14 @@
                      (not (fn-bpnp-blockedp
                            h node routes generation waits))
                      (not (fn-bpnp-credit-blockedp h waits free))
-                     (not (fn-bpnp-busy-blockedp h waits observation))
+                     (not (fn-bpnp-busy-blockedp h waits observation budget))
                      (or (null selected)
                          (< (nfix (fn-bpn-nth 3 h))
                             (nfix (fn-bpn-nth 3 selected)))))
                 h selected)))
       (fn-bpnp-oldest-eligible-with-credit
-       (cdr held) node observation routes generation waits free selected))))
+       (cdr held) node observation routes generation waits free budget
+       selected))))
 
 (defun fn-bpnp-oldest-eligible
   (held node observation routes generation waits selected)
@@ -339,7 +369,7 @@
        (cdr held) node observation routes generation waits selected))))
 
 (defun fn-bpnp-oldest-uncertain-local
-  (held node observation generation waits selected)
+  (held node observation generation waits budget selected)
   (declare (xargs :guard t :measure (acl2-count held)))
   (if (atom held) selected
     (let* ((h (car held))
@@ -355,14 +385,14 @@
                      (not (fn-bpp-fragmentp flags))
                      (equal (fn-bpn-nth 3 primary) node)
                      (not (fn-bpnp-blockedp h node nil generation waits))
-                     (not (fn-bpnp-busy-blockedp h waits observation))
+                     (not (fn-bpnp-busy-blockedp h waits observation budget))
                      (equal (fn-bpnp-held-expiry h observation) :uncertain)
                      (or (null selected)
                          (< (nfix (fn-bpn-nth 3 h))
                             (nfix (fn-bpn-nth 3 selected)))))
                 h selected)))
       (fn-bpnp-oldest-uncertain-local
-       (cdr held) node observation generation waits selected))))
+       (cdr held) node observation generation waits budget selected))))
 
 (defun fn-bpnp-delivery-view (held)
   (declare (xargs :guard t))
@@ -530,7 +560,7 @@
          (list (list :persist-dispatch (fn-bpnf-epoch st)
                      (fn-bpnf-next-op st) record)))))))
 
-(defun fn-bpnp-progress-step (st node observation routes generation)
+(defun fn-bpnp-progress-step (st node observation routes generation budget)
   (declare (xargs :guard t))
   (if (or (fn-bpnf-issued st) (fn-bpnf-waits st)
           (fn-bpn-machine-state-fenced (fn-bpnf-base st))
@@ -548,12 +578,12 @@
                waits
                (fn-bpnd-free (fn-bpnp-used st) (fn-bpnp-debt st)
                              *fn-bpnp-control-margin*)
-               nil)))
+               budget nil)))
       (if (not h)
           (let ((uncertain
                  (fn-bpnp-oldest-uncertain-local
                   (fn-bpnf-held-list st) node observation
-                  generation waits nil)))
+                  generation waits budget nil)))
             (if uncertain
                 (if (member-equal (fn-bpnp-local-class uncertain)
                                   '(:request :receipt))
@@ -567,7 +597,9 @@
                     (fn-bpnf-answer
                      (fn-bpnp-with-waits st new-waits)
                      (list (list :progress-unsupported key)))))
-              (fn-bpnf-answer st nil)))
+              (fn-bpnf-answer
+               st (fn-bpnp-busy-stranded-effects
+                   (fn-bpnf-held-list st) budget))))
         (let* ((key (fn-bpnp-wait-key h))
                (primary (fn-bpnp-primary h))
                (destination (fn-bpn-nth 3 primary)))
@@ -659,62 +691,62 @@
 ; A row with no attempt, or with an attempt left by an earlier process epoch
 ; under the retry bound (bp-forward-attempt.lisp), is offered by the same
 ; arrival-order scan: a retry takes no precedence and no separate path.
-(defun fn-bpnp-forward-candidatep (h peer observation epoch)
+(defun fn-bpnp-forward-candidatep (h peer observation epoch budget)
   (declare (xargs :guard t))
   (and (equal (fn-bpn-nth 0 h) :bpnf-held)
        (natp (fn-bpn-nth 3 h))
        (equal (fn-bpn-nth 11 h) peer)
        (equal (fn-bpn-nth 12 h) '(:forward-pending))
        (or (null (fn-bpn-nth 13 h))
-           (fn-bpnp-retry-eligible-slotp (fn-bpn-nth 13 h) epoch peer))
+           (fn-bpnp-retry-eligible-slotp (fn-bpn-nth 13 h) epoch peer budget))
        (null (fn-bpn-nth 14 h))
        (equal (fn-bpnp-held-expiry h observation) :live)))
 
 ; The oldest held row to this peer whose uncertain attempt reached the retry
 ; bound: reported on a session that offers nothing, never dropped.
-(defun fn-bpnp-first-stranded (ordered peer epoch)
+(defun fn-bpnp-first-stranded (ordered peer epoch budget)
   (declare (xargs :guard t :measure (acl2-count ordered)))
   (if (atom ordered) nil
     (let ((h (car ordered)))
       (if (and (equal (fn-bpn-nth 0 h) :bpnf-held)
                (equal (fn-bpn-nth 12 h) '(:forward-pending))
                (null (fn-bpn-nth 14 h))
-               (fn-bpnp-stranded-slotp (fn-bpn-nth 13 h) epoch peer))
+               (fn-bpnp-stranded-slotp (fn-bpn-nth 13 h) epoch peer budget))
           h
-        (fn-bpnp-first-stranded (cdr ordered) peer epoch)))))
+        (fn-bpnp-first-stranded (cdr ordered) peer epoch budget)))))
 
-(defun fn-bpnp-stranded-effects (held peer epoch)
+(defun fn-bpnp-stranded-effects (held peer epoch budget)
   (declare (xargs :guard (true-listp held)))
-  (let ((stranded (fn-bpnp-first-stranded (reverse held) peer epoch)))
+  (let ((stranded (fn-bpnp-first-stranded (reverse held) peer epoch budget)))
     (and stranded
          (list (list :forward-stranded (fn-bpn-nth 3 stranded) peer
                      (fn-bpnp-attempt-retries (fn-bpn-nth 13 stranded)))))))
 
 (defun fn-bpnp-forward-scan
-  (ordered peer mru node observation waits free epoch)
+  (ordered peer mru node observation waits free epoch budget)
   (declare (xargs :guard (natp mru) :measure (acl2-count ordered)))
   (if (atom ordered) (list :none waits)
     (let* ((h (car ordered))
            (key (fn-bpnp-wait-key h)))
-      (if (or (not (fn-bpnp-forward-candidatep h peer observation epoch))
+      (if (or (not (fn-bpnp-forward-candidatep h peer observation epoch budget))
               (fn-bpnp-forward-mru-waitp h peer mru waits)
               (fn-bpnp-credit-blockedp h waits free))
           (fn-bpnp-forward-scan
-           (cdr ordered) peer mru node observation waits free epoch)
+           (cdr ordered) peer mru node observation waits free epoch budget)
         (let ((image (fn-bpnp-forward-image h node observation)))
           (if (not (equal (car image) :ready))
               (fn-bpnp-forward-scan
-               (cdr ordered) peer mru node observation waits free epoch)
+               (cdr ordered) peer mru node observation waits free epoch budget)
             (if (< mru (len (fn-bpn-nth 1 image)))
                 (fn-bpnp-forward-scan
                  (cdr ordered) peer mru node observation
                  (cons (list :bpnp-wait key :mru peer mru)
-                       (fn-bpnp-remove-wait key waits)) free epoch)
+                       (fn-bpnp-remove-wait key waits)) free epoch budget)
               (list :ready h (fn-bpn-nth 1 image)
                     (fn-bpb-bundle-age (fn-bpn-nth 2 image))
                     waits))))))))
 
-(defun fn-bpnp-start-one (st peer session mru observation)
+(defun fn-bpnp-start-one (st peer session mru observation budget)
   (declare (xargs :guard (and (natp mru)
                               (true-listp (fn-bpnf-held-list st)))
                   :verify-guards nil))
@@ -730,7 +762,7 @@
                                *fn-bpnp-control-margin*))
            (scan (fn-bpnp-forward-scan
                   (reverse (fn-bpnf-held-list st)) peer mru node observation
-                  (fn-bpnp-waits st) free (fn-bpnf-epoch st)))
+                  (fn-bpnp-waits st) free (fn-bpnf-epoch st) budget))
            (waits (if (equal (car scan) :ready)
                       (fn-bpn-nth 4 scan) (fn-bpn-nth 1 scan)))
            (held (fn-bpnf-held-list st))
@@ -738,7 +770,7 @@
            (st (fn-bpnp-with-waits st waits)))
       (if (not (equal (car scan) :ready))
           (fn-bpnf-answer
-           st (fn-bpnp-stranded-effects held peer epoch))
+           st (fn-bpnp-stranded-effects held peer epoch budget))
         (let* ((h (fn-bpn-nth 1 scan))
                (wire (fn-bpn-nth 2 scan))
                (age (fn-bpn-nth 3 scan))
@@ -976,7 +1008,7 @@
 ;; 0.  The kind-8 rows that exhausted the budget and the :resumed row stay in
 ;; FNBS: the history keeps the exhaustion and says an operator re-armed it.
 ;; Anything else is refused with its reason and nothing is written.
-(defun fn-bpnp-resume-refusal (st arrival)
+(defun fn-bpnp-resume-refusal (st arrival budget)
   (declare (xargs :guard t))
   (let* ((held (fn-bpnf-held-list st))
          (h (fn-bpnf-find-arrival arrival held))
@@ -994,7 +1026,7 @@
            :not-forward-pending)
           ((null slot) :not-attempted)
           ((not (fn-bpnp-stranded-slotp slot (fn-bpnf-epoch st)
-                                        (fn-bpn-nth 11 h)))
+                                        (fn-bpn-nth 11 h) budget))
            :not-stranded)
           (t nil))))
 
@@ -1008,9 +1040,9 @@
      (fn-bpn-nth 1 slot) (fn-bpn-nth 2 slot) (fn-bpn-nth 4 slot)
      :resumed)))
 
-(defun fn-bpnp-operator-resume-step (st arrival)
+(defun fn-bpnp-operator-resume-step (st arrival budget)
   (declare (xargs :guard t))
-  (let ((reason (fn-bpnp-resume-refusal st arrival)))
+  (let ((reason (fn-bpnp-resume-refusal st arrival budget)))
     (if reason
         (fn-bpnf-answer st (list (list :resume-refused arrival reason)))
       (let* ((h (fn-bpnf-find-arrival arrival (fn-bpnf-held-list st)))
@@ -1198,13 +1230,13 @@
                               :conflict (fn-bpn-nth 4 issued) :uncertain))
        (fn-bpnp-conflict-refusal ingress))))))
 
-;; BP-R17.  (:deliver-result epoch op key :busy detail obs): the owner
-;; answered the delivery named by the volatile marker (:delivery epoch op
-;; key) busy.  Nothing is proposed and nothing is published: the marker is
-;; cleared and the key's deferral wait is set; every other slot is kept.
+;; BP-R17.  (:deliver-result epoch op key :busy detail obs [budgets]): the
+;; owner answered the delivery named by the volatile marker (:delivery epoch
+;; op key) busy.  The marker is cleared, the key's backoff wait is set, and
+;; the kind 20 counting the answer is proposed (fn-bpnp-busy-delivery-step).
 (defun fn-bpnp-busy-eventp (event)
   (declare (xargs :guard t))
-  (and (true-listp event) (equal (len event) 7)
+  (and (fn-bpnp-budgeted-lengthp event 7)
        (equal (car event) :deliver-result)
        (fn-frame-natp (fn-bpn-nth 1 event))
        (fn-frame-natp (fn-bpn-nth 2 event))
@@ -1215,40 +1247,152 @@
        (<= (len (fn-bpn-nth 5 event)) 256)
        (fn-clock-observationp (fn-bpn-nth 6 event))))
 
-(defun fn-bpnp-busy-wait (key waits observation)
+(defun fn-bpnp-busy-wait (key observation budgets)
   (declare (xargs :guard t))
-  (list :bpnp-wait key :busy (1+ (fn-bpnp-busy-count key waits))
-        (+ (nfix (fn-clock-monotonic observation)) *fn-bpnp-owner-backoff*)))
+  (list :bpnp-wait key :busy
+        (+ (nfix (fn-clock-monotonic observation))
+           (fn-bpnp-budget-backoff budgets))
+        (fn-bpnp-budget-retries budgets)))
 
-(defun fn-bpnp-busy-delivery-step (st epoch op key observation)
+; The answered delivery's marker is cleared and the key's backoff wait set
+; whatever follows.  Within the journal's credit (a kind-20 final is one
+; received final with zero debt) the machine proposes the kind 20 that
+; counts this busy answer; the count moves only when it is durable.  Without
+; credit the answer is the credit wait and the count is unchanged.
+(defun fn-bpnp-busy-delivery-step (st epoch op key observation budgets)
   (declare (xargs :guard t))
   (if (not (and (true-listp st)
                 (equal (fn-bpnf-waits st) (list :delivery epoch op key))
                 (equal (fn-bpnf-epoch st) epoch)
                 (null (fn-bpnf-issued st))))
       (fn-bpnf-answer st (list (list :delivery-answer :refused)))
-    (let* ((waits (fn-bpnp-waits st))
-           (wait (fn-bpnp-busy-wait key waits observation))
-           (n (fn-bpn-nth 3 wait)))
+    (let* ((h (fn-bpnf-find-held key (fn-bpnf-held-list st)))
+           (wait (fn-bpnp-busy-wait key observation budgets))
+           (cleared (update-nth 11 (cons wait (fn-bpnp-remove-wait
+                                               key (fn-bpnp-waits st)))
+                                (update-nth 7 nil st)))
+           (record (fn-bpnp-deferral-record
+                    (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                    (fn-bpn-nth 3 h) (fn-bpah-held-primary-identity h)
+                    (1+ (fn-bpnp-busy-count h)))))
+      (if (and h
+               (fn-frame-natp (fn-bpnf-next-op st))
+               (< (fn-bpnf-next-op st) *fn-frame-max-nat*)
+               (fn-bpnp-deferral-recordp record)
+               (not (equal (fn-bpnp-deferral-frame record) :bad))
+               (fn-bpnd-admitp (fn-bpnp-used st) (fn-bpnp-debt st)
+                               *fn-bpnp-control-margin* 0 :spend))
+          (fn-bpnf-answer
+           (fn-bpnp-with-next-issued
+            cleared (fn-bpnf-operation (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                                       :deferral record :pending))
+           (list (list :persist-deferral (fn-bpnf-epoch st)
+                       (fn-bpnf-next-op st) record)))
+        (fn-bpnf-answer
+         cleared
+         (list (list :progress-wait key :credit
+                     (fn-bpnd-free (fn-bpnp-used st) (fn-bpnp-debt st)
+                                   *fn-bpnp-control-margin*))))))))
+
+; What a durable kind 20 answers: the resumed row, the stranded row at the
+; budget its busy event carried, or the deferral with its backoff reading.
+(defun fn-bpnp-deferral-effects (key count wait)
+  (declare (xargs :guard t))
+  (cond ((zp count) (list (list :delivery-resumed key)))
+        ((<= (nfix (fn-bpn-nth 4 wait)) count)
+         (list (list :delivery-stranded key count)))
+        (t (list (list :delivery-deferred key count (fn-bpn-nth 3 wait))))))
+
+; The live persist arm applies the kind 20 through fn-bpnp-deferral-apply,
+; the function ordered replay calls.  A resume (count 0) also drops the
+; key's volatile wait.  An apply fault is a recovery-only uncertainty.
+(defun fn-bpnp-deferral-persist-step (st epoch op result)
+  (declare (xargs :guard t))
+  (let* ((issued (fn-bpnf-issued st))
+         (record (fn-bpn-nth 4 issued))
+         (count (fn-bpn-nth 5 record))
+         (h (fn-bpnf-find-arrival (fn-bpn-nth 3 record) (fn-bpnf-held-list st)))
+         (key (fn-bpnp-wait-key h))
+         (waits (fn-bpnp-waits st))
+         (wait (fn-bpnp-wait-for key waits)))
+    (cond
+     ((or (equal (fn-bpn-nth 5 issued) :uncertain)
+          (not (fn-bpnf-operation-matchp issued epoch op))
+          (not (equal (fn-bpn-nth 3 issued) :deferral)))
+      (fn-bpnf-answer st nil))
+     ((equal result :durable)
+      (let ((applied (fn-bpnp-deferral-apply record (fn-bpnf-held-list st))))
+        (if (not (equal (car applied) :ready))
+            (fn-bpnf-answer
+             (fn-bpnp-with-issued
+              st (fn-bpnf-operation epoch op :deferral record :uncertain))
+             (list (list :deferral-answer :uncertain)))
+          (fn-bpnf-answer
+           (fn-bpnp-with-waits
+            (fn-bpnp-with-credit
+             (update-nth 2 (fn-bpn-nth 1 applied)
+                         (fn-bpnp-with-issued st nil))
+             (1+ (nfix (fn-bpnp-used st))) (fn-bpnp-debt st))
+            (if (zp count) (fn-bpnp-remove-wait key waits) waits))
+           (fn-bpnp-deferral-effects key count wait)))))
+     ((equal result :refused)
       (fn-bpnf-answer
-       (update-nth 11 (cons wait (fn-bpnp-remove-wait key waits))
-                   (update-nth 7 nil st))
-       (list (if (<= *fn-bpnp-max-forward-retries* n)
-                 (list :delivery-stranded key n)
-               (list :delivery-deferred key n (fn-bpn-nth 4 wait))))))))
+       (fn-bpnp-with-waits (fn-bpnp-with-issued st nil) waits)
+       (list (list :deferral-answer :refused))))
+     (t
+      (fn-bpnf-answer
+       (fn-bpnp-with-issued
+        st (fn-bpnf-operation epoch op :deferral record :uncertain))
+       (list (list :deferral-answer :uncertain)))))))
+
+; The operator's resume of a busy-stranded delivery (spec 4.2): a kind 20
+; with count 0, under the same refusals as the forwarding resume.  The
+; forwarding resume (fn-bpnp-operator-resume-step) is unchanged for every
+; other row.
+(defun fn-bpnp-busy-resume-step (st arrival budget)
+  (declare (xargs :guard t))
+  (let* ((h (fn-bpnf-find-arrival arrival (fn-bpnf-held-list st)))
+         (record (fn-bpnp-deferral-record
+                  (fn-bpnf-epoch st) (fn-bpnf-next-op st) arrival
+                  (fn-bpah-held-primary-identity h) 0)))
+    (cond
+     ((fn-bpn-machine-state-fenced (fn-bpnf-base st))
+      (fn-bpnf-answer st (list (list :resume-refused arrival :fenced))))
+     ((not (and (null (fn-bpnf-issued st)) (null (fn-bpnf-waits st))))
+      (fn-bpnf-answer st (list (list :resume-refused arrival :busy))))
+     ((not (and (natp arrival)
+                (equal (fn-bpnf-arrival-count arrival
+                                              (fn-bpnf-held-list st)) 1)
+                (fn-bpnp-busy-strandedp h budget)))
+      (fn-bpnf-answer st (list (list :resume-refused arrival :not-stranded))))
+     ((not (and (fn-frame-natp (fn-bpnf-epoch st))
+                (fn-frame-natp (fn-bpnf-next-op st))
+                (< (fn-bpnf-next-op st) *fn-frame-max-nat*)
+                (fn-bpnp-deferral-recordp record)
+                (not (equal (fn-bpnp-deferral-frame record) :bad))
+                (fn-bpnd-admitp (fn-bpnp-used st) (fn-bpnp-debt st)
+                                *fn-bpnp-control-margin* 0 :control)))
+      (fn-bpnf-answer st (list (list :resume-refused arrival :no-capacity))))
+     (t
+      (fn-bpnf-answer
+       (fn-bpnp-with-next-issued
+        st (fn-bpnf-operation (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                              :deferral record :pending))
+       (list (list :persist-deferral (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                   record)))))))
 
 (defun fn-bpnp-host-eventp (event)
   (declare (xargs :guard t))
   (case (fn-cbor-ag-car event)
     (:progress
-     (and (true-listp event) (equal (len event) 5)
+     (and (fn-bpnp-budgeted-lengthp event 5)
           (fn-bpp-eidp (fn-bpn-nth 1 event))
           (fn-clock-observationp (fn-bpn-nth 2 event))
           (fn-bpnp-routesp (fn-bpn-nth 3 event))
           (<= (len (fn-bpn-nth 3 event)) *fn-bpnp-max-routes*)
           (fn-frame-natp (fn-bpn-nth 4 event))))
     (:session
-     (and (true-listp event) (equal (len event) 6)
+     (and (fn-bpnp-budgeted-lengthp event 6)
           (fn-bpp-eidp (fn-bpn-nth 1 event))
           (fn-bpnp-session-idp (fn-bpn-nth 2 event))
           (or (equal (fn-bpn-nth 3 event) t)
@@ -1257,7 +1401,7 @@
           (< 0 (fn-bpn-nth 4 event))
           (fn-clock-observationp (fn-bpn-nth 5 event))))
     (:resume
-     (and (true-listp event) (equal (len event) 4)
+     (and (fn-bpnp-budgeted-lengthp event 4)
           (fn-bpp-eidp (fn-bpn-nth 1 event))
           (fn-bpnp-session-idp (fn-bpn-nth 2 event))
           (fn-clock-observationp (fn-bpn-nth 3 event))))
@@ -1272,7 +1416,7 @@
      (or (fn-bpnf-host-eventp event)
          (fn-bpnp-busy-eventp event)))
     (:operator-resume
-     (and (true-listp event) (equal (len event) 2)
+     (and (fn-bpnp-budgeted-lengthp event 2)
           (fn-frame-natp (fn-bpn-nth 1 event))))
     (:recover-fnbs
      (or (fn-bpnf-host-eventp event)
@@ -1389,7 +1533,11 @@
          (equal (fn-bpn-nth 4 event) :busy))
     (fn-bpnp-busy-delivery-step
      st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event) (fn-bpn-nth 3 event)
-     (fn-bpn-nth 6 event)))
+     (fn-bpn-nth 6 event) (fn-bpnp-event-budgets event 7)))
+   ((and (equal (fn-cbor-ag-car event) :persist-result)
+         (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :deferral))
+    (fn-bpnp-deferral-persist-step
+     st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event) (fn-bpn-nth 3 event)))
    ((fn-bpnp-conflict-held st event)
     (fn-bpnp-conflict-propose-step st event (fn-bpnp-conflict-held st event)))
    ((equal (fn-cbor-ag-car event) :session)
@@ -1406,7 +1554,9 @@
            (updated (fn-bpnp-with-runtime
                      st sessions (fn-bpnp-pending-image st))))
       (if open
-          (fn-bpnp-start-one updated peer session mru observation)
+          (fn-bpnp-start-one updated peer session mru observation
+                             (fn-bpnp-budget-retries
+                              (fn-bpnp-event-budgets event 6)))
         (fn-bpnf-answer updated nil))))
    ((equal (fn-cbor-ag-car event) :resume)
     (let ((peer (fn-bpn-nth 1 event))
@@ -1416,10 +1566,16 @@
                       (fn-bpnp-sessions st) peer session)))
         (if current
             (fn-bpnp-start-one
-             st peer session (fn-bpn-nth 3 current) observation)
+             st peer session (fn-bpn-nth 3 current) observation
+             (fn-bpnp-budget-retries (fn-bpnp-event-budgets event 4)))
           (fn-bpnf-answer st nil)))))
    ((equal (fn-cbor-ag-car event) :operator-resume)
-    (fn-bpnp-operator-resume-step st (fn-bpn-nth 1 event)))
+    (let ((budget (fn-bpnp-budget-retries (fn-bpnp-event-budgets event 2)))
+          (h (fn-bpnf-find-arrival (fn-bpn-nth 1 event)
+                                   (fn-bpnf-held-list st))))
+      (if (fn-bpnp-busy-strandedp h budget)
+          (fn-bpnp-busy-resume-step st (fn-bpn-nth 1 event) budget)
+        (fn-bpnp-operator-resume-step st (fn-bpn-nth 1 event) budget))))
    ((equal (fn-cbor-ag-car event) :forward-result)
     (fn-bpnp-forward-result-propose-step
      st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
@@ -1429,7 +1585,8 @@
       (let ((answer
              (fn-bpnp-progress-step
               st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
-              (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
+              (fn-bpn-nth 3 event) (fn-bpn-nth 4 event)
+              (fn-bpnp-budget-retries (fn-bpnp-event-budgets event 5)))))
         (fn-bpnf-answer
          (fn-bpnp-with-runtime
           (fn-bpnp-with-credit

@@ -132,3 +132,35 @@
                  (fn-bpnp-forward-unframe-with
                   octets *fn-bpnp-result-kind* *fn-bpnp-result-fields*))))
     (if (equal (fn-bpnp-result-frame record) octets) record nil)))
+
+;; Kind 20: the durable busy-delivery count (bp-forward-attempt.lisp).
+(defconst *fn-bpnp-deferral-kind* 20)
+(defconst *fn-bpnp-deferral-fields* '(:nat :nat :nat :blob :nat))
+
+(defun fn-bpnp-deferral-values (record)
+  (declare (xargs :guard t))
+  (list (fn-bpn-nth 1 record) (fn-bpn-nth 2 record) (fn-bpn-nth 3 record)
+        (fn-bpn-nth 4 record) (fn-bpn-nth 5 record)))
+
+(defun fn-bpnp-deferral-frame (record)
+  (declare (xargs :guard t))
+  (if (fn-bpnp-deferral-recordp record)
+      (fn-bpnp-forward-frame-with
+       *fn-bpnp-deferral-kind* *fn-bpnp-deferral-fields*
+       (fn-bpnp-deferral-values record))
+    :bad))
+
+(defun fn-bpnp-deferral-from-values (values)
+  (declare (xargs :guard t))
+  (let ((record (fn-bpnp-deferral-record
+                 (fn-bpn-nth 0 values) (fn-bpn-nth 1 values)
+                 (fn-bpn-nth 2 values) (fn-bpn-nth 3 values)
+                 (fn-bpn-nth 4 values))))
+    (if (fn-bpnp-deferral-recordp record) record nil)))
+
+(defun fn-bpnp-deferral-unframe (octets)
+  (declare (xargs :guard t))
+  (let ((record (fn-bpnp-deferral-from-values
+                 (fn-bpnp-forward-unframe-with
+                  octets *fn-bpnp-deferral-kind* *fn-bpnp-deferral-fields*))))
+    (if (equal (fn-bpnp-deferral-frame record) octets) record nil)))
