@@ -121,6 +121,45 @@ local uncertain receipt transfer), bounds-p3-checkpoint, python-store-f8,
 signed-path. The spike never merges into dev; each spike record lists its
 deferrals for the proved re-implementation.
 
+## State at the weekly API limit (2026-09-25 ~11:30 UTC; resets Sep 26 09:00 New York)
+
+The night deputy and about a dozen of its lanes were terminated by the
+account's weekly rate limit. Nothing was lost: every lane's commits are in
+its worktree under build/lanes/, the deputy's state is in
+build/coordinator/NIGHT-STATE.md and its routine in build/coordinator/
+NIGHT.md, the backlog it swept is planning/backlog-2026-09-25.md. When the
+limit resets, start a fresh deputy from those two files; it resumes each
+terminated lane by re-briefing from the worktree (the agent ids are dead).
+
+Landed on dev tonight by the deputy (18 merges, two merge certifications
+green): bp-routing-2, peer-carriage, dtn-build, native-drift,
+bounds-profile, k0-rest, operator-verdicts, path-and-login (D32: a
+client-supplied Path accepted; login bound to principal), reclaim-d13 (the
+proved half), bounds-blob, control-c3 (the decision), rep-octets-stobj,
+carry-kind, k0-steps (K4 bridges), k0-cuts, live-status, marker-required,
+plus the coordinator's own merges earlier (owner-checkpoint-open,
+bp-budgets-receipts with the connection-local receipt transfer, control C2).
+On spike/mega: operator, reader, peering, control, bp, representation; the
+mission lab and the storage spike (a 100k-article run, 4 to 5 hours) were
+still running on hbox when the limit hit.
+
+Terminated mid-flight, worktrees intact, to resume: reader-surface, pbb-d32
+(Fable), bounds-p5 native continuation (needs LD_LIBRARY_PATH for OpenSSL
+on hbox), bp-n16-prod, control-c3b (the served withdrawal with K1 restated),
+reclaim-host, peer-keys, peer-invite, status-join, rep-wave-c (Fable; its
+correspondence chain was proving), checkpoint-cost, the bounds-p6 record-
+ceiling fix. Held merges: bounds-p6 (the width half; blocked until the
+record ceiling fix lands: a saved format-8 profile with R = 17,138,486
+would fail validation), python-store-f8 (green but its quiet rerun of the
+timed-out modules was pending), bounds-p5 (chained packs; one native test
+red on packing nothing).
+
+Not done tonight: no cut, qualification or deploy (dev never converged: P6
+held, C3's served half and wave C in flight); segmented articles (P6's
+second half) not started; the node is still on c3420013 with a format-7
+store. What waits on ember: nothing new beyond the three decisions
+recorded as D29 to D31 (all taken).
+
 ## Where to read next
 
 - [Current view](current.md): per capability, the four evidence
