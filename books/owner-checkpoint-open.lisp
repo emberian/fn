@@ -309,7 +309,7 @@
 ; computes E and (fn-sco-store-open E configs frontier) once and keeps them;
 ; the owner (host/owner-host.lisp fn-owner-recover-from-store-open) installs
 ; with fn-ock-install over that pair, without extending or finalizing again.
-(defthm fn-ock-install-of-store-open-is-recover-extended
+(defthm fn-ock-install-of-store-open-by-definition
   (equal (fn-ock-install (car (fn-sco-store-open e configs frontier))
                          (cadr (fn-sco-store-open e configs frontier))
                          max-conns)

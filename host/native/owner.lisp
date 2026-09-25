@@ -464,7 +464,7 @@ completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
 its extended checkpoint E and ACL2's (fn-sco-store-open E ...) in the global
 `fn-store-sco-open'; fn-owner-recover-from-store-open installs from them with
 fn-ock-install, which is fn-ock-recover-extended of E
-(fn-ock-install-of-store-open-is-recover-extended), so the keystone
+(fn-ock-install-of-store-open-by-definition), so the keystone
 fn-owner-recover-from-checkpoint-equals-full-recover says both paths install
 the full open's owner, and nothing is replayed a second time.  Returns the
 checkpoint's S, or NIL."

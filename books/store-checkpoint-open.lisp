@@ -885,7 +885,7 @@
                   (fn-sn-open-ok opened)
                 (fn-sn-open-error :identity)))))))))
 
-(defthm fn-sco-finalize-is-finalize-from
+(defthm fn-sco-finalize-from-unfolds
   (equal (fn-sco-finalize c configs frontier)
          (fn-sco-finalize-from (fn-sco-cpr-finish (fn-sco-cpr c) configs)
                                c configs frontier))
@@ -957,6 +957,6 @@
                            (fn-cpr-replay fn-cpr-loop fn-sn-statep
                             fn-sco-cpr-finish fn-sco-cpr-prefix)))))
 (verify-guards fn-sco-store-open
-  :hints (("Goal" :use ((:instance fn-sco-finalize-is-finalize-from (c e)))
+  :hints (("Goal" :use ((:instance fn-sco-finalize-from-unfolds (c e)))
            :in-theory (disable fn-sco-finalize fn-sco-finalize-from
-                               fn-sco-cpr-finish fn-sco-finalize-is-finalize-from))))
+                               fn-sco-cpr-finish fn-sco-finalize-from-unfolds))))

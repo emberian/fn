@@ -207,7 +207,7 @@
 ; (fn-store-sn-open-extended, host/store-node-host.lisp): its extended
 ; checkpoint E and (fn-sco-store-open E ...) = (REPLAYED OPENED), kept in the
 ; global `fn-store-sco-open'.  fn-ock-install over that pair is
-; fn-ock-recover-extended of E (fn-ock-install-of-store-open-is-recover-extended),
+; fn-ock-recover-extended of E (fn-ock-install-of-store-open-by-definition),
 ; so the keystone fn-owner-recover-from-checkpoint-equals-full-recover and
 ; fn-ock-recover-installs-ocl-relation hold of what is installed here, on
 ; both paths, with no second extension or finalization.
