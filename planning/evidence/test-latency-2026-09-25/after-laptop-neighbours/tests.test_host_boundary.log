@@ -1,0 +1,24 @@
+test_a_filesystem_that_rejects_full_fsync_falls_back_to_fsync (tests.test_host_boundary.DurabilityBarrierTests.test_a_filesystem_that_rejects_full_fsync_falls_back_to_fsync) ... ok
+test_an_unrelated_barrier_error_is_not_swallowed (tests.test_host_boundary.DurabilityBarrierTests.test_an_unrelated_barrier_error_is_not_swallowed) ... ok
+test_darwin_barrier_asks_the_device_to_flush_its_cache (tests.test_host_boundary.DurabilityBarrierTests.test_darwin_barrier_asks_the_device_to_flush_its_cache) ... ok
+test_every_journal_barrier_goes_through_the_one_helper (tests.test_host_boundary.DurabilityBarrierTests.test_every_journal_barrier_goes_through_the_one_helper) ... ok
+test_documented_table (tests.test_host_boundary.ExitCodeTests.test_documented_table) ... ok
+test_ingress_refusal_and_fault_stay_distinct (tests.test_host_boundary.ExitCodeTests.test_ingress_refusal_and_fault_stay_distinct) ... ok
+test_pending_bpa_delete_is_reported_as_acceptance_not_failure (tests.test_host_boundary.ExitCodeTests.test_pending_bpa_delete_is_reported_as_acceptance_not_failure)
+A durable acceptance awaiting a delete keeps the accepted code. ... ok
+test_store_cli_maps_each_outcome_to_its_own_code (tests.test_host_boundary.ExitCodeTests.test_store_cli_maps_each_outcome_to_its_own_code) ... ok
+test_store_cli_usage_error_is_its_own_code (tests.test_host_boundary.ExitCodeTests.test_store_cli_usage_error_is_its_own_code) ... ok
+test_a_contended_lock_is_still_a_clean_refusal (tests.test_host_boundary.OwnershipAndOrphanTests.test_a_contended_lock_is_still_a_clean_refusal) ... ok
+test_absent_lock_pathname_is_a_fault_not_a_held_lock (tests.test_host_boundary.OwnershipAndOrphanTests.test_absent_lock_pathname_is_a_fault_not_a_held_lock)
+An uninitialised store is an invalid state, never `already locked`. ... ok
+test_initialization_publishes_metadata_through_staging (tests.test_host_boundary.OwnershipAndOrphanTests.test_initialization_publishes_metadata_through_staging) ... ok
+test_orphan_report_stays_bounded (tests.test_host_boundary.OwnershipAndOrphanTests.test_orphan_report_stays_bounded) ... ok
+test_recovery_reports_staging_orphans_without_deleting_them (tests.test_host_boundary.OwnershipAndOrphanTests.test_recovery_reports_staging_orphans_without_deleting_them) ... ok
+test_non_ascii_bid_is_refused_rather_than_raising_an_encoding_error (tests.test_host_boundary.ReceiverBoundaryTests.test_non_ascii_bid_is_refused_rather_than_raising_an_encoding_error) ... ok
+test_over_long_and_empty_bids_refuse_the_same_way (tests.test_host_boundary.ReceiverBoundaryTests.test_over_long_and_empty_bids_refuse_the_same_way) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.479s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_host_boundary", "tests": 16, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_host_boundary.DurabilityBarrierTests.test_a_filesystem_that_rejects_full_fsync_falls_back_to_fsync", 0.001], ["tests.test_host_boundary.DurabilityBarrierTests.test_an_unrelated_barrier_error_is_not_swallowed", 0.001], ["tests.test_host_boundary.DurabilityBarrierTests.test_darwin_barrier_asks_the_device_to_flush_its_cache", 0.001], ["tests.test_host_boundary.DurabilityBarrierTests.test_every_journal_barrier_goes_through_the_one_helper", 0.001], ["tests.test_host_boundary.ExitCodeTests.test_documented_table", 0.0], ["tests.test_host_boundary.ExitCodeTests.test_ingress_refusal_and_fault_stay_distinct", 0.001], ["tests.test_host_boundary.ExitCodeTests.test_pending_bpa_delete_is_reported_as_acceptance_not_failure", 0.0], ["tests.test_host_boundary.ExitCodeTests.test_store_cli_maps_each_outcome_to_its_own_code", 0.005], ["tests.test_host_boundary.ExitCodeTests.test_store_cli_usage_error_is_its_own_code", 0.001], ["tests.test_host_boundary.OwnershipAndOrphanTests.test_a_contended_lock_is_still_a_clean_refusal", 0.232], ["tests.test_host_boundary.OwnershipAndOrphanTests.test_absent_lock_pathname_is_a_fault_not_a_held_lock", 0.001], ["tests.test_host_boundary.OwnershipAndOrphanTests.test_initialization_publishes_metadata_through_staging", 0.07], ["tests.test_host_boundary.OwnershipAndOrphanTests.test_orphan_report_stays_bounded", 0.089], ["tests.test_host_boundary.OwnershipAndOrphanTests.test_recovery_reports_staging_orphans_without_deleting_them", 0.077], ["tests.test_host_boundary.ReceiverBoundaryTests.test_non_ascii_bid_is_refused_rather_than_raising_an_encoding_error", 0.0], ["tests.test_host_boundary.ReceiverBoundaryTests.test_over_long_and_empty_bids_refuse_the_same_way", 0.0]]}

@@ -1,0 +1,11 @@
+test_configuration_digest_change_is_refused (tests.test_index_cache.IndexCacheTests.test_configuration_digest_change_is_refused)
+An index opened before a re-selection is refused by the digest test. ... ok
+test_forged_generation_is_refused_not_answered (tests.test_index_cache.IndexCacheTests.test_forged_generation_is_refused_not_answered) ... ok
+test_index_answers_equal_the_fold_command_by_command (tests.test_index_cache.IndexCacheTests.test_index_answers_equal_the_fold_command_by_command) ... ok
+test_post_between_two_reader_commands_gives_post_generation_truth (tests.test_index_cache.IndexCacheTests.test_post_between_two_reader_commands_gives_post_generation_truth) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 3.792s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_index_cache", "tests": 4, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_index_cache.IndexCacheTests.test_configuration_digest_change_is_refused", 0.437], ["tests.test_index_cache.IndexCacheTests.test_forged_generation_is_refused_not_answered", 0.426], ["tests.test_index_cache.IndexCacheTests.test_index_answers_equal_the_fold_command_by_command", 0.43], ["tests.test_index_cache.IndexCacheTests.test_post_between_two_reader_commands_gives_post_generation_truth", 1.252]]}

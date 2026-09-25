@@ -1,0 +1,18 @@
+test_a_receiptable_work_id_at_the_bound_is_still_accepted (tests.test_bp_receive_faults.ReceiveFaultTests.test_a_receiptable_work_id_at_the_bound_is_still_accepted) ... ok
+test_article_commit_before_context_reopens_without_second_charge (tests.test_bp_receive_faults.ReceiveFaultTests.test_article_commit_before_context_reopens_without_second_charge) ... ok
+test_capacity_refusal_preserves_prior_article_and_pin (tests.test_bp_receive_faults.ReceiveFaultTests.test_capacity_refusal_preserves_prior_article_and_pin) ... ok
+test_context_before_intent_reopens_without_second_charge (tests.test_bp_receive_faults.ReceiveFaultTests.test_context_before_intent_reopens_without_second_charge) ... ok
+test_decision_before_lost_delete_retries_same_adu_without_charge (tests.test_bp_receive_faults.ReceiveFaultTests.test_decision_before_lost_delete_retries_same_adu_without_charge) ... ok
+test_fnbi_durable_cut_reopens_same_adu_once (tests.test_bp_receive_faults.ReceiveFaultTests.test_fnbi_durable_cut_reopens_same_adu_once) ... ok
+test_intent_before_decision_requires_recovery_without_second_charge (tests.test_bp_receive_faults.ReceiveFaultTests.test_intent_before_decision_requires_recovery_without_second_charge) ... ok
+test_store_at_its_transaction_bound_refuses_and_stays_openable (tests.test_bp_receive_faults.ReceiveFaultTests.test_store_at_its_transaction_bound_refuses_and_stays_openable)
+D1: the 129th request must not publish a store that cannot reopen. ... ok
+test_unreceiptable_work_id_refuses_before_any_store_mutation (tests.test_bp_receive_faults.ReceiveFaultTests.test_unreceiptable_work_id_refuses_before_any_store_mutation)
+D11: the receipt-id bound is a preflight, not a post-charge error. ... ok
+test_wrong_policy_or_destination_never_publishes_store_record (tests.test_bp_receive_faults.ReceiveFaultTests.test_wrong_policy_or_destination_never_publishes_store_record) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 40.357s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_bp_receive_faults", "tests": 10, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_bp_receive_faults.ReceiveFaultTests.test_a_receiptable_work_id_at_the_bound_is_still_accepted", 2.514], ["tests.test_bp_receive_faults.ReceiveFaultTests.test_article_commit_before_context_reopens_without_second_charge", 4.132], ["tests.test_bp_receive_faults.ReceiveFaultTests.test_capacity_refusal_preserves_prior_article_and_pin", 4.385], ["tests.test_bp_receive_faults.ReceiveFaultTests.test_context_before_intent_reopens_without_second_charge", 4.117], ["tests.test_bp_receive_faults.ReceiveFaultTests.test_decision_before_lost_delete_retries_same_adu_without_charge", 4.197], ["tests.test_bp_receive_faults.ReceiveFaultTests.test_fnbi_durable_cut_reopens_same_adu_once", 2.496], ["tests.test_bp_receive_faults.ReceiveFaultTests.test_intent_before_decision_requires_recovery_without_second_charge", 5.3], ["tests.test_bp_receive_faults.ReceiveFaultTests.test_store_at_its_transaction_bound_refuses_and_stays_openable", 4.427], ["tests.test_bp_receive_faults.ReceiveFaultTests.test_unreceiptable_work_id_refuses_before_any_store_mutation", 4.323], ["tests.test_bp_receive_faults.ReceiveFaultTests.test_wrong_policy_or_destination_never_publishes_store_record", 4.465]]}

@@ -1,0 +1,23 @@
+test_missing_wall_reading_is_marked_unusable (tests.test_store_node_host.StoreClockObservationTests.test_missing_wall_reading_is_marked_unusable) ... ok
+test_pre_epoch_reading_is_marked_unusable (tests.test_store_node_host.StoreClockObservationTests.test_pre_epoch_reading_is_marked_unusable) ... ok
+test_failed_or_lost_finish_cannot_retry_before_recovery (tests.test_store_node_host.StoreNodeHostTests.test_failed_or_lost_finish_cannot_retry_before_recovery) ... ok
+test_finish_rejects_stale_ready_state (tests.test_store_node_host.StoreNodeHostTests.test_finish_rejects_stale_ready_state) ... ok
+test_known_abort_consumes_frontier_without_a_record (tests.test_store_node_host.StoreNodeHostTests.test_known_abort_consumes_frontier_without_a_record) ... ok
+test_lifecycle_uses_allocator_io_then_finish (tests.test_store_node_host.StoreNodeHostTests.test_lifecycle_uses_allocator_io_then_finish) ... ok
+test_link_failure_fences_then_observed_recovery_reopens (tests.test_store_node_host.StoreNodeHostTests.test_link_failure_fences_then_observed_recovery_reopens) ... ok
+test_lost_bridge_reply_after_namespace_observation_stays_fenced (tests.test_store_node_host.StoreNodeHostTests.test_lost_bridge_reply_after_namespace_observation_stays_fenced)
+The host closes its gate before every post-syscall callback. ... ok
+test_lost_directory_reply_cannot_retry_finish_before_recovery (tests.test_store_node_host.StoreNodeHostTests.test_lost_directory_reply_cannot_retry_finish_before_recovery) ... ok
+test_recovery_barrier_error_fences_until_fresh_observed_replay (tests.test_store_node_host.StoreNodeHostTests.test_recovery_barrier_error_fences_until_fresh_observed_replay) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 7.357s
+
+OK
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+duplicate
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+committed sequence=0 charge=2
+FN_TEST_BUDGET_RESULT {"module": "tests.test_store_node_host", "tests": 10, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_store_node_host.StoreClockObservationTests.test_missing_wall_reading_is_marked_unusable", 0.001], ["tests.test_store_node_host.StoreClockObservationTests.test_pre_epoch_reading_is_marked_unusable", 0.0], ["tests.test_store_node_host.StoreNodeHostTests.test_failed_or_lost_finish_cannot_retry_before_recovery", 0.674], ["tests.test_store_node_host.StoreNodeHostTests.test_finish_rejects_stale_ready_state", 0.383], ["tests.test_store_node_host.StoreNodeHostTests.test_known_abort_consumes_frontier_without_a_record", 0.997], ["tests.test_store_node_host.StoreNodeHostTests.test_lifecycle_uses_allocator_io_then_finish", 1.023], ["tests.test_store_node_host.StoreNodeHostTests.test_link_failure_fences_then_observed_recovery_reopens", 1.053], ["tests.test_store_node_host.StoreNodeHostTests.test_lost_bridge_reply_after_namespace_observation_stays_fenced", 1.824], ["tests.test_store_node_host.StoreNodeHostTests.test_lost_directory_reply_cannot_retry_finish_before_recovery", 0.451], ["tests.test_store_node_host.StoreNodeHostTests.test_recovery_barrier_error_fences_until_fresh_observed_replay", 0.952]]}

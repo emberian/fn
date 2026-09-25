@@ -868,7 +868,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 
-.PHONY: check check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test labs labs-quick
+.PHONY: check check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1076,8 +1076,18 @@ tooling-test:
 	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost \
-	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts -v
+	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
+	    tests.test_test_budget tests.test_bridge_image -v
 
+# Every test module in its own process under a wall-time budget (PKT-163):
+# the report lists each module's seconds and slowest tests, and a module
+# still running at 300 s is terminated and fails the target (exit 2; test
+# failures exit 1).  tests/test_budgets.json may lower a module's budget,
+# never raise it.  `make test-modules MODULES="tests.test_store ..."` runs a
+# chosen set the same way.
 test: check certify
 	$(PYTHON) tools/run_simulator.py
-	$(PYTHON) -m unittest discover -s tests -v
+	$(PYTHON) tools/test_budget.py --discover --logs build/test-budget --json build/test-budget/report.json
+
+test-modules:
+	$(PYTHON) tools/test_budget.py $(MODULES) --logs build/test-budget

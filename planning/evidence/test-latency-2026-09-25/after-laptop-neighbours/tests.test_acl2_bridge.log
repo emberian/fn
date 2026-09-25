@@ -1,0 +1,25 @@
+test_acl2_error_reply_is_answered_without_poisoning (tests.test_acl2_bridge.BridgeCorrelationTests.test_acl2_error_reply_is_answered_without_poisoning)
+A correlated refusal leaves the pipe synchronized and reusable. ... ok
+test_call_timeout_grows_with_form_size_and_bounds_the_recorded_reopen (tests.test_acl2_bridge.BridgeCorrelationTests.test_call_timeout_grows_with_form_size_and_bounds_the_recorded_reopen) ... ok
+test_fresh_nonce_per_call (tests.test_acl2_bridge.BridgeCorrelationTests.test_fresh_nonce_per_call) ... ok
+test_marked_reply_is_accepted_and_returns_only_the_result (tests.test_acl2_bridge.BridgeCorrelationTests.test_marked_reply_is_accepted_and_returns_only_the_result) ... ok
+test_output_bound_trip_poisons_the_bridge (tests.test_acl2_bridge.BridgeCorrelationTests.test_output_bound_trip_poisons_the_bridge) ... ok
+test_reply_without_this_calls_marker_poisons_the_bridge (tests.test_acl2_bridge.BridgeCorrelationTests.test_reply_without_this_calls_marker_poisons_the_bridge)
+The previous call's result can never be returned as this one's. ... ok
+test_stale_reply_arriving_with_the_marker_is_a_correlation_failure (tests.test_acl2_bridge.BridgeCorrelationTests.test_stale_reply_arriving_with_the_marker_is_a_correlation_failure) ... ok
+test_timeout_poisons_the_bridge_for_good (tests.test_acl2_bridge.BridgeCorrelationTests.test_timeout_poisons_the_bridge_for_good) ... ok
+test_octet_list_accepts_only_bounded_decimal_octets (tests.test_acl2_bridge.BridgeParsingTests.test_octet_list_accepts_only_bounded_decimal_octets) ... ok
+test_octet_list_parse_is_linear_on_malformed_output (tests.test_acl2_bridge.BridgeParsingTests.test_octet_list_parse_is_linear_on_malformed_output) ... ok
+test_cleanly_closed_adopted_session_is_replaced (tests.test_acl2_bridge.FrameSessionLifecycleTests.test_cleanly_closed_adopted_session_is_replaced) ... ok
+test_poisoned_adopted_session_is_not_silently_replaced (tests.test_acl2_bridge.FrameSessionLifecycleTests.test_poisoned_adopted_session_is_not_silently_replaced) ... ok
+test_a_merely_invalid_result_still_only_ends_the_connection (tests.test_acl2_bridge.ReaderFailClosedTests.test_a_merely_invalid_result_still_only_ends_the_connection) ... ok
+test_a_poisoned_bridge_makes_the_reader_process_exit_non_zero (tests.test_acl2_bridge.ReaderFailClosedTests.test_a_poisoned_bridge_makes_the_reader_process_exit_non_zero) ... reader: ACL2 bridge poisoned
+ok
+test_an_ordinary_connection_leaves_the_reader_exit_zero (tests.test_acl2_bridge.ReaderFailClosedTests.test_an_ordinary_connection_leaves_the_reader_exit_zero) ... ok
+test_poisoned_bridge_stops_the_reader_instead_of_serving_on (tests.test_acl2_bridge.ReaderFailClosedTests.test_poisoned_bridge_stops_the_reader_instead_of_serving_on) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.430s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_acl2_bridge", "tests": 16, "failures": 0, "errors": 0, "skipped": 0, "timings": [["tests.test_acl2_bridge.BridgeCorrelationTests.test_acl2_error_reply_is_answered_without_poisoning", 0.0], ["tests.test_acl2_bridge.BridgeCorrelationTests.test_call_timeout_grows_with_form_size_and_bounds_the_recorded_reopen", 0.149], ["tests.test_acl2_bridge.BridgeCorrelationTests.test_fresh_nonce_per_call", 0.0], ["tests.test_acl2_bridge.BridgeCorrelationTests.test_marked_reply_is_accepted_and_returns_only_the_result", 0.0], ["tests.test_acl2_bridge.BridgeCorrelationTests.test_output_bound_trip_poisons_the_bridge", 0.0], ["tests.test_acl2_bridge.BridgeCorrelationTests.test_reply_without_this_calls_marker_poisons_the_bridge", 0.0], ["tests.test_acl2_bridge.BridgeCorrelationTests.test_stale_reply_arriving_with_the_marker_is_a_correlation_failure", 0.0], ["tests.test_acl2_bridge.BridgeCorrelationTests.test_timeout_poisons_the_bridge_for_good", 0.22], ["tests.test_acl2_bridge.BridgeParsingTests.test_octet_list_accepts_only_bounded_decimal_octets", 0.0], ["tests.test_acl2_bridge.BridgeParsingTests.test_octet_list_parse_is_linear_on_malformed_output", 0.0], ["tests.test_acl2_bridge.FrameSessionLifecycleTests.test_cleanly_closed_adopted_session_is_replaced", 0.024], ["tests.test_acl2_bridge.FrameSessionLifecycleTests.test_poisoned_adopted_session_is_not_silently_replaced", 0.001], ["tests.test_acl2_bridge.ReaderFailClosedTests.test_a_merely_invalid_result_still_only_ends_the_connection", 0.0], ["tests.test_acl2_bridge.ReaderFailClosedTests.test_a_poisoned_bridge_makes_the_reader_process_exit_non_zero", 0.021], ["tests.test_acl2_bridge.ReaderFailClosedTests.test_an_ordinary_connection_leaves_the_reader_exit_zero", 0.013], ["tests.test_acl2_bridge.ReaderFailClosedTests.test_poisoned_bridge_stops_the_reader_instead_of_serving_on", 0.0]]}
