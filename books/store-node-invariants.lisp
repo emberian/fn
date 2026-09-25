@@ -334,6 +334,9 @@
                             ; is read through it.
                             fn-sn-identity-context)
                            (fn-record-shape-vocabulary
+                            ; The verdict list is carried unchanged; opening
+                            ; it and member-equal was 0.6 s of useless work.
+                            fn-sn-verdict-listp member-equal
                             fn-stxe-p fn-stxk-p fn-stxa-p
                             fn-th-topic-eventp fn-th-prefix-step
                             fn-th-local-admin-eventp
@@ -579,7 +582,11 @@
   :hints (("Goal" :use fn-sn-record-binds-pending-fields
            :in-theory (e/d (fn-node-complete fn-node-statep fn-statep
                             fn-snx-core-definitions)
-                           (fn-sni-node-invariant-consequences)))))
+                           (fn-sni-node-invariant-consequences
+                            ; freshness facts never useful here
+                            fn-state-has-fresh-local-numbers
+                            fn-node-pending-message-is-new
+                            fn-articles-freshp)))))
 
 ; -by-definition: the else branch of fn-sn-finish with its test negated.
 (defthm fn-sn-finish-disabled-is-no-op
