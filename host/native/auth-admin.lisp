@@ -10,6 +10,10 @@
 
 (defvar *fnn-native-auth-admin-secret-reader* nil)
 (defvar *fnn-native-auth-admin-cut-callback* nil)
+;; The configured store root when the verb runs under `operator CONFIG', else
+;; NIL (no store is named, so no owner can be observed: ACL2 answers
+;; restart-required for an unknown observation).
+(defvar *fnn-native-auth-admin-store-root* nil)
 
 (defparameter +fnn-native-auth-admin-test-cuts+
   '("cleanup-unlinked" "cleanup-directory-durable"
@@ -392,8 +396,16 @@ production image, which refuses to start with the variable set."
           (write-string (fnn-octets-string (fnn-octets report))
                         *standard-output*)
           (finish-output *standard-output*)))
-      (fnn-native-auth-admin-emit :accepted action
-                                  (and durable :restart-required))
+      ;; After the change is durable, the writer lock is observed once and
+      ;; ACL2 answers whether a restart is owed (PKT-102).
+      (fnn-native-auth-admin-emit
+       :accepted action
+       (and durable
+            (fnn-native-auth-admin-core
+             'fn-native-auth-admin-effect-word
+             (if *fnn-native-auth-admin-store-root*
+                 (fnn-store-owner-observation *fnn-native-auth-admin-store-root*)
+                 :unknown))))
       +fnn-exit-ok+))))
 
 (defun fnn-native-auth-admin-execute-held (plan-result final stage directory

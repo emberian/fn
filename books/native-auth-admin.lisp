@@ -541,6 +541,31 @@
            fn-native-auth-admin-recovery-trace-introduces-final-recovery
            (phase (fn-native-auth-admin-recovery-start t final-presentp)))))))
 
+;; When a durable credential change reaches service (PKT-102).  An owner
+;; reads the credential file once, at start (host/native/auth.lisp
+;; fnn-native-auth-startup-hook), so a change is served only after a
+;; (re)start.  OBSERVATION is what the host saw of the configured store's
+;; writer lock AFTER the change was durable (host/native/io.lisp
+;; fnn-store-owner-observation): :held (another process holds it: an owner
+;; runs and still serves the old credentials), :free, :absent (no store), or
+;; anything else when the probe failed.  Only a lock seen free or absent says
+;; the change takes effect at the next start with nothing to restart; an
+;; owner starting after the probe reads the durable file.  An unknown
+;; observation is answered as a running owner.
+(defun fn-native-auth-admin-effect-word (observation)
+  (declare (xargs :guard t))
+  (if (member-equal observation '(:free :absent))
+      :effective-at-next-start
+    :restart-required))
+
+; KEYSTONE.  The answer never says `effective-at-next-start' while an owner
+; may hold the store: only a probe that saw the lock free or the store absent
+; gives it.
+(defthm fn-native-auth-admin-effect-word-restart-unless-no-owner
+  (equal (equal (fn-native-auth-admin-effect-word observation)
+                :restart-required)
+         (not (member-equal observation '(:free :absent)))))
+
 (in-theory
  (disable (:d fn-native-auth-admin-plan-result)
           (:d fn-native-auth-admin-plan-status)

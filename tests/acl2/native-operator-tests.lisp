@@ -874,3 +874,44 @@
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("pins" "x"))))
                      5))
+
+; -----------------------------------------------------------------------------
+; The developer `store ROOT init' (PKT-103): fn-nop-developer-init, which
+; host/native/io.lisp fnn-command-developer-init calls with the argv words.
+
+; The words that became two groups on the large-article lane's store now set
+; the profile field; without a base the development base applies.
+(assert-event
+ (equal (fn-nop-developer-init '("--profile" "default" "--max-article-octets" "65536"
+                                 "fn.test"))
+        '(:init ("fn.test") (:default ((5 . 65536))))))
+(assert-event (equal (fn-nop-developer-init nil) '(:init nil (:development nil))))
+(assert-event
+ (equal (fn-nop-developer-init '("fn.test" "fn.other"))
+        '(:init ("fn.test" "fn.other") (:development nil))))
+; An unknown flag is refused, not created as a group; a field past the base's
+; relations is refused by the relation's name.
+(assert-event
+ (equal (fn-nop-developer-init '("--no-such-flag" "fn.test"))
+        '(:refused :flag-word-as-group)))
+(assert-event
+ (equal (fn-nop-developer-init '("fn.test" "--max-article-octets"))
+        '(:refused :flag-word-as-group)))
+(assert-event
+ (equal (fn-nop-developer-init '("--max-article-octets" "65536" "fn.test"))
+        '(:refused :max-record-octets-below-the-article-record)))
+; The operator's init refuses the same word.
+(assert-event
+ (equal (fn-native-operator-result-status (fn-nop-parse-init '("--bogus" "fn.test") nil))
+        :usage))
+(assert-event
+ (equal (fn-native-operator-result-reason (fn-nop-parse-init '("--bogus" "fn.test") nil))
+        :flag-word-as-group))
+; Teeth: without the :init hypothesis the statement fails (a refused plan's
+; second element is its reason, not a group list, and the refusal was made
+; because a group word was flag-shaped).
+(must-fail
+ (defthm nopt-developer-init-groups-are-not-flags-without-init
+   (not (fn-nop-some-flag-wordp (cadr (fn-nop-developer-init words))))
+   :hints (("Goal" :in-theory (disable fn-nop-parse-profile-flags
+                                       fn-bs-profile-resolve)))))

@@ -355,12 +355,18 @@ observation into the outcome and this function only carries it out."
         (sleep watch)))))
 
 (defun fnn-operator-execute-principal (result)
-  "Execute only the credential plan and credential path projected by ACL2."
-  (fnn-native-auth-admin-execute
-   (fnn-core 'fn-native-operator-host-result-principal-plan result)
-   (fnn-octets-string
-    (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
-              result))))
+  "Execute only the credential plan and credential path projected by ACL2.
+The configured store is the one whose writer lock says whether an owner is
+serving the old credentials (fn-native-auth-admin-effect-word)."
+  (let ((*fnn-native-auth-admin-store-root*
+          (fnn-octets-string
+           (fnn-core 'fn-native-operator-host-result-principal-store-octets
+                     result))))
+    (fnn-native-auth-admin-execute
+     (fnn-core 'fn-native-operator-host-result-principal-plan result)
+     (fnn-octets-string
+      (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
+                result)))))
 
 (defun fnn-operator-read-config (path maximum)
   "Classify only ordinary configuration-file defects as usage before reading.

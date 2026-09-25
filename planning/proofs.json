@@ -3559,6 +3559,47 @@
         "fn-icar-path-is-path-of",
         "fn-icar-submission-targets-is-submission-targets"
       ]
+    },
+    {
+      "id": "PRF-095",
+      "title": "The operator surface's verdicts are ACL2's: the served bound, refused-POST log lines, the credential change's effect, the developer init words",
+      "milestone": "M5",
+      "status": "in-progress",
+      "requirements": [
+        "HST-001",
+        "HST-002"
+      ],
+      "depends_on": [
+        "PRF-054"
+      ],
+      "assumptions": [],
+      "events": [
+        "fn-osb-install-serves-the-profile-bound",
+        "fn-osb-install-keeps-the-posting-configuration",
+        "fn-osb-install-keeps-configp",
+        "fn-olog-served-refusal-lines-one-per-441",
+        "fn-olog-post-refusal-reason-names-the-sent-reason",
+        "fn-olog-served-refusal-line-is-one-line",
+        "fn-olog-control-refusal-line-says-refused-iff-submit-refused",
+        "fn-olog-control-refusal-line-is-one-line",
+        "fn-native-auth-admin-effect-word-restart-unless-no-owner"
+      ],
+      "evidence": [
+        "books/owner-served-bound.lisp",
+        "tests/acl2/owner-served-bound-tests.lisp",
+        "books/owner-log.lisp",
+        "tests/acl2/owner-log-tests.lisp",
+        "books/native-auth-admin.lisp",
+        "tests/acl2/native-auth-admin-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/test_native_owner.py",
+        "tests/test_native_operator_verdicts.py",
+        "tests/test_native_control_filing.py",
+        "planning/evidence/operator-verdicts-2026-09-25.md"
+      ],
+      "statement": "fn-osb-install-serves-the-profile-bound: for an admitted Store profile, fn-osb-install -- which host/owner-host.lisp fn-owner-install-profile calls from host/native/owner.lisp fnn-owner-install on every run path, the developer owner run included -- answers :installed and leaves an owner whose fn-own-body-limit, the bound every later connection's wire reads, is the profile's max-article-octets A; fn-osb-install-keeps-the-posting-configuration: the posting bit, agent and served groups are unchanged; fn-osb-install-keeps-configp: a well-formed posting configuration stays one. fn-olog-served-refusal-lines-one-per-441: the lines host/owner-host.lisp fn-owner-chunk leaves for a socket read are exactly one per 441 reply in the effects the client is sent, each one line beginning refused; fn-olog-post-refusal-reason-names-the-sent-reason: each injection reason fn-post-refusal-line names reads back from its reply as itself. fn-olog-control-refusal-line-says-refused-iff-submit-refused: the line fn-owner-operator-submit leaves says refused exactly when fn-own-operator-submit-result is :refused (no hypothesis). fn-native-auth-admin-effect-word-restart-unless-no-owner: the credential verb's answer, fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp fnn-native-auth-admin-result-code calls, is restart-required exactly unless the writer-lock observation taken after the durable change is :free or :absent. Covered scope: that the host observes the lock after the durable write, writes each line and one LF, and that the developer init routes its words through fn-nop-developer-init is measured by the native tests, not proved.",
+      "progress_note": "Lane operator-verdicts, 2026-09-25: PKT-103, PKT-104 (native run only), PKT-095, PKT-102. Teeth in the four test books; native runs in planning/evidence/operator-verdicts-2026-09-25.md."
     }
   ]
 }

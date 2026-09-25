@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-auth-admin")
 (include-book "../../books/codec-attach")
+(include-book "std/testing/must-fail" :dir :system)
 
 (assert-event
  (equal (symbol-class 'fn-native-auth-admin-set-password (w state))
@@ -288,3 +289,22 @@
           (fn-native-auth-admin-recovery-start nil nil)
           '(:recovery-directory-result :ok)))
         :recovered))
+
+; -----------------------------------------------------------------------------
+; When a durable credential change reaches service (PKT-102):
+; fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp
+; fnn-native-auth-admin-result-code calls with the writer-lock observation.
+
+(assert-event (equal (fn-native-auth-admin-effect-word :held) :restart-required))
+(assert-event (equal (fn-native-auth-admin-effect-word :free) :effective-at-next-start))
+(assert-event (equal (fn-native-auth-admin-effect-word :absent) :effective-at-next-start))
+(assert-event (equal (fn-native-auth-admin-effect-word :unknown) :restart-required))
+(assert-event (equal (fn-native-auth-admin-effect-word nil) :restart-required))
+; Teeth: "never restart-required" and "always restart-required" (the answer
+; the spike saw) are both false.
+(must-fail
+ (defthm naat-effect-word-always-restart
+   (equal (fn-native-auth-admin-effect-word observation) :restart-required)))
+(must-fail
+ (defthm naat-effect-word-never-restart
+   (not (equal (fn-native-auth-admin-effect-word observation) :restart-required))))
