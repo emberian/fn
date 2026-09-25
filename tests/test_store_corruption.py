@@ -239,7 +239,7 @@ class StoreCorruptionTests(unittest.TestCase):
             result = real_check(target)
             if Path(target) == store.frontier_path and not changed:
                 changed = True
-                store.frontier_path.write_bytes(b"{")
+                store.frontier_path.write_bytes(store.frontier_path.read_bytes()[:-1])
             return result
 
         with mock.patch("run_store.check_regular", side_effect=check_then_corrupt):
