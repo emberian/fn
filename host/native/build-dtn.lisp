@@ -23,6 +23,9 @@
 ;                 FN_NATIVE_IMAGE=build/fn-host-dtn sh tools/build_native_host.sh
 
 (include-book "books/replay")
+; The hybrid-store constructors that call the injecting agent; the raw
+; host/native/signatures.lisp calls one of them (books/hybrid-store-injected).
+(include-book "books/hybrid-store-injected")
 ; Every codec seam's attachment (books/codec-attach.lisp): the books above
 ; the seams call the constrained encoders and decoders, and this is what makes
 ; them evaluate here.  It changes no theorem.

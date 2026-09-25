@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "hybrid-signature")
 (include-book "stx-carrier")
-(include-book "injection")
+(include-book "injection-shape")
 (include-book "article-fields")
 
 (defconst *fn-hc-version* 1)
