@@ -432,6 +432,28 @@ production image, which refuses to start with the variable set."
              stage final directory
              (fnn-native-auth-admin-core
               'fn-native-auth-admin-host-result-octets result)))))))
+    (:bind
+     ;; `principal bind LOGIN HEX' / `principal unbind LOGIN': ACL2 rewrites
+     ;; the file with the login's `signing' field set or removed; the same
+     ;; replacement machine publishes it.
+     (let ((result
+             (fnn-native-auth-admin-core
+              'fn-native-auth-admin-host-bind
+              octets presentp
+              (fnn-native-auth-admin-core
+               'fn-native-auth-admin-host-action-name plan-result)
+              (fnn-native-auth-admin-core
+               'fn-native-auth-admin-host-action-signing-text plan-result))))
+       (if (not (eq (fnn-native-auth-admin-core
+                     'fn-native-auth-admin-host-result-status result)
+                    :accepted))
+           (fnn-native-auth-admin-result-code result :bind)
+         (fnn-native-auth-admin-result-code
+          result :bind
+          (fnn-native-auth-admin-publish
+           stage final directory
+           (fnn-native-auth-admin-core
+            'fn-native-auth-admin-host-result-octets result))))))
     (t (fnn-fault "ACL2 returned no executable principal action"))))
 
 (defun fnn-native-auth-admin-execute (plan-result auth-path)

@@ -36,6 +36,13 @@
       (let ((config (fnn-core 'fn-native-auth-host-config result)))
         (unless (eq (fnn-owner-action 'fn-owner-set-auth-config config) :ok)
           (fnn-fault "owner rejected ACL2-produced AUTHINFO configuration")))
+      ;; The same accepted file's login bindings (`signing' fields), for the
+      ;; posting policy (books/login-binding.lisp).  ACL2 reads them.
+      (unless (eq (fnn-owner-action
+                   'fn-owner-set-login-bindings
+                   (fnn-core 'fn-native-auth-host-load-bindings octets presentp))
+                  :ok)
+        (fnn-fault "owner rejected ACL2-produced login bindings"))
       :accepted)))
 
 (defun fnn-native-auth-startup-hook (path requiredp protected-onlyp)
