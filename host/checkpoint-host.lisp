@@ -301,14 +301,27 @@
   (declare (xargs :mode :program))
   (fn-ccc-coverage-chain chain observed-count frontier bound))
 
+; The line `checkpoint pack' prints for the no-op (exit 0, nothing written).
+(defun fn-store-checkpoint-pack-nothing-line (boundary count)
+  (declare (xargs :mode :program))
+  (concatenate 'string "packed nothing-uncovered boundary="
+               (coerce (explode-nonnegative-integer (nfix boundary) 10 nil) 'string)
+               " records="
+               (coerce (explode-nonnegative-integer (nfix count) 10 nil) 'string)))
+
 (defun fn-store-checkpoint-chain-capture (records lower lower-frontier
                                                   pred-generation pred-digest)
   (declare (xargs :mode :program))
   (let ((captured (fn-ccc-capture-link records lower lower-frontier
                                        pred-generation pred-digest)))
-    (if (not (equal (car captured) :ok)) captured
-      (list :ok (fn-ccc-encode-link (cadr captured))
-            (fn-ccc-boundary (cadr captured))))))
+    (cond ((equal (car captured) :ok)
+           (list :ok (fn-ccc-encode-link (cadr captured))
+                 (fn-ccc-boundary (cadr captured))))
+          ((equal (car captured) :nothing-uncovered)
+           (list :nothing-uncovered
+                 (fn-store-checkpoint-pack-nothing-line (cadr captured)
+                                                        (len records))))
+          (t captured))))
 
 (defun fn-store-checkpoint-chain-retire-plan (generations chain bound)
   (declare (xargs :mode :program))

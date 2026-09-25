@@ -71,19 +71,27 @@
 (defun fnn-pack-publish-generation (store records &optional chain coverage selected)
   "Capture the next link of the selected chain (RECORDS above its boundary,
 one quantum) into the next pack generation and publish it, unselected.
-Returns the generation, the sealed frame and the new boundary."
+Returns the generation, the sealed frame and the new boundary; or
+:NOTHING-UNCOVERED and ACL2's line when the chain already covers RECORDS
+(`fn-ccc-nothing-uncovered-leaves-files-and-marker'), before any directory
+operation."
   (fnn-checkpoint-require-mutation-ready store)
-  (let ((directory (fnn-pack-directory store)))
+  (let ((directory (fnn-pack-directory store))
+        (captured (fnn-core 'fn-store-checkpoint-chain-capture
+                            (mapcar #'fnn-octet-list records)
+                            (if coverage (second coverage) 0)
+                            (if coverage (third coverage) 0)
+                            (or selected 0)
+                            (if chain (third (first chain)) nil))))
+    (when (and (listp captured) (eq (first captured) :nothing-uncovered))
+      (unless (stringp (second captured))
+        (fnn-fault "ACL2 returned an invalid no-op line: ~s" captured))
+      (return-from fnn-pack-publish-generation
+        (values :nothing-uncovered (second captured))))
     (fnn-safe-directory directory t)
     (let* ((generations (fnn-pack-generations store))
            (generation (fnn-core 'fn-store-checkpoint-pack-next-generation
-                                 generations))
-           (captured (fnn-core 'fn-store-checkpoint-chain-capture
-                               (mapcar #'fnn-octet-list records)
-                               (if coverage (second coverage) 0)
-                               (if coverage (third coverage) 0)
-                               (or selected 0)
-                               (if chain (third (first chain)) nil))))
+                                 generations)))
       (unless (and (integerp generation) (>= generation 0)
                    (listp captured) (eq (first captured) :ok)
                    (fnn-octet-list-p (second captured))
@@ -130,28 +138,35 @@ Returns the generation, the sealed frame and the new boundary."
 
 (defun fnn-pack-publish (store records selectp)
   "`checkpoint pack ROOT [select]': with select, extend the selected chain
-until it covers RECORDS; without, publish the next link unselected."
+until it covers RECORDS; without, publish the next link unselected.  Returns
+the generation, or :NOTHING-UNCOVERED and ACL2's line when the selected chain
+already covers RECORDS (nothing written)."
   (if selectp
-      (nth-value 0 (fnn-pack-extend-chain store records))
+      (multiple-value-bind (generation links line)
+          (fnn-pack-extend-chain store records)
+        (if (zerop links) (values :nothing-uncovered line) generation))
     (multiple-value-bind (chain coverage selected)
         (fnn-pack-selected-raw-and-coverage store)
-      (let ((generation (fnn-pack-publish-generation store records chain coverage
-                                                     selected)))
+      (multiple-value-bind (generation line)
+          (fnn-pack-publish-generation store records chain coverage selected)
         (setf (fnn-store-fenced store) nil)
-        generation))))
+        (values generation line)))))
 
 (defun fnn-pack-extend-chain (store records)
   "Publish and select links, each over the records above the selected chain,
 until the chain covers RECORDS.  Each link is its own publication and
 selection, so a cut leaves the previous chain selected
-(`fn-ccc-publication-crash-walks-old-or-new-chain').  Returns the newest
-generation and the number of links written."
+(`fn-ccc-publication-crash-walks-old-or-new-chain').  ACL2's capture ends the
+loop with its no-op.  Returns the newest generation, the number of links
+written and ACL2's no-op line."
   (multiple-value-bind (chain coverage selected)
       (fnn-pack-selected-raw-and-coverage store)
-    (let ((links 0) (generation selected))
-      (loop while (< (if coverage (second coverage) 0) (length records))
-            do (multiple-value-bind (next frame boundary)
+    (let ((links 0) (generation selected) (line nil))
+      (loop do (multiple-value-bind (next frame boundary)
                    (fnn-pack-publish-generation store records chain coverage selected)
+                 (when (eq next :nothing-uncovered)
+                   (setq line frame)
+                   (loop-finish))
                  (unless (> boundary (if coverage (second coverage) 0))
                    (fnn-fault "ACL2 captured a link that covers nothing"))
                  (fnn-pack-select store next)
@@ -168,7 +183,7 @@ generation and the number of links written."
                      (fnn-fault "ACL2 refused the chain it just extended: ~s" c))
                    (setq coverage c))))
       (setf (fnn-store-fenced store) nil)
-      (values generation links))))
+      (values generation links line))))
 
 (defun fnn-pack-prefix-reclaim (store)
   (fnn-checkpoint-require-mutation-ready store)
@@ -631,9 +646,11 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 (defun fnn-checkpoint-command-pack (root selectp)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
     (unwind-protect
-         (let ((generation (fnn-pack-publish store records selectp)))
-           (fnn-out "packed generation=~d records=~d selected=~a"
-                    generation (length records) (if selectp "yes" "no"))
+         (multiple-value-bind (generation line) (fnn-pack-publish store records selectp)
+           (if (eq generation :nothing-uncovered)
+               (fnn-out "~a" line)
+               (fnn-out "packed generation=~d records=~d selected=~a"
+                        generation (length records) (if selectp "yes" "no")))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 (defun fnn-checkpoint-command-pack-reclaim (root)

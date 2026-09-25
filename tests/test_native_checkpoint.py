@@ -649,7 +649,25 @@ class NativeCheckpointTests(unittest.TestCase):
         self.assertIn("retired pack-generations=0",
                       self.native("checkpoint", "pack-retire", store,
                                   env=no_op_env).stdout)
+        # With the selected chain covering every record, a pack is ACL2's
+        # named no-op: exit 0, the no-op line, no new generation file and the
+        # marker unchanged.
+        marker = (store / "packs" / "selected.fncp").read_bytes()
+        names = sorted(p.name for p in (store / "packs").glob("generation-*.fncp"))
+        for argv in (("checkpoint", "pack", store),
+                     ("checkpoint", "pack", store, "select")):
+            nothing = self.native(*argv)
+            self.assertEqual(nothing.returncode, 0)
+            self.assertIn("packed nothing-uncovered boundary=2 records=2",
+                          nothing.stdout)
+            self.assertNotIn("generation=", nothing.stdout)
+            self.assertEqual(sorted(p.name for p in
+                                    (store / "packs").glob("generation-*.fncp")),
+                             names)
+            self.assertEqual((store / "packs" / "selected.fncp").read_bytes(), marker)
         # A later publication must advance to generation 2, never reuse 0.
+        self.native("store", store, "post", "<after-retire@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
         self.assertIn("generation=2",
                       self.native("checkpoint", "pack", store).stdout)
 
