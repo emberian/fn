@@ -213,6 +213,17 @@
                                    fn-cbor-u32-bytes)
                                   (fn-cbor-u64-bytes floor mod)))))
 
+; A value that fits u32 takes the narrow head, at most 5 octets.
+(defthm fn-record-uint-encode-narrow-length-bound
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (<= (len (fn-record-uint-encode n)) 5))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-record-uint-encode fn-cbor-encode-uint-wide
+                                   fn-cbor-encode-argument fn-cbor-u16-bytes
+                                   fn-cbor-u32-bytes)
+                                  (fn-cbor-encode-uint-wide-is-narrow
+                                   fn-cbor-u64-bytes floor mod)))))
+
 (defthm fn-record-read-uint-wide-encoded
   (implies (and (fn-record-uint64p n)
                 (fn-cbor-octet-listp rest))

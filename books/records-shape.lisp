@@ -57,15 +57,24 @@
 ; by the node (books/provenance-codec.lisp), bounded by construction.
 (defconst *fn-record-max-metadata* 256)
 ; Codec ceiling: the record width less 2^25 octets reserved for every other
-; field at its own ceiling (1 083 fixed octets and 261 per group).  The
+; field at its own ceiling (1 111 fixed octets at the wide heads and 261 per group).  The
 ; profile's article bound sits below it.
 (defconst *fn-record-max-payload* 4261412864)
 ; The encoded octets every field other than the payload and the groups can
-; take at their ceilings: magic 5, schema, sequence, txid, generation, group
-; count, charge and stamp 9 each (every record uint is read and written as
-; the wide CBOR uint, whose head is at most 9 octets: packet P6); Message-ID
-; 5 + 250, payload head 5, three metadata strings 3 * (5 + 256).
-(defconst *fn-record-fixed-overhead-octets* 1111)
+; take at their ceilings, for a record whose integer fields fit u32 (not
+; `fn-record-widep', below): magic 5, schema, sequence, txid, generation,
+; group count, charge and stamp 5 each (a narrow CBOR uint head is at most 5
+; octets), Message-ID 5 + 250, payload head 5, three metadata strings
+; 3 * (5 + 256).  This is the overhead of every record the runtime can
+; produce while the frontier (the profile's T) and the charge are u32, and
+; the one a saved profile's R was checked against: `fn-record-encoded-
+; octets-ceiling' below, which the profile relation reads.
+(defconst *fn-record-fixed-overhead-octets* 1083)
+; The same for any record, wide or not (packet P6): every uint head at 9
+; octets, the wide CBOR uint's longest.  Loose by 8 (the schema octet and the
+; group count are never wide).  Only the unconditional length bound reads it;
+; a profile's R is not required to hold it.
+(defconst *fn-record-wide-overhead-octets* 1111)
 ;
 ; The five octets every accepted record begins with: the CBOR byte-string
 ; head of length 4 (h'44') and "fn-r".  The sixth octet is the schema
@@ -129,18 +138,36 @@
                                     *fn-record-max-msgid*)))
 
 ; The worst-case encoded length of a record with PAYLOAD-OCTETS of payload
-; and GROUP-COUNT groups: what a profile's per-record bound must admit for an
-; article of that size (`fn-record-encode-length-bound', records-seam).
+; and GROUP-COUNT groups whose integer fields fit u32: what a profile's
+; per-record bound must admit for an article of that size
+; (`fn-record-encode-narrow-length-bound', records-seam).  Computed at the
+; widths the runtime can produce, so a profile saved before packet P6 keeps
+; its validity (tests/acl2/byte-store-frame-tests).
 (defun fn-record-encoded-octets-ceiling (payload-octets group-count)
   (declare (xargs :guard (and (natp payload-octets) (natp group-count))))
   (+ payload-octets
      (* (+ 5 *fn-record-max-group-name*) group-count)
      *fn-record-fixed-overhead-octets*))
 
+; The worst-case encoded length of ANY record (wide or narrow) with those
+; fields: `fn-record-encode-length-bound' (records-seam).  A record the
+; runtime produces is within the narrower ceiling above
+; (`fn-record-encode-narrow-length-bound').
+(defun fn-record-wide-encoded-octets-ceiling (payload-octets group-count)
+  (declare (xargs :guard (and (natp payload-octets) (natp group-count))))
+  (+ payload-octets
+     (* (+ 5 *fn-record-max-group-name*) group-count)
+     *fn-record-wide-overhead-octets*))
+
+(defthm fn-record-encoded-octets-ceiling-below-wide
+  (<= (fn-record-encoded-octets-ceiling payload-octets group-count)
+      (fn-record-wide-encoded-octets-ceiling payload-octets group-count))
+  :rule-classes :linear)
+
 (defthm fn-record-encoded-octets-ceiling-within-record-width
   (implies (and (natp payload-octets) (<= payload-octets *fn-record-max-payload*)
                 (natp group-count) (<= group-count *fn-record-max-groups*))
-           (<= (fn-record-encoded-octets-ceiling payload-octets group-count)
+           (<= (fn-record-wide-encoded-octets-ceiling payload-octets group-count)
                *fn-record-max-octets*))
   :rule-classes :linear)
 

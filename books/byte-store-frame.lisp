@@ -417,16 +417,27 @@
                             fn-bs-profile-min-record-octets-covers-every-kind)))))
 
 ;  KEYSTONE (an article the profile admits is a record it publishes).  Under
-; the profile a store runs under, every record whose payload is within the
-; article field A and whose groups are within G encodes to at most the record
-; field R: `fn-record-encode-length-bound' (records-seam) bounds the encoding
+; the profile a store runs under, every record whose integer fields fit u32
+; (not `fn-record-widep'), whose payload is within the article field A and
+; whose groups are within G encodes to at most the record field R:
+; `fn-record-encode-narrow-length-bound' (records-seam) bounds the encoding
 ; by `fn-record-encoded-octets-ceiling' of its payload and group count, and
 ; validity requires R to hold that ceiling at (A, G).  So a POST the boundary
 ; admits (`fn-sbud-post-boundary', books/store-budget-naming) never reaches
-; the publish gate's record check (`fn-bs-publication-admissiblep',
-; asserted by host/native/io.lisp `fnn-publish') with a record it refuses.
+; the publish gate's record check (`fn-bs-publication-admissiblep', called by
+; host/store-host.lisp `fn-store-publication-admissibility') with a record it
+; refuses.  The width hypothesis is the runtime's today, stated here and not
+; proved of the producers: the transaction ID and generation are allocated
+; below the profile's T (at most 2^32 - 1, the frontier width), the sequence
+; counts records, the charge is refused above 2^32 - 1 at the POST boundary
+; (`fn-sbud-post-boundary') and the stamp is seconds since 1970 (u32 until
+; 2106).  A record the codec could carry above those widths (schema 2) is at
+; most 28 octets past this ceiling (`fn-record-encode-length-bound') and the
+; gate refuses it rather than accepting it.  Before P6 every record was
+; narrow, so on that domain this is the statement it was.
 (defthm fn-bs-profile-admits-every-article-record
   (implies (and (fn-bs-profile-admittedp values)
+                (not (fn-record-widep record))
                 (<= (len (fn-record-payload record))
                     (fn-bs-profile-max-article-octets values))
                 (<= (len (fn-record-groups record))
@@ -436,13 +447,14 @@
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-bs-profile-validp-facts
                                    (values (fn-bs-profile-of values)))
-                        (:instance fn-record-encode-length-bound))
+                        (:instance fn-record-encode-narrow-length-bound))
            :in-theory (e/d (fn-bs-profile-admittedp fn-bs-profile-field
                             fn-bs-profile-max-record-octets
                             fn-bs-profile-max-article-octets
                             fn-bs-profile-max-groups-per-article
                             fn-record-encoded-octets-ceiling)
                            (fn-bs-profile-validp-facts
+                            fn-record-encode-narrow-length-bound
                             fn-record-encode-length-bound
                             fn-bs-profile-of fn-bs-profile-validp)))))
 

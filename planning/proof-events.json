@@ -3865,6 +3865,55 @@
           "name": "fn-pcb-absent-carrier-has-no-class"
         }
       ]
+    },
+    {
+      "id": "PRF-086",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-record-v1-bytes-decode-identically"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-v1-bytes-are-their-translation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-decode-prechecked-wide-extends-narrow"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-encode-uint-wide-is-narrow"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-decode-prechecked-wide-of-uint"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-decode-prechecked-wide-uint-reencode-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-impl-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-impl-accepted-input-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-impl-encode-narrow-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-v1-valid-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-v1-valid-stays-valid"
+        }
+      ]
     }
   ]
 }
