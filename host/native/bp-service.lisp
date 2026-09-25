@@ -623,6 +623,12 @@ its outcome, which is the refusal to the offering ingress."
        ;; host only reports it.  The row, its attempt and its debt stay held.
        (fnn-out "BP forwarding stranded arrival=~d retries=~d (held; no session or restart re-offers it; bp-node resume re-arms it)"
                 (second effect) (fourth effect)))
+      (:forward-no-route
+       ;; ACL2's routing gate (fn-bpnp-routed-start, spec 4.6) offered
+       ;; nothing on this session: the row, its attempt state and its
+       ;; obligation stay held.
+       (fnn-out "BP forwarding no-route arrival=~d hop=~a decision=~(~a~) (held; the obligation stays)"
+                (second effect) (third effect) (fourth effect)))
       (:resume-refused
        ;; ACL2's refusal of an operator resume (fn-bpnp-resume-refusal);
        ;; nothing was written.

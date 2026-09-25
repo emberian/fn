@@ -7,6 +7,7 @@
 (include-book "bp-node-receive-boundary")
 (include-book "bp-node-debt")
 (include-book "bp-fnbs-conflict-codec")
+(include-book "bp-route")
 (set-verify-guards-eagerness 0)
 
 (defconst *fn-bpnp-max-routes* 64)
@@ -1248,7 +1249,10 @@
           (<= (len (fn-bpn-nth 3 event)) *fn-bpnp-max-routes*)
           (fn-frame-natp (fn-bpn-nth 4 event))))
     (:session
-     (and (true-listp event) (equal (len event) 6)
+     (and (true-listp event)
+          (or (equal (len event) 6)
+              (and (equal (len event) 7)
+                   (fn-bprt-viap (fn-bpn-nth 6 event))))
           (fn-bpp-eidp (fn-bpn-nth 1 event))
           (fn-bpnp-session-idp (fn-bpn-nth 2 event))
           (or (equal (fn-bpn-nth 3 event) t)
@@ -1368,6 +1372,36 @@
           (fn-bpnp-debt st)))
        effects)))))
 
+;; The routing call site (spec 4.6).  A :session event whose seventh field is
+;; (:via HOP ANNOUNCED TABLE) is an outbound session the host opened to the
+;; boundary HOP.  The row the arrival-order scan would offer is offered only
+;; when books/bp-route.lisp's decision routes its destination to HOP and the
+;; contact announced HOP's enrolled EID; otherwise nothing is offered, the
+;; row stays held with its obligation, and the answer reports it.
+(defun fn-bpnp-routed-start (st peer session mru observation via)
+  (declare (xargs :guard (and (natp mru)
+                              (true-listp (fn-bpnf-held-list st)))
+                  :verify-guards nil))
+  (let* ((scan (fn-bpnp-forward-scan
+                (reverse (fn-bpnf-held-list st)) peer mru
+                (fn-bpn-config-node-id
+                 (fn-bpn-machine-state-config (fn-bpnf-base st)))
+                observation (fn-bpnp-waits st)
+                (fn-bpnd-free (fn-bpnp-used st) (fn-bpnp-debt st)
+                              *fn-bpnp-control-margin*)
+                (fn-bpnf-epoch st)))
+         (h (fn-bpn-nth 1 scan))
+         (decision
+          (if (equal (car scan) :ready)
+              (fn-bprt-offer-decision
+               (fn-bpaj-eid-text (fn-bpn-nth 3 (fn-bpnp-primary h))) via)
+            :offer)))
+    (if (equal decision :offer)
+        (fn-bpnp-start-one st peer session mru observation)
+      (fn-bpnf-answer
+       st (list (list :forward-no-route (fn-bpn-nth 3 h)
+                      (fn-bpn-nth 1 via) decision))))))
+
 (defun fn-bpnp-step (st event)
   (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
                               (fn-bpnp-session-listp (fn-bpnp-sessions st))
@@ -1406,7 +1440,10 @@
            (updated (fn-bpnp-with-runtime
                      st sessions (fn-bpnp-pending-image st))))
       (if open
-          (fn-bpnp-start-one updated peer session mru observation)
+          (if (fn-bpn-nth 6 event)
+              (fn-bpnp-routed-start
+               updated peer session mru observation (fn-bpn-nth 6 event))
+            (fn-bpnp-start-one updated peer session mru observation))
         (fn-bpnf-answer updated nil))))
    ((equal (fn-cbor-ag-car event) :resume)
     (let ((peer (fn-bpn-nth 1 event))
