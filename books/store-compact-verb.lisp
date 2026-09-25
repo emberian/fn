@@ -17,8 +17,7 @@
 ;       retirement, write no new pack;
 ;   (:refused REASON)
 ;       nothing is written.  REASON is one of :profile, :observation,
-;       :empty-history, :already-compact, :exceeds-compaction-unit and
-;       :temporary-space.
+;       :empty-history, :already-compact and :temporary-space.
 ;
 ; The host (host/native/checkpoint.lisp `fnn-command-compact') performs the
 ; observation and the I/O; the decision, its budget and its bounds are here.
@@ -32,22 +31,19 @@
 ; `fn-cverb-capture-within-pack-octets' shows is at least the file the host
 ; seals.
 ;
-; The compaction unit.  A pack holds at most `*fn-cc-max-events*' (4096)
-; events and `*fn-cc-max-octets*' (4 MiB) of summary.  The event limit is not
-; a restriction: `fn-cverb-profile-count-within-pack-events' shows every named
-; profile's transaction budget is at most 4096.  The octet limit is kept, as
-; the scale profile's compaction unit: the open reads the selected pack as one
-; bounded read and decodes it as one value before any transaction file, so its
-; bound is the open's largest single allocation, and nothing measured supports
-; making it profile-sized (768 MiB).  A store whose history summary exceeds
-; 4 MiB is refused by name (:exceeds-compaction-unit, exit 1); compacting
-; beyond it needs chained packs, which is open.
+; The compaction unit is gone (P5).  One pack file is one link of a chain
+; (books/checkpoint-pack-chain.lisp): at most `*fn-cc-max-events*' events and
+; `*fn-cc-max-octets*' of summary, or one record of the profile's R, a
+; scheduling quantum and the open's largest single pack read.  A pack
+; decision extends the selected chain one link at a time until it covers the
+; history (host/native/checkpoint.lisp `fnn-pack-extend-chain').
 (in-package "ACL2")
 (include-book "checkpoint-compaction")
 (include-book "checkpoint-pack-retire")
 (include-book "byte-store-compaction-correspondence")
 (include-book "store-observed")
 (include-book "replay")
+(include-book "checkpoint-pack-chain")
 
 ; The profile's fields are read through its accessors, closed here: every
 ; decision below needs only that they are naturals, never how a profile
@@ -103,9 +99,6 @@ plus the frame trailer the host's seal appends."
            (cond ((zp used) (list :refused :empty-history))
                  ((and (atom reclaim) (zp older)) (list :refused :already-compact))
                  (t (list :compact *fn-cverb-resume-steps*))))
-          ((or (< *fn-cc-max-events* used)
-               (< *fn-cc-max-octets* (fn-cc-event-octets-size records)))
-           (list :refused :exceeds-compaction-unit))
           ((< (fn-cverb-space-budget profile)
               (+ (fn-cverb-octet-sum footprint) (fn-cverb-pack-octets records)))
            (list :refused :temporary-space))
@@ -226,28 +219,31 @@ plus the frame trailer the host's seal appends."
             :in-theory (e/d (fn-cc-octet-event-listp)
                             (fn-store-event-decode-exact))))))
 
-; KEYSTONE (the compaction unit covers the capture's size refusals).  When the
-; verb decides to pack a history the open admitted (the records are the exact
-; Store events from sequence 0 below the frontier), the capture the host then
-; calls succeeds: its only other refusals are the size limits the decision
-; already applied, so a pack decision is never refused by the capture.
+;; KEYSTONE (a pack decision is never refused by the capture).  When the
+;; verb decides to pack, the host extends the selected chain
+;; (host/native/checkpoint.lisp `fnn-pack-extend-chain'); the capture of the
+;; next link (`fn-ccc-capture-link') succeeds on a history whose records above
+;; the chain are valid from the chain's frontier, the open's own check.  There
+;; is no compaction unit to refuse any more: a link takes one quantum and at
+;; least one record (books/checkpoint-pack-chain, P5).
 (defthm fn-cverb-pack-decision-capture-succeeds
   (implies (and (equal (fn-cverb-decide profile records lower names
                                         generations selected footprint)
                        (list :compact *fn-cverb-pack-steps*))
-                (fn-record-uint32p frontier)
-                (fn-cc-octet-event-listp records 0 0 frontier))
-           (equal (car (fn-cc-capture records frontier)) :ok))
+                (fn-record-uint32p (len records))
+                (fn-record-uint32p lf) (fn-record-uint32p frontier)
+                (fn-cc-octet-event-listp (nthcdr lower records) lower lf frontier)
+                (fn-record-uint32p gen) (fn-cbor-octet-listp digest))
+           (equal (car (fn-ccc-capture-link records lower lf gen digest)) :ok))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-cverb-event-list-within-frontier
-                                   (sequence 0) (lower 0)))
-           :in-theory (e/d (fn-cverb-decide fn-cc-capture
-                                   fn-record-uint32p)
-                                  (fn-cc-octet-event-listp
-                                   fn-cc-event-octets-size
-                                   fn-bs-pack-reclaim-plan
-                                   fn-cverb-older-count
-                                   fn-bs-profile-admittedp)))))
+  :hints (("Goal" :use ((:instance fn-ccc-capture-link-succeeds))
+           :in-theory (e/d (fn-cverb-decide)
+                           (fn-ccc-capture-link-succeeds
+                            fn-cc-octet-event-listp
+                            fn-cc-event-octets-size
+                            fn-bs-pack-reclaim-plan
+                            fn-cverb-older-count
+                            fn-bs-profile-admittedp)))))
 
 ; A store whose selected pack already covers every committed record is never
 ; packed again: a retry after a cut at or after the selection finishes the
@@ -266,10 +262,8 @@ plus the frame trailer the host's seal appends."
 ; namespace gate admits at most the profile's max_transactions, and each
 ; preset's (format 8 or its format-7 tuple) is at most the pack's 4096
 ; events.  Under an operator's profile with max_transactions above 4096 (the
-; D27 default is 2^32-1) it can be: a history of more than 4096 events is
-; refused by name (`:exceeds-compaction-unit'), a work bound of the one-unit
-; pack, until chained packs (design 2026-09-25-bounds, P5).  The test book
-; carries that witness.
+; D27 default is 2^32-1) the history takes more than one link of the chain
+; (P5); the test book carries a 4097-event witness.
 (defthm fn-cverb-preset-count-within-pack-events
   (implies (member-equal profile (list *fn-bs-profile-development*
                                        *fn-bs-profile-scale*

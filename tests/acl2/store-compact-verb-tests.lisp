@@ -98,8 +98,9 @@
            *fn-frame-trailer-octets*)
         (fn-bs-profile-max-history-octets *cvt-dev*)))))
 
-; The compaction unit: 4097 events (one over the pack's event limit) of a
-; valid history.  The decision refuses it by name and so does the capture.
+;; No compaction unit (P5, chained packs): a 4097-event history, one over a
+;; link's event quantum, is packed; the first link takes the quantum and the
+;; second the one record left.
 (defun cvt-many (i n)
   (declare (xargs :measure (nfix n)))
   (if (zp n) nil
@@ -108,38 +109,61 @@
                            '("fn.letters") "a" "s" "e" 1 841000000))
           (cvt-many (1+ i) (1- n)))))
 (make-event `(defconst *cvt-4097* ',(cvt-many 0 4097)))
-(assert-event (fn-cc-octet-event-listp *cvt-4097* 0 0 4097))
 (assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-4097* 0 nil nil nil nil)
-                     '(:refused :exceeds-compaction-unit)))
-(assert-event (not (equal (car (fn-cc-capture *cvt-4097* 4097)) :ok)))
+                     (list :compact *fn-cverb-pack-steps*)))
+(make-event `(defconst *cvt-link-1* ',(fn-ccc-capture-link *cvt-4097* 0 0 0 nil)))
+(assert-event (equal (car *cvt-link-1*) :ok))
+(assert-event (equal (fn-ccc-boundary (cadr *cvt-link-1*)) *fn-cc-max-events*))
+(assert-event (equal (car (fn-ccc-capture-link *cvt-4097* 4096
+                                               (fn-ccc-frontier (cadr *cvt-link-1*))
+                                               0 '(1 2 3)))
+                     :ok))
 
-; Teeth for fn-cverb-pack-decision-capture-succeeds, one per hypothesis.
-; Without the pack decision: the 4097-event history, with a uint32 frontier
-; and the exact-event list both holding, is not captured.
-(local
- (must-fail
-  (defthm cvt-capture-without-decision
-    (equal (car (fn-cc-capture *cvt-4097* 4097)) :ok))))
-; Without a uint32 frontier: the decision packs and the event list holds
-; under frontier 2^32, and the capture refuses.
-(assert-event (fn-cc-octet-event-listp *cvt-records* 0 0 4294967296))
-(local
- (must-fail
-  (defthm cvt-capture-without-uint32-frontier
-    (equal (car (fn-cc-capture *cvt-records* 4294967296)) :ok))))
-; Without the exact-event list: bytes that are no Store event are packed by
-; the decision (it reads sizes only) and refused by the capture.
+;; Teeth for fn-cverb-pack-decision-capture-succeeds.  Reachable: the five
+;; events, decided and captured whole (every other hypothesis holds).
+(assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-records* 0 *cvt-names* nil nil
+                                      '(212 150 150 180 170))
+                     (list :compact *fn-cverb-pack-steps*)))
+(assert-event (equal (car (fn-ccc-capture-link *cvt-records* 0 0 0 nil)) :ok))
+;; Without the pack decision: a chain already covering all five (lower 5)
+;; with the other hypotheses holding (the empty suffix is valid) is refused.
+(assert-event (fn-cc-octet-event-listp (nthcdr 5 *cvt-records*) 5 5 6))
+(assert-event (not (equal (fn-cverb-decide *cvt-dev* *cvt-records* 5 nil nil nil nil)
+                          (list :compact *fn-cverb-pack-steps*))))
+(local (must-fail (defthm cvt-capture-without-decision
+                    (equal (car (fn-ccc-capture-link *cvt-records* 5 5 0 nil)) :ok))))
+;; Without a uint32 frontier: one record at txid 2^32-1 is a valid suffix
+;; under frontier 2^32; the link's frontier would be 2^32 and is refused.
+(make-event `(defconst *cvt-top*
+               ',(list (fn-store-event-encode
+                        (fn-record-make 0 4294967295 4294967295 "<top@example.invalid>"
+                                        '(65) '("fn.letters") "a" "s" "e" 1 841000000)))))
+(assert-event (fn-cc-octet-event-listp *cvt-top* 0 0 4294967296))
+(assert-event (not (fn-record-uint32p 4294967296)))
+(assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-top* 0 nil nil nil nil)
+                     (list :compact *fn-cverb-pack-steps*)))
+(local (must-fail (defthm cvt-capture-without-uint32-frontier
+                    (equal (car (fn-ccc-capture-link *cvt-top* 0 0 0 nil)) :ok))))
+;; Without the valid suffix: bytes that are no Store event are packed by the
+;; decision (it reads sizes only) and refused by the capture.
 (assert-event
  (equal (fn-cverb-decide *cvt-dev* '((1 2 3)) 0 (list (fn-bs-txn-name 0)) nil nil nil)
         (list :compact *fn-cverb-pack-steps*)))
-(local
- (must-fail
-  (defthm cvt-capture-without-event-list
-    (equal (car (fn-cc-capture '((1 2 3)) 6)) :ok))))
+(local (must-fail (defthm cvt-capture-without-event-list
+                    (equal (car (fn-ccc-capture-link '((1 2 3)) 0 0 0 nil)) :ok))))
+;; Without a uint32 generation or an octet digest: the link names them.
+(local (must-fail (defthm cvt-capture-without-uint32-generation
+                    (equal (car (fn-ccc-capture-link *cvt-records* 1 1 4294967296 nil))
+                           :ok))))
+(assert-event (fn-cc-octet-event-listp (nthcdr 1 *cvt-records*) 1 1 6))
+(assert-event (equal (car (fn-ccc-capture-link *cvt-records* 1 1 0 nil)) :ok))
+(local (must-fail (defthm cvt-capture-without-octet-digest
+                    (equal (car (fn-ccc-capture-link *cvt-records* 1 1 0 '(256)))
+                           :ok))))
 
 ; Tooth for fn-cverb-preset-count-within-pack-events: a valid operator
 ; profile that is not a preset -- the D27 defaults -- names more transactions
-; than a pack holds, so under it the pack's event limit can be the refusal.
+; than one link holds; the chain then takes more than one link.
 (assert-event (fn-bs-profile-validp *fn-bs-profile-defaults*))
 (assert-event (< *fn-cc-max-events*
                  (fn-bs-profile-max-transactions *fn-bs-profile-defaults*)))
