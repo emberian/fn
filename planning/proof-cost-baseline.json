@@ -4,20 +4,6 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
-    "books/bp-node-progress-guards": {
-      "seconds": 12.897,
-      "run": "certify-20260925T060646Z-2636887",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/bp-node-rotation": {
-      "seconds": 11.85,
-      "run": "certify-20260925T060646Z-2636887",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
     "books/byte-store-scan": {
       "seconds": 11.038,
       "run": "certify-20260925T060646Z-2636887",
@@ -36,13 +22,6 @@
       "seconds": 13.648,
       "run": "certify-20260925T060646Z-2636887",
       "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "books/store-node-traces": {
-      "seconds": 11.812,
-      "run": "certify-20260925T043843Z-489113",
-      "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     }
