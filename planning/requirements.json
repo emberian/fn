@@ -621,7 +621,7 @@
     },
     {
       "id": "STO-009",
-      "title": "A lost committed suffix is detected at open",
+      "title": "A lost committed suffix is detected at open, and after migration a missing marker is damage",
       "specification": "specs/storage.md#the-committed-history-boundary",
       "milestone": "M5",
       "status": "implemented",
@@ -640,10 +640,14 @@
         "tests/test_native_history_marker.py",
         "planning/evidence/manifests/certify-20260924T230629Z-1648710.json",
         "planning/evidence/manifests/certify-20260924T232218Z-1792716.json",
-        "planning/evidence/m5-history-lifetimes-2026-09-24.md"
+        "planning/evidence/m5-history-lifetimes-2026-09-24.md",
+        "books/store-history-required.lisp",
+        "tests/acl2/store-history-required-tests.lisp",
+        "tests/test_native_history_required.py",
+        "planning/evidence/marker-required-2026-09-25.md"
       ],
-      "implementation_note": "committed-history.json (FNSM kind 3) holds the committed-record count. fnn-mark-committed writes it through fn-hm-after-commit after each record's transaction-directory barrier and before fnn-finish, at all three publish sites. fnn-recover evaluates fn-hm-open-verdict once against the reconstructed record count and faults with history-short-of-marker or marker-damaged. An absent marker is admitted as unmarked, which covers stores written before it.",
-      "note": "Not detected: loss of the marker with the files it covers, an unacknowledged record above the marker, whole-store replacement by an older valid copy (D14), and the configuration history and BP stores. The crash table is a transcription of rename atomicity, not yet a program of the fn-bs byte model."
+      "implementation_note": "committed-history.json (FNSM kind 3) holds the committed-record count. fnn-mark-committed writes it through fn-hm-after-commit after each record's transaction-directory barrier and before fnn-finish, at all three publish sites, and through fn-hmr-catch-up in fnn-recover after the recovery barriers and before the open returns (D31 case 2: a record durable without its marker is covered before any retry is answered as already stored). fnn-check-history-marker evaluates fn-hmr-open-verdict once against the reconstructed record count and faults with history-short-of-marker, marker-damaged, or, when the profile's history-marker field is required, marker-missing. store upgrade-profile --history-marker required is granted by fn-hmr-upgrade-verdict only over a marker counting the reconstructed history; init never writes it; the field never falls.",
+      "note": "Not detected: loss of the marker with the files it covers in an unmarked store, an unacknowledged and never-answered record above the marker, whole-store replacement by an older valid copy (D14), and the configuration history and BP stores. A shared-lock reader may serve a record above the marker until the next writable open. The guarantee A <= M <= D is frozen (D31), not the syscall sequence."
     },
     {
       "id": "STO-010",
@@ -658,10 +662,11 @@
       "evidence": [
         "specs/storage.md",
         "planning/evidence/m5-history-lifetimes-2026-09-24.md",
-        "planning/evidence/bounds-p1-2026-09-25.md"
+        "planning/evidence/bounds-p1-2026-09-25.md",
+        "planning/evidence/marker-required-2026-09-25.md"
       ],
       "implementation_note": "Packing (P) is implemented and proved (PRF-073). History compaction (H) and content reclamation (C) are not implemented. Each needs D13 and a decision-preserving summary obligation, as the class table states. Today's compaction relieves the transaction-file count and per-file overhead only.",
-      "note": "This row is the contract. The open policy cells (release summaries, key-epoch summaries, BP outcome summaries, configuration-generation lifetime, the headroom line) are marked open in the specification. Lane bounds-p1-profile (2026-09-25, D27): admission adds the history gate -- the committed record octets plus the kind's worst case within the profile's max_history_octets (fn-sbud-verdict-is-the-count-and-history-admissibility), the owner carrying the octet sum (fn-sbud-bytes-used-is-kernel-sum); status prints every profile field and bytes-used/history-bound; the budget is raised by any non-shrinking `store upgrade-profile --FIELD N`."
+      "note": "This row is the contract. The open policy cells (release summaries, key-epoch summaries, BP outcome summaries, configuration-generation lifetime, the headroom line) are marked open in the specification. Lane bounds-p1-profile (2026-09-25, D27): admission adds the history gate -- the committed record octets plus the kind's worst case within the profile's max_history_octets (fn-sbud-verdict-is-the-count-and-history-admissibility), the owner carrying the octet sum (fn-sbud-bytes-used-is-kernel-sum); status prints every profile field and bytes-used/history-bound; the budget is raised by any non-shrinking `store upgrade-profile --FIELD N`. Lane marker-required (2026-09-25, D31): the profile gains history-marker (unmarked|required); the committed-history marker (a class of the table) is written by commits and by the recovery catch-up, and under required its removal is damage at open."
     },
     {
       "id": "FLR-001",

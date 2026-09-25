@@ -1390,6 +1390,30 @@
         "tests/acl2/control-authority-tests.lisp",
         "tests/test_native_control_authority.py"
       ]
+    },
+    {
+      "id": "SCN-045",
+      "title": "A retry resolved as already stored after a crash before its marker is covered without a later commit; after migration a missing marker is damage",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-009"
+      ],
+      "steps": [
+        "Post one article; post a second with the process killed (or EIO) at each committed-history marker cut, through `store ROOT post` and through the served owner.",
+        "Retry the second submission; commit nothing else; delete the newest transaction file; open twice.",
+        "On a store without a marker (or one behind its history) run `operator store upgrade-profile --history-marker required`, with and without a kill or EIO at each marker and profile cut; then delete the marker, and separately the newest transaction file, and open."
+      ],
+      "expected": [
+        "The record is durable at every marker cut; the retry's open writes the marker of the reconstructed count before answering, and the retry is answered as already stored with no new transaction.",
+        "Both opens refuse with history-short-of-marker naming the marker and the record count (exit 4).",
+        "Each interrupted migration reopens unmarked or required, and required only over the covering marker; after migration status prints history-marker=required, a deleted marker is marker-missing (exit 4), a lost newest file is history-short-of-marker, a downgrade is refused by name, and init refuses required."
+      ],
+      "evidence": [
+        "tests/test_native_history_required.py",
+        "tests/acl2/store-history-required-tests.lisp",
+        "planning/evidence/marker-required-2026-09-25.md"
+      ]
     }
   ]
 }

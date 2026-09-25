@@ -94,6 +94,9 @@ OPAQUE_CALLS = {
 # after every step of the calling program.
 SEQUELS = {
     "fnn-sweep-staging": "fn-bs-recover-stage-cleanup-program",
+    # D31: fnn-recover's marker catch-up after the sweep is the marker
+    # program (books/store-history-required.lisp, fn-hmr-catch-up's frame).
+    "fnn-mark-committed": "fn-bs-marker-program",
 }
 
 # Model directory ids for host directory expressions.

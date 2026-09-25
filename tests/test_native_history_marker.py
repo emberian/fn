@@ -12,8 +12,10 @@ The witnesses (developer image, `store ROOT ...`):
 * a post whose reservation is burned (a known abort before publication, and
   a process killed after its reservation): the open admits the store and the
   next post commits;
-* a store without a marker (every store written before it) opens, and the
-  next commit writes one;
+* a store without a marker (every store written before it) opens, and that
+  writable open writes one (D31: the recovery catch-up,
+  books/store-history-required.lisp; tests/test_native_history_required.py
+  covers the requirement and the retry resolution);
 * an allocation-frontier frame in the marker's place is `marker-damaged`;
 * SIGKILL and EIO at every marker cut (ACL2's `fn-hm-marker-cut-names`):
   the store recovers, the next post commits, and a lost newest file is
@@ -49,9 +51,10 @@ class HistoryMarkerSourceTests(unittest.TestCase):
             self.assertIn(":" + cut, mark)
         self.assertIn("(fnn-core 'fn-hm-after-commit sequence)", mark)
         check = native_cuts.host_function(io, "fnn-check-history-marker")
-        self.assertIn("'fn-hm-open-verdict", check)
-        recover = native_cuts.host_function(io, "fnn-recover")
-        self.assertIn("(fnn-check-history-marker store (length records))", recover)
+        self.assertIn("'fn-hmr-open-verdict", check)
+        self.assertIn("'fn-hmr-catch-up", check)
+        replay = native_cuts.host_function(io, "fnn-recover-full-replay")
+        self.assertIn("(fnn-check-history-marker store (length records))", replay)
         # Every caller of fnn-finish marks the commit first.
         for text, name in ((io, "fnn-command-post"), (io, "fnn-command-probe"),
                            (owner, "fnn-owner-publish-prepared")):
@@ -139,10 +142,12 @@ class NativeHistoryMarkerTests(unittest.TestCase):
         self.assertIn("committed sequence=2", committed.stdout)
         self.assert_lost_newest_refused(store)
 
-    def test_a_store_without_a_marker_opens_and_the_next_commit_marks_it(self):
+    def test_a_store_without_a_marker_opens_and_the_open_marks_it(self):
         store = self.store()
+        marker = (store / "committed-history.json").read_bytes()
         (store / "committed-history.json").unlink()
         self.native("store", store, "recover")
+        self.assertEqual((store / "committed-history.json").read_bytes(), marker)
         self.post(store)
         self.assertTrue((store / "committed-history.json").is_file())
         self.assert_lost_newest_refused(store)

@@ -340,6 +340,23 @@
                                            "--max-transactions" "100000"
                                            "--max-article-octets" "20000"))))
                      '(:current ((2 . 100000) (5 . 20000)))))
+; D31: the history requirement takes a word, never a decimal.
+(assert-event (equal (fn-native-operator-result-upgrade-profile
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("store" "upgrade-profile"
+                                           "--history-marker" "required"))))
+                     '(:current ((14 . 1)))))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "upgrade-profile"
+                                                                  "--history-marker" "1"))))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "upgrade-profile"
+                                                                  "--max-transactions" "required"))))
+                     5))
 ; A repeated field, a value that is not a decimal frame natural, and an
 ; unknown flag are usage errors.
 (assert-event (equal (fn-native-operator-exit-code
