@@ -283,6 +283,12 @@
          (consp args)
          (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
     (fn-nntp-verdict-hdr-response session archive verdicts args))
+   ;; SPIKE: defers the effects/shape theorems for HDR :fn-control
+   ;; (proof owner books/nntp-verdict-effects.lisp).
+   ((and (fn-nntp-keywordp keyword "HDR")
+         (consp args)
+         (fn-nntp-keywordp (car args) ":FN-CONTROL"))
+    (fn-nntp-control-hdr-response session archive verdicts args))
    (t (fn-nntp-archive-command session archive env keyword args))))
 
 (defun fn-nntp-command-pinned (session archive index verdicts env tokens)

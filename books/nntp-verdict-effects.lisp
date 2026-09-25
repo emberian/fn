@@ -62,3 +62,11 @@
                                     fn-stx-reader-item
                                     fn-stx-reader-verdict-is-the-recorded-verdict
                                     fn-nntp-available-article)))))
+
+;; SPIKE: defers the proof of the :fn-control arm's effect shape (proof owner
+;; books/nntp-verdict-effects.lisp; the :fn-verified arm above is the model).
+(skip-proofs
+ (defthm fn-nntp-control-hdr-response-effects
+   (fn-nntp-effectsp
+    (fn-nntp-result-effects
+     (fn-nntp-control-hdr-response session archive verdicts args)))))

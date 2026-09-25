@@ -172,6 +172,14 @@
                             fn-nntp-filter-groups-by-wildmat fn-wildmat-parse
                             fn-nntp-single fn-nntp-multi)))))
 
+;; SPIKE: defers the proof that HDR :fn-control offers no POST (proof owner
+;; books/nntp-auth-fold.lisp; it answers only single or multi responses).
+(skip-proofs
+ (defthm fn-auth-fold-control-hdr-has-no-offer
+   (not (fn-post-offeredp
+         (fn-nntp-result-effects
+          (fn-nntp-control-hdr-response session archive verdicts args))))))
+
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects

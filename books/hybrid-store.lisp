@@ -10,6 +10,7 @@
 (include-book "identity")
 (include-book "records-stamp")
 (include-book "hybrid-carrier")
+(include-book "control-classify")
 
 (defun fn-hsig-octet-fields-to-strings (fields)
   (declare (xargs :guard t))
@@ -17,6 +18,21 @@
       (cons (fn-record-octets-string (car fields))
             (fn-hsig-octet-fields-to-strings (cdr fields)))
     nil))
+
+;; SPIKE: defers the dev binding that names the filing group (control C2/C3,
+;; design 2026-09-25 section 2.1 rule 2); proof owner books/hybrid-store.lisp.
+;; A signed control article's record groups are its filing group
+;; (control.<verb> or control), never the groups its Newsgroups field names;
+;; every other signed article keeps its Newsgroups.  The binding tests below
+;; compare the record's groups with this list, so replay agrees with the
+;; filing step (books/peer-authored-accept.lisp fn-pa-filing-plan).
+(defun fn-hsig-filed-group-strings (article groups)
+  (declare (xargs :guard t))
+  (let ((classified (fn-ctl-classify article)))
+    (if (and (consp classified) (eq (car classified) :control)
+             (consp (cdr classified)))
+        (list (fn-ctl-filing-group (cadr classified)))
+      groups)))
 
 (defun fn-hsig-authored-source-fields (source)
   "Return the supplied Message-ID and Newsgroups parsed from the exact source."
@@ -31,8 +47,10 @@
                     (not (fn-inj-nth 1 check))
                     (not (consp (fn-inj-nth 2 check)))) nil
               (list (fn-record-octets-string (fn-inj-nth 1 check))
-                    (fn-hsig-octet-fields-to-strings
-                     (fn-inj-nth 2 check))))))))))
+                    (fn-hsig-filed-group-strings
+                     article
+                     (fn-hsig-octet-fields-to-strings
+                      (fn-inj-nth 2 check)))))))))))
 
 ; A keyring snapshot is deliberately narrow: one principal and the exact
 ; ordered public-key set used by the signed-preimage function.  Custody and

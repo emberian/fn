@@ -358,12 +358,14 @@
     (cond ((and (consp classified) (eq (car classified) :malformed))
            (list :refused :control-malformed))
           ((and (consp classified) (eq (car classified) :control))
-           (if (not (eq (fn-pa-carrier-kind received) :absent))
-               (list :refused :control-signed)
-             (let ((group (fn-ctl-filing-group (cadr classified))))
-               (if (fn-ctl-memberp group domain)
-                   (list :file (list (fn-record-string-octets group)))
-                 (list :refused :control-not-filed)))))
+           ;; SPIKE: defers the dev proof that the signed record binding
+           ;; names the filing group (books/hybrid-store.lisp
+           ;; fn-hsig-filed-group-strings); signed control is filed like
+           ;; unsigned control, and :control-signed is no longer answered.
+           (let ((group (fn-ctl-filing-group (cadr classified))))
+             (if (fn-ctl-memberp group domain)
+                 (list :file (list (fn-record-string-octets group)))
+               (list :refused :control-not-filed))))
           (t (list :file groups)))))
 
 ; KEYSTONE (C1).  Over the plan the host calls: a control article is filed

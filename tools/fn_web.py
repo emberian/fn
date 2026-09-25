@@ -259,6 +259,20 @@ class Backend:
                 # only makes the server report unavailable.
                 pass
             result.data["fn_verified_report"] = report
+            # spike/control: the node's HDR :fn-control claim for this slot
+            # (a control article's decision: "executed withdrawal <id>
+            # author|authority", "declined <reason>", ...).  Optional.
+            control = None
+            try:
+                status, lines = client.cmd("HDR :fn-control " + str(number),
+                                           multiline=True)
+                if status.startswith("225") and len(lines) == 1:
+                    head, _, rest = lines[0].partition(" ")
+                    if head == str(number) and rest and rest != "none":
+                        control = rest[:512]
+            except fn_client.Stop:
+                pass
+            result.data["fn_control_report"] = control
             return result
         return self.using(query)
 
@@ -928,7 +942,7 @@ textarea { min-height:12rem } label { display:block; font-weight:650 }
 button,.button { display:inline-block; border:0; border-radius:6px; padding:.65rem 1rem; background:#145f50; color:white; font:inherit; cursor:pointer; text-decoration:none }
 button:hover,.button:hover { background:#0b4439 } .muted { color:#52645d }
 .verified { background:#daf1df; color:#0f4a2a } .unverified { background:#fae0d9; color:#7a2217 }
-.absent,.unavailable { background:#ecebe4; color:#4a4a42 } .unread { font-weight:700 }
+.absent,.unavailable { background:#ecebe4; color:#4a4a42 } .withdrawn { background:#d9d9d9; color:#333 } .control { background:#e8eef7; color:#233 } .unread { font-weight:700 }
 .unread-dot { color:#922e24 } .reason { font-family:ui-monospace, monospace; background:#fdf1ee; padding:.5rem .8rem; border-radius:6px; overflow-wrap:anywhere }
 .identity { font-size:.85rem } .resume code { overflow-wrap:anywhere } form.inline { display:inline }
 form.inline button { padding:.35rem .7rem; font-size:.85rem } .row { display:flex; gap:.6rem; flex-wrap:wrap }
@@ -1066,7 +1080,22 @@ class Handler(BaseHTTPRequestHandler):
                      "this process runs and the form remains in its bounded memory.") + "</p>"
                   "</article>")
 
-    def article_html(self, group, number, one, verdict, has_verdict_lookup):
+    def control_html(self, control):
+        """spike/control: the node's report on a control article, labelled as
+        the node's claim.  A withdrawal names its target and its basis."""
+        if not control:
+            return ""
+        words = control.split()
+        if words[:2] == ["executed", "withdrawal"] and len(words) >= 4:
+            return ("<p><span class='badge withdrawn'>withdrawn by " + e(words[3]) +
+                    "</span> <span class='meta'>this cancel withdrew <code>" +
+                    e(words[2]) + "</code> (node's report; readers of this node "
+                    "no longer see it)</span></p>")
+        return ("<p><span class='badge control'>control: " + e(control) +
+                "</span> <span class='meta'>(node's report)</span></p>")
+
+    def article_html(self, group, number, one, verdict, has_verdict_lookup,
+                     control=None):
         fields = one["headers"]
         first = lambda name: fn_client.first(fields, name) or ""
         statement = bool(first("fn-statement"))
@@ -1083,7 +1112,8 @@ class Handler(BaseHTTPRequestHandler):
                         ("" if has_verdict_lookup else
                          " (HDR :fn-verified needs a group and local number; this view "
                          "was reached by Message-ID)") + ".</p>")
-        provenance = (badge + "<p class='hint'><strong>Who wrote this?</strong> The displayed "
+        provenance = (badge + self.control_html(control) +
+                      "<p class='hint'><strong>Who wrote this?</strong> The displayed "
                       "From name is a claim in the article. This reader has not "
                       "verified the writer's identity.</p><p class='meta'>"
                       + ("FN-Statement present; not verified here" if statement else
@@ -1305,7 +1335,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.marks.mark(group, number, one["message_id"] or "")
                 self.page(fn_client.first(one["headers"], "subject") or "Article",
                           self.article_html(group, number, one,
-                                            result.data.get("fn_verified_report"), True))
+                                            result.data.get("fn_verified_report"), True,
+                                            result.data.get("fn_control_report")))
             elif path == "/compose":
                 group = values.get("group", "")
                 if not group_token(group):

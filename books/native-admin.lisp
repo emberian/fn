@@ -111,6 +111,111 @@
   (and (fn-record-group-namep text)
        (not (fn-native-admin-group-name-reservedp text))))
 
+;; ---------------------------------------------------------------------------
+;; Control authorities (spike/control, design 2026-09-25 section 2.2).
+;;
+;; SPIKE: defers the eighth configuration slot `authorities' and delta kinds
+;; 11/12 (proof owner books/config.lisp and books/config-invariants.lisp).
+;; On the spike a grant is a `:set-policy' row, the precedent of `policy set
+;; path-identity' above, so it inherits the assured live path unchanged:
+;;
+;;   slot  "ctl-grant NAMESPACE PRINCIPAL-HEX"   id  "cancel,newgroup,..."
+;;   slot  "ctl-grant NAMESPACE PRINCIPAL-HEX"   id  "revoked"      (revoke)
+;;
+;; `:set-policy' upserts on the slot label, which is the (namespace,
+;; principal) pair.  A revoke is an upsert to "revoked", never a deletion.
+;; SPIKE: defers `:overlapping-authority' admissibility (proof owner
+;; books/config.lisp); overlapping group-verb grants are admitted.
+(defconst *fn-ctl-grant-verbs* '("cancel" "newgroup" "rmgroup" "checkgroups"))
+
+(defun fn-native-admin-hex-charsp (cs)
+  (declare (xargs :guard t))
+  (if (consp cs)
+      (and (member (car cs) '(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9
+                              #\a #\b #\c #\d #\e #\f))
+           (fn-native-admin-hex-charsp (cdr cs)))
+    t))
+
+(defun fn-native-admin-principal-hexp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (equal (length text) 64)
+       (fn-native-admin-hex-charsp (coerce text 'list))))
+
+; A namespace is a creatable group name, or one followed by ".*".
+(defun fn-native-admin-namespace-base (text)
+  (declare (xargs :guard t))
+  (if (and (stringp text) (<= 2 (length text))
+           (equal (subseq text (- (length text) 2) (length text)) ".*"))
+      (subseq text 0 (- (length text) 2))
+    text))
+
+(defun fn-native-admin-namespacep (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-native-admin-group-name-creatablep
+        (fn-native-admin-namespace-base text))))
+
+(defun fn-native-admin-grant-verbsp (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (and (member-equal (car words) *fn-ctl-grant-verbs*)
+           (not (member-equal (car words) (cdr words)))
+           (fn-native-admin-grant-verbsp (cdr words)))
+    t))
+
+(defun fn-native-admin-join-commas (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (if (consp (cdr words))
+          (concatenate 'string (if (stringp (car words)) (car words) "") ","
+                       (fn-native-admin-join-commas (cdr words)))
+        (if (stringp (car words)) (car words) ""))
+    ""))
+
+(defun fn-native-admin-grant-slot (namespace principal)
+  (declare (xargs :guard (and (stringp namespace) (stringp principal))))
+  (concatenate 'string "ctl-grant " namespace " " principal))
+
+; words = ("control" VERB ...).  Accepted plans are `:set-policy' with the
+; slot label in NAME and the id in VALUE (both octets, as `policy set'), or
+; `:apply-checkgroups' naming the report's Message-ID (live only).
+(defun fn-native-admin-control-plan (words)
+  (declare (xargs :guard t))
+  (let ((verb (if (consp (cdr words)) (cadr words) nil))
+        (args (if (consp (cdr words)) (cddr words) nil)))
+    (cond
+     ((and (equal verb "grant") (true-listp args) (<= 3 (len args))
+           (fn-native-admin-namespacep (car args))
+           (fn-native-admin-principal-hexp (cadr args))
+           (fn-native-admin-grant-verbsp (cddr args)))
+      (fn-native-admin-result
+       :accepted nil :set-policy
+       (fn-record-string-octets
+        (fn-native-admin-grant-slot (car args) (cadr args)))
+       0 nil
+       (fn-record-string-octets (fn-native-admin-join-commas (cddr args)))))
+     ((and (equal verb "revoke") (true-listp args) (equal (len args) 2)
+           (fn-native-admin-namespacep (car args))
+           (fn-native-admin-principal-hexp (cadr args)))
+      (fn-native-admin-result
+       :accepted nil :set-policy
+       (fn-record-string-octets
+        (fn-native-admin-grant-slot (car args) (cadr args)))
+       0 nil (fn-record-string-octets "revoked")))
+     ((and (equal verb "apply-checkgroups") (true-listp args)
+           (equal (len args) 1) (stringp (car args))
+           (fn-record-ascii-stringp (car args)))
+      (fn-native-admin-result :accepted nil :apply-checkgroups
+                              (fn-record-string-octets (car args)) 0 nil nil))
+     (t (fn-native-admin-result :refused :control nil nil 0 nil nil)))))
+
+(defthm fn-native-admin-control-plan-kind
+  (member-equal (fn-native-admin-result-kind (fn-native-admin-control-plan words))
+                '(:set-policy :apply-checkgroups nil)))
+
+(in-theory (disable fn-native-admin-control-plan))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t))
@@ -156,6 +261,8 @@
              (fn-path-identityp (cadddr argv)))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
+       ((and (consp words) (equal (car words) "control"))
+        (fn-native-admin-control-plan words))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "peer"))
