@@ -256,6 +256,23 @@ kept. The authenticated probe from the laptop as ember held every assertion
 (login 281 after STARTTLS, post 240, reread 220 on a fresh connection).
 **Owed:** `--history-marker required` after a day of service.
 
+**Wrap-up ~23:00 UTC (deputy):** no deputy lane is running. Merged after the
+deploy (not deployed): control-c3e, so C3's reader answers are served (423
+and 430 `withdrawn`, `HDR :fn-control`).
+
+Held, not merged: bounds-p5 (chained packs). Its native continuation was
+stopped before the pack-chain module was shown green.
+
+Known red on dev, with a brief ready (`build/coordinator/queue/test-loose-ends.txt`):
+- the Python owner bridge does not boot, because host/owner-host.lisp needs
+  books only the native build loads, so the owner test modules are red;
+- two raw-script harness stubs are missing (C13);
+- an extra paren in tests/test_native_consumer_e2.py (C14);
+- test_anchor versus the cryptography import;
+- BookBridge and tools/host_check.py still start ACL2 outside the pool.
+
+The handoff state for the coordinator is `build/coordinator/NIGHT-STATE.md`.
+
 ### 2. Landed, by goal item
 
 - **Bounds (D27):**
