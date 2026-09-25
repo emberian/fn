@@ -16,23 +16,34 @@
                          (f-get-global 'fn-store-cfg state)
                          obs))
 
-(defun fn-native-live-status-host-reply (request obs state)
+(defun fn-native-live-status-host-answer (request cached obs state)
   ; The running owner's page for one FNLS request, under its mutex
-  ; (host/native/control.lisp).  The carried octet sum is read, not extended
-  ; in place: `fn-owner-headroom' stores its extension, this does not.
+  ; (host/native/control.lisp `fnn-control-live-status-answer'): (REPLY
+  ; CACHED').  A request from offset 0 renders the report once into a
+  ; buffer (`fn-nls-buffer'); a later page of the same kind is a substring
+  ; of the buffer its first page stored (`fn-nls-cached-buffer',
+  ; `fn-nls-page-of-buffer-is-reply').  CACHED is carried by the host and
+  ; chosen here.  The carried octet sum is read, not extended in place:
+  ; `fn-owner-headroom' stores its extension, this does not.
   (declare (xargs :stobjs state :mode :program))
   (let ((decoded (fn-nls-request-decode request)))
-    (if (equal (car decoded) :live-status)
-        (fn-nls-reply
-         (fn-nls-live-report (cadr decoded)
-                             (fn-owner-store-profile state)
-                             (fn-owner-ocfg state)
-                             (if (boundp-global 'fn-owner-record-octets state)
-                                 (f-get-global 'fn-owner-record-octets state)
-                               nil)
-                             obs)
-         (caddr decoded))
-      (fn-nls-reply-encode :refused 0 nil nil))))
+    (if (not (equal (car decoded) :live-status))
+        (list (fn-nls-reply-encode :refused 0 nil nil) cached)
+      (let* ((kind (cadr decoded))
+             (offset (caddr decoded))
+             (stored (fn-nls-cached-buffer kind offset cached))
+             (buffer
+              (or stored
+                  (fn-nls-buffer
+                   (fn-nls-live-report kind
+                                       (fn-owner-store-profile state)
+                                       (fn-owner-ocfg state)
+                                       (if (boundp-global 'fn-owner-record-octets state)
+                                           (f-get-global 'fn-owner-record-octets state)
+                                         nil)
+                                       obs)))))
+        (list (fn-nls-page buffer offset)
+              (if stored cached (fn-nls-cache-put kind buffer cached)))))))
 
 (defun fn-native-live-status-host-requestp (octets)
   (declare (xargs :mode :program))

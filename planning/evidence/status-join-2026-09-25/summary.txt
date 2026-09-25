@@ -1,0 +1,30 @@
+init exit=0
+live-a-status exit=0
+owner unit: inactive
+off-a-status exit=0
+checkpoint exit=0
+live-b-status exit=0
+owner unit: inactive
+off-b-status exit=0
+equal a
+equal b
+== live-a
+profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=16777216 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4294967295 list-memory-octets=35184372088832
+headroom transactions-used=3 transactions-budget=4294967295 bytes-used=1527 history-bound=1099511627776 charge-reserved=6 charge-capacity=1048576
+checkpoint-file=absent
+== off-a
+profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=16777216 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4294967295 list-memory-octets=35184372088832
+headroom transactions-used=3 transactions-budget=4294967295 bytes-used=1527 history-bound=1099511627776 charge-reserved=6 charge-capacity=1048576
+checkpoint-file=absent
+== live-b
+profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=16777216 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4294967295 list-memory-octets=35184372088832
+headroom transactions-used=3 transactions-budget=4294967295 bytes-used=1527 history-bound=1099511627776 charge-reserved=6 charge-capacity=1048576
+checkpoint-file octets=4435 modified=1790365670
+== off-b
+profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=67108864 max-article-octets=16777216 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4294967295 list-memory-octets=35184372088832
+headroom transactions-used=3 transactions-budget=4294967295 bytes-used=1527 history-bound=1099511627776 charge-reserved=6 charge-capacity=1048576
+checkpoint-file octets=4435 modified=1790365670
