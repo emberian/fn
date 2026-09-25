@@ -40,20 +40,38 @@
       (f-get-global 'fn-workflow-state state)
     nil))
 
-(defun fn-owner-bp-release-line (view state)
+; Signed receipts: this Store's keyring snapshots, the ones transit reads.
+(defun fn-owner-bp-keyring (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpah-release-line view (fn-owner-config state))))
+  (fn-sn-keyring-snapshots (fn-owner-store state)))
 
-(defun fn-owner-bp-receipt-release-record (view state)
+(defun fn-owner-bp-receipt-signature-plan (view state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpah-receipt-signature-plan view (fn-owner-bp-keyring state))))
+
+; OBS is the host's (observed-ml-key ed25519 ml-dsa-65), or nil.
+(defun fn-owner-bp-receipt-gatep (view obs state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpah-receipt-gatep view (fn-owner-config state)
+                                (fn-owner-bp-keyring state) obs)))
+
+(defun fn-owner-bp-release-line (view obs state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpah-receipt-release-line view (fn-owner-config state)
+                                       (fn-owner-bp-keyring state) obs)))
+
+(defun fn-owner-bp-receipt-release-record (view obs state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-receipt-release-record view (fn-owner-config state)
-                                         (fn-owner-bp-workflow-image state))))
+                                         (fn-owner-bp-workflow-image state)
+                                         (fn-owner-bp-keyring state) obs)))
 
-(defun fn-owner-bp-receipt-release-detail (view state)
+(defun fn-owner-bp-receipt-release-detail (view obs state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-release-detail
           (fn-bpah-receipt-release-verdict
-           view (fn-owner-config state) (fn-owner-bp-workflow-image state)))))
+           view (fn-owner-config state) (fn-owner-bp-workflow-image state)
+           (fn-owner-bp-keyring state) obs))))
 
 (defun fn-owner-app-bind-receipt-store (state)
   (declare (xargs :stobjs state :mode :program))

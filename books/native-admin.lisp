@@ -370,8 +370,56 @@ decoded as source-address for durable command compatibility."
    (fn-native-admin-bp-carries-rows name carried)
    (fn-native-admin-bp-releases-rows name releases)))
 
-(defun fn-native-admin-bp-boundary-plan (words)
+; Signed receipts (lane signed-receipts): `receipt-signer HEX' names the
+; 64-lowercase-hex hybrid principal whose signature on a receipt from this
+; boundary's own EID releases (`fn-bpah-receipt-signer-enrolledp'); the flag
+; `require-signed-receipts' makes receipts this boundary delivers release
+; only by their own signature (`fn-bpah-require-signed-receiptsp').  Both
+; come last, in that order.
+(defun fn-native-admin-lower-hex-charsp (chars)
   (declare (xargs :guard t))
+  (if (consp chars)
+      (and (member (car chars) '(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9
+                                 #\a #\b #\c #\d #\e #\f))
+           (fn-native-admin-lower-hex-charsp (cdr chars)))
+    (null chars)))
+
+(defun fn-native-admin-principal-hexp (word)
+  (declare (xargs :guard t))
+  (and (stringp word)
+       (equal (length word) 64)
+       (fn-native-admin-lower-hex-charsp (coerce word 'list))))
+
+; (mv words signer requirep): the words before the two trailing options.
+(defun fn-native-admin-bp-receipt-options (words)
+  (declare (xargs :guard t))
+  (let* ((words (if (true-listp words) words nil))
+         (requirep (and (consp words)
+                        (equal (car (last words)) "require-signed-receipts")))
+         (w1 (if requirep (butlast words 1) words))
+         (n (len w1))
+         (signerp (and (<= 2 n)
+                       (equal (nth (- n 2) w1) "receipt-signer")
+                       (fn-native-admin-principal-hexp (nth (- n 1) w1)))))
+    (mv (if signerp (butlast w1 2) w1)
+        (if signerp (nth (- n 1) w1) nil)
+        requirep)))
+
+(defun fn-native-admin-bp-receipt-option-rows (name signer requirep)
+  (declare (xargs :guard t))
+  (append (if signer
+              (list (fn-cfg-row-make name "bp-boundary-receipt-signer"
+                                     signer 0))
+            nil)
+          (if requirep
+              (list (fn-cfg-row-make name "bp-boundary-require-signed-receipts"
+                                     "yes" 0))
+            nil)))
+
+(defun fn-native-admin-bp-boundary-plan (all-words)
+  (declare (xargs :guard t))
+  (mv-let (words signer requirep)
+    (fn-native-admin-bp-receipt-options all-words)
   (mv-let (base carried releases) (fn-native-admin-bp-boundary-split words)
   (if (and (true-listp words) (member-equal base '(6 9))
            (equal (nth 0 words) "bp-boundary")
@@ -411,8 +459,11 @@ decoded as source-address for durable command compatibility."
                          (coerce (nth 8 words) 'list)) 0)
                     carried releases)))
         (fn-native-admin-result :accepted nil :set-bp-boundary
-                                (fn-record-string-octets name) 0 nil rows))
-    (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil))))
+                                (fn-record-string-octets name) 0 nil
+                                (append rows
+                                        (fn-native-admin-bp-receipt-option-rows
+                                         name signer requirep))))
+    (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil)))))
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is

@@ -11,8 +11,16 @@
   ;; The D23 decision line is printed, never branched on.
   (when (eq name 'fn-owner-bp-source-decision-line)
     (return-from fnn-owner-core "direct principal=stub"))
+  ;; A bare receipt: nothing to observe; the release line and detail are
+  ;; printed and recorded, never branched on by the host.
+  (when (eq name 'fn-owner-bp-receipt-signature-plan)
+    (return-from fnn-owner-core nil))
+  (when (eq name 'fn-owner-bp-release-line)
+    (return-from fnn-owner-core "issuer-not-released carrier=stub issuer=x"))
+  (when (eq name 'fn-owner-bp-receipt-release-detail)
+    (return-from fnn-owner-core '(0)))
   (unless (member name '(fn-owner-bp-request-trustedp
-                         fn-owner-bp-receipt-trustedp))
+                         fn-owner-bp-receipt-gatep))
     (error "unexpected core call ~s" name))
   (push :trust *calls*)
   *trusted*)
@@ -50,12 +58,17 @@
   "receipt")
 (defun fnn-bpo-canonical-release (&rest arguments)
   (declare (ignore arguments)) nil)
+(defun fnn-octet-list-p (x) (listp x))
+;; BP-R17's developer-image busy witness is off here.
+(defun fnn-bpnode-test-busy-p () nil)
+(defun fnn-fault (&rest arguments) (error "fault ~s" arguments))
 (defun fnn-out (control &rest arguments)
   (apply #'format t control arguments) (terpri))
 
 (with-open-file (stream "host/native/bp-node.lisp")
-  (dolist (wanted '(fnn-bpnode-source-decision fnn-bpnode-request-result
-                   fnn-bpnode-receipt-result))
+  (dolist (wanted (quote (fnn-bpnode-source-decision fnn-bpnode-request-result
+                   fnn-bpnode-receipt-observations fnn-bpnode-release-line
+                   fnn-bpnode-receipt-detail fnn-bpnode-receipt-result)))
     (file-position stream 0)
     (let ((found nil))
       (loop for form = (read stream nil :eof) until (eq form :eof)
