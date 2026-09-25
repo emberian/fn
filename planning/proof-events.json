@@ -4004,6 +4004,51 @@
           "name": "fn-shb-subject-id-is-id-subject-of-sha256-preimage"
         }
       ]
+    },
+    {
+      "id": "PRF-104",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sco-store-open-of-extended-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sco-finalize-okp-is-kind-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sco-thaw-of-freeze"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sco-freeze-of-capture-carries-the-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-published-segments-decode-to-the-checkpoint"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-publication-is-the-capture-at-the-capture-point"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-distinctp-is-nodupp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-subsetp-is-subset-logic"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-listp-is-shape-and-distinct-msgids"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-binding-listp-is-shape-and-distinct"
+        }
+      ]
     }
   ]
 }

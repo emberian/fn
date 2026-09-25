@@ -1421,7 +1421,8 @@
         "planning/evidence/manifests/certify-20260925T093812Z-3053804.json",
         "planning/evidence/manifests/certify-20260925T103038Z-3156842.json",
         "planning/evidence/manifests/certify-20260925T101146Z-3714036.json",
-        "planning/evidence/manifests/certify-20260925T110203Z-65756.json"
+        "planning/evidence/manifests/certify-20260925T110203Z-65756.json",
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json"
       ]
     },
     {
@@ -1974,7 +1975,8 @@
         "planning/evidence/manifests/certify-20260925T093339Z-3045962.json",
         "planning/evidence/manifests/certify-20260925T093812Z-3053804.json",
         "planning/evidence/manifests/certify-20260925T103038Z-3156842.json",
-        "planning/evidence/manifests/certify-20260925T110203Z-65756.json"
+        "planning/evidence/manifests/certify-20260925T110203Z-65756.json",
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json"
       ],
       "progress_note": "certify-20260921T062242Z-1643977 certified an older books/feed-journal digest; certify-20260924T070931Z-1040432 (hbox) records books/feed-journal and tests/acl2/feed-journal-tests passed at their current digests and include closures. Actual subject calls: host/owner-host.lisp fn-owner-feed-journal-scan calls fn-feed-journal-scan; tools/run_owner.py Acl2Owner.feed_journal_step calls fn-feed-journal-phase-step for Journal._step. The finite phase theorem extends that same step through arbitrary observations. Physical torn-suffix repair, barriers and the global owner fence have scoped live-scanner and host-method tests in tests/test_feed_journal_live.py and tests/test_feed_fence.py; those tests do not run the combined owner/NNTP path. This target does not prove physical byte-image survival, general K5 live/replay correspondence, acceptance/feed atomicity, detection of whole-prefix rollback, bounded total journal growth, or hardware durability."
     },
@@ -2359,7 +2361,8 @@
         "planning/evidence/manifests/certify-20260925T093812Z-3053804.json",
         "planning/evidence/manifests/certify-20260925T103038Z-3156842.json",
         "planning/evidence/manifests/certify-20260925T100705Z-3116225.json",
-        "planning/evidence/manifests/certify-20260925T102606Z-3884875.json"
+        "planning/evidence/manifests/certify-20260925T102606Z-3884875.json",
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json"
       ],
       "events": [
         "fn-nntp-newnews-candidate-is-projectable",
@@ -4039,6 +4042,53 @@
         "planning/evidence/manifests/certify-20260925T103519Z-3987534.json"
       ],
       "progress_note": "Lane rep-wave-c (D27 wave C, 2026-09-25). Teeth in tests/acl2/sha256-buffer-tests.lisp: the FIPS 180-4 vectors through the buffer reader on a live local buffer with the prefix/buffer split varied, the padding boundaries and a 3,000-octet buffer (past the array's first 1024 cells) against fn-sha256-stobj, non-degeneracy, and the subject identity equal to fn-id-subject-of-payload under the attachment and to the theorem's right-hand side on a 160-octet article, the empty payload and a 3,000-octet payload; both keystones have no hypothesis, so no must-fail case exists; the octets instance's hypotheses are proof support (as sha256-stobj's instance). NOT done here: the owner's chunk read (fn-owner-chunk) and the accumulated body are still octet lists (the owner state's representation, wave C boundary 10); the record encoder, the frame and the article parser over the buffer (boundaries 7 to 9); the obligation identity and the frame trailer still digest short lists."
+    },
+    {
+      "id": "PRF-104",
+      "title": "The checkpoint open and publication cost: one Store open, a count-carrying file, linear list checks, the publication off the owner mutex",
+      "statement": "fn-sco-store-open-of-extended-capture: over the capture of any prefix P extended over any Q (P = NIL is the full path), the open fn-sco-store-open computes is (fn-cpo-open-observed configs frontier (append P Q)), and when it is :ok its configuration fold is (fn-cpr-replay configs (append P Q)); host/store-node-host.lisp fn-store-sn-open-extended calls fn-sco-store-open on both paths (fn-store-sn-recover over the empty capture, fn-store-sn-recover-from-checkpoint over the decoded checkpoint) and tests the kind, which is fn-sn-open-okp by fn-sco-finalize-okp-is-kind-ok. fn-ock-install-of-store-open-by-definition: fn-ock-install over that pair is fn-ock-recover-extended of E, so PRF-083's owner keystone holds of host/owner-host.lisp fn-owner-recover-from-store-open (native owner.lisp fnn-owner-recover-core), with no second extension. fn-sco-thaw-of-freeze: for every checkpoint of the right shape, thawing the file's value (the count in the record slot, the records read back out of the event index) gives the value; fn-sco-freeze-of-capture-carries-the-count: a capture of at most 2^32 records is written with its count; fn-ock-published-segments-decode-to-the-checkpoint composes it with the FNSC round trip under the codec's tree and width hypotheses (host fn-store-sco-decode thaws; fn-store-sco-publish-octets and fn-ock-publication freeze). fn-ock-publication-is-the-capture-at-the-capture-point (hypothesis: an admitted history): the publication the owner runs outside its mutex over the values captured under it (fn-owner-sco-capture, native fnn-owner-publish-captured) is the capture of the captured history. The linear :exec paths equal the unchanged :logic definitions with no hypothesis: fn-ks-distinctp-is-nodupp, fn-ks-subsetp-is-subset-logic, fn-no-duplicatesp-is-ks-nodupp, fn-subsetp-is-ks-subset-logic, fn-article-listp-is-shape-and-distinct-msgids, fn-node-binding-listp-is-shape-and-distinct, fn-retain-no-duplicatesp-is-no-duplicatesp; fn-cnode-statep reaches them through fn-node-statep in fn-sco-cpr-resume, fn-sco-cpr-finish and fn-sco-finalize-from.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-016",
+        "STO-011"
+      ],
+      "depends_on": [
+        "PRF-083"
+      ],
+      "assumptions": [
+        "A-HOST-EXCLUSIVE-READ",
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION",
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/store-checkpoint-open.lisp",
+        "books/owner-checkpoint-open.lisp",
+        "books/store-checkpoint-codec.lisp",
+        "books/acceptance-alloc.lisp",
+        "books/acceptance.lisp",
+        "books/node.lisp",
+        "books/retention.lisp",
+        "tests/acl2/owner-checkpoint-open-tests.lisp",
+        "tests/acl2/linear-recognizers-tests.lisp",
+        "planning/evidence/checkpoint-cost-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
+        "planning/evidence/manifests/certify-20260925T183348Z-4032007.json"
+      ],
+      "progress_note": "Open: the Store state still holds the record list (fn-sf-records; a commit appends to it, store-files.lisp), so the kernel does not yet carry a count; fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic in the whole-node recognizer; the covered prefix's octets are still re-encoded for fnn-open-live-store's callers; two hypotheses have no must-fail (the :ok hypothesis of the Store open's replay conjunct and the admitted-history hypothesis of the publication keystone) and the 2^32 bound of fn-sco-freeze-of-capture-carries-the-count has no reachable counterexample.",
+      "events": [
+        "fn-sco-store-open-of-extended-capture",
+        "fn-sco-finalize-okp-is-kind-ok",
+        "fn-sco-thaw-of-freeze",
+        "fn-sco-freeze-of-capture-carries-the-count",
+        "fn-ock-published-segments-decode-to-the-checkpoint",
+        "fn-ock-publication-is-the-capture-at-the-capture-point",
+        "fn-ks-distinctp-is-nodupp",
+        "fn-ks-subsetp-is-subset-logic",
+        "fn-article-listp-is-shape-and-distinct-msgids",
+        "fn-node-binding-listp-is-shape-and-distinct"
+      ]
     }
   ]
 }

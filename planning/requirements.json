@@ -1967,7 +1967,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-083"
+        "PRF-083",
+        "PRF-104"
       ],
       "verification": [
         "proof",
@@ -2187,6 +2188,29 @@
         "planning/evidence/bounds-p6-2026-09-25.md"
       ],
       "implementation_note": "The CBOR profile gains an additive wide uint (RFC 8949 eight-octet argument, canonical only above 2^32 - 1); every narrow encoding and every narrow acceptance is unchanged (fn-cbor-encode-uint-wide-is-narrow, fn-cbor-decode-prechecked-wide-extends-narrow). *fn-cbor-max-uint* keeps 2^32 - 1: its other uses are u32 fields. The record decoder refuses a header whose schema octet is not the record's (fn-record-schema-octet). Open: the frontier file and the profile's T field still cap transaction IDs at 2^32 - 1 (byte-store-frame, shared with packet P5); segmented articles (design 2.4 item 3) are not implemented. A profile's R is checked against the record ceiling at the widths the runtime produces (u32 heads, 1 083 octets), so a format-8 profile saved before P6 is admitted unchanged (fn-bs-profile-v1-valid-stays-valid); a schema-2 record is at most 28 octets past it and is refused at the publish gate."
+    },
+    {
+      "id": "STO-016",
+      "title": "The checkpoint open costs less than the full replay it replaces, and a publication does not hold served commands",
+      "specification": "specs/storage.md#checkpointing-the-store-checkpoint-that-open-reads-p3-2026-09-25",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-104"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-checkpoint-open.lisp",
+        "books/owner-checkpoint-open.lisp",
+        "books/acceptance-alloc.lisp",
+        "tests/acl2/linear-recognizers-tests.lisp",
+        "tests/acl2/owner-checkpoint-open-tests.lisp",
+        "planning/evidence/checkpoint-cost-2026-09-25.md"
+      ],
+      "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list, and fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic (planning/evidence/checkpoint-cost-2026-09-25.md)."
     }
   ]
 }
