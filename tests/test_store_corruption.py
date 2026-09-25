@@ -1,6 +1,5 @@
 """Malformed-image recovery matrix for the real ACL2-backed file adapter."""
 import contextlib
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -13,6 +12,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import run_store  # noqa: E402
 from run_store import Acl2Store, Store, StoreError, StoreFault, StoreIndeterminate, frame  # noqa: E402
+from tools import frame_bridge  # noqa: E402
+
+
+def flip_last_octet(path):
+    """Corrupt an FNSM metadata frame's integrity trailer by one bit."""
+    raw = bytearray(path.read_bytes())
+    raw[-1] ^= 1
+    path.write_bytes(bytes(raw))
 
 
 class StoreCorruptionTests(unittest.TestCase):
@@ -105,14 +112,13 @@ class StoreCorruptionTests(unittest.TestCase):
 
     def test_frontier_malformed_namespace_matrix(self):
         cases = (
-            ("truncated", lambda path: path.write_bytes(b"{"),
-             "invalid durable allocation frontier"),
-            ("checksum", lambda path: path.write_bytes(
-                run_store.canonical_json(dict(json.loads(path.read_bytes()), checksum="0" * 64)) + b"\n"),
-             "allocation frontier checksum or range mismatch"),
-            ("bool", lambda path: path.write_bytes(run_store.canonical_json(
-                Store(path.parent, writable=True)._frontier_with_checksum(True)) + b"\n"),
-             "allocation frontier checksum or range mismatch"),
+            ("truncated", lambda path: path.write_bytes(path.read_bytes()[:-1]),
+             "invalid durable allocation frontier frame"),
+            ("legacy-json", lambda path: path.write_bytes(b"{"),
+             "legacy JSON allocator is retained in place"),
+            ("trailer", flip_last_octet, "invalid durable allocation frontier frame"),
+            ("kind", lambda path: path.write_bytes((path.parent / "config.json").read_bytes()),
+             "invalid durable allocation frontier frame"),
             ("symlink", lambda path: (path.unlink(), os.symlink(path.parent / "config.json", path)),
              "refusing non-regular path"),
             ("directory", lambda path: (path.unlink(), path.mkdir()),
@@ -131,15 +137,12 @@ class StoreCorruptionTests(unittest.TestCase):
 
     def test_config_and_history_inconsistency_matrix(self):
         cases = (
-            ("config-checksum", "config", lambda path: path.write_bytes(
-                run_store.canonical_json(dict(json.loads(path.read_bytes()), checksum="0" * 64)) + b"\n"),
-             "config checksum mismatch"),
-            ("config-profile", "config", lambda path: path.write_bytes(
-                run_store.canonical_json(run_store.config_with_checksum(
-                    dict(run_store.profile_config(), capacity=17))) + b"\n"),
-             "unsupported store configuration"),
+            ("config-trailer", "config", flip_last_octet, "invalid durable config frame"),
+            ("config-kind", "config", lambda path: path.write_bytes(
+                (path.parent / "allocation-frontier.json").read_bytes()),
+             "invalid durable config frame"),
             ("frontier-behind-history", "frontier", lambda path: path.write_bytes(
-                run_store.canonical_json(Store(path.parent, writable=True)._frontier_with_checksum(1)) + b"\n"),
+                frame_bridge.session().metadata_frontier_frame(1)),
              "ACL2 replay rejected committed transaction history"),
         )
         for label, kind, corrupt, diagnostic in cases:
