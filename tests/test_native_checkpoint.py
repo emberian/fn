@@ -41,7 +41,7 @@ class NativeCheckpointTests(unittest.TestCase):
         result = subprocess.run(
             [str(self.image), "--fn", *map(str, args)], cwd=ROOT,
             env=env or self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=30, check=False, text=True)
+            timeout=getattr(self, "native_timeout", 30), check=False, text=True)
         self.assertEqual(result.returncode, expected,
                          f"native {args} returned {result.returncode}\n"
                          f"stdout={result.stdout}\nstderr={result.stderr}")

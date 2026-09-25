@@ -35,6 +35,8 @@ def links_for(n):
 @unittest.skipUnless(IMAGE.exists(), "build/fn-host-developer is required")
 class NativePackChainTests(unittest.TestCase):
     image = IMAGE
+    # A scale store's probe and its compaction take minutes, not seconds.
+    native_timeout = 1800
     setUp = NativeCheckpointTests.setUp
     tearDown = NativeCheckpointTests.tearDown
     native = NativeCheckpointTests.native
