@@ -2231,9 +2231,10 @@
         "books/replay.lisp",
         "tests/acl2/key-statements-tests.lisp",
         "tests/acl2/peer-authored-accept-tests.lisp",
-        "planning/evidence/peer-keys-2026-09-25.md"
+        "planning/evidence/peer-keys-2026-09-25.md",
+        "tests/test_native_key_statements.py"
       ],
-      "implementation_note": "A stronger fn guarantee and local policy (no RFC defines key statements). ACL2 decides: fn-ks-plan in C2's fn-ctl-authorize shape (verb keys) with the PoP observations checked in ACL2; the owner executes after the statement's kind-4 commit; the revoked arm of fn-pa-current-plan on NNTP transit only. Stays specified: no native run on these bytes; the kind-4-then-kind-3 crash cut is not a model crash point yet."
+      "implementation_note": "A stronger fn guarantee and local policy (no RFC defines key statements). ACL2 decides: fn-ks-plan in C2's fn-ctl-authorize shape (verb keys, grantable beside cancel) with the PoP observations checked in ACL2; the owner executes after every durable kind-4 commit (carried and revoked ones decline); the revoked arm of fn-pa-current-plan on NNTP transit only. The kind-4-then-kind-3 crash cut is a model crash point (fn-ks-cut, fn-ks-recover): the open executes the newest record when it is a statement. A Store refusal of the key change leaves the article accepted and is reported as detail key-change-refused."
     }
   ]
 }
