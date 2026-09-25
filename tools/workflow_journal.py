@@ -31,7 +31,11 @@ MAX_TEXT = 512
 MAX_RECORD = 16_384
 MAX_RECORDS = 4_096
 MAX_AGGREGATE = 16 * 1024 * 1024
-MAX_INBOUND_BUNDLE = 4 * 1024 * 1024
+# `*fn-frame-max-inbound-payload*`, the u32 frame width since P2 (D27); the
+# frame bridge refuses to open when the two differ.  MAX_INBOUND_AGGREGATE
+# below still caps this Python inbox at 64 MiB in total: a data cap the
+# retiring Python host keeps (planning/evidence/bounds-join-2026-09-25.md).
+MAX_INBOUND_BUNDLE = 4_294_967_295
 # `*fn-frame-max-identity*`: the canonical primary-block identity ACL2 derives
 # from a staged bundle.  The inbox is keyed by this, never by the agent's BID.
 MAX_IDENTITY = 1_152

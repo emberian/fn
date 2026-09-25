@@ -647,7 +647,9 @@ class NativeVerifyTests(unittest.TestCase):
             if tamper:
                 octets = octets.replace(b"exact post source", b"Exact post source", 1)
                 octets = octets.replace(b"line 00100 ", b"LINE 00100 ", 1)
+            print("POST", stem, len(octets), flush=True)
             cls.replies[stem] = cls.post(octets)
+            print("  ->", cls.replies[stem][:80], flush=True)
 
     @classmethod
     def sign(cls, stem, source_octets, image=IMAGE):

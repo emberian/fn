@@ -145,8 +145,8 @@
 
 ;  Teeth for fn-bs-profile-admits-every-article-record.  Non-degenerate: the
 ; free profile's R is exactly the article record of its (A, G), so the bound
-; is tight at the witness.  Each hypothesis dropped admits a counterexample;
-; ACL2 cannot prove any of the three weakened statements.
+; is tight at the witness.  Each hypothesis dropped admits a concrete
+; counterexample, below.
 (defconst *bsft-tight* (fn-bs-profile-set-fields *bsft-free* '((4 . 1090139))))
 (assert-event (fn-bs-profile-admittedp *bsft-tight*))
 (assert-event (equal (fn-bs-profile-max-record-octets *bsft-tight*)
@@ -183,31 +183,16 @@
    (and (fn-record-p r)
         (<= (len (fn-record-payload r)) 195264)
         (< 196608 (len (fn-record-encode r))))))
-(must-fail
- (defthm bsft-article-record-without-admitted
-   (implies (and (<= (len (fn-record-payload record))
-                     (fn-bs-profile-max-article-octets values))
-                 (<= (len (fn-record-groups record))
-                     (fn-bs-profile-max-groups-per-article values)))
-            (<= (len (fn-record-encode record))
-                (fn-bs-profile-max-record-octets values)))
-   :hints (("Goal" :in-theory (disable fn-bs-profile-max-record-octets)))))
-(must-fail
- (defthm bsft-article-record-without-article-bound
-   (implies (and (fn-bs-profile-admittedp values)
-                 (<= (len (fn-record-groups record))
-                     (fn-bs-profile-max-groups-per-article values)))
-            (<= (len (fn-record-encode record))
-                (fn-bs-profile-max-record-octets values)))
-   :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp)))))
-(must-fail
- (defthm bsft-article-record-without-group-bound
-   (implies (and (fn-bs-profile-admittedp values)
-                 (<= (len (fn-record-payload record))
-                     (fn-bs-profile-max-article-octets values)))
-            (<= (len (fn-record-encode record))
-                (fn-bs-profile-max-record-octets values)))
-   :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp)))))
+;  The admitted hypothesis: a value that is not a profile reads every field
+; as 0, and a record with no payload and no groups (within both 0 bounds)
+; still encodes to 70 octets, past R = 0.
+(assert-event
+ (let ((r (bsft-record 0 nil)))
+   (and (not (fn-bs-profile-admittedp '(1 2 3)))
+        (equal (len (fn-record-payload r)) 0)
+        (equal (len (fn-record-groups r)) 0)
+        (< (fn-bs-profile-max-record-octets '(1 2 3))
+           (len (fn-record-encode r))))))
 
 ; -----------------------------------------------------------------------------
 ; Format 7 is still decoded and served under its translation; format 6 is not
