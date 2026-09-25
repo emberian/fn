@@ -857,6 +857,36 @@
           "kind": "theorem",
           "name": "fn-acar-scar-auth-sessionp-of-rebuilt-session",
           "note": "If a session satisfies fn-auth-sessionp, the session rebuilt from it by replacing its innermost post session is recognized by fn-scar-auth-sessionp at the held session's node exactly when fn-auth-sessionp recognizes it. Teeth: tests/acl2/owner-advance-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-record-p-is-record-p",
+          "note": "The record recognizer the host's record paths now evaluate (books/records-codec-concrete.lisp fn-rcon-record-p: stringp for the octet domain, length for the bounds, the ASCII walk by index) equals fn-record-p on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp (the bounds at 250/251 and 256/257, a non-ASCII character, non-strings)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-record-encode-impl-is-record-encode-impl",
+          "note": "The record codec's encoder the host evaluates: books/records-attach-concrete.lisp attaches fn-rcon-record-encode-impl to fn-record-encode in the host images (host/native/build.lisp, build-dtn.lisp, tools/run_store.py), and host/owner-host.lisp:521 fn-owner-consumer-local-poll calls it directly; equal to fn-record-encode-impl on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp (the staged record encodes non-empty and equal; a shaped record with a 251-character Message-ID encodes to nil in both; the attachment names the twin)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-store-event-encode-is-store-event-encode",
+          "note": "The staged record's encoder at write: host/owner-host.lisp:553 fn-owner-pending-octets and host/store-node-host.lisp:584 fn-store-sn-pending-octets call fn-rcon-store-event-encode, equal to fn-store-event-encode on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
+          "note": "The staged record's sequence: host/owner-host.lisp:562 fn-owner-pending-sequence and host/store-node-host.lisp:591 fn-store-sn-pending-sequence call fn-rcon-sbud-pending-sequence, equal to fn-sbud-pending-sequence on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-sn-io-is-sn-io",
+          "note": "The store transaction observation: host/store-node-host.lisp:477 fn-store-sn-io calls fn-rcon-sn-io, equal to fn-sn-io on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcon-ocfg-io-is-ocfg-step",
+          "note": "The owner's transaction observation: host/owner-host.lisp:349 fn-owner-io calls fn-rcon-ocfg-io, equal to fn-ocfg-step of (:store (:io operation result)) for every configured owner, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp (:record-directory :ok reaches the completing owner, :error fences, other operations)."
         }
       ]
     },
@@ -2618,6 +2648,16 @@
           "kind": "theorem",
           "name": "fn-oix-ocfg-step-keeps-view-indexed",
           "note": "Preservation of the trie premise fn-scar-view-indexedp over every fn-ocfg-step event the host drives (open, advance, close, reads, open-peer, fault, reconfigure, complete, begin, take and every fn-own-step writer event); with fn-oix-own-start-is-view-indexed and the lemmas for every owner host/owner-host.lisp installs without fn-ocfg-step (fn-ocfg-observe, the carried read, fn-ocfg-open/-open-peer/-read-step/-fault/-with-owner, fn-pcar-sbud-prepare, fn-ccar-own-finish, fn-acar-own-outcome, fn-own-with-feeds, fn-own-configure, fn-own-transit-outcome, fn-ocl-publish) it holds on every configured owner the host reaches. The work is fn-oix-refresh-keeps-correspondence over fn-midx-refresh-preserves-correspondence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-midx-concrete-lookup-is-lookup",
+          "note": "The Message-ID trie walked by string index: fn-mxc-lookup equals fn-midx-lookup for every Message-ID and trie, no hypothesis. The served path reaches it from host/owner-host.lisp:1430 fn-owner-chunk (fn-scar-ocfg-read-tls-prefix) through fn-scar-peer-step-pinned: a reader session's ARTICLE/HEAD/BODY/STAT by Message-ID (fn-pix-peer-delegate-pinned), a peer session's (fn-pgc-peer-arm delegates to the same), and the IHAVE/CHECK history test (fn-pix-history-hasp). Teeth: tests/acl2/msgid-index-concrete-tests.lisp, tests/acl2/peer-offer-indexed-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pix-peer-delegate-pinned-is-peer-delegate-pinned",
+          "note": "The reader delegate with the lookup by index equals fn-peer-delegate-pinned on every input, no hypothesis; books/served-carried.lisp fn-scar-peer-step-pinned (reader sessions) and books/peer-guard-carried.lisp fn-pgc-peer-arm (peer sessions) call it, so fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation holds of the rerouted chain. Teeth: tests/acl2/peer-offer-indexed-tests.lisp, tests/acl2/peer-guard-carried-tests.lisp (223 for the held Message-ID, 430 for an absent one, each the reference's)."
         }
       ]
     },
