@@ -1,0 +1,11 @@
+test_the_host_calls_acl2s_decisions_at_every_publish_site (tests.test_native_history_marker.HistoryMarkerSourceTests.test_the_host_calls_acl2s_decisions_at_every_publish_site) ... ok
+test_a_burned_reservation_is_not_a_lost_record (tests.test_native_history_marker.NativeHistoryMarkerTests.test_a_burned_reservation_is_not_a_lost_record) ... ok
+test_a_frontier_frame_is_not_a_marker (tests.test_native_history_marker.NativeHistoryMarkerTests.test_a_frontier_frame_is_not_a_marker) ... ok
+test_a_lost_newest_transaction_file_is_refused_with_the_reason (tests.test_native_history_marker.NativeHistoryMarkerTests.test_a_lost_newest_transaction_file_is_refused_with_the_reason) ... ok
+test_a_store_without_a_marker_opens_and_the_next_commit_marks_it (tests.test_native_history_marker.NativeHistoryMarkerTests.test_a_store_without_a_marker_opens_and_the_next_commit_marks_it) ... ok
+test_every_marker_cut_recovers_and_keeps_detecting (tests.test_native_history_marker.NativeHistoryMarkerTests.test_every_marker_cut_recovers_and_keeps_detecting) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 5.225s
+
+OK

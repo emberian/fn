@@ -177,6 +177,7 @@ if IMAGE_AVAILABLE:
                     self.assertEqual(len(prior_names), 1)
                     before = model_images.import_image(node.store)
                     before_frontier = (node.store / "allocation-frontier.json").read_bytes()
+                    before_marker = (node.store / "committed-history.json").read_bytes()
                     source = candidate.read_bytes()
                     if claimed == "other":
                         source = article(CANDIDATE_ID, "candidate", "interrupted bodY")
@@ -198,7 +199,8 @@ if IMAGE_AVAILABLE:
                         sent=(CANDIDATE_ID, stored, (GROUP,), (t0 + skew, t1 + skew)),
                         before_frontier=before_frontier,
                         prior_frame=next(iter(prior_names.values())),
-                        bridge_setup=SERVED_BRIDGE_SETUP)
+                        bridge_setup=SERVED_BRIDGE_SETUP,
+                        before_marker=before_marker)
 
                     recovery = node.operator("recover")
                     self.assertEqual(recovery["rc"], 0, (name, recovery))
