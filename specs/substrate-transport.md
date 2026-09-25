@@ -467,12 +467,15 @@ The round trip, end to end, with the function that does each step:
 4. **Transit.** Node 1 feeds node 2 (or an INN feeds node 2). Path is prepended
    on the way out and Xref removed; every other octet, `FN-Statement` included,
    is identical (RFC 5537 §3.6).
-5. **Node 2 accepts and verifies locally.** The same `fn-stx-verdict` runs
-   against *node 2's* keyring. If node 2 does not know A, the verdict is
-   `:unverified :signature` — `fn-prin-verifiedp` returns false for an unknown
-   creator by construction ([identity](identity.md), "Keyrings") — and the
-   article is still stored and served, marked unverified. This is the correct
-   answer, and it is why the verdict carries the keyring generation.
+5. **Node 2 accepts and verifies locally.** The same verification runs
+   against *node 2's* keyring. If node 2 has enrolled A, the article is stored
+   `verified` under node 2's keyring generation. If node 2 does not know A,
+   `fn-prin-verifiedp` returns false for an unknown creator by construction
+   ([identity](identity.md), "Keyrings"), and the article is stored only when
+   the boundary that delivered it lists A as a carried source: its verdict is
+   then `carried`, a claim about the carrier and never about a signature.
+   Otherwise it is refused (`local-enrollment`, 439 on transit), not stored
+   as unverified.
 6. **Agent B reads** from node 2 and asks two questions: *who signed this*, and
    *may I check it myself*.
 
@@ -496,15 +499,24 @@ second.
   ```text
   HDR :fn-verified 1-10
   225 Headers follow
-  1 verified 9f2c...ab keyring 7 policy 41e0...03
-  2 unverified signature keyring 7
+  1 verified 9f2c...ab keyring 7
+  2 carried 51d0...7e
   3 absent no-field
   ```
 
-  Three tokens, one per outcome of `*fn-stx-verdicts*`, never a boolean; the
-  principal id in hex (`fn-id-hex-octets`) answers "verified by whom"; the keyring
-  generation answers "under what, and can I reproduce it"; the policy term
-  answers "admitted under which policy in force". A client that wants none of
+  A served article carries one of three tokens, never a boolean
+  (`fn-stx-verified-item`, books/stx-verify.lisp): `verified`, `carried`
+  or `absent`. A served POST or transit whose carrier does not verify is
+  refused (441 or 439), not stored, so a served article is never
+  `unverified`; that token appears only for a record written by another
+  path. The principal id in hex (`fn-id-hex-octets`) answers "verified by
+  whom", or for `carried`, "which carrier's principal". The keyring
+  generation is this node's local counter: it advances on every enrollment
+  change, and it names the enrollment state the verdict was computed under.
+  A reader cannot resolve it to keys, since no key payload is published over
+  NNTP; a client that checks for itself pins the author's keys out of band
+  (planning/evidence/p8-verifier-2026-09-24.md). A `carried` line has no
+  generation because no enrollment was consulted. A client that wants none of
   this never sees it.
 - **OVER, with its cost named.** `:fn-verified` may also be appended as an
   extra OVER field, listed as `FN-Verified:full` in `LIST OVERVIEW.FMT` after

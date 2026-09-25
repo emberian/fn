@@ -2253,10 +2253,23 @@ issuer EID and a boundary principal are never one string bag.
 **Enrollment.** `operator CONFIG bp-boundary add NAME PATH BP-EID PORT
 [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...]
 [releases-for ISSUER-EID ...]` (`fn-native-admin-bp-boundary-plan`). Each
-list is non-empty when present, its words are `dtn:`/`ipn:` EIDs listed
-once, and the clauses come in that order. Each EID is one row in the
-boundary's `:set-peer` delta, so the durable configuration record carries
-it and replay recovers it. The release list defaults to empty.
+list is non-empty when present, its words are EIDs listed once, and the
+clauses come in that order. BP-EID and every listed EID must satisfy
+`fn-bp-eid-shapep` (books/bp-eid-shape.lisp), or the command is refused
+`:bp-boundary` before any row exists. The grammar is RFC 9171 §4.2.5.1.1
+`"dtn:" "//" node-name "/" demux` (node-name a RFC 3986 reg-name, demux
+`*VCHAR`) and §4.2.5.1.2 `"ipn:" 1*DIGIT "." 1*DIGIT` (the RFC requirement).
+fn adds these local rules: `dtn:none` is refused (the null endpoint names
+no neighbour, source or issuer); node-name is non-empty; the scheme is lower
+case and ipn numbers are canonical decimal no larger than 2^64-1, the text
+form `fn-bpaj-eid-text` renders; and the EID is a configuration label of at
+most 256 octets. Every character is therefore a VCHAR, so no EID holds SP,
+HTAB, CR or LF (`fn-bp-eid-shapep-is-vchar`). Each accepted EID is one
+`peer list` word, and the list reads back exactly the rows written
+(`fn-native-admin-bp-boundary-plan-eids-are-shaped`,
+`fn-native-admin-peer-extra-decode-lists-exactly-the-rows`). Each EID is one
+row in the boundary's `:set-peer` delta, so the durable configuration record
+carries it and replay recovers it. The release list defaults to empty.
 
 **Requests: carriage and authorship.** The source decision is unchanged:
 `fn-bpaj-carried-source-decision cfg principal generation source` answers

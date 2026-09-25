@@ -1036,10 +1036,11 @@
 ; A record without D23 rows renders no extra word (the earlier exact lines).
 (assert-event (equal (fn-native-admin-peer-extra-octets *fn-na-peer-rows*) nil))
 
-; The one hypothesis, `fn-native-admin-peer-extra-cleanp'.  The label codec
-; admits a space; `bp-boundary add' does not refuse a quoted EID holding one.
-; Such a row renders as two words and the list no longer reads back as the
-; rows: the conclusion fails without the hypothesis.
+; The general reader lemma `fn-native-admin-peer-extra-decode-of-clean-rows'
+; and its one hypothesis, `fn-native-admin-peer-extra-cleanp'.  The label
+; codec admits a space.  A row holding one renders as two words and the list
+; no longer reads back as the rows: the conclusion fails without the
+; hypothesis.  `bp-boundary add' no longer writes such a row (below).
 (defconst *fn-na-dirty-rows*
   (list (fn-cfg-row-make "relay" "bp-boundary-carries" "dtn://a b/" 0)))
 (assert-event (not (fn-native-admin-peer-extra-cleanp *fn-na-dirty-rows*)))
@@ -1053,3 +1054,94 @@
                 (fn-native-admin-peer-slot-values *fn-na-dirty-rows*
                                                   "bp-boundary-carries"))
                nil (list 10)))))
+
+; -----------------------------------------------------------------------------
+; `fn-bp-eid-shapep' (books/bp-eid-shape.lisp) at `bp-boundary add'.  Teeth
+; for `fn-native-admin-bp-boundary-plan-eids-are-shaped' and the
+; hypothesis-free `fn-native-admin-peer-extra-decode-lists-exactly-the-rows'.
+(defun fn-na-bp-eid-plan (own carried)
+  (fn-native-admin-plan
+   (fn-na-test-argv (list "bp-boundary" "add" "relay" "relay.example.invalid"
+                          own "4557" "carries" carried
+                          "releases-for" "dtn://receiver/"))))
+(defun fn-na-bp-eid-status (own carried)
+  (fn-native-admin-result-status (fn-na-bp-eid-plan own carried)))
+(defconst *fn-na-eid-tab*
+  (coerce (list #\d #\t #\n #\: #\/ #\/ #\a #\Tab #\b #\/) 'string))
+(defconst *fn-na-eid-cr*
+  (coerce (list #\d #\t #\n #\: #\/ #\/ #\a #\/ #\Return) 'string))
+(defconst *fn-na-eid-lf*
+  (coerce (list #\d #\t #\n #\: #\/ #\/ #\a #\/ #\Newline) 'string))
+; 256 octets, the configuration label bound, and one more.
+(defconst *fn-na-eid-256*
+  (concatenate 'string "dtn://a/" (coerce (make-list 248 :initial-element #\x) 'string)))
+(defconst *fn-na-eid-257*
+  (concatenate 'string "dtn://a/" (coerce (make-list 249 :initial-element #\x) 'string)))
+
+; Accepted: RFC 9171 s4.2.5.1.1 dtn and s4.2.5.1.2 ipn, as the boundary's
+; own EID and as a carried source.
+(assert-event (equal (fn-na-bp-eid-status "dtn://a/b" "ipn:1.2") :accepted))
+(assert-event (equal (fn-na-bp-eid-status "ipn:1.2" "dtn://a/b") :accepted))
+(assert-event (equal (fn-na-bp-eid-status "dtn://relay/" *fn-na-eid-256*) :accepted))
+(assert-event (equal (fn-na-bp-eid-status "dtn://relay/" "dtn://a%41/~group") :accepted))
+; Refused, as a carried source and as the boundary's own EID: SP, HTAB, CR,
+; LF, a scheme that is not dtn or ipn, and an EID over 256 octets.
+(assert-event
+ (let ((bad (list "dtn://a b/" *fn-na-eid-tab* *fn-na-eid-cr* *fn-na-eid-lf*
+                  "http://a/b" *fn-na-eid-257*)))
+   (and (equal (fn-na-bp-eid-status "dtn://relay/" (nth 0 bad)) :refused)
+        (equal (fn-na-bp-eid-status "dtn://relay/" (nth 1 bad)) :refused)
+        (equal (fn-na-bp-eid-status "dtn://relay/" (nth 2 bad)) :refused)
+        (equal (fn-na-bp-eid-status "dtn://relay/" (nth 3 bad)) :refused)
+        (equal (fn-na-bp-eid-status "dtn://relay/" (nth 4 bad)) :refused)
+        (equal (fn-na-bp-eid-status "dtn://relay/" (nth 5 bad)) :refused)
+        (equal (fn-na-bp-eid-status (nth 0 bad) "dtn://sender/") :refused)
+        (equal (fn-na-bp-eid-status (nth 1 bad) "dtn://sender/") :refused)
+        (equal (fn-na-bp-eid-status (nth 4 bad) "dtn://sender/") :refused)
+        (equal (fn-na-bp-eid-status (nth 5 bad) "dtn://sender/") :refused))))
+; The refusal reason is the boundary's own, before any row exists.
+(assert-event
+ (equal (fn-na-bp-eid-plan "dtn://relay/" "dtn://a b/")
+        (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil)))
+; The release list is checked by the same recognizer.
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan
+          (fn-na-test-argv (list "bp-boundary" "add" "relay" "relay.example.invalid"
+                                 "dtn://relay/" "4557" "releases-for" "dtn://a b/"))))
+        :refused))
+; The grammar's edges, each a local choice stated in bp-eid-shape.lisp or
+; an RFC rule: the null endpoint, an empty node-name, a missing name
+; delimiter, a bad percent escape, a non-canonical or too-large ipn number,
+; an upper-case scheme.
+(assert-event
+ (and (not (fn-bp-eid-shapep "dtn:none"))
+      (not (fn-bp-eid-shapep "dtn:///x"))
+      (not (fn-bp-eid-shapep "dtn://a"))
+      (not (fn-bp-eid-shapep "dtn://a%zz/"))
+      (not (fn-bp-eid-shapep "ipn:01.2"))
+      (not (fn-bp-eid-shapep "ipn:1."))
+      (not (fn-bp-eid-shapep "ipn:18446744073709551616.1"))
+      (fn-bp-eid-shapep "ipn:18446744073709551615.0")
+      (not (fn-bp-eid-shapep "DTN://a/"))))
+
+; The keystone's reachable witness: an accepted boundary with two carried
+; sources and one release issuer; the rows its delta stages read back.
+(defconst *fn-na-eid-witness* (fn-na-bp-eid-plan "dtn://a/b" "ipn:1.2"))
+(assert-event
+ (let ((rows (fn-na-test-plan-rows *fn-na-eid-witness*)))
+   (and (equal (fn-native-admin-result-kind *fn-na-eid-witness*) :set-bp-boundary)
+        (equal (fn-native-admin-peer-extra-decode
+                (append (fn-native-admin-peer-extra-octets rows) (list 10)))
+               (list nil
+                     (list (fn-record-string-octets "ipn:1.2"))
+                     (list (fn-record-string-octets "dtn://receiver/"))
+                     (list 10))))))
+; Its two premises are scope, not repair: they name the command.  The
+; conclusion also holds for a refused plan (no delta, no rows) and for
+; `peer add ... carries' (hex principals); neither is claimed here, so no
+; must-fail exists for them, and the old row hypothesis is gone.
+(assert-event
+ (let ((rows (fn-na-test-plan-rows (fn-na-bp-eid-plan "dtn://relay/" "dtn://a b/"))))
+   (equal rows nil)))
+
