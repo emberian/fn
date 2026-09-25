@@ -536,6 +536,7 @@ same owner.  Returns the checkpoint's S, or NIL."
                     (unless (and (integerp count) (>= count 0))
                       (fnn-fault "owner returned malformed feed restart count")))
                   (fnn-owner-feed-flush service)))
+              (fnn-owner-key-statement-recover service records)
               service))
         (error (e)
           (when service (fnn-owner-feed-close-all service))
@@ -906,7 +907,9 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                      ;; record's token, not an input to any decision.
                      (setq *fnn-owner-transit-detail* :carried)
                      (return-from fnn-owner-attempt-transit
-                       (fnn-owner-identity-commit service event)))))
+                       (fnn-owner-statement-committed
+                        service event
+                        (fnn-owner-identity-commit service event))))))
                ;; PRF-098: the :revoked arm (NNTP transit only) takes the
                ;; same two primitive observations as :ok, over the carrier's
                ;; keys, and commits fn-pa-revoked-event's composite.
@@ -962,19 +965,28 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                    (when (eq (first plan) :revoked)
                      ;; A log detail only: the Store record's token.
                      (setq *fnn-owner-transit-detail* :revoked))
-                   (let ((word (fnn-owner-identity-commit service event)))
-                     (when (and (eq word :durable) (eq (first plan) :ok))
-                       (fnn-owner-key-statement service event))
-                     word)))))))))))
+                   (fnn-owner-statement-committed
+                    service event
+                    (fnn-owner-identity-commit service event))))))))))))
 
 ;;; PRF-098: the key-statement executor, run by the owner right after it
-;;; committed a :verified kind-4 composite (books/key-statements.lisp,
-;;; through host/owner-host.lisp).  ACL2 names the one primitive observation
-;;; (the proof of possession's D09 subject) or none, decides from the stored
-;;; verdict, the live authorities rows and the Store's snapshots, and builds
-;;; the kind-3 event at its own next generation; the host observes, commits
-;;; and logs.  A composite that is no statement decides nothing.
-(defun fnn-owner-key-statement (service event)
+;;; committed a kind-4 composite (books/key-statements.lisp, through
+;;; host/owner-host.lisp), whatever its verdict: ACL2 declines every
+;;; composite whose stored verdict is not :verified
+;;; (fn-ks-carried-or-revoked-statement-never-changes-a-keyring).  ACL2 names
+;;; the one primitive observation (the proof of possession's D09 subject) or
+;;; none, decides from the stored verdict, the live authorities rows and the
+;;; Store's snapshots, and builds the kind-3 event at its own next
+;;; generation; the host observes, commits and logs.  A composite that is no
+;;; statement decides nothing.
+;;;
+;;; The answer is the key change's own outcome: :committed, :refused (the
+;;; Store refused the kind-3 event; the statement article stays accepted),
+;;; or nil (no change was attempted).  An uncertain kind-3 commit is not
+;;; answered here: its condition propagates like any uncertain Store
+;;; outcome and the open's recovery (fnn-owner-key-statement-recover)
+;;; decides the statement again.
+(defun fnn-owner-key-statement (service event &optional at-open)
   (let* ((request (fnn-owner-core 'fn-owner-key-statement-request event))
          (preimage (and request
                         (fnn-core 'fn-hsig-host-preimage (first request)
@@ -998,9 +1010,54 @@ reason before any Store call.  An ordinary article's groups are unchanged."
              (kind3 (and acting
                          (fnn-owner-core 'fn-owner-key-statement-event event
                                          observed-ml-key ed ml coordinates)))
-             (word (and kind3 (fnn-owner-identity-commit service kind3))))
+             (outcome
+               (and kind3
+                    (handler-case
+                        (progn (fnn-owner-identity-commit service kind3)
+                               :committed)
+                      (fnn-store-indeterminate (e) (error e))
+                      (fnn-store-fault (e) (error e))
+                      (fnn-store-error () :refused)))))
         (fnn-log-line (fnn-owner-core 'fn-owner-key-statement-log-line plan
-                                      (eq word :durable)))))))
+                                      outcome (and at-open t)))
+        outcome))))
+
+;;; The cut between the statement's commit and its key change's
+;;; (books/key-statements.lisp fn-ks-cut).  A developer image started with
+;;; FN_NATIVE_KEY_STATEMENT_FAULT=statement-committed:kill dies here, after a
+;;; kind-4 composite is durable and before the executor runs; production has
+;;; no injection branch.
+(defun fnn-owner-key-statement-cut ()
+  (let ((raw (fnn-developer-selector "FN_NATIVE_KEY_STATEMENT_FAULT")))
+    (when raw
+      (unless (string= raw "statement-committed:kill")
+        (fnn-fault "invalid FN_NATIVE_KEY_STATEMENT_FAULT (expected statement-committed:kill)"))
+      (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+      (fnn-fault "test SIGKILL did not terminate the process"))))
+
+;;; WORD is the kind-4 commit's outcome.  After a durable composite the
+;;; executor runs; a refused key change leaves WORD (the article is
+;;; accepted) and names the refusal in the transit detail, so the reported
+;;; outcome names both.
+(defun fnn-owner-statement-committed (service event word)
+  (when (eq word :durable)
+    (fnn-owner-key-statement-cut)
+    (when (eq (fnn-owner-key-statement service event) :refused)
+      (setq *fnn-owner-transit-detail* :key-change-refused)))
+  word)
+
+;;; The open's recovery (books/key-statements.lisp fn-ks-recover): the newest
+;;; record the open read, when it is a statement, is executed exactly as at
+;;; acceptance.  A change the cut lost is made; a change already made is the
+;;; newest record, which is no statement; a declined statement declines again
+;;; unless the open's configuration or observations differ, and then it is
+;;; the decision an acceptance now would make.
+(defun fnn-owner-key-statement-recover (service records)
+  (when records
+    (let ((pending (fnn-owner-core 'fn-owner-key-statement-pending
+                                   (fnn-octet-list (car (last records))))))
+      (when pending
+        (fnn-owner-key-statement service pending t)))))
 
 ;;; The served POST's attempt, and the bound local submission's.  The one
 ;;; ingress decision transit uses (fnn-owner-attempt-transit: ACL2's
