@@ -3846,6 +3846,46 @@
       "progress_note": "Certified on persvati at 694935ab (manifest certify-20260925T092155Z-3183327) and, with the config fold fix, at bba8bb15 (certify-20260925T094334Z-3395289); native rows B1-B5 and O1-O2 in planning/evidence/path-and-login-2026-09-25.md."
     },
     {
+      "id": "PRF-094",
+      "title": "The operator's configuration is ACL2's: [alerts]/[ops] rows, the rendered configuration, missions and their store profiles, the SIGHUP log reopen, and file-first on the bound commit route",
+      "milestone": "M5",
+      "status": "in-progress",
+      "requirements": [
+        "HST-001",
+        "HST-002"
+      ],
+      "depends_on": [
+        "PRF-095"
+      ],
+      "assumptions": [],
+      "events": [
+        "fn-native-config-show-round-trip",
+        "fn-native-config-load-renderable",
+        "fn-native-config-loaded-show-round-trip",
+        "fn-native-mission-profiles-valid",
+        "fn-native-mission-store-opens-with-its-profile",
+        "fn-native-operator-run-init-under-a-mission",
+        "fn-olr-reopen-iff-requested",
+        "fn-obc-commit-only-after-filing",
+        "fn-obc-control-commits-only-in-its-filing-group"
+      ],
+      "evidence": [
+        "books/native-config.lisp",
+        "books/native-config-show.lisp",
+        "tests/acl2/native-config-show-tests.lisp",
+        "books/native-operator.lisp",
+        "books/native-mission.lisp",
+        "tests/acl2/native-mission-tests.lisp",
+        "books/owner-log-reopen.lisp",
+        "tests/acl2/owner-log-reopen-tests.lisp",
+        "books/owner-bound-commit.lisp",
+        "tests/acl2/owner-bound-commit-tests.lisp",
+        "planning/evidence/operator-config-2026-09-25.md"
+      ],
+      "statement": "fn-native-config-show-round-trip: for every configuration C that fn-native-config-show-wfp admits, fn-native-config-load -- the loader fn-native-operator-run (host/native-operator-host.lisp:19) reads fn.toml through -- of fn-native-config-show-octets C, the text `operator CONFIG show' prints and a mission writes, is (:accepted C); the [alerts] and [ops] rows are part of C. fn-native-config-load-renderable: every configuration fn-native-config-load accepts satisfies fn-native-config-show-wfp (the parser's values are parsed-shaped and each field's normalization keeps its bound), so fn-native-config-show carries no run-time check; with the round trip, fn-native-config-loaded-show-round-trip: the rendering of every loaded configuration loads back as itself. fn-native-mission-profiles-valid and fn-native-mission-store-opens-with-its-profile: for each of small-community, relay and archive, the mission's profile request resolves to an admitted profile, and the frame `init' writes for it (fn-bs-config-frame-for-profile, host/store-host.lisp fn-store-metadata-config-frame) decodes at every later open to exactly that profile (under A-CRYPTO through fn-bs-config-decode-of-encode). fn-native-operator-run-init-under-a-mission: under a configuration naming a mission, an accepted init plan's profile is the mission's request. fn-olr-reopen-iff-requested: fn-olr-decide, which host/owner-host.lisp fn-owner-log-reopen answers host/native/owner.lisp fnn-owner-maybe-reopen-log with, reopens exactly when a log path is configured and a SIGHUP arrived since the last one handled, and every counted request is then handled. fn-obc-commit-only-after-filing: fn-obc-commit-gate, which fnn-owner-complete-bound-submission asks (through fn-owner-bound-commit-gate) before any commit callback, answers :commit only when fn-pa-filing-plan files the article in exactly the committed groups; with C1's keystone a control article then commits only in its filing group (fn-obc-control-commits-only-in-its-filing-group). Covered scope: that the host calls the callback only on :commit, and swaps the log descriptor under the log mutex, is host code measured natively, not proved.",
+      "progress_note": "Lane operator-config, 2026-09-25: PKT-096, PKT-097, PKT-101, PKT-069."
+    },
+    {
       "id": "PRF-095",
       "title": "The operator surface's verdicts are ACL2's: the served bound, refused-POST log lines, the credential change's effect, the developer init words, needs-upgrade and the rollback check",
       "milestone": "M5",

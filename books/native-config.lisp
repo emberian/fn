@@ -11,11 +11,11 @@
 (include-book "records")
 
 ; Work bounds, not data bounds (D27 classification, PRF-102).  fn.toml has a
-; fixed schema: eight tables and sixteen keys, each admitted at most once
+; fixed schema: ten tables and twenty-seven keys, each admitted at most once
 ; (`fn-ncfg-pair-seenp', `fn-ncfg-table-seenp'), with no repeated table, so it
 ; names no collection the store holds -- groups, peers, credentials and
 ; policy live in the store and its profile.  These two bound the work of one
-; read of that fixed-size file (its values are at most 16 x 512 octets).  The
+; read of that fixed-size file (its values are at most 27 x 512 octets).  The
 ; store profile cannot bound it in any case: fn.toml is read before the store
 ; is opened, and names the store (`[store] path').
 (defconst *fn-ncfg-max-octets* 16384)
@@ -27,6 +27,23 @@
 (defconst *fn-ncfg-default-listener-port* 1119)
 (defconst *fn-ncfg-default-max-connections* 32)
 (defconst *fn-ncfg-default-clock-error-ms* 1000)
+
+; The operator's tables (PKT-096, D28 spike deferral 1).  `[alerts]' and
+; `[ops]' are the operator command's: its alert hook and thresholds, and the
+; unit, release and log-rotation settings.  The owner reads none of them; they
+; are admitted, bounded and normalized here so that the whole of fn.toml has
+; one grammar and one owner, and `operator CONFIG show' renders them.
+; Defaults are the spike's figures.  A mission (`[ops] mission') is one of the
+; names below; its fn.toml and store profile are books/native-config-show.lisp.
+(defconst *fn-ncfg-default-headroom-min-percent* 10)
+(defconst *fn-ncfg-default-refusal-rate-per-minute* 30)
+(defconst *fn-ncfg-default-cooldown-seconds* 900)
+(defconst *fn-ncfg-default-ops-scope* "user")
+(defconst *fn-ncfg-default-keep-releases* 3)
+(defconst *fn-ncfg-default-log-max-bytes* 67108864)
+(defconst *fn-ncfg-default-log-keep* 7)
+(defconst *fn-ncfg-ops-scopes* '("user" "system"))
+(defconst *fn-ncfg-mission-names* '("small-community" "relay" "archive"))
 
 (defconst *fn-ncfg-listener-ipv4-loopback* '(127 0 0 1))
 (defconst *fn-ncfg-listener-ipv6-loopback*
@@ -207,9 +224,15 @@ host resolver's intended deployment behavior.
           :bad)
       value)))
 
+; A decimal of 1 to 20 digits: every frame natural fits (below 2^64).  This
+; bounds the work of reading one value; each key's own ceiling is applied at
+; normalization (`fn-ncfg-nat-value').
+(defconst *fn-ncfg-max-decimal-digits* 20)
+(defconst *fn-ncfg-max-u64* 18446744073709551615)
+
 (defun fn-ncfg-decimal (xs)
   (declare (xargs :guard t))
-  (if (and (consp xs) (<= (len xs) 5))
+  (if (and (consp xs) (<= (len xs) *fn-ncfg-max-decimal-digits*))
       (fn-ncfg-decimal-aux xs 0)
     :bad))
 
@@ -244,7 +267,7 @@ host resolver's intended deployment behavior.
 (defun fn-ncfg-tablep (name)
   (declare (xargs :guard t))
   (member-equal name '("store" "listener" "auth" "posting" "anchor"
-                       "acl2" "log" "control")))
+                       "acl2" "log" "control" "alerts" "ops")))
 
 (defun fn-ncfg-key-allowedp (table key)
   (declare (xargs :guard t))
@@ -258,6 +281,12 @@ host resolver's intended deployment behavior.
         ((equal table "acl2") (member-equal key '("path" "slots")))
         ((equal table "log") (equal key "path"))
         ((equal table "control") (equal key "path"))
+        ((equal table "alerts")
+         (member-equal key '("command" "headroom_min_percent"
+                             "refusal_rate_per_minute" "cooldown_seconds")))
+        ((equal table "ops")
+         (member-equal key '("mission" "unit" "scope" "keep_releases"
+                             "log_max_bytes" "log_keep" "memory_max")))
         (t nil)))
 
 (defun fn-ncfg-memberp (item xs)
@@ -357,11 +386,18 @@ host resolver's intended deployment behavior.
 
 (defun fn-native-config-make (store host port tls-cert tls-key auth-required
                                      auth-protected auth-path posting-enabled
-                                     agent anchor log control acl2-path acl2-slots)
+                                     agent anchor log control acl2-path acl2-slots
+                                     alert-command headroom refusal-rate cooldown
+                                     mission unit scope keep-releases log-max-bytes
+                                     log-keep memory-max)
+  ; The last eleven are the operator's `[alerts]' and `[ops]' rows, read by the
+  ; operator's command through `operator CONFIG show', never by the owner.
   (declare (xargs :guard t))
   (list store host port tls-cert tls-key auth-required auth-protected auth-path
         posting-enabled agent anchor log control acl2-path acl2-slots
-        *fn-ncfg-default-max-connections* *fn-ncfg-default-clock-error-ms*))
+        *fn-ncfg-default-max-connections* *fn-ncfg-default-clock-error-ms*
+        alert-command headroom refusal-rate cooldown
+        mission unit scope keep-releases log-max-bytes log-keep memory-max))
 
 (defun fn-native-config-store (c) (declare (xargs :guard t)) (fn-ncfg-nth 0 c))
 (defun fn-native-config-listener-host (c) (declare (xargs :guard t)) (fn-ncfg-nth 1 c))
@@ -380,6 +416,34 @@ host resolver's intended deployment behavior.
 (defun fn-native-config-acl2-slots (c) (declare (xargs :guard t)) (fn-ncfg-nth 14 c))
 (defun fn-native-config-owner-max-connections (c) (declare (xargs :guard t)) (fn-ncfg-nth 15 c))
 (defun fn-native-config-owner-clock-error-ms (c) (declare (xargs :guard t)) (fn-ncfg-nth 16 c))
+(defun fn-native-config-alerts-command (c) (declare (xargs :guard t)) (fn-ncfg-nth 17 c))
+(defun fn-native-config-alerts-headroom-min-percent (c) (declare (xargs :guard t)) (fn-ncfg-nth 18 c))
+(defun fn-native-config-alerts-refusal-rate-per-minute (c) (declare (xargs :guard t)) (fn-ncfg-nth 19 c))
+(defun fn-native-config-alerts-cooldown-seconds (c) (declare (xargs :guard t)) (fn-ncfg-nth 20 c))
+(defun fn-native-config-ops-mission (c) (declare (xargs :guard t)) (fn-ncfg-nth 21 c))
+(defun fn-native-config-ops-unit (c) (declare (xargs :guard t)) (fn-ncfg-nth 22 c))
+(defun fn-native-config-ops-scope (c) (declare (xargs :guard t)) (fn-ncfg-nth 23 c))
+(defun fn-native-config-ops-keep-releases (c) (declare (xargs :guard t)) (fn-ncfg-nth 24 c))
+(defun fn-native-config-ops-log-max-bytes (c) (declare (xargs :guard t)) (fn-ncfg-nth 25 c))
+(defun fn-native-config-ops-log-keep (c) (declare (xargs :guard t)) (fn-ncfg-nth 26 c))
+(defun fn-native-config-ops-memory-max (c) (declare (xargs :guard t)) (fn-ncfg-nth 27 c))
+
+(defun fn-ncfg-absolutep (path)
+  (declare (xargs :guard t))
+  (and (stringp path) (< 0 (length path)) (equal (char path 0) #\/)))
+
+(defun fn-ncfg-optional-absolutep (path)
+  (declare (xargs :guard t))
+  (or (null path) (fn-ncfg-absolutep path)))
+
+(defun fn-ncfg-optional-memberp (text names)
+  (declare (xargs :guard t))
+  (or (null text) (fn-ncfg-memberp text names)))
+
+(defun fn-ncfg-pairedp (a b)
+  "Both present or both absent (the TLS certificate and key)."
+  (declare (xargs :guard t))
+  (iff a b))
 
 (defun fn-ncfg-under-store (store suffix)
   ; Keep the raw string primitive behind a total ACL2 function.  This is also
@@ -408,17 +472,47 @@ host resolver's intended deployment behavior.
          (control (fn-ncfg-string-value (fn-ncfg-value pairs "control" "path")
                                          (fn-ncfg-under-store store "/control.sock") *fn-ncfg-max-path* nil))
          (acl2-path (fn-ncfg-string-value (fn-ncfg-value pairs "acl2" "path") nil *fn-ncfg-max-path* nil))
-         (acl2-slots (fn-ncfg-nat-value (fn-ncfg-value pairs "acl2" "slots") nil 65535)))
+         (acl2-slots (fn-ncfg-nat-value (fn-ncfg-value pairs "acl2" "slots") nil 65535))
+         (alert-command (fn-ncfg-string-value (fn-ncfg-value pairs "alerts" "command") nil *fn-ncfg-max-path* nil))
+         (headroom (fn-ncfg-nat-value (fn-ncfg-value pairs "alerts" "headroom_min_percent")
+                                      *fn-ncfg-default-headroom-min-percent* 100))
+         (refusal-rate (fn-ncfg-nat-value (fn-ncfg-value pairs "alerts" "refusal_rate_per_minute")
+                                          *fn-ncfg-default-refusal-rate-per-minute* *fn-ncfg-max-u64*))
+         (cooldown (fn-ncfg-nat-value (fn-ncfg-value pairs "alerts" "cooldown_seconds")
+                                      *fn-ncfg-default-cooldown-seconds* *fn-ncfg-max-u64*))
+         (mission (fn-ncfg-string-value (fn-ncfg-value pairs "ops" "mission") nil *fn-ncfg-max-text* nil))
+         (unit (fn-ncfg-string-value (fn-ncfg-value pairs "ops" "unit") nil *fn-ncfg-max-text* nil))
+         (scope (fn-ncfg-string-value (fn-ncfg-value pairs "ops" "scope") *fn-ncfg-default-ops-scope* *fn-ncfg-max-text* nil))
+         (keep-releases (fn-ncfg-nat-value (fn-ncfg-value pairs "ops" "keep_releases")
+                                           *fn-ncfg-default-keep-releases* *fn-ncfg-max-u64*))
+         (log-max-bytes (fn-ncfg-nat-value (fn-ncfg-value pairs "ops" "log_max_bytes")
+                                           *fn-ncfg-default-log-max-bytes* *fn-ncfg-max-u64*))
+         (log-keep (fn-ncfg-nat-value (fn-ncfg-value pairs "ops" "log_keep")
+                                      *fn-ncfg-default-log-keep* *fn-ncfg-max-u64*))
+         (memory-max (fn-ncfg-string-value (fn-ncfg-value pairs "ops" "memory_max") nil *fn-ncfg-max-text* nil)))
     (if (or (equal store :bad) (equal host :bad) (equal port :bad)
             (equal tls-cert :bad) (equal tls-key :bad) (equal required :bad)
             (equal protected :bad) (equal auth-path :bad) (equal enabled :bad)
             (equal agent :bad) (equal anchor :bad) (equal log :bad)
             (equal control :bad) (equal acl2-path :bad) (equal acl2-slots :bad)
             (not (fn-native-config-listener-hostp host))
-            (equal port 0) (not (iff tls-cert tls-key)))
+            (equal port 0) (not (fn-ncfg-pairedp tls-cert tls-key))
+            ; The operator's tables: each row's own relation (PKT-096).
+            (equal alert-command :bad) (equal headroom :bad)
+            (equal refusal-rate :bad) (equal cooldown :bad)
+            (equal mission :bad) (equal unit :bad) (equal scope :bad)
+            (equal keep-releases :bad) (equal log-max-bytes :bad)
+            (equal log-keep :bad) (equal memory-max :bad)
+            (not (fn-ncfg-optional-absolutep alert-command))
+            (not (fn-ncfg-optional-memberp mission *fn-ncfg-mission-names*))
+            (not (fn-ncfg-memberp scope *fn-ncfg-ops-scopes*))
+            (equal keep-releases 0) (equal log-max-bytes 0))
         :bad
       (fn-native-config-make store host port tls-cert tls-key required protected
-                             auth-path enabled agent anchor log control acl2-path acl2-slots))))
+                             auth-path enabled agent anchor log control acl2-path acl2-slots
+                             alert-command headroom refusal-rate cooldown
+                             mission unit scope keep-releases log-max-bytes
+                             log-keep memory-max))))
 
 (defthm fn-native-config-listener-address-of-admitted-host
   (implies (fn-native-config-listener-hostp host)
