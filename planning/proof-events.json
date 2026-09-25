@@ -4315,6 +4315,51 @@
           "name": "fn-ks-recover-after-an-acting-acceptance-changes-nothing"
         }
       ]
+    },
+    {
+      "id": "PRF-097",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-accept-step-enrols-only-a-bound-invitation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-issue-plan-records-the-signed-invitation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-consumes-only-a-pending-named-invitation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-step-enrols-only-the-consuming-acceptance"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-consumed-stays-consumed-across-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-consumed-refuses-consumption"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-consumption-consumes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-after-its-consumption-enrols"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-confirm-step-never-enrols-twice"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-field-is-a-body-line"
+        }
+      ]
     }
   ]
 }

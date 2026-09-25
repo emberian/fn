@@ -369,7 +369,7 @@
 
 (defun fn-cfg-value-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 8)))
+  (and (true-listp x) (equal (len x) 9)))
 
 (defun fn-cfg-groups (v)
   (declare (xargs :guard t))
@@ -410,60 +410,83 @@
                                                   (fn-cfg-ag-cdr
                                                    (fn-cfg-ag-cdr v)))))))))
 
-(defun fn-cfg-value-make (groups capacity quotas policies listeners peers
-                                 limits authorities)
+; The ninth slot (PRF-097, peering invitations): one row per invitation this
+; node issued, keyed on its nonce, written only by :issue-invitation and
+; :consume-invitation (specs/peering.md section 9).  A pending row is
+; (NONCE-HEX INVITER-PRINCIPAL-HEX INVITATION-SOURCE-ID-HEX 0); a consumed row
+; is (NONCE-HEX ACCEPTOR-PRINCIPAL-HEX ACCEPTANCE-SOURCE-ID-HEX 1).  A row is
+; never removed, so a nonce is issued once and consumed at most once.
+(defun fn-cfg-invitations (v)
   (declare (xargs :guard t))
-  (list groups capacity quotas policies listeners peers limits authorities))
+  (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr
+                                                (fn-cfg-ag-cdr
+                                                 (fn-cfg-ag-cdr
+                                                  (fn-cfg-ag-cdr
+                                                   (fn-cfg-ag-cdr
+                                                    (fn-cfg-ag-cdr v))))))))))
+
+(defun fn-cfg-value-make (groups capacity quotas policies listeners peers
+                                 limits authorities invitations)
+  (declare (xargs :guard t))
+  (list groups capacity quotas policies listeners peers limits authorities
+        invitations))
 
 (defthm fn-cfg-value-shapep-of-value-make
   (fn-cfg-value-shapep
-   (fn-cfg-value-make groups capacity quotas policies listeners peers limits authorities)))
+   (fn-cfg-value-make groups capacity quotas policies listeners peers limits authorities
+                      invitations)))
 (defthm fn-cfg-groups-of-value-make
   (equal (fn-cfg-groups
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities))
+                             limits authorities invitations))
          groups))
 (defthm fn-cfg-capacity-of-value-make
   (equal (fn-cfg-capacity
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities))
+                             limits authorities invitations))
          capacity))
 (defthm fn-cfg-quotas-of-value-make
   (equal (fn-cfg-quotas
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities))
+                             limits authorities invitations))
          quotas))
 (defthm fn-cfg-policies-of-value-make
   (equal (fn-cfg-policies
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities))
+                             limits authorities invitations))
          policies))
 (defthm fn-cfg-listeners-of-value-make
   (equal (fn-cfg-listeners
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities))
+                             limits authorities invitations))
          listeners))
 (defthm fn-cfg-peers-of-value-make
   (equal (fn-cfg-peers
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities))
+                             limits authorities invitations))
          peers))
 (defthm fn-cfg-limits-of-value-make
   (equal (fn-cfg-limits
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities))
+                             limits authorities invitations))
          limits))
 (defthm fn-cfg-authorities-of-value-make
   (equal (fn-cfg-authorities
           (fn-cfg-value-make groups capacity quotas policies listeners peers
-                             limits authorities))
+                             limits authorities invitations))
          authorities))
+(defthm fn-cfg-invitations-of-value-make
+  (equal (fn-cfg-invitations
+          (fn-cfg-value-make groups capacity quotas policies listeners peers
+                             limits authorities invitations))
+         invitations))
 
 (in-theory (disable (:d fn-cfg-value-shapep) (:d fn-cfg-value-make)
                     (:d fn-cfg-groups) (:d fn-cfg-capacity)
                     (:d fn-cfg-quotas) (:d fn-cfg-policies)
                     (:d fn-cfg-listeners) (:d fn-cfg-peers)
-                    (:d fn-cfg-limits) (:d fn-cfg-authorities)))
+                    (:d fn-cfg-limits) (:d fn-cfg-authorities)
+                    (:d fn-cfg-invitations)))
 
 (defun fn-cfg-member-namep (name names)
   (declare (xargs :guard t))
@@ -506,12 +529,13 @@
        (fn-cfg-row-listp (fn-cfg-peers v))
        (fn-cfg-row-listp (fn-cfg-limits v))
        (fn-cfg-limits-withinp (fn-cfg-limits v))
-       (fn-cfg-row-listp (fn-cfg-authorities v))))
+       (fn-cfg-row-listp (fn-cfg-authorities v))
+       (fn-cfg-row-listp (fn-cfg-invitations v))))
 
 (defun fn-cfg-empty-value ()
   ; The fail-closed floor: no groups and zero capacity accepts nothing.
   (declare (xargs :guard t))
-  (fn-cfg-value-make nil 0 nil nil nil nil nil nil))
+  (fn-cfg-value-make nil 0 nil nil nil nil nil nil nil))
 
 (defun fn-cfg-limit (v slot)
   (declare (xargs :guard t))
@@ -619,7 +643,7 @@
 (defconst *fn-cfg-delta-kinds*
   '(:create-group :remove-group :set-capacity :set-quota :set-policy
     :set-listeners :set-peers :set-limit :set-peer :remove-peer
-    :grant-control :revoke-control))
+    :grant-control :revoke-control :issue-invitation :consume-invitation))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -635,6 +659,8 @@
         ((equal kind :remove-peer) 10)
         ((equal kind :grant-control) 11)
         ((equal kind :revoke-control) 12)
+        ((equal kind :issue-invitation) 13)
+        ((equal kind :consume-invitation) 14)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -651,6 +677,8 @@
         ((equal code 10) :remove-peer)
         ((equal code 11) :grant-control)
         ((equal code 12) :revoke-control)
+        ((equal code 13) :issue-invitation)
+        ((equal code 14) :consume-invitation)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -784,6 +812,63 @@
   (declare (xargs :guard t))
   (fn-cfg-delta-make :revoke-control namespace principal 0 nil))
 
+;; Peering invitations (PRF-097; specs/peering.md section 9).  The ninth
+;; slot's rows are written only by these two kinds, and never removed:
+;;
+;;   (:issue-invitation NONCE INVITER 0 ((NONCE INVITER SID 0)))       code 13
+;;   (:consume-invitation NONCE ACCEPTOR 0 ((NONCE ACCEPTOR ASID 1)))  code 14
+;;
+;; NONCE is 32 lowercase hexadecimal characters (16 octets), a principal is
+;; 64, a source identity 96 (the 48-octet ACL2 authored-source identity,
+;; `fn-hsig-authored-source-id').  The plans that build these deltas from
+;; signed documents are books/peer-invite.lisp's.
+(defun fn-cfg-hex-textp (text n)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (equal (len (fn-record-string-octets text)) n)
+       (fn-cfg-hex-digit-octetsp (fn-record-string-octets text))))
+
+(defun fn-cfg-invitation-noncep (text)
+  (declare (xargs :guard t))
+  (fn-cfg-hex-textp text 32))
+
+(defun fn-cfg-source-id-hexp (text)
+  (declare (xargs :guard t))
+  (fn-cfg-hex-textp text 96))
+
+(defun fn-cfg-issue-invitation (nonce inviter sid)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :issue-invitation nonce inviter 0
+                     (list (fn-cfg-row-make nonce inviter sid 0))))
+
+(defun fn-cfg-consume-invitation (nonce acceptor asid)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :consume-invitation nonce acceptor 0
+                     (list (fn-cfg-row-make nonce acceptor asid 1))))
+
+; The row an invitation's nonce keys, or nil.
+(defun fn-cfg-invitation-row (rows nonce)
+  (declare (xargs :guard t))
+  (fn-cfg-ag-car (fn-cfg-rows-with-key rows nonce)))
+
+(defun fn-cfg-invitation-pendingp (rows nonce)
+  (declare (xargs :guard t))
+  (let ((row (fn-cfg-invitation-row rows nonce)))
+    (and (consp row) (equal (fn-cfg-row-n row) 0))))
+
+; The one row an invitation delta carries has the delta's key pair and the
+; state its kind names; its third field is a source identity.
+(defun fn-cfg-invitation-delta-rowp (d mark)
+  (declare (xargs :guard t))
+  (let ((rows (fn-cfg-delta-rows d)))
+    (and (consp rows)
+         (null (fn-cfg-ag-cdr rows))
+         (equal (fn-cfg-ag-car rows)
+                (fn-cfg-row-make (fn-cfg-delta-a d) (fn-cfg-delta-b d)
+                                 (fn-cfg-row-c (fn-cfg-ag-car rows)) mark))
+         (fn-cfg-source-id-hexp (fn-cfg-row-c (fn-cfg-ag-car rows))))))
+
 ; -----------------------------------------------------------------------------
 ; Applying a delta.  Total, and never a deletion.
 
@@ -816,7 +901,8 @@
   (fn-cfg-value-make es (fn-cfg-capacity v) (fn-cfg-quotas v)
                      (fn-cfg-policies v) (fn-cfg-listeners v)
                      (fn-cfg-peers v) (fn-cfg-limits v)
-                     (fn-cfg-authorities v)))
+                     (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)))
 
 (defun fn-cfg-apply-delta (v gen stamp d)
   (declare (xargs :guard t))
@@ -835,51 +921,59 @@
       (fn-cfg-value-make (fn-cfg-groups v) n (fn-cfg-quotas v)
                          (fn-cfg-policies v) (fn-cfg-listeners v)
                          (fn-cfg-peers v) (fn-cfg-limits v)
-                     (fn-cfg-authorities v)))
+                     (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)))
      ((equal kind :set-quota)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-row-upsert (fn-cfg-quotas v)
                                             (fn-cfg-row-make a b "" n))
                          (fn-cfg-policies v) (fn-cfg-listeners v)
                          (fn-cfg-peers v) (fn-cfg-limits v)
-                     (fn-cfg-authorities v)))
+                     (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)))
      ((equal kind :set-policy)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v)
                          (fn-cfg-row-replace-key (fn-cfg-policies v)
                                                  (fn-cfg-row-make a b "" 0))
                          (fn-cfg-listeners v) (fn-cfg-peers v)
-                         (fn-cfg-limits v) (fn-cfg-authorities v)))
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)))
      ((equal kind :set-listeners)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v) rows
                          (fn-cfg-peers v) (fn-cfg-limits v)
-                     (fn-cfg-authorities v)))
+                     (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)))
      ((equal kind :set-peers)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) rows (fn-cfg-limits v)
-                         (fn-cfg-authorities v)))
+                         (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)))
      ((equal kind :set-limit)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-row-upsert (fn-cfg-limits v)
                                             (fn-cfg-row-make a "" "" n))
-                         (fn-cfg-authorities v)))
+                         (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)))
      ((equal kind :set-peer)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
                                  rows)
-                         (fn-cfg-limits v) (fn-cfg-authorities v)))
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)))
      ((equal kind :remove-peer)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (fn-cfg-rows-without-key (fn-cfg-peers v) a)
-                         (fn-cfg-limits v) (fn-cfg-authorities v)))
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)))
      ((equal kind :grant-control)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
@@ -887,14 +981,24 @@
                          (fn-cfg-limits v)
                          (fn-cfg-row-upsert (fn-cfg-authorities v)
                                             (fn-cfg-row-make
-                                             a b (fn-cfg-grant-verb rows) 0))))
+                                             a b (fn-cfg-grant-verb rows) 0))
+                         (fn-cfg-invitations v)))
      ((equal kind :revoke-control)
       (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-limits v)
                          (fn-cfg-rows-without-pair (fn-cfg-authorities v)
-                                                   a b)))
+                                                   a b)
+                         (fn-cfg-invitations v)))
+     ((or (equal kind :issue-invitation) (equal kind :consume-invitation))
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (append (fn-cfg-rows-without-key
+                                  (fn-cfg-invitations v) a)
+                                 rows)))
      (t v))))
 
 (defun fn-cfg-apply (v gen stamp deltas)
@@ -978,6 +1082,22 @@
       (if (fn-cfg-rows-have-pair (fn-cfg-authorities v) a (fn-cfg-delta-b d))
           nil
         :no-such-grant))
+     ; An invitation is issued once: its nonce keys no row yet.  It is
+     ; consumed only while pending, so at most once (PRF-097).
+     ((equal kind :issue-invitation)
+      (cond ((not (fn-cfg-invitation-noncep a)) :invitation-nonce)
+            ((not (fn-cfg-principal-hexp (fn-cfg-delta-b d))) :principal)
+            ((not (fn-cfg-invitation-delta-rowp d 0)) :invitation-row)
+            ((consp (fn-cfg-rows-with-key (fn-cfg-invitations v) a))
+             :invitation-nonce-reused)
+            (t nil)))
+     ((equal kind :consume-invitation)
+      (cond ((not (fn-cfg-invitation-noncep a)) :invitation-nonce)
+            ((not (fn-cfg-principal-hexp (fn-cfg-delta-b d))) :principal)
+            ((not (fn-cfg-invitation-delta-rowp d 1)) :invitation-row)
+            ((not (fn-cfg-invitation-pendingp (fn-cfg-invitations v) a))
+             :invitation-not-pending)
+            (t nil)))
      (t nil))))
 
 (defun fn-cfg-admissible-reason (v gen stamp reserved ceiling deltas)
@@ -1538,6 +1658,10 @@
     (:d fn-cfg-namespace-patternp) (:d fn-cfg-grant-verb)
     (:d fn-cfg-rows-have-pair) (:d fn-cfg-rows-without-pair)
     (:d fn-cfg-grant-control) (:d fn-cfg-revoke-control)
+    (:d fn-cfg-hex-textp) (:d fn-cfg-invitation-noncep)
+    (:d fn-cfg-source-id-hexp) (:d fn-cfg-issue-invitation)
+    (:d fn-cfg-consume-invitation) (:d fn-cfg-invitation-row)
+    (:d fn-cfg-invitation-pendingp) (:d fn-cfg-invitation-delta-rowp)
     (:d fn-cfg-groups-retire) (:d fn-cfg-set-groups) (:d fn-cfg-apply-delta)
     (:d fn-cfg-apply) (:d fn-cfg-name-line-octets) (:d fn-cfg-delta-reason)
     (:d fn-cfg-admissible-reason) (:d fn-cfg-admissiblep)
