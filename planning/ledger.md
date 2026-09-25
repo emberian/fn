@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 841 |
-| Certification roots in the Makefile | 825 |
-| Books inside the root closure | 837 |
-| `defthm` and `defthmd` events | 11456 |
-| `defun` events | 8067 |
+| Books read | 843 |
+| Certification roots in the Makefile | 827 |
+| Books inside the root closure | 839 |
+| `defthm` and `defthmd` events | 11464 |
+| `defun` events | 8075 |
 | Functions with verified guards | 2157 |
 | Functions declared `:verify-guards nil` and never verified | 602 |
-| Functions left at the default with an explicit guard | 4140 |
-| Functions left at the default with no guard | 1168 |
-| `assert-event` checks | 12244 |
-| `must-fail` checks | 1224 |
+| Functions left at the default with an explicit guard | 4147 |
+| Functions left at the default with no guard | 1169 |
+| `assert-event` checks | 12275 |
+| `must-fail` checks | 1229 |
 | `encapsulate` events | 51 |
 | Theorems flagged SUSPECT by shape | 101 |
 | Export-hygiene warnings | 139 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 94 |
-| Include-hygiene warnings | 846 |
-| Host-names warnings | 902 |
+| Teeth-form warnings | 95 |
+| Include-hygiene warnings | 848 |
+| Host-names warnings | 908 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -374,10 +374,10 @@ that `make certify` requests.
 | `books/msgid-index.lisp` | root | 22 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/native-admin-peer.lisp` | root | 33 | 46 | 0/0/46/0 | 0 | 0 | 1 |
 | `books/native-admin-shape.lisp` | root | 5 | 16 | 1/0/15/0 | 0 | 0 | 0 |
-| `books/native-admin.lisp` | root | 19 | 29 | 0/0/29/0 | 0 | 0 | 0 |
+| `books/native-admin.lisp` | root | 20 | 29 | 0/0/29/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 7 | 52 | 0/0/52/0 | 0 | 0 | 0 |
-| `books/native-auth-profile.lisp` | root | 3 | 21 | 0/0/21/0 | 0 | 0 | 0 |
-| `books/native-config-observation.lisp` | root | 5 | 17 | 3/0/14/0 | 0 | 0 | 0 |
+| `books/native-auth-profile.lisp` | root | 7 | 23 | 0/0/23/0 | 0 | 0 | 0 |
+| `books/native-config-observation.lisp` | root | 6 | 17 | 3/0/14/0 | 0 | 0 | 0 |
 | `books/native-config.lisp` | root | 2 | 65 | 0/0/65/0 | 0 | 0 | 0 |
 | `books/native-control.lisp` | root | 14 | 25 | 0/0/25/0 | 0 | 0 | 0 |
 | `books/native-hybrid-control.lisp` | root | 1 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -523,6 +523,7 @@ that `make certify` requests.
 | `books/store-open-bridge.lisp` | root | 26 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/store-open-node-bridge.lisp` | root | 21 | 4 | 0/0/2/2 | 0 | 0 | 0 |
 | `books/store-prepare-correspondence.lisp` | root | 19 | 4 | 2/0/0/2 | 0 | 0 | 0 |
+| `books/store-profile-namespace.lisp` | root | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/store-profile-upgrade.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 0 |
 | `books/store-reclaim.lisp` | root | 38 | 39 | 1/5/33/0 | 0 | 0 | 0 |
 | `books/store-retention-codec-invariants.lisp` | root | 21 | 1 | 0/1/0/0 | 0 | 0 | 0 |
@@ -777,12 +778,12 @@ that `make certify` requests.
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/msgid-index-concrete-tests.lisp` | root | 4 | 1 | 0/0/0/1 | 15 | 1 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 5 | 0 |
-| `tests/acl2/native-admin-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 182 | 13 | 0 |
+| `tests/acl2/native-admin-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 186 | 14 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
-| `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 61 | 2 | 0 |
-| `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
-| `tests/acl2/native-auth-profile-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |
-| `tests/acl2/native-config-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
+| `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 64 | 2 | 0 |
+| `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
+| `tests/acl2/native-auth-profile-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 27 | 1 | 0 |
+| `tests/acl2/native-config-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 1 | 0 |
 | `tests/acl2/native-config-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 57 | 0 | 0 |
 | `tests/acl2/native-control-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 69 | 0 | 0 |
@@ -890,6 +891,7 @@ that `make certify` requests.
 | `tests/acl2/store-open-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 7 | 2 | 0 |
 | `tests/acl2/store-open-node-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 7 | 6 | 0 |
 | `tests/acl2/store-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
+| `tests/acl2/store-profile-namespace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 2 | 0 |
 | `tests/acl2/store-profile-upgrade-tests.lisp` | root | 0 | 2 | 0/0/1/1 | 65 | 16 | 0 |
 | `tests/acl2/store-reclaim-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 41 | 11 | 0 |
 | `tests/acl2/store-retention-codec-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
