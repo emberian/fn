@@ -1467,10 +1467,7 @@
         "fn-frame-protected-plus-trailer-is-seal",
         "fn-frame-decode-of-host-framing",
         "fn-frame-store-protected-plus-trailer-is-seal",
-        "fn-frame-store-decode-of-host-framing",
-        "fn-sha256-stobj-is-sha256",
-        "fn-sha256-stobj-is-sha256-of-octets",
-        "fn-sha256-of-string-is-sha256-of-octets"
+        "fn-frame-store-decode-of-host-framing"
       ],
       "evidence": [
         "books/frame-trailer.lisp",

@@ -781,25 +781,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 790,
-    "books_in_root_closure": 788,
+    "books": 792,
+    "books_in_root_closure": 789,
     "roots": 777,
-    "theorems": 10510,
-    "functions": 7419,
-    "assert_events": 11525,
-    "must_fails": 1055,
+    "theorems": 10669,
+    "functions": 7459,
+    "assert_events": 11551,
+    "must_fails": 1056,
     "encapsulates": 43,
     "guards": {
       "verified": 2095,
       "declared-off": 551,
-      "default-guarded": 3708,
-      "default-unguarded": 1065
+      "default-guarded": 3734,
+      "default-unguarded": 1079
     },
-    "suspect_theorems": 93,
-    "export_hygiene_warnings": 133,
+    "suspect_theorems": 94,
+    "export_hygiene_warnings": 134,
     "enabled_projection_warnings": 42,
-    "teeth_form_warnings": 85,
-    "include_hygiene_warnings": 784,
+    "teeth_form_warnings": 86,
+    "include_hygiene_warnings": 785,
     "host_names_warnings": 869,
     "hand_written_record_warnings": 18
   },
@@ -6561,7 +6561,7 @@
       "book": "books/crypto-attach.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
+      "theorems": 9,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -6578,7 +6578,8 @@
       "includes": [
         "crypto-seam",
         "frame-octets",
-        "sha256"
+        "sha256",
+        "sha256-stobj"
       ],
       "system_includes": [],
       "suspects": [],
@@ -10863,6 +10864,36 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/sha256-stobj.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 153,
+      "functions": 40,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 26,
+        "default-unguarded": 14
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "sha256"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [
+        "fn-shs-revx-of-atom"
+      ],
       "read_error": null
     },
     {
@@ -20287,6 +20318,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/sha256-stobj-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 26,
+      "must_fails": 1,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/records-shape",
+        "../../books/sha256-stobj",
+        "sha256-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/sha256-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -22641,6 +22701,14 @@
       ]
     },
     {
+      "theorem": "fn-shs-revx-of-atom",
+      "book": "books/sha256-stobj.lisp",
+      "line": 1038,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-sha256-revx and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-sn-article-record-without-a-usable-clock-is-refused",
       "book": "books/store-node.lisp",
       "line": 1024,
@@ -23331,6 +23399,12 @@
         "theorem": "fn-served-conn-index-of-fn-served-make-conn",
         "book": "books/served.lisp",
         "line": 274,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-sha256-stobj-is-sha256",
+        "book": "books/sha256-stobj.lisp",
+        "line": 1846,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -24508,6 +24582,12 @@
         "check": "rst-trailing-dot-without-hypothesis",
         "book": "tests/acl2/records-shape-tests.lisp",
         "line": 180,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "shs-t-string-without-stringp",
+        "book": "tests/acl2/sha256-stobj-tests.lisp",
+        "line": 137,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -29479,6 +29559,13 @@
         "line": 5,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/sha256-stobj-tests.lisp",
+        "line": 18,
+        "include": "sha256-tests",
+        "included": "tests/acl2/sha256-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -34651,14 +34738,14 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 820,
+        "line": 758,
         "name": "minusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2020,
+        "line": 1959,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
