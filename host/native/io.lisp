@@ -2051,6 +2051,10 @@ write nothing."
     :record-created :record-written :record-staged-durable
     :record-linked :record-attempted :record-durable :record-completing
     :record-stage-unlinked :record-staging-cleaned
+    ;; fnn-mark-committed: fn-bs-marker-program (books/byte-store-marker-program),
+    ;; whose names are fn-hm-marker-cut-names.
+    :marker-created :marker-written :marker-staged-durable
+    :marker-replaced :marker-durable
     :finish-consumed :finish-durable))
 
 (defun fnn-post-test-fault ()

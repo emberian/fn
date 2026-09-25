@@ -29,6 +29,9 @@ EXPECTED_ARMS = {
     "record-attempted": "uncertain", "record-durable": "uncertain",
     "record-completing": "uncertain", "record-stage-unlinked": "swallowed",
     "record-staging-cleaned": "uncertain",
+    "marker-created": "uncertain", "marker-written": "uncertain",
+    "marker-staged-durable": "uncertain", "marker-replaced": "uncertain",
+    "marker-durable": "uncertain",
     "finish-consumed": "consumed", "finish-durable": "consumed",
 }
 

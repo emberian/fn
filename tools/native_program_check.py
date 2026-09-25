@@ -74,6 +74,7 @@ PROGRAM_HOSTS = {
     "fn-bs-finish-program": "fnn-finish",
     "fn-bs-recover-program": "fnn-recover",
     "fn-bs-recover-stage-cleanup-program": "fnn-sweep-staging",
+    "fn-bs-marker-program": "fnn-mark-committed",
 }
 
 # Opaque ACL2 calls: the check trusts that the callee performs the named
@@ -819,10 +820,18 @@ def read(rel):
     return (ROOT / rel).read_text()
 
 
+def model_books_text() -> str:
+    """BOOK, then every other book a cut of the table names (NativeCut.book:
+    books/byte-store-marker-program.lisp for the committed-history marker),
+    read as one text: definitions and constants are found by name."""
+    books = [BOOK] + sorted({"books/" + c.book for c in ALL_CUTS} - {BOOK})
+    return "\n".join(read(b) for b in books)
+
+
 def check(host_text: str | None = None, book_text: str | None = None,
           node_text: str | None = None, traces_text: str | None = None) -> Report:
     host = host_text if host_text is not None else read(HOST)
-    model = Model(book_text if book_text is not None else read(BOOK),
+    model = Model(book_text if book_text is not None else model_books_text(),
                   node_text if node_text is not None else read(NODE),
                   traces_text if traces_text is not None else read(TRACES))
     declared = declared_model_cuts(host)
