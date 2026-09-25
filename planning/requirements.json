@@ -2183,7 +2183,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-086"
+        "PRF-086",
+        "PRF-123"
       ],
       "verification": [
         "proof",
@@ -2198,9 +2199,11 @@
         "tests/acl2/records-schema-v1-teeth-tests.lisp",
         "books/byte-store-profile-v1.lisp",
         "tests/acl2/byte-store-profile-v1-tests.lisp",
-        "planning/evidence/bounds-p6-2026-09-25.md"
+        "planning/evidence/bounds-p6-2026-09-25.md",
+        "books/record-width-producers.lisp",
+        "tests/acl2/record-width-producers-tests.lisp"
       ],
-      "implementation_note": "The CBOR profile gains an additive wide uint (RFC 8949 eight-octet argument, canonical only above 2^32 - 1); every narrow encoding and every narrow acceptance is unchanged (fn-cbor-encode-uint-wide-is-narrow, fn-cbor-decode-prechecked-wide-extends-narrow). *fn-cbor-max-uint* keeps 2^32 - 1: its other uses are u32 fields. The record decoder refuses a header whose schema octet is not the record's (fn-record-schema-octet). Open: the frontier file and the profile's T field still cap transaction IDs at 2^32 - 1 (byte-store-frame, shared with packet P5); segmented articles (design 2.4 item 3) are not implemented. A profile's R is checked against the record ceiling at the widths the runtime produces (u32 heads, 1 083 octets), so a format-8 profile saved before P6 is admitted unchanged (fn-bs-profile-v1-valid-stays-valid); a schema-2 record is at most 28 octets past it and is refused at the publish gate."
+      "implementation_note": "The CBOR profile gains an additive wide uint (RFC 8949 eight-octet argument, canonical only above 2^32 - 1); every narrow encoding and every narrow acceptance is unchanged (fn-cbor-encode-uint-wide-is-narrow, fn-cbor-decode-prechecked-wide-extends-narrow). *fn-cbor-max-uint* keeps 2^32 - 1: its other uses are u32 fields. The record decoder refuses a header whose schema octet is not the record's (fn-record-schema-octet). Open: the frontier file and the profile's T field still cap transaction IDs at 2^32 - 1 (byte-store-frame, shared with packet P5); segmented articles (design 2.4 item 3) are not implemented. A profile's R is checked against the record ceiling at the widths the runtime produces (u32 heads, 1 083 octets), so a format-8 profile saved before P6 is admitted unchanged (fn-bs-profile-v1-valid-stays-valid); a schema-2 record is at most 28 octets past it and is refused at the publish gate. The producers are proved within u32 (PRF-123): the allocator bounds sequence, txid and generation, the observation bounds the stamp (below 2^32, else :clock-unusable), the POST boundary and the BP policy bound the charge; so the node writes schema-1 records, and u64 is the codec's and the translation's width, not yet a producible one. Next migrations: frontier-3 (T above 2^32 - 1), a stamp past 2106, a charge above 2^32 - 1."
     },
     {
       "id": "STO-016",

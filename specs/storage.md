@@ -82,6 +82,19 @@ record is at most 28 octets past that ceiling and the publish gate refuses
 it. The frontier and the profile's T field still cap transaction IDs at
 2^32 - 1. The widths are a stronger fn guarantee; no RFC requires them.
 
+The node's producers stay inside the u32 widths, so every record it stages
+is schema 1 and within R (`fn-sn-prepare-stages-a-narrow-article-record`,
+`fn-post-admitted-article-record-is-within-r`, PRF-123): the allocator
+stages only the reserved transaction ID (frontier - 1, the frontier u32),
+with generation equal to it and sequence the committed count; the stamp is
+seconds below 2^32 or the article is refused `:clock-unusable`; the POST
+boundary refuses a charge above 2^32 - 1 (`:charge-bound`) and a BP policy
+cannot name one. The prepare itself does not refuse a wide charge, so the
+bound is the boundary's. u64 is therefore the width the codec and the
+translation carry, not one the node produces: a transaction ID past
+2^32 - 1 needs a wider frontier file (frontier-3), a stamp past 2106 and a
+charge past 2^32 - 1 need their producers widened first.
+
 STO-002: acceptance publishes one transaction containing the source references,
 duplicate-history effects, all local group allocations, and any obligations or
 reservations accepted in that operation. No partially committed cross-post or

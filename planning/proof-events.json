@@ -4604,6 +4604,39 @@
           "name": "fn-bpfs-views-of-cut"
         }
       ]
+    },
+    {
+      "id": "PRF-123",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-prepare-stages-a-narrow-article-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-admitted-article-record-is-within-r"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpi-staged-record-is-narrow"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-prepare-stages-u32-coordinates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-prepare-record-stages-u32-coordinates"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-article-record-stamp-and-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-post-boundary-admits-a-u32-charge"
+        }
+      ]
     }
   ]
 }
