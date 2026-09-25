@@ -72,7 +72,9 @@
 ; landing the link keeps the relation, dropping it does not, so the arm is
 ; restricted to :ok or a quiet directory.
 (defun bskv-dir-eio (bs choice)
-  (mv-nth 1 (fn-bs-fsync-dir bs :transactions (list :eio choice))))
+  (mv-let (r bs1) (fn-bs-fsync-dir bs :transactions (list :eio choice))
+    (declare (ignore r))
+    bs1))
 (assert-event (not (fn-bs-k0-step-inputp (bskv-link) (bskv-k (bskv-link) 0)
                                          '(:fsync-dir :transactions) '(:eio :drop))))
 (assert-event (fn-bs-store-relation (bskv-dir-eio (bskv-link) :apply) (bskv-k (bskv-link) 0)))
@@ -119,7 +121,9 @@
 (defun bskv-unfenced ()
   (let* ((bs (bskv-admin))
          (ino (fn-bs-durable-entry bs :root *fn-bs-config-name*)))
-    (mv-nth 1 (fn-bs-write bs ino 0 (fn-bs-durable-content bs ino) :ok))))
+    (mv-let (r bs1) (fn-bs-write bs ino 0 (fn-bs-durable-content bs ino) :ok)
+      (declare (ignore r))
+      bs1)))
 (assert-event (equal (fn-bs-scan-store (bskv-unfenced)) (fn-bs-scan-store (bskv-admin))))
 (assert-event (fn-bs-k0w-authority-quietp (bskv-unfenced)))
 (assert-event (fn-sn-open-okp (bskv-open *bskv-configs* (bskv-unfenced))))
