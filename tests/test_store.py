@@ -174,7 +174,7 @@ class StoreTests(unittest.TestCase):
         gap = subprocess.run([sys.executable, "tools/run_store.py", "--store", str(other), "recover"],
                              cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
         self.assertEqual(gap.returncode, run_store.EXIT_FAULT)
-        self.assertIn(b"sequence gap", gap.stderr)
+        self.assertIn(b"transaction namespace", gap.stderr)
 
     def test_checksum_unknown_schema_and_final_symlink_fault(self):
         self.post("<flip@example.invalid>", b"flip")

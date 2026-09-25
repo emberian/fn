@@ -31,56 +31,12 @@ from tools import frame_bridge  # noqa: E402
 
 PROMPT = b"ACL2 !>"
 MAX_ACL2_OUTPUT = 4 * 1024 * 1024
-MAX_TRANSACTION_COUNT = 128
-STORE_EVENT_RECORD_BYTES = 196608
-MAX_RECOVERY_RECORD_BYTES = MAX_TRANSACTION_COUNT * STORE_EVENT_RECORD_BYTES
-DEFAULT_CONFIG = {
-    # Format 5 is the first written under the v1 content identity profile of
-    # `books/identity`; a store holding pre-v1 `"sha256:"`/`"archive:"`
-    # identities is format 4 and is refused at open rather than misread.
-    # Format 3 was the first written under the ACL2-owned frame grammar, which
-    # carries the record kind octet the Python framing lacked.  The group
-    # table is not here at all: it is the store's configuration record
-    # history under `config/`, replayed by the core at every open.
-    # The encoded-record bound left with it: `books/frame` owns
-    # `*fn-frame-max-store-payload*`, the host reads it from the bridge, and a
-    # configuration that could disagree with the model is not written at all.
-    "format": "fn-store-experiment-7",
-    "capacity": 1048576,
-    "max_payload_bytes": 32768,
-    "max_recovery_record_bytes": MAX_RECOVERY_RECORD_BYTES,
-    "max_transactions": MAX_TRANSACTION_COUNT,
-    "allocation_frontier_format": "fn-store-allocation-frontier-2",
-}
-# A second named profile, not a raised default.  `max_transactions` and the
-# aggregate replay input it derives are the two bounds this host owns; every
-# bound the model owns (`*fn-frame-max-store-payload*`, `*fn-article-max-octets*`,
-# the configured group table, `fn-af-message-idp`, `fn-charge-for-payload`) is
-# unchanged here and cannot be raised from configuration at all.  The FNSM
-# frame carries all profile values, so a dev store and a scale store are
-# distinguishable on disk and neither is read under the other's bounds.
-# `planning/scale-profile.md` holds the measurements that
-# justify the number and the reopen cost it implies.
-SCALE_TRANSACTION_COUNT = 4096
-SCALE_CONFIG = dict(
-    DEFAULT_CONFIG,
-    max_transactions=SCALE_TRANSACTION_COUNT,
-    max_recovery_record_bytes=SCALE_TRANSACTION_COUNT * STORE_EVENT_RECORD_BYTES,
-)
-LEGACY_DEFAULT_CONFIG = dict(
-    DEFAULT_CONFIG,
-    format="fn-store-experiment-6",
-    max_recovery_record_bytes=MAX_TRANSACTION_COUNT * 65538,
-)
-LEGACY_SCALE_CONFIG = dict(
-    LEGACY_DEFAULT_CONFIG,
-    max_transactions=SCALE_TRANSACTION_COUNT,
-    max_recovery_record_bytes=SCALE_TRANSACTION_COUNT * 65538,
-)
-# The development profile is the ACL2 frame's fixed development record.
-SUPPORTED_PROFILES = (
-    LEGACY_DEFAULT_CONFIG, LEGACY_SCALE_CONFIG, DEFAULT_CONFIG, SCALE_CONFIG,
-)
+# Every profile value (format, capacity, payload bound, aggregate replay
+# bound, transaction bound, frontier format) is ACL2's: `fn-bs-config-for-profile`
+# names the two profiles, the FNSM frame carries them, and an open store's
+# `Store.config` is `fn-bs-config-decode`'s reading of its own frame.
+# `profile_config` asks ACL2 for a named profile's values; this module keeps
+# no copy of any of them.
 # The CLI's default `init --group` list: the two experimental groups every
 # existing test posts into.  A default argument for an operator command, not
 # a group table; the table a store serves is decided by the configuration
@@ -97,7 +53,6 @@ MAGIC = b"FNST\x01\x01"
 # not a second grammar; ACL2 refuses anything it does not recognize.
 ANCHOR_RECORD_BYTES = 1024 + 42
 TRAILER_BYTES = 32
-SEQ_NAME = re.compile(r"^[0-9]{20}\.txn$")
 MAX_STAGING_REPORT = 64
 
 # Distinct CLI outcomes.  Uncertain, refused and accepted never share a code;
@@ -538,14 +493,9 @@ class Acl2Store:
             raise StoreError("transaction sequence is not a natural")
         octets = acl2_octets(self.call("(fn-store-txn-name-octets {})".format(sequence)))
         try:
-            name = octets.decode("ascii")
-        except UnicodeDecodeError as error:  # pragma: no cover - ACL2 theorem excludes it
-            raise StoreError("ACL2 returned a non-ASCII transaction name") from error
-        # The durable allocator is separately bounded below 10^20.  This is a
-        # boundary check on the returned path component, not another formatter.
-        if not SEQ_NAME.fullmatch(name):
-            raise StoreError("ACL2 returned an invalid bounded transaction name")
-        return name
+            return frame_bridge.path_component(list(octets))
+        except (UnicodeDecodeError, frame_bridge.BridgeError) as error:
+            raise StoreError("ACL2 returned an unusable transaction name") from error
 
     def recover(self, records, frontier, config_records=()):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
@@ -785,9 +735,29 @@ class Acl2Store:
             raise StoreFault("unexpected peer outcome: {}".format(status))
         return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
 
-    def peer_names(self):
-        names = acl2_octets(self.call("(fn-store-cfg-peer-names state)"))
-        return [line for line in names.decode("utf-8", "strict").split("\n") if line]
+    def config_publication(self, records, frontier, config_records, record,
+                           lock_owned, observed_names):
+        """ACL2's publication authorization: (status, reason, generation, name)."""
+        form = "(fn-store-cfg-publication '{} {} '{} '{} {} '{})".format(
+            "(" + " ".join(self.literal(r) for r in records) + ")", int(frontier),
+            "(" + " ".join(self.literal(r) for r in config_records) + ")",
+            self.literal(record), "t" if lock_owned else "nil",
+            "(" + " ".join(self.literal(n) for n in observed_names) + ")")
+        timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
+                      self.form_timeout(form))
+        value = frame_bridge.read_form(self.call(form, timeout=timeout))
+        if not (isinstance(value, list) and len(value) == 4):
+            raise StoreFault("ACL2 returned a malformed publication authorization")
+        status, reason, generation, name = value
+        if status == "accepted":
+            if not (isinstance(generation, int) and name and isinstance(name, list)):
+                raise StoreFault("ACL2 accepted a publication without a generation and name")
+            name = frame_bridge.path_component(name)
+        return str(status), (str(reason) if reason != [] else "none"), generation, name
+
+    def peer_report(self):
+        """The `peer list' report, rendered by ACL2 (`fn-native-admin-peer-report')."""
+        return acl2_octets(self.call("(fn-store-cfg-peer-report state)"))
 
     def prov_post(self):
         """The provenance of a locally posted article, DECIDED IN ACL2.
@@ -808,15 +778,6 @@ class Acl2Store:
         """The provenance the live node recorded for this Message-ID, or b''."""
         return acl2_octets(self.call("(fn-store-prov-for-msgid '{} state)".format(
             self.literal(msgid))))
-
-    def peer_slot_text(self, name, slot):
-        return acl2_octets(self.call("(fn-store-cfg-peer-slot-text '{} '{} state)".format(
-            self.literal(name.encode("utf-8")), self.literal(slot.encode("ascii")))))
-
-    def peer_slot_nat(self, name, slot):
-        body = acl2_result(self.call("(fn-store-cfg-peer-slot-nat '{} '{} state)".format(
-            self.literal(name.encode("utf-8")), self.literal(slot.encode("ascii")))))
-        return int(body)
 
     def pin_count(self):
         return acl2_nat(self.call("(fn-store-sn-pin-count state)"))
@@ -955,8 +916,9 @@ class Store:
     @property
     def config_dir(self): return self.root / "config"
 
-    def config_record_path(self, generation):
-        return self.config_dir / "{:08d}.cfg".format(generation)
+    def config_record_path(self, generation, bridge=None):
+        """The final path of a configuration generation; ACL2 names it."""
+        return self.config_dir / frame_bridge.session(bridge).config_record_name(generation)
 
     def config_record_files(self):
         """The durable configuration records in generation order."""
@@ -1059,7 +1021,7 @@ class Store:
                     octets = frame_bridge.session(bridge).config_record_initial(groups)
                 except frame_bridge.BridgeError as error:
                     raise StoreError("refused initial group table: {}".format(error)) from error
-                self._publish_initial_file(self.config_record_path(1), octets)
+                self._publish_initial_file(self.config_record_path(1, bridge), octets)
                 fsync_dir(self.config_dir)
             if not check_regular(self.frontier_path) and self.transaction_files():
                 raise StoreFault("refusing missing allocator frontier with committed history")
@@ -1157,20 +1119,26 @@ class Store:
             entries = os.scandir(self.transactions)
         except OSError as error:
             raise StoreFault("cannot enumerate transactions") from error
+        # The physical read stops one past the profile's bound, so an
+        # unbounded directory is never retained; the verdict on what was read
+        # (the name grammar, the bound, the gap policy) is ACL2's
+        # `fn-store-txn-observation-selected`, as the native host asks it.
+        limit = self.config["max_transactions"]
         with entries:
             for entry in entries:
-                if len(files) >= self.config["max_transactions"]:
-                    raise StoreFault("transaction count exceeds configured bound")
-                if not SEQ_NAME.fullmatch(entry.name):
-                    raise StoreFault("unexpected final-namespace entry: {}".format(entry.name))
-                if entry.is_symlink() or not entry.is_file(follow_symlinks=False):
-                    raise StoreFault("refusing transaction symlink or non-file")
-                files.append((int(entry.name[:20]), Path(entry.path)))
-        files.sort()
-        for expected, (sequence, _) in enumerate(files):
-            if sequence != expected:
-                raise StoreFault("transaction sequence gap")
-        return files
+                files.append(entry.name.encode("utf-8", "surrogateescape"))
+                if len(files) > limit:
+                    break
+        pairs = frame_bridge.session().txn_observation(sorted(files), limit)
+        if pairs is None:
+            raise StoreFault("ACL2 refused the transaction namespace observation")
+        result = []
+        for sequence, name in pairs:
+            path = self.transactions / name
+            if path.is_symlink() or not path.is_file():
+                raise StoreFault("refusing transaction symlink or non-file")
+            result.append((sequence, path))
+        return result
 
     def staging_orphans(self, raw=False):
         """Enumerate staged names an interrupted publication left behind.
@@ -1257,17 +1225,42 @@ class Store:
             records.append(read_regular_bounded(path, CONFIG_RECORD_BYTES))
         return records
 
-    def write_config_record(self, generation, octets):
-        """Make one admitted configuration record durable under its generation.
+    def publish_config_record(self, acl2, octets):
+        """Make one admitted configuration record durable; return its generation.
 
-        The three outcomes stay distinct: the record either reaches its final
-        name and its directory barrier (accepted), or an I/O failure leaves
-        it uncertain -- the next open replays whatever became durable.
+        ACL2 authorizes the publication (`fn-store-cfg-publication`, i.e.
+        `fn-native-admin-publication-authorize`): it allocates the
+        generation, names the file, checks that this process holds the
+        writer lock and that the name is unoccupied, and asks whether the
+        store with the record appended reopens.  A refusal is printed with
+        ACL2's reason and returns None (exit 1); an I/O failure after
+        authorization is uncertain (exit 3), never either.
         """
+        observed = tuple(entry.name.encode("utf-8")
+                         for entry in os.scandir(self.config_dir))
+        status, reason, generation, name = acl2.config_publication(
+            self.durable_records(acl2), self.frontier, self.config_records(),
+            bytes(octets), self.lock_fd is not None and self.writable, observed)
+        if status != "accepted":
+            print("store: refused configuration record: {}".format(reason),
+                  file=sys.stderr)
+            return None
+        self._write_config_file(self.config_dir / name, generation, octets)
+        return generation
+
+    def write_config_record(self, generation, octets, bridge=None):
+        """Durably write a record whose generation an ACL2 owner allocated.
+
+        tools/run_owner.py's RECONFIGURE: the owner core admitted the record
+        and chose GENERATION; ACL2 names the file (config_record_path)."""
+        self._write_config_file(self.config_record_path(generation, bridge),
+                                generation, octets)
+
+    def _write_config_file(self, path, generation, octets):
         try:
-            if not self._publish_initial_file(self.config_record_path(generation), octets):
+            if not self._publish_initial_file(path, octets):
                 raise StoreFault("configuration generation {} already exists".format(generation))
-            fsync_regular(self.config_record_path(generation))
+            fsync_regular(path)
             fsync_dir(self.config_dir)
         except OSError as error:
             raise StoreIndeterminate(
@@ -1596,22 +1589,39 @@ def conservative_charge(payload, bridge=None):
     return frame_bridge.session(bridge).charge(len(payload))
 
 
-def validate_post_boundary(msgid, payload, groups, charge, config, bridge=None):
-    """One call: `fn-store-post-boundary` applies every bound in the model."""
+def profile_config(profile="development", bridge=None):
+    """A named profile's values, as ACL2 frames and decodes them."""
     session = frame_bridge.session(bridge)
-    profile = (config["format"].encode("ascii"), config["capacity"],
-               config["max_payload_bytes"], config["max_recovery_record_bytes"],
-               config["max_transactions"],
-               config["allocation_frontier_format"].encode("ascii"))
-    verdict = session.post_boundary(profile, msgid, len(payload), len(groups), charge)
-    if verdict == "ok":
-        return
-    raise StoreError({
-        "bad-message-id": "Message-ID is not a valid RFC 5536 message identifier",
-        "payload-bound": "payload exceeds the modelled bound",
-        "group-bound": "group count exceeds codec bound",
-        "charge-bound": "charge must be a positive uint32",
-    }.get(verdict, "ACL2 refused the post boundary: {}".format(verdict)))
+    return Store._config_from_metadata(
+        session.metadata_config_decode(session.metadata_config_frame(profile)))
+
+
+def profile_values(config):
+    """The six persisted profile values, as ACL2 decoded them at open."""
+    return (config["format"].encode("ascii"), config["capacity"],
+            config["max_payload_bytes"], config["max_recovery_record_bytes"],
+            config["max_transactions"],
+            config["allocation_frontier_format"].encode("ascii"))
+
+
+def validate_post_boundary(msgid, payload, groups, charge, config, bridge=None):
+    """One call: `fn-sbud-post-boundary` applies every bound in the model.
+
+    A refusal is relayed as ACL2's verdict word (`payload-bound`,
+    `bad-message-id`, ...); Python keeps no text table of its own."""
+    verdict = frame_bridge.session(bridge).post_boundary(
+        profile_values(config), msgid, len(payload), len(groups), charge)
+    if verdict != "ok":
+        raise StoreError("ACL2 refused the post boundary: {}".format(verdict))
+
+
+def publication_admissible(store, bridge=None, kind="article"):
+    """Whether the recovered Store may publish one more KIND record.
+
+    `fn-sbud-verdict` under the store's persisted profile, through the ACL2
+    session that recovered the Store (as the native `store post` asks)."""
+    return frame_bridge.session(bridge).publication_verdict(
+        profile_values(store.config), kind) == "admissible"
 
 
 def command_init(args):
@@ -1639,8 +1649,9 @@ def command_group(args):
         if status != "ok":
             print("store: refused group {}: {}".format(args.action, payload), file=sys.stderr)
             return EXIT_REFUSED
-        generation = store.config_generation + 1
-        store.write_config_record(generation, payload)
+        generation = store.publish_config_record(bridge, payload)
+        if generation is None:
+            return EXIT_REFUSED
         print("group {} name={} generation={}".format(
             "created" if args.action == "create" else "retired", args.name, generation))
         return EXIT_OK
@@ -1653,15 +1664,15 @@ def command_capacity(args):
     """`capacity <n>`: one configuration record that sets the retention capacity.
 
     Three outcomes stay distinct (D13).  The core refuses a capacity below the
-    live reservation total (exit 1, with the reason on stderr).  A DECREASE is
-    additionally gated here, before anything becomes durable, by replaying the
-    candidate configuration history against the store's real article history
-    in a second core: configuration records live beside the journal rather
-    than interleaved in it (specs/reconfiguration.md section 8 item 1), so a
-    decrease admitted against today's reservation total would be applied by
-    recovery BEFORE any article replays, and could brick a store that opens
-    fine today.  The dry run is the exact check, not an estimate: if the
-    candidate history does not open, the record is refused and never written.
+    live reservation total (exit 1, with the reason on stderr).  Every
+    configuration record is then gated, before anything becomes durable, by
+    `fn-native-admin-publication-authorize` (Store.publish_config_record):
+    configuration records live beside the journal rather than interleaved in
+    it (specs/reconfiguration.md section 8 item 1), so a decrease admitted
+    against today's reservation total would be applied by recovery BEFORE any
+    article replays, and could brick a store that opens fine today.  ACL2's
+    candidate-reopen predicate is the exact check; a refused candidate is
+    exit 1 with the reason `candidate` and nothing is written.
     An I/O failure after admission is uncertain (exit 3), never either.
     """
     import time
@@ -1672,13 +1683,9 @@ def command_capacity(args):
         if status != "ok":
             print("store: refused capacity: {}".format(payload), file=sys.stderr)
             return EXIT_REFUSED
-        generation = store.config_generation + 1
-        candidate = list(store.config_records()) + [bytes(payload)]
-        if not _candidate_history_opens(store, candidate):
-            print("store: refused capacity: {}".format("would-not-replay"),
-                  file=sys.stderr)
+        generation = store.publish_config_record(bridge, payload)
+        if generation is None:
             return EXIT_REFUSED
-        store.write_config_record(generation, payload)
         print("capacity set n={} generation={}".format(args.capacity, generation))
         return EXIT_OK
     finally:
@@ -1687,41 +1694,14 @@ def command_capacity(args):
 
 
 def peer_listing(bridge):
-    """One line per configured peer, every field read from the record's rows."""
-    lines = []
-    for name in bridge.peer_names():
-        port = bridge.peer_slot_nat(name, "transport-nntp")
-        endpoint = bridge.peer_slot_text(name, "transport-nntp")
-        if port < 0:
-            endpoint, port = bridge.peer_slot_text(name, "transport-bp"), None
-        fields = ["name={}".format(name),
-                  "path-identity={}".format(
-                      bridge.peer_slot_text(name, "path-identity").decode("utf-8", "replace")),
-                  "transport={}{}".format(endpoint.decode("utf-8", "replace"),
-                                          "" if port is None else ":{}".format(port))]
-        in_groups = bridge.peer_slot_text(name, "inbound-groups")
-        if bridge.peer_slot_nat(name, "inbound-groups") >= 0:
-            fields.append("inbound={} max-octets={} max-inflight={}".format(
-                in_groups.decode("utf-8", "replace"),
-                bridge.peer_slot_nat(name, "inbound-groups"),
-                bridge.peer_slot_nat(name, "inbound-inflight")))
-        else:
-            fields.append("inbound=none")
-        if bridge.peer_slot_nat(name, "outbound-groups") >= 0:
-            fields.append("outbound={} max-queue={} streaming={} backoff-ms={}".format(
-                bridge.peer_slot_text(name, "outbound-groups").decode("utf-8", "replace"),
-                bridge.peer_slot_nat(name, "outbound-groups"),
-                "yes" if bridge.peer_slot_nat(name, "outbound-streaming") == 1 else "no",
-                bridge.peer_slot_nat(name, "outbound-backoff")))
-        else:
-            fields.append("outbound=none")
-        source = bridge.peer_slot_text(name, "auth-source-address")
-        principal = bridge.peer_slot_text(name, "auth-principal")
-        fields.append("auth=source-address:{}".format(source.decode("utf-8", "replace"))
-                      if source else "auth=principal:{}".format(
-                          principal.decode("utf-8", "replace")))
-        lines.append(" ".join(fields))
-    return lines
+    """One line per configured peer, as the native `peer list' prints it.
+
+    ACL2 enumerates, selects and renders every field
+    (`fn-native-admin-peer-report' through `fn-store-cfg-peer-report');
+    this splits the octets into lines and formats nothing.
+    """
+    return [line.decode("utf-8", "replace")
+            for line in bridge.peer_report().split(b"\n") if line]
 
 
 def command_peer(args):
@@ -1748,8 +1728,9 @@ def command_peer(args):
         if status != "ok":
             print("store: refused peer {}: {}".format(args.action, payload), file=sys.stderr)
             return EXIT_REFUSED
-        generation = store.config_generation + 1
-        store.write_config_record(generation, payload)
+        generation = store.publish_config_record(bridge, payload)
+        if generation is None:
+            return EXIT_REFUSED
         print("peer {} name={} generation={}".format(
             "added" if args.action == "add" else "removed", args.name, generation))
         return EXIT_OK
@@ -1757,21 +1738,6 @@ def command_peer(args):
         bridge.close()
         store.close()
 
-
-def _candidate_history_opens(store, config_records):
-    """Would a store whose configuration history were `config_records` open?
-
-    A second core, the store's real article records and frontier, and the
-    core's own `fn-store-sn-recover`.  ACL2 answers; Python only reports.
-    """
-    probe = Acl2Store()
-    try:
-        records = store.durable_records(probe)
-        return probe.recover(records, store.frontier, config_records) == "recovering"
-    except StoreFault:
-        return False
-    finally:
-        probe.close()
 
 def peer_arguments(args):
     """The operator's words, typed but not interpreted: ACL2 decides the record."""
@@ -1817,8 +1783,9 @@ def command_policy(args):
         if status != "ok":
             print("store: refused policy set: {}".format(payload), file=sys.stderr)
             return EXIT_REFUSED
-        generation = store.config_generation + 1
-        store.write_config_record(generation, payload)
+        generation = store.publish_config_record(bridge, payload)
+        if generation is None:
+            return EXIT_REFUSED
         print("policy set {}={} generation={}".format(
             args.slot, args.value, generation))
         return EXIT_OK
@@ -1929,7 +1896,7 @@ def post_article(store, bridge, records_count, msgid, payload, groups, charge):
         return None, charge
     if existing == "conflict":
         raise StoreError("conflicting immutable Message-ID")
-    if records_count >= store.config["max_transactions"]:
+    if not publication_admissible(store, bridge):
         raise StoreError("transaction count has reached configured bound")
     return (durable_post(store, bridge, records_count, msgid, payload, codes, charge),
             charge)
@@ -1965,7 +1932,11 @@ def post_via_owner(control, msgid, payload, groups, charge):
 def command_post(args, faults=NO_FAULTS):
     """Post one article.  `faults` is the test-only injector; the CLI hook wins."""
     msgid = args.message_id.encode("ascii")
-    payload = read_regular_bounded(args.payload, DEFAULT_CONFIG["max_payload_bytes"])
+    # A work bound on the read, not the admission bound: the store record
+    # ceiling ACL2 reports (`*fn-frame-max-store-payload*`); the profile's
+    # payload bound is applied by `fn-sbud-post-boundary`.
+    payload = read_regular_bounded(args.payload,
+                                   frame_bridge.session().constants["max_store"])
     # Optional: harnesses build argument objects without every CLI flag.
     owner = getattr(args, "owner", None)
     if owner is not None:

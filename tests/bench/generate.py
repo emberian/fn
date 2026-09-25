@@ -28,10 +28,11 @@ import time
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 from tools import frame_bridge  # noqa: E402
-from tools.run_store import (Acl2Store, DEFAULT_CONFIG, SCALE_CONFIG, Store,  # noqa: E402
+from tools.run_store import (Acl2Store, Store, profile_config,  # noqa: E402
                              conservative_charge, group_codes, metadata)
 
-PROFILES = {"dev": DEFAULT_CONFIG, "scale": SCALE_CONFIG}
+# The bench names; each profile's values are ACL2's (`profile_config`).
+PROFILES = {"dev": "development", "scale": "scale"}
 GROUP_NAMES = ("fn.letters", "fn.test")
 
 
@@ -247,7 +248,7 @@ def main():
         parser.error("books/store-config owns the group table: it has %d groups"
                      % len(GROUP_NAMES))
     fanout = args.fanout or args.groups
-    profile = PROFILES[args.profile]
+    profile = dict(profile_config(PROFILES[args.profile]), profile=args.profile)
     if args.articles > profile["max_transactions"]:
         parser.error("%s bounds a store at %d transactions"
                      % (args.profile, profile["max_transactions"]))
