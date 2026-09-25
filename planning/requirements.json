@@ -1926,6 +1926,35 @@
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
     },
     {
+      "id": "NNT-012",
+      "title": "A served POST accepts a supplied Path, prefixes the node's identity in place, and keeps it as the poster's source",
+      "specification": "specs/nntp.md#a-supplied-path-d32-2026-09-25",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-090"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/injection-path.lisp",
+        "books/injection.lisp",
+        "books/injection-invariants.lisp",
+        "books/poster-bytes.lisp",
+        "books/poster-bytes-invariants.lisp",
+        "books/hybrid-store-injected.lisp",
+        "books/nntp-post.lisp",
+        "tests/acl2/injection-tests.lisp",
+        "tests/acl2/poster-bytes-tests.lisp",
+        "tests/acl2/hybrid-store-tests.lisp",
+        "tools/inn_lab.py",
+        "planning/evidence/path-and-login-2026-09-25.md"
+      ],
+      "implementation_note": "D32. RFC 5537 section 3.4.1 permits a proto-article's Path; section 3.2.1 has the injecting agent prepend its identity and '!'. fn-inj-decide accepts one Path field whose unfolded value is RFC 5536 section 3.1.5 syntax (fn-inj-path-valuep) and whose content begins one SP after the colon, inserts AGENT! there (recipe v3: the v2 block without its Path line, then the spliced source), and refuses :path-malformed, :path-duplicate and :path-posted (local policy) by name; Xref stays refused. fn-inj-source-of recovers the source exactly over v2 and v3, so D25 keys on the supplied Path too. The hybrid carrier route keeps refusing a Path (:path-present). No !.POSTED diagnostic is written (a SHOULD)."
+    },
+    {
       "id": "NNT-013",
       "title": "Under the bound-logins posting policy a bound login posts only articles signed by its bound principal",
       "specification": "specs/identity.md#a-login-bound-to-a-signing-principal-2026-09-25",

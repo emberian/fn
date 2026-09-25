@@ -552,6 +552,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-teeth-tests \
 	books/mailbox \
 	books/injection-shape \
+	books/injection-path \
 	books/injection \
 	books/injection-invariants \
 	tests/acl2/injection-tests \

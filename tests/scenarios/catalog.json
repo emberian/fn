@@ -1369,6 +1369,30 @@
       ]
     },
     {
+      "id": "SCN-050",
+      "title": "A stock third-party reader (tin) posts, replies and cancels its own post: its supplied Path is accepted and prefixed",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-012"
+      ],
+      "steps": [
+        "Start a developer-image node with a posting login; point tin 2.6.2 (NNTP-only) at it through the wire logger.",
+        "Post a new article from tin, reply to it, and cancel the new post with tin's cancel command.",
+        "Resend one POST's exact octets; resend it with a changed Path."
+      ],
+      "expected": [
+        "Each tin POST is answered 240; ARTICLE shows `Path: IDENTITY!not-for-mail` (the node's identity prefixed to tin's Path) and no other Path.",
+        "The cancel is filed under the control rules in force (C1).",
+        "The exact resend is `441 posting failed; this article is already stored here`; the changed Path is `441 posting failed; a different article with this Message-ID is stored here`."
+      ],
+      "evidence": [
+        "tests/acl2/injection-tests.lisp",
+        "tests/acl2/poster-bytes-tests.lisp",
+        "planning/evidence/path-and-login-2026-09-25.md"
+      ]
+    },
+    {
       "id": "SCN-051",
       "title": "A bound login posts only as its bound principal under the bound-logins policy; an unbound login and a policy-off node post as before",
       "milestone": "M4",

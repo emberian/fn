@@ -3365,6 +3365,27 @@
       ]
     },
     {
+      "id": "PRF-090",
+      "title": "A supplied Path is prefixed in place and the injection inverse still recovers the exact source",
+      "statement": "Over fn-inj-decide (books/injection.lisp), which books/nntp-post.lisp fn-nntp-post-step calls for a served POST and books/owner.lisp fn-own-operator-decision for the operator's post: fn-inj-source-of-inverts-the-injection, every injected article gives back its source exactly under fn-inj-source-of, at every clock reading, in all four generated-field cases, with or without a supplied Path (recipe v3); its keystone for the Path case is fn-inj-unsplice-of-a-splice (books/injection-path.lisp): inserting AGENT! where the source's Path content begins and removing it gives back the source, because fn-inj-path-scan-of-a-kept-prefix shows the scan reads nothing at or past the offset it returns. fn-inj-injected-octets-are-the-block-and-the-prefixed-source: with a Path supplied the injected octets are the v2 block without its Path line followed by the source with AGENT! inserted at fn-inj-path-offset; fn-inj-injected-article-retains-the-source-octets now holds under the hypothesis that no Path was supplied. RFC 5537 section 3.5 item 11 twins: fn-inj-no-injection-date-when-date-and-message-id-are-supplied-with-a-path and fn-inj-injection-date-is-the-clock-otherwise-with-a-path. D25 over v3 (books/poster-bytes-invariants.lisp, fn-pb-existing-action the host calls): fn-pb-path-agent-of-an-injection reads the agent from a v3 block's Injection-Info line, so fn-pb-one-source-at-two-clocks-is-one-article and fn-pb-two-sources-are-two-articles cover a supplied Path: a resend at any clock is already stored here, a changed supplied Path is the conflict.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-012"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/injection-path.lisp",
+        "books/injection-invariants.lisp",
+        "books/poster-bytes-invariants.lisp",
+        "tests/acl2/injection-tests.lisp",
+        "tests/acl2/poster-bytes-tests.lisp"
+      ],
+      "progress_note": "Admitted and certified locally on persvati against the cached closure (2026-09-25); the lane's farm run is the certification of record.",
+      "events": []
+    },
+    {
       "id": "PRF-091",
       "title": "A bound login's accepted signed article carries its bound principal; the policy off changes nothing",
       "statement": "Over fn-lb-owner-gate (books/login-binding.lisp), which host/owner-host.lisp fn-owner-login-gate calls for host/native/owner.lisp fnn-owner-attempt-served before the transit attempt, composed with fn-pa-current-plan, which that attempt calls next: fn-lb-bound-login-accepted-signed-article-carries-its-principal, when the owner's live configuration sets posting-policy bound-logins, the in-flight submission's login is bound to principal P, the gate passes and the plan answers :ok, the plan's principal (the one its verified verdict names) is P. fn-lb-bound-login-unsigned-article-is-refused and fn-lb-bound-login-other-principal-is-refused: under the policy a bound login's article with no FN-Authorship carrier is (:refused :login-unsigned LOGIN), and one whose carrier names another principal is (:refused :login-not-bound LOGIN). fn-lb-policy-off-never-refuses and fn-lb-unbound-login-never-refuses: without the policy, or for a login with no binding (an unauthenticated connection's login is nil), the gate passes and the host continues into the attempt it made before. fn-lb-verdict-names-the-login: every verdict names the in-flight login.",
