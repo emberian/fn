@@ -1118,9 +1118,11 @@ def labels(caps):
 
 # RFC 3977 section 5.2.2: the capability is advertised exactly when the
 # command is available.  Only labels the RFCs define as capabilities are
-# audited in the reverse direction: XOVER, XHDR, XPAT and LISTGROUP are not
+# audited in the reverse direction: XOVER, XHDR and LISTGROUP are not
 # capability labels of their own (LISTGROUP is READER's), so dispatching them
-# without a label of their own is not a defect.
+# without a label of their own is not a defect.  XPAT is audited too: fn lists
+# it as a private-extension label (RFC 3977 section 3.3.3, PKT-110), so a node
+# that answers XPAT without the label has dropped a promise.
 # AUTHINFO and STARTTLS are deliberately NOT here: both are advertised
 # exactly while they are still usable (RFC 4643 section 2.3, RFC 4642
 # section 2.2.2), so a connection that has authenticated sees the command
@@ -1129,7 +1131,7 @@ def labels(caps):
 # is advertised by a MODE-SWITCHING server (RFC 3977 section 5.3), and a
 # server that is always in reader mode answering MODE READER is not one.
 RFC_LABELS = ("READER", "POST", "IHAVE", "STREAMING", "OVER", "HDR", "LIST",
-              "NEWNEWS")
+              "NEWNEWS", "XPAT")
 # The verb is absent, or present and closed to this caller.  Either way the
 # command is not available and the capability must not be advertised.
 UNAVAILABLE = ("500", "501", "502", "440", "480", "483")

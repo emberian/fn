@@ -564,6 +564,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp \
 	books/nntp-overview \
 	books/nntp-legacy \
+	books/nntp-xpat \
 	books/nntp-newnews \
 	books/nntp-invariants \
 	books/nntp-effects \
@@ -669,6 +670,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-range-indexed-tests \
 	tests/acl2/nntp-reader-profile-tests \
 	tests/acl2/nntp-legacy-tests \
+	tests/acl2/nntp-xpat-tests \
 	tests/acl2/nntp-newnews-tests \
 	books/bp-release \
 	books/bp-release-invariants \
