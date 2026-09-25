@@ -107,6 +107,20 @@ through `tools/acl2` or `tools/proof_repl.py`, which now cap each process at
 8,000 MB and pool six; never a bare `acl2 <`; images, owners and censuses on
 hbox under `swarm-build` or a `systemd-run` memory cap, or on persvati.
 
+**The megaspike (D28, from ~07:45 UTC 2026-09-25):** `spike/mega` from dev;
+eight spike lanes on `spike/<name>` in build/lanes/spike-<name>: control (C2 to
+C4 end to end), peering (invite/accept, succession, revocation, pull feeds,
+INN stranger), mission (the four-node lab and demo on hbox), operator (one
+`fn` command, upgrade/rollback/backup/restore, alerts, mission profiles),
+storage (reclaim under D13, chained packs, rotation cleanup, 64-bit widths,
+N=100k numbers), reader (threading, search, composer, a third-party client,
+operator page), bp (routed queued jobs, fragmentation, multi-relay and ION,
+production DTN labs, N16-F1), representation (waves B and C on the spike
+for numbers). Dev lanes still running: bp-budgets-receipts (the connection-
+local uncertain receipt transfer), bounds-p3-checkpoint, python-store-f8,
+signed-path. The spike never merges into dev; each spike record lists its
+deferrals for the proved re-implementation.
+
 ## Where to read next
 
 - [Current view](current.md): per capability, the four evidence
