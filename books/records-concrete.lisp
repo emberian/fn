@@ -27,9 +27,23 @@
 ; host/owner-host.lisp fn-owner-finish-submission) and
 ; books/owner-prepare-carried.lisp (the prepare) call the twins.
 ;
+; The second section (lane/rep-records-2) carries the same replacement to
+; the list dispatchers the host still reached at write: the encoder of the
+; staged record (fn-rcon-store-event-encode), the staged record's sequence
+; (fn-rcon-sbud-pending-sequence), and the transaction observation
+; (fn-rcon-sn-io, whose :record-directory arm pairs the record's sequence
+; and transaction id; books/records-concrete-owner.lisp lifts it to the
+; owner event the host issues).  Each equals its reference with no
+; hypothesis and is guard-verified; host/owner-host.lisp, host/store-node-host.lisp
+; and host/store-host.lisp call the twins.
+;
 ; What stays on the octet lists: the payload (fn-record-payloadp walks it,
 ; O(L)) and the group names (fn-record-group-namep converts each name for
-; the RFC 5536 grammar).  Those are the next boundaries in the design.
+; the RFC 5536 grammar).  Those are the next boundaries in the design.  The
+; codec behind the seam, fn-record-encode-impl (books/records.lisp, attached
+; in books/records-attach.lisp), still recognises its argument with
+; fn-record-p; replacing that is an attachment change with the image-wide
+; closure of records-attach, not a twin here.
 
 (in-package "ACL2")
 (include-book "store-node")
@@ -390,3 +404,120 @@
 (verify-guards fn-rcon-th-prefix-step)
 
 (in-theory (disable fn-rcon-th-prefix-step))
+
+; -----------------------------------------------------------------------------
+; The dispatchers at write (lane/rep-records-2).  The staged record is
+; encoded and its sequence read by the host once per POST
+; (host/owner-host.lisp fn-owner-pending-octets, fn-owner-pending-sequence);
+; the transaction observation :record-directory pairs its sequence and
+; transaction id (fn-sf-record-dir-result through fn-sn-io).  Each twin is
+; its reference with the list dispatchers replaced by the twins above.
+
+(include-book "store-budget-naming")
+
+; The two references the encoder dispatches to that were admitted with
+; :verify-guards nil; their guards (t) hold, so the twin's can be verified.
+(verify-guards fn-store-event-kind-code)
+(verify-guards fn-store-retention-event-encode)
+
+(defun fn-rcon-store-event-encode (event)
+  (declare (xargs :guard t))
+  (cond ((fn-rcon-record-p event) (fn-record-encode event))
+        ((fn-store-retention-event-p event)
+         (fn-store-retention-event-encode event))
+        ((fn-stxe-p event) (fn-stxe-encode event))
+        ((fn-stxk-p event) (fn-stxk-encode event))
+        ((fn-stxa-p event) (fn-stxa-encode event))
+        ((fn-cpe-eventp event) (fn-cpe-encode event))
+        ((fn-th-topic-eventp event) (fn-th-topic-event-encode event))
+        (t nil)))
+(defthm fn-rcon-store-event-encode-is-store-event-encode
+  (equal (fn-rcon-store-event-encode event) (fn-store-event-encode event))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcon-store-event-encode fn-store-event-encode
+                                fn-rcon-record-p-is-record-p)
+                              (theory 'minimal-theory)))))
+(defun fn-rcon-sbud-pending-sequence (s)
+  (declare (xargs :guard t))
+  (let ((record (fn-sf-record-candidate (fn-sn-files s))))
+    (if (and record (natp (fn-rcon-store-event-sequence record)))
+        (fn-rcon-store-event-sequence record)
+      nil)))
+(defthm fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence
+  (equal (fn-rcon-sbud-pending-sequence s) (fn-sbud-pending-sequence s))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcon-sbud-pending-sequence fn-sbud-pending-sequence
+                                fn-rcon-store-event-sequence-is-store-event-sequence)
+                              (theory 'minimal-theory)))))
+
+(in-theory (disable fn-rcon-store-event-encode fn-rcon-sbud-pending-sequence))
+
+(defun fn-rcon-sf-record-dir-result (s result)
+  (declare (xargs :guard (fn-sf-statep s)))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :record-attempted))
+      (cond
+       ((equal result :ok)
+        (let ((record (fn-sf-record-candidate s)))
+          (fn-sf-make :completing (fn-sf-frontier s) nil
+                      (append (fn-sf-records s) (list record)) nil
+                      (fn-rcon-sf-record-pair record) (fn-sf-successes s)
+                      (fn-sf-barriers s))))
+       ((equal result :error)
+        (fn-sf-make :fenced-record (fn-sf-frontier s) nil
+                    (fn-sf-records s) (fn-sf-record-candidate s) nil
+                    (fn-sf-successes s) (fn-sf-barriers s)))
+       (t s))
+    s))
+(defthm fn-rcon-sf-record-dir-result-is-sf-record-dir-result
+  (equal (fn-rcon-sf-record-dir-result s result) (fn-sf-record-dir-result s result))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcon-sf-record-dir-result fn-sf-record-dir-result
+                                fn-rcon-sf-record-pair-is-sf-record-pair)
+                              (theory 'minimal-theory)))))
+(defun fn-rcon-sn-file-step (files operation result)
+  (declare (xargs :guard (fn-sf-statep files)))
+  (case operation
+    (:start-frontier (fn-sf-start-frontier files))
+    (:frontier-file (fn-sf-frontier-file-result files result))
+    (:frontier-replace (fn-sf-frontier-replace-result files result))
+    (:frontier-directory (fn-sf-frontier-dir-result files result))
+    (:record-file (fn-sf-record-file-result files result))
+    (:record-link (fn-sf-record-link-result files result))
+    (:record-directory (fn-rcon-sf-record-dir-result files result))
+    (:recovery-barrier (fn-sf-recovery-barrier files result))
+    (otherwise files)))
+(defthm fn-rcon-sn-file-step-is-sn-file-step
+  (equal (fn-rcon-sn-file-step files operation result) (fn-sn-file-step files operation result))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcon-sn-file-step fn-sn-file-step
+                                fn-rcon-sf-record-dir-result-is-sf-record-dir-result)
+                              (theory 'minimal-theory)))))
+(defun fn-rcon-sn-io (s operation result)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (if (mbe :logic (fn-sn-statep s) :exec t)
+      (let* ((old-files (fn-sn-files s))
+             (files (fn-rcon-sn-file-step old-files operation result))
+             (updated (fn-sn-update s files (fn-sn-node s))))
+        (if (and (eq operation :record-directory) (eq result :ok)
+                 (eq (fn-sf-phase old-files) :record-attempted))
+            (let* ((candidate (fn-sf-record-candidate old-files))
+                   (sequence (fn-rcon-store-event-sequence candidate)))
+              (fn-sn-with-event-index
+               updated (fn-cei-put sequence candidate
+                                   (fn-sn-event-index s))))
+          updated))
+    s))
+(defthm fn-rcon-sn-io-is-sn-io
+  (equal (fn-rcon-sn-io s operation result) (fn-sn-io s operation result))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-rcon-sn-io fn-sn-io
+                                fn-rcon-sn-file-step-is-sn-file-step
+                                fn-rcon-store-event-sequence-is-store-event-sequence)
+                              (theory 'minimal-theory)))))
+(verify-guards fn-rcon-sn-io
+  :hints (("Goal" :use ((:guard-theorem fn-sn-io))
+                  :in-theory (e/d (fn-rcon-sn-file-step-is-sn-file-step
+                                   fn-rcon-store-event-sequence-is-store-event-sequence)
+                                  (fn-sn-statep fn-sf-statep fn-node-statep)))))
+
+(in-theory (disable fn-rcon-sf-record-dir-result fn-rcon-sn-file-step fn-rcon-sn-io))

@@ -338,9 +338,15 @@
 ; The transaction path: the same observations run_store.py reports, each one
 ; a (:store ...) owner event.
 
+;; The call is fn-rcon-ocfg-io (books/records-concrete-owner.lisp), equal to
+;; fn-ocfg-step of (:store (:io operation result)) for every configured owner
+;; (fn-rcon-ocfg-io-is-ocfg-step, no hypothesis): its :record-directory arm
+;; pairs the staged record's sequence and transaction id through the
+;; concrete record dispatchers instead of fn-record-p's octet lists.
 (defun fn-owner-io (operation result state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (fn-owner-step (list :store (list :io operation result)) state)))
+  (let ((state (fn-owner-install-ocfg
+                (fn-rcon-ocfg-io (fn-owner-ocfg state) operation result) state)))
     (value (fn-sf-phase (fn-sn-files (fn-owner-store state))))))
 
 (defun fn-owner-prepare (msgid-octets payload group-codes id-octets
@@ -540,7 +546,9 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((record (fn-sf-record-candidate
                  (fn-sn-files (fn-owner-store state)))))
-    (value (if record (fn-store-event-encode record) nil))))
+    ; fn-rcon-store-event-encode-is-store-event-encode: the encoder's
+    ; dispatch, with the concrete record recognizer (books/records-concrete).
+    (value (if record (fn-rcon-store-event-encode record) nil))))
 
 ; The staged record's sequence, the one the host names its transaction file
 ; from (host/native/owner.lisp fnn-owner-publish-prepared); the host holds no
@@ -548,7 +556,8 @@
 ; (books/store-budget-naming.lisp `fn-sbud-pending-sequence-is-used').
 (defun fn-owner-pending-sequence (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-sbud-pending-sequence (fn-owner-store state))))
+  ; fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence (books/records-concrete).
+  (value (fn-rcon-sbud-pending-sequence (fn-owner-store state))))
 
 ; The POST admission boundary over the profile the owner was handed at open
 ; (`fn-owner-install-profile'); without one the payload bound is 0.

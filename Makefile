@@ -559,6 +559,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-commit-carried \
 	books/owner-prepare-carried \
 	books/records-concrete \
+	books/records-concrete-owner \
+	books/msgid-index-concrete \
 	books/owner-advance-carried \
 	books/owner-commit-ocl \
 	books/owner-recover-ocl \
@@ -592,6 +594,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-carried-tests \
 	tests/acl2/owner-prepare-carried-tests \
 	tests/acl2/records-concrete-tests \
+	tests/acl2/msgid-index-concrete-tests \
 	tests/acl2/owner-advance-carried-tests \
 	tests/acl2/owner-recover-ocl-tests \
 	books/config-owner-publish \

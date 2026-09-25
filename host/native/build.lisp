@@ -42,6 +42,8 @@
 (include-book "books/owner-served-carried")
 (include-book "books/owner-commit-carried")
 (include-book "books/owner-prepare-carried")
+;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io.
+(include-book "books/records-concrete-owner")
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-commit-ocl")
 (include-book "books/owner-served-invariants")
