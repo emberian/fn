@@ -267,11 +267,15 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-k0-marker \
 	tests/acl2/byte-store-k0-marker-tests \
 	books/byte-store-k0-step-lemmas \
+	books/byte-store-k0-step-root-fence \
 	books/byte-store-k0-step \
 	tests/acl2/byte-store-k0-step-tests \
 	books/byte-store-k0-step-bridge-marker \
+	books/byte-store-k0-step-bridge-prefix \
 	books/byte-store-k0-step-bridge \
 	tests/acl2/byte-store-k0-step-bridge-tests \
+	books/byte-store-k0-step-bridge-frontier \
+	tests/acl2/byte-store-k0-cuts-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
