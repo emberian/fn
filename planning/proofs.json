@@ -4412,6 +4412,36 @@
         "fn-bpfs-canvas-of-extents",
         "fn-bpfs-views-of-cut"
       ]
+    },
+    {
+      "id": "PRF-123",
+      "title": "The record producers the node runs stay inside the widths the profile admits, discharging the width hypothesis of fn-bs-profile-admits-every-article-record",
+      "statement": "fn-sn-prepare-stages-a-narrow-article-record (books/record-width-producers.lisp): if CHARGE is at most 2^32 - 1 and fn-sn-prepare stages the record fn-sn-article-record builds (the result is not the input state), that record is not fn-record-widep: sequence, txid and generation are within u32 because the file machine stages only the reserved txid (frontier - 1), generation = txid and sequence = the committed count, and every file state holds a u32 frontier with strictly increasing committed txids below it (fn-sf-prepare-record-stages-u32-coordinates, fn-sn-prepare-stages-u32-coordinates); the stamp is below 2^32 by fn-record-stamp-of-observation (fn-sn-article-record-stamp-and-charge). The charge premise is discharged by the charge gate: fn-sbud-post-boundary answers :ok only for a u32 charge (fn-sbud-post-boundary-admits-a-u32-charge), and fn-post-admitted-article-record-is-within-r composes the boundary verdict :ok under PROFILE, the producer and the prepare into the conclusion of fn-bs-profile-admits-every-article-record: the staged record encodes within the profile's R, so the publish gate's record check (host/store-host.lisp fn-store-publication-admissibility, asserted by host/native/io.lisp fnn-publish) never refuses it. The BP ingress producer: fn-bpi-staged-record-is-narrow (policy charge u32 by fn-bpi-policy-p). Host calls: host/store-node-host.lisp and host/owner-host.lisp call fn-sn-article-record and then the prepare (fn-spc-prepare, equal to fn-sn-prepare by fn-spc-prepare-equals-specification-under-relation; fn-pcar-sbud-prepare, equal to fn-sbud-prepare by fn-pcar-sbud-prepare-is-sbud-prepare), after the boundary (host/native/io.lisp fnn-post-boundary; host/owner-host.lisp fn-owner-post-boundary); the boundary and the prepare are separate host calls, so the composition is over the host's order, stated, not one ACL2 function. Not covered: the signed composite (kind 4) and the peer-carried event producers, which carry their own R check (fn-owner-signed-event-boundary).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-013"
+      ],
+      "depends_on": [
+        "PRF-086"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/record-width-producers.lisp",
+        "tests/acl2/record-width-producers-tests.lisp",
+        "tests/acl2/profile-monotonicity-tests.lisp",
+        "planning/evidence/bounds-p6-2026-09-25.md"
+      ],
+      "progress_note": "Admitted event by event in the persvati REPL; certification pending.",
+      "events": [
+        "fn-sn-prepare-stages-a-narrow-article-record",
+        "fn-post-admitted-article-record-is-within-r",
+        "fn-bpi-staged-record-is-narrow",
+        "fn-sn-prepare-stages-u32-coordinates",
+        "fn-sf-prepare-record-stages-u32-coordinates",
+        "fn-sn-article-record-stamp-and-charge",
+        "fn-sbud-post-boundary-admits-a-u32-charge"
+      ]
     }
   ]
 }
