@@ -1,0 +1,25 @@
+test_kill_at_the_cut_and_recovery_at_open (tests.test_native_key_statements.NativeKeyStatementTests.test_kill_at_the_cut_and_recovery_at_open) ... NATIVE-KEY-STATEMENT-WITNESS cut POST reply b'' owner exit -9
+NATIVE-KEY-STATEMENT-WITNESS history at the cut ['generation=1 state=active principal=5555555555555555555555555555555555555555555555555555555555555555']
+NATIVE-KEY-STATEMENT-WITNESS log after recovery ['key-statement enrol-successor committed at-open']
+NATIVE-KEY-STATEMENT-WITNESS history after recovery ['generation=2 state=active principal=5555555555555555555555555555555555555555555555555555555555555555', 'generation=1 state=retired principal=5555555555555555555555555555555555555555555555555555555555555555']
+NATIVE-KEY-STATEMENT-WITNESS second open: unchanged
+/usr/lib/python3.12/unittest/case.py:589: ResourceWarning: unclosed file <_io.BufferedReader name=3>
+  if method() is not None:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.12/unittest/case.py:589: ResourceWarning: unclosed file <_io.BufferedReader name=5>
+  if method() is not None:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_succession_revocation_and_carried_statement (tests.test_native_key_statements.NativeKeyStatementTests.test_succession_revocation_and_carried_statement) ... NATIVE-KEY-STATEMENT-WITNESS succession POST b'240 article received OK'
+NATIVE-KEY-STATEMENT-WITNESS old-key POST b'441 posting failed; the signer has no current enrollment here (local-enrollment)' new-key POST b'240 article received OK'
+NATIVE-KEY-STATEMENT-WITNESS carried IHAVE b'235 article transferred OK'
+NATIVE-KEY-STATEMENT-WITNESS revocation POST b'240 article received OK'
+NATIVE-KEY-STATEMENT-WITNESS after-revocation POST b'441 posting failed; the signer has no current enrollment here (local-enrollment)'
+NATIVE-KEY-STATEMENT-WITNESS history ['generation=3 state=revoked principal=5555555555555555555555555555555555555555555555555555555555555555', 'generation=2 state=retired principal=5555555555555555555555555555555555555555555555555555555555555555', 'generation=1 state=retired principal=5555555555555555555555555555555555555555555555555555555555555555']
+NATIVE-KEY-STATEMENT-WITNESS log ['key-statement enrol-successor committed', 'key-statement declined carried', 'key-statement revoke committed']
+ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 4.160s
+
+OK
