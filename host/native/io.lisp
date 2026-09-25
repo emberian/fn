@@ -2480,16 +2480,41 @@ retention ledger's reserved charge of its capacity."
       (fnn-out "headroom transactions-used=~d transactions-budget=~d bytes-used=~d history-bound=~d charge-reserved=~d charge-capacity=~d"
                used budget bytes-used history reserved capacity))))
 
-(defun fnn-command-status (root)
+(defun fnn-store-observation (store)
+  "What this process observed at its own open, which the status report names:
+the staging orphans, whether their listing stopped at its bound, and how
+the Store was opened (checkpoint or full replay, and why)."
+  (list (fnn-store-orphans store) (fnn-store-orphans-more store)
+        (fnn-store-open-mode store)))
+
+(defun fnn-write-report (report)
+  "Write the octets of one ACL2 status report; render nothing."
+  (unless (fnn-octet-list-p report)
+    (fnn-fault "ACL2 returned a malformed status report"))
+  (when report
+    (write-sequence (fnn-octets report) *fnn-stdout*)
+    (finish-output *fnn-stdout*)))
+
+(defun fnn-command-live-report (root kind)
+  "The status report of KIND over the Store at ROOT, opened read-only.
+
+books/native-live-status.lisp `fn-nls-offline-report' renders every word;
+the running owner answers the same report of the state it carries
+(`fn-nls-live-report-is-the-offline-report').  The shared lock refuses while
+an owner holds the Store: `operator CONFIG status' asks that owner instead."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
+    (declare (ignore records))
     (unwind-protect
-         (progn (fnn-out "transactions=~d articles=~d ~a unsigned-legacy-experiment"
-                         (length records) (fnn-bridge-article-count) (fnn-orphan-report store))
-                (fnn-out-headroom store)
-                (fnn-out "~a" (fnn-open-report store))
-                (fnn-out "~a" (fnn-state-checkpoint-file-report store))
-                +fnn-exit-ok+)
+         (progn
+           (fnn-write-report
+            (fnn-core 'fn-native-live-status-host-offline kind
+                      (fnn-store-config store) (fnn-store-observation store)
+                      *the-live-state*))
+           +fnn-exit-ok+)
       (fnn-store-close store))))
+
+(defun fnn-command-status (root)
+  (fnn-command-live-report root :status))
 
 (defun fnn-command-retention (root)
   "Report the replayed ACL2 ledger's pin count and reserved charge."

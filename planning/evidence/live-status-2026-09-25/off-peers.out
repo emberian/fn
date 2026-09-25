@@ -1,0 +1,1 @@
+far path-identity=far.example address=192.0.2.44 port=1119 security=clear inbound=fn.* outbound=fn.* auth=source-address:192.0.2.44

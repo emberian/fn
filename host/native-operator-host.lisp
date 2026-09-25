@@ -174,3 +174,13 @@
 (defun fn-native-operator-host-result-init-group-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-group-octets result))
+
+(defun fn-native-operator-host-result-status-kind (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-status-kind result))
+(defun fn-native-operator-host-result-status-watch (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-status-watch result))
+(defun fn-native-operator-host-result-status-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-status-control-path-octets result))
