@@ -149,9 +149,18 @@
               (fn-native-admin-arg 4 argv) 0 (fn-native-admin-arg 2 argv)
               (fn-native-admin-arg 3 argv))))))
 
+; A decimal word is a string, which is all the guard below needs of it; with
+; this the guard proof keeps the decimal recognizer and its value closed.
+(local (defthm fn-native-admin-decimalp-is-a-string
+  (implies (fn-native-admin-decimalp text) (stringp text))
+  :rule-classes :forward-chaining))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :in-theory (disable fn-native-admin-decimalp
+                                               fn-native-admin-decimal-value)))))
   (if (or (not (fn-native-admin-argvp argv))
           (< *fn-native-admin-max-arguments* (len argv)))
       (fn-native-admin-result :refused :argv nil nil nil nil nil)

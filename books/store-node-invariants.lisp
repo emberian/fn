@@ -43,7 +43,11 @@
                         fn-sf-record-file-result fn-sf-record-link-result
                         fn-sf-record-dir-result fn-sf-recovery-barrier
                         fn-sf-core-completion fn-sf-emit-success
-                        fn-sf-crash))))
+                        fn-sf-crash
+                        ;; Backchained on every true-listp and stringp goal and
+                        ;; never useful here (0.2 M useless frames each).
+                        fn-cp-idp-true-listp
+                        fn-prov-structured-is-not-a-string))))
 
 (defthm fn-sn-initial-is-state
   (implies (and (fn-string-listp groups) (fn-no-duplicatesp groups)
