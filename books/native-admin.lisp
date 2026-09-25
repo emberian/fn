@@ -416,10 +416,10 @@ decoded as source-address for durable command compatibility."
                                      "yes" 0))
             nil)))
 
-(defun fn-native-admin-bp-boundary-plan (all-words)
+(in-theory (disable fn-native-admin-bp-receipt-options))
+
+(defun fn-native-admin-bp-boundary-base-plan (words)
   (declare (xargs :guard t))
-  (mv-let (words signer requirep)
-    (fn-native-admin-bp-receipt-options all-words)
   (mv-let (base carried releases) (fn-native-admin-bp-boundary-split words)
   (if (and (true-listp words) (member-equal base '(6 9))
            (equal (nth 0 words) "bp-boundary")
@@ -459,11 +459,31 @@ decoded as source-address for durable command compatibility."
                          (coerce (nth 8 words) 'list)) 0)
                     carried releases)))
         (fn-native-admin-result :accepted nil :set-bp-boundary
-                                (fn-record-string-octets name) 0 nil
-                                (append rows
-                                        (fn-native-admin-bp-receipt-option-rows
-                                         name signer requirep))))
-    (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil)))))
+                                (fn-record-string-octets name) 0 nil rows))
+    (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil))))
+
+; The base plan with the signed-receipt option rows appended to an accepted
+; boundary's rows (the boundary name is the base plan's).
+(defun fn-native-admin-bp-with-receipt-options (plan name signer requirep)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-admin-result-status plan) :accepted)
+           (or signer requirep))
+      (fn-native-admin-result :accepted nil :set-bp-boundary
+                              (fn-native-admin-result-name plan) 0 nil
+                              (append (let ((rows (fn-native-admin-result-value
+                                                   plan)))
+                                        (if (true-listp rows) rows nil))
+                                      (fn-native-admin-bp-receipt-option-rows
+                                       name signer requirep)))
+    plan))
+
+(defun fn-native-admin-bp-boundary-plan (all-words)
+  (declare (xargs :guard t))
+  (mv-let (words signer requirep)
+    (fn-native-admin-bp-receipt-options all-words)
+    (fn-native-admin-bp-with-receipt-options
+     (fn-native-admin-bp-boundary-base-plan words)
+     (if (true-listp words) (nth 2 words) nil) signer requirep)))
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is
