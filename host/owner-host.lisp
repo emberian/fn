@@ -1554,9 +1554,20 @@
                         (first coordinates) (second coordinates)
                         (third coordinates))))
 
-(defun fn-owner-key-statement-log-line (plan committed state)
+(defun fn-owner-key-statement-log-line (plan outcome at-open state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-ks-log-line plan committed)))
+  (value (fn-ks-log-line plan outcome at-open)))
+
+;; PRF-098, the crash cut: the open's recovery (books/key-statements.lisp
+;; fn-ks-recover) executes the newest Store record when it is a statement.
+;; OCTETS are that record as the open read it; the answer is the decoded
+;; event for fnn-owner-key-statement, or nil.
+(defun fn-owner-key-statement-pending (octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((records (fn-store-decode-records (list octets))))
+    (value (if (and (consp records) (null (cdr records)))
+               (fn-ks-pending (car records))
+             nil))))
 
 ;; D27: the signed composite against the profile the owner was handed at
 ;; open (books/store-budget-naming.lisp fn-sbud-signed-event-boundary):

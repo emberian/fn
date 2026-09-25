@@ -236,5 +236,88 @@
 ; books/hybrid-lifecycle): ACL2's, one past the newest snapshot.
 (assert-event (equal (fn-hl-next-generation nil) 1))
 (assert-event (equal (fn-hl-next-generation *kst-snapshots*) 5))
-(assert-event (equal (fn-ks-log-line (list :decline :carried) nil)
+(assert-event (equal (fn-ks-log-line (list :decline :carried) nil nil)
                      (fn-record-string-octets "key-statement declined carried")))
+(assert-event (equal (fn-ks-log-line (list :enroll *tha-principal* *kst-new-keys*)
+                                     :refused nil)
+                     (fn-record-string-octets
+                      "key-statement enrol-successor refused")))
+(assert-event (equal (fn-ks-log-line (list :revoke *tha-principal*) :committed t)
+                     (fn-record-string-octets
+                      "key-statement revoke committed at-open")))
+
+; -----------------------------------------------------------------------------
+; The crash cut (fn-ks-cut) and the open's recovery (fn-ks-recover).
+
+(defconst *kst-ml* (cdr (second *kst-new-keys*)))
+
+; fn-ks-execute-is-idempotent, reached for both kinds: the executed
+; statement, run again against its own change newest, changes nothing, also
+; under other rows and observations.
+(assert-event *kst-successor*)
+(assert-event
+ (null (fn-ks-execute *kst-event* (cons *kst-successor* *kst-snapshots*)
+                      *kst-rows* *kst-ml* :verified :verified 8 9 10)))
+(assert-event
+ (equal (car (fn-ks-plan *kst-event* (cons *kst-successor* *kst-snapshots*)
+                         *kst-rows* *kst-ml* :verified :verified))
+        :decline))
+(assert-event *kst-tombstone*)
+(assert-event
+ (null (fn-ks-execute *kst-revocation-event*
+                      (cons *kst-tombstone* *kst-snapshots*)
+                      *kst-rows* nil nil nil 8 9 10)))
+; Tooth (the hypothesis: the first execution acted).  A statement that
+; declined (the PoP observation refused) acts on a re-run whose observation
+; verified, against the same snapshots behind a non-snapshot head.
+(assert-event
+ (null (fn-ks-execute *kst-event* *kst-snapshots* *kst-rows* *kst-ml*
+                      :refused :verified 5 6 7)))
+(assert-event
+ (fn-ks-execute *kst-event* (cons nil *kst-snapshots*) *kst-rows* *kst-ml*
+                :verified :verified 5 6 7))
+(must-fail
+ (assert-event
+  (null (fn-ks-execute *kst-event* (cons nil *kst-snapshots*) *kst-rows* *kst-ml*
+                       :verified :verified 5 6 7))))
+
+; fn-ks-recover-completes-the-cut, reached: the statement committed, the
+; process died, the open's recovery made exactly the uninterrupted change.
+(defconst *kst-prior* (list :prior-record))
+(assert-event (equal (fn-ks-pending *kst-event*) *kst-event*))
+(assert-event
+ (equal (fn-ks-recover (fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*)
+                       *kst-rows* *kst-ml* :verified :verified 5 6 7)
+        (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                      *kst-rows* *kst-ml* :verified :verified 5 6 7)))
+(assert-event
+ (equal (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                      *kst-rows* *kst-ml* :verified :verified 5 6 7)
+        (cons (list* *kst-successor* *kst-event* *kst-prior*)
+              (cons *kst-successor* *kst-snapshots*))))
+; The cut itself is not the completed state: the change is missing.
+(assert-event
+ (not (equal (fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*)
+             (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                           *kst-rows* *kst-ml* :verified :verified 5 6 7))))
+
+; fn-ks-recover-after-an-acting-acceptance-changes-nothing, reached: after
+; the completed succession, recovery under no rows and refused observations
+; leaves the state; the newest record is the kind-3 change, never pending.
+(assert-event (null (fn-ks-pending *kst-successor*)))
+(assert-event
+ (let ((st (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                         *kst-rows* *kst-ml* :verified :verified 5 6 7)))
+   (equal (fn-ks-recover st nil nil :refused :refused 8 9 10) st)))
+; Tooth (the hypothesis: the acceptance acted).  An acceptance that declined
+; (PoP refused) leaves the statement newest; recovery whose observation
+; verified then makes the change.
+(assert-event
+ (null (fn-ks-execute *kst-event* *kst-snapshots* *kst-rows* *kst-ml*
+                      :refused :verified 5 6 7)))
+(must-fail
+ (assert-event
+  (let ((st (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                          *kst-rows* *kst-ml* :refused :verified 5 6 7)))
+    (equal (fn-ks-recover st *kst-rows* *kst-ml* :verified :verified 8 9 10)
+           st))))

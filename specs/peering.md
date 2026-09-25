@@ -1400,8 +1400,34 @@ Ed25519 key, the new key set differs, and both primitive observations of
 the proof of possession verified (the host observes over the preimage ACL2
 names, `fn-ks-pop-request`). `fn-ks-execute` builds the kind-3 event with
 `fn-hl-enroll-event` or `fn-hl-revoke-event` at `fn-hl-next-generation`.
-The owner runs it right after committing the statement's composite
-(`host/native/owner.lisp` `fnn-owner-key-statement`).
+The owner runs it right after committing any kind-4 composite, carried and
+revoked ones included, which it declines (`host/native/owner.lisp`
+`fnn-owner-statement-committed`, `fnn-owner-key-statement`). The operator
+grants the verb with `operator CONFIG control grant PRINCIPAL keys
+NAMESPACE`; `keys` is grantable beside `cancel`.
+
+**Outcomes.** The article and its key change are two Store transactions,
+and their outcomes are reported apart (D13): a Store refusal of the key
+change leaves the statement accepted (the poster or peer is answered as
+accepted), and the transit log line carries `detail=key-change-refused`
+and the owner log `key-statement enrol-successor refused` (or `revoke
+refused`). An uncertain key-change commit is an uncertain outcome and a
+recovery event, like any other.
+
+**The crash cut.** A process death after the statement's commit and before
+its change's leaves the statement accepted and unexecuted. The model names
+the cut (`fn-ks-cut`) and the open's recovery (`fn-ks-recover`): at open
+the owner executes the newest Store record when it is a statement, exactly
+as at acceptance (`fnn-owner-key-statement-recover`), and logs `...
+at-open`. From the cut this reaches the uninterrupted acceptance under the
+open's configuration and observations (`fn-ks-recover-completes-the-cut`);
+after an acceptance that acted it changes nothing
+(`fn-ks-recover-after-an-acting-acceptance-changes-nothing`); and a
+statement whose change is already the newest snapshot never acts again
+(`fn-ks-execute-is-idempotent`). A statement that declined is still the
+newest record until the next commit, so an open decides it again under the
+open's configuration: a grant added before the restart lets it act then
+(local policy; a decline is not recorded).
 
 **The revoked arm.** `fn-pa-current-plan` takes TRANSITP (t only on NNTP
 transit) and has a fifth outcome `(:revoked ...)`: the principal's newest

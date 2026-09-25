@@ -531,8 +531,252 @@
                             (plan (fn-ks-plan event snapshots rows observed
                                               ed ml)))))))
 
+; -----------------------------------------------------------------------------
+; The crash cut between the statement's commit and the key change's.
+;
+; The owner commits a statement in two Store transactions: the kind-4
+; composite (the article, fnn-owner-identity-commit in
+; fnn-owner-attempt-transit), then the kind-3 key change fn-ks-execute builds
+; (fnn-owner-key-statement).  A process death between the two leaves the
+; statement accepted and its change unmade.  The model below names that cut
+; (fn-ks-cut) beside the uninterrupted protocol (fn-ks-accept) and the
+; recovery the owner runs at open (fn-ks-recover): it executes the NEWEST
+; Store record if that record is a statement (fn-ks-pending).  Nothing is
+; committed between the two transactions (they run back to back under the
+; owner mutex), so a statement whose change the cut lost is exactly the
+; newest record at the next open.  A statement that declined is also the
+; newest record until the next commit; recovery decides it again under the
+; open's configuration and observations, which is the decision an
+; uninterrupted acceptance at that instant would make.
+;
+; STATE is (RECORDS . SNAPSHOTS): the Store's records newest first and its
+; keyring snapshots (fn-sn-keyring-snapshots) newest first.
+;
+; Host: host/native/owner.lisp fnn-owner-install calls
+; host/owner-host.lisp fn-owner-key-statement-pending over the newest record
+; the open read, then fnn-owner-key-statement (fn-ks-plan, fn-ks-execute)
+; exactly as at acceptance.
+
+(defun fn-ks-pending (record)
+  (declare (xargs :guard t))
+  (if (fn-ks-statement (fn-ks-source record)) record nil))
+
+(defun fn-ks-accept (records snapshots event rows observed ed ml
+                             sequence txid store-generation)
+  (declare (xargs :guard t))
+  (let ((ev (fn-ks-execute event snapshots rows observed ed ml
+                           sequence txid store-generation)))
+    (if ev
+        (cons (list* ev event records) (cons ev snapshots))
+      (cons (cons event records) snapshots))))
+
+(defun fn-ks-cut (records snapshots event)
+  (declare (xargs :guard t))
+  (cons (cons event records) snapshots))
+
+(defun fn-ks-recover (st rows observed ed ml sequence txid store-generation)
+  (declare (xargs :guard t))
+  (let* ((records (and (consp st) (car st)))
+         (snapshots (and (consp st) (cdr st)))
+         (pending (and (consp records) (fn-ks-pending (car records))))
+         (ev (and pending
+                  (fn-ks-execute pending snapshots rows observed ed ml
+                                 sequence txid store-generation))))
+    (if ev
+        (cons (cons ev records) (cons ev snapshots))
+      st)))
+
+(defthm fn-ks-execute-needs-a-statement
+  (implies (not (fn-ks-statement (fn-ks-source event)))
+           (not (fn-ks-execute event snapshots rows observed ed ml
+                               sequence txid store-generation)))
+  :hints (("Goal" :in-theory (e/d (fn-ks-execute fn-ks-event fn-ks-plan)
+                                  (fn-ks-statement fn-ks-source
+                                   fn-hl-enroll-event fn-hl-revoke-event)))))
+
+; KEYSTONE (the cut is a model crash point).  Death between the statement's
+; commit and its change's, then the open's recovery, reaches exactly the
+; state of the uninterrupted acceptance under the recovery's configuration
+; and observations.
+(defthm fn-ks-recover-completes-the-cut
+  (equal (fn-ks-recover (fn-ks-cut records snapshots event)
+                        rows observed ed ml sequence txid store-generation)
+         (fn-ks-accept records snapshots event rows observed ed ml
+                       sequence txid store-generation))
+  :hints (("Goal" :in-theory (e/d (fn-ks-recover fn-ks-cut fn-ks-accept
+                                   fn-ks-pending)
+                                  (fn-ks-execute fn-ks-statement fn-ks-source))
+           :use fn-ks-execute-needs-a-statement)))
+
+; The facts an acting plan carries about its statement.
+(defthm fn-ks-plan-acting-facts
+  (let ((plan (fn-ks-plan event snapshots rows observed ed ml))
+        (statement (fn-ks-statement (fn-ks-source event))))
+    (implies (or (equal (car plan) :enroll) (equal (car plan) :revoke))
+             (and (equal (nth 1 plan) (nth 1 statement))
+                  (iff (equal (car plan) :revoke)
+                       (equal (car statement) :revocation))
+                  (implies (equal (car plan) :enroll)
+                           (equal (nth 2 plan) (nth 3 statement))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ks-plan)
+                                  (fn-ks-statement fn-ks-verdict
+                                   fn-ctl-authorize fn-ks-source fn-stxa-p
+                                   fn-hsig-authored-source-fields
+                                   fn-hl-current-enrollment
+                                   fn-hsig-authorize)))))
+
+; The kind-3 event of an acting plan: a snapshot of the plan's principal,
+; with no value (a tombstone) for a revocation and the new keys for an
+; enrollment.
+(defthm fn-ks-event-facts
+  (let ((ev (fn-ks-event plan sequence txid store-generation snapshots)))
+    (implies ev
+             (and (fn-stxk-p ev)
+                  (equal (fn-hl-snapshot-principal ev) (nth 1 plan))
+                  (if (equal (car plan) :revoke)
+                      (not (fn-hsig-keyring-snapshot-value ev))
+                    (equal (fn-hsig-keyring-snapshot-value ev)
+                           (list (nth 1 plan) (nth 2 plan)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ks-event)
+                                  (fn-hl-enroll-event fn-hl-revoke-event
+                                   fn-stxk-p fn-hsig-keyring-snapshot-value
+                                   fn-hl-snapshot-principal
+                                   fn-hl-next-generation))
+           :use ((:instance fn-hl-enroll-event-enrolls-its-keys
+                            (keyring-generation (fn-hl-next-generation snapshots))
+                            (principal (nth 1 plan)) (keys (nth 2 plan)))
+                 (:instance fn-hl-revoke-event-is-the-principals-tombstone
+                            (keyring-generation (fn-hl-next-generation snapshots))
+                            (principal (nth 1 plan)))))))
+
+; With a snapshot EV of principal P newest, an enrollment of P that
+; fn-hl-current-enrollment selects is EV itself.
+(defthm fn-ks-current-enrollment-after-a-snapshot-of-its-principal
+  (let ((en (fn-hl-current-enrollment g (cons ev s))))
+    (implies (and (fn-stxk-p ev)
+                  (equal (fn-hl-snapshot-principal ev) p)
+                  en
+                  (equal (cadr en) p))
+             (equal (car en) ev)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-hl-current-enrollment fn-stxk-find)
+                                  (fn-hsig-keyring-snapshot-value
+                                   fn-hl-snapshot-principal fn-stxk-p)))))
+
+; A statement never acts against snapshots headed by a snapshot of its own
+; principal that holds the keys it asks for (or, for a revocation, none).
+(defthm fn-ks-plan-after-its-own-change-does-not-act
+  (let ((statement (fn-ks-statement (fn-ks-source event))))
+    (implies (and (fn-stxk-p ev)
+                  (equal (fn-hl-snapshot-principal ev) (nth 1 statement))
+                  (if (equal (car statement) :revocation)
+                      (not (fn-hsig-keyring-snapshot-value ev))
+                    (equal (fn-hsig-keyring-snapshot-value ev)
+                           (list (nth 1 statement) (nth 3 statement)))))
+             (let ((plan (fn-ks-plan event (cons ev s) rows observed ed ml)))
+               (not (or (equal (car plan) :enroll)
+                        (equal (car plan) :revoke))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ks-plan)
+                                  (fn-ks-statement fn-ks-verdict
+                                   fn-ctl-authorize fn-ks-source fn-stxa-p
+                                   fn-hsig-authored-source-fields
+                                   fn-hl-current-enrollment
+                                   fn-hsig-authorize fn-stxk-p
+                                   fn-hsig-keyring-snapshot-value
+                                   fn-hl-snapshot-principal))
+           :use ((:instance fn-ks-current-enrollment-after-a-snapshot-of-its-principal
+                            (g (fn-stx-verdict-generation (fn-ks-verdict event)))
+                            (p (nth 1 (fn-ks-statement (fn-ks-source event)))))
+                 (:instance fn-hl-current-enrollment-selects-an-enrolled-snapshot
+                            (requested (fn-stx-verdict-generation
+                                        (fn-ks-verdict event)))
+                            (snapshots (cons ev s)))))))
+
+; KEYSTONE (idempotence).  Executing a statement whose key change is already
+; the newest snapshot changes nothing, under any configuration, observations
+; and coordinates: a succession then finds its own new keys current (it
+; declines :old-key or :same-keys), a revocation finds its principal's
+; tombstone (it declines :not-current).
+(defthm fn-ks-execute-is-idempotent
+  (let ((ev (fn-ks-execute event snapshots rows observed ed ml
+                           sequence txid store-generation)))
+    (implies ev
+             (equal (fn-ks-execute event (cons ev snapshots) rows2 observed2
+                                   ed2 ml2 sequence2 txid2 store-generation2)
+                    nil)))
+  :hints (("Goal" :in-theory (union-theories '(fn-ks-execute)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-ks-execute-needs-an-acting-plan)
+                 (:instance fn-ks-plan-acting-facts)
+                 (:instance fn-ks-event-facts
+                            (plan (fn-ks-plan event snapshots rows observed ed ml)))
+                 (:instance fn-ks-plan-after-its-own-change-does-not-act
+                            (ev (fn-ks-execute event snapshots rows observed ed ml
+                                               sequence txid store-generation))
+                            (s snapshots) (rows rows2) (observed observed2)
+                            (ed ed2) (ml ml2))
+                 (:instance fn-ks-execute-needs-an-acting-plan
+                            (snapshots
+                             (cons (fn-ks-execute event snapshots rows observed
+                                                  ed ml sequence txid
+                                                  store-generation)
+                                   snapshots))
+                            (rows rows2) (observed observed2) (ed ed2) (ml ml2)
+                            (sequence sequence2) (txid txid2)
+                            (store-generation store-generation2))))))
+
+; A kind-3 snapshot is not a kind-4 composite, so it is never pending.
+(defthm fn-ks-snapshot-is-not-a-composite
+  (implies (fn-stxk-p ev) (not (fn-stxa-p ev)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-stxk-p fn-stxa-p
+                                               fn-stxk-shapep fn-stxa-shapep)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-ks-snapshot-is-never-pending
+  (implies (fn-stxk-p ev) (not (fn-ks-pending ev)))
+  :hints (("Goal" :in-theory (union-theories '(fn-ks-pending fn-ks-source
+                                               (:e fn-ks-statement))
+                                             (theory 'minimal-theory))
+           :use fn-ks-snapshot-is-not-a-composite)))
+
+(defthm fn-ks-execute-is-a-snapshot
+  (let ((ev (fn-ks-execute event snapshots rows observed ed ml
+                           sequence txid store-generation)))
+    (implies ev (fn-stxk-p ev)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ks-execute) (fn-ks-event fn-ks-plan fn-stxk-p))
+           :use ((:instance fn-ks-event-facts
+                            (plan (fn-ks-plan event snapshots rows observed ed ml)))))))
+
+; KEYSTONE (recovery after a completed acceptance changes nothing).  When
+; the acceptance acted, its change is the newest record and the open's
+; recovery leaves the state as it is, under any configuration and
+; observations.
+(defthm fn-ks-recover-after-an-acting-acceptance-changes-nothing
+  (let ((st (fn-ks-accept records snapshots event rows observed ed ml
+                          sequence txid store-generation)))
+    (implies (fn-ks-execute event snapshots rows observed ed ml
+                            sequence txid store-generation)
+             (equal (fn-ks-recover st rows2 observed2 ed2 ml2
+                                   sequence2 txid2 store-generation2)
+                    st)))
+  :hints (("Goal" :in-theory (e/d (fn-ks-recover fn-ks-accept)
+                                  (fn-ks-execute fn-ks-pending fn-stxk-p))
+           :use ((:instance fn-ks-snapshot-is-never-pending
+                            (ev (fn-ks-execute event snapshots rows observed
+                                               ed ml sequence txid
+                                               store-generation)))
+                 fn-ks-execute-is-a-snapshot))))
+
 ; The owner log line for a statement's outcome (host/native/owner.lisp
-; fnn-owner-key-statement writes it and decides nothing).
+; fnn-owner-key-statement writes it and decides nothing).  OUTCOME is the
+; kind-3 commit's: :committed, :refused (the Store refused the key change;
+; the statement article itself stays accepted), or nil (none attempted).
+; AT-OPEN marks the recovery's execution of the newest record at open.
 (defun fn-ks-word (x)
   (declare (xargs :guard t))
   (cond ((eq x :enroll) "enrol-successor")
@@ -551,9 +795,11 @@
         ((eq x :old-key) "old-key")
         ((eq x :same-keys) "same-keys")
         ((eq x :proof-of-possession) "proof-of-possession")
+        ((eq x :committed) "committed")
+        ((eq x :refused) "refused")
         (t "other")))
 
-(defun fn-ks-log-line (plan committed)
+(defun fn-ks-log-line (plan outcome at-open)
   (declare (xargs :guard t))
   (fn-record-string-octets
    (concatenate 'string "key-statement "
@@ -561,11 +807,15 @@
                 (if (and (consp plan) (eq (car plan) :decline) (consp (cdr plan)))
                     (concatenate 'string " " (fn-ks-word (cadr plan)))
                   "")
-                (if committed " committed" ""))))
+                (if (member-eq outcome '(:committed :refused))
+                    (concatenate 'string " " (fn-ks-word outcome))
+                  "")
+                (if at-open " at-open" ""))))
 
 (in-theory (disable (:d fn-ks-prefix-rest) (:d fn-ks-lines) (:d fn-ks-values)
                     (:d fn-ks-unhex-exact) (:d fn-ks-field)
                     (:d fn-ks-statement) (:d fn-ks-pop-source)
                     (:d fn-ks-evidence) (:d fn-ks-verdict) (:d fn-ks-msgid)
                     (:d fn-ks-source) (:d fn-ks-pop-request) (:d fn-ks-plan)
-                    (:d fn-ks-event) (:d fn-ks-execute)))
+                    (:d fn-ks-event) (:d fn-ks-execute) (:d fn-ks-pending)
+                    (:d fn-ks-accept) (:d fn-ks-cut) (:d fn-ks-recover)))

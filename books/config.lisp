@@ -689,12 +689,13 @@
 
 ;; Control authority (D29, packet C2; specs/peering.md section 8).  A grant
 ;; is one authorities row (NAMESPACE PRINCIPAL-HEX VERB 0), keyed on the pair
-;; (NAMESPACE, PRINCIPAL-HEX).  C2 carries only the authority C3 needs: the
-;; one grantable verb is "cancel" (group control, C4, is deferred by D29).
+;; (NAMESPACE, PRINCIPAL-HEX).  The grantable verbs are "cancel" (C3) and
+;; "keys" (PRF-098: key succession and revocation statements,
+;; books/key-statements.lisp); group control, C4, is deferred by D29.
 ;;
 ;;   (:grant-control NAMESPACE PRINCIPAL 0 ((NAMESPACE PRINCIPAL VERB 0)))  code 11
 ;;   (:revoke-control NAMESPACE PRINCIPAL 0 nil)                          code 12
-(defconst *fn-cfg-control-verbs* '("cancel"))
+(defconst *fn-cfg-control-verbs* '("cancel" "keys"))
 
 (defun fn-cfg-hex-digit-octetp (b)
   (declare (xargs :guard t))

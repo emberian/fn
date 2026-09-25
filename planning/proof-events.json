@@ -3653,6 +3653,18 @@
         {
           "kind": "theorem",
           "name": "fn-native-hybrid-control-revoke-next-event-is-at-the-next-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-execute-is-idempotent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-recover-completes-the-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-recover-after-an-acting-acceptance-changes-nothing"
         }
       ]
     }
