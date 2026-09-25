@@ -200,7 +200,7 @@ def _git_repository(root: Path) -> str | None:
 # `tools/workflow_bridge.py` and `tools/bundle_bridge.py` `ld` on the lab's
 # path.  Their include closure is what needs certificates in this worktree.
 FOUR_NODE_HOSTS = (
-    "host/store-host.lisp", "host/store-node-host.lisp",
+    "host/store-host.lisp", "host/spike-storage-fast-host.lisp", "host/store-node-host.lisp",
     "host/config-host.lisp", "host/anchor-host.lisp",
     "host/checkpoint-host.lisp", "host/bp-ingress-host.lisp",
     "host/bp-receive-host.lisp", "host/bp-receipt-journal-host.lisp",

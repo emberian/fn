@@ -469,12 +469,21 @@ completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
   (multiple-value-bind (store records) (fnn-open-live-store root t fault)
     (let ((service nil))
       (handler-case
-          (let ((result (fnn-owner-core
-                         'fn-owner-recover-values
-                         (mapcar #'fnn-record-value records)
-                         (fnn-store-frontier store)
-                         (mapcar #'fnn-octet-list (fnn-config-records store))
-                         max-connections)))
+          (let ((result (or
+                         ;; SPIKE: install the state the store's own open made
+                         ;; (checkpoint or full replay) instead of a second
+                         ;; full replay (host/spike-storage-host.lisp, block A).
+                         (let ((r (fnn-owner-core 'fn-spk-owner-recover-opened
+                                                  max-connections)))
+                           (and (eq r :recovering) r))
+                         ;; SPIKE: otherwise replay the store events the host
+                         ;; decoded once in the octet buffer (spike/representation).
+                         (fnn-owner-core
+                          'fn-owner-recover-values
+                          (mapcar #'fnn-record-value records)
+                          (fnn-store-frontier store)
+                          (mapcar #'fnn-octet-list (fnn-config-records store))
+                          max-connections))))
             (unless (eq result :recovering)
               (fnn-fault "owner rejected committed history"))
             ;; The persisted profile ACL2 decoded at open, handed back once:

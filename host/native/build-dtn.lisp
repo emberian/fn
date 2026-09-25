@@ -112,6 +112,8 @@
 ;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io, as in build.lisp.
 (include-book "books/records-concrete-owner")
 (ld "host/store-host.lisp" :ld-error-action :error)
+;; SPIKE (D28, spike/storage): replay without per-event whole-state checks.
+(ld "host/spike-storage-fast-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file
@@ -146,6 +148,8 @@
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
+;; SPIKE (D28, spike/storage): the BP generation cleanup plan.
+(ld "host/spike-storage-bp-host.lisp" :ld-error-action :error)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -198,6 +202,8 @@
         ; `bp-node serve' (specs/bp-node-machine.md).  `bp send' and `bp
         ; receive' above stay as the lab's transport tools.
         (load "host/native/bp-node.lisp")
+        ;; SPIKE (D28, spike/storage): BP cleanup and the sprof diagnostic.
+        (load "host/native/spike-storage.lisp")
         ; What this image leaves out of the owner and operator it loaded:
         ; the NNTP service (TLS, auth, the feed service, the listener), the
         ; credential store and the control socket.  The operator refuses a
