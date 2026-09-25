@@ -772,6 +772,197 @@
                                                store-generation)))
                  fn-ks-execute-is-a-snapshot))))
 
+;; =============================================================================
+;; Packet 7 (PRF-124): a declined statement stays declined across a restart.
+;;
+;; The newest-record recovery above decides the pending statement under the
+;; OPEN's configuration.  A statement that declined at acceptance (no
+;; `keys' grant, say) is still the newest Store record after a restart, and
+;; configuration records live in their own journal (fn-sn-config-history),
+;; so a grant added across the restart made the open's recovery ACT on it:
+;; an old decline silently became new authority (the handoff's flag; the
+;; native trace in planning/evidence/peering-compose-2026-09-25.md).
+;;
+;; The recorded disposition: the reopen decides a statement under the
+;; configuration in force at the statement's OWN Store txid, the
+;; configuration journal's fold through that txid (C3's `fn-ctl-config-at',
+;; books/control-authority.lisp) -- exactly what the uninterrupted acceptance
+;; decided under.  The statement record and the journal are durable, so the
+;; disposition is a pure function of durable records and the observations
+;; over the stored bytes: a decline replays as a decline, and the cut the
+;; recovery exists for still completes as the acceptance would have.
+;; Re-evaluating an old statement under today's grants is then an explicit
+;; act: a new statement (or the operator's own key change), never a restart.
+;;
+;; ember's switch is the constant below: :recorded (the recommendation), or
+;; :current (the behaviour before packet 7: the open's live grants).
+
+(defconst *fn-ks-reopen-policy* :recorded)
+
+; A statement's Store txid: its kind-4 composite's (what
+; books/store-events.lisp fn-store-event-txid answers for a composite).
+(defun fn-ks-txid (event)
+  (declare (xargs :guard t))
+  (if (fn-stxa-p event) (fn-stxa-txid event) nil))
+
+(defun fn-ks-reopen-rows (policy event live-rows configs)
+  (declare (xargs :guard t))
+  (if (eq policy :current)
+      live-rows
+    (fn-cfg-authorities
+     (fn-cfg-value (fn-ctl-config-at (fn-ks-txid event) configs)))))
+
+; The open's recovery under the recorded disposition: the pending statement
+; is decided under the grants of the configuration in force at its txid.
+; Host: host/native/owner.lisp fnn-owner-key-statement-recover, through
+; host/owner-host.lisp fn-owner-key-statement-reopen-plan / -reopen-event.
+(defun fn-ks-recover-recorded (st configs observed ed ml sequence txid
+                                  store-generation)
+  (declare (xargs :guard t))
+  (let* ((records (and (consp st) (car st)))
+         (pending (and (consp records) (fn-ks-pending (car records)))))
+    (fn-ks-recover st (fn-ks-reopen-rows :recorded pending nil configs)
+                   observed ed ml sequence txid store-generation)))
+
+(defun fn-ks-configs-after-p (txid more)
+  ; Every configuration record of MORE is later than TXID.
+  (declare (xargs :guard t))
+  (or (not (consp more))
+      (< (nfix txid) (nfix (fn-cfg-record-txid (car more))))))
+
+; KEYSTONE (packet 7: replay reproduces the recorded disposition).  A
+; configuration record appended after the pending statement's txid -- a new
+; `keys' grant, a revocation of one, anything -- does not change what the
+; open's recovery does with that statement.  Subject:
+; `fn-ks-recover-recorded', which the open runs.
+(defthm fn-ks-reopen-is-blind-to-later-configuration
+  (let ((pending (fn-ks-pending (car (car st)))))
+    (implies (fn-ks-configs-after-p (fn-ks-txid pending) more)
+             (equal (fn-ks-recover-recorded st (append configs more) observed
+                                            ed ml sequence txid
+                                            store-generation)
+                    (fn-ks-recover-recorded st configs observed ed ml
+                                            sequence txid store-generation))))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-config-at)
+                                  (fn-ks-recover fn-ks-pending
+                                   fn-ctl-apply-records))
+           :use ((:instance fn-ctl-configs-through-of-later-append
+                            (txid (fn-ks-txid
+                                   (fn-ks-pending (car (car st))))))))))
+
+(defthm fn-ks-plan-needs-a-statement
+  (implies (fn-ks-plan event snapshots rows observed ed ml)
+           (fn-ks-statement (fn-ks-source event)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ks-plan)
+                                  (fn-ks-statement fn-ks-source fn-ks-verdict
+                                   fn-ks-msgid fn-ks-pop-source
+                                   fn-hsig-authored-source-fields
+                                   fn-ctl-authorize fn-hl-current-enrollment
+                                   fn-hsig-authorize fn-stx-verdict-generation
+                                   fn-stx-verdict-detail)))))
+
+(defthm fn-ks-declining-plan-executes-nothing
+  (implies (equal (car (fn-ks-plan event snapshots rows observed ed ml))
+                  :decline)
+           (not (fn-ks-execute event snapshots rows observed ed ml
+                               sequence txid store-generation)))
+  :hints (("Goal" :in-theory (e/d (fn-ks-execute fn-ks-event)
+                                  (fn-ks-plan)))))
+
+; KEYSTONE (packet 7: a decline replays as a decline).  A statement EVENT
+; whose plan declined when it was accepted under the grants of the
+; configuration in force at its own txid is left exactly as the acceptance
+; left it by the open's recovery over that journal with any later
+; configuration records appended, whatever coordinates the recovery holds.
+; The observations are the ones over the same stored bytes (the primitive
+; is a function of its inputs; A-CRYPTO).
+(defthm fn-ks-a-decline-replays-as-a-decline
+  (let* ((rows (fn-cfg-authorities
+                (fn-cfg-value (fn-ctl-config-at (fn-ks-txid event)
+                                                configs))))
+         (st (fn-ks-accept records snapshots event rows observed ed ml
+                           sequence txid store-generation)))
+    (implies (and (equal (car (fn-ks-plan event snapshots rows observed ed ml))
+                         :decline)
+                  (fn-ks-configs-after-p (fn-ks-txid event) more))
+             (equal (fn-ks-recover-recorded st (append configs more) observed
+                                            ed ml sequence2 txid2
+                                            store-generation2)
+                    st)))
+  :hints (("Goal" :in-theory (e/d (fn-ks-accept fn-ks-recover
+                                   fn-ks-recover-recorded fn-ks-reopen-rows
+                                   fn-ks-pending fn-ctl-config-at)
+                                  (fn-ks-execute fn-ks-plan fn-ks-statement
+                                   fn-ks-source fn-ctl-apply-records
+                                   fn-ctl-configs-through))
+           :use ((:instance fn-ctl-configs-through-of-later-append
+                            (txid (fn-ks-txid event)))
+                 (:instance fn-ks-plan-needs-a-statement
+                            (rows (fn-cfg-authorities
+                                   (fn-cfg-value
+                                    (fn-ctl-config-at
+                                     (fn-ks-txid event) configs)))))
+                 (:instance fn-ks-declining-plan-executes-nothing
+                            (rows (fn-cfg-authorities
+                                   (fn-cfg-value
+                                    (fn-ctl-config-at
+                                     (fn-ks-txid event) configs)))))
+                 (:instance fn-ks-declining-plan-executes-nothing
+                            (rows (fn-cfg-authorities
+                                   (fn-cfg-value
+                                    (fn-ctl-config-at
+                                     (fn-ks-txid event) configs))))
+                            (sequence sequence2) (txid txid2)
+                            (store-generation store-generation2))))))
+
+(defthm fn-ks-recover-without-a-pending-record
+  (implies (not (fn-ks-pending (car (car st))))
+           (equal (fn-ks-recover st rows observed ed ml sequence txid
+                                 store-generation)
+                  st))
+  :hints (("Goal" :in-theory (e/d (fn-ks-recover) (fn-ks-pending)))))
+
+; KEYSTONE (packet 7: the cut still completes as the acceptance would).
+; When every configuration record precedes the statement's txid and the
+; journal replays, the configuration in force at the txid IS the live one
+; the acceptance read, so death at the cut followed by the recorded
+; recovery reaches the uninterrupted acceptance under the live grants.
+(defthm fn-ks-recorded-recovery-completes-the-cut
+  (implies (and (fn-ctl-configs-all-through-p (fn-ks-txid event)
+                                              configs)
+                (true-listp configs)
+                (not (equal (fn-config-replay reserved ceiling configs) :fault)))
+           (equal (fn-ks-recover-recorded (fn-ks-cut records snapshots event)
+                                          configs observed ed ml sequence txid
+                                          store-generation)
+                  (fn-ks-accept records snapshots event
+                                (fn-cfg-authorities
+                                 (fn-cfg-value
+                                  (fn-config-replay reserved ceiling configs)))
+                                observed ed ml sequence txid
+                                store-generation)))
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-ks-statement (fn-ks-source event)))
+           :in-theory (e/d (fn-ks-recover-recorded fn-ks-reopen-rows
+                                   fn-ks-cut fn-ks-pending)
+                                  (fn-ks-recover fn-ks-accept fn-ks-execute
+                                   fn-ks-statement fn-ks-source
+                                   fn-ctl-config-at fn-config-replay
+                                   fn-ctl-configs-all-through-p))
+           :use ((:instance fn-ks-execute-needs-a-statement
+                            (rows (fn-cfg-authorities
+                                   (fn-cfg-value
+                                    (fn-config-replay reserved ceiling
+                                                      configs)))))
+                 (:instance fn-ks-recover-completes-the-cut
+                            (rows (fn-cfg-authorities
+                                   (fn-cfg-value
+                                    (fn-config-replay reserved ceiling
+                                                      configs)))))
+                 (:instance fn-ctl-config-at-after-every-record-is-the-replay
+                            (txid (fn-ks-txid event)))))))
+
 ; The owner log line for a statement's outcome (host/native/owner.lisp
 ; fnn-owner-key-statement writes it and decides nothing).  OUTCOME is the
 ; kind-3 commit's: :committed, :refused (the Store refused the key change;
