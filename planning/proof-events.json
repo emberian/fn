@@ -1827,6 +1827,14 @@
           "name": "fn-bs-k0-record-link-error-arm-relation",
           "note": "Link error arm of P-RECORD: from a related staged input, for every outcome of link(2) at 941 -- refused before issue or issued and then reported as an errno -- the resulting byte state with the kernel's (:record-link :error) observation is related.",
           "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-marker-cuts-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-marker-program-crash-is-old-or-new"
         }
       ]
     },
@@ -2941,6 +2949,14 @@
         {
           "kind": "theorem",
           "name": "fn-hm-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-marker-crash-is-the-history-table"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-marker-crash-open-stays-admitted"
         }
       ]
     },

@@ -148,7 +148,7 @@ class NativeCampaignMixin:
     def assert_observed_scan_is_program_image(self, before_form, store, cut,
                                               prior_names=(), sent=None,
                                               before_frontier=None, prior_frame=None,
-                                              bridge_setup=()):
+                                              bridge_setup=(), before_marker=None):
         """Compare exact scan values with the model's process-death image.
 
         SIGKILL does not simulate loss of dirty kernel state.  Therefore the
@@ -173,6 +173,7 @@ class NativeCampaignMixin:
             bridge.call('(include-book "books/frame-trailer")')
             bridge.call('(include-book "books/store-events")')
             bridge.call('(include-book "books/nntp-responses")')
+            bridge.call('(include-book "books/byte-store-marker-program")')
             for form in bridge_setup:
                 bridge.call(form, timeout=600)
             bridge.call("(defun fn-native-prefixp (x y)"
@@ -198,7 +199,11 @@ class NativeCampaignMixin:
             frontier_stage = stages[0].name if stages else ".allocation-campaign"
             txns = self.transaction_bytes(store)
             candidate_names = sorted(set(txns).difference(prior_names))
-            record_stages = sorted((store / "staging").glob(".stage-*"))
+            # The marker's stage is `.stage-marker-' (fnn-mark-committed);
+            # every other `.stage-' is the record's.
+            marker_stages = sorted((store / "staging").glob(".stage-marker-*"))
+            record_stages = sorted(set((store / "staging").glob(".stage-*"))
+                                   - set(marker_stages))
             observed_record = (txns[candidate_names[0]] if candidate_names
                                else record_stages[0].read_bytes() if record_stages
                                else None)
@@ -211,6 +216,24 @@ class NativeCampaignMixin:
                 self.assertEqual(observed_record, intended_record, cut.name)
             if cut.program == "fn-bs-record-program" and cut.name == "record-created":
                 self.assertEqual(observed_record, b"", "record-created stage is not empty")
+            # The marker this commit writes: ACL2's frame for the committed
+            # count, derived from the post (its sequence is the number of
+            # records before it), never read off the store.  The prior
+            # post's marker is the one in the pre-post image.
+            sequence = len(prior_names)
+            intended_marker = bytes(int(x) for x in re.findall(r"\d+", bridge.value(
+                "(fn-hm-after-commit {})".format(sequence))))
+            self.assertTrue(intended_marker, "no marker frame for sequence {}".format(sequence))
+            old_marker = before_marker
+            marker_path = store / "committed-history.json"
+            observed_marker = marker_path.read_bytes() if marker_path.exists() else None
+            fate = native_cuts.marker_fate(cut)
+            allowed = {"old": [old_marker], "new": [intended_marker],
+                       "either": [old_marker, intended_marker]}[fate]
+            self.assertIn(observed_marker, allowed, "{}: marker {} is not the {} one".format(
+                cut.name, observed_marker, fate))
+            if marker_stages and self.past_write(cut, "fn-bs-marker-program"):
+                self.assertEqual(marker_stages[0].read_bytes(), intended_marker, cut.name)
             # The program writes the frontier octets derived from the post.
             frontier_program = "(fn-bs-frontier-program \"{}\" {})".format(
                 frontier_stage, self.octet_list(intended_frontier))
@@ -246,14 +269,29 @@ class NativeCampaignMixin:
                 else:
                     bindings.extend(["(after-record (car (car (last record-run))))",
                                      "(completing (cdr (car (last record-run))))"])
-                    finish = "(fn-bs-finish-program {} {})".format(
-                        len(prior_names), len(prior_names))
-                    bindings.append("(finish-run (fn-bs-run after-record completing"
-                                    " {} nil '(\"fn.letters\" \"fn.test\") 10000000))".format(finish))
-                    index = model_images.cut_index(cut.program,
-                                                   cut.model_name or cut.name,
-                                                   cut.occurrence)
-                    bindings.append("(cut-bs (car (nth {} finish-run)))".format(index))
+                    # P-MARKER (fnn-mark-committed) runs between the record
+                    # and the acknowledgement, writing ACL2's frame for the
+                    # committed count.
+                    marker_stage = (marker_stages[0].name if marker_stages
+                                    else ".stage-marker-campaign")
+                    marker = "(fn-bs-marker-program \"{}\" (fn-hm-after-commit {}))".format(
+                        marker_stage, sequence)
+                    bindings.append("(marker-run (fn-bs-run after-record completing"
+                                    " {} nil '(\"fn.letters\" \"fn.test\") 10000000))".format(marker))
+                    if cut.program == "fn-bs-marker-program":
+                        index = model_images.cut_index(cut.program, cut.name, 1, cut.book)
+                        bindings.append("(cut-bs (car (nth {} marker-run)))".format(index))
+                    else:
+                        bindings.extend(["(after-marker (car (car (last marker-run))))",
+                                         "(marked (cdr (car (last marker-run))))"])
+                        finish = "(fn-bs-finish-program {} {})".format(
+                            len(prior_names), len(prior_names))
+                        bindings.append("(finish-run (fn-bs-run after-marker marked"
+                                        " {} nil '(\"fn.letters\" \"fn.test\") 10000000))".format(finish))
+                        index = model_images.cut_index(cut.program,
+                                                       cut.model_name or cut.name,
+                                                       cut.occurrence)
+                        bindings.append("(cut-bs (car (nth {} finish-run)))".format(index))
             bindings.extend([
                 "(observed {})".format(model_images.import_image(store)),
                 "(choices (fn-native-visible-choices (fn-bs-pending cut-bs) (fn-bs-unit cut-bs)))",
@@ -290,11 +328,10 @@ class NativeCampaignMixin:
     @staticmethod
     def past_write(cut, program):
         """Whether the cut lies after PROGRAM's write-all step."""
-        order = ("fn-bs-frontier-program", "fn-bs-record-program",
-                 "fn-bs-finish-program")
+        order = native_cuts.POST_PROGRAMS
         if order.index(cut.program) != order.index(program):
             return order.index(cut.program) > order.index(program)
-        steps = native_cuts.model_steps(program)
+        steps = native_cuts.model_steps(program, native_cuts.program_book(program))
         write = next(j for j, s in enumerate(steps) if s.kind == "write-all")
         return native_cuts.cut_step_index(cut) > write
 
@@ -311,6 +348,7 @@ class NativeCampaignMixin:
             prior_frames = self.transaction_bytes(store)
             self.assertEqual(len(prior_frames), 1)
             before_frontier = (store / "allocation-frontier.json").read_bytes()
+            before_marker = (store / "committed-history.json").read_bytes()
             env = dict(os.environ); env["FN_NATIVE_POST_FAULT"] = cut.name + ":kill"
             t0 = time.time()
             killed = self.native_post(store, "<candidate@example.invalid>", candidate, env)
@@ -325,7 +363,8 @@ class NativeCampaignMixin:
                       candidate.read_bytes() if claimed is None else claimed,
                       ("fn.letters",), (t0 + skew, t1 + skew)),
                 before_frontier=before_frontier,
-                prior_frame=next(iter(prior_frames.values())))
+                prior_frame=next(iter(prior_frames.values())),
+                before_marker=before_marker)
             recovered = self.invoke(store, "recover")
             self.assertIn(b"articles=", recovered.stdout)
             self.assertEqual(self.transaction_bytes(store), killed_frames)
