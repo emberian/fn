@@ -877,9 +877,11 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                              codes (fnn-octet-list obligation)
                              (fnn-octet-list subject) (fnn-octet-list evidence)
                              charge)))
-                     (unless event
-                       (return-from fnn-owner-attempt-transit
-                         (fnn-owner-transit-refused :event)))
+                     (let ((boundary (fnn-owner-core
+                                      'fn-owner-signed-event-boundary event)))
+                       (unless (eq boundary :ok)
+                         (return-from fnn-owner-attempt-transit
+                           (fnn-owner-transit-refused boundary))))
                      ;; A log detail only (fn-olog-transit-line): the Store
                      ;; record's token, not an input to any decision.
                      (setq *fnn-owner-transit-detail* :carried)
@@ -924,9 +926,13 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                            (fnn-octet-list subject) (fnn-octet-list evidence)
                            charge (coerce observed-ml-key 'list)
                            (first observations) (first ml-observation))))
-                   (unless event
-                     (return-from fnn-owner-attempt-transit
-                       (fnn-owner-transit-refused :event)))
+                   ;; ACL2 names the refusal: :event when no composite
+                   ;; was formed, :signed-record past the profile's R.
+                   (let ((boundary (fnn-owner-core
+                                    'fn-owner-signed-event-boundary event)))
+                     (unless (eq boundary :ok)
+                       (return-from fnn-owner-attempt-transit
+                         (fnn-owner-transit-refused boundary))))
                    (fnn-owner-identity-commit service event)))))))))))
 
 ;;; The served POST's attempt, and the bound local submission's.  The one

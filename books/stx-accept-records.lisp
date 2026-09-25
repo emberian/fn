@@ -15,16 +15,25 @@
 (defconst *fn-stxa-version* 0)
 (defconst *fn-stxa-carried-version* 1)
 (defconst *fn-stxa-kind* 4)
-(defconst *fn-stxa-max-octets* 196608)
-; The kind-4 composite embeds one encoded article record and, for a signed
-; article, its authored source.  Their bounds here are the ones this composite
-; was proved at (65 538 and 32 768), not the record and article codec
-; ceilings, which D27 widened to u32 (books/records-shape, books/article):
-; the composite's own bound, *fn-stxa-max-octets*, is their sum plus the
-; fixed fields.  Packet P1 derives all three from the profile's record bound;
-; packet P4 raises the authored source with the v2 carrier.
-(defconst *fn-stxa-max-article-record* 65538)
-(defconst *fn-stxa-max-authored-source* 32768)
+; Codec ceilings, never data bounds (D27).  The kind-4 composite embeds one
+; encoded article record and, for a signed article, its authored source.
+; Each child's bound is the width of the codec that carries it: the record
+; codec's u32 (`*fn-record-max-octets*', books/records-shape) and the v2
+; carrier's u32 source length (`*fn-hsig-v2-max-source*', equal to this one by
+; `fn-stxa-authored-source-bound-is-the-v2-carrier-width', books/hybrid-store).
+; The composite's own ceiling is the widest the frames that carry it accept:
+; the Store frame's u32 payload less the consumer poll reply's 9 header octets
+; and widest cursor (346, books/consumer-position), so every composite is a
+; poll report the local-control frame carries.  How large an article a store
+; admits is the operator's: the profile's A at the POST boundary
+; (`fn-sbud-post-boundary') and its R over the encoded composite
+; (`fn-sbud-signed-event-boundary', books/store-budget-naming).
+(defconst *fn-stxa-max-octets* (- *fn-cbor-max-uint* (+ 9 346)))
+(defconst *fn-stxa-max-article-record* *fn-record-max-octets*)
+(defconst *fn-stxa-max-authored-source* *fn-cbor-max-uint*)
+; Every item's CBOR budget: the widest byte string a u32 head can carry.  An
+; item within the old 65,538 budget encodes to the same octets under it.
+(defconst *fn-stxa-max-item* *fn-cbor-max-uint*)
 
 (fn-defrecord fn-stxa
   :constructor (fn-stxa-make-full sequence txid generation keyring-generation
@@ -100,10 +109,7 @@
 (defun fn-stxa-encode (e)
   (declare (xargs :guard t))
   (if (fn-stxa-p e)
-      (fn-stxe-encode-items-bounded
-       (fn-stxa-items e)
-       (if (equal (fn-stxa-schema e) *fn-stxa-version*)
-           *fn-stxe-max-octets* *fn-stxa-max-octets*))
+      (fn-stxe-encode-items-bounded (fn-stxa-items e) *fn-stxa-max-item*)
     nil))
 
 (defun fn-stxa-items-p (items)
@@ -167,7 +173,7 @@
   (if (not (fn-cbor-at-mostp octets *fn-stxa-max-octets*))
       (fn-stmt-error :limit)
     (let ((decoded (fn-stmt-decode-items-bounded
-                    13 octets *fn-stxa-max-octets* *fn-stxe-max-octets*)))
+                    13 octets *fn-stxa-max-octets* *fn-stxa-max-item*)))
       (if (not (fn-stmt-okp decoded))
           decoded
         (fn-stxa-of-items (fn-stmt-value decoded))))))

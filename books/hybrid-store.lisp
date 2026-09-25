@@ -218,6 +218,21 @@
          ed25519-observation ml-dsa-65-observation)
       nil)))
 
+; The composite's authored-source bound is the v2 carrier's own width: every
+; source a carrier can sign (`fn-hsig-subject-at-p') is one the kind-4
+; composite can hold, so the composite never refuses a signed source the
+; carrier admitted (D27; books/stx-accept-records).
+(defthm fn-stxa-authored-source-bound-is-the-v2-carrier-width
+  (equal *fn-stxa-max-authored-source* *fn-hsig-v2-max-source*)
+  :rule-classes nil)
+
+(defthm fn-stxa-holds-every-signable-source
+  (implies (fn-hsig-subject-at-p version principal keys source)
+           (<= (len source) *fn-stxa-max-authored-source*))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-hsig-subject-at-p fn-hsig-subject-p
+                                     fn-hsig-subject-v2-p))))
+
 (defun fn-hsig-authored-source-id (source)
   (declare (xargs :guard t))
   (if (and (fn-cbor-octet-listp source)
