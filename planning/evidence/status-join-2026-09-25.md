@@ -114,12 +114,54 @@ Commits: `ea66da80` (PKT-150, 105, 145, the test fixes), `c2963b6d`
 
 ## Native (hbox)
 
-NOT RUN. Every image from dev after 09c0af20 fails at
-books/poster-bytes-buffer (D32 join defect; lane pbb-d32, no commit yet
-when this lane stopped). The native runs (offline vs live status
-byte-identical with the checkpoint-file line and the full values; the
-capacity tests; OperatorFieldsTests.test_a_raise) wait for that fix and
-are the continuation's first job.
+Continuation after pbb-d32: dev merged (99c57848 from 2274fe51, 697c2402
+from b16eaa89; tests/native_io_progress.lisp conflict taken as dev's, the
+config stub takes the profile's LIMIT). Certification at the merged tree:
+
+- run-20260925T191541Z-026e (`--affected-by books/native-live-status.lisp`,
+  76 books): all passed, manifest
+  `manifests/certify-20260925T191623Z-3619899.json`, but the book took
+  10.93 s, 9 s of it `fn-nls-cached-buffer-of-put` under the default theory.
+  58638ad5 proves it by its two definitions (0.00 s).
+- run-20260925T193016Z-1565 (58638ad5): `certify-20260925T193045Z-3643711.json`,
+  books/native-live-status 9.99 s, tests 5.73 s, passed.
+- run-20260925T193139Z-4816 (148 default image roots, 132 certified):
+  `certify-20260925T193205Z-3645563.json`, all passed. Over 10 s, none of
+  them this lane's: config-owner-live 11.8, checkpoint-codec 11.3,
+  peer-authored-accept 11.0, bp-node-forward-lower-guards 10.6,
+  bp-node-fragment-step 10.4, bp-report-guards 10.0.
+
+A dev defect found on the way: since 219fd392 (the octet buffer) the
+owner's existing-article test and prepare pass their answer through
+`fnn-action`, the Store node's action list, which has no `:unaffordable`
+(nor `:clock-unusable`). A POST at the transaction budget stopped the owner
+(`owner core/store fault; process stopped: unexpected ACL2 action:
+:UNAFFORDABLE`), so NativeOperatorCapacityTests' budget case failed.
+host/native/owner.lisp `fnn-owner-buffer-action` restores the owner's
+keyword check for the two buffer calls (the check `fnn-owner-action` made
+before 219fd392); the budget case then passes.
+
+Images (developer and production, `host/native/build.lisp`, ACL2 w28
+`acl2-literal-4g`, OpenSSL 3.5.8) in `/tank/fn/scratch/status-join/tree/build/`:
+fn-host-developer.core `fb10d98e859ed8a3648da3e779f22c038c8e1c8b62c24e8076b276012083c6ee`,
+fn-host.core `8316c90dceeae938b60981afe86bde65f00b7c2677ae5965970ef7f896f60bee`
+(`status-join-2026-09-25/image-build.log`).
+
+- tests.test_native_state_checkpoint (whole),
+  tests.test_native_operator_verbs.NativeOperatorCapacityTests (whole, 5),
+  tests.test_native_profile_upgrade.OperatorFieldsTests.test_a_raise_of_any_field_and_a_shrink_refused_by_name:
+  11 tests, OK (`native-tests.log`, SHA-256
+  `f9a68d8ec29df83a2eeb28e6344d85c9fe796ee5c230c16407325af14173e9eb`).
+- Offline vs live status (`status-join-2026-09-25/native.sh`), store
+  initialised with `--max-history-octets 1099511627776` (2^40), 3 POSTs
+  through a running owner: before a checkpoint (a) and after
+  `store checkpoint` (b), the live and offline reports are byte-identical
+  (`equal a`, `equal b`; a `1b2e1c13...`, b `39be1d95...`, `SHA256SUMS`).
+  Both carry `max-history-octets=1099511627776`, `history-bound=1099511627776`,
+  `history-marker=unmarked`,
+  `open-cost replay-records=4294967295 list-memory-octets=35184372088832`,
+  and `checkpoint-file=absent` (a) / `checkpoint-file octets=4435
+  modified=1790365670` (b).
 
 ## Not done, and why
 
