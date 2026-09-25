@@ -421,6 +421,12 @@ class CacheTests(unittest.TestCase):
                           fake.runner_script())
             record = json.loads(farm.record_path(root, identifier).read_text())
             self.assertEqual(record["recertify"], ["books/beta"])
+            # The installer names the recertified books after its origins.
+            parsed = farm.parse_installed(
+                "install-partial: 3 books, cache /c\n  toolchain t; installed 2, "
+                "kept 0, missing 1, removed 1; roots installed 0 of 1; "
+                "origins /o=2; recertify books/beta\n")
+            self.assertEqual(parsed["origins"], {"/o": 2})
             with self.assertRaises(farm.FarmError):
                 farm.submit("persvati", root, ["books/alpha"], jobs=8,
                             timeout_seconds=60, affected_by=[], closure=True,
