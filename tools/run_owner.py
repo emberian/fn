@@ -110,15 +110,13 @@ def acl2_octet_list_any(output):
 class Acl2Owner(Acl2Store):
     """The store bridge with the owner books loaded; every call is fn-owner-*."""
 
+    # The owner books and host files are part of the saved boot:
+    # `tools/bridge_image.OWNER_FORMS` lists them after the store's.
+    BRIDGE_KIND = "owner"
+
     def __init__(self, max_conns):
         super().__init__()
         self.max_conns = max_conns
-        # books/owner-fault includes books/owner; `fn-own-fault' is what the
-        # host-fault boundary in `Owner.guard' below calls.
-        self.call('(include-book "books/owner-fault")')
-        self.call('(include-book "books/codec-attach")')
-        self.call('(ld "host/owner-host.lisp" :ld-error-action :return :ld-error-triples t)')
-        self.call('(ld "host/feed-filename-host.lisp" :ld-error-action :return :ld-error-triples t)')
 
     def _symbol(self, form, timeout=None):
         return acl2_owner_symbol(self.call(form, timeout=timeout))

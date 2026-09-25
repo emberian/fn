@@ -47,7 +47,7 @@
 
 ; fn-pcb-peer-budget-after-extend-delta over a configuration value.
 (defconst *pcb-value*
-  (fn-cfg-value-make nil 0 nil nil nil *pcb-old-rows* nil nil))
+  (fn-cfg-value-make nil 0 nil nil nil *pcb-old-rows* nil nil nil))
 (assert-event
  (equal (fn-pcb-peer-budget
          "relay"
@@ -218,7 +218,7 @@
                 (pcb-fold b64)
                 *tha-root-source*))))
 (assert-event (equal (fn-pa-carrier-kind *pcb-unsupported*) :present))
-(assert-event (equal (fn-pa-current-plan *pcb-unsupported* *pat-snapshots* nil)
+(assert-event (equal (fn-pa-current-plan *pcb-unsupported* *pat-snapshots* nil nil)
                      '(:refused :carrier)))
 (assert-event (fn-pcb-unsupported-profilep *pcb-unsupported*))
 (assert-event (not (fn-pcb-unsupported-profilep *pat-malformed*)))

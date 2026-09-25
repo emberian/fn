@@ -20,12 +20,21 @@
 ; PRF-099: the opaque-carriage budget rows and the row extension.
 (include-book "peer-carriage-rows")
 
+; A decimal word is a string, which is all the guards below need of it; with
+; this the guard proofs keep the decimal recognizer and its value closed.
+(local (defthm fn-native-admin-decimalp-is-a-string
+  (implies (fn-native-admin-decimalp text) (stringp text))
+  :rule-classes :forward-chaining))
+
 (defun fn-native-admin-peer-plan-base (words)
   "Build the complete peer record in ACL2; raw Lisp receives no field defaults.
 
 The explicit grammar carries auth-kind/auth-value.  The older grammar is
 decoded as source-address for durable command compatibility."
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :in-theory (disable fn-native-admin-decimalp
+                                               fn-native-admin-decimal-value)))))
   ; The vector is decided before any `nth' of it.  `fn-native-admin-plan' only
   ; ever hands over `fn-native-admin-words' of a recognized argv, which is a
   ; proper list; the raw boundary stays total, and an improper vector is the
@@ -199,6 +208,18 @@ decoded as source-address for durable command compatibility."
              (fn-native-admin-decimal-value (coerce (nth 3 words) 'list)))
             (fn-native-admin-decimal-value (coerce (nth 4 words) 'list))))
         (fn-native-admin-result :refused :budget nil nil 0 nil nil)))
+     ; PRF-100: `peer pull NAME SECONDS' sets the NEWNEWS pull interval
+     ; (books/peer-pull.lisp); 0 stops pulling.  SECONDS is a uint32.
+     ((equal (nth 1 words) "pull")
+      (if (and (equal (len words) 4)
+               (fn-native-admin-decimalp (nth 3 words)))
+          (fn-native-admin-result
+           :accepted nil :extend-peer
+           (fn-record-string-octets (nth 2 words)) 0 nil
+           (list (fn-cfg-row-make (nth 2 words) *fn-pcb-pull-interval-slot* ""
+                                  (fn-native-admin-decimal-value
+                                   (coerce (nth 3 words) 'list)))))
+        (fn-native-admin-result :refused :pull nil nil 0 nil nil)))
      ((equal (nth 1 words) "carries")
       (let ((rows (fn-native-admin-carries-rows (nth 2 words)
                                                 (nthcdr 3 words))))
@@ -372,7 +393,11 @@ decoded as source-address for durable command compatibility."
 (in-theory (disable fn-native-admin-bp-receipt-options))
 
 (defun fn-native-admin-bp-boundary-base-plan (words)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :in-theory (disable fn-native-admin-decimalp
+                                               fn-native-admin-decimal-value
+                                               fn-native-admin-bp-boundary-split)))))
   (mv-let (base carried releases) (fn-native-admin-bp-boundary-split words)
   (if (and (true-listp words) (member-equal base '(6 9))
            (equal (nth 0 words) "bp-boundary")
@@ -491,10 +516,12 @@ decoded as source-address for durable command compatibility."
   (member-equal (fn-native-admin-result-kind (fn-native-admin-peer-plan-base words))
                 '(:set-peer nil))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-admin-peer-plan-base)
-                                  (fn-cfg-peerp fn-cfg-peer-make nth len
-                                   fn-native-admin-decimalp fn-native-admin-decimal-value
-                                   fn-native-config-ipv4-address fn-id-hex-listp)))))
+  ;; Every branch builds its result with a literal kind, so the branch tests
+  ;; need no simplification: in the minimal theory the proof only splits.
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-native-admin-peer-plan-base kind-of-result
+                                (:executable-counterpart member-equal))
+                              (theory 'minimal-theory)))))
 (defthm fn-native-admin-peer-plan-kind
   (member-equal (fn-native-admin-result-kind (fn-native-admin-peer-plan words))
                 '(:set-peer nil))

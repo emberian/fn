@@ -19,6 +19,7 @@ from tests.test_native_crash_model import IMAGE_AVAILABLE, NativeCampaignMixin
 # The books and host bridge the stored-octets derivation below needs, loaded
 # as host/native/build.lisp loads them.
 SERVED_BRIDGE_SETUP = (
+    '(include-book "books/records-concrete-owner")',
     '(ld "host/store-node-host.lisp" :ld-error-action :error)',
     '(include-book "books/config-observed")',
     '(include-book "books/owner")',

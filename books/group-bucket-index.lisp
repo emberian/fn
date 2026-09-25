@@ -134,14 +134,28 @@
 ; argument.  The middle POST/peer/auth layers make no index decision and keep
 ; one transition definition each.  The owner and served records still carry
 ; the trie and buckets as separate immutable fields.
+;; The fourth slot is the control pin (control-c3e, books/control-served.lisp
+;; `fn-ctl-pin'): the view's withdrawn list and its withdrawal records, which
+;; the dispatcher reads for `423 withdrawn', `430 withdrawn' and
+;; `HDR :fn-control'.  A pin without one carries nil.
+(defun fn-gidx-pin-with-control (trie buckets control)
+  (declare (xargs :guard t))
+  (list :fn-group-pin trie buckets control))
+
 (defun fn-gidx-pin (trie buckets)
   (declare (xargs :guard t))
-  (list :fn-group-pin trie buckets))
+  (fn-gidx-pin-with-control trie buckets nil))
 
 (defun fn-gidx-pinp (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 3)
+  (and (true-listp x) (equal (len x) 4)
        (equal (fn-ag-car x) :fn-group-pin)))
+
+(defun fn-gidx-pin-control (x)
+  (declare (xargs :guard t))
+  (if (fn-gidx-pinp x)
+      (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))
+    nil))
 
 (defun fn-gidx-pin-trie (x)
   (declare (xargs :guard t))
@@ -186,6 +200,22 @@
   (equal (fn-gidx-pin-trie (fn-gidx-pin trie buckets)) trie))
 (defthm fn-gidx-pin-buckets-of-pin
   (equal (fn-gidx-pin-buckets (fn-gidx-pin trie buckets)) buckets))
+(defthm fn-gidx-pin-control-of-pin
+  (equal (fn-gidx-pin-control (fn-gidx-pin trie buckets)) nil))
+(defthm fn-gidx-pinp-of-pin-with-control
+  (fn-gidx-pinp (fn-gidx-pin-with-control trie buckets control)))
+(defthm fn-gidx-pin-trie-of-pin-with-control
+  (equal (fn-gidx-pin-trie (fn-gidx-pin-with-control trie buckets control)) trie))
+(defthm fn-gidx-pin-buckets-of-pin-with-control
+  (equal (fn-gidx-pin-buckets (fn-gidx-pin-with-control trie buckets control))
+         buckets))
+(defthm fn-gidx-pin-control-of-pin-with-control
+  (equal (fn-gidx-pin-control (fn-gidx-pin-with-control trie buckets control))
+         control))
+(defthm fn-gidx-pin-with-control-shape
+  (and (consp (fn-gidx-pin-with-control trie buckets control))
+       (true-listp (fn-gidx-pin-with-control trie buckets control))))
+(in-theory (disable fn-gidx-pin-with-control))
 
 ; Proof-side cache relation.  Served transitions carry this relation; no
 ; dispatcher evaluates it while processing a command.

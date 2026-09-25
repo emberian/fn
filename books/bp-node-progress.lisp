@@ -1395,7 +1395,8 @@
 ;; issued, no legacy outbound record) and only when ck is exactly its own
 ;; durable projection: the held rows, handoffs, arrival frontier and credit
 ;; it holds, and an operation frontier from an earlier epoch.  It proposes
-;; one publication; the record count of the new generation is reset only on
+;; one publication, of fn-bpnr-rotation-checkpoint (the effect's fifth
+;; field, the bytes the host writes); the record count of the new generation is reset only on
 ;; that publication's :durable answer.  :refused changes nothing; any other
 ;; answer is uncertain and fences until recovery, like every publication.
 (defun fn-bpnr-checkpoint-of-statep (ck st generation)
@@ -1410,6 +1411,19 @@
          (or (null prior)
              (and (consp prior) (natp (car prior)) (natp (fn-bpnf-epoch st))
                   (< (car prior) (fn-bpnf-epoch st)))))))
+
+;; The checkpoint the rotation publishes (N16-F1): the admitted projection
+;; CK with its operation frontier raised to the rotation operation's own id
+;; (EPOCH . 0).  A reopen from it takes an epoch above EPOCH, so no
+;; operation after the reopen reuses the rotation's id.
+(defun fn-bpnr-rotation-checkpoint (ck epoch)
+  (declare (xargs :guard t))
+  (fn-bpnr-checkpoint (fn-bpnr-checkpoint-generation ck)
+                      (fn-bpnr-checkpoint-held ck)
+                      (fn-bpnr-checkpoint-handoffs ck)
+                      (cons epoch 0)
+                      (fn-bpnr-checkpoint-next-arrival ck)
+                      (fn-bpnr-checkpoint-covered ck)))
 
 (defun fn-bpnp-rotation-quiescentp (st)
   (declare (xargs :guard t))
@@ -1430,7 +1444,9 @@
                 (fn-frame-natp generation) (< 0 generation)
                 (fn-bpnr-checkpoint-of-statep ck st generation)
                 (let ((octets (fn-bpnr-checkpoint-octets
-                               ck (fn-bpnr-depth-budget
+                               (fn-bpnr-rotation-checkpoint
+                                ck (fn-bpnf-epoch st))
+                               (fn-bpnr-depth-budget
                                    (fn-bpn-machine-state-max-jobs
                                     (fn-bpnf-base st))))))
                   (and octets
@@ -1446,7 +1462,8 @@
                                                   :checkpoint generation
                                                   :pending)
                              st))
-     (list (list :persist-checkpoint (fn-bpnf-epoch st) 0 generation)))))
+     (list (list :persist-checkpoint (fn-bpnf-epoch st) 0 generation
+                 (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))))))
 
 (defun fn-bpnp-rotation-persist-step (st epoch op result)
   (declare (xargs :guard t))

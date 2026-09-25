@@ -36,7 +36,7 @@
                               (fn-own-clock o)
                               (fn-own-conn-verdicts conn)
                               (fn-own-conn-index conn)
-                              (fn-own-conn-group-index conn)))
+                              (fn-own-conn-group-index conn) (fn-own-conn-control conn)))
 
 (defthm fn-own-tls-served-conn-keeps-reader-pins
   (and (equal (fn-served-conn-verdicts (fn-own-tls-served-conn o conn))

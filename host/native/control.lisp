@@ -117,7 +117,7 @@
   (let ((reply
           (cond
             ;; The owner's FNLS page, already sealed by ACL2
-            ;; (`fn-native-live-status-host-reply').
+            ;; (`fn-native-live-status-host-answer').
             ((and (consp status) (eq (first status) :live-status-reply))
              (second status))
             ((and (consp status) (eq (first status) :topic-reply))
@@ -266,24 +266,34 @@ joins it before the process exits."
     (setf (fnn-control-state-clients control)
           (delete socket (fnn-control-state-clients control) :test #'eq))))
 
+(defvar *fnn-live-status-buffers* nil
+  "The owner's rendered status reports, one per kind, as ACL2 chose them
+(`fn-native-live-status-host-answer'); read and replaced under the owner
+mutex only.")
+
 (defun fnn-control-live-status-answer (service request)
   "The running owner's page of its status report, under the owner mutex.
 
-ACL2 decodes the request and renders the report from the Store, the
-configuration and the connection pins the owner carries
-(`fn-native-live-status-host-reply'); the wrapper returns no `state', so
-answering changes nothing the owner holds.  The mutex only keeps a page from
-observing a half-applied transition."
+ACL2 decodes the request, renders the report from the Store, the
+configuration and the connection pins the owner carries once per request
+(offset 0), and pages from that rendered buffer
+(`fn-native-live-status-host-answer').  The wrapper returns no `state', so
+answering changes nothing the owner holds; the host keeps the buffers ACL2
+returns.  The mutex keeps a render from observing a half-applied
+transition."
   (fnn-with-owner (service)
     (when (fnn-owner-service-stopping service)
       (fnn-refuse "owner service is stopping"))
-    (let ((reply (fnn-core 'fn-native-live-status-host-reply request
-                           (fnn-store-observation
-                            (fnn-owner-service-store service))
-                           *the-live-state*)))
-      (unless (fnn-octet-list-p reply)
+    (let ((answer (fnn-core 'fn-native-live-status-host-answer request
+                            *fnn-live-status-buffers*
+                            (fnn-store-observation
+                             (fnn-owner-service-store service))
+                            *the-live-state*)))
+      (unless (and (consp answer) (consp (cdr answer))
+                   (fnn-octet-list-p (first answer)))
         (fnn-fault "ACL2 returned a malformed live status page"))
-      reply)))
+      (setf *fnn-live-status-buffers* (second answer))
+      (first answer))))
 
 (defun fnn-control-handle-client (control socket)
   (let* ((service (fnn-control-state-service control))

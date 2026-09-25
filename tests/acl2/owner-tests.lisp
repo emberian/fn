@@ -855,7 +855,7 @@
         (fn-own-conn-archive conn) (fn-own-conn-config conn)
         (fn-own-conn-observation conn) (fn-own-clock ,o)
         (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
-        (fn-own-conn-group-index conn))
+        (fn-own-conn-group-index conn) (fn-own-conn-control conn))
        (if (equal ,word :durable) :durable :uncertain)))))
 (defmacro own-w2-with (o conns inflight)
   `(fn-own-make (fn-own-store ,o) (fn-own-view ,o) ,conns (fn-own-next-id ,o)

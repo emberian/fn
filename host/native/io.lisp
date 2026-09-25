@@ -543,19 +543,27 @@ label; it does not select a policy."
 ;;; reported on stderr and stops nothing: the log is an operator's record,
 ;;; never evidence of durable acceptance.
 (defvar *fnn-owner-log-fd* nil)
+;;; PKT-101: the `[log] path' the run opened (NIL for stderr), the SIGHUP
+;;; count the signal handler advances (the handler does nothing else), and
+;;; the mutex under which a line is written and the descriptor is swapped,
+;;; so a line goes whole to the old file or whole to the new one.
+(defvar *fnn-owner-log-path* nil)
+(defvar *fnn-sighup-count* 0)
+(defvar *fnn-owner-log-mutex* (sb-thread:make-mutex :name "fn service log"))
 
 (defun fnn-log-line (line)
   "Write the ACL2-rendered octet list LINE and one LF to the service log."
   (unless (fnn-octet-list-p line)
     (fnn-fault "ACL2 returned a malformed log line"))
   (let ((octets (concatenate 'fnn-octets (fnn-octets line) (fnn-octets (list 10)))))
-    (if *fnn-owner-log-fd*
-        (handler-case (fnn-write-all *fnn-owner-log-fd* octets)
-          (error (condition)
-            (fnn-err "service log write failed: ~a" condition)))
-      (when *fnn-stderr*
-        (write-sequence octets *fnn-stderr*)
-        (finish-output *fnn-stderr*)))))
+    (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+      (if *fnn-owner-log-fd*
+          (handler-case (fnn-write-all *fnn-owner-log-fd* octets)
+            (error (condition)
+              (fnn-err "service log write failed: ~a" condition)))
+        (when *fnn-stderr*
+          (write-sequence octets *fnn-stderr*)
+          (finish-output *fnn-stderr*))))))
 
 (defun fnn-exit (code)
   (when *fnn-stdout* (finish-output *fnn-stdout*))
@@ -971,12 +979,13 @@ which `fn-store-sn-prepare' then refuses."
 
 (defun fnn-subject-id-buffer ()
   "FNN-SUBJECT-ID of the payload in the octet buffer, digested in place.
-host/owner-host.lisp `fn-owner-subject-id-buffer' calls books/sha256-buffer.lisp
-`fn-shb-subject-id': the subject preimage's fixed head is a short list and
-the payload is read from the buffer by index, so no octet list of the
-payload is built for the digest (D27 wave C; the served POST,
-host/native/owner.lisp fnn-owner-attempt)."
-  (fnn-as-octets (fnn-core-buffer-state 'fn-owner-subject-id-buffer)))
+books/sha256-buffer.lisp `fn-shb-subject-id-bounded', guard-verified with
+guard T, so the call runs the compiled stobj code and ACL2 raises no
+invariant-risk warning on standard output (qual-e747dbcc A4): the subject
+preimage's fixed head is a short list and the payload is read from the
+buffer by index, so no octet list of the payload is built for the digest
+(D27 wave C; the served POST, host/native/owner.lisp fnn-owner-attempt)."
+  (fnn-as-octets (fnn-core 'fn-shb-subject-id-bounded (fnn-live-octets))))
 
 (defun fnn-obligation-id (msgid subject)
   "Obligation identity v1, preimage and digest both ACL2's.  See FNN-SUBJECT-ID."
@@ -1748,16 +1757,14 @@ after recording why not in open-mode (the caller then replays in full)."
       (:checkpoint (format nil "open=checkpoint:~d suffix=~d" (second mode) (third mode)))
       (t (format nil "open=full-replay reason=~(~a~)" (second mode))))))
 
-(defun fnn-state-checkpoint-file-report (store)
-  "The newest published checkpoint file: its size and modification time.  The
-open above says whether it served (open=checkpoint:S) and why not otherwise.
-While an owner runs it is the only publisher (the verb needs the store lock),
-so after a run this is the owner's last automatic publication."
+(defun fnn-state-checkpoint-file-observation (store)
+  "The newest published checkpoint file's lstat, (OCTETS MODIFIED), or NIL
+when there is none.  The status report (books/native-live-status.lisp
+`fn-nls-checkpoint-file-words') renders it."
   (handler-case
       (let ((st (sb-posix:lstat (fnn-state-checkpoint-path store))))
-        (format nil "checkpoint-file octets=~d modified=~d"
-                (sb-posix:stat-size st) (sb-posix:stat-mtime st)))
-    (sb-posix:syscall-error () "checkpoint-file=absent")))
+        (list (sb-posix:stat-size st) (max 0 (sb-posix:stat-mtime st))))
+    (sb-posix:syscall-error () nil)))
 
 (defparameter +fnn-state-checkpoint-model-cuts+
   '("state-checkpoint-created" "state-checkpoint-written"
@@ -2304,9 +2311,10 @@ Reads config.json only (no lock, no replay); prints the verdict word."
 
 (defun fnn-command-rollback-check (root old-path)
   "Whether reinstating the kept config.json at OLD-PATH is sound: ACL2's
-fn-profile-rollback-verdict over the kept profile and the octet lengths of the
-store's committed transaction files.  The host reads and measures; it
-decides nothing."
+fn-profile-rollback-verdict over the kept profile, the store's own config.json
+profile (a kept profile that drops its history-marker requirement is refused
+by name) and the octet lengths of the store's committed transaction files.
+The host reads and measures; it decides nothing."
   (let ((store (make-fnn-store root)))
     (fnn-load-config store)
     (let* ((old (fnn-core 'fn-store-metadata-config-decode
@@ -2316,7 +2324,8 @@ decides nothing."
                                 (unless st (fnn-fault "transaction file vanished"))
                                 (sb-posix:stat-size st)))
                             (fnn-transaction-files store)))
-           (verdict (fnn-core 'fn-profile-rollback-verdict old lengths)))
+           (verdict (fnn-core 'fn-profile-rollback-verdict old
+                                    (fnn-store-config store) lengths)))
       (unless (and (consp verdict) (member (first verdict) '(:sound :refused)))
         (fnn-fault "ACL2 returned a malformed rollback verdict"))
       (if (eq (first verdict) :sound)
@@ -2623,9 +2632,13 @@ retention ledger's reserved charge of its capacity."
 (defun fnn-store-observation (store)
   "What this process observed at its own open, which the status report names:
 the staging orphans, whether their listing stopped at its bound, and how
-the Store was opened (checkpoint or full replay, and why)."
+the Store was opened (checkpoint or full replay, and why), and one clock
+observation, from which ACL2 derives the instant the retention rule is
+measured at (books/native-live-status.lisp `fn-nls-reclaim-words')."
   (list (fnn-store-orphans store) (fnn-store-orphans-more store)
-        (fnn-store-open-mode store)))
+        (fnn-store-open-mode store)
+        (fnn-store-prepare-observation)
+        (fnn-state-checkpoint-file-observation store)))
 
 (defun fnn-write-report (report)
   "Write the octets of one ACL2 status report; render nothing."
@@ -3266,7 +3279,7 @@ serialized profile when the saved image later starts."
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
     "FN_NATIVE_PROFILE_FAULT" "FN_NATIVE_STATE_CHECKPOINT_FAULT"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
-    "FN_NATIVE_AUTH_ADMIN_FAULT"
+    "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
@@ -3290,7 +3303,8 @@ serialized profile when the saved image later starts."
     "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE"
     "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE"
     "FN_APP_JOURNAL_TEST_FENCE_STORE" "FN_APP_JOURNAL_TEST_READ_ONLY_STORE"
-    "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"))
+    "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"
+    "FN_PEER_TEST_STOP_AFTER_CONSUME"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
@@ -3400,6 +3414,12 @@ serialized profile when the saved image later starts."
   ;; A peer that closed first must surface as EPIPE, never as a signal that
   ;; ends the listener; Python ignores SIGPIPE at interpreter start.
   (sb-sys:enable-interrupt sb-unix:sigpipe :ignore)
+  ;; PKT-101: SIGHUP only counts.  The owner asks ACL2 at its next accept
+  ;; poll whether a reopen of `[log] path' is due (fn-owner-log-reopen).
+  (sb-sys:enable-interrupt sb-unix:sighup
+                           (lambda (signal info context)
+                             (declare (ignore signal info context))
+                             (setq *fnn-sighup-count* (1+ *fnn-sighup-count*))))
   (sb-sys:enable-interrupt sb-unix:sigterm
                            (lambda (signal info context)
                              (declare (ignore signal info context))

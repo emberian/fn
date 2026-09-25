@@ -67,6 +67,38 @@
                                    fn-nntp-filter-groups-by-wildmat
                                    fn-wildmat-parse)))))
 
+(defthm fn-nntp-control-cleanp-is-clean-field
+  (equal (fn-nntp-control-cleanp bytes) (fn-nov-clean-fieldp bytes))
+  :hints (("Goal" :in-theory (enable fn-nntp-control-cleanp fn-nov-clean-fieldp
+                                     fn-nov-field-octetp))))
+
+(defthm fn-nntp-withdrawn-reply-effects
+  (fn-nntp-effectsp (fn-nntp-result-effects (fn-nntp-withdrawn-reply session msgidp)))
+  :hints (("Goal" :in-theory (enable fn-nntp-withdrawn-reply))))
+
+(defthm fn-nntp-control-line-is-block-text
+  (implies (and (fn-nov-clean-fieldp label) (fn-nov-clean-fieldp item))
+           (fn-nntp-block-textp (list (fn-nntp-hdr-line label item))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-nntp-hdr-line-is-a-clean-field (content item))
+                 (:instance fn-nntp-clean-field-is-response-text
+                            (bytes (fn-nntp-hdr-line label item))))
+           :in-theory (e/d (fn-nntp-block-textp) (fn-nntp-hdr-line)))))
+
+(defthm fn-nntp-control-hdr-response-effects
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-control-hdr-response session archive index verdicts args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response)
+                                  (fn-nntp-single fn-nntp-hdr-line
+                                   fn-ctl-control-item fn-ctl-served-status
+                                   fn-ctl-served-held fn-nntp-string-octets
+                                   fn-nntp-decimal-field fn-nntp-message-id-tokenp
+                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-ctl-pin-withdrawn fn-ctl-pin-ws
+                                   fn-nntp-token-string fn-ctl-target-octets
+                                   fn-octet-listp)))))
+
 (defthm fn-nntp-archive-command-pinned-effects-well-formed
   (implies (and (fn-nntp-projectionp archive)
                 (fn-midx-correspondencep (fn-gidx-pin-trie index)
@@ -85,6 +117,9 @@
                             (token (car args))
                             (legacyp (fn-nntp-keywordp keyword "XOVER")))
                  (:instance fn-nntp-verdict-hdr-response-effects)
+                 (:instance fn-nntp-control-hdr-response-effects)
+                 (:instance fn-nntp-withdrawn-reply-effects (msgidp nil))
+                 (:instance fn-nntp-withdrawn-reply-effects (msgidp t))
                  (:instance fn-nntp-effects-gidx-list-counts-command
                             (buckets (fn-gidx-pin-buckets index))
                             (args (cdr args))))
@@ -100,6 +135,8 @@
                  fn-midx-correspondencep
                  fn-nntp-archive-command-effects-well-formed
                  fn-nntp-verdict-hdr-response-effects
+                 fn-nntp-control-hdr-response-effects fn-nntp-withdrawn-reply-effects
+                 fn-nntp-control-hdr-response fn-nntp-withdrawn-reply
                  fn-nntp-msgid-retrieval-indexed-refines-scan)))))
 
 (defthm fn-nntp-command-pinned-effects-well-formed

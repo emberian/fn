@@ -26,6 +26,7 @@
         ((equal x :unverified) 2)
         ((equal x :absent) 3)
         ((equal x :carried) 4)
+        ((equal x :revoked) 5)
         (t 0)))
 
 (defun fn-stxe-code-token (x)
@@ -34,7 +35,24 @@
         ((equal x 2) :unverified)
         ((equal x 3) :absent)
         ((equal x 4) :carried)
+        ((equal x 5) :revoked)
         (t nil)))
+
+; The token codec round trip, both ways, over the five tokens of
+; *fn-stx-verdicts*: every token has its own code 1 to 5 and that code
+; decodes to it; every code that decodes to a token is that token's code.
+; Code 0 (the encoder's default) decodes to nothing, so a value that is not a
+; token never reaches a record.
+(defthm fn-stxe-code-token-of-token-code
+  (implies (fn-stxe-tokenp x)
+           (equal (fn-stxe-code-token (fn-stxe-token-code x)) x)))
+
+(defthm fn-stxe-token-code-of-code-token
+  (implies (fn-stxe-tokenp (fn-stxe-code-token c))
+           (equal (fn-stxe-token-code (fn-stxe-code-token c)) c)))
+
+(defthm fn-stxe-code-token-of-zero
+  (not (fn-stxe-tokenp (fn-stxe-code-token 0))))
 
 (defun fn-stxe-bounded-octetsp (x bound)
   (declare (xargs :guard (natp bound)))

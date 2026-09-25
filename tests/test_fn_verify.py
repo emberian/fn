@@ -67,8 +67,9 @@ def run_verifier(*args, env=None):
 class FakeNode:
     """A plain NNTP responder: ARTICLE and HDR :fn-verified from two tables."""
 
-    def __init__(self, articles, verdicts):
+    def __init__(self, articles, verdicts, controls=None):
         self.articles, self.verdicts = articles, verdicts
+        self.controls = controls or {}
         self.listener = socket.socket()
         self.listener.bind(("127.0.0.1", 0))
         self.listener.listen(8)
@@ -97,6 +98,13 @@ class FakeNode:
                                      + dot_stuff(self.articles[arg]) + b".\r\n")
                     else:
                         stream.write(b"430 no such article\r\n")
+                elif verb == "HDR" and arg.split(" ", 1)[0].lower() == ":fn-control":
+                    msgid = arg.split(" ", 1)[1]
+                    if msgid in self.controls:
+                        stream.write(b"225 Headers follow\r\n0 "
+                                     + self.controls[msgid].encode() + b"\r\n.\r\n")
+                    else:
+                        stream.write(b"503 no such metadata item\r\n")
                 elif verb == "HDR":
                     msgid = arg.split(" ", 1)[1]
                     if msgid in self.verdicts:
@@ -173,8 +181,41 @@ class FakeNodeVerifyTests(unittest.TestCase):
         cls.stranger = Signer(bytes([0x66]) * 32)
         impostor = Signer(bytes([0x55]) * 32)       # same principal, other keys
         cls.keyring = root / "keyring.json"
+        cls.pinned_other = Signer(bytes([0x77]) * 32)
         cls.keyring.write_text(json.dumps({"format": "fn-verify-keyring-v1",
-                                           "principals": [cls.author.entry()]}))
+                                           "principals": [cls.author.entry(),
+                                                          cls.pinned_other.entry()]}))
+        def withdrawing(msgid, field):
+            return cls.author.carried(
+                b"From: agent@example.invalid\r\nDate: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+                b"Newsgroups: control.cancel\r\nSubject: cmsg\r\nMessage-ID: "
+                + msgid.encode() + b"\r\n" + field + b"\r\n\r\nwithdrawn\r\n")
+        cls.withdrawn_target = cls.author.carried(source_for("<wd-target@x.invalid>"))
+        cls.other_target = cls.pinned_other.carried(source_for("<wd-target@x.invalid>"))
+        cancel = withdrawing("<wd-cancel@x.invalid>", b"Control: cancel <wd-target@x.invalid>")
+        superseder = withdrawing("<wd-super@x.invalid>", b"Supersedes: <wd-target@x.invalid>")
+        wd_articles = {
+            "<wd-cancel@x.invalid>": cancel,
+            "<wd-super@x.invalid>": superseder,
+            "<wd-lie-served@x.invalid>": withdrawing("<wd-lie-served@x.invalid>",
+                                                     b"Control: cancel <good@x.invalid>"),
+            "<wd-other@x.invalid>": withdrawing("<wd-other@x.invalid>",
+                                                b"Control: cancel <elsewhere@x.invalid>"),
+            "<wd-authority@x.invalid>": withdrawing("<wd-authority@x.invalid>",
+                                                    b"Control: cancel <wd-target@x.invalid>"),
+            "<wd-no-claim@x.invalid>": withdrawing("<wd-no-claim@x.invalid>",
+                                                   b"Control: cancel <wd-target@x.invalid>"),
+            "<wd-owed@x.invalid>": withdrawing("<wd-owed@x.invalid>",
+                                               b"Control: cancel <wd-never@x.invalid>"),
+        }
+        wd_controls = {
+            "<wd-cancel@x.invalid>": "executed withdrawal <wd-target@x.invalid> author",
+            "<wd-super@x.invalid>": "executed withdrawal <wd-target@x.invalid> author",
+            "<wd-lie-served@x.invalid>": "executed withdrawal <good@x.invalid> author",
+            "<wd-other@x.invalid>": "executed withdrawal <wd-target@x.invalid> author",
+            "<wd-authority@x.invalid>": "executed withdrawal <wd-target@x.invalid> authority",
+            "<wd-owed@x.invalid>": "owed",
+        }
         good = cls.author.carried(source_for("<good@x.invalid>"))
         tampered = cls.author.carried(source_for("<tampered@x.invalid>")).replace(
             b"exact post source", b"Exact post source")
@@ -208,7 +249,9 @@ class FakeNodeVerifyTests(unittest.TestCase):
                     claim_version=1),
                 "<v1-says-v2@x.invalid>": cls.author.carried(
                     source_for("<v1-says-v2@x.invalid>"), claim_version=2),
+                **wd_articles,
             },
+            controls=wd_controls,
             verdicts={
                 "<good@x.invalid>": a,
                 "<lie-verified@x.invalid>": a,
@@ -238,6 +281,11 @@ class FakeNodeVerifyTests(unittest.TestCase):
     def verify(self, msgid):
         return run_verifier(msgid, "--node", "127.0.0.1:{}".format(self.node.port),
                             "--plain", "--keyring", self.keyring)
+
+    def withdraw(self, target, cause, *extra):
+        return run_verifier(target, "--node", "127.0.0.1:{}".format(self.node.port),
+                            "--plain", "--keyring", self.keyring, "--withdrawal", cause,
+                            *extra)
 
     def test_agreement_on_a_valid_signature_is_0(self):
         code, report = self.verify("<good@x.invalid>")
@@ -326,6 +374,45 @@ class FakeNodeVerifyTests(unittest.TestCase):
         code, _ = run_verifier("not-a-msgid", "--node", "x", "--plain",
                                "--keyring", self.keyring)
         self.assertEqual(code, fn_verify.EXIT_USAGE)
+
+    # ------------------------------------------------------------ withdrawal (D29)
+
+    def test_withdrawal_by_the_author(self):
+        root = Path(self.temp.name)
+        copy = root / "target.eml"
+        copy.write_bytes(self.withdrawn_target)
+        code, report = self.withdraw("<wd-target@x.invalid>", "<wd-cancel@x.invalid>",
+                                     "--target-copy", copy)
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["named-target"], "<wd-target@x.invalid>")
+        self.assertFalse(report["target-served"])
+        # The same claim with a superseding article as the cause.
+        code, report = self.withdraw("<wd-target@x.invalid>", "<wd-super@x.invalid>")
+        self.assertEqual(code, 0, report)
+
+    def test_withdrawal_claims_the_checks_contradict_are_2(self):
+        # The node serves the target it claims withdrawn.
+        code, report = self.withdraw("<good@x.invalid>", "<wd-lie-served@x.invalid>")
+        self.assertEqual(code, 2, report)
+        # The withdrawing article names another target.
+        code, report = self.withdraw("<wd-target@x.invalid>", "<wd-other@x.invalid>")
+        self.assertEqual(code, 2, report)
+        # The copy of the target is another pinned principal's.
+        copy = Path(self.temp.name) / "other.eml"
+        copy.write_bytes(self.other_target)
+        code, report = self.withdraw("<wd-target@x.invalid>", "<wd-cancel@x.invalid>",
+                                     "--target-copy", copy)
+        self.assertEqual(code, 2, report)
+
+    def test_withdrawal_that_cannot_be_decided_is_3(self):
+        for cause in ("<wd-authority@x.invalid>", "<wd-no-claim@x.invalid>",
+                      "<wd-absent-cause@x.invalid>"):
+            code, report = self.withdraw("<wd-target@x.invalid>", cause)
+            self.assertEqual(code, 3, (cause, report))
+
+    def test_withdrawal_not_executed_is_1(self):
+        code, report = self.withdraw("<wd-never@x.invalid>", "<wd-owed@x.invalid>")
+        self.assertEqual(code, 1, report)
 
     def test_noncanonical_carrier_is_refused(self):
         with self.assertRaises(ValueError):

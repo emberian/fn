@@ -215,17 +215,30 @@
               (<= (+ stamp (* (cadr rule) *fn-rcl-seconds-per-day*)) now)))
         (t nil)))
 
+; Whether the Store's verdict list holds MSGID's payload: some entry for
+; MSGID whose token (`fn-stx-verdict-token', the car of the verdict) is not
+; :absent.  The statement index is re-derived from the stored payloads at
+; open (`fn-stx-index-of-store'), and a payload that verifies under the
+; keyring of that open contributes to it; an :unverified article can verify
+; under a later keyring, so its payload stays.  An :absent verdict is the
+; article with no authorship field, which contributes nothing under ANY
+; keyring (books/store-reclaim-holders
+; `fn-rcl-absent-verdict-contributes-nothing'), so it holds nothing.  Every
+; accepted article has a verdict entry (`fn-sn-finish-records-the-acceptance-
+; verdict', books/store-node-invariants), so without this test no article of
+; a real store was ever reclaimable.
 (defun fn-rcl-verdict-heldp (msgid verdicts)
   (declare (xargs :guard t))
   (if (consp verdicts)
-      (or (and (consp (car verdicts)) (equal (car (car verdicts)) msgid))
+      (or (and (consp (car verdicts)) (equal (car (car verdicts)) msgid)
+               (not (and (consp (cdr (car verdicts)))
+                         (equal (car (cdr (car verdicts))) :absent))))
           (fn-rcl-verdict-heldp msgid (cdr verdicts)))
     nil))
 
 ; Why an article stays, or :reclaimable.  VERDICTS is the Store's
 ; newest-first (msgid . verdict) list: an article with an authorship
-; verdict keeps its payload, because recovery re-verifies it (STO-008) and
-; the tombstone does not yet carry the verdict for replay (open, PRF-088).
+; verdict other than :absent keeps its payload (above; STO-008).
 (defun fn-rcl-verdict (rule now h verdicts article)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-rcl-rulep
@@ -288,7 +301,7 @@
 
 ;  KEYSTONE (PRF-088, the decision).  An article is reclaimable exactly when
 ; it is not already a tombstone, the rule is not keep-forever and permits it
-; by age, it carries no authorship verdict, and NO obligation in the list the
+; by age, it carries no authorship verdict but :absent, and NO obligation in the list the
 ; lifetimes table names -- reader pin, consumer cursor, undelivered feed to a
 ; live peer, BP obligation -- names it.  The executable side reads one fl
 ; per consumer group; the obligation side reads every cursor.
