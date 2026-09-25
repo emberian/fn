@@ -1374,7 +1374,7 @@ is the specification; dev re-implements it in ACL2 with the owner as the
 executor. This is a stronger fn guarantee and local policy: no RFC defines
 key statements.
 
-NNT-012: a key statement (succession or revocation) changes this node's
+NNT-014: a key statement (succession or revocation) changes this node's
 keyring only when the owner accepted it with a :verified verdict under its
 principal's current enrollment and a grant of `keys` covers every group it
 names; a succession also needs a proof of possession by the new keys over

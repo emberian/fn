@@ -1438,12 +1438,12 @@
       ]
     },
     {
-      "id": "SCN-050",
+      "id": "SCN-053",
       "title": "A principal's key succession and revocation reach two peering nodes as signed statements and act only where verified",
       "milestone": "M4",
       "status": "specified",
       "requirements": [
-        "NNT-012"
+        "NNT-014"
       ],
       "steps": [
         "Enrol P at nodes A and B; grant P the verb keys over fn.keys at both.",
