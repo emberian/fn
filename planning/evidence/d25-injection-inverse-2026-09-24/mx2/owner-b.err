@@ -1,0 +1,11 @@
+accepted reader connection=0 time=2026-09-24T23:59:13Z
+accepted reader connection=1 time=2026-09-24T23:59:13Z
+refused post path=served connection=1 message-id=<d25b-lost-reply@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:13Z
+accepted reader connection=2 time=2026-09-24T23:59:13Z
+accepted reader connection=3 time=2026-09-24T23:59:13Z
+accepted reader connection=4 time=2026-09-24T23:59:13Z
+refused post path=served connection=4 message-id=<d25b-dateless@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:13Z
+accepted reader connection=5 time=2026-09-24T23:59:13Z
+accepted reader connection=6 time=2026-09-24T23:59:13Z
+refused post path=served connection=6 message-id=<d25b-signed-dated@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:13Z
+accepted operator run

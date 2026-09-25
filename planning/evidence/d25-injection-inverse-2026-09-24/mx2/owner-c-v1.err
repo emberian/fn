@@ -1,0 +1,5 @@
+accepted reader connection=0 time=2026-09-24T23:59:16Z
+accepted post path=served connection=0 message-id=<d25b-v1-dated@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:17Z
+accepted reader connection=1 time=2026-09-24T23:59:17Z
+accepted post path=served connection=1 message-id=<d25b-v1-dateless@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:17Z
+accepted operator run

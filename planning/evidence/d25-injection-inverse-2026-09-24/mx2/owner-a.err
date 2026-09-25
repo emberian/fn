@@ -1,0 +1,31 @@
+accepted reader connection=0 time=2026-09-24T23:59:06Z
+accepted post path=served connection=0 message-id=<d25b-dated@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:06Z
+accepted reader connection=1 time=2026-09-24T23:59:07Z
+accepted reader connection=2 time=2026-09-24T23:59:08Z
+refused post path=served connection=2 message-id=<d25b-dated@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:08Z
+accepted reader connection=3 time=2026-09-24T23:59:08Z
+accepted reader connection=4 time=2026-09-24T23:59:08Z
+accepted post path=served connection=4 message-id=<d25b-dateless@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:08Z
+accepted reader connection=5 time=2026-09-24T23:59:08Z
+accepted reader connection=6 time=2026-09-24T23:59:09Z
+refused post path=served connection=6 message-id=<d25b-dateless@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:09Z
+accepted reader connection=7 time=2026-09-24T23:59:09Z
+accepted reader connection=8 time=2026-09-24T23:59:09Z
+refused post path=served connection=8 message-id=<d25b-dateless@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:09Z
+accepted reader connection=9 time=2026-09-24T23:59:09Z
+refused post path=served connection=9 message-id=<d25b-dated@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:09Z
+accepted reader connection=10 time=2026-09-24T23:59:09Z
+refused post path=served connection=10 message-id=<d25b-dated@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:09Z
+accepted reader connection=11 time=2026-09-24T23:59:09Z
+accepted reader connection=12 time=2026-09-24T23:59:09Z
+accepted post path=served connection=12 message-id=<d25b-dated-second@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:09Z
+accepted reader connection=13 time=2026-09-24T23:59:09Z
+accepted reader connection=14 time=2026-09-24T23:59:10Z
+accepted post path=served connection=14 message-id=<d25b-signed-dated@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:10Z
+accepted reader connection=15 time=2026-09-24T23:59:11Z
+refused post path=served connection=15 message-id=<d25b-signed-dated@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:11Z
+accepted reader connection=16 time=2026-09-24T23:59:11Z
+refused post path=served connection=16 message-id=<d25b-signed-dated@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:11Z
+accepted reader connection=17 time=2026-09-24T23:59:11Z
+accepted post path=served connection=17 message-id=<d25b-lost-reply@example.invalid> agent=fn.example.invalid time=2026-09-24T23:59:11Z
+accepted reader connection=18 time=2026-09-24T23:59:13Z
