@@ -110,6 +110,7 @@
     "tests/acl2/native-auth-admin-tests",
     "tests/acl2/native-auth-admin-host-tests",
     "books/journal-publish",
+    "books/bp-eid-shape",
     "books/native-admin",
     "tests/acl2/native-admin-tests",
     "books/native-config-observation",
@@ -745,19 +746,19 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 752,
-    "books_in_root_closure": 750,
-    "roots": 741,
-    "theorems": 10007,
-    "functions": 7092,
-    "assert_events": 11067,
+    "books": 753,
+    "books_in_root_closure": 751,
+    "roots": 742,
+    "theorems": 10035,
+    "functions": 7108,
+    "assert_events": 11077,
     "must_fails": 966,
-    "encapsulates": 31,
+    "encapsulates": 34,
     "guards": {
       "verified": 2086,
       "declared-off": 480,
-      "default-guarded": 3527,
-      "default-unguarded": 999
+      "default-guarded": 3541,
+      "default-unguarded": 1001
     },
     "suspect_theorems": 89,
     "export_hygiene_warnings": 118,
@@ -1609,6 +1610,31 @@
       "includes": [
         "bp-node-machine",
         "clock"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-eid-shape.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 14,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 14,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 2,
+      "includes": [
+        "config"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7470,7 +7496,7 @@
       "book": "books/native-admin.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 36,
+      "theorems": 53,
       "functions": 78,
       "guards": {
         "verified": 1,
@@ -7483,8 +7509,9 @@
       "must_fails": 0,
       "defconsts": 16,
       "defmacros": 0,
-      "encapsulates": 2,
+      "encapsulates": 3,
       "includes": [
+        "bp-eid-shape",
         "byte-store-txn-name",
         "config-observed",
         "identity",
@@ -17351,17 +17378,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 7,
+      "functions": 9,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 7
+        "default-unguarded": 9
       },
       "verify_guards_events": 0,
-      "assert_events": 163,
+      "assert_events": 173,
       "must_fails": 13,
-      "defconsts": 45,
+      "defconsts": 51,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -21669,7 +21696,7 @@
     {
       "theorem": "list-octets-of-atom",
       "book": "books/native-admin.lisp",
-      "line": 965,
+      "line": 961,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-native-admin-peer-list-octets and the conclusion is that branch's value"
       ]
@@ -21992,7 +22019,7 @@
       {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
-        "line": 1253,
+        "line": 1417,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
