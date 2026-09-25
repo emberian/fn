@@ -592,6 +592,7 @@
     "books/served-carried",
     "books/owner-served-carried",
     "books/owner-offer-indexed",
+    "books/store-events-carried",
     "books/owner-commit-carried",
     "books/owner-prepare-carried",
     "books/records-concrete",
@@ -635,6 +636,7 @@
     "tests/acl2/msgid-index-concrete-tests",
     "tests/acl2/owner-advance-carried-tests",
     "tests/acl2/owner-intent-carried-tests",
+    "tests/acl2/store-events-carried-tests",
     "tests/acl2/owner-recover-ocl-tests",
     "books/config-owner-publish",
     "tests/acl2/config-owner-publish-tests",
@@ -809,25 +811,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 821,
-    "books_in_root_closure": 817,
-    "roots": 805,
-    "theorems": 11091,
-    "functions": 7801,
-    "assert_events": 11934,
-    "must_fails": 1146,
+    "books": 823,
+    "books_in_root_closure": 819,
+    "roots": 807,
+    "theorems": 11130,
+    "functions": 7827,
+    "assert_events": 11975,
+    "must_fails": 1158,
     "encapsulates": 49,
     "guards": {
-      "verified": 2146,
+      "verified": 2151,
       "declared-off": 585,
-      "default-guarded": 3930,
-      "default-unguarded": 1140
+      "default-guarded": 3949,
+      "default-unguarded": 1142
     },
-    "suspect_theorems": 94,
+    "suspect_theorems": 95,
     "export_hygiene_warnings": 137,
     "enabled_projection_warnings": 42,
     "teeth_form_warnings": 88,
-    "include_hygiene_warnings": 828,
+    "include_hygiene_warnings": 829,
     "host_names_warnings": 892,
     "hand_written_record_warnings": 18
   },
@@ -9426,15 +9428,15 @@
       "book": "books/owner-commit-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 14,
-      "functions": 8,
+      "theorems": 30,
+      "functions": 16,
       "guards": {
-        "verified": 3,
+        "verified": 8,
         "declared-off": 0,
-        "default-guarded": 5,
+        "default-guarded": 8,
         "default-unguarded": 0
       },
-      "verify_guards_events": 3,
+      "verify_guards_events": 8,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -9444,7 +9446,8 @@
         "config-owner-live",
         "owner-invariants",
         "owner-served-invariants",
-        "records-concrete"
+        "records-concrete",
+        "store-events-carried"
       ],
       "system_includes": [],
       "suspects": [],
@@ -9644,12 +9647,12 @@
       "book": "books/owner-intent-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 7,
-      "functions": 5,
+      "theorems": 9,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 5,
+        "default-guarded": 8,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -11659,6 +11662,33 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-events-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 21,
+      "functions": 13,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 13,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-events"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-evc-event-nth-of-atom"
+      ],
       "read_error": null
     },
     {
@@ -20011,17 +20041,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 4,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 4
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 21,
-      "must_fails": 3,
-      "defconsts": 1,
+      "assert_events": 27,
+      "must_fails": 5,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -21295,6 +21325,34 @@
         "../../books/replay"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-events-carried-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 35,
+      "must_fails": 10,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-commit-carried",
+        "owner-signed-post-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -23225,6 +23283,14 @@
       ]
     },
     {
+      "theorem": "fn-evc-event-nth-of-atom",
+      "book": "books/store-events-carried.lisp",
+      "line": 138,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-store-event-nth and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-exchange-ingest-refusal-is-no-op",
       "book": "books/exchange.lisp",
       "line": 282,
@@ -24089,31 +24155,31 @@
       {
         "theorem": "fn-ccar-completion-record-is-completion-record",
         "book": "books/owner-commit-carried.lisp",
-        "line": 74,
+        "line": 111,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-completion-core-enabledp-is-reference",
         "book": "books/owner-commit-carried.lisp",
-        "line": 106,
+        "line": 318,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-completion-enabledp-is-reference",
         "book": "books/owner-commit-carried.lisp",
-        "line": 135,
+        "line": 366,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-sn-finish-is-sn-finish",
         "book": "books/owner-commit-carried.lisp",
-        "line": 199,
+        "line": 448,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-own-complete-is-own-complete",
         "book": "books/owner-commit-carried.lisp",
-        "line": 247,
+        "line": 506,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -25334,19 +25400,19 @@
       {
         "check": "icar-t-intent-id-without-carryp",
         "book": "tests/acl2/owner-intent-carried-tests.lisp",
-        "line": 95,
+        "line": 131,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "icar-t-intent-without-carryp",
         "book": "tests/acl2/owner-intent-carried-tests.lisp",
-        "line": 100,
+        "line": 136,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "icar-t-resolution-without-carryp",
         "book": "tests/acl2/owner-intent-carried-tests.lisp",
-        "line": 105,
+        "line": 141,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -30751,6 +30817,13 @@
         "line": 5,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-events-carried-tests.lisp",
+        "line": 5,
+        "include": "owner-signed-post-tests",
+        "included": "tests/acl2/owner-signed-post-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -37449,21 +37522,21 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 635,
+        "line": 640,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 635,
+        "line": 640,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1738,
+        "line": 1753,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
