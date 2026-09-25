@@ -203,7 +203,16 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     root = Path(args.root).absolute()
     if args.max_transactions is not None:
-        run_store.DEFAULT_CONFIG["max_transactions"] = args.max_transactions
+        # The bound is ACL2's (`fn-sbud-verdict` under the persisted
+        # profile); the scenario stands in a verdict that refuses after
+        # MAX_TRANSACTIONS admissions, to reach the host's refusal path.
+        admitted = [0]
+
+        def publication_admissible(store, bridge=None, kind="article"):
+            admitted[0] += 1
+            return admitted[0] <= args.max_transactions
+
+        run_store.publication_admissible = publication_admissible
 
     # Observe the receipt the host regenerates without changing what it does.
     original_receipt = ReceiptJournal.receipt_adu

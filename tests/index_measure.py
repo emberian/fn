@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from tests.test_index_cache import IndexReader  # noqa: E402
-from tools.run_store import (Acl2Store, DEFAULT_CONFIG, Store,  # noqa: E402
+from tools.run_store import (Acl2Store, Store, profile_config,  # noqa: E402
                              conservative_charge, metadata)
 
 RUNS = 5
@@ -36,8 +36,8 @@ def build_maximum_profile(path):
         store.acquire()
         bridge = Acl2Store()
         store.recover(bridge)
-        payload = b"x" * DEFAULT_CONFIG["max_payload_bytes"]
-        count = DEFAULT_CONFIG["max_transactions"]
+        payload = b"x" * profile_config()["max_payload_bytes"]
+        count = profile_config()["max_transactions"]
         for sequence in range(count):
             msgid = ("<capacity-%d@example.invalid>" % sequence).encode("ascii")
             obligation, subject, evidence = metadata(msgid, payload)
@@ -68,8 +68,8 @@ def main():
     output = ROOT / "build/index-measure/measure.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     result = {"command": [sys.executable, "tests/index_measure.py"],
-              "profile": {"articles": DEFAULT_CONFIG["max_transactions"],
-                          "payload_bytes": DEFAULT_CONFIG["max_payload_bytes"],
+              "profile": {"articles": profile_config()["max_transactions"],
+                          "payload_bytes": profile_config()["max_payload_bytes"],
                           "groups_per_article": 2,
                           "group": GROUP},
               "note": "each sample is one ACL2 bridge call; the refusal arm is"

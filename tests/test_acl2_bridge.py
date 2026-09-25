@@ -155,11 +155,11 @@ class BridgeCorrelationTests(unittest.TestCase):
         self.assertGreaterEqual(base, run_store.ACL2_CALL_BASE_SECONDS)
         self.assertGreater(larger, base)
         # The recorded maximum-profile reopen on this machine is 11.7 s for
-        # MAX_TRANSACTION_COUNT records.  The bound stays an order of magnitude
+        # the development profile's transaction bound (128, ACL2's).  The bound stays an order of magnitude
         # above it, rather than the fixed 20 s D2 found too close to it.
         recovery = (run_store.ACL2_RECOVER_BASE_SECONDS
                     + run_store.ACL2_RECOVER_PER_RECORD_SECONDS
-                    * run_store.MAX_TRANSACTION_COUNT)
+                    * run_store.profile_config()["max_transactions"])
         self.assertGreater(recovery, 10 * 11.7)
 
 

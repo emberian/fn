@@ -9,6 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import run_store  # noqa: E402
+from tools import frame_bridge  # noqa: E402
 from run_store import Acl2Store, Store  # noqa: E402
 from tests.test_reader import ReaderProcess  # noqa: E402
 
@@ -180,16 +181,18 @@ class StoreConfigTests(unittest.TestCase):
         `fn-store-cfg-peer-record` resolve it, which is the one-owner fix;
         this case is the regression test that arrived a lane later.
 
-        The ceiling is never typed here. It is read back out of the record
-        ACL2 admitted, which is the only place in this test that knows it,
-        and the second half then shows the bound still bites one octet
-        above whatever it is.
+        The ceiling is never typed here. It is ACL2's `*fn-record-max-payload*`,
+        read from the model, and the second half shows the bound still bites
+        one octet above it.  The listing is ACL2's `peer list` report
+        (`fn-native-admin-peer-report`), the line the native host prints.
         """
         self.invoke("peer", "add", "upstream", "--nntp", "news.example.invalid:119",
                     "--inbound-groups", "fn.*", "--source-address", "192.0.2.1")
         listing = self.invoke("peer", "list").stdout.decode("ascii").strip()
-        self.assertIn("name=upstream ", listing + " ")
-        ceiling = int(re.search(r"max-octets=([0-9]+)", listing).group(1))
+        self.assertTrue(listing.startswith("upstream path-identity="), listing)
+        self.assertIn(" inbound=fn.* ", listing + " ")
+        self.assertIn(" outbound=- auth=source-address:192.0.2.1", listing)
+        ceiling = frame_bridge.session().call("*fn-record-max-payload*")
         self.assertGreater(ceiling, 0)
         refused = self.invoke("peer", "add", "toobig", "--nntp", "news.example.invalid:119",
                               "--inbound-groups", "fn.*", "--source-address", "192.0.2.2",

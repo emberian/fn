@@ -65,7 +65,7 @@ ACCEPTED, REFUSED, UNCERTAIN, UNEXPECTED = 0, 1, 3, 4
 # Payload octets per size class.  fn-own-body-limit is 32768
 # (books/owner.lisp; the record codec's *fn-record-max-payload*); `over` exceeds it.
 # The default store profile (the one `operator init` writes and the live node
-# runs) holds 128 transactions (tools/run_store.py MAX_TRANSACTION_COUNT; the
+# runs) holds 128 transactions (the development profile ACL2 frames, fn-bs-config-for-profile; the
 # owner refuses at host/native/owner.lisp `fnn-owner-attempt`).  A store is
 # closed and a fresh one started before an iteration could reach it, so
 # every kill meets a store with room to write.

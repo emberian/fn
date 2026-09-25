@@ -26,7 +26,7 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from tests.bench.generate import article_octets, message_id  # noqa: E402
-from tools.run_store import MAX_TRANSACTION_COUNT  # noqa: E402
+from tools.run_store import profile_config  # noqa: E402
 
 GROUPS = ("fn.letters", "fn.test")
 OUTCOMES = {0: "accepted", 1: "refused", 3: "uncertain", 4: "fault", 5: "usage"}
@@ -194,18 +194,18 @@ def current_owner(work, counts, payload, folded_bytes, seed, acl2):
         return result
     committed = 0
     quota_taken = False
-    folded_at = MAX_TRANSACTION_COUNT - 1 if folded_bytes > 0 else None
+    folded_at = profile_config()["max_transactions"] - 1 if folded_bytes > 0 else None
     result["owner"]["startup_seconds"] = time.monotonic() - before_owner
     try:
         for target in counts:
-            if target > MAX_TRANSACTION_COUNT:
+            if target > profile_config()["max_transactions"]:
                 result["points"].append({
                     "target_articles": target, "at_open": committed,
                     "not_measured": "development profile max_transactions={}".format(
-                        MAX_TRANSACTION_COUNT),
+                        profile_config()["max_transactions"]),
                 })
                 result["stopped_by"] = "development profile transaction bound at {} accepted articles".format(
-                    MAX_TRANSACTION_COUNT)
+                    profile_config()["max_transactions"])
                 break
             point, latencies = {"target_articles": target, "at_open": committed,
                                 "loadavg": os.getloadavg()}, []
@@ -236,7 +236,7 @@ def current_owner(work, counts, payload, folded_bytes, seed, acl2):
             result["points"].append(point)
             if result["stopped_by"]:
                 break
-            if committed == MAX_TRANSACTION_COUNT:
+            if committed == profile_config()["max_transactions"]:
                 # A single fresh ID past the configured capacity is a refusal
                 # observation.  Its latency never enters a throughput summary.
                 msgid, source, shape = write_source(sources, seed, committed, payload)
