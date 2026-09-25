@@ -1378,6 +1378,81 @@ reconfigure generation <n>`, `owed`, `declined <reason>` or `report
 <serial>`. It is the node's historical claim, like `:fn-verified`, and
 `tools/fn_verify.py` checks only the signature half of it.
 
+## 9. Peering invitations (issue, accept, confirm; PRF-097)
+
+Two nodes that share no key agree to peer by exchanging two signed
+documents. The shape is the spike's (`spike/peering`,
+`planning/evidence/spike-peering-2026-09-25.md`); on dev every decision is
+ACL2's (`books/peer-invite.lisp`) and the host does I/O only
+(`host/native/peer-invite.lisp`).
+
+NNT-014: an invitation enrols its inviter only when its carrier verifies
+under the key set its body names, and a node enrols an acceptor only for an
+acceptance that consumed, exactly once, a pending invitation this node issued
+
+**Documents.** An invitation and an acceptance are ordinary authored
+sources (From, Date, Newsgroups `fn.peering`, Subject, Message-ID) carried by
+FN-Authorship, whose body is `Key: value` lines of printable ASCII. The
+invitation names `FN-Peering: invitation fn-peering-v1`, `Nonce` (16 octets,
+hex), `Principal`, `Genesis-Token`, `Ed25519`, `ML-DSA-65` (hex), and the
+informational `Invitee`, `Inviter-Path`, `Groups`, `Host`, `Port`. The
+acceptance names `FN-Peering: acceptance fn-peering-v1`, the invitation's
+`Nonce`, its `Invitation-Source-Id` (the 48-octet ACL2 authored-source
+identity, hex) and `Inviter-Principal`, then its own `Principal`,
+`Genesis-Token`, `Ed25519`, `ML-DSA-65`, `Acceptor-Path` and `Reachable`.
+ACL2 renders both sources; the host signs the preimage ACL2 builds.
+
+**Shared checks** (`fn-pinv-document`): the carrier decodes and verifies
+under the key set it carries (ACL2's `fn-hsig-authorize-at` over the two
+primitive observations); the body has the kind line and names the carrier's
+principal and both keys (`fn-pinv-body-names-p`, a line of the body); the
+principal is the genesis identity of the two public keys and the body's
+token (`fn-prin-genesis-bindsp`, D09's tagged digest; `peer genesis` writes
+it); the nonce is 32 hexadecimal characters.
+
+**The invitations slot.** The configuration value's ninth slot holds one
+row per invitation this node issued, keyed on the nonce and never removed:
+`(NONCE INVITER SOURCE-ID 0)` while pending, `(NONCE ACCEPTOR
+ACCEPTANCE-SOURCE-ID 1)` once consumed. Two delta kinds write it
+(`books/config.lisp`): `:issue-invitation` (13), refused when the nonce keys
+any row (`:invitation-nonce-reused`), and `:consume-invitation` (14),
+refused unless the row is pending (`:invitation-not-pending`). Both travel
+the assured reconfiguration path, so a row is durable exactly when its
+configuration record is, and replay reproduces it.
+
+**Verbs** (`fn operator CONFIG peer ...`, planned by
+`books/native-operator.lisp`; the three live verbs reach the owner as hybrid
+control requests 9, 10 and 11, each carrying one carrier):
+
+| verb | host I/O | ACL2 decision | effect |
+| --- | --- | --- | --- |
+| `genesis KEYDIR` | read the two public keys; draw a 16-octet token if `token.bin` is absent | `fn-pinv-genesis-principal` | writes `principal.bin` |
+| `invite NAME GROUPS HOST PORT PATH KEYDIR OUT` | nonce from the CSPRNG, wall clock, sign | `fn-pinv-invitation-source`; at the owner `fn-pinv-issue-plan` | one `:issue-invitation` record, then `OUT` |
+| `accept FILE KEYDIR PATH REACHABLE OUT` | observe, sign | at the owner `fn-pinv-accept-step`; then `fn-pinv-acceptance-source` | a kind-3 enrolment of the inviter at ACL2's next generation, then `OUT` |
+| `confirm FILE` | observe | at the owner `fn-pinv-confirm-plan`, then `fn-pinv-confirm-step` | one `:consume-invitation` record, then a kind-3 enrolment of the acceptor |
+
+The peer record itself is still `peer add` (the documents carry its words);
+folding it into the consuming record is open.
+
+**Crash between consumption and enrolment.** The consuming record is
+published before the enrolment. A process death between the two leaves a row
+consumed by this acceptance and no enrolment; the next `confirm` of the same
+acceptance is an enrolment and never a second consumption
+(`fn-pinv-confirm-after-its-consumption-enrols`); after the enrolment it is
+refused (`:already-confirmed`). Any other acceptance of that nonce is refused
+(`:invitation-consumed`).
+
+**Refusals, by name:** `unverified`, `document-kind`, `claimed-keys`,
+`genesis`, `nonce`, `source-id`, `invitation-source-id`,
+`inviter-principal`, `no-such-invitation`, `another-inviter`,
+`another-invitation`, `invitation-consumed`, `already-confirmed`,
+`already-enrolled`, `invitation-nonce-reused`.
+
+What is not claimed: that a signature is unforgeable, a digest collision
+resistant or a primitive's observation true (A-CRYPTO); that the operator on
+the control socket is honest; that "this node's principal" is more than the
+principal that signed the invitations this node recorded.
+
 ## What this design does not decide
 
 Peer authentication (A-PEER stands; `(:principal id)` is a reserved slot,

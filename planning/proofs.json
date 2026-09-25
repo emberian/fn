@@ -3803,6 +3803,29 @@
       ],
       "statement": "fn-osb-install-serves-the-profile-bound: for an admitted Store profile, fn-osb-install -- which host/owner-host.lisp fn-owner-install-profile calls from host/native/owner.lisp fnn-owner-install on every run path, the developer owner run included -- answers :installed and leaves an owner whose fn-own-body-limit, the bound every later connection's wire reads, is the profile's max-article-octets A; fn-osb-install-keeps-the-posting-configuration: the posting bit, agent and served groups are unchanged; fn-osb-install-keeps-configp: a well-formed posting configuration stays one. fn-olog-served-refusal-lines-one-per-441: the lines host/owner-host.lisp fn-owner-chunk leaves for a socket read are exactly one per 441 reply in the effects the client is sent, each one line beginning refused; fn-olog-post-refusal-reason-names-the-sent-reason: each injection reason fn-post-refusal-line names reads back from its reply as itself. fn-olog-control-refusal-line-says-refused-iff-submit-refused: the line fn-owner-operator-submit leaves says refused exactly when fn-own-operator-submit-result is :refused (no hypothesis). fn-native-auth-admin-effect-word-restart-unless-no-owner: the credential verb's answer, fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp fnn-native-auth-admin-result-code calls, is restart-required exactly unless the writer-lock observation taken after the durable change is :free or :absent. Covered scope: that the host observes the lock after the durable write, writes each line and one LF, and that the developer init routes its words through fn-nop-developer-init is measured by the native tests, not proved. fn-profile-format-7-store-needs-upgrade: fn-profile-needs-upgrade-verdict, which host/native/io.lisp fnn-command-needs-upgrade calls for `operator CONFIG store needs-upgrade', is by definition the no-argument upgrade-profile verdict's (one owner), and is :needs-upgrade for every admitted format-7 store. fn-profile-rollback-sound-iff-records-within: fn-profile-rollback-verdict, which fnn-command-rollback-check calls with the kept config.json's decoded profile and the committed transaction files' octet lengths, says :sound exactly when the kept profile is admitted and every length is within fn-profile-rollback-record-bound (R for format 8, H/T for format 7). Covered scope: that the older image's open reads records under that bound is the bounds-join record's statement about that image, not proved.",
       "progress_note": "Lane operator-verdicts, 2026-09-25: PKT-103, PKT-104 (native run), PKT-095, PKT-102, PKT-099. Teeth in the five test books; native runs in planning/evidence/operator-verdicts-2026-09-25.md."
+    },
+    {
+      "id": "PRF-097",
+      "title": "Invitation binding: accept enrols only a bound invitation; confirm consumes a pending invitation this node issued exactly once and enrols only the acceptance that consumed it",
+      "statement": "fn-pinv-accept-step-enrols-only-a-bound-invitation: a (:enrol EVENT) from fn-pinv-accept-step SEQ TXID GEN RECEIVED OBSERVED-ML ED ML SNAPSHOTS (books/peer-invite.lisp; called by host/native/peer-invite.lisp fnn-pinv-owner-accept) has EVENT = fn-hl-enroll-event at fn-hl-next-generation SNAPSHOTS of the carrier's principal P and key set K, P not already enrolled with K, and fn-pinv-bound-document-p: fn-hsig-authorize-at over the carrier decoded from RECEIVED and the two primitive observations, the body has the invitation kind line and names P, the Ed25519 and the ML-DSA-65 key of K (fn-pinv-body-names-p, a line of the body), and fn-prin-genesis-bindsp P (Ed25519 || ML-DSA-65) TOKEN. fn-pinv-issue-plan-records-the-signed-invitation: an :issue delta is fn-cfg-issue-invitation of the body's nonce, the verified principal and the invitation's authored-source identity, the nonce keying no row. fn-pinv-confirm-consumes-only-a-pending-named-invitation: a (:consume DELTA) from fn-pinv-confirm-plan (called by fnn-pinv-owner-confirm) has a bound acceptance, the row its nonce keys pending, naming the body's Inviter-Principal and Invitation-Source-Id, and DELTA = fn-cfg-consume-invitation of the nonce, the acceptor and the acceptance's source identity. fn-pinv-confirm-step-enrols-only-the-consuming-acceptance: an (:enrol EVENT) from fn-pinv-confirm-step (called by fnn-pinv-owner-enrol-confirmed) has a bound acceptance, the row consumed (state 1) by exactly its principal and source identity, P not enrolled with K, and EVENT the kind-3 enrolment of P and K. fn-pinv-consumed-stays-consumed-across-replay: a consumed invitation stays consumed through fn-config-replay-loop; fn-pinv-consumed-refuses-consumption: fn-cfg-delta-reason refuses every :consume-invitation of it; fn-pinv-consumption-consumes. fn-pinv-confirm-after-its-consumption-enrols: after the consuming delta is applied (the crash point before the kind-3 record) the same acceptance's plan is :enrol; fn-pinv-confirm-step-never-enrols-twice. Covered scope: the owner's three steps and the configuration admission and replay; the peer record is still `peer add`; the crypto primitives are A-CRYPTO.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-014"
+      ],
+      "depends_on": [
+        "PRF-084"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/peer-invite.lisp",
+        "books/config.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "host/native/peer-invite.lisp",
+        "host/peer-invite-host.lisp",
+        "books/native-operator.lisp",
+        "planning/evidence/peer-invite-2026-09-25.md"
+      ]
     }
   ]
 }
