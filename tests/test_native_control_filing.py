@@ -223,7 +223,18 @@ class NativeControlFilingTests(unittest.TestCase):
         print("NATIVE-CONTROL-WITNESS " + json.dumps(witness, sort_keys=True))
         self.assertTrue(refused[0].startswith(b"335"), refused)
         self.assertTrue(refused[1].startswith(b"437"), refused)
-        self.assertTrue(any("control-not-filed" in line for line in lines), lines)
+        # PKT-104: the 437 carries its reason (books/peer-inbound.lisp
+        # fn-peer-transit-refusal-line over fn-post-store-refusal-text), fed
+        # by host/native/owner.lisp fnn-owner-transit-complete, and its log
+        # line (fn-olog-transit-line) names the code and the detail.
+        self.assertEqual(
+            refused[1],
+            b"437 transfer rejected; control message not filed: its control group"
+            b" is not configured here (control-not-filed)\r\n")
+        self.assertTrue(any(line.startswith("refused transit ") and "code=437" in line
+                            and "detail=control-not-filed" in line
+                            and "message-id=" + cancel in line
+                            for line in lines), lines)
         self.assertTrue(ordinary[1].startswith(b"235"), ordinary)
         self.assertTrue(filed[1].startswith(b"235"), filed)
         self.assertTrue(in_control[0].startswith(b"211 1 "), in_control)
@@ -235,9 +246,11 @@ class NativeControlFilingTests(unittest.TestCase):
     def test_signed_author(self):
         """The local signed-author ingress (host/native/hybrid-control.lisp
         fnn-hybrid-control-author) takes the same filing step: a signed
-        control article is refused (:control-signed) even with its control
-        group created, and nothing is stored; a signed ordinary article from
-        the same key is accepted into fn.test."""
+        control article is filed in control.cancel, the group its Store
+        record's binding names (C3, books/hybrid-store.lisp
+        fn-hsig-source-filed-groups), and never in fn.test, which its
+        Newsgroups field names; a signed ordinary article from the same key
+        is accepted into fn.test."""
         openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
         node = self.initialize("author", ["fn.test", "control.cancel"])
         root = node["root"]
@@ -273,31 +286,40 @@ class NativeControlFilingTests(unittest.TestCase):
         self.command([IMAGE, "--fn", "hybrid-enroll", control, "1", principal,
                       ed_public, ml_public])
         cancel = "<c1-signed-cancel@example.invalid>"
-        refused = author("cancel", cancel, "cancel <t@example.invalid>")
+        filed = author("cancel", cancel, "cancel <t@example.invalid>")
         ordinary = "<c1-signed-ordinary@example.invalid>"
         accepted = author("ordinary", ordinary, None)
         in_control = self.listgroup(node, b"control.cancel")
         fn_test = self.listgroup(node, b"fn.test")
-        absent = self.article_reply(node, cancel)
+        present = self.article_reply(node, cancel)
+        self.stop(node)
+        # Restart: replay's schema-1 binding (fn-hsig-carried-record-
+        # metadatap) must admit the signed cancel's record in control.cancel.
+        self.start(node)
+        replayed = self.listgroup(node, b"control.cancel")
         self.stop(node)
         witness = {
-            "hybrid-author-signed-cancel": [refused.returncode,
-                                            refused.stdout.decode().strip(),
-                                            refused.stderr.decode().strip()[-200:]],
+            "hybrid-author-signed-cancel": [filed.returncode,
+                                            filed.stdout.decode().strip(),
+                                            filed.stderr.decode().strip()[-200:]],
             "hybrid-author-signed-ordinary": [accepted.returncode,
                                               accepted.stdout.decode().strip()],
             "listgroup-control.cancel": [x.decode() if isinstance(x, bytes) else
                                          [y.decode() for y in x] for x in in_control],
             "listgroup-fn.test": [x.decode() if isinstance(x, bytes) else
                                   [y.decode() for y in x] for x in fn_test],
-            "article-signed-cancel": absent.decode().strip(),
+            "article-signed-cancel": present.decode().strip(),
+            "listgroup-control.cancel-after-restart": [
+                x.decode() if isinstance(x, bytes) else [y.decode() for y in x]
+                for x in replayed],
         }
         print("NATIVE-CONTROL-WITNESS " + json.dumps(witness, sort_keys=True))
-        self.assertEqual(refused.returncode, 1, refused)
+        self.assertEqual(filed.returncode, 0, filed)
         self.assertEqual(accepted.returncode, 0, accepted)
-        self.assertTrue(in_control[0].startswith(b"211 0 "), in_control)
+        self.assertTrue(in_control[0].startswith(b"211 1 "), in_control)
         self.assertTrue(fn_test[0].startswith(b"211 1 "), fn_test)
-        self.assertTrue(absent.startswith(b"430"), absent)
+        self.assertTrue(present.startswith(b"220"), present)
+        self.assertTrue(replayed[0].startswith(b"211 1 "), replayed)
 
 
 if __name__ == "__main__":

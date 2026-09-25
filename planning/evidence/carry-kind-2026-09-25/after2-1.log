@@ -1,0 +1,19 @@
+SIGNED 14 carriers of 215388 octets
+POST fresh round=0 unsigned=0.289s signed=0.638s
+POST fresh round=1 unsigned=0.270s signed=0.626s
+POST fresh round=2 unsigned=0.512s signed=0.967s
+POST fresh round=3 unsigned=0.288s signed=0.822s
+POST fresh round=4 unsigned=0.285s signed=0.727s
+POST fresh round=5 unsigned=0.338s signed=0.795s
+POST fresh round=6 unsigned=0.436s signed=1.048s
+PHASE fresh rounds=7 size=204800 signed-octets=215388 median-unsigned=0.289s median-signed=0.795s ratio=2.75
+PRELOAD 200 articles of 2 KiB in 41.2s
+POST preloaded round=0 unsigned=0.261s signed=1.051s
+POST preloaded round=1 unsigned=0.251s signed=1.023s
+POST preloaded round=2 unsigned=0.385s signed=1.246s
+POST preloaded round=3 unsigned=0.313s signed=1.102s
+POST preloaded round=4 unsigned=0.325s signed=1.249s
+POST preloaded round=5 unsigned=0.343s signed=1.326s
+POST preloaded round=6 unsigned=0.364s signed=1.218s
+PHASE preloaded rounds=7 size=204800 signed-octets=215388 median-unsigned=0.325s median-signed=1.218s ratio=3.75
+

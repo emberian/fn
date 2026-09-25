@@ -59,3 +59,35 @@
 (assert-event (fn-bs-k0-coveredp (car (bskm-pair)) (bsks-k)))
 (assert-event (not (fn-bs-k0-step-inputp (car (bskm-pair)) (bsks-k) (list :write-all :root "config.json" '(1 2 3)) :ok)))
 (must-fail (assert-event (bsks-concl (car (bskm-pair)) (bsks-k) (list :write-all :root "config.json" '(1 2 3)) :ok)))
+
+; k0-steps (PKT-086): the staging barrier's error outcome.  Pair 1 of the
+; marker run holds one pending staging entry operation (the create); an
+; EIO that lands it and one that drops it are both related afterwards, and
+; the two results differ, so the selection is not vacuous.
+(defun bsks-staging-fsd (b outcome)
+  (mv-let (r b1) (fn-bs-fsync-dir b :staging outcome)
+    (declare (ignore r))
+    b1))
+(assert-event (equal (len (fn-bs-ops-for-dir (fn-bs-pending (bsks-b 1)) :staging)) 1))
+(assert-event (bsks-ok (bsks-b 1) (bsks-k) (list :fsync-dir :staging) '(:eio :apply)))
+(assert-event (bsks-ok (bsks-b 1) (bsks-k) (list :fsync-dir :staging) '(:eio :drop)))
+(assert-event
+ (not (equal (bsks-staging-fsd (bsks-b 1) '(:eio :apply))
+             (bsks-staging-fsd (bsks-b 1) '(:eio :drop)))))
+(assert-event
+ (and (fn-bs-store-relation (bsks-b 1) (bsks-k))
+      (not (fn-bs-replay-visiblep (bsks-k)))
+      (fn-bs-crash-choicesp '(:apply) (fn-bs-ops-for-dir (fn-bs-pending (bsks-b 1)) :staging)
+                            (fn-bs-unit (bsks-b 1)))
+      (fn-bs-store-relation (bsks-staging-fsd (bsks-b 1) '(:eio :apply))
+                            (bsks-k))))
+; Drop the relation: the initial byte image under the completing kernel.
+(assert-event (not (fn-bs-store-relation (bsk5-initial) (bsks-k))))
+(must-fail
+ (assert-event (fn-bs-store-relation
+                (bsks-staging-fsd (bsk5-initial) '(:eio))
+                (bsks-k))))
+; The crash-choice hypothesis has no separating instance: a malformed
+; selector is dropped by fn-bs-crash-select, and the state it leaves is the
+; all-dropped one, which is related.  It is kept because the byte model
+; admits only well-formed selections (fn-bs-fsync-dir-preserves-statep).

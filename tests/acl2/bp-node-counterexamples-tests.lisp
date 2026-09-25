@@ -10,6 +10,7 @@
 ; cannot express is listed at the end with the missing transition named.
 (in-package "ACL2")
 (include-book "../../books/bp-node-progress-bridge")
+(include-book "../../books/bp-node-busy-delivery")
 (include-book "../../books/bp-node-machine-gaps")
 (include-book "../../books/bp-node-busy-delivery")
 (include-book "../../books/bp-fnbs-conflict-publication")
@@ -62,8 +63,14 @@
 (make-event `(defconst *bpcx-dispatch* ',(fn-bpnp-step *bpcx-s1* *bpcx-progress*)))
 (defconst *bpcx-s2* (fn-bpnf-answer-state (bpcx-durable *bpcx-dispatch*)))
 (defconst *bpcx-session* (cons 1 1))
+;; The routed session (spec 4.6): the host opens an outbound session only to
+;; the boundary the route table names, and a :session without VIA offers
+;; nothing.  This fixture's table sends dtn://bp-dest/ to the boundary "relay".
+(defconst *bpcx-via*
+  (list :via "relay" (fn-record-string-octets "dtn://relay/")
+        (list (fn-bprt-route 100 "dtn://bp-dest/" "relay" "dtn://relay/" 4556))))
 (defconst *bpcx-session-event*
-  (list :session *bpcx-dest* *bpcx-session* t 32768 *bpcx-obs*))
+  (list :session *bpcx-dest* *bpcx-session* t 32768 *bpcx-obs* *bpcx-via*))
 (make-event `(defconst *bpcx-open* ',(fn-bpnp-step *bpcx-s2* *bpcx-session-event*)))
 (defconst *bpcx-attempt-effect* (car (fn-bpnf-answer-effects *bpcx-open*)))
 (defconst *bpcx-s3-answer* (bpcx-durable *bpcx-open*))
@@ -193,7 +200,7 @@
 (defconst *bpcx-n08-recovered* (fn-bpnp-step *bpcx-s3* *bpcx-n08-recover-event*))
 (defconst *bpcx-n08-r* (fn-bpnf-answer-state *bpcx-n08-recovered*))
 (make-event `(defconst *bpcx-n08-reopen*
-   ',(fn-bpnp-step *bpcx-n08-r* (list :session *bpcx-dest* (cons 1 2) t 32768 *bpcx-obs*))))
+   ',(fn-bpnp-step *bpcx-n08-r* (list :session *bpcx-dest* (cons 1 2) t 32768 *bpcx-obs* *bpcx-via*))))
 (make-event `(defconst *bpcx-n08-tick*
    ',(fn-bpnp-step *bpcx-n08-r* *bpcx-progress*)))
 (defun bpcx-recover (st used)
@@ -816,146 +823,218 @@
   (equal (car (car (fn-bpnf-answer-effects *bpcx-r16*))) :persist-dispatch)))
 
 ;; ---------------------------------------------------------------------
-;; BP-R17: the owner answers a local delivery busy.  The row stays held
-;; and :dispatch-pending, nothing is proposed, and class 3 offers it again
-;; after the backoff; at the kind-8 retry bound it is stranded, still held,
-;; and not offered until recovery clears the volatile wait.
+;; BP-R17, durable (lane bp-budgets-receipts, 2026-09-25).  The owner
+;; answers a local delivery busy.  The answer proposes the kind 20 counting
+;; it; once durable the row carries (:busy n), stays held and
+;; :dispatch-pending, and class 3 offers it again after the configured
+;; backoff.  At the configured retry budget it is stranded: reported on
+;; every tick, and a restart that replays the journal's bytes keeps the
+;; count (no fresh tries).  The operator's resume (kind 20, count 0)
+;; re-arms it.
+;; The frame digest is an attachment: constants that step the machine are
+;; computed by make-event, as bp-node-forward-retry-tests does.
+(defmacro bpcx-defc (name form)
+  `(make-event (list 'defconst ',name (list 'quote ,form))))
 (defun bpcx-obs-at (m) (fn-clock-observation m 0 0 nil))
-(defun bpcx-busy-event (deliver-answer m)
+(defun bpcx-busy-event (deliver-answer m budgets)
   (let ((effect (car (fn-bpnf-answer-effects deliver-answer))))
-    (list :deliver-result (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect)
-          (fn-bpn-nth 3 effect) :busy '(0) (bpcx-obs-at m))))
+    (append (list :deliver-result (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect)
+                  (fn-bpn-nth 3 effect) :busy '(0) (bpcx-obs-at m))
+            (and budgets (list budgets)))))
 (defun bpcx-tick (st m)
   (fn-bpnp-step st (list :progress *bpcx-local* (bpcx-obs-at m) nil 0)))
-(defconst *bpcx-r17-d1* (fn-bpnf-answer-state *bpcx-deliver*))
-(defconst *bpcx-r17-busy1-event* (bpcx-busy-event *bpcx-deliver* 1000))
-(defconst *bpcx-r17-busy1* (fn-bpnp-step *bpcx-r17-d1* *bpcx-r17-busy1-event*))
-(defconst *bpcx-r17-b1* (fn-bpnf-answer-state *bpcx-r17-busy1*))
-(defconst *bpcx-r17-early* (bpcx-tick *bpcx-r17-b1* 3000))
-(defconst *bpcx-r17-redeliver2* (bpcx-tick *bpcx-r17-b1* 6000))
-(defconst *bpcx-r17-busy2*
-  (fn-bpnp-step (fn-bpnf-answer-state *bpcx-r17-redeliver2*)
-                (bpcx-busy-event *bpcx-r17-redeliver2* 6000)))
-(defconst *bpcx-r17-redeliver3*
-  (bpcx-tick (fn-bpnf-answer-state *bpcx-r17-busy2*) 11000))
-(defconst *bpcx-r17-busy3*
-  (fn-bpnp-step (fn-bpnf-answer-state *bpcx-r17-redeliver3*)
-                (bpcx-busy-event *bpcx-r17-redeliver3* 11000)))
-(defconst *bpcx-r17-b3* (fn-bpnf-answer-state *bpcx-r17-busy3*))
-(defconst *bpcx-r17-late* (bpcx-tick *bpcx-r17-b3* 60000))
-(defconst *bpcx-r17-key* (fn-bpn-nth 3 *bpcx-r17-busy1-event*))
+(defun bpcx-busy (deliver-answer m budgets)
+  (fn-bpnp-step (fn-bpnf-answer-state deliver-answer)
+                (bpcx-busy-event deliver-answer m budgets)))
+(defun bpcx-row (effect)
+  (let ((rec (if (equal (car effect) :persist)
+                 (fn-bpnf-stored-record (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect)
+                                        (fn-bpn-nth 3 effect))
+               (fn-bpn-nth 3 effect))))
+    (list (fn-bpnf-stored-record-name (fn-bpn-nth 1 rec) (fn-bpn-nth 2 rec))
+          (if (equal (car rec) :bpnf-stored)
+              (fn-bpnf-stored-record-frame rec)
+            (fn-bpnp-deferral-frame rec)))))
+(defun bpcx-restart (rows)
+  (fn-bpnf-answer-state
+   (fn-bpnp-step *bpcx-raw-s0*
+                 (fn-bpnf-family-recover-auto-event *bpcx-raw-s0* nil :ready rows))))
+(defun bpcx-replayed (rows)
+  (fn-bpn-nth 1 (fn-bpnf-family-replay-rows rows (fn-bpnf-base *bpcx-raw-s0*))))
+(defun bpcx-row-slot (st) (fn-bpn-nth 13 (car (fn-bpnf-held-list st))))
 
-(defun bpcx-busy-defers-p (st event)
-  (let* ((ans (fn-bpnp-step st event))
-         (key (fn-bpn-nth 3 event))
-         (wait (fn-bpnp-busy-wait key (fn-bpnp-waits st) (fn-bpn-nth 6 event))))
-    (and (equal (fn-bpnf-answer-state ans)
-                (update-nth 11 (cons wait (fn-bpnp-remove-wait
-                                           key (fn-bpnp-waits st)))
-                            (update-nth 7 nil st)))
+(bpcx-defc *bpcx-r17-d1* (fn-bpnf-answer-state *bpcx-deliver*))
+(bpcx-defc *bpcx-r17-busy1-event* (bpcx-busy-event *bpcx-deliver* 1000 nil))
+(bpcx-defc *bpcx-r17-key* (fn-bpn-nth 3 *bpcx-r17-busy1-event*))
+(bpcx-defc *bpcx-r17-busy1* (bpcx-busy *bpcx-deliver* 1000 nil))
+(bpcx-defc *bpcx-r17-p1* (bpcx-durable *bpcx-r17-busy1*))
+(bpcx-defc *bpcx-r17-b1* (fn-bpnf-answer-state *bpcx-r17-p1*))
+(bpcx-defc *bpcx-r17-early* (bpcx-tick *bpcx-r17-b1* 3000))
+(bpcx-defc *bpcx-r17-redeliver2* (bpcx-tick *bpcx-r17-b1* 6000))
+(bpcx-defc *bpcx-r17-busy2* (bpcx-busy *bpcx-r17-redeliver2* 6000 nil))
+(bpcx-defc *bpcx-r17-p2* (bpcx-durable *bpcx-r17-busy2*))
+(bpcx-defc *bpcx-r17-redeliver3*
+  (bpcx-tick (fn-bpnf-answer-state *bpcx-r17-p2*) 11000))
+(bpcx-defc *bpcx-r17-busy3* (bpcx-busy *bpcx-r17-redeliver3* 11000 nil))
+(bpcx-defc *bpcx-r17-p3* (bpcx-durable *bpcx-r17-busy3*))
+(bpcx-defc *bpcx-r17-b3* (fn-bpnf-answer-state *bpcx-r17-p3*))
+(bpcx-defc *bpcx-r17-late* (bpcx-tick *bpcx-r17-b3* 60000))
+(bpcx-defc *bpcx-r17-later*
+  (bpcx-tick (fn-bpnf-answer-state *bpcx-r17-late*) 90000))
+(bpcx-defc *bpcx-r17-k5*
+  (bpcx-row (car (fn-bpnf-answer-effects
+                  (fn-bpnp-step *bpcx-s0* (bpcx-receive-event
+                                           (fn-bpb-encode *bpcx-req*)))))))
+(bpcx-defc *bpcx-r17-rows*
+  (list *bpcx-r17-k5*
+        (bpcx-row (car (fn-bpnf-answer-effects *bpcx-r17-busy1*)))
+        (bpcx-row (car (fn-bpnf-answer-effects *bpcx-r17-busy2*)))
+        (bpcx-row (car (fn-bpnf-answer-effects *bpcx-r17-busy3*)))))
+(bpcx-defc *bpcx-r17-restarted* (bpcx-restart *bpcx-r17-rows*))
+(bpcx-defc *bpcx-r17-stranded-report*
+  (list (list :delivery-stranded *bpcx-r17-key* *fn-bpnp-max-forward-retries*)))
+
+(defun bpcx-proposes-count-p (st event n)
+  (let ((ans (fn-bpnp-step st event)))
+    (and (equal (car (car (fn-bpnf-answer-effects ans))) :persist-deferral)
+         (equal (fn-bpn-nth 5 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects ans)))) n)
          (equal (fn-bpnf-held-list (fn-bpnf-answer-state ans))
                 (fn-bpnf-held-list st))
-         (null (fn-bpnf-issued (fn-bpnf-answer-state ans)))
-         (member-equal (car (car (fn-bpnf-answer-effects ans)))
-                       '(:delivery-deferred :delivery-stranded)))))
+         (null (fn-bpnf-waits (fn-bpnf-answer-state ans))))))
 
-;; Positive: the keystone's full antecedent and conclusion on the reached
-;; busy answer, then redelivery after the backoff and the stranded bound.
+;; Positive: fn-bpnp-step-busy-delivery-proposes-its-count and the durable
+;; arm, redelivery after the backoff, the stranded bound, the report on
+;; every tick.
 (assert-event
  (and (fn-bpnp-host-eventp *bpcx-r17-busy1-event*)
       (fn-bpnp-busy-eventp *bpcx-r17-busy1-event*)
-      (true-listp *bpcx-r17-d1*)
-      (equal (fn-bpnf-waits *bpcx-r17-d1*)
-             (list :delivery (fn-bpn-nth 1 *bpcx-r17-busy1-event*)
-                   (fn-bpn-nth 2 *bpcx-r17-busy1-event*) *bpcx-r17-key*))
-      (equal (fn-bpnf-epoch *bpcx-r17-d1*) (fn-bpn-nth 1 *bpcx-r17-busy1-event*))
       (null (fn-bpnf-issued *bpcx-r17-d1*))
-      (bpcx-busy-defers-p *bpcx-r17-d1* *bpcx-r17-busy1-event*)
-      (equal (fn-bpnf-answer-effects *bpcx-r17-busy1*)
+      (bpcx-proposes-count-p *bpcx-r17-d1* *bpcx-r17-busy1-event* 1)
+      (equal (fn-bpnf-answer-effects *bpcx-r17-p1*)
              (list (list :delivery-deferred *bpcx-r17-key* 1 6000)))
-      ;; held, pending, nothing proposed; the handoffs are untouched
-      (equal (fn-bpnf-held-list *bpcx-r17-b1*) (fn-bpnf-held-list *bpcx-q1*))
+      (equal (bpcx-row-slot *bpcx-r17-b1*) '(:busy 1))
       (equal (fn-bpnf-handoffs *bpcx-r17-b1*) (fn-bpnf-handoffs *bpcx-q1*))
-      ;; before the backoff: nothing; after it: the same row is offered
       (null (fn-bpnf-answer-effects *bpcx-r17-early*))
       (equal (car (car (fn-bpnf-answer-effects *bpcx-r17-redeliver2*))) :deliver)
-      (equal (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *bpcx-r17-redeliver2*)))
-             *bpcx-r17-key*)
-      (equal (fn-bpnf-answer-effects *bpcx-r17-busy2*)
+      (equal (fn-bpnf-answer-effects *bpcx-r17-p2*)
              (list (list :delivery-deferred *bpcx-r17-key* 2 11000)))
-      ;; the third busy answer reaches the kind-8 bound: stranded, held
-      (equal (fn-bpnf-answer-effects *bpcx-r17-busy3*)
-             (list (list :delivery-stranded *bpcx-r17-key*
-                         *fn-bpnp-max-forward-retries*)))
-      (equal (fn-bpnf-held-list *bpcx-r17-b3*) (fn-bpnf-held-list *bpcx-q1*))
-      (null (fn-bpnf-answer-effects *bpcx-r17-late*))
-      (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpcx-r17-late*))
-             (fn-bpnf-held-list *bpcx-q1*))
-      ;; recovery clears the volatile wait and the row is offered again
-      (equal (car (car (fn-bpnf-answer-effects
-                        (bpcx-tick (bpcx-recover *bpcx-r17-b3* 1) 60000))))
-             :deliver)))
+      (equal (fn-bpnf-answer-effects *bpcx-r17-p3*) *bpcx-r17-stranded-report*)
+      (equal (bpcx-row-slot *bpcx-r17-b3*) '(:busy 3))
+      (equal (fn-bpnf-answer-effects *bpcx-r17-late*) *bpcx-r17-stranded-report*)
+      (equal (fn-bpnf-answer-effects *bpcx-r17-later*) *bpcx-r17-stranded-report*)
+      (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpcx-r17-later*))
+             (fn-bpnf-held-list *bpcx-r17-b3*))))
 
-;; Teeth of fn-bpnp-step-busy-delivery-defers, one per hypothesis.
-;; busy-eventp dropped: the six-field busy event (no observation) reaches
-;; the foundation, which answers the host :refused and keeps the marker.
+;; fn-bpnp-busy-count-after-recovery-is-the-live-count, on bytes: the
+;; journal's kind-5 and three kind-20 frames replay to the live held rows,
+;; so the restarted node holds (:busy 3), reports the strand, and delivers
+;; nothing: no fresh tries.
+(assert-event
+ (and (equal (bpcx-replayed *bpcx-r17-rows*) (fn-bpnf-held-list *bpcx-r17-b3*))
+      (equal (fn-bpnf-held-list *bpcx-r17-restarted*)
+             (fn-bpnf-held-list *bpcx-r17-b3*))
+      (equal (fn-bpnf-answer-effects (bpcx-tick *bpcx-r17-restarted* 60000))
+             *bpcx-r17-stranded-report*)))
+;; Teeth: without the last row the replay is the live count before it (2);
+;; a row out of order faults; a count that is not one more does not apply.
 (must-fail
  (assert-event
-  (bpcx-busy-defers-p *bpcx-r17-d1* (take 6 *bpcx-r17-busy1-event*))))
-;; the same with an :uncertain outcome: the delivery-uncertain fence.
+  (equal (bpcx-replayed (take 3 *bpcx-r17-rows*))
+         (fn-bpnf-held-list *bpcx-r17-b3*))))
 (must-fail
  (assert-event
-  (bpcx-busy-defers-p *bpcx-r17-d1*
-                      (update-nth 4 :uncertain *bpcx-r17-busy1-event*))))
-;; marker dropped: the event names another operation id.
+  (equal (car (fn-bpnf-family-replay-rows
+               (list (nth 1 *bpcx-r17-rows*) *bpcx-r17-k5*)
+               (fn-bpnf-base *bpcx-raw-s0*)))
+         :ready)))
 (must-fail
  (assert-event
-  (bpcx-busy-defers-p *bpcx-r17-d1*
-                      (update-nth 2 (1+ (fn-bpn-nth 2 *bpcx-r17-busy1-event*))
-                                  *bpcx-r17-busy1-event*))))
-;; epoch dropped: marker and event agree on an epoch the state is not in.
+  (equal (car (fn-bpnp-deferral-apply
+               (update-nth 5 3 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects
+                                                   *bpcx-r17-busy1*))))
+               (fn-bpnf-held-list *bpcx-r17-d1*)))
+         :ready)))
+;; Teeth of the proposal, one per hypothesis: the marker names another
+;; operation; an operation is issued; the state is in another epoch.
 (must-fail
  (assert-event
-  (let ((e2 (update-nth 1 (1+ (fn-bpn-nth 1 *bpcx-r17-busy1-event*))
-                        *bpcx-r17-busy1-event*)))
-    (bpcx-busy-defers-p
-     (update-nth 7 (list :delivery (fn-bpn-nth 1 e2) (fn-bpn-nth 2 e2)
-                         (fn-bpn-nth 3 e2))
-                 *bpcx-r17-d1*)
-     e2))))
-;; issued dropped: a pending operation is issued.
+  (bpcx-proposes-count-p *bpcx-r17-d1*
+                         (update-nth 2 (1+ (fn-bpn-nth 2 *bpcx-r17-busy1-event*))
+                                     *bpcx-r17-busy1-event*) 1)))
 (must-fail
  (assert-event
-  (bpcx-busy-defers-p
+  (bpcx-proposes-count-p
    (update-nth 6 (fn-bpnf-operation (fn-bpnf-epoch *bpcx-r17-d1*) 99
                                     :store nil :pending)
                *bpcx-r17-d1*)
-   *bpcx-r17-busy1-event*)))
-;; true-listp dropped (corrupted state, not reachable): a dotted state.
+   *bpcx-r17-busy1-event* 1)))
 (must-fail
  (assert-event
-  (bpcx-busy-defers-p (append *bpcx-r17-d1* 7) *bpcx-r17-busy1-event*)))
-;; Teeth of fn-bpnp-busy-deferral-ends-at-its-reading: the reading before m
-;; holds the row back (the early tick above answered nothing), and at the
-;; bound it is held back at every reading.
+  (bpcx-proposes-count-p (update-nth 8 (1+ (fn-bpnf-epoch *bpcx-r17-d1*))
+                                     *bpcx-r17-d1*)
+                         *bpcx-r17-busy1-event* 1)))
+;; Teeth of fn-bpnp-busy-deferral-ends-at-its-reading and
+;; fn-bpnp-busy-stranded-row-is-not-offered.
 (assert-event
  (let ((h (car (fn-bpnf-held-list *bpcx-r17-b1*))))
-   (and (fn-bpnp-busy-blockedp h (fn-bpnp-waits *bpcx-r17-b1*) (bpcx-obs-at 5999))
+   (and (fn-bpnp-busy-blockedp h (fn-bpnp-waits *bpcx-r17-b1*) (bpcx-obs-at 5999) 3)
         (not (fn-bpnp-busy-blockedp h (fn-bpnp-waits *bpcx-r17-b1*)
-                                    (bpcx-obs-at 6000))))))
-(must-fail
- (assert-event
-  (not (fn-bpnp-busy-blockedp (car (fn-bpnf-held-list *bpcx-r17-b1*))
-                              (fn-bpnp-waits *bpcx-r17-b1*) (bpcx-obs-at 5999)))))
+                                    (bpcx-obs-at 6000) 3))
+        (fn-bpnp-busy-strandedp (car (fn-bpnf-held-list *bpcx-r17-b3*)) 3)
+        (not (fn-bpnp-busy-strandedp (car (fn-bpnf-held-list *bpcx-r17-b3*)) 4)))))
 (must-fail
  (assert-event
   (not (fn-bpnp-busy-blockedp (car (fn-bpnf-held-list *bpcx-r17-b3*))
-                              (fn-bpnp-waits *bpcx-r17-b3*) (bpcx-obs-at 60000)))))
-;; Tooth of fn-bpnp-busy-stranded-row-is-not-offered: under the bound the
-;; deferred row is the selection once its reading is reached.
+                              (fn-bpnp-waits *bpcx-r17-b3*) (bpcx-obs-at 60000) 3))))
+(must-fail
+ (assert-event (null (fn-bpnf-answer-effects *bpcx-r17-redeliver2*))))
+;; Tooth of fn-bpnp-progress-reports-a-stranded-row: a tick that selects a
+;; row (the backoff over, under the budget) delivers instead of reporting.
 (must-fail
  (assert-event
-  (null (fn-bpnf-answer-effects *bpcx-r17-redeliver2*))))
+  (equal (fn-bpnf-answer-effects *bpcx-r17-redeliver2*)
+         (list (list :delivery-stranded *bpcx-r17-key* 1)))))
+
+;; The operator's resume of the stranded row: a kind 20 with count 0, then
+;; the row is delivered on the next tick.
+(bpcx-defc *bpcx-r17-resume* (fn-bpnp-step *bpcx-r17-b3* (list :operator-resume 0)))
+(bpcx-defc *bpcx-r17-resumed* (bpcx-durable *bpcx-r17-resume*))
+(assert-event
+ (and (equal (car (car (fn-bpnf-answer-effects *bpcx-r17-resume*))) :persist-deferral)
+      (equal (fn-bpn-nth 5 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *bpcx-r17-resume*))))
+             0)
+      (equal (fn-bpnf-answer-effects *bpcx-r17-resumed*)
+             (list (list :delivery-resumed *bpcx-r17-key*)))
+      (null (bpcx-row-slot (fn-bpnf-answer-state *bpcx-r17-resumed*)))
+      (equal (car (car (fn-bpnf-answer-effects
+                        (bpcx-tick (fn-bpnf-answer-state *bpcx-r17-resumed*) 60000))))
+             :deliver)
+      ;; resume of a row under the budget is refused with nothing written
+      (equal (fn-bpnf-answer-effects
+              (fn-bpnp-step *bpcx-r17-b1* (list :operator-resume 0)))
+             '((:resume-refused 0 :not-forward-pending)))))
+
+;; The operator's budgets (D27): a retry budget of 2 strands at the second
+;; busy answer; one of 5 still defers the third; a backoff of 100 dates the
+;; deferral 100 after the reading.  An invalid budget row is refused.
+(bpcx-defc *bpcx-b2* (fn-bpnp-budgets 5000 2))
+(bpcx-defc *bpcx-b5* (fn-bpnp-budgets 5000 5))
+(assert-event
+ (and (equal (fn-bpnf-answer-effects
+              (bpcx-durable (bpcx-busy *bpcx-r17-redeliver2* 6000 *bpcx-b2*)))
+             (list (list :delivery-stranded *bpcx-r17-key* 2)))
+      (equal (fn-bpnf-answer-effects
+              (bpcx-durable (bpcx-busy *bpcx-r17-redeliver3* 11000 *bpcx-b5*)))
+             (list (list :delivery-deferred *bpcx-r17-key* 3 16000)))
+      (equal (fn-bpnf-answer-effects
+              (bpcx-durable (bpcx-busy *bpcx-deliver* 1000
+                                       (fn-bpnp-budgets 100 3))))
+             (list (list :delivery-deferred *bpcx-r17-key* 1 1100)))
+      (equal (fn-bpnp-configured-budgets nil nil) (fn-bpnp-default-budgets))
+      (equal (fn-bpnp-default-budgets) '(:bpnp-budgets 5000 3))
+      (null (fn-bpnp-configured-budgets nil 0))
+      (not (fn-bpnp-host-eventp
+            (bpcx-busy-event *bpcx-deliver* 1000 '(:bpnp-budgets 5000 0))))))
 
 ;; ---------------------------------------------------------------------
 ;; Coverage of spec 11.1 over this machine (each row names its subject).

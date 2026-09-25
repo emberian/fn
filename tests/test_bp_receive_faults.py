@@ -10,7 +10,7 @@ from unittest import mock
 import zlib
 
 from tests.test_bp_receive import lab_bundles
-from tools import run_bp_ingress, run_bp_receive, run_store
+from tools import frame_bridge, run_bp_ingress, run_bp_receive, run_store
 
 
 class _Bundles(dict):
@@ -170,8 +170,12 @@ class ReceiveFaultTests(unittest.TestCase):
         self.inventory["bid-prior"] = self.request("prior")
         self.assertEqual(self.receive("bid-prior").outcome, "accepted")
         self.inventory["bid-full"] = self.request("full")
+        # Format 8 carries no capacity field; the charge ACL2's post boundary
+        # refuses (`fn-sbud-post-boundary`, :charge-bound) is one past the
+        # CBOR uint ceiling, asked of ACL2.
+        ceiling = frame_bridge.session().call("*fn-cbor-max-uint*")
         with mock.patch.object(run_bp_receive.run_store, "conservative_charge",
-                               return_value=run_store.profile_config()["capacity"] + 1):
+                               return_value=ceiling + 1):
             with self.assertRaises(run_bp_receive.BpReceiveError):
                 self.receive("bid-full")
         self.assertIn("bid-full", self.inventory)

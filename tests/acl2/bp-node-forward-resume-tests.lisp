@@ -34,7 +34,7 @@
 
 ;; fn-bpnp-step-resume-writes-only-for-a-stranded-row: reachable witness.
 (assert-event
- (and (fn-bpnp-stranded-slotp (bpfr-slot *bpfr-d4*) (fn-bpnf-epoch *bpfr-d4*) *bpfr-dest*)
+ (and (fn-bpnp-stranded-slotp (bpfr-slot *bpfr-d4*) (fn-bpnf-epoch *bpfr-d4*) *bpfr-dest* 3)
       (fn-bpnp-host-eventp (list :operator-resume 0))
       (equal (car *bprs-res-effect*) :persist-forward-result)
       (equal (fn-bpn-nth 8 (fn-bpn-nth 3 *bprs-res-effect*)) :resumed)
@@ -60,7 +60,7 @@
              (fn-bpnf-held-list (fn-bpnf-answer-state *bprs-res-durable*)))
       (equal (len *bprs-rows4*) 7)
       (fn-bpnp-forward-candidatep (car (fn-bpnf-held-list *bprs-d5*)) *bpfr-dest*
-                                  *bpfr-obs* (fn-bpnf-epoch *bprs-d5*))
+                                  *bpfr-obs* (fn-bpnf-epoch *bprs-d5*) 3)
       (equal (car (car (fn-bpnf-answer-effects *bprs-d5-open*))) :persist-attempt)
       (equal (fn-bpn-nth 3 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *bprs-d5-open*)))) 0)
       (equal (bprs-identity (car (fn-bpnf-answer-effects *bprs-d5-open*)))
@@ -133,7 +133,7 @@
 (must-fail
  (assert-event
   (fn-bpnp-forward-candidatep (car (fn-bpnf-held-list *bprs-d5*)) *bpfr-dest*
-                              *bprs-late* (fn-bpnf-epoch *bprs-d5*))))
+                              *bprs-late* (fn-bpnf-epoch *bprs-d5*) 3)))
 
 ;; ---------------------------------------------------------------------
 ;; Connection-local :uncertain (fn-bpnp-tcpcl-outcome of a connection that
@@ -147,7 +147,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (let* ((open (fn-bpnp-step st (list :session *bpfr-dest*
                                       (cons (fn-bpnf-epoch st) n) t 32768
-                                      *bpfr-obs*)))
+                                      *bpfr-obs* *bpfr-via*)))
          (sent (bpfr-durable open))
          (effect (car (fn-bpnf-answer-effects sent)))
          (result (fn-bpnp-step (fn-bpnf-answer-state sent)
@@ -167,7 +167,7 @@
 (make-event `(defconst *bprs-u5-open*
   ',(fn-bpnp-step (bprs-after *bprs-u4*)
                   (list :session *bpfr-dest* (cons (fn-bpnf-epoch *bpfr-s2*) 5) t
-                        32768 *bpfr-obs*))))
+                        32768 *bpfr-obs* *bpfr-via*))))
 ;; fn-bpnp-uncertain-result-keeps-the-count: witness.  The first attempt's
 ;; kind 9 is :uncertain, durable, and the slot keeps retries 0 under the
 ;; :uncertain head; the machine is not fenced (issued is empty) and the next
@@ -211,7 +211,7 @@
  `(defconst *bprs-failed*
     ',(let* ((open (fn-bpnp-step *bpfr-s2* (list :session *bpfr-dest*
                                                   (cons (fn-bpnf-epoch *bpfr-s2*) 1)
-                                                  t 32768 *bpfr-obs*)))
+                                                  t 32768 *bpfr-obs* *bpfr-via*)))
              (sent (bpfr-durable open))
              (effect (car (fn-bpnf-answer-effects sent))))
         (fn-bpnf-answer-state

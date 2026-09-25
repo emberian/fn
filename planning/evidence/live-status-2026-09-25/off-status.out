@@ -1,0 +1,5 @@
+transactions=123 articles=123 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=4294967295 max-history-octets=1073741824 max-record-octets=67108864 max-article-octets=16777216 max-groups-per-article=4096 max-group-name-octets=256 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576
+headroom transactions-used=123 transactions-budget=4294967295 bytes-used=64971 history-bound=1073741824 charge-reserved=246 charge-capacity=1048576
+open=full-replay reason=absent
+pins=123 reserved=246 connections=0

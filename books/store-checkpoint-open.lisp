@@ -64,13 +64,16 @@
   (declare (xargs :guard t))
   (and (consp x) (eq (car x) :paused)))
 
+; Like `fn-cpr-loop', it carries the node invariant in its guard and tests a
+; one-event refusal by NIL; `fn-sco-cpr-resume' checks the checkpoint's node
+; once.
 (defun fn-sco-cpr-prefix (cn configs events config-sequence event-sequence)
-  (declare (xargs :guard t :verify-guards nil
+  (declare (xargs :guard (fn-cnode-statep cn) :verify-guards nil
                   :measure (+ (len configs) (len events))))
   (if (not (consp events))
       (fn-sco-paused cn config-sequence event-sequence)
     (let ((position (+ (nfix config-sequence) (nfix event-sequence))))
-      (if (not (fn-cnode-statep cn))
+      (if (mbe :logic (not (fn-cnode-statep cn)) :exec nil)
           (fn-replay-fault cn position :invalid-node)
         (if (fn-cpr-config-firstp configs events)
             (let* ((record (car configs))
@@ -101,29 +104,50 @@
                   ((not (equal (fn-store-event-sequence event) event-sequence))
                    (fn-replay-fault cn position :event-sequence))
                   (t (let ((next (fn-cpr-apply-event cn event)))
-                       (if (not (fn-cnode-statep next))
+                       (if (mbe :logic (not (fn-cnode-statep next))
+                                :exec (not (consp next)))
                            (fn-replay-fault cn position :event-refusal)
                          (fn-sco-cpr-prefix next configs (cdr events)
                                             config-sequence
                                             (+ 1 (nfix event-sequence)))))))))))))
 
+; The folds' first step on a node that is not a configured node, as values:
+; the executable paths below check the checkpoint's node once and return
+; this without entering the carried fold.
+(defun fn-sco-cpr-prefix-unconfigured (cn events config-sequence event-sequence)
+  (declare (xargs :guard t))
+  (if (consp events)
+      (fn-replay-fault cn (+ (nfix config-sequence) (nfix event-sequence))
+                       :invalid-node)
+    (fn-sco-paused cn config-sequence event-sequence)))
+
 (defun fn-sco-cpr-resume (r configs events)
   ; Resume a stored configuration fold over more events.  The configurations
   ; not yet consumed are the tail after the stored configuration counter.
+  ; The checkpoint is decoded from bytes, so its node is checked here, once.
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-sco-pausedp r)
-      (let ((cs (fn-sco-at 2 r)))
-        (fn-sco-cpr-prefix (fn-sco-at 1 r) (fn-sco-nthcdr (nfix cs) configs) events
-                           cs (fn-sco-at 3 r)))
+      (let ((cs (fn-sco-at 2 r)) (cn (fn-sco-at 1 r)))
+        (mbe :logic (fn-sco-cpr-prefix cn (fn-sco-nthcdr (nfix cs) configs) events
+                                       cs (fn-sco-at 3 r))
+             :exec (if (fn-cnode-statep cn)
+                       (fn-sco-cpr-prefix cn (fn-sco-nthcdr (nfix cs) configs) events
+                                          cs (fn-sco-at 3 r))
+                     (fn-sco-cpr-prefix-unconfigured cn events cs (fn-sco-at 3 r)))))
     r))
 
 (defun fn-sco-cpr-finish (r configs)
   ; Drain the remaining configurations, exactly as fn-cpr-loop does once the
-  ; events are exhausted.
+  ; events are exhausted.  The paused node is checked here, once.
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-sco-pausedp r)
-      (let ((cs (fn-sco-at 2 r)))
-        (fn-cpr-loop (fn-sco-at 1 r) (fn-sco-nthcdr (nfix cs) configs) nil cs (fn-sco-at 3 r)))
+      (let ((cs (fn-sco-at 2 r)) (cn (fn-sco-at 1 r)))
+        (mbe :logic (fn-cpr-loop cn (fn-sco-nthcdr (nfix cs) configs) nil cs (fn-sco-at 3 r))
+             :exec (if (fn-cnode-statep cn)
+                       (fn-cpr-loop cn (fn-sco-nthcdr (nfix cs) configs) nil cs
+                                    (fn-sco-at 3 r))
+                     (fn-replay-fault cn (+ (nfix cs) (nfix (fn-sco-at 3 r)))
+                                      :invalid-node))))
     r))
 
 ; -----------------------------------------------------------------------------
@@ -567,6 +591,60 @@
                                       '(fn-sco-open-when-history
                                         fn-sco-open-when-no-history)))))
 
+;; For the owner's open (books/owner-checkpoint-open.lisp): the owner keeps
+;; the extended checkpoint and reads the configuration fold's result off it,
+;; so the configuration it serves is the full replay's.
+
+; The configuration fold's result read off the capture of a whole history is
+; the host's full replay of it.
+(defthm fn-sco-replay-of-capture
+  (implies (true-listp records)
+           (equal (fn-sco-cpr-finish (fn-sco-cpr (fn-sco-capture configs records))
+                                     configs)
+                  (fn-cpr-replay configs records)))
+  :hints (("Goal"
+           :use ((:instance fn-cpr-loop-append
+                            (cn (fn-cnode-initial (fn-cfg-initial)))
+                            (prefix records) (suffix nil)
+                            (config-sequence 0) (event-sequence 0)))
+           :in-theory (union-theories
+                       (theory 'minimal-theory)
+                       '(fn-sco-capture fn-sco-make fn-sco-cpr
+                         fn-sco-at fn-sco-nthcdr fn-sco-cpr-finish
+                         fn-cpr-replay nth car-cons cdr-cons nfix natp fix zp
+                         fn-sco-true-list-fix-when-true-listp
+                         fn-sco-cpr-prefix-paused-counter
+                         append-to-nil unicity-of-0 commutativity-of-+
+                         (:executable-counterpart unary--)
+                         (:executable-counterpart equal)
+                         (:executable-counterpart natp)
+                         (:executable-counterpart zp)
+                         (:executable-counterpart nfix))))))
+
+; Over an admitted history P ++ Q, the capture of P extended over Q is the
+; capture of P ++ Q, and its configuration fold's result is the full replay.
+(defthm fn-sco-extend-of-capture-when-history
+  (implies (fn-sn-observed-historyp frontier (append prefix suffix))
+           (and (equal (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
+                       (fn-sco-capture configs (append prefix suffix)))
+                (equal (fn-sco-cpr-finish
+                        (fn-sco-cpr (fn-sco-extend (fn-sco-capture configs prefix)
+                                                   configs suffix))
+                        configs)
+                       (fn-cpr-replay configs (append prefix suffix)))))
+  :hints (("Goal"
+           :use ((:instance fn-sco-extend-of-capture)
+                 (:instance fn-sco-replay-of-capture
+                            (records (append prefix suffix)))
+                 (:instance fn-sco-record-listp-shape
+                            (records (append prefix suffix))
+                            (sequence 0) (lower 0))
+                 (:instance fn-sco-store-eventsp-of-append (p prefix) (s suffix)))
+           :in-theory (union-theories
+                       (theory 'minimal-theory)
+                       '(fn-sn-observed-historyp
+                         fn-sco-true-listp-of-append)))))
+
 ; A checkpoint captured under one configuration history opens under a longer
 ; one.  Configuration and Store records share one transaction-ID frontier,
 ; so a configuration published after the checkpoint has a txid above every
@@ -657,12 +735,28 @@
 ; -----------------------------------------------------------------------------
 ; Guards: the host runs these compiled.
 
+(local
+ (defthm fn-sco-cnode-statep-has-node-statep
+   (implies (fn-cnode-statep cn) (fn-node-statep (fn-cnode-node cn)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-cnode-statep)))))
+
 (verify-guards fn-sco-cpr-prefix
-  :hints (("Goal" :in-theory (e/d (fn-cnode-statep)
-                                  (fn-cpr-config-firstp fn-cpr-apply-event
-                                   fn-cfg-recordp fn-store-event-p)))))
-(verify-guards fn-sco-cpr-resume)
-(verify-guards fn-sco-cpr-finish)
+  :hints (("Goal"
+           :use ((:instance fn-cpr-apply-event-statep-iff-consp
+                            (event (car events))))
+           :in-theory (e/d (fn-cnode-apply-config-preserves-state)
+                           (fn-cnode-statep fn-cpr-config-firstp fn-cpr-apply-event
+                            fn-cnode-apply-config fn-cnode-record-acceptablep
+                            fn-cfg-recordp fn-store-event-p)))))
+(verify-guards fn-sco-cpr-resume
+  :hints (("Goal" :expand ((:free (cf cs es)
+                            (fn-sco-cpr-prefix (nth 1 r) cf events cs es)))
+           :in-theory (disable fn-cnode-statep))))
+(verify-guards fn-sco-cpr-finish
+  :hints (("Goal" :expand ((:free (cf cs es)
+                            (fn-cpr-loop (nth 1 r) cf nil cs es)))
+           :in-theory (disable fn-cnode-statep))))
 (verify-guards fn-sco-consumer-resume)
 (verify-guards fn-sco-capture)
 (verify-guards fn-sco-extend)

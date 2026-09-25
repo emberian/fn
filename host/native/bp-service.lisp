@@ -10,6 +10,22 @@
 (defstruct fnn-bps
   root lifecycle tally state spool-lock lock-fd (stages nil)
   (next-session 0) (outcome :accepted)
+  ;; The last base transfer's reading in the contact being driven, and
+  ;; whose outcome it is.  :process (a one-shot verb that was asked for the
+  ;; transfer: bp-contact tick, bp-service run) folds a refused or uncertain
+  ;; transfer into the exit code.  :connection (bp-node serve and dispatch,
+  ;; fnn-bpnode-send-receipts) does not: ACL2 has already requeued the job
+  ;; by its own identity (fn-bpn-forward-result-step's :requeued record,
+  ;; fn-bpnp-uncertain-receipt-transfer-keeps-the-job-owed), so the reading
+  ;; costs only that connection, as spec bp-node-machine 4.3.2 states.
+  (transfer nil) (transfer-scope :process)
+  ;; Routing of queued base jobs (books/bp-node-contact-driver.lisp): nil
+  ;; when the verb has no Store (the job keeps the address it was queued
+  ;; with), else (:table TABLE), ACL2's route table (fn-bprt-table).
+  ;; EXPECTED is the node ID ACL2 names for the hop of the offer being
+  ;; driven, which the TCPCL session machine requires the contact to
+  ;; announce (fn-tcl-init-acceptablep); nil outside a routed offer.
+  (routing nil) (expected nil)
   ;; ACL2's reading of the generation selection file, and the recovery
   ;; event built from it (spec bp-node-machine 3.6; N16).
   (plan (list :none)) (recovery-event nil))
@@ -457,7 +473,7 @@ its outcome, which is the refusal to the offering ingress."
                (let ((conn (fnn-tcl-session
                             (fnn-socket-fd socket) :active
                             (fnn-tcl-params
-                             (fnn-bps-route-node route) nil
+                             (fnn-bps-route-node route) (fnn-bps-expected service)
                              (fnn-bps-route-keepalive route)
                              (fnn-bps-route-segment-mru route)
                              (fnn-bps-route-transfer-mru route))
@@ -467,11 +483,16 @@ its outcome, which is the refusal to the offering ingress."
           (when socket (fnn-socket-shut socket)))
       (fnn-store-fault (e) (error e))
       ((or fnn-os-error sb-bsd-sockets:socket-error fnn-store-error) ()
-        (setq outcome :uncertain)))
-    (when (eq outcome :uncertain) (setf (fnn-bps-outcome service) :uncertain))
-    (when (eq outcome :refused)
-      (unless (eq (fnn-bps-outcome service) :uncertain)
-        (setf (fnn-bps-outcome service) :refused)))
+        ;; A connect that never produced a socket sent no octet: the
+        ;; transfer certainly did not happen (:failed, requeued by ACL2).
+        ;; Any failure after the connection exists stays :uncertain.
+        (setq outcome (if socket :uncertain :failed))))
+    (setf (fnn-bps-transfer service) outcome)
+    (when (eq (fnn-bps-transfer-scope service) :process)
+      (when (eq outcome :uncertain) (setf (fnn-bps-outcome service) :uncertain))
+      (when (eq outcome :refused)
+        (unless (eq (fnn-bps-outcome service) :uncertain)
+          (setf (fnn-bps-outcome service) :refused))))
     (fnn-bps-drive-effects service
                            (fnn-bps-step service (list :forward-result key outcome)))))
 
@@ -569,7 +590,7 @@ its outcome, which is the refusal to the offering ingress."
          (fnn-bps-drive-effects
           service (fnn-bps-foundation-step
                    service (list :persist-result epoch operation-id outcome)))))
-      ((:persist-attempt :persist-forward-result)
+      ((:persist-attempt :persist-forward-result :persist-deferral)
        (unless (= (length effect) 4)
          (fnn-indeterminate "bp-service: malformed forward publication effect"))
        (let* ((epoch (second effect))
@@ -648,10 +669,27 @@ its outcome, which is the refusal to the offering ingress."
        (fnn-out "BP node delivery deferred busy=~d after=~d"
                 (third effect) (fourth effect)))
       (:delivery-stranded
-       ;; BP-R17 at the kind-8 retry bound: still held, never refused; not
-       ;; offered again until recovery clears the volatile wait.
-       (fnn-out "BP node delivery stranded busy=~d (held; recovery re-offers it)"
-                (third effect)))
+       ;; BP-R17 at the configured retry budget: still held, never refused.
+       ;; The count is durable (kind 20): a restart does not re-arm it; ACL2
+       ;; reports it on every progress event that selects nothing else.
+       ;; The arrival an operator names to `bp-node resume' is the held
+       ;; row's own (ACL2's lookup of the effect's key).
+       (let ((row (fnn-core 'fn-bpnf-find-held (second effect)
+                            (fnn-core 'fn-bpnf-held-list
+                                      (fnn-bps-state service)))))
+         (fnn-out "BP node delivery stranded busy=~d arrival=~a (held; bp-node resume re-arms it)"
+                  (third effect) (fnn-core 'fn-bpn-nth 3 row))))
+      (:delivery-resumed
+       (fnn-out "BP node delivery resumed (busy count cleared)"))
+      (:deferral-answer
+       (case (second effect)
+         (:refused
+          (unless (eq (fnn-bps-outcome service) :uncertain)
+            (setf (fnn-bps-outcome service) :refused))
+          (fnn-out "BP node busy count publication refused"))
+         (otherwise
+          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-indeterminate "bp-service: busy count publication uncertain"))))
       (:bundle-queue-accepted
        (fnn-out "BP queue accepted work=~a attempt=~a generation=~d status=~(~a~)"
                 (fnn-octets-string (fnn-octets (second effect)))
@@ -967,6 +1005,78 @@ or (:damaged).  The read bound and decode budget are the profile's."
           (fnn-tcl-spool-release spool-lock))
         (error e)))))
 
+;;; Routing (spec bp-node-machine 4.6; books/bp-route-jobs.lisp and
+;;; books/bp-node-contact-driver.lisp).  The Store's table is read once,
+;;; under the owner, for a verb that holds no owner of its own.
+(defun fnn-bps-read-route-table (store-root)
+  (let ((owner (fnn-owner-install store-root 1)))
+    (unwind-protect (fnn-owner-core 'fn-owner-bp-route-table)
+      (fnn-owner-feed-close-all owner)
+      (fnn-store-close (fnn-owner-service-store owner)))))
+
+(defun fnn-bps-use-store-routes (service store-root)
+  (when store-root
+    (setf (fnn-bps-routing service)
+          (list :table (fnn-bps-read-route-table store-root))))
+  service)
+
+(defun fnn-bps-queue-route (service peer node-id transfer-mru default-host
+                            default-port)
+  "Queue time.  With routing in force, ACL2's route to PEER's routed hop
+(fn-bprt-job-route), or nil when the table routes PEER nowhere: the job is
+not queued and its obligation stays owed where it is.  Without routing, the
+address the verb was given."
+  (let ((node (fnn-octet-list (fnn-string-octets node-id)))
+        (text (fnn-core 'fn-bpaj-eid-text peer)))
+    (if (fnn-bps-routing service)
+        (let ((route (fnn-core 'fn-bprt-job-route text
+                               (second (fnn-bps-routing service))
+                               node +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
+                               transfer-mru)))
+          (if route
+              (fnn-out "BP queue route destination=~a port=~d" text (third route))
+            (fnn-out "BP queue route destination=~a decision=~(~a~) (not queued; the obligation stays)"
+                     text (first (fnn-core 'fn-bprt-outbound-choice text
+                                           (second (fnn-bps-routing service))))))
+          route)
+      (list :route (fnn-octet-list (fnn-string-octets default-host))
+            default-port node +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
+            transfer-mru))))
+
+(defun fnn-bpc-drive-contact (service event)
+  "Drive one contact EVENT, (:contact PEER OPEN).  An opening contact asks
+ACL2 before every offer (fn-bpnp-contact-next): it names the event to drive
+through fn-bpnp-step and the hop's node ID, holds a job its routing refuses,
+or closes the contact.  ACL2 threads the keys this contact has offered, so a
+job whose transfer was not accepted (requeued) waits for the next contact
+(fn-bpnp-contact-offers-each-job-at-most-once).  Answers the list of ACL2's
+answers, first first."
+  (setf (fnn-bps-transfer service) nil)
+  (let ((peer (second event)) (offered nil) (answers nil))
+    (when (third event)
+      (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+            for answer = (fnn-core 'fn-bpnp-contact-next (fnn-bps-state service)
+                                   peer (fnn-bps-routing service) offered)
+            do (push answer answers)
+               (case (first answer)
+                 (:offer
+                  (setq offered (third answer))
+                  (setf (fnn-bps-expected service) (fourth answer))
+                  (unwind-protect
+                       (fnn-bps-drive-effects
+                        service (fnn-bps-foundation-step service (second answer)))
+                    (setf (fnn-bps-expected service) nil))
+                  (when (fourth answer)
+                    (fnn-out "BP queued job routed peer=~a expected=~a"
+                             (fnn-core 'fn-bpaj-eid-text peer) (fourth answer))))
+                 (:held
+                  (fnn-out "BP queued job held destination=~a decision=~(~a~) (the job and its obligation stay)"
+                           (fnn-core 'fn-bpaj-eid-text peer) (third answer))
+                  (loop-finish))
+                 (t (loop-finish)))))
+    (fnn-bps-drive-effects service (fnn-bps-step service (list :contact peer nil)))
+    (reverse answers)))
+
 (defun fnn-bps-attempt-ready (service)
   ;; Expiry changes only the BP job's lifecycle status.  The record retains
   ;; its exact bundle bytes and this layer has no archive-release effect.
@@ -977,7 +1087,7 @@ or (:damaged).  The read bound and decode budget are the profile's."
           for effects = (fnn-bps-step service (list :clock obs))
           while effects do (fnn-bps-drive-effects service effects)))
   (dolist (peer (fnn-core 'fn-bpn-host-ready-peers (fnn-bps-base service)))
-    (fnn-bps-drive-effects service (fnn-bps-step service (list :contact peer t))))
+    (fnn-bpc-drive-contact service (list :contact peer t)))
   service)
 
 (defun fnn-bps-exit-code (service)
@@ -1019,11 +1129,16 @@ or (:damaged).  The read bound and decode budget are the profile's."
       (fnn-bps-release service))))
 
 (defun fnn-command-bp-service-resume (journal node-id lifetime crc-type
-                                      hop-limit transfer-mru wall wall-error)
+                                      hop-limit transfer-mru wall wall-error
+                                      &optional store-root)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (service (fnn-bps-open journal config wall wall-error)))
     (unwind-protect
-         (progn (fnn-bps-attempt-ready service) (fnn-bps-exit-code service))
+         (progn
+           ;; [STORE]: route the queued jobs by that Store's bp-route table.
+           (fnn-bps-use-store-routes service store-root)
+           (fnn-bps-attempt-ready service)
+           (fnn-bps-exit-code service))
       (fnn-bps-release service))))
 
 (defun fnn-command-bp-service-inspect-received (frame-path adu-out)
@@ -1066,7 +1181,7 @@ or (:damaged).  The read bound and decode budget are the profile's."
         (first args) (second args)
         (number 2 +fnn-bp-lifetime+) (number 3 +fnn-bp-crc-type+)
         (number 4 +fnn-bp-hop-limit+) (number 5 +fnn-tcl-transfer-mru+)
-        (optional-number 6) (number 7 0)))
+        (optional-number 6) (number 7 0) (arg 8)))
       ((string= command "inspect-received")
        (need 2)
        (fnn-command-bp-service-inspect-received (first args) (second args)))

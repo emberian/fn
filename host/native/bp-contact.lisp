@@ -19,22 +19,13 @@
         for effects = (fnn-bps-step service (list :clock obs))
         while effects do (fnn-bps-drive-effects service effects)))
 
-(defun fnn-bpc-drive-contact (service event)
-  (if (third event)
-      (progn
-        (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
-              for effects = (fnn-bps-step service event)
-              while effects
-              do (fnn-bps-drive-effects service effects)
-              when (not (eq (fnn-bps-outcome service) :accepted))
-                do (loop-finish))
-        (fnn-bps-drive-effects
-         service (fnn-bps-step service (list :contact (second event) nil))))
-    (fnn-bps-drive-effects service (fnn-bps-step service event))))
+;; fnn-bpc-drive-contact is in bp-service.lisp: `bp-service run/resume',
+;; `bp-obligation request', this verb and `bp-node serve' drive every base
+;; contact through it, and ACL2 (fn-bpnp-contact-next) decides each offer.
 
 (defun fnn-command-bp-contact-tick (journal node-id peer-id start-delay end-delay
                                     lifetime crc-type hop-limit transfer-mru
-                                    wall wall-error)
+                                    wall wall-error &optional store-root)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (peer (fnn-bp-eid peer-id))
          (obs (fnn-bp-observation wall wall-error))
@@ -44,6 +35,8 @@
     (let ((service (fnn-bps-open journal config wall wall-error)))
       (unwind-protect
            (progn
+             ;; [STORE]: route the queued jobs by that Store's bp-route table.
+             (fnn-bps-use-store-routes service store-root)
              (fnn-bpc-advance-clock service obs)
              (let* ((ready (fnn-core 'fn-bpn-host-ready-peers
                                      (fnn-bps-base service)))
@@ -53,6 +46,11 @@
                                      window peer obs ready)))
                (unless event (fnn-fault "bp-contact: ACL2 rejected contact event"))
                (format t "BP contact ~(~a~) peer=~a~%" decision peer-id)
+               ;; The service keeps :process transfer scope: the caller of this
+               ;; one-shot verb asked for the transfer, so an uncertain one is
+               ;; its answer (exit 3) and a refused one exit 2, although ACL2
+               ;; has requeued the job exactly as it does under bp-node serve
+               ;; (spec bp-node-machine 4.3.2).
                (fnn-bpc-drive-contact service event)
                (fnn-bps-exit-code service)))
         (fnn-bps-release service)))))
@@ -64,7 +62,7 @@
   (when (< (length args) 5)
     (error 'fnn-usage-error
            :message "bp-contact: tick needs journal node peer start-delay end-delay"))
-  (when (> (length args) 11)
+  (when (> (length args) 12)
     (error 'fnn-usage-error :message "bp-contact: too many arguments"))
   (flet ((number (index default label)
            (let ((value (fnn-tcl-arg args index)))
@@ -79,6 +77,8 @@
      (number 8 +fnn-tcl-transfer-mru+ "transfer MRU")
      (let ((value (fnn-tcl-arg args 9)))
        (and value (fnn-bpc-u64-argument value "wall clock")))
-     (number 10 0 "wall error"))))
+     (number 10 0 "wall error")
+     ;; [STORE]: route the queued jobs by STORE's bp-route table.
+     (fnn-tcl-arg args 11))))
 
 (fnn-register-verb "bp-contact" #'fnn-dispatch-bp-contact)

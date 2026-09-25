@@ -21,21 +21,41 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-native-admin-peer-report
           (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
+(defun fn-native-admin-host-query-report (plan state)
+  ; `peer list' or `control list' over the configuration the store just
+  ; replayed; books/native-admin.lisp selects and renders.
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-native-admin-query-report
+          plan (fn-cfg-value (f-get-global 'fn-store-cfg state)))))
 (defun fn-native-admin-host-owner-reconfigure (id plan state)
   ; The live arm.  The delta list, labels as strings, is ACL2's
   ; (`fn-native-admin-plan-deltas', books/native-admin.lisp); this bridge
   ; only hands it to the owner's staging step.
   (declare (xargs :stobjs state :mode :program))
-  (let ((deltas (fn-native-admin-plan-deltas plan)))
+  ; PRF-099: an :extend-peer plan's delta is built over the live owner's
+  ; peer table (`fn-native-admin-plan-deltas-over').
+  (let ((deltas (fn-native-admin-plan-deltas-over
+                 plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
     (if deltas
         (fn-owner-reconfigure-deltas id deltas state)
       (value :refused))))
 (defun fn-native-admin-host-apply (plan monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))
-    (cond ((member-equal kind '(:set-bp-boundary :set-bp-route :remove-bp-route))
+    (cond ((member-equal kind '(:set-bp-boundary :set-bp-route :remove-bp-route
+                                :grant-control :revoke-control :set-retention))
            (fn-store-cfg-peer-delta-record
             (fn-native-admin-plan-deltas plan) monotonic wall state))
+          ; PRF-099: `peer carries' / `peer budget' over the replayed table.
+          ((equal kind :extend-peer)
+           (let ((deltas (fn-native-admin-plan-deltas-over
+                          plan (fn-cfg-peers
+                                (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
+             (if deltas
+                 (fn-store-cfg-peer-delta-record deltas monotonic wall state)
+               (let ((state (f-put-global 'fn-store-cfg-last-reason :no-such-peer
+                                          state)))
+                 (value :refused)))))
           ((equal kind :set-peer)
            (fn-store-cfg-peer-delta-record
             (list (fn-native-admin-set-peer-delta plan))

@@ -278,6 +278,8 @@
 (deftheory fn-frame-codec-vocabulary
   '(    (:d fn-frame-digestp) (:d fn-frame-magicp) (:d fn-frame-textp)
     (:d fn-frame-blobp) (:d fn-frame-natp) (:d fn-frame-enum-specp)
+    (:d fn-frame-wide-blob-specp) (:d fn-frame-blob-withinp)
+    (:d fn-frame-field-width) (:d fn-frame-specs-width)
     (:d fn-frame-specp) (:d fn-frame-spec-listp) (:d fn-frame-field-okp)
     (:d fn-frame-field-octets) (:d fn-frame-field-parse)
     (:d fn-frame-parse-counted) (:d fn-frame-values-okp)
@@ -305,6 +307,8 @@
 
 (in-theory (disable (:d fn-frame-digestp) (:d fn-frame-magicp)
              (:d fn-frame-textp) (:d fn-frame-blobp) (:d fn-frame-natp)
+             (:d fn-frame-wide-blob-specp) (:d fn-frame-blob-withinp)
+             (:d fn-frame-field-width) (:d fn-frame-specs-width)
              (:d fn-frame-enum-specp) (:d fn-frame-specp)
              (:d fn-frame-spec-listp) (:d fn-frame-field-okp)
              (:d fn-frame-field-octets) (:d fn-frame-field-parse)

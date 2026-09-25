@@ -32,6 +32,10 @@
 ;; The committed-history boundary: io.lisp fnn-mark-committed and
 ;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
 (include-book "books/store-history-marker")
+;; D31: the history requirement and the recovery catch-up: io.lisp
+;; fnn-check-history-marker, fnn-recover and fnn-command-upgrade-profile call
+;; fn-hmr-open-verdict, fn-hmr-catch-up and fn-hmr-upgrade-verdict.
+(include-book "books/store-history-required")
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")

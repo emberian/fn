@@ -1,0 +1,7 @@
+articles 120 payload 160 load_s 1.103 last_q_median_ms 0.768 rss_kib 384248 slope_kib 499.6
+articles 120 payload 160 load_s 1.101 last_q_median_ms 0.767 rss_kib 384012 slope_kib 497.6
+articles 120 payload 2048 load_s 0.279 last_q_median_ms 2.096 rss_kib 389036 slope_kib 183.5
+POST 128 body: b'441 posting failed; the store has no capacity for this article\r\n'
+POST 0 body: b'441 posting failed; the article exceeds the configured size\r\n'
+POST 0 body: b'441 posting failed; the article exceeds the configured size\r\n'
+ 05:32:06 up 71 days, 11:16, 57 users,  load average: 5.86, 8.03, 8.78

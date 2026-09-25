@@ -1,0 +1,53 @@
+
+Number of samples:   34
+Sample interval:     0.001 seconds
+Total sampling time: 0.034 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=3043688 "fn owner client" RUNNING {1210074F13}> (9704/1048576 bytes, 34 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2      2   5.9      2   5.9      2   5.9        -  FN-AG-CAR
+   4      2   5.9      2   5.9      4  11.8        -  SB-IMPL::CALC-SYMBOL-NAME-HASH
+   6      2   5.9      2   5.9      6  17.6        -  foreign function __write
+   8      2   5.9      2   5.9      8  23.5        -  FN-STORE-EVENT-NTH
+  10      2   5.9      2   5.9     10  29.4        -  FN-AG-CDR
+  12      1   2.9      2   5.9     11  32.4        -  FN-RECORD-ENCODE
+  14      1   2.9      2   5.9     12  35.3        -  FN-OLOG-VISIBLE-AUX
+  16      1   2.9      2   5.9     13  38.2        -  FN-WIRE-LIST-LENGTH
+  18      1   2.9      1   2.9     14  41.2        -  FN-ARTICLE-HEADER-REV-ADD-LINE
+  20      1   2.9      1   2.9     15  44.1        -  FLOOR
+  22      1   2.9      1   2.9     16  47.1        -  FN-ARTICLE-NEXT-LINE-AUX
+  24      1   2.9      1   2.9     17  50.0        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-REF/CHECK-BOUNDS
+  26      1   2.9      1   2.9     18  52.9        -  FN-CBOR-AG-CAR
+  28      1   2.9      1   2.9     19  55.9        -  FN-SERVED-COUNTED-MAKE
+  30      1   2.9      1   2.9     20  58.8        -  SB-IMPL::APPEND2
+  32      1   2.9      1   2.9     21  61.8        -  foreign function rename
+  34      1   2.9      1   2.9     22  64.7        -  foreign function pthread_sigmask
+  36      1   2.9      1   2.9     23  67.6        -  foreign function unlink
+  38      1   2.9      1   2.9     24  70.6        -  SYMBOL-CLASS
+  40      1   2.9      1   2.9     25  73.5        -  LENGTH
+  42      1   2.9      1   2.9     26  76.5        -  FN-CBOR-OCTET-LISTP
+  44      1   2.9      1   2.9     27  79.4        -  FN-RECORD-PAYLOADP
+  46      1   2.9      1   2.9     28  82.4        -  FN-SN-KEYRING-SNAPSHOTS
+  48      1   2.9      1   2.9     29  85.3        -  FN-AG-APPEND-EXEC
+  50      1   2.9      1   2.9     30  88.2        -  %DATA-VECTOR-AND-INDEX
+  52      1   2.9      1   2.9     31  91.2        -  TRUE-LISTP
+  54      1   2.9      1   2.9     32  94.1        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-SET/CHECK-BOUNDS
+  56      1   2.9      1   2.9     33  97.1        -  APPEND
+  58      1   2.9      1   2.9     34 100.0        -  FN-FRAME-PROTECTED
+  60      0   0.0     34 100.0     34 100.0        -  FNN-OWNER-SERVE-CLIENT
+  62      0   0.0     34 100.0     34 100.0        -  (LAMBDA NIL :IN FNN-OWNER-LAUNCH-CLIENT)
+  64      0   0.0     34 100.0     34 100.0        -  (FLET SB-UNIX::BODY :IN SB-THREAD::RUN)
+  66      0   0.0     34 100.0     34 100.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::RUN)
+  68      0   0.0     34 100.0     34 100.0        -  SB-THREAD::RUN
+  70      0   0.0     34 100.0     34 100.0        -  foreign function call_into_lisp_
+  72      0   0.0     34 100.0     34 100.0        -  foreign function funcall1
+  74      0   0.0     34 100.0     34 100.0        -  foreign function new_thread_trampoline
+  76      0   0.0     33  97.1     34 100.0        -  (LAMBDA NIL :IN FNN-OWNER-HANDLE-CHUNK)
+  78      0   0.0     33  97.1     34 100.0        -  FNN-OWNER-SHARED-ACTION-LOCKED
+  80      0   0.0     33  97.1     34 100.0        -  (FLET "WITHOUT-INTERRUPTS-BODY-" :IN SB-THREAD::FAST-CALL-WITH-MUTEX)
+------------------------------------------------------------------------
+          0   0.0                                     elsewhere

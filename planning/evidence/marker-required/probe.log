@@ -1,0 +1,151 @@
+## image
+6b65a57c3a26ddf65749f4e85181091a0639817a02a8cf2dab382e867d88ebe5  /tank/fn/scratch/marker-required/src/build/fn-host-developer.core
+plain run 1: {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":39.5346,"reopen_seconds":5.7321,"status":"passed"}
+plain run 2: {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":30.4175,"reopen_seconds":5.4471,"status":"passed"}
+plain run 3: {"host":"native","transactions":120,"payload_bytes":32768,"commit_seconds":31.6985,"reopen_seconds":5.8281,"status":"passed"}
+## strace -c (syscall summary, one run)
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 62.00    0.037999          43       869           fsync
+ 14.56    0.008923           8      1038         9 openat
+ 13.36    0.008190          33       241           rename
+  3.91    0.002398           6       365           write
+  3.10    0.001899          15       123           unlink
+  3.06    0.001877          15       123           link
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.061286          22      2759         9 total
+## strace -T fsync latency by target (one run)
+store root dir         n= 250 total= 11199.3 ms mean= 44.80 p50= 32.72 p90= 82.53
+record stage file      n= 120 total=  6825.2 ms mean= 56.88 p50= 34.94 p90=103.21
+transactions dir       n= 123 total=  5966.4 ms mean= 48.51 p50= 32.53 p90= 74.99
+marker stage file      n= 121 total=  5462.5 ms mean= 45.14 p50= 32.39 p90= 75.77
+staging dir            n= 120 total=  5424.9 ms mean= 45.21 p50= 24.98 p90= 73.36
+.allocation-2980382-a068e80a892a93797fd4 n=   1 total=   470.5 ms mean=470.51 p50=470.51 p90=470.51
+.allocation-2980382-e5d4bad8bc8be9fadca2 n=   1 total=   258.7 ms mean=258.67 p50=258.67 p90=258.67
+.allocation-2980382-54f97d30dda4a0eea223 n=   1 total=   211.9 ms mean=211.93 p50=211.93 p90=211.93
+.allocation-2980382-4e12040563095bba58a4 n=   1 total=   175.6 ms mean=175.62 p50=175.62 p90=175.62
+.allocation-2980382-4602f3f5d662602b6602 n=   1 total=   151.6 ms mean=151.59 p50=151.59 p90=151.59
+.allocation-2980382-df9fec47206ef9367734 n=   1 total=   140.0 ms mean=139.98 p50=139.98 p90=139.98
+.allocation-2980382-5de45e5f372e9c1eced3 n=   1 total=   117.3 ms mean=117.26 p50=117.26 p90=117.26
+.allocation-2980382-d3582d691eee7c6aa146 n=   1 total=   105.6 ms mean=105.59 p50=105.59 p90=105.59
+.allocation-2980382-00b647dc455157bb5c01 n=   1 total=   100.2 ms mean=100.20 p50=100.20 p90=100.20
+.allocation-2980382-01ab5f5b8f846ad8e2f4 n=   1 total=    93.1 ms mean= 93.07 p50= 93.07 p90= 93.07
+.allocation-2980382-466199ff89e7ed1ed8c7 n=   1 total=    83.2 ms mean= 83.22 p50= 83.22 p90= 83.22
+.allocation-2980382-7eb4c4daf8c25375f197 n=   1 total=    82.2 ms mean= 82.22 p50= 82.22 p90= 82.22
+.allocation-2980382-08ae2029b73d732815e9 n=   1 total=    76.9 ms mean= 76.86 p50= 76.86 p90= 76.86
+.allocation-2980382-4863420d88aa004358e0 n=   1 total=    76.6 ms mean= 76.57 p50= 76.57 p90= 76.57
+.allocation-2980382-1e7eb092dbaa7cf4d729 n=   1 total=    71.0 ms mean= 71.03 p50= 71.03 p90= 71.03
+.allocation-2980382-bcb971de7a73943a8674 n=   1 total=    69.9 ms mean= 69.93 p50= 69.93 p90= 69.93
+.allocation-2980382-3ae1ccced88a62bac903 n=   1 total=    68.7 ms mean= 68.73 p50= 68.73 p90= 68.73
+.allocation-2980382-b72520e1838ff5065dd4 n=   1 total=    66.6 ms mean= 66.62 p50= 66.62 p90= 66.62
+.allocation-2980382-5c8f81e5da46852f86af n=   1 total=    63.7 ms mean= 63.70 p50= 63.70 p90= 63.70
+.allocation-2980382-ca352f53c2b4296a2fe0 n=   1 total=    63.2 ms mean= 63.21 p50= 63.21 p90= 63.21
+.allocation-2980382-fde1b0fba2ecb969a01e n=   1 total=    59.6 ms mean= 59.63 p50= 59.63 p90= 59.63
+.allocation-2980382-0659f38e66fa2fcda2df n=   1 total=    58.6 ms mean= 58.63 p50= 58.63 p90= 58.63
+.allocation-2980382-5741842d31f22aef3e72 n=   1 total=    58.2 ms mean= 58.22 p50= 58.22 p90= 58.22
+.allocation-2980382-7ae6dd18b810c78b21ed n=   1 total=    54.4 ms mean= 54.35 p50= 54.35 p90= 54.35
+.allocation-2980382-0dd773963a5135802506 n=   1 total=    51.6 ms mean= 51.62 p50= 51.62 p90= 51.62
+.allocation-2980382-ded0f15c7bf6c4d8f27e n=   1 total=    49.5 ms mean= 49.49 p50= 49.49 p90= 49.49
+.allocation-2980382-654559d61350173fb873 n=   1 total=    48.8 ms mean= 48.76 p50= 48.76 p90= 48.76
+.allocation-2980382-8b396d93167550d26c9a n=   1 total=    48.1 ms mean= 48.07 p50= 48.07 p90= 48.07
+.allocation-2980382-0720a5d2169b94d91613 n=   1 total=    46.5 ms mean= 46.52 p50= 46.52 p90= 46.52
+.allocation-2980382-4a8abfa2dd7e6fc51edf n=   1 total=    45.1 ms mean= 45.10 p50= 45.10 p90= 45.10
+.allocation-2980382-b9c2bedaf076fd913f3d n=   1 total=    45.0 ms mean= 44.96 p50= 44.96 p90= 44.96
+.allocation-2980382-42db66b65656251c878a n=   1 total=    44.6 ms mean= 44.64 p50= 44.64 p90= 44.64
+.allocation-2980382-3eb81e92a103ae039b8e n=   1 total=    44.0 ms mean= 43.96 p50= 43.96 p90= 43.96
+.allocation-2980382-d9726bf722c788c6df66 n=   1 total=    42.1 ms mean= 42.14 p50= 42.14 p90= 42.14
+.allocation-2980382-4f73fe7d96160c08cd81 n=   1 total=    41.4 ms mean= 41.39 p50= 41.39 p90= 41.39
+.allocation-2980382-883f476451ef569fa08c n=   1 total=    40.9 ms mean= 40.91 p50= 40.91 p90= 40.91
+.allocation-2980382-924713fc9abc1b38cc9b n=   1 total=    39.1 ms mean= 39.07 p50= 39.07 p90= 39.07
+.allocation-2980382-db77f678a5a896de4584 n=   1 total=    36.7 ms mean= 36.73 p50= 36.73 p90= 36.73
+.allocation-2980382-aa7351658821f67390f4 n=   1 total=    36.7 ms mean= 36.69 p50= 36.69 p90= 36.69
+.allocation-2980382-3909aded2e204e5dd0ab n=   1 total=    36.6 ms mean= 36.60 p50= 36.60 p90= 36.60
+.allocation-2980382-71bb8d87bb6000dca282 n=   1 total=    36.5 ms mean= 36.46 p50= 36.46 p90= 36.46
+.allocation-2980382-d7d2fd2c5f72af455d6f n=   1 total=    35.2 ms mean= 35.25 p50= 35.25 p90= 35.25
+.allocation-2980382-8c9c4463f8fd63079252 n=   1 total=    35.2 ms mean= 35.22 p50= 35.22 p90= 35.22
+.allocation-2980382-de8d2b0f92098f1a5929 n=   1 total=    34.8 ms mean= 34.84 p50= 34.84 p90= 34.84
+.allocation-2980382-c99409538d5ab1ff7d8e n=   1 total=    34.7 ms mean= 34.67 p50= 34.67 p90= 34.67
+.allocation-2980382-e724fad040a4e0b329bc n=   1 total=    32.8 ms mean= 32.80 p50= 32.80 p90= 32.80
+config.json            n=   3 total=    32.6 ms mean= 10.87 p50=  0.09 p90= 32.52
+.init-2980382-840cf57bd20e5a2a133a4534 n=   1 total=    32.4 ms mean= 32.41 p50= 32.41 p90= 32.41
+.allocation-2980382-5994b69a33f151132f9a n=   1 total=    31.6 ms mean= 31.59 p50= 31.59 p90= 31.59
+.allocation-2980382-1e3ca60547884e6a5e11 n=   1 total=    30.5 ms mean= 30.47 p50= 30.47 p90= 30.47
+.allocation-2980382-6b9aa0d901752eaa2496 n=   1 total=    29.8 ms mean= 29.75 p50= 29.75 p90= 29.75
+.allocation-2980382-aa49036963bde0ed4831 n=   1 total=    29.7 ms mean= 29.74 p50= 29.74 p90= 29.74
+.allocation-2980382-c7e7df00ae4958eab451 n=   1 total=    29.5 ms mean= 29.51 p50= 29.51 p90= 29.51
+.allocation-2980382-2e3742a09b3016c52ad2 n=   1 total=    29.0 ms mean= 29.00 p50= 29.00 p90= 29.00
+.allocation-2980382-f84a5d5e0ffcd146aac4 n=   1 total=    28.9 ms mean= 28.89 p50= 28.89 p90= 28.89
+.allocation-2980382-e2a30784ac068aaa3954 n=   1 total=    28.6 ms mean= 28.63 p50= 28.63 p90= 28.63
+.allocation-2980382-026918154bbe1ef8983d n=   1 total=    27.1 ms mean= 27.05 p50= 27.05 p90= 27.05
+.allocation-2980382-c9652aa470643a41e5a7 n=   1 total=    27.0 ms mean= 27.04 p50= 27.04 p90= 27.04
+.allocation-2980382-990edeca03fb08d03b96 n=   1 total=    27.0 ms mean= 27.02 p50= 27.02 p90= 27.02
+.allocation-2980382-7b96dc6f2633c7237670 n=   1 total=    26.7 ms mean= 26.74 p50= 26.74 p90= 26.74
+.allocation-2980382-950ee28bd11550e33560 n=   1 total=    26.7 ms mean= 26.67 p50= 26.67 p90= 26.67
+.allocation-2980382-b818cb2c9fd68341828f n=   1 total=    26.6 ms mean= 26.65 p50= 26.65 p90= 26.65
+probe                  n=   4 total=    26.4 ms mean=  6.60 p50=  0.01 p90= 26.36
+config                 n=   1 total=    26.3 ms mean= 26.33 p50= 26.33 p90= 26.33
+.allocation-2980382-9968b00edb90a53f2422 n=   1 total=    26.1 ms mean= 26.07 p50= 26.07 p90= 26.07
+.allocation-2980382-2ef1222153794e72c63a n=   1 total=    26.0 ms mean= 26.05 p50= 26.05 p90= 26.05
+.allocation-2980382-f2a3045633a4ad63d9b0 n=   1 total=    25.3 ms mean= 25.27 p50= 25.27 p90= 25.27
+.allocation-2980382-85eb9dd4e2c53a70cc5f n=   1 total=    25.1 ms mean= 25.07 p50= 25.07 p90= 25.07
+.allocation-2980382-32c8dc7c98561cc78faa n=   1 total=    25.0 ms mean= 25.02 p50= 25.02 p90= 25.02
+.allocation-2980382-36b4507c6240c1d901ab n=   1 total=    24.9 ms mean= 24.85 p50= 24.85 p90= 24.85
+.allocation-2980382-7fa2635ce29c079db692 n=   1 total=    24.7 ms mean= 24.66 p50= 24.66 p90= 24.66
+.allocation-2980382-076a9efb486c7106943f n=   1 total=    24.5 ms mean= 24.52 p50= 24.52 p90= 24.52
+.allocation-2980382-3bc60e8b2f5431684535 n=   1 total=    24.4 ms mean= 24.43 p50= 24.43 p90= 24.43
+.allocation-2980382-ee9368738c78b2844b75 n=   1 total=    24.4 ms mean= 24.43 p50= 24.43 p90= 24.43
+.allocation-2980382-98c1e5ff79bc3ff08e67 n=   1 total=    24.3 ms mean= 24.27 p50= 24.27 p90= 24.27
+.allocation-2980382-5101556b4b32e050e35e n=   1 total=    24.1 ms mean= 24.13 p50= 24.13 p90= 24.13
+.allocation-2980382-b8317026c426578b996e n=   1 total=    23.8 ms mean= 23.81 p50= 23.81 p90= 23.81
+.allocation-2980382-e42312144c4cc7e1f7b3 n=   1 total=    23.6 ms mean= 23.61 p50= 23.61 p90= 23.61
+.allocation-2980382-8f8f00a5f0267681b643 n=   1 total=    23.6 ms mean= 23.56 p50= 23.56 p90= 23.56
+.allocation-2980382-e7e42c6f6aa8f9959510 n=   1 total=    23.5 ms mean= 23.54 p50= 23.54 p90= 23.54
+.allocation-2980382-a22541b335b940ecb5c0 n=   1 total=    23.5 ms mean= 23.53 p50= 23.53 p90= 23.53
+.allocation-2980382-10edf8d0f7bf888c916c n=   1 total=    23.2 ms mean= 23.23 p50= 23.23 p90= 23.23
+.allocation-2980382-a70c0b345ca90b922548 n=   1 total=    23.0 ms mean= 23.04 p50= 23.04 p90= 23.04
+.allocation-2980382-0784acad58fb6098a9df n=   1 total=    23.0 ms mean= 22.97 p50= 22.97 p90= 22.97
+.allocation-2980382-ffb774bce00f2e64a95a n=   1 total=    22.9 ms mean= 22.93 p50= 22.93 p90= 22.93
+.allocation-2980382-d1a8c5ee27d1b62f189e n=   1 total=    22.5 ms mean= 22.53 p50= 22.53 p90= 22.53
+.init-2980382-41c4d3ba2bd6aaff34a7926b n=   1 total=    22.5 ms mean= 22.51 p50= 22.51 p90= 22.51
+.allocation-2980382-44a32014c5adc0268e90 n=   1 total=    22.0 ms mean= 22.02 p50= 22.02 p90= 22.02
+.allocation-2980382-00ca7d79e7ad70834e48 n=   1 total=    22.0 ms mean= 22.00 p50= 22.00 p90= 22.00
+.allocation-2980382-d9db58c183e71b489e46 n=   1 total=    22.0 ms mean= 21.97 p50= 21.97 p90= 21.97
+.allocation-2980382-048c2a882af959b1777d n=   1 total=    21.9 ms mean= 21.95 p50= 21.95 p90= 21.95
+.allocation-2980382-6daf505921efd24686ff n=   1 total=    21.9 ms mean= 21.93 p50= 21.93 p90= 21.93
+.allocation-2980382-4f064fe468033604fe98 n=   1 total=    21.7 ms mean= 21.74 p50= 21.74 p90= 21.74
+.allocation-2980382-b5017a5c67e454485baa n=   1 total=    21.7 ms mean= 21.66 p50= 21.66 p90= 21.66
+.allocation-2980382-26d40caeb3e1af0db4d0 n=   1 total=    21.5 ms mean= 21.46 p50= 21.46 p90= 21.46
+.allocation-2980382-b4462faea4c37e60de38 n=   1 total=    21.4 ms mean= 21.45 p50= 21.45 p90= 21.45
+.allocation-2980382-241ddc44a1037fe3962e n=   1 total=    21.3 ms mean= 21.27 p50= 21.27 p90= 21.27
+.allocation-2980382-d12b5620744a1b38216c n=   1 total=    21.2 ms mean= 21.22 p50= 21.22 p90= 21.22
+.allocation-2980382-8278c543f42664d1d133 n=   1 total=    21.2 ms mean= 21.20 p50= 21.20 p90= 21.20
+.allocation-2980382-9b67281de1cdbc9ca13c n=   1 total=    21.0 ms mean= 20.98 p50= 20.98 p90= 20.98
+.allocation-2980382-9ab86092fd489c1a1bb8 n=   1 total=    20.9 ms mean= 20.92 p50= 20.92 p90= 20.92
+.allocation-2980382-0f88e1dca57a74f358b7 n=   1 total=    20.3 ms mean= 20.27 p50= 20.27 p90= 20.27
+.allocation-2980382-13c71b8e23eb8d6e4c77 n=   1 total=    20.3 ms mean= 20.26 p50= 20.26 p90= 20.26
+.allocation-2980382-33617b1679c200ee93b5 n=   1 total=    20.1 ms mean= 20.09 p50= 20.09 p90= 20.09
+.allocation-2980382-b779f36fbbfb66bf6973 n=   1 total=    19.9 ms mean= 19.90 p50= 19.90 p90= 19.90
+.allocation-2980382-8192c93204b5016d35e6 n=   1 total=    19.8 ms mean= 19.81 p50= 19.81 p90= 19.81
+.allocation-2980382-ef892444436c80dde550 n=   1 total=    19.8 ms mean= 19.78 p50= 19.78 p90= 19.78
+.allocation-2980382-bf2036b1d16391ee6749 n=   1 total=    19.7 ms mean= 19.74 p50= 19.74 p90= 19.74
+.allocation-2980382-b53ededb79f1b956d636 n=   1 total=    19.6 ms mean= 19.63 p50= 19.63 p90= 19.63
+.allocation-2980382-ea545137e5254afdb88e n=   1 total=    19.5 ms mean= 19.50 p50= 19.50 p90= 19.50
+.allocation-2980382-bef05b5657f1910ef373 n=   1 total=    19.3 ms mean= 19.31 p50= 19.31 p90= 19.31
+.allocation-2980382-02eedd1904cb7f59444f n=   1 total=    18.9 ms mean= 18.91 p50= 18.91 p90= 18.91
+.allocation-2980382-074698cdd2c1b436a711 n=   1 total=    18.3 ms mean= 18.29 p50= 18.29 p90= 18.29
+.allocation-2980382-25afb5c697d7c1babb45 n=   1 total=    17.9 ms mean= 17.90 p50= 17.90 p90= 17.90
+.allocation-2980382-f979a69096c97361eff7 n=   1 total=    17.6 ms mean= 17.56 p50= 17.56 p90= 17.56
+.allocation-2980382-34b1eeed45f4fc340e62 n=   1 total=    17.4 ms mean= 17.38 p50= 17.38 p90= 17.38
+.allocation-2980382-a738edc8a661d37256ce n=   1 total=    17.1 ms mean= 17.14 p50= 17.14 p90= 17.14
+.init-2980382-89c0edbac5bf366cab5cbfc1 n=   1 total=    17.0 ms mean= 16.98 p50= 16.98 p90= 16.98
+.allocation-2980382-b43c3f62db9b887b7e18 n=   1 total=    16.0 ms mean= 16.01 p50= 16.01 p90= 16.01
+.allocation-2980382-afc857dd2ad95c45a30e n=   1 total=    15.8 ms mean= 15.82 p50= 15.82 p90= 15.82
+.allocation-2980382-ccd816f82b98dbcb5214 n=   1 total=    15.6 ms mean= 15.61 p50= 15.61 p90= 15.61
+.allocation-2980382-538f28c3f1dea7adbc40 n=   1 total=    15.5 ms mean= 15.49 p50= 15.49 p90= 15.49
+.allocation-2980382-f96eedd7f256cc549ef7 n=   1 total=    15.1 ms mean= 15.11 p50= 15.11 p90= 15.11
+.allocation-2980382-f13f9440b450c33c7649 n=   1 total=    15.0 ms mean= 15.00 p50= 15.00 p90= 15.00
+.allocation-2980382-85787164a09b1110d99a n=   1 total=    14.1 ms mean= 14.14 p50= 14.14 p90= 14.14
+.allocation-2980382-f1c6621c54540a00c35f n=   1 total=    12.2 ms mean= 12.21 p50= 12.21 p90= 12.21
+allocation-frontier.json n=   3 total=     0.0 ms mean=  0.01 p50=  0.01 p90=  0.01
+00000001.cfg           n=   1 total=     0.0 ms mean=  0.02 p50=  0.02 p90=  0.02
+PROBE-DONE

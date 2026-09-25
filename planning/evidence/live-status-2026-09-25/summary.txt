@@ -1,0 +1,28 @@
+init exit=0
+offline0-status exit=0 secs=.091881841
+live-peer-add exit=0 secs=.248023223
+live-status exit=0 secs=.074889956
+live-pins exit=0 secs=.076200874
+live-obligations exit=0 secs=.074263258
+live-peers exit=0 secs=.072811779
+live-pins-connected exit=0 secs=.068487703
+watch reports=4 tags=4
+burst-with-status secs=20.355670916
+burst-without-status secs=18.383077363
+live-final-status exit=0 secs=.075002169
+live-final-pins exit=0 secs=.077945953
+live-final-obligations exit=0 secs=.078687877
+live-final-peers exit=0 secs=.070755422
+owner unit: inactive
+off-status exit=0 secs=.736766537
+off-pins exit=0 secs=.733894876
+off-obligations exit=0 secs=.733383370
+off-peers exit=0 secs=.728047168
+equal status
+equal pins
+equal obligations
+equal peers
+burst posts accepted: 60/60 control: 60/60
+burst-status 18 exit=0 secs=.520661164 tx=transactions=17
+burst-status 19 exit=0 secs=.548982777 tx=transactions=18
+burst statuses ok: 20
