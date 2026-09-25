@@ -801,6 +801,9 @@
     "tests/acl2/control-visible-tests",
     "books/control-served",
     "tests/acl2/control-served-tests",
+    "books/nntp-control",
+    "tests/acl2/nntp-control-tests",
+    "books/owner-control-read",
     "books/login-binding",
     "tests/acl2/login-binding-tests",
     "books/topic-history-metadata",
@@ -878,25 +881,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 890,
-    "books_in_root_closure": 886,
-    "roots": 874,
-    "theorems": 12344,
-    "functions": 8673,
-    "assert_events": 12922,
-    "must_fails": 1391,
+    "books": 893,
+    "books_in_root_closure": 889,
+    "roots": 877,
+    "theorems": 12437,
+    "functions": 8697,
+    "assert_events": 12937,
+    "must_fails": 1411,
     "encapsulates": 61,
     "guards": {
       "verified": 2181,
-      "declared-off": 653,
-      "default-guarded": 4572,
-      "default-unguarded": 1267
+      "declared-off": 655,
+      "default-guarded": 4589,
+      "default-unguarded": 1272
     },
     "suspect_theorems": 107,
-    "export_hygiene_warnings": 148,
+    "export_hygiene_warnings": 149,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 104,
-    "include_hygiene_warnings": 891,
+    "include_hygiene_warnings": 894,
     "host_names_warnings": 1014,
     "hand_written_record_warnings": 18
   },
@@ -7238,12 +7241,12 @@
       "book": "books/control-served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 30,
-      "functions": 10,
+      "theorems": 38,
+      "functions": 15,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 9,
+        "default-guarded": 14,
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
@@ -7253,7 +7256,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "control-visible",
+        "control-authority",
+        "msgid-index",
         "nntp-projection"
       ],
       "system_includes": [],
@@ -7956,12 +7960,12 @@
       "book": "books/group-bucket-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
-      "functions": 17,
+      "theorems": 23,
+      "functions": 19,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 16,
+        "default-guarded": 18,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -9124,7 +9128,7 @@
       "book": "books/nntp-auth-fold.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 51,
+      "theorems": 52,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -9199,6 +9203,31 @@
         "fn-auth-session-peer-folds",
         "fn-auth-token-argp-forward"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-control.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-pinned-msgid"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -9418,7 +9447,7 @@
       "book": "books/nntp-pinned-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
+      "theorems": 16,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -9762,12 +9791,12 @@
       "book": "books/nntp.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
-      "functions": 11,
+      "theorems": 3,
+      "functions": 16,
       "guards": {
         "verified": 11,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 11,
@@ -9777,6 +9806,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "control-served",
         "nntp-range-indexed",
         "nntp-responses",
         "nntp-verdict"
@@ -10169,6 +10199,33 @@
       "read_error": null
     },
     {
+      "book": "books/owner-control-read.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 54,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-control",
+        "owner-invariants",
+        "owner-verdict-read"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-fault.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10308,12 +10365,12 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 158,
-      "functions": 8,
+      "theorems": 162,
+      "functions": 9,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 7,
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
@@ -10354,6 +10411,7 @@
       "encapsulates": 0,
       "includes": [
         "nntp-list-counts",
+        "nntp-pinned-msgid",
         "owner-verdict-read"
       ],
       "system_includes": [],
@@ -10733,7 +10791,7 @@
       "book": "books/owner-verdict-read.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 20,
+      "theorems": 21,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -10759,12 +10817,12 @@
       "book": "books/owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 82,
-      "functions": 151,
+      "theorems": 84,
+      "functions": 154,
       "guards": {
         "verified": 0,
         "declared-off": 5,
-        "default-guarded": 146,
+        "default-guarded": 149,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -12176,12 +12234,12 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 109,
-      "functions": 51,
+      "theorems": 111,
+      "functions": 52,
       "guards": {
         "verified": 2,
         "declared-off": 4,
-        "default-guarded": 45,
+        "default-guarded": 46,
         "default-unguarded": 0
       },
       "verify_guards_events": 2,
@@ -19464,13 +19522,14 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 9,
-      "must_fails": 12,
+      "assert_events": 10,
+      "must_fails": 11,
       "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/control-served"
+        "../../books/control-served",
+        "../../books/control-visible"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -20929,6 +20988,34 @@
         "../../books/nntp-auth"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/nntp-control-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 14,
+      "must_fails": 21,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-control",
+        "control-served-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -25380,7 +25467,7 @@
     {
       "theorem": "fn-olc-pin-trie-of-unpinned",
       "book": "books/owner-list-counts-read.lisp",
-      "line": 50,
+      "line": 51,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-gidx-pin-trie and the conclusion is that branch's value"
       ]
@@ -25396,7 +25483,7 @@
     {
       "theorem": "fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session",
       "book": "books/owner-invariants.lisp",
-      "line": 847,
+      "line": 915,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value"
       ]
@@ -26159,6 +26246,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-nntp-control-cleanp-is-clean-field",
+        "book": "books/nntp-pinned-effects.lisp",
+        "line": 70,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-ng-reverse-is-reverse",
         "book": "books/nntp-syntax.lisp",
         "line": 31,
@@ -26329,13 +26422,13 @@
       {
         "theorem": "fn-served-conn-index-of-fn-served-make-conn-pinned",
         "book": "books/served.lisp",
-        "line": 263,
+        "line": 286,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-served-conn-index-of-fn-served-make-conn",
         "book": "books/served.lisp",
-        "line": 274,
+        "line": 297,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -29358,6 +29451,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/control-served.lisp",
+        "line": 31,
+        "include": "control-authority",
+        "included": "books/control-authority.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/control-served.lisp",
+        "line": 33,
+        "include": "msgid-index",
+        "included": "books/msgid-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/control-visible.lisp",
         "line": 27,
         "include": "control-authority",
@@ -29407,20 +29514,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/group-bucket-article.lisp",
-        "line": 5,
-        "include": "group-bucket-index",
-        "included": "books/group-bucket-index.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/group-bucket-cursor-invariants.lisp",
-        "line": 4,
-        "include": "group-bucket-index",
-        "included": "books/group-bucket-index.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/group-bucket-index.lisp",
         "line": 4,
         "include": "nntp-index-runtime",
@@ -29439,13 +29532,6 @@
         "line": 3,
         "include": "group-bucket-cursor-invariants",
         "included": "books/group-bucket-cursor-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/group-bucket-invariants.lisp",
-        "line": 4,
-        "include": "group-bucket-index",
-        "included": "books/group-bucket-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -29631,6 +29717,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/nntp-control.lisp",
+        "line": 25,
+        "include": "nntp-pinned-msgid",
+        "included": "books/nntp-pinned-msgid.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/nntp-index.lisp",
         "line": 24,
         "include": "nntp-index-runtime",
@@ -29792,6 +29885,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-control-read.lisp",
+        "line": 27,
+        "include": "nntp-control",
+        "included": "books/nntp-control.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner-feed.lisp",
         "line": 52,
         "include": "article-fields",
@@ -29803,6 +29903,13 @@
         "line": 20,
         "include": "nntp-list-counts",
         "included": "books/nntp-list-counts.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-list-counts-read.lisp",
+        "line": 21,
+        "include": "nntp-pinned-msgid",
+        "included": "books/nntp-pinned-msgid.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -29992,13 +30099,6 @@
         "line": 47,
         "include": "bp-workflow",
         "included": "books/bp-workflow.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/served.lisp",
-        "line": 60,
-        "include": "group-bucket-index",
-        "included": "books/group-bucket-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -32813,6 +32913,20 @@
         "line": 12,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-control-tests.lisp",
+        "line": 9,
+        "include": "control-served-tests",
+        "included": "tests/acl2/control-served-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-control-tests.lisp",
+        "line": 10,
+        "include": "../../books/nntp-control",
+        "included": "books/nntp-control.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -41162,7 +41276,7 @@
       },
       {
         "book": "books/owner.lisp",
-        "line": 98,
+        "line": 102,
         "shape": "fn-own-conn-shapep",
         "shapes": 5,
         "accessors": 6,
@@ -41210,9 +41324,9 @@
         "line": 74,
         "shape": "fn-served-conn-shapep",
         "shapes": 2,
-        "accessors": 11,
+        "accessors": 12,
         "variable": "x",
-        "reason": "hand-written record: 2 shape predicate(s) (fn-served-conn-shapep, fn-served-result-shapep) and 11 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
+        "reason": "hand-written record: 2 shape predicate(s) (fn-served-conn-shapep, fn-served-result-shapep) and 12 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
         "book": "books/store-files.lisp",
