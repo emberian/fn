@@ -69,7 +69,7 @@
                   nil 0 nil nil nil
                   (append (bra-boundary "receiver-peer" "dtn://receiver/" 4601)
                           (bra-boundary "relay" "dtn://relay/" 4602)
-                          rows) nil)))
+                          rows) nil nil)))
 (defconst *bra-carried-cfg* (bra-cfg *bra-carries*))
 (defconst *bra-released-cfg* (bra-cfg (append *bra-carries* *bra-releases*)))
 (assert-event (fn-cfgp *bra-carried-cfg*))
@@ -186,7 +186,7 @@
                                        '(junk) 0 nil nil nil
                                        (fn-cfg-peers
                                         (fn-cfg-value *bra-released-cfg*))
-                                       nil))))))
+                                       nil nil))))))
 
 ; -----------------------------------------------------------------------------
 ; Signed receipts (lane signed-receipts).  B's hybrid principal P and its two
