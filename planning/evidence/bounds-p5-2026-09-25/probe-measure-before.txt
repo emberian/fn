@@ -1,0 +1,12 @@
+N=100 (tree b9949fb6 image, /tank zfs)
+{"host":"native","transactions":100,"payload_bytes":2048,"commit_seconds":23.9804,"reopen_seconds":0.7020,"status":"passed"}
+	User time (seconds): 1.51
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:24.82
+N=250 (tree b9949fb6 image, /tank zfs)
+{"host":"native","transactions":250,"payload_bytes":2048,"commit_seconds":55.9768,"reopen_seconds":5.7141,"status":"passed"}
+	User time (seconds): 10.36
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:01.84
+N=500 (tree b9949fb6 image, /tank zfs)
+{"host":"native","transactions":500,"payload_bytes":2048,"commit_seconds":124.4137,"reopen_seconds":49.7627,"status":"passed"}
+	User time (seconds): 69.40
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:54.35

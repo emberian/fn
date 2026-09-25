@@ -1,0 +1,20 @@
+N=500
+probe rc=0
+{"host":"native","transactions":500,"payload_bytes":2048,"commit_seconds":2.5861,"reopen_seconds":0.5570,"status":"passed"}
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:03.26
+	Maximum resident set size (kbytes): 1969892
+N=1000
+probe rc=0
+{"host":"native","transactions":1000,"payload_bytes":2048,"commit_seconds":9.1223,"reopen_seconds":1.5891,"status":"passed"}
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:10.85
+	Maximum resident set size (kbytes): 1993640
+N=2000
+probe rc=0
+{"host":"native","transactions":2000,"payload_bytes":2048,"commit_seconds":31.8300,"reopen_seconds":4.5811,"status":"passed"}
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:36.57
+	Maximum resident set size (kbytes): 2333980
+N=4500
+probe rc=0
+{"host":"native","transactions":4500,"payload_bytes":2048,"commit_seconds":154.0109,"reopen_seconds":21.4007,"status":"passed"}
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:55.59
+	Maximum resident set size (kbytes): 2488396

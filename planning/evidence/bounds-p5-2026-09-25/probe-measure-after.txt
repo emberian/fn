@@ -1,0 +1,19 @@
+Certification evidence: build/acl2/certify-20260925T190522Z-3606060
+3ca459cc8841f28488079c51fd0351d1638559d80472f66c6a60a5a2fa427205  build/fn-host.core
+1d1a34bbe0466dc223679638e903dc2b769625184ff9fcd1a3da100c084e0789  build/fn-host-developer.core
+e72b12e3a2e5bd6ac6e43a08c9fd3f664b1943cbac0b9e0972392f4362c29a6e  /tank/fn/scratch/bounds-p5/certify-tree2.log
+N=1000
+probe rc=0
+{"host":"native","transactions":1000,"payload_bytes":2048,"commit_seconds":0.8170,"reopen_seconds":1.8050,"status":"passed"}
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.76
+	Maximum resident set size (kbytes): 1916824
+N=2000
+probe rc=0
+{"host":"native","transactions":2000,"payload_bytes":2048,"commit_seconds":1.8210,"reopen_seconds":4.5239,"status":"passed"}
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:06.49
+	Maximum resident set size (kbytes): 2110336
+N=4500
+probe rc=0
+{"host":"native","transactions":4500,"payload_bytes":2048,"commit_seconds":5.1439,"reopen_seconds":16.6566,"status":"passed"}
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:21.96
+	Maximum resident set size (kbytes): 2506484

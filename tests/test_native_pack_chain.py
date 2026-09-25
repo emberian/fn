@@ -7,8 +7,8 @@ both entries (`operator CONFIG store compact` and `checkpoint pack STORE
 select`), reopens to the whole history and resumes to a complete chain.
 
 FN_P5_N (default 20000) sets the size of the scale store and FN_P5_CUT_N
-(default 4500: two links, so both occurrences of every cut are reached) the
-size of the cut and EIO campaigns' store.  FN_P5_TIMEOUT (default 1800 s)
+(default 4500: three links of 4 MiB, so both occurrences of every cut are
+reached) the size of the cut and EIO campaigns' store.  FN_P5_TIMEOUT (default 1800 s)
 bounds each native call; a 20,000-record open costs minutes
 (planning/evidence/bounds-p5-2026-09-25.md).  Articles are 2 KiB: the
 profile's max-article-octets, which the in-process `probe' commits.
@@ -32,20 +32,25 @@ CUTS = ("candidate-file", "candidate-link", "candidate-directory",
 # EIO before each syscall of one link's publication: the candidate's
 # immutable publication (host/native/immutable-publish.lisp) and the
 # selection marker's replacement (host/native/checkpoint.lisp).  A failure
-# before the name is visible refuses; a failed directory barrier after it is
-# uncertain.
+# of a syscall that cannot have published the name refuses; a failed link or
+# rename leaves the name's visibility unknown, and a failed directory barrier
+# leaves its durability unknown: both are uncertain.
 EIO_CUTS = (
     ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "stage", run_store.EXIT_REFUSED),
     ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "file-barrier", run_store.EXIT_REFUSED),
-    ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "link", run_store.EXIT_REFUSED),
+    ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "link", run_store.EXIT_UNCERTAIN),
     ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "namespace", run_store.EXIT_UNCERTAIN),
     ("FN_CHECKPOINT_TEST_FAIL", "selection-file", run_store.EXIT_REFUSED),
-    ("FN_CHECKPOINT_TEST_FAIL", "selection-replace", run_store.EXIT_REFUSED),
+    ("FN_CHECKPOINT_TEST_FAIL", "selection-replace", run_store.EXIT_UNCERTAIN),
     ("FN_CHECKPOINT_TEST_FAIL", "selection-directory", run_store.EXIT_UNCERTAIN),
 )
 
 
-def links_for(n):
+def fewest_links(n):
+    """A link holds at most 4096 events (and at most 4 MiB), so a whole chain
+    over N records has at least this many links.  The partition itself is
+    ACL2's (fn-ccc-fit); the tests read it from `status', never compute it:
+    2 KiB articles fill the 4 MiB first, near 1,775 records a link."""
     return -(-n // 4096)
 
 
@@ -94,11 +99,15 @@ class NativePackChainTests(unittest.TestCase):
         before = self.served_view(config, port, sample)
         before_retention = self.native("store", store, "retention").stdout
         compacted = self.native("operator", config, "store", "compact")
-        self.assertIn("compacted steps=pack,select,reclaim,retire records={} "
-                      "generation={} links={} reclaimed={} retired=0".format(
-                          N, links_for(N) - 1, links_for(N), N),
-                      compacted.stdout)
-        self.assertEqual(self.chain(store), (links_for(N), N))
+        match = re.search(r"compacted steps=pack,select,reclaim,retire records=(\d+) "
+                          r"generation=(\d+) links=(\d+) reclaimed=(\d+) retired=0",
+                          compacted.stdout)
+        self.assertIsNotNone(match, compacted.stdout)
+        links = int(match.group(3))
+        self.assertEqual((int(match.group(1)), int(match.group(2)), int(match.group(4))),
+                         (N, links - 1, N))
+        self.assertGreaterEqual(links, max(2, fewest_links(N)))
+        self.assertEqual(self.chain(store), (links, N))
         self.assertEqual(self.transaction_bytes(store), {})
         self.recovered(store, N)
         self.assert_view_kept_and_next_number(store, config, port, sample,
@@ -107,11 +116,18 @@ class NativePackChainTests(unittest.TestCase):
         # The post is the uncovered suffix: the next compaction packs only it.
         again = self.native("operator", config, "store", "compact")
         self.assertIn("links=1 reclaimed=1 retired=0", again.stdout)
-        self.assertEqual(self.chain(store), (links_for(N) + 1, N + 1))
+        self.assertEqual(self.chain(store), (links + 1, N + 1))
 
     def test_every_chain_publication_cut_from_both_entries(self):
         base, config0, _ = self.scale_store("cut-base", CUT_N)
-        whole = links_for(CUT_N)
+        # The uncut compaction of a copy gives the whole chain's length.
+        reference = self.base / "cut-reference"
+        shutil.copytree(base, reference, symlinks=True)
+        self.native("checkpoint", "pack", reference, "select")
+        whole, boundary = self.chain(reference)
+        self.assertEqual(boundary, CUT_N)
+        self.assertGreaterEqual(whole, max(2, fewest_links(CUT_N)))
+        shutil.rmtree(reference)
         entries = {
             "compact": lambda store, config: ("operator", config, "store", "compact"),
             "pack": lambda store, config: ("checkpoint", "pack", store, "select"),
@@ -128,7 +144,12 @@ class NativePackChainTests(unittest.TestCase):
                         # The old chain or the old chain plus one complete link.
                         links, boundary = self.chain(store)
                         self.assertIn(links, (occurrence - 1, occurrence), point)
-                        self.assertEqual(boundary, min(links * 4096, CUT_N))
+                        if links == 0:
+                            self.assertEqual(boundary, 0)
+                        elif links == whole:
+                            self.assertEqual(boundary, CUT_N)
+                        else:
+                            self.assertTrue(0 < boundary < CUT_N, boundary)
                         self.recovered(store, CUT_N)
                         # Resume: the same entry completes the chain.
                         self.native(*argv(store, config))
@@ -140,8 +161,8 @@ class NativePackChainTests(unittest.TestCase):
     def test_eio_at_each_link_publication_cut_from_both_entries(self):
         base, config0, _ = self.scale_store("eio-base", CUT_N)
         self.native("operator", config0, "store", "compact")
-        whole = links_for(CUT_N)
-        self.assertEqual(self.chain(base), (whole, CUT_N))
+        whole, boundary = self.chain(base)
+        self.assertEqual(boundary, CUT_N)
         # One more record: the next compaction publishes one link on the head.
         self.native("store", base, "post", "<eio-next@example.invalid>",
                     self.payload, "-", "-", "fn.letters")
