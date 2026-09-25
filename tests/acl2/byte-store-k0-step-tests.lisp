@@ -47,12 +47,10 @@
 ; :observe: the completion observations from the completing pair.
 (assert-event (bsks-ok (car (bskm-pair)) (bsks-k) (list :observe (list :core-completion 1 1)) :ok))
 
-; Teeth.  Coverage is not a separable hypothesis: every kind's precondition
-; in fn-bs-k0-step-inputp carries the relation (or, for the root barrier,
-; the marker-pending coverage), so the theorem's (fn-bs-k0-coveredp bs ks)
-; is implied by its second hypothesis and has no tooth of its own (finding 1
-; of planning/evidence/k0-general-step-2026-09-25.md).  Dropping it drops
-; the precondition: the completing kernel over the initial byte image.
+; Teeth.  The theorem's one hypothesis is the step precondition; it carries
+; the relation (or, for the root barrier, the marker-pending coverage), so
+; coverage is not a separate hypothesis (lane k0-corollaries dropped it).
+; Without the precondition: the completing kernel over the initial byte image.
 (assert-event (not (fn-bs-k0-coveredp (bsk5-initial) (bsks-k))))
 (assert-event (not (fn-bs-k0-step-inputp (bsk5-initial) (bsks-k) (list :create :staging *bsks-stage*) :ok)))
 (assert-event (not (bsks-concl (bsk5-initial) (bsks-k) (list :create :staging *bsks-stage*) :ok)))
