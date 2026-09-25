@@ -576,6 +576,12 @@
   (fn-bpnp-start-one st peer session mru observation)
   (fn-bpnp-start-one))
 
+; The routed :session arm (spec 4.6): start-one's answer, or the state
+; unchanged with a :forward-no-route report.
+(fn-bpnpp-defkeep fn-bpnpp-routed-start
+  (fn-bpnp-routed-start st peer session mru observation via)
+  (fn-bpnp-routed-start fn-bpnpp-start-one))
+
 (fn-bpnpp-defkeep fn-bpnpp-attempt-persist-step
   (fn-bpnp-attempt-persist-step st epoch op result)
   (fn-bpnp-attempt-persist-step))
@@ -609,7 +615,8 @@
                        '(fn-bpnp-step
                          fn-bpnpp-remove-peer-session-listp
                          fn-bpnpp-open-session-listp
-                         fn-bpnpp-start-one fn-bpnpp-forward-result-propose-step
+                         fn-bpnpp-start-one fn-bpnpp-routed-start
+                         fn-bpnpp-forward-result-propose-step
                          fn-bpnpp-operator-resume-step
                          fn-bpnpp-progress-step fn-bpnpp-dispatch-persist-step
                          fn-bpnpp-attempt-persist-step

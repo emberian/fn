@@ -1868,6 +1868,33 @@
         "planning/evidence/control-c1-2026-09-25.md"
       ],
       "implementation_note": "RFC requirement (RFC 5537 section 5): any article with a Control header field is a control message, and a Subject starting \"cmsg \", a \".ctl\" group name or an Also-Control field MUST NOT make one; fn does not take the MAY to reject the cmsg form. RFC 5537 section 3.7's SHOULD (control messages are not stored in the groups their Newsgroups field lists, but in the \"control\" hierarchy) is kept as a requirement: fn-pa-filing-plan, the first step of host/native/owner.lisp fnn-owner-attempt-transit for served POST, bound submission, NNTP transit and BP transit, and host/native/hybrid-control.lisp fnn-hybrid-control-author calls fn-owner-control-filing itself for the local signed-author path, files a control article only in control.<verb> (cancel, newgroup, rmgroup, checkgroups, ihave, sendme) or control (obsolete and unknown verbs; verb compared in ASCII lower case, a local policy), and only if the operator created that group; otherwise it is refused :control-not-filed, and two Control fields, Control beside Supersedes (RFC 5536 section 3.2.3's MUST NOT) or a command outside the grammar are refused :control-malformed. Each refusal is its own 441 line on POST and a named service-log reason on transit. Stored bytes are unchanged. Nothing is executed (packets C2 to C4 are proposals). Open: a control article carrying an FN-Authorship carrier is refused :control-signed, because a signed article's Store record must list exactly its source's Newsgroups (books/hybrid-store.lisp)."
+    },
+    {
+      "id": "REP-007",
+      "title": "A held BP bundle is offered only to the neighbour the operator's route table names for its destination; with no route it stays held and is reported",
+      "specification": "specs/bp-node-machine.md#47-the-routing-decision-fn-bprt-next-hop-2026-09-25-lane-bp-routing",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-079"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9171.txt",
+        "rfc9174.txt",
+        "books/bp-route.lisp",
+        "books/bp-route-step.lisp",
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-route-tests.lisp",
+        "host/native/bp-node.lisp",
+        "host/bp-native-app-host.lisp",
+        "tests/test_bp_node_native.py",
+        "planning/evidence/bp-routing-2026-09-25.md"
+      ],
+      "implementation_note": "RFC 9171 section 4.3 and 5.4 step 1 leave the forwarding strategy to the node; fn implements no routing protocol (local policy) and decides from operator configuration rows written by `bp-route add PATTERN BOUNDARY [PRIORITY]` through the assured reconfiguration path. The next hop, the expected TCPCL node ID (RFC 9174 section 4.6 SESS_INIT) and the contact port are ACL2's (fn-bprt-outbound-choice over fn-bprt-table); host/native/bp-node.lisp fnn-bpnode-forward-contact opens no session without a route. Not covered: FNBS base jobs (bp-obligation request, bp-contact tick, bp-service) still carry their queued CONTACT-HOST:PORT; the unrouted 6-field :session form and :resume remain in the machine unsent by the host."
     }
   ]
 }

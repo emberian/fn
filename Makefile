@@ -373,6 +373,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-node-forward-retry \
 	tests/acl2/bp-node-forward-retry-tests \
+	books/bp-route \
+	books/bp-route-step \
+	tests/acl2/bp-route-tests \
 	books/bp-node-forward-resume \
 	tests/acl2/bp-node-forward-resume-tests \
 	books/bp-fnbs-dispatch-codec \

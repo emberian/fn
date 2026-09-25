@@ -167,8 +167,15 @@ class NativeBpNodeTests(unittest.TestCase):
                 "operator", config, "bp-boundary", "add", admitted_name,
                 remote_path, peer, listen_port,
                 *(["fn.test", "32768", "16"] if inbound else []),
+                "contact", self.relay.port,
             )
             self.assertEqual(installed.returncode, 0, installed.stderr)
+            # Spec 4.6: the node forwards held transit only to a boundary
+            # the route table names; the peer is reached through the relay.
+            routed = self.invoke(
+                "operator", config, "bp-route", "add", peer + "*", admitted_name,
+            )
+            self.assertEqual(routed.returncode, 0, routed.stderr)
         receipts = self.receiver_receipts if receiver else self.tmp / "sender-fnrj"
         workflow = self.tmp / "receiver-fnwf" if receiver else self.sender_workflow
         env = dict(self.env)
@@ -598,6 +605,55 @@ class NativeBpNodeTests(unittest.TestCase):
             sorted(p.name for p in (self.receiver_journal / "lifecycle").glob("*.fnb")),
             forwarded_names)
         self.assertEqual(self.acl2_lifecycle_kinds(self.receiver_journal), after_forward)
+
+    def test_removed_route_keeps_transit_held_and_reports_no_route(self):
+        """Spec 4.6: no route, no session; the row and its obligation stay held.
+
+        The receiver holds one transit bundle for dtn://sender/.  With the
+        route removed, dispatch opens no session to the reachable peer and
+        reports ACL2's :no-route; no kind 8 is written.  With the route
+        added back, the same row is forwarded and settles as sent.
+        """
+        receiver, port = self.start_node(True, once=False)
+        _, younger = self.forward_mru_bundles()
+        sent = self.invoke(
+            "tcpcl", "send", "127.0.0.1", port, younger,
+            self.tmp / "noroute-sender-spool", "dtn://sender/",
+            "dtn://receiver/", 0, 65536, 1048576, 0,
+        )
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.stop_process(receiver)
+        config = self.tmp / "receiver-fn.toml"
+        removed = self.invoke("operator", config, "bp-route", "remove",
+                              "dtn://sender/*", "sender-boundary")
+        self.assertEqual(removed.returncode, 0, removed.stderr)
+        peer, peer_port = self.start_node(False, once=False)
+        self.relay.route(peer_port)
+        args = self.dispatch_receiver_args()
+        held = subprocess.run(
+            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=240, check=False,
+        )
+        self.assertEqual(held.returncode, 0, held.stderr)
+        self.assertIn(b"BP forwarding no-route destination=dtn://sender/ "
+                      b"decision=no-route", held.stdout)
+        self.assertNotIn(b"BP forwarding attempt durable", held.stdout)
+        kinds = self.acl2_lifecycle_kinds(self.receiver_journal)
+        self.assertEqual(kinds[5], 1, kinds)
+        self.assertEqual(kinds[8], 0, kinds)
+
+        added = self.invoke("operator", config, "bp-route", "add",
+                            "dtn://sender/*", "sender-boundary")
+        self.assertEqual(added.returncode, 0, added.stderr)
+        routed = subprocess.run(
+            args, cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=240, check=False,
+        )
+        self.assertEqual(routed.returncode, 0, routed.stderr)
+        self.assertIn(b"BP forwarding route hop=sender-boundary", routed.stdout)
+        self.assertIn(b"BP forwarding attempt durable", routed.stdout)
+        self.assertIn(b"status=sent", routed.stdout)
+        self.stop_process(peer)
 
     @staticmethod
     def acl2_lifecycle_kinds(journal):
