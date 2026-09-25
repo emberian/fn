@@ -1,0 +1,12 @@
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 17.448s
+
+OK
+format 7 to 8 cuts: [(('profile-created', 'eio', 'operator'), 'format-7'), (('profile-created', 'eio', 'store'), 'format-7'), (('profile-created', 'kill', 'operator'), 'format-7'), (('profile-created', 'kill', 'store'), 'format-7'), (('profile-durable', 'eio', 'operator'), 'format-8'), (('profile-durable', 'eio', 'store'), 'format-8'), (('profile-durable', 'kill', 'operator'), 'format-8'), (('profile-durable', 'kill', 'store'), 'format-8'), (('profile-replaced', 'eio', 'operator'), 'format-8'), (('profile-replaced', 'eio', 'store'), 'format-8'), (('profile-replaced', 'kill', 'operator'), 'format-8'), (('profile-replaced', 'kill', 'store'), 'format-8'), (('profile-staged-durable', 'eio', 'operator'), 'format-7'), (('profile-staged-durable', 'eio', 'store'), 'format-7'), (('profile-staged-durable', 'kill', 'operator'), 'format-7'), (('profile-staged-durable', 'kill', 'store'), 'format-7'), (('profile-written', 'eio', 'operator'), 'format-7'), (('profile-written', 'eio', 'store'), 'format-7'), (('profile-written', 'kill', 'operator'), 'format-7'), (('profile-written', 'kill', 'store'), 'format-7')]
+store post 19999 0 committed sequence=0 charge=6 
+store post 20000 0 committed sequence=1 charge=6 
+store post 20001 1  store: payload exceeds the modelled bound
+operator post 1000 0  accepted operator post ACCEPTED
+operator post 20001 1  refused operator post ARTICLE-EXCEEDS-PROFILE-BOUND
+profile cuts: [(('profile-created', 'eio', 'operator'), 128), (('profile-created', 'eio', 'store'), 128), (('profile-created', 'kill', 'operator'), 128), (('profile-created', 'kill', 'store'), 128), (('profile-durable', 'eio', 'operator'), 4096), (('profile-durable', 'eio', 'store'), 4096), (('profile-durable', 'kill', 'operator'), 4096), (('profile-durable', 'kill', 'store'), 4096), (('profile-replaced', 'eio', 'operator'), 4096), (('profile-replaced', 'eio', 'store'), 4096), (('profile-replaced', 'kill', 'operator'), 4096), (('profile-replaced', 'kill', 'store'), 4096), (('profile-staged-durable', 'eio', 'operator'), 128), (('profile-staged-durable', 'eio', 'store'), 128), (('profile-staged-durable', 'kill', 'operator'), 128), (('profile-staged-durable', 'kill', 'store'), 128), (('profile-written', 'eio', 'operator'), 128), (('profile-written', 'eio', 'store'), 128), (('profile-written', 'kill', 'operator'), 128), (('profile-written', 'kill', 'store'), 128)]

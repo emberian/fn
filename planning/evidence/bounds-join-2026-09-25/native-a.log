@@ -1,0 +1,717 @@
+Running as unit: run-re8c9ea0fc4154d9fb57ca035d3f07ea1.scope; invocation ID: dd0b08ec318a4c94997bf0640af37a8a
+start=2026-09-25T05:17:52Z
+test_step_rollback_step_post_3_mib_restart (tests.test_native_bounds_join.DeployRehearsalTests.test_step_rollback_step_post_3_mib_restart) ... transactions=1 articles=1 staging-orphans=0 unsigned-legacy-experiment
+profile format=7 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576
+headroom transactions-used=1 transactions-budget=4096 bytes-used=565 history-bound=805306368 charge-reserved=2 charge-capacity=1048576
+
+upgraded profile=current transactions-used=1 transactions-budget=4096 previous-budget=4096
+profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=33554432 max-article-octets=4194304 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576
+
+POST 3145728 ('', None)
+FAIL
+test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it (tests.test_native_bounds_join.LargeArticleTests.test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it) ... POST 33792 ('240 article received OK', True)
+POST 204800 ('240 article received OK', True)
+POST 3145728 ('', None)
+FAIL
+test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) ... 
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-created', action='kill', entry='operator') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-created', action='kill', entry='store') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-created', action='eio', entry='operator') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-created', action='eio', entry='store') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-written', action='kill', entry='operator') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-written', action='kill', entry='store') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-written', action='eio', entry='operator') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-written', action='eio', entry='store') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-staged-durable', action='kill', entry='operator') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-staged-durable', action='kill', entry='store') ... FAIL
+/usr/lib/python3.12/collections/__init__.py:449: ResourceWarning: unclosed <socket.socket [closed] fd=4, family=2, type=1, proto=6>
+  result = tuple_new(cls, iterable)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-staged-durable', action='eio', entry='operator') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-staged-durable', action='eio', entry='store') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-replaced', action='kill', entry='operator') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-replaced', action='kill', entry='store') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-replaced', action='eio', entry='operator') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-replaced', action='eio', entry='store') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-durable', action='kill', entry='operator') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-durable', action='kill', entry='store') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-durable', action='eio', entry='operator') ... FAIL
+  test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-durable', action='eio', entry='store') ... FAIL
+test_a_step_that_shrinks_is_refused (tests.test_native_profile_upgrade.FormatSevenToEightTests.test_a_step_that_shrinks_is_refused) ... ok
+test_the_developer_entry_steps_to_the_scale_preset (tests.test_native_profile_upgrade.FormatSevenToEightTests.test_the_developer_entry_steps_to_the_scale_preset) ... FAIL
+test_the_step_keeps_every_bound_and_writes_the_scale_frame (tests.test_native_profile_upgrade.FormatSevenToEightTests.test_the_step_keeps_every_bound_and_writes_the_scale_frame) ... FAIL
+test_a_raise_of_any_field_and_a_shrink_refused_by_name (tests.test_native_profile_upgrade.OperatorFieldsTests.test_a_raise_of_any_field_and_a_shrink_refused_by_name) ... FAIL
+test_the_payload_bound_is_the_operators_field (tests.test_native_profile_upgrade.OperatorFieldsTests.test_the_payload_bound_is_the_operators_field) ... ok
+test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) ... 
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='kill', entry='operator') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='kill', entry='store') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='eio', entry='operator') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='eio', entry='store') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='kill', entry='operator') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='kill', entry='store') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='eio', entry='operator') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='eio', entry='store') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='kill', entry='operator') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='kill', entry='store') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='eio', entry='operator') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='eio', entry='store') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='kill', entry='operator') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='kill', entry='store') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='eio', entry='operator') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='eio', entry='store') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='kill', entry='operator') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='kill', entry='store') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='eio', entry='operator') ... FAIL
+  test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='eio', entry='store') ... FAIL
+test_the_verb_is_acl2s_and_the_host_writes_the_program (tests.test_native_profile_upgrade.ProfileUpgradeSourceTests.test_the_verb_is_acl2s_and_the_host_writes_the_program) ... ok
+test_a_running_owner_refuses_the_upgrade (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_a_running_owner_refuses_the_upgrade) ... FAIL
+test_same_profile_and_downgrade_write_nothing (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_same_profile_and_downgrade_write_nothing) ... FAIL
+test_three_articles_then_scale_then_the_next_post (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_three_articles_then_scale_then_the_next_post) ... FAIL
+test_article_over_the_body_limit_is_refused_and_the_owner_survives (tests.test_native_owner.NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives) ... FAIL
+
+======================================================================
+FAIL: test_step_rollback_step_post_3_mib_restart (tests.test_native_bounds_join.DeployRehearsalTests.test_step_rollback_step_post_3_mib_restart)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_bounds_join.py", line 191, in test_step_rollback_step_post_3_mib_restart
+    self.stop(owner)
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_operator_verbs.py", line 506, in stop
+    self.assertEqual(owner.wait(timeout=60), EXIT_OK,
+AssertionError: 4 != 0 : accepted reader connection=0 time=2026-09-25T05:17:53Z
+INFO: Control stack guard page unprotected
+Control stack guard page temporarily disabled: proceed with caution
+owner core/store fault; process stopped: ACL2 error in fn-owner-take: Control stack exhausted (no more space for function call frames).
+This is probably due to heavily nested or infinitely recursive function
+calls, or a tail call that SBCL cannot or has not optimized away.
+
+PROCEED WITH CAUTION.
+INFO: Control stack guard page reprotected
+fault operator run
+
+
+======================================================================
+FAIL: test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it (tests.test_native_bounds_join.LargeArticleTests.test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_bounds_join.py", line 133, in test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it
+    rows = self.post_and_reread([33792, 204800, 3145728, MIB4 + 1])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_bounds_join.py", line 104, in post_and_reread
+    reply = client.post(data)
+            ^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_bounds_join.py", line 62, in post
+    assert self.stream.readline().startswith(b"340")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-created', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-created', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-created', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-created', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-written', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-written', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-written', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-written', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-staged-durable', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-staged-durable', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-staged-durable', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-staged-durable', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 404, in test_every_cut_reopens_format_7_or_format_8
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-replaced', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 389, in test_every_cut_reopens_format_7_or_format_8
+    self.assertIn(frame, frames[cut.candidate])
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' not found in {'267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3', 'bf6e6df94c6dbf75704366a84ad09229f42f80cc2e10a8dfccc432e4c93ba1b9'}
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-replaced', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 389, in test_every_cut_reopens_format_7_or_format_8
+    self.assertIn(frame, frames[cut.candidate])
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' not found in {'267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3', 'bf6e6df94c6dbf75704366a84ad09229f42f80cc2e10a8dfccc432e4c93ba1b9'}
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-replaced', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 389, in test_every_cut_reopens_format_7_or_format_8
+    self.assertIn(frame, frames[cut.candidate])
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' not found in {'267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3', 'bf6e6df94c6dbf75704366a84ad09229f42f80cc2e10a8dfccc432e4c93ba1b9'}
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-replaced', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 389, in test_every_cut_reopens_format_7_or_format_8
+    self.assertIn(frame, frames[cut.candidate])
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' not found in {'267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3', 'bf6e6df94c6dbf75704366a84ad09229f42f80cc2e10a8dfccc432e4c93ba1b9'}
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-durable', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 389, in test_every_cut_reopens_format_7_or_format_8
+    self.assertIn(frame, frames[cut.candidate])
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' not found in {'267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'}
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-durable', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 389, in test_every_cut_reopens_format_7_or_format_8
+    self.assertIn(frame, frames[cut.candidate])
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' not found in {'267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'}
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-durable', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 389, in test_every_cut_reopens_format_7_or_format_8
+    self.assertIn(frame, frames[cut.candidate])
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' not found in {'267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'}
+
+======================================================================
+FAIL: test_every_cut_reopens_format_7_or_format_8 (tests.test_native_profile_upgrade.FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8) (cut='profile-durable', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 389, in test_every_cut_reopens_format_7_or_format_8
+    self.assertIn(frame, frames[cut.candidate])
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' not found in {'267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'}
+
+======================================================================
+FAIL: test_the_developer_entry_steps_to_the_scale_preset (tests.test_native_profile_upgrade.FormatSevenToEightTests.test_the_developer_entry_steps_to_the_scale_preset)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 354, in test_the_developer_entry_steps_to_the_scale_preset
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_the_step_keeps_every_bound_and_writes_the_scale_frame (tests.test_native_profile_upgrade.FormatSevenToEightTests.test_the_step_keeps_every_bound_and_writes_the_scale_frame)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 341, in test_the_step_keeps_every_bound_and_writes_the_scale_frame
+    self.assertEqual(self.frame(), SCALE_FRAME)
+AssertionError: '27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce' != '267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3'
+- 27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce
++ 267948d00d2707520bf3334a23360d3871d034dfdf384c4224a661e6578e3ec3
+
+
+======================================================================
+FAIL: test_a_raise_of_any_field_and_a_shrink_refused_by_name (tests.test_native_profile_upgrade.OperatorFieldsTests.test_a_raise_of_any_field_and_a_shrink_refused_by_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 296, in test_a_raise_of_any_field_and_a_shrink_refused_by_name
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-created', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-written', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-staged-durable', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-replaced', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='kill', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='kill', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='eio', entry='operator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_every_cut_reopens_with_the_old_or_the_new_profile (tests.test_native_profile_upgrade.ProfileUpgradeCutTests.test_every_cut_reopens_with_the_old_or_the_new_profile) (cut='profile-durable', action='eio', entry='store')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 220, in test_every_cut_reopens_with_the_old_or_the_new_profile
+    seen[(cut.name, action, entry)] = self.run_cut(cut, action, entry)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 184, in run_cut
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_a_running_owner_refuses_the_upgrade (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_a_running_owner_refuses_the_upgrade)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 161, in test_a_running_owner_refuses_the_upgrade
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_same_profile_and_downgrade_write_nothing (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_same_profile_and_downgrade_write_nothing)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 138, in test_same_profile_and_downgrade_write_nothing
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_three_articles_then_scale_then_the_next_post (tests.test_native_profile_upgrade.ProfileUpgradeTests.test_three_articles_then_scale_then_the_next_post)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 114, in test_three_articles_then_scale_then_the_next_post
+    self.init()
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_profile_upgrade.py", line 109, in init
+    self.assertEqual(self.frame(), DEVELOPMENT_FRAME)
+AssertionError: 'e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407' != 'ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364'
+- e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407
++ ae64f64d412b07765698887fa678f3c90557177d2bb1d3ebdeed648bf2226364
+
+
+======================================================================
+FAIL: test_article_over_the_body_limit_is_refused_and_the_owner_survives (tests.test_native_owner.NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-join/tree/tests/test_native_owner.py", line 575, in test_article_over_the_body_limit_is_refused_and_the_owner_survives
+    self.assertEqual(
+AssertionError: b'441 posting failed; the article was refused\r\n' != b'441 posting failed; the article exceeds the configured size\r\n' : an oversize article got b'441 posting failed; the article was refused\r\n'
+
+----------------------------------------------------------------------
+Ran 14 tests in 12.659s
+
+FAILED (failures=49)
+format 7 to 8 cuts: []
+store post 19999 0 committed sequence=0 charge=6 
+store post 20000 0 committed sequence=1 charge=6 
+store post 20001 1  store: payload exceeds the modelled bound
+operator post 1000 0  accepted operator post ACCEPTED
+operator post 20001 1  refused operator post ARTICLE-EXCEEDS-PROFILE-BOUND
+profile cuts: []
+rc=1
+end=2026-09-25T05:18:05Z
