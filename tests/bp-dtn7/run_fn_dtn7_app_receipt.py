@@ -550,7 +550,8 @@ def main(argv=None):
                                            RECEIVER, "native-policy", "terms-native")),
                 ("setup-undertake-" + work, ("bp-obligation", "undertake", a_store, a_wf,
                                              work, 3))):
-                setup.append(lab.fn(tag, *argv).returncode)
+                setup.append(lab.fn(tag, *argv, image=(
+                    setup_image if tag.startswith("setup-post") else None)).returncode)
         # The last hop each side sees: dtn7's node ID, or the fn peer directly.
         b_neighbour = ("dtn://dtn7-r{}/".format(args.relays)
                        if args.relays and args.b_trusts in ("neighbour", "carried")

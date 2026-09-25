@@ -1,0 +1,16 @@
+BP FNBS recovered held=0
+BP queue recovered jobs=0
+BP queue accepted work=work-bp-node attempt=work-bp-node-attempt generation=0 status=durable
+TCPCL bp-service aux (:SEND :CONTACT 6)
+TCPCL bp-service event (:SEND :SESS-INIT 38)
+TCPCL bp-service event (:SESSION-UP 10 1024 4096 NIL)
+BP fragmenting length=10339 peer-mru=4096 fragments=3
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1059)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1042)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 1034)
+TCPCL bp-service aux (:OUTBOUND-FAILED 0 "bp-service")
+TCPCL bp-service aux (:SESSION-DOWN)
+TCPCL bp-service uncertain outbound-failed xfer=0
+BP transport work=work-bp-node status=attempted
+BP forwarding retained reason=uncertain

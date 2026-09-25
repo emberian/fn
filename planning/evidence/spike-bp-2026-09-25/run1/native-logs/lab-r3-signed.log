@@ -1,0 +1,311 @@
+{
+  "a_pinned_after": "BP obligation owner work=work-bp-node status=outstanding pinned=yes",
+  "a_pinned_before": "BP obligation owner work=work-bp-node status=outstanding pinned=yes",
+  "a_releases": "listed",
+  "b_trusts": {
+    "carried": true,
+    "eid": "dtn://dtn7-r3/",
+    "mode": "carried"
+  },
+  "dtn7_log_counts": {
+    "dtn7-r1/dtnd-0.log": {
+      "forwarded": 0,
+      "received": 0
+    },
+    "dtn7-r1/dtnd-1.log": {
+      "forwarded": 0,
+      "received": 0
+    },
+    "dtn7-r2/dtnd-0.log": {
+      "forwarded": 0,
+      "received": 0
+    },
+    "dtn7-r3/dtnd-0.log": {
+      "forwarded": 0,
+      "received": 0
+    }
+  },
+  "dtn7_revision": "4daf02d7ea927e9293753b2a5c4497457f6e5a40",
+  "dtn_time_ms": "843640491284",
+  "dtnd_processes": {
+    "dtn7-r1": [
+      {
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7-r1",
+          "-W",
+          "/tank/fn/scratch/spike-bp/lab/r3-signed/dtn7-r1",
+          "-D",
+          "sled",
+          "-C",
+          "tcp:port=35113",
+          "-w",
+          "42417",
+          "-i",
+          "0",
+          "--disable_nd",
+          "-d",
+          "-s",
+          "tcp://127.0.0.1:55305/dtn7-r2",
+          "-s",
+          "tcp://127.0.0.1:37821/sender"
+        ],
+        "log": "/tank/fn/scratch/spike-bp/lab/r3-signed/dtn7-r1/dtnd-0.log",
+        "pid": 2922180,
+        "stopped": "SIGKILL rc=-9"
+      },
+      {
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7-r1",
+          "-W",
+          "/tank/fn/scratch/spike-bp/lab/r3-signed/dtn7-r1",
+          "-D",
+          "sled",
+          "-C",
+          "tcp:port=35113",
+          "-w",
+          "42417",
+          "-i",
+          "0",
+          "--disable_nd",
+          "-d",
+          "-s",
+          "tcp://127.0.0.1:55305/dtn7-r2",
+          "-s",
+          "tcp://127.0.0.1:37821/sender"
+        ],
+        "log": "/tank/fn/scratch/spike-bp/lab/r3-signed/dtn7-r1/dtnd-1.log",
+        "pid": 2922620,
+        "stopped": "SIGTERM rc=-15"
+      }
+    ],
+    "dtn7-r2": [
+      {
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7-r2",
+          "-W",
+          "/tank/fn/scratch/spike-bp/lab/r3-signed/dtn7-r2",
+          "-D",
+          "sled",
+          "-C",
+          "tcp:port=55305",
+          "-w",
+          "43451",
+          "-i",
+          "0",
+          "--disable_nd",
+          "-d",
+          "-s",
+          "tcp://127.0.0.1:54083/dtn7-r3",
+          "-s",
+          "tcp://127.0.0.1:35113/dtn7-r1"
+        ],
+        "log": "/tank/fn/scratch/spike-bp/lab/r3-signed/dtn7-r2/dtnd-0.log",
+        "pid": 2922306,
+        "stopped": "SIGTERM rc=-15"
+      }
+    ],
+    "dtn7-r3": [
+      {
+        "cmd": [
+          "/tank/fn/dtn7/repo/target/release/dtnd",
+          "-n",
+          "dtn7-r3",
+          "-W",
+          "/tank/fn/scratch/spike-bp/lab/r3-signed/dtn7-r3",
+          "-D",
+          "sled",
+          "-C",
+          "tcp:port=54083",
+          "-w",
+          "52403",
+          "-i",
+          "0",
+          "--disable_nd",
+          "-d",
+          "-s",
+          "tcp://127.0.0.1:52025/receiver",
+          "-s",
+          "tcp://127.0.0.1:55305/dtn7-r2"
+        ],
+        "log": "/tank/fn/scratch/spike-bp/lab/r3-signed/dtn7-r3/dtnd-0.log",
+        "pid": 2922364,
+        "stopped": "SIGTERM rc=-15"
+      }
+    ]
+  },
+  "image": "/tank/fn/gates/spike-bp-28f2e1a4b/build/fn-host-dtn-production",
+  "native": false,
+  "processes": [
+    {
+      "pid": 2922527,
+      "stopped": "SIGTERM rc=143",
+      "tag": "b-serve"
+    },
+    {
+      "pid": 2925153,
+      "stopped": "SIGTERM rc=143",
+      "tag": "a-serve"
+    },
+    {
+      "pid": 2925159,
+      "stopped": "SIGTERM rc=143",
+      "tag": "b-4-serve"
+    }
+  ],
+  "receipt_without_tick": false,
+  "relays": 3,
+  "request_adu": {
+    "octets": 6314,
+    "sha256": "fd1a3bd9c33af270"
+  },
+  "routes": {
+    "mode": "present"
+  },
+  "setup_image": "/tank/fn/gates/spike-bp-28f2e1a4b/build/fn-host-dtn-developer",
+  "setup_rcs": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "signed_receipts": {
+    "flip_signature": false,
+    "principal": "4242424242424242424242424242424242424242424242424242424242424242"
+  },
+  "steps": [
+    {
+      "bytes_forwarded_before_hold": [
+        600
+      ],
+      "fragmentation": [],
+      "held": true,
+      "logs": {
+        "a-1-send": {
+          "file": "a-1-send.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=0",
+            "BP queue accepted work=work-bp-node attempt=work-bp-node-attempt generation=0 status=durable",
+            "TCPCL bp-service aux (:SEND :CONTACT 6)",
+            "TCPCL bp-service event (:SEND :SESS-INIT 38)",
+            "TCPCL bp-service event (:SESSION-UP 10 64000 64000 NIL)",
+            "TCPCL bp-service aux (:SEND :XFER-SEGMENT 6441)",
+            "TCPCL bp-service aux (:OUTBOUND-FAILED 0 \"bp-service\")",
+            "TCPCL bp-service aux (:SESSION-DOWN)",
+            "TCPCL bp-service uncertain outbound-failed xfer=0",
+            "BP transport work=work-bp-node status=attempted",
+            "BP forwarding retained reason=uncertain"
+          ],
+          "sha256_16": "9c1a668c253762d8"
+        }
+      },
+      "outcome": "uncertain",
+      "routing": [],
+      "sigkill": {
+        "first_hop": "dtn7-r1",
+        "pid": 2922180
+      },
+      "step": "1 A request, held mid-transfer, first hop SIGKILLed"
+    },
+    {
+      "logs": {
+        "a-2-resume": {
+          "file": "a-2-resume.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=1",
+            "BP queued job no-route destination=dtn://receiver/ decision=no-route (held; the obligation stays)"
+          ],
+          "sha256_16": "77e974791791c2df"
+        }
+      },
+      "outcome": "accepted",
+      "restarted": 2922620,
+      "step": "2 first hop restarted, A resumes its durable job"
+    },
+    {
+      "application": [],
+      "b_fnbs_frame_names": [],
+      "b_fnbs_lifecycle_frames": 0,
+      "channel_refusals": [],
+      "logs": {
+        "b-serve": {
+          "file": "b-serve.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 52025"
+          ],
+          "sha256_16": "f8baf03b7cca6197"
+        }
+      },
+      "outcome": "no-verdict",
+      "receipts_queued": [],
+      "source_decisions": [],
+      "step": "3 B admits, takes custody, dispatches to its application",
+      "transport_accepted": 0
+    },
+    {
+      "a_inbound_custody": [],
+      "a_obligation": "BP obligation owner work=work-bp-node status=outstanding pinned=yes",
+      "a_receipt_lines": [],
+      "a_release_lines": [],
+      "a_source_decisions": [],
+      "b_receipt_contacts": [],
+      "b_signed_lines": [],
+      "flipped": null,
+      "logs": {
+        "a-serve": {
+          "file": "a-serve.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=1",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP node receipt contact peer=dtn://receiver/",
+            "BP queued job no-route destination=dtn://receiver/ decision=no-route (held; the obligation stays)",
+            "BP NODE LISTENING 37821"
+          ],
+          "sha256_16": "2c8600920f8cf3aa"
+        },
+        "b-4-serve": {
+          "file": "b-4-serve.log",
+          "lines": [
+            "BP FNBS recovered held=0",
+            "BP queue recovered jobs=0",
+            "BP node budgets owner-backoff=5000 retry-budget=3",
+            "BP NODE LISTENING 52025"
+          ],
+          "sha256_16": "f8baf03b7cca6197"
+        }
+      },
+      "outcome": "no-receipt",
+      "step": "4 B's receipt carried back and matched at A",
+      "tick_outcome": "no-tick"
+    }
+  ],
+  "topology": [
+    "fn-a",
+    "dtn7-r1",
+    "dtn7-r2",
+    "dtn7-r3",
+    "fn-b"
+  ]
+}

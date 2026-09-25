@@ -1,0 +1,16 @@
+$ fn bp-service resume /tank/fn/scratch/spike-bp/lab2/r3-signed/a-fnbs dtn://sender/ 3600000 2 32 1048576 843641056527 60000 /tank/fn/scratch/spike-bp/lab2/r3-signed/a-store
+BP FNBS recovered held=0
+BP queue recovered jobs=1
+BP queued job routed hop=return-boundary port=35437
+TCPCL bp-service aux (:SEND :CONTACT 6)
+TCPCL bp-service event (:SEND :SESS-INIT 38)
+TCPCL bp-service event (:SESSION-UP 10 64000 64000 NIL)
+TCPCL bp-service aux (:SEND :XFER-SEGMENT 6441)
+TCPCL bp-service event (:OUTBOUND-SENT 0 "bp-service")
+TCPCL bp-service accepted outbound xfer=0
+TCPCL bp-service aux (:SEND :SESS-TERM 3)
+TCPCL bp-service event (:PEER-TERMINATING 0)
+TCPCL bp-service event (:CLOSE)
+BP transport work=work-bp-node status=forwarded
+
+# rc=0

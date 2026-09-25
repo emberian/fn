@@ -1,0 +1,7 @@
+BP obligation request durable attempt work=work-bp-node attempt=work-bp-node-attempt generation=0 destination=dtn://receiver/ adu=6314
+BP FNBS recovered held=0
+BP queue recovered jobs=0
+BP queue route destination=dtn://receiver/ decision=no-route
+BP queue accepted work=work-bp-node attempt=work-bp-node-attempt generation=0 status=durable
+BP obligation request carrier durable work=work-bp-node attempt=work-bp-node-attempt generation=0
+BP queued job no-route destination=dtn://receiver/ decision=no-route (held; the obligation stays)
