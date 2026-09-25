@@ -1,0 +1,55 @@
+test_a_carried_article_is_undecided_3_never_0_or_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_carried_article_is_undecided_3_never_0_or_1) ... ok
+test_a_lying_node_is_2 (tests.test_fn_verify.FakeNodeVerifyTests.test_a_lying_node_is_2) ... ok
+test_agreement_on_a_valid_signature_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_on_a_valid_signature_is_0) ... ok
+test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1) ... ok
+test_carrier_v1_now_carries_up_to_65535_octets (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v1_now_carries_up_to_65535_octets) ... ok
+test_carrier_v2_tampered_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_tampered_is_1) ... ok
+test_carrier_v2_valid_is_0 (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_valid_is_0) ... ok
+test_carrier_wrong_version_byte_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_wrong_version_byte_is_refused) ... ok
+test_noncanonical_carrier_is_refused (tests.test_fn_verify.FakeNodeVerifyTests.test_noncanonical_carrier_is_refused) ... ok
+test_the_versions_sign_disjoint_preimages (tests.test_fn_verify.FakeNodeVerifyTests.test_the_versions_sign_disjoint_preimages) ... ok
+test_usage_error_never_reads_as_disagreement (tests.test_fn_verify.FakeNodeVerifyTests.test_usage_error_never_reads_as_disagreement) ... ok
+test_what_cannot_be_decided_is_3 (tests.test_fn_verify.FakeNodeVerifyTests.test_what_cannot_be_decided_is_3) ... ok
+test_withdrawal_by_the_author (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_by_the_author) ... ok
+test_withdrawal_claims_the_checks_contradict_are_2 (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_claims_the_checks_contradict_are_2) ... ok
+test_withdrawal_not_executed_is_1 (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_not_executed_is_1) ... ok
+test_withdrawal_that_cannot_be_decided_is_3 (tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_that_cannot_be_decided_is_3) ... ok
+POST verify-signed 7717
+  POST wall 0.06 s
+  -> 240 article received OK
+POST verify-tampered 7719
+  POST wall 0.01 s
+  -> 441 posting failed; the author signature does not verify
+POST verify-unsigned 194
+  POST wall 0.00 s
+  -> 240 article received OK
+test_a_v1_record_from_before_v2_is_still_verified_0 (tests.test_fn_verify.NativeVerifyTests.test_a_v1_record_from_before_v2_is_still_verified_0) ... skipped 'set FN_VERIFY_OLD_HOST to an image from before carrier v2'
+test_an_article_past_the_profile_over_tls_is_a_441_and_the_owner_serves_on (tests.test_fn_verify.NativeVerifyTests.test_an_article_past_the_profile_over_tls_is_a_441_and_the_owner_serves_on) ... ok
+test_fabricated_hdr_answers_are_2 (tests.test_fn_verify.NativeVerifyTests.test_fabricated_hdr_answers_are_2) ... ok
+test_large_signed_posts_verify_under_their_version_0 (tests.test_fn_verify.NativeVerifyTests.test_large_signed_posts_verify_under_their_version_0) ... skipped 'set FN_VERIFY_LARGE=1 on an image whose article bound admits 200 KiB'
+test_signed_post_verifies_independently_0 (tests.test_fn_verify.NativeVerifyTests.test_signed_post_verifies_independently_0) ... ok
+test_tampered_bytes_under_the_nodes_verified_line_are_2 (tests.test_fn_verify.NativeVerifyTests.test_tampered_bytes_under_the_nodes_verified_line_are_2) ... ok
+test_tampered_post_is_not_stored_so_nothing_is_decided_3 (tests.test_fn_verify.NativeVerifyTests.test_tampered_post_is_not_stored_so_nothing_is_decided_3) ... ok
+test_tampered_v2_post_is_refused_and_not_stored_3 (tests.test_fn_verify.NativeVerifyTests.test_tampered_v2_post_is_refused_and_not_stored_3) ... skipped 'set FN_VERIFY_LARGE=1 on an image whose article bound admits 200 KiB'
+test_the_node_accepted_the_signed_and_unsigned_posts_and_refused_the_tampered (tests.test_fn_verify.NativeVerifyTests.test_the_node_accepted_the_signed_and_unsigned_posts_and_refused_the_tampered) ... ok
+test_unsigned_post_both_say_unverified_1 (tests.test_fn_verify.NativeVerifyTests.test_unsigned_post_both_say_unverified_1) ... ok
+test_a_changed_v2_tag_or_width_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_changed_v2_tag_or_width_is_caught) ... ok
+test_a_changed_width_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_changed_width_is_caught) ... ok
+test_a_field_the_spec_forgets_to_drop_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_field_the_spec_forgets_to_drop_is_caught) ... ok
+test_a_renamed_function_is_caught (tests.test_fn_verify.SpecBookTieTests.test_a_renamed_function_is_caught) ... ok
+test_the_spec_the_books_and_the_verifier_agree (tests.test_fn_verify.SpecBookTieTests.test_the_spec_the_books_and_the_verifier_agree) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 15.036s
+
+OK (skipped=3)
+
+forged verified: 0 verified 5555555555555555555555555555555555555555555555555555555555555555 keyring 1 | the node claims verified by 5555555555555555555555555555555555555555555555555555555555555555, the independent check says no-carrier
+forged absent: 0 absent no-record | the node says absent, but the signature verifies under the pinned keys of 5555555555555555555555555555555555555555555555555555555555555555
+
+signed: {"node-hdr": "0 verified 5555555555555555555555555555555555555555555555555555555555555555 keyring 1", "detail": "verified by 5555555555555555555555555555555555555555555555555555555555555555: the node and the independent check agree"}
+implementations: ['pyca/cryptography Ed25519', 'dilithium-py ML-DSA-65 (pure Python FIPS 204)']
+
+tampered-in-flight: 0 verified 5555555555555555555555555555555555555555555555555555555555555555 keyring 1 | the node claims verified by 5555555555555555555555555555555555555555555555555555555555555555, the independent check says signature
+
+unsigned: 0 absent no-field | not verified: the node says absent and the independent check says no-carrier
