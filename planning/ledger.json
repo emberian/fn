@@ -34627,56 +34627,56 @@
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1764,
+        "line": 1775,
         "name": "*fnn-sigterm-owner-active*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1764,
+        "line": 1775,
         "name": "*fnn-sigterm-requested*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1764,
+        "line": 1775,
         "name": "*fnn-sigterm-wakeup-fd*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1764,
+        "line": 1775,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1764,
+        "line": 1775,
         "name": "fnn-listen",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1845,
+        "line": 1857,
         "name": "fnn-tls-context-p",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1845,
+        "line": 1857,
         "name": "fnn-post-entry-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1893,
+        "line": 1905,
         "name": "fnn-register-developer-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
