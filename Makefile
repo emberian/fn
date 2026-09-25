@@ -742,6 +742,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
+	books/control-visible \
+	tests/acl2/control-visible-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \

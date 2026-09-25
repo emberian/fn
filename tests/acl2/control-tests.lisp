@@ -144,9 +144,14 @@
                      (list :file (list (fn-record-string-octets "control")))))
 (assert-event (equal (fn-pa-filing-plan *ct-two* *ct-fn-test* *ct-with-cancel*)
                      (list :refused :control-malformed)))
+; A signed control article is filed like an unsigned one (C3: the signed
+; record binding names the filing group, books/hybrid-store.lisp).
 (assert-event (equal (fn-pa-filing-plan *ct-signed* *ct-fn-test*
                                         *ct-with-cancel*)
-                     (list :refused :control-signed)))
+                     (list :file (list (fn-record-string-octets
+                                        "control.cancel")))))
+(assert-event (equal (fn-pa-filing-plan *ct-signed* *ct-fn-test* *ct-without*)
+                     (list :refused :control-not-filed)))
 ; Teeth (the one hypothesis: classified :control).  An ordinary article is
 ; filed in its Newsgroups' group, which is not a control group.
 (must-fail
@@ -163,11 +168,12 @@
   (equal (fn-pa-filing-plan *ct-cancel* *ct-fn-test* *ct-with-cancel*)
          (list :file *ct-fn-test*))))
 
-; fn-ctl-unsigned-control-filing-by-definition: its carrier hypothesis.
+; fn-ctl-control-filing-by-definition: its one hypothesis (classified
+; :control).  The cmsg article is ordinary and keeps fn.test.
 (must-fail
  (assert-event
-  (equal (fn-pa-filing-plan *ct-signed* *ct-fn-test* *ct-with-cancel*)
-         (list :file (list (fn-record-string-octets "control.cancel"))))))
+  (equal (fn-pa-filing-plan *ct-cmsg* *ct-fn-test* *ct-with-cancel*)
+         (list :refused :control-not-filed))))
 
 ; ---------------------------------------------------------------------------
 ; fn-ctl-cmsg-subject-is-ordinary.  Witness: the cmsg Subject article, and

@@ -3551,6 +3551,63 @@
           "name": "fn-oct-suffix-equalp-is-equal"
         }
       ]
+    },
+    {
+      "id": "PRF-084",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-authorize-requires-verified-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-authorize-requires-a-covering-grant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-grant-control-admissible-iff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-revoke-changes-decisions-not-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-cancel-plan-record-is-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-cancel-executes-only-for-author-or-authority"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-pinned-view-keeps-its-archive"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-visible-is-arrival-order-independent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-target-is-never-visible-beside-its-cancel"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-signed-control-record-lists-its-filing-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-malformed-control-binds-no-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-visible-add-is-visible"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-visible-extend-is-visible"
+        }
+      ]
     }
   ]
 }
