@@ -391,7 +391,9 @@ class NativeBpNodeTests(unittest.TestCase):
                 if not chunk:
                     break
                 seen += chunk
-        self.assertIn(marker, seen, (seen, process.poll()))
+        self.assertIn(marker, seen, (
+            seen, process.poll(),
+            process.stderr.read() if process.poll() is not None else b""))
         process.kill()
         process.wait(timeout=15)
         process.stdout.close()

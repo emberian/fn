@@ -929,9 +929,13 @@ or (:damaged).  The read bound and decode budget are the profile's."
                      ;; Seventh field: ACL2's boot-domain decision.  The
                      ;; machine fences unless it admits it (N07).
                      (event (append
+                             ;; The generation selection plan, not the
+                             ;; namespace plan bound above (N16 native run:
+                             ;; passing the latter replayed the empty new
+                             ;; generation without its checkpoint).
                              (fnn-core 'fn-bpnr-recover-auto-event
                                        (fnn-bps-state service) records
-                                       sequence rows plan)
+                                       sequence rows (fnn-bps-plan service))
                              (list domain))))
                 (setf (fnn-bps-recovery-event service) event)
                 (setf (fnn-bps-stages service)
