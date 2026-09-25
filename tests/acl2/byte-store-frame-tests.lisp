@@ -217,8 +217,19 @@
                      7))
 (assert-event (equal (fn-bs-profile-report *bsft-free*)
                      (cons '("format" . 8)
-                           (pairlis$ (strip-cdrs *fn-bs-profile-field-names*)
-                                     (nthcdr 2 *bsft-free*)))))
+                           (append
+                            (pairlis$ (strip-cdrs (butlast *fn-bs-profile-field-names* 1))
+                                      (butlast (nthcdr 2 *bsft-free*) 1))
+                            '(("history-marker" . "unmarked"))))))
+; D31: the history requirement reads as its word.
+(assert-event (equal (cdr (assoc-equal "history-marker"
+                                       (fn-bs-profile-report
+                                        (fn-bs-profile-put 14 1 *bsft-free*))))
+                     "required"))
+(assert-event (equal (cdr (assoc-equal "history-marker"
+                                       (fn-bs-profile-report
+                                        *fn-bs-meta-format-7-scale-values*)))
+                     "unmarked"))
 ; A format-6 tuple (65538-octet records, below the article kind's ceiling) is
 ; neither a format-7 tuple nor decoded.
 (defconst *bsft-format-6*

@@ -162,6 +162,45 @@ input the core's string entries read in place, with no list in between."
   (map '(simple-array character (*)) #'code-char octets))
 
 ;;; ---------------------------------------------------------------------------
+;;; The octet buffer (books/octets-stobj.lisp, D27 boundary 6).  `fn-octets'
+;;; is an abstract stobj whose logical value is an octet list and whose
+;;; executable is a resizable byte array with a fill count; the live object
+;;; is the state's user-stobj-alist entry, a two-slot vector (the array, the
+;;; count).  `fnn-octets-fill' is the host boundary of that book: one
+;;; `replace' of a byte vector into the array, then the count, so the core
+;;; reads the bytes in place and no list is built.  It stands at the same
+;;; trust as `fnn-octet-list' handing a list to the core (A-HOST): the host
+;;; asserts the buffer's logical value is the list of the bytes it wrote,
+;;; and nothing else reaches the array.  One buffer, one owner thread: the
+;;; served attempt fills it and reads it under the service mutex
+;;; (host/native/owner.lisp fnn-owner-attempt).
+
+(defvar *fnn-octets* nil)
+
+(defun fnn-live-octets ()
+  (or *fnn-octets*
+      (setq *fnn-octets*
+            (or (cdr (assoc 'fn-octets (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the octet buffer stobj is not in this image")))))
+
+(defun fnn-octets-fill (vector)
+  "Make VECTOR's bytes the buffer's contents; return the live stobj."
+  (let* ((st (fnn-live-octets)) (n (length vector)))
+    (fn-octets$c-reserve n st)
+    (replace (the fnn-octets (svref st 0)) vector)
+    (setf (svref st 1) n)
+    st))
+
+(defun fnn-core-buffer-state (name &rest args)
+  "A `state`-returning wrapper over the buffer, (mv erp value state) with the
+live buffer passed before state: its value."
+  (destructuring-bind (erp val &rest ignored)
+      (apply #'fnn-call name (append args (list (fnn-live-octets) *the-live-state*)))
+    (declare (ignore ignored))
+    (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
+    val))
+
+;;; ---------------------------------------------------------------------------
 ;;; POSIX.  Every syscall failure becomes fnn-os-error with its errno; the
 ;;; callers classify exactly as tools/run_store.py classifies OSError.
 
@@ -658,11 +697,16 @@ here.  The host supplies octets and decides nothing about them."
   (fnn-action (fnn-core-state 'fn-store-sn-recover
                               (mapcar #'fnn-octet-list records) frontier
                               (mapcar #'fnn-octet-list config-records))))
-(defun fnn-bridge-config-observation-limit ()
-  "The config reader consumes an ACL2-owned bound before readdir retains names."
-  (fnn-nat (fnn-core 'fn-store-config-observation-limit)))
+(defun fnn-bridge-config-observation-limit (store)
+  "The config reader consumes an ACL2-owned bound before readdir retains names:
+the operator's max-config-generations of the profile STORE opened."
+  (let ((value (fnn-core 'fn-store-config-observation-limit
+                         (fnn-store-config store))))
+    (unless (and (integerp value) (> value 0))
+      (fnn-fault "ACL2 returned a malformed configuration generation bound"))
+    value))
 
-(defun fnn-bridge-config-observation (observed &optional initializing)
+(defun fnn-bridge-config-observation (observed limit &optional initializing)
   "Return ACL2-issued (canonical basename . octets) config history entries.
 
 OBSERVED is a bounded physical list.  The core decodes each octet record,
@@ -675,7 +719,8 @@ returned representation; it is not a second filename policy."
                     (mapcar (lambda (entry)
                               (list (fnn-octet-list (fnn-string-octets (car entry)))
                                     (fnn-octet-list (cdr entry))))
-                            observed))))
+                            observed)
+                    limit)))
     (unless (and (true-listp value) (= (length value) 3)
                  (eq (first value) :ok) (null (second value))
                  (listp (third value)))
@@ -977,6 +1022,10 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; The replayed configuration the core hands back at recover.  The host
   ;; stores it and passes it back; it derives no name, code or generation.
   (config-generation nil) (config-served nil) (config-domain nil)
+  ;; D31: the committed-history frame this open writes before it returns
+  ;; (fn-hmr-catch-up), or NIL.  Set by fnn-check-history-marker, written by
+  ;; fnn-recover after its barriers, only by a writable open.
+  (marker-catch-up nil)
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
   (fault-point nil) (fault-class nil) (fault-message nil))
 
@@ -1080,7 +1129,7 @@ record byte bound before ACL2 decodes its generation and compares the native
 writer codec name.  A malformed/gapped namespace remains a fault; no suffix
 filter turns it into an absent or shorter history."
   (when test-fault-point (fnn-at store test-fault-point))
-  (let* ((limit (fnn-bridge-config-observation-limit))
+  (let* ((limit (fnn-bridge-config-observation-limit store))
          (names (handler-case
                     (sort (fnn-list-directory-bounded (fnn-config-dir store) limit
                                                       "configuration namespace")
@@ -1095,7 +1144,7 @@ filter turns it into an absent or shorter history."
                        (cons name
                              (fnn-read-regular-bounded path +fnn-config-record-bytes+))))
                    names)))
-    (fnn-bridge-config-observation observed initializing)))
+    (fnn-bridge-config-observation observed limit initializing)))
 
 (defun fnn-config-record-names (store &optional test-fault-point initializing)
   "Canonical config basenames from one bounded ACL2-bound observation."
@@ -1129,6 +1178,26 @@ filter turns it into an absent or shorter history."
         (fnn-close fd)
         (fnn-refuse "store is already locked")))
     fd))
+
+(defun fnn-store-owner-observation (root)
+  "What a non-blocking shared flock sees of ROOT's writer lock: :held (a
+process holds it exclusively: a running owner), :free, :absent (no lock
+file), or :unknown when the probe itself failed.  An observation only; what
+it means for the operator is ACL2's (fn-native-auth-admin-effect-word)."
+  (handler-case
+      (let ((path (fnn-lock-path (make-fnn-store root))))
+        (if (null (fnn-lstat path))
+            :absent
+            (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+) 0)))
+              (unwind-protect
+                   (handler-case
+                       (progn (fnn-flock fd (logior +fnn-lock-sh+ +fnn-lock-nb+))
+                              (fnn-flock fd +fnn-lock-un+)
+                              :free)
+                     (fnn-os-error (e)
+                       (if (= (fnn-os-errno e) sb-posix:ewouldblock) :held :unknown)))
+                (fnn-close fd)))))
+    (error () :unknown)))
 
 (defun fnn-init-cut (store label)
   "One test seam after a named fresh-initializer durable syscall."
@@ -1313,9 +1382,11 @@ after the syscall."
       (fnn-fault "legacy JSON allocator is retained in place; explicit offline migration is required"))
     (setf (fnn-store-frontier store) (fnn-metadata-frontier-decode raw))))
 
-;; The committed-history boundary (books/store-history-marker).  The open
-;; reads the marker once and ACL2 (fn-hm-open-verdict) compares it with the
-;; length of the record list replay is handed: pack events plus suffix files.
+;; The committed-history boundary (books/store-history-marker,
+;; books/store-history-required).  The open reads the marker once and ACL2
+;; (fn-hmr-open-verdict, under the profile's history-marker requirement)
+;; compares it with the length of the record list replay is handed: pack
+;; events plus suffix files.
 (defun fnn-history-marker-observation (store)
   "(:absent) or (:present OCTETS): one bounded read of committed-history.json."
   (let ((path (fnn-history-marker-path store)))
@@ -1328,22 +1399,37 @@ after the syscall."
                    (fnn-fault "cannot read the committed-history marker: ~a" e))))))))
 
 (defun fnn-check-history-marker (store record-count)
-  "Refuse an open whose committed history is short of its marker.
+  "Refuse an open whose committed history is short of its marker, or whose
+required marker is missing; remember the frame the open must write.
 
 A refusal is detected damage to committed data (specs/storage.md STO-005):
-a fault naming ACL2's reason, never a silent rollback to the shorter history."
-  (let* ((verdict (fnn-core 'fn-hm-open-verdict
-                            (fnn-history-marker-observation store) record-count))
+a fault naming ACL2's reason, never a silent rollback to the shorter history.
+An admitted open records ACL2's catch-up frame (fn-hmr-catch-up): the marker
+of the reconstructed count when the marker is absent or behind it, which
+fnn-recover writes before the open returns (D31 case 2)."
+  (let* ((observation (fnn-history-marker-observation store))
+         (verdict (fnn-core 'fn-hmr-open-verdict
+                            (fnn-store-config store) observation record-count))
          (word (and (consp verdict) (first verdict))))
     (case word
-      (:admitted verdict)
+      (:admitted
+       (let ((frame (fnn-core 'fn-hmr-catch-up
+                              (fnn-store-config store) observation record-count)))
+         (unless (or (null frame) (fnn-octet-list-p frame))
+           (fnn-fault "ACL2 returned a malformed committed-history catch-up"))
+         (setf (fnn-store-marker-catch-up store) frame))
+       verdict)
       (:refused
        (fnn-fault "committed history refused at open: ~(~a~)~@[ marker=~d~] records=~d"
                   (second verdict) (third verdict) record-count))
       (otherwise (fnn-fault "ACL2 returned a malformed committed-history verdict")))))
 
-(defun fnn-mark-committed (store sequence)
+(defun fnn-mark-committed (store sequence &optional catch-up)
   "Replace the committed-history marker after record SEQUENCE is durable.
+
+With CATCH-UP (ACL2's fn-hmr-catch-up frame, SEQUENCE NIL) it is fnn-recover's
+catch-up: the same program and cuts, run after the recovery barriers made the
+reconstructed records durable and before the open returns.
 
 Every caller runs this after fnn-publish returned :durable and before
 fnn-finish, so a record the node acknowledges is below a durable marker, and
@@ -1355,7 +1441,7 @@ uncertain: the record is durable and the marker may or may not be replaced,
 so the store stays fenced and recovery decides; the transaction is never
 acknowledged without its marker."
   (fnn-require-writer store)
-  (let ((frame (fnn-core 'fn-hm-after-commit sequence))
+  (let ((frame (or catch-up (fnn-core 'fn-hm-after-commit sequence)))
         (stage (fnn-join (fnn-staging store)
                          (format nil ".stage-marker-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
     (setf (fnn-store-fenced store) t)
@@ -1652,6 +1738,17 @@ after recording why not in open-mode (the caller then replays in full)."
       (:checkpoint (format nil "open=checkpoint:~d suffix=~d" (second mode) (third mode)))
       (t (format nil "open=full-replay reason=~(~a~)" (second mode))))))
 
+(defun fnn-state-checkpoint-file-report (store)
+  "The newest published checkpoint file: its size and modification time.  The
+open above says whether it served (open=checkpoint:S) and why not otherwise.
+While an owner runs it is the only publisher (the verb needs the store lock),
+so after a run this is the owner's last automatic publication."
+  (handler-case
+      (let ((st (sb-posix:lstat (fnn-state-checkpoint-path store))))
+        (format nil "checkpoint-file octets=~d modified=~d"
+                (sb-posix:stat-size st) (sb-posix:stat-mtime st)))
+    (sb-posix:syscall-error () "checkpoint-file=absent")))
+
 (defparameter +fnn-state-checkpoint-model-cuts+
   '("state-checkpoint-created" "state-checkpoint-written"
     "state-checkpoint-staged-durable" "state-checkpoint-replaced"
@@ -1725,6 +1822,7 @@ records after it, or captures the whole history after a full replay
 
 (defun fnn-recover (store)
   (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
+        (fnn-store-marker-catch-up store) nil
         (fnn-store-open-mode store) '(:full-replay :absent))
   (let ((records nil))
     (handler-case
@@ -1775,6 +1873,17 @@ records after it, or captures the whole history after a full replay
       ((or fnn-store-fault fnn-store-indeterminate) (e)
         (setf (fnn-store-fenced store) t)
         (error e)))
+    ;; D31 case 2: the marker catches up here, after the fifth barrier made
+    ;; every reconstructed record durable and before the open returns, so a
+    ;; record this process later answers as stored (a retry resolved as
+    ;; already stored, with no later commit) is below a durable marker.  A
+    ;; reader under the shared lock writes nothing and answers no submission.
+    ;; An error in the marker program is uncertain (exit 3); the next open
+    ;; catches up again.
+    (let ((frame (fnn-store-marker-catch-up store)))
+      (when (and frame (fnn-store-writable store))
+        (fnn-mark-committed store nil frame)
+        (setf (fnn-store-marker-catch-up store) nil)))
     ; Full journal replay above remains authoritative.  The checkpoint layer
     ; restores into separate ACL2 globals and compares that image with
     ; fn-store-sn; it cannot reset or replace the live node.
@@ -2122,7 +2231,10 @@ in-process retry."
         (unless colon
           (fnn-fault "invalid FN_NATIVE_RECOVERY_FAULT (expected MODEL-CUT:eio|kill)"))
         (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
-          (unless (member label +fnn-recovery-model-cuts+ :test #'string=)
+          ;; The recovery's marker catch-up runs the marker program, whose
+          ;; cuts are ACL2's table (books/store-history-marker).
+          (unless (or (member label +fnn-recovery-model-cuts+ :test #'string=)
+                      (member label (fnn-core 'fn-hm-marker-cut-names) :test #'string=))
             (fnn-fault "unknown FN_NATIVE_RECOVERY_FAULT cut: ~a" label))
           (list (intern (string-upcase label) :keyword)
                 (cond ((string= action "eio") 'fnn-os-error)
@@ -2138,6 +2250,56 @@ in-process retry."
                 (fnn-out "initialized ~a" (fnn-store-root store)))
       (fnn-store-close store))
     +fnn-exit-ok+))
+
+(defun fnn-command-developer-init (root words)
+  "Developer `store ROOT init [PROFILE-FLAGS] [GROUP ...]': ACL2 reads the
+words (books/native-operator.lisp fn-nop-developer-init) with the operator's
+profile grammar over the development base; a flag-shaped word left among the
+groups is refused, never created as a group."
+  (let ((plan (fnn-core 'fn-nop-developer-init words)))
+    (unless (and (consp plan) (member (first plan) '(:init :refused)))
+      (fnn-fault "ACL2 returned a malformed developer init plan"))
+    (if (eq (first plan) :refused)
+        (error 'fnn-usage-error
+               :message (format nil "init refused: ~(~a~)" (second plan)))
+      (fnn-command-init root (second plan) (third plan)))))
+
+(defun fnn-command-needs-upgrade (root)
+  "Whether the no-argument `store upgrade-profile' would write: ACL2's
+fn-profile-needs-upgrade-verdict over the profile decoded from config.json.
+Reads config.json only (no lock, no replay); prints the verdict word."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (let ((verdict (fnn-core 'fn-profile-needs-upgrade-verdict
+                             (fnn-store-config store))))
+      (unless (member verdict '(:needs-upgrade :current :invalid-current-profile))
+        (fnn-fault "ACL2 returned a malformed needs-upgrade verdict"))
+      (fnn-out "~(~a~)" verdict)
+      (if (eq verdict :invalid-current-profile) +fnn-exit-refused+ +fnn-exit-ok+))))
+
+(defun fnn-command-rollback-check (root old-path)
+  "Whether reinstating the kept config.json at OLD-PATH is sound: ACL2's
+fn-profile-rollback-verdict over the kept profile and the octet lengths of the
+store's committed transaction files.  The host reads and measures; it
+decides nothing."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (let* ((old (fnn-core 'fn-store-metadata-config-decode
+                          (fnn-octet-list (fnn-read-regular-bounded old-path 16384))))
+           (lengths (mapcar (lambda (pair)
+                              (let ((st (fnn-lstat (cdr pair))))
+                                (unless st (fnn-fault "transaction file vanished"))
+                                (sb-posix:stat-size st)))
+                            (fnn-transaction-files store)))
+           (verdict (fnn-core 'fn-profile-rollback-verdict old lengths)))
+      (unless (and (consp verdict) (member (first verdict) '(:sound :refused)))
+        (fnn-fault "ACL2 returned a malformed rollback verdict"))
+      (if (eq (first verdict) :sound)
+          (progn (fnn-out "rollback sound transactions=~d" (length lengths))
+                 +fnn-exit-ok+)
+          (progn (fnn-out "rollback refused ~(~a~)~{ ~a~}" (second verdict)
+                          (cddr verdict))
+                 +fnn-exit-refused+)))))
 
 ;; The offline profile upgrade's cuts, in the order
 ;; `fnn-upgrade-profile-write' reaches them: fn-bs-profile-program's
@@ -2158,7 +2320,10 @@ process; eio raises the host's EIO there."
         (unless colon
           (fnn-fault "invalid FN_NATIVE_PROFILE_FAULT (expected MODEL-CUT:eio|kill)"))
         (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
-          (unless (member label +fnn-profile-model-cuts+ :test #'string=)
+          ;; The upgrade's open runs the marker catch-up before the profile
+          ;; program (the two-step of books/store-history-required).
+          (unless (or (member label +fnn-profile-model-cuts+ :test #'string=)
+                      (member label (fnn-core 'fn-hm-marker-cut-names) :test #'string=))
             (fnn-fault "unknown FN_NATIVE_PROFILE_FAULT cut: ~a" label))
           (list (intern (string-upcase label) :keyword)
                 (cond ((string= action "eio") 'fnn-os-error)
@@ -2202,8 +2367,13 @@ writes it.  Same profile and anything but an upgrade are refused (exit 1) and
 write nothing."
   (multiple-value-bind (store records) (fnn-open-live-store root t (fnn-profile-test-fault))
     (unwind-protect
-         (let ((verdict (fnn-core 'fn-store-profile-upgrade-verdict
-                                  (fnn-store-config store) profile)))
+         ;; The open (fnn-recover) already wrote the catch-up marker; the
+         ;; verdict reads it back and grants `required' only over a marker
+         ;; that counts the reconstructed history (fn-hmr-upgrade-verdict).
+         (let ((verdict (fnn-core 'fn-hmr-upgrade-verdict
+                                  (fnn-store-config store) profile
+                                  (fnn-history-marker-observation store)
+                                  (length records))))
            (unless (and (consp verdict) (member (first verdict) '(:upgrade :refused)))
              (fnn-fault "ACL2 returned a malformed profile verdict"))
            (if (eq (first verdict) :refused)
@@ -2405,10 +2575,11 @@ field by its operator name (books/byte-store-frame.lisp `fn-bs-profile-report').
     (unless (and (consp report)
                  (every (lambda (entry)
                           (and (consp entry) (stringp (car entry))
-                               (integerp (cdr entry)) (>= (cdr entry) 0)))
+                               (or (stringp (cdr entry))
+                                   (and (integerp (cdr entry)) (>= (cdr entry) 0)))))
                         report))
       (fnn-fault "ACL2 returned a malformed profile report"))
-    (fnn-out "profile~{ ~a=~d~}"
+    (fnn-out "profile~{ ~a=~a~}"
              (loop for (name . value) in report collect name collect value))))
 
 (defun fnn-out-headroom (store)
@@ -2424,15 +2595,41 @@ retention ledger's reserved charge of its capacity."
       (fnn-out "headroom transactions-used=~d transactions-budget=~d bytes-used=~d history-bound=~d charge-reserved=~d charge-capacity=~d"
                used budget bytes-used history reserved capacity))))
 
-(defun fnn-command-status (root)
+(defun fnn-store-observation (store)
+  "What this process observed at its own open, which the status report names:
+the staging orphans, whether their listing stopped at its bound, and how
+the Store was opened (checkpoint or full replay, and why)."
+  (list (fnn-store-orphans store) (fnn-store-orphans-more store)
+        (fnn-store-open-mode store)))
+
+(defun fnn-write-report (report)
+  "Write the octets of one ACL2 status report; render nothing."
+  (unless (fnn-octet-list-p report)
+    (fnn-fault "ACL2 returned a malformed status report"))
+  (when report
+    (write-sequence (fnn-octets report) *fnn-stdout*)
+    (finish-output *fnn-stdout*)))
+
+(defun fnn-command-live-report (root kind)
+  "The status report of KIND over the Store at ROOT, opened read-only.
+
+books/native-live-status.lisp `fn-nls-offline-report' renders every word;
+the running owner answers the same report of the state it carries
+(`fn-nls-live-report-is-the-offline-report').  The shared lock refuses while
+an owner holds the Store: `operator CONFIG status' asks that owner instead."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
+    (declare (ignore records))
     (unwind-protect
-         (progn (fnn-out "transactions=~d articles=~d ~a unsigned-legacy-experiment"
-                         (length records) (fnn-bridge-article-count) (fnn-orphan-report store))
-                (fnn-out-headroom store)
-                (fnn-out "~a" (fnn-open-report store))
-                +fnn-exit-ok+)
+         (progn
+           (fnn-write-report
+            (fnn-core 'fn-native-live-status-host-offline kind
+                      (fnn-store-config store) (fnn-store-observation store)
+                      *the-live-state*))
+           +fnn-exit-ok+)
       (fnn-store-close store))))
+
+(defun fnn-command-status (root)
+  (fnn-command-live-report root :status))
 
 (defun fnn-command-retention (root)
   "Report the replayed ACL2 ledger's pin count and reserved charge."
@@ -3087,7 +3284,7 @@ serialized profile when the saved image later starts."
         ((string= verb "store")
          (need 3)
          (let ((root (second args)) (command (third args)) (rest (cdddr args)))
-           (cond ((string= command "init") (fnn-command-init root rest))
+           (cond ((string= command "init") (fnn-command-developer-init root rest))
                  ((string= command "recover") (fnn-command-recover root))
                  ((string= command "status") (fnn-command-status root))
                  ((string= command "upgrade-profile")

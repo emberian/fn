@@ -21,6 +21,7 @@
 (include-book "../books/byte-store-txn-name")
 (include-book "../books/store-budget-naming")
 (include-book "../books/store-profile-upgrade")
+(include-book "../books/store-profile-namespace")
 (include-book "../books/article-fields")
 
 (defconst *fn-store-max-text* 512)
@@ -393,6 +394,16 @@
 ;; R, the segment size of the state checkpoint (P3).
 (defun fn-store-profile-max-record-octets (values)
   (fn-bs-profile-max-record-octets values))
+
+;; The operator's namespace counts (D27, PRF-102).  The host reads each once
+;; from the profile it opened and hands the natural to the ACL2 subject that
+;; refuses at it (fn-nco-observe, fn-native-admin-publication-authorize,
+;; fn-native-auth-load, fn-native-auth-admin-set-password).
+(defun fn-store-profile-max-config-generations (values)
+  (fn-bs-profile-max-config-generations values))
+
+(defun fn-store-profile-max-credentials (values)
+  (fn-bs-profile-max-credentials values))
 
 (defun fn-store-profile-report (values)
   (fn-bs-profile-report values))

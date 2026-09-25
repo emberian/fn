@@ -554,10 +554,12 @@ class NativeBpNodeTests(unittest.TestCase):
         self.stop_process(receiver)
         self.assertEqual(self.receiver_counts()[1], 1)
 
-    def test_permanently_busy_application_strands_row_until_recovery(self):
-        """BP-R17 at the kind-8 retry bound: three :busy answers strand the
-        row, visibly and still held; nothing is refused or stored; a cold
-        recovery clears the volatile wait and delivers it."""
+    def test_permanently_busy_application_strands_row_until_resume(self):
+        """BP-R17 at the retry budget: three :busy answers strand the row,
+        visibly and still held; nothing is refused or stored.  The count is
+        durable (kind 20): a restart keeps it at 3 and reports the strand
+        again on every pass, never redelivering; `bp-node resume' writes
+        count 0 and the next pass delivers."""
         receiver, port = self.start_node(
             True, once=False, extra_env={"FN_BP_NODE_TEST_APP_BUSY": "100"})
         sent = self.send_request(port, "stranded-request")
@@ -570,7 +572,7 @@ class NativeBpNodeTests(unittest.TestCase):
             time.sleep(5.5)
             self.send_transit(port, transit, spool)
             seen += self.wait_for_output(receiver, marker, timeout=120)
-        # A stranded row is not offered again: a later dispatch is silent.
+        # A stranded row is not offered again: a later pass only reports it.
         time.sleep(5.5)
         self.send_transit(port, transit, "p3")
         time.sleep(2)
@@ -581,9 +583,26 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertNotIn(b"request-refused", seen)
         self.assertNotIn(b"request-accepted", seen)
         self.assertEqual(self.receiver_counts()[1], 0)
-        restarted = self.dispatch_receiver()
-        self.assertEqual(restarted.returncode, 0, restarted.stderr)
-        self.assertIn(b"BP node delivery request-accepted", restarted.stdout)
+        # Restart twice: the durable count is what it was and the report repeats.
+        arrivals = set()
+        for _ in range(2):
+            restarted = self.dispatch_receiver()
+            self.assertEqual(restarted.returncode, 0, restarted.stderr)
+            self.assertNotIn(b"request-accepted", restarted.stdout)
+            self.assertNotIn(b"delivery deferred", restarted.stdout)
+            line = [x for x in restarted.stdout.splitlines()
+                    if x.startswith(b"BP node delivery stranded busy=3 arrival=")]
+            self.assertEqual(len(line), 1, restarted.stdout)
+            arrivals.add(int(line[0].split(b"arrival=")[1].split()[0]))
+            self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertEqual(len(arrivals), 1, arrivals)
+        arrival = arrivals.pop()
+        resumed = self.resume_receiver(arrival)
+        self.assertEqual(resumed.returncode, 0, resumed.stdout + resumed.stderr)
+        self.assertIn(b"BP node delivery resumed", resumed.stdout)
+        delivered = self.dispatch_receiver()
+        self.assertEqual(delivered.returncode, 0, delivered.stderr)
+        self.assertIn(b"BP node delivery request-accepted", delivered.stdout)
         self.assertEqual(self.receiver_counts()[1], 1)
 
     def other_boot_domain_frame(self):
@@ -1056,6 +1075,56 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(unrelated.returncode, 0, unrelated.stderr)
         self.assertIn(b"pinned=yes", unrelated.stdout)
 
+    def test_dropped_receipt_contact_is_reoffered_by_the_next_pass(self):
+        """Spec 4.3.2: an uncertain receipt transfer is connection-local.
+
+        The receiver's own `serve' pass sends the owed receipt; the relay
+        severs that connection after 80 client octets, after the TCPCL
+        session is up and the transfer has started.  ACL2 reads it as
+        :uncertain and requeues the job under its own identity; the pass
+        logs it and exits 0.  The next `dispatch' pass, over an intact
+        relay, offers the same job again and the sender accepts it.
+        """
+        sender, sender_port = self.start_node(False, once=False)
+        self.relay.route(sender_port, cut_after=80)
+        receiver, port = self.start_node(True)
+        # The sender node holds its own FNBS lifecycle lock, so the request
+        # leaves from a separate outbound journal of the same identity.
+        sent = self.invoke(
+            "bp-service", "run", "127.0.0.1", port,
+            self.request_path, self.tmp / "request-fnbs",
+            "dtn://sender/", "dtn://receiver/", "carrier-drop",
+            "carrier-drop-attempt", 0, 3600000, 2, 32, 1048576, 0, 0,
+        )
+        self.assertEqual(sent.returncode, 0, sent.stdout + sent.stderr)
+        out, err = receiver.communicate(timeout=120)
+        self.assertEqual(receiver.returncode, 0, out + err)
+        self.assertIn(b"BP node receipt queued", out)
+        self.assertIn(b"BP node receipt contact peer=dtn://sender/", out)
+        self.assertIn(b"BP node receipt transfer uncertain", out)
+        dropped = [x for x in out.splitlines()
+                   if x.startswith(b"BP transport work=")]
+        self.assertEqual(len(dropped), 1, out)
+        self.assertIn(b"status=attempted", dropped[0])
+        work = dropped[0].split(b"work=")[1].split()[0]
+
+        self.relay.route(sender_port)
+        again = self.dispatch_receiver()
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn(b"BP node receipt contact peer=dtn://sender/", again.stdout)
+        self.assertNotIn(b"BP node receipt transfer", again.stdout)
+        delivered = [x for x in again.stdout.splitlines()
+                     if x.startswith(b"BP transport work=")]
+        self.assertEqual(len(delivered), 1, again.stdout)
+        self.assertEqual(delivered[0].split(b"work=")[1].split()[0], work)
+        self.assertIn(b"status=forwarded", delivered[0])
+        self.wait_for_output(
+            sender, b"BP node delivery receipt-accepted", timeout=120)
+        self.stop_process(sender)
+        after = self.sender_status()
+        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertIn(b"pinned=no", after.stdout)
+
     def test_absent_bp_trust_keeps_custody_but_refuses_request_application(self):
         receiver, port = self.start_node(True, trust=False)
         sent = self.send_request(port, "untrusted-request")
@@ -1198,8 +1267,14 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertNotIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(frontier.read_bytes(), before_frontier)
+        # The pass sends the one owed receipt itself (spec 9.4); the harness
+        # neighbour drops the connection, so the only new lifecycle frames are
+        # that job's :attempting record and its :requeued :uncertain record
+        # (spec 4.3.2) -- no second job and no second sequence.
+        self.assertIn(b"BP node receipt transfer uncertain", restarted.stdout)
         self.assertEqual(len(tuple(
-            (self.receiver_journal / "lifecycle").glob("*.fnb"))), before_records)
+            (self.receiver_journal / "lifecycle").glob("*.fnb"))),
+            before_records + 2)
         self.assertEqual(self.receiver_counts()[1], 1)
 
     def test_ambiguous_outbox_publication_is_uncertain_not_refused(self):
@@ -1332,10 +1407,20 @@ class NativeBpNodeTests(unittest.TestCase):
         repeated = self.dispatch_receiver(reports=True)
         self.assertEqual(repeated.returncode, 0, repeated.stderr)
         self.assertEqual(frontier.read_bytes(), frontier_bytes)
+        # Every durable frame is kept byte for byte.  The repeated pass offers
+        # the owed report job on the node's own base contact (spec 9.4); the
+        # harness neighbour drops it, so the only new frames are that job's
+        # :attempting and :requeued :uncertain records (spec 4.3.2).
+        after_frames = {
+            frame.name: frame.read_bytes() for frame in lifecycle.glob("*.fnb")
+        }
         self.assertEqual(
-            {frame.name: frame.read_bytes() for frame in lifecycle.glob("*.fnb")},
+            {name: after_frames.get(name) for name in durable_frames},
             durable_frames,
         )
+        self.assertEqual(len(after_frames), len(durable_frames) + 2,
+                         repeated.stdout)
+        self.assertIn(b"BP node receipt transfer uncertain", repeated.stdout)
         self.assertEqual(
             self.acl2_lifecycle_payloads(self.receiver_journal, 10),
             [report_payload],

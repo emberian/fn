@@ -661,7 +661,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
                         if line.startswith(receiver_line)]
             self.assertEqual(len(refusals), 1, received)
             self.assertIn(" message-id=" + msgid + " code=439 decision=want ", refusals[0])
-            self.assertIn(" detail=local-enrollment ", refusals[0])
+            self.assertIn(" detail=no-local-binding ", refusals[0])
             # Refused is final: no re-offer after several backoff periods.
             time.sleep(4)
             self.assertEqual(self.service_log.read_text().count(sender_line), 1)
@@ -681,8 +681,9 @@ class NativeHybridAuthorTest(unittest.TestCase):
     # D23: A signs and posts; relay R has no enrollment of A's principal and
     # allowlists it on its boundary for A (`carries HEX'); C enrolls it.  R
     # stores and relays with a `carried' verdict, C verifies.  Without the
-    # list R refuses (439, local-enrollment), as D02 did.
-    def _chain(self, listed):
+    # list R refuses (439, no-local-binding), as D02 did.  PRF-099: a listed
+    # principal is carried only within the boundary's budget.
+    def _chain(self, listed, budget=("1048576", "8")):
         nodes = {}
         for name in ("relay", "sink"):
             root = self.root / name
@@ -714,6 +715,8 @@ class NativeHybridAuthorTest(unittest.TestCase):
         carries = ["carries", hexp] if listed else []
         ok("operator", relay["config"], "peer", "add", "author", "author.example.invalid",
            "127.0.0.1", self.port, "fn.*", "-", "127.0.0.1", "true", *carries)
+        if listed and budget:
+            ok("operator", relay["config"], "peer", "budget", "author", *budget)
         ok("operator", relay["config"], "peer", "add", "sink", "sink.example.invalid",
            "127.0.0.1", sink["port"], "-", "fn.*", "127.0.0.9", "true")
         ok("operator", sink["config"], "peer", "add", "relay", "relay.example.invalid",
@@ -817,7 +820,171 @@ class NativeHybridAuthorTest(unittest.TestCase):
             refusals = [line for line in relay["log"].read_text().splitlines()
                         if line.startswith("refused transit ") and msgid in line]
             self.assertEqual(len(refusals), 1, relay["log"].read_text())
-            self.assertIn(" detail=local-enrollment ", refusals[0])
+            self.assertIn(" detail=no-local-binding ", refusals[0])
+            self.assertIsNone(self._hdr(relay["port"], msgid))
+        finally:
+            for owner in reversed(owners):
+                self.stop_owner(owner)
+
+    # ------------------------------------------------------------------
+    # PRF-099: the opaque-carriage budget and the refusal classes.
+    def _sign(self, msgid, body):
+        source = self.root / ("pcb-" + str(abs(hash(msgid))) + ".eml")
+        source.write_bytes(
+            b"From: author@example.invalid\r\n"
+            b"Date: Thu, 24 Sep 2026 22:00:00 +0000\r\n"
+            b"Newsgroups: fn.test\r\nSubject: carried budget\r\n"
+            b"Message-ID: " + msgid.encode() + b"\r\n\r\n" + body + b"\r\n")
+        signed = self.invoke("hybrid-sign", *map(str, (
+            self.principal, self.ed_public, self.ed_secret, self.ml_public,
+            self.ml_private, source)), timeout=180)
+        self.assertEqual(signed.returncode, 0, signed.stderr)
+        parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+        ed_sig, ml_sig = source.with_suffix(".ed"), source.with_suffix(".ml")
+        ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+        ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+        return source, ed_sig, ml_sig
+
+    def _article(self, port, msgid):
+        with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
+            with sock.makefile("rwb", buffering=0) as stream:
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"ARTICLE " + msgid.encode() + b"\r\n")
+                self.assertTrue(stream.readline().startswith(b"220 "))
+                article = bytearray()
+                while True:
+                    line = stream.readline(65536)
+                    self.assertTrue(line)
+                    if line == b".\r\n":
+                        return bytes(article)
+                    article.extend(line[1:] if line.startswith(b"..") else line)
+
+    def _ihave(self, port, msgid, article):
+        with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
+            with sock.makefile("rwb", buffering=0) as stream:
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"IHAVE " + msgid.encode() + b"\r\n")
+                self.assertTrue(stream.readline().startswith(b"335 "))
+                for line in article.split(b"\r\n")[:-1]:
+                    stream.write((b"." + line if line.startswith(b".") else line)
+                                 + b"\r\n")
+                stream.write(b".\r\n")
+                return stream.readline()
+
+    @staticmethod
+    def _patch_carrier(article, msgid, patch):
+        """Rewrite the FN-Authorship items with PATCH (a function of the
+        binary) and the Message-ID with MSGID; everything else unchanged."""
+        import base64, re
+        head, body = article.split(b"\r\n\r\n", 1)
+        lines = head.split(b"\r\n")
+        out, i = [], 0
+        while i < len(lines):
+            line = lines[i]
+            if line.lower().startswith(b"fn-authorship:"):
+                value = line.split(b":", 1)[1]
+                while i + 1 < len(lines) and lines[i + 1][:1] in (b" ", b"\t"):
+                    i += 1
+                    value += lines[i]
+                binary = bytearray(base64.b64decode(re.sub(rb"\s", b"", value)))
+                encoded = base64.b64encode(bytes(patch(binary)))
+                folded = [encoded[k:k + 64] for k in range(0, len(encoded), 64)]
+                out.append(b"FN-Authorship: " + folded[0])
+                out.extend(b" " + chunk for chunk in folded[1:])
+            elif line.lower().startswith(b"message-id:"):
+                out.append(b"Message-ID: " + msgid.encode())
+            elif line.lower().startswith(b"path:"):
+                out.append(b"Path: author.example.invalid!not-for-mail")
+            elif line.lower().startswith(b"xref:"):
+                pass
+            else:
+                out.append(line)
+            i += 1
+        return b"\r\n".join(out) + b"\r\n\r\n" + body
+
+    def test_carried_budget_and_refusal_classes(self):
+        nodes, msgid, source, ed_sig, ml_sig, ok = self._chain(listed=False)
+        relay = nodes["relay"]
+        hexp = self.principal.read_bytes().hex()
+        # The list and the budget arrive by separate requests.
+        ok("operator", relay["config"], "peer", "carries", "author", hexp)
+        ok("operator", relay["config"], "peer", "budget", "author", "1048576", "1")
+        owners = []
+        try:
+            for config in (self.config, relay["config"]):
+                self._start(owners, config)
+            ok("hybrid-enroll", self.control, "1", self.principal,
+               self.ed_public, self.ml_public)
+            ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
+            deadline = time.monotonic() + 60
+            while time.monotonic() < deadline and self._hdr(relay["port"], msgid) is None:
+                time.sleep(0.2)
+            self.assertEqual(self._hdr(relay["port"], msgid),
+                             b"0 carried " + hexp.encode() + b"\r\n")
+            # The second carried article exhausts the count of one.
+            second = "<pcb-second@example.invalid>"
+            src2, ed2, ml2 = self._sign(second, b"second carried body")
+            ok("hybrid-author", self.control, "1", src2, ed2, ml2, self.ml_public)
+            want = " message-id=" + second + " "
+            deadline, lines = time.monotonic() + 60, []
+            while time.monotonic() < deadline:
+                lines = [l for l in relay["log"].read_text().splitlines()
+                         if l.startswith("refused transit ") and want in l]
+                if lines:
+                    break
+                time.sleep(0.2)
+            self.assertEqual(len(lines), 1, relay["log"].read_text())
+            self.assertIn(" detail=carried-count-exhausted ", lines[0])
+            self.assertIsNone(self._hdr(relay["port"], second))
+            # From the author's address, by IHAVE: items naming suite 2, and a
+            # principal the relay neither enrolled nor carries.
+            carried = self._article(relay["port"], msgid)
+
+            def suite_two(binary):
+                binary[1] = 2
+                return binary
+
+            def other_principal(binary):
+                binary[4] ^= 0xFF
+                return binary
+
+            for name, patch, detail in (
+                    ("<pcb-unsupported@example.invalid>", suite_two,
+                     "unsupported-profile"),
+                    ("<pcb-unbound@example.invalid>", other_principal,
+                     "no-local-binding")):
+                reply = self._ihave(relay["port"], name,
+                                    self._patch_carrier(carried, name, patch))
+                self.assertTrue(reply.startswith(b"437 "), reply)
+                lines = [l for l in relay["log"].read_text().splitlines()
+                         if l.startswith("refused transit ")
+                         and " message-id=" + name + " " in l]
+                self.assertEqual(len(lines), 1, relay["log"].read_text())
+                self.assertIn(" detail=" + detail + " ", lines[0])
+        finally:
+            for owner in reversed(owners):
+                self.stop_owner(owner)
+
+    def test_carrying_boundary_without_budget_carries_nothing(self):
+        nodes, msgid, source, ed_sig, ml_sig, ok = self._chain(listed=True, budget=None)
+        relay = nodes["relay"]
+        owners = []
+        try:
+            for config in (self.config, relay["config"]):
+                self._start(owners, config)
+            ok("hybrid-enroll", self.control, "1", self.principal,
+               self.ed_public, self.ml_public)
+            ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
+            want = " message-id=" + msgid + " "
+            deadline, lines = time.monotonic() + 60, []
+            while time.monotonic() < deadline:
+                lines = [l for l in relay["log"].read_text().splitlines()
+                         if l.startswith("refused transit ") and want in l]
+                if lines:
+                    break
+                time.sleep(0.2)
+            self.assertEqual(len(lines), 1, relay["log"].read_text())
+            self.assertIn(" detail=carried-budget-unset ", lines[0])
             self.assertIsNone(self._hdr(relay["port"], msgid))
         finally:
             for owner in reversed(owners):

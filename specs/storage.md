@@ -51,6 +51,23 @@ The write is the byte program `fn-bs-profile-program`
 (books/byte-store-profile-program.lisp), whose crash images name the old frame or
 the new one at every cut. This is a local-policy choice of fn; no RFC governs it.
 
+STO-015: a namespace the store holds is bounded by the operator's profile,
+never by a constant (D27). Configuration generations and AUTHINFO
+credentials are bounded by the profile's `max-config-generations` and
+`max-credentials` (format 8 fields 11 and 12, read through
+books/store-profile-namespace.lisp). The writer refuses exactly past the
+bound, by name (`:max-config-generations`, `:too-many-credentials`), and
+the reader admits every namespace within it: the configuration listing
+(`fn-nco-observe`) and the credential loader (`fn-native-auth-load`). An
+upgrade never lowers a count (`fn-profile-upgrade-keeps-namespace-counts`),
+so a namespace written under the old profile is admitted under the new one.
+The credential file's octet and line bounds follow its count: 512 octets and
+8 lines per credential, plus one unit for the header, a work bound per
+credential. fn.toml's size bounds stay constants. They bound the work of
+reading a fixed-schema file that names the store, and the file holds no
+collection. Consumers, BP rows and policy members are not yet read from the
+profile (planning/evidence/bounds-profile-2026-09-25.md).
+
 STO-002: acceptance publishes one transaction containing the source references,
 duplicate-history effects, all local group allocations, and any obligations or
 reservations accepted in that operation. No partially committed cross-post or
@@ -311,8 +328,8 @@ witness written after the commit:
   `fnn-publish` returned `:durable` (the record passed its
   transaction-directory barrier) and before `fnn-finish`. It is called at
   the three publish sites: `store post`, the capacity probe, and the owner's
-  `fnn-owner-publish-prepared`. No reservation, abort, refusal or recovery
-  writes it.
+  `fnn-owner-publish-prepared`. The one other writer is the recovery
+  catch-up below. No reservation, abort or refusal writes it.
 - The byte program (`*fn-hm-marker-program*`): create a `.stage-` name in
   `staging/`, write it, fsync the file, rename it onto
   `committed-history.json`, fsync the root directory. Each step has a cut:
@@ -325,9 +342,11 @@ witness written after the commit:
   against the length of the reconstructed record list (pack events plus
   suffix files, so a reclaim does not shorten it). A count below the marker
   is a fault that names `history-short-of-marker`. A frame that is not
-  kind 3 names `marker-damaged`. An absent marker is admitted as
-  `:unmarked`: that is every store written before the marker, and the first
-  commit on such a store writes the marker.
+  kind 3 names `marker-damaged`. Under the profile's `history-marker =
+  unmarked` an absent marker is admitted as `:unmarked`: that is every store
+  written before the marker, and its first writable open writes the marker.
+  The host calls `fn-hmr-open-verdict` (`books/store-history-required.lisp`),
+  which is `fn-hm-open-verdict` except as below.
 - Proved (PRF-076), over a model whose crash table is rename atomicity for
   this one program: no history the host can produce is refused. Such a
   history is any interleaving of burned reservations, uncertain
@@ -355,13 +374,107 @@ witness written after the commit:
   before and 388 ms after: 62 ms more per commit (+19%). The ZFS runs vary
   (before: 279 to 360 ms per commit). See
   [the record](../planning/evidence/m5-history-lifetimes-2026-09-24.md).
-- Not detected: losing the marker together with the files it covers (reads
-  as `:unmarked`); an unacknowledged record that survived above the marker
-  (`fnn-publish` uncertain, or a crash before the marker's rename); replacing
-  the whole store with an older valid copy, which needs a freshness anchor
-  (D14); the configuration history and the BP stores. The crash table is
-  not yet derived from the `fn-bs` byte model, which has no program for the
-  marker (**open**).
+- **The guarantee (D31)**, with A the committed prefix covered by success
+  answers a client may rely on, M the durable marker's count and D the
+  durable reconstructable length: A <= M <= D. The syscall sequence is not
+  frozen; a cheaper publication program is legitimate when its
+  acknowledgments and crash behaviour refine the same invariant, and moving
+  the count into the allocation barrier is not (allocation precedes the
+  record's durability).
+- **The requirement (D31 case 1).** The format-8 profile's thirteenth field,
+  `history-marker`, is `unmarked` (0: every format-7 store, and a format-8
+  store not migrated) or `required` (1). Under `required` an absent marker
+  is damage: `fn-hmr-open-verdict` answers `:marker-missing` and the open
+  faults (exit 4). `init` never writes `required`
+  (`history-marker-required-before-a-marker`); `store upgrade-profile
+  --history-marker required` does, and `fn-hmr-upgrade-verdict` grants it
+  only when the marker is present and counts exactly the reconstructed
+  history (`history-marker-not-covering` otherwise). The command opens the
+  store first, and that open writes the covering marker, so a migration is
+  the two-step: the marker program, then the profile program
+  (`fn-hmr-legacy-store-migrates-by-the-two-step`,
+  `fn-hmr-requirement-follows-a-covering-marker`). The upgrade relation
+  lets the field rise and never fall (`not-an-upgrade history-marker`), so a
+  required store never admits an absent marker, whatever follows
+  (`fn-hmr-required-store-never-admits-an-absent-marker`).
+- **The recovery catch-up (D31 case 2).** A record can be durable while its
+  marker is not: the process died between the record's barrier and the
+  marker's. The next open finds the record, and a retry of that submission
+  is then answered as already stored (NNTP 441 with the duplicate text, the
+  developer `duplicate`, BP `:duplicate`) with no later commit to advance
+  the marker. The catch-up point is recovery: after `fnn-recover`'s fifth
+  barrier (so the reconstructed records are durable) and its staging sweep,
+  and before the open returns, a writable open writes `fn-hmr-catch-up`'s
+  frame, the reconstructed count, through `fnn-mark-committed`: the same
+  program and cuts (selectable on `recover` as
+  `FN_NATIVE_RECOVERY_FAULT=CUT:kill|eio`, and on `store upgrade-profile` as
+  `FN_NATIVE_PROFILE_FAULT`). An error there is uncertain (exit 3) and the
+  next open catches up again. A reader under the shared lock writes nothing
+  and answers no submission. Proved over the history model of commits,
+  opens, resolutions and migrations: `fn-hmr-step-preserves-the-invariant`
+  (the open admits, A <= M, and a live process's marker equals D) and
+  `fn-hmr-open-refuses-below-every-answered-record` (an open that finds
+  fewer records than the newest one answered as stored, by a 240 or by a
+  resolution, is refused naming the marker).
+- Not detected: losing the marker together with the files it covers in an
+  `unmarked` store (reads as `:unmarked`); an unacknowledged record that
+  survived above the marker and was never answered (`fnn-publish`
+  uncertain, or a crash before the marker's rename, with no open since);
+  replacing the whole store with an older valid copy, which needs a
+  freshness anchor (D14); the configuration history and the BP stores. A
+  shared-lock reader may serve a record above the marker until the next
+  writable open.
+
+### Content reclamation under D13 (STO-014)
+
+STO-014: Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs.
+
+Status: decision, tombstone and served projection proved (PRF-088); the
+durable `store reclaim` verb is not implemented.
+
+**The rule** is the operator's, set through the ordinary reconfiguration
+record: `admin retention set keep-forever | released-by-all-holders |
+release-after DAYS` stages two `:set-limit` rows, `retention` (0, 1, 2)
+and `retention-days` (`books/reclaim-rule`). No row reads keep-forever,
+D03's default, so a store written before this section behaves as before.
+An unrecognised row is refused by name and reclaims nothing. The rule is
+the authorized release of the article's own archive pin; it releases no
+other obligation.
+
+**The decision** (`fn-rcl-verdict`, `books/store-reclaim`) answers one
+article with `:reclaimable` or the first reason it stays:
+`already-reclaimed`, `rule-keeps`, `rule-refused`, `too-recent`
+(release-after: stamp plus DAYS × 86,400 s after now; a legacy stamp never
+qualifies), `verdict-needs-payload` (an authorship verdict is re-verified
+at recovery, STO-008), `held-reader-pin`, `held-consumer-cursor` (a
+consumer that acknowledged number A in the group holds every number above
+A), `held-feed` (a live peer not yet delivered it; a retired peer holds
+nothing) and `held-bp-obligation`. The keystone says the executable test is
+exactly "no obligation in the flattened list names the article" together
+with the rule.
+
+**The tombstone** replaces the payload octets of the article record and
+nothing else: NUL `FN-RCL1`, a source flag, the payload's SHA-256, the
+SHA-256 of its D25 source under its own agent, the payload length and that
+agent (`books/reclaim-tombstone`). The record keeps its Message-ID,
+sequence, txid, generation, groups, memberships, obligation identity,
+content subject, release evidence, charge and stamp, so the history entry,
+the numbers, the group bindings and the content identity stay.
+Acceptance never reads a stored payload, so replaying the record with the
+tombstone reaches the reclaimed state, and every other record's step
+commutes with reclamation (`fn-rcl-prepare-commutes-with-reclaim`).
+
+**What stays the same** (the decisions this table lists): the duplicate
+history (`fn-acceptedp` for every Message-ID; a reclaimed ID is refused
+again, never resurrected), group numbering (per-group next numbers), each
+article's bindings, and the D25 duplicate-versus-conflict verdict the host
+calls (`fn-rcl-existing-action`) up to a SHA-256 collision on the compared
+pair. Verdict lookup reads the Store's verdict slot, which reclamation does
+not touch, and an article with a verdict is not reclaimed.
+
+**Served**: ARTICLE, HEAD, BODY and STAT of a reclaimed article answer
+`423 article reclaimed` by number and `430 article reclaimed` by
+Message-ID. OVER answers 503 for it and NEWNEWS still lists it (open).
 
 ### Chained packs (not implemented)
 

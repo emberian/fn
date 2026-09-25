@@ -260,6 +260,12 @@ observation into the outcome and this function only carries it out."
                    ;; nothing to send the live owner and nothing to serialize
                    ;; behind its mutex: the read-only executor is the only
                    ;; one, live socket or not.
+                   ((and queryp (fnn-admin-plan-acceptedp plan))
+                    (fnn-operator-status-once
+                     root (and (fnn-octet-list-p control-path-list)
+                               (consp control-path-list)
+                               (fnn-octets control-path-list))
+                     :peers))
                    (queryp (fnn-admin-query root plan))
                    (livep
                     (fnn-core 'fn-native-control-host-status-exit-code
@@ -292,6 +298,13 @@ observation into the outcome and this function only carries it out."
                          (fnn-command-upgrade-profile root profile)))
                       (:compact (funcall *fnn-compact-callback* root))
                       (:checkpoint (fnn-command-state-checkpoint root))
+                      (:needs-upgrade (fnn-command-needs-upgrade root))
+                      (:rollback-check
+                       (fnn-command-rollback-check
+                        root
+                        (fnn-octets-string
+                         (fnn-core 'fn-native-operator-host-result-rollback-path-octets
+                                   result))))
                       (t +fnn-exit-fault+))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
                                     (string-downcase (symbol-name action)))
@@ -302,13 +315,77 @@ observation into the outcome and this function only carries it out."
                                     (string-downcase (symbol-name action)) condition)
           code)))))
 
+;;; The status report (`status', `pins', `obligations', `peer list').
+;;;
+;;; With an owner running, the owner answers from the state it carries over
+;;; its control socket; with none, the Store is opened read-only.  Which of
+;;; the two is `fn-nls-route''s, and both print the octets ACL2 rendered
+;;; (books/native-live-status.lisp); this file renders nothing.
+
+(defun fnn-operator-status-once (root control-path kind)
+  (let* ((socket-present
+           (and control-path
+                (not (fnn-image-omits-p :control))
+                (fnn-control-socket-path-p
+                 (fnn-lstat (fnn-octets-string control-path)))))
+         (answer (if socket-present
+                     (fnn-control-live-status control-path kind)
+                   :none)))
+    (if (and (consp answer) (eq (first answer) :done))
+        (progn (fnn-write-report (second answer)) +fnn-exit-ok+)
+      (case (fnn-core 'fn-native-live-status-host-route socket-present answer)
+        (:offline (fnn-command-live-report root kind))
+        (:refused +fnn-exit-refused+)
+        (t +fnn-exit-uncertain+)))))
+
+(defun fnn-operator-execute-status (result)
+  "One report, or with `--watch N' one every N seconds until interrupted."
+  (let* ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+         (command (fnn-core 'fn-native-operator-host-result-command result))
+         (kind (fnn-core 'fn-native-operator-host-result-status-kind result))
+         (watch (fnn-core 'fn-native-operator-host-result-status-watch result))
+         (path-list (fnn-core
+                     'fn-native-operator-host-result-status-control-path-octets
+                     result))
+         (control-path (and (fnn-octet-list-p path-list) (consp path-list)
+                            (fnn-octets path-list))))
+    (loop
+      (let ((code (handler-case (fnn-operator-status-once root control-path kind)
+                    (error (condition)
+                      (let ((code (fnn-exit-code-for condition)))
+                        (fnn-operator-emit-status
+                         (fnn-operator-status-of-exit-code code) command condition)
+                        (return-from fnn-operator-execute-status code))))))
+        (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command)
+        (unless (and (integerp watch) (plusp watch))
+          (return code))
+        (sleep watch)))))
+
+(defun fnn-operator-store-max-credentials (root)
+  "The store profile's max-credentials (D27, PRF-102), read from config.json
+without the writer lock: principal administration does not open the store.
+The profile only rises (fn-profile-upgradep), so a read that races an
+upgrade sees a bound no larger than the one the owner will load under."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (fnn-profile-nat 'fn-store-profile-max-credentials store)))
+
 (defun fnn-operator-execute-principal (result)
-  "Execute only the credential plan and credential path projected by ACL2."
-  (fnn-native-auth-admin-execute
-   (fnn-core 'fn-native-operator-host-result-principal-plan result)
-   (fnn-octets-string
-    (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
-              result))))
+  "Execute only the credential plan and credential path projected by ACL2.
+The configured store is the one whose writer lock says whether an owner is
+serving the old credentials (fn-native-auth-admin-effect-word), and whose
+profile bounds the credentials (max-credentials, D27, PRF-102)."
+  (let ((*fnn-native-auth-admin-store-root*
+          (fnn-octets-string
+           (fnn-core 'fn-native-operator-host-result-principal-store-octets
+                     result))))
+    (fnn-native-auth-admin-execute
+     (fnn-core 'fn-native-operator-host-result-principal-plan result)
+     (fnn-octets-string
+      (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
+                result))
+     (fnn-operator-store-max-credentials
+      (fnn-core 'fn-native-operator-host-result-store-root result)))))
 
 (defun fnn-operator-read-config (path maximum)
   "Classify only ordinary configuration-file defects as usage before reading.
@@ -349,7 +426,9 @@ configuration usage result."
           (:init (fnn-operator-execute-init result))
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
-          ((:status :recover :upgrade-profile :compact :checkpoint)
+          (:status (fnn-operator-execute-status result))
+          ((:recover :upgrade-profile :compact :checkpoint :needs-upgrade
+            :rollback-check)
            (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
           (:principal (fnn-operator-execute-principal result))
