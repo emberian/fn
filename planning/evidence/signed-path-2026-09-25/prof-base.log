@@ -1,0 +1,10 @@
+SIGN size=65536 source=66678 carried=74203 wall=16.03s
+SIGN size=204800 source=207861 carried=215386 wall=145.29s
+SIGN-PROF window 60.0s done=True
+POST unsigned size=65536 octets=66680 wall=0.22s reply=240 article received OK
+POST signed size=65536 octets=74203 wall=5.07s reply=441 posting failed; the article was refused
+POST unsigned size=204800 octets=207863 wall=0.28s reply=240 article received OK
+POST signed size=204800 octets=215386 wall=47.45s reply=441 posting failed; the article was refused
+VERIFY-CARRIER size=65536 verified
+VERIFY-CARRIER size=204800 verified
+

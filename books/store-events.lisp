@@ -29,6 +29,15 @@
 ; (fn-record-encoded-octets-ceiling A G) of the profile.
 (defconst *fn-store-article-publication-figure* 65538)
 
+; The same kind of figure for the kind-4 accepted-article composite: the
+; composite width every persisted profile was admitted under, 196 608, kept
+; so no profile's minimum record field R (`*fn-bs-profile-min-record-octets*')
+; or budget moves now that the composite's codec ceiling is u32
+; (books/stx-accept-records).  It limits no article: the signed path checks
+; the actual encoded composite against the profile's R
+; (`fn-sbud-signed-event-boundary', books/store-budget-naming) before commit.
+(defconst *fn-store-accepted-statement-publication-figure* 196608)
+
 ; Pre-reservation callers know the event kind before its final bytes exist.
 ; This table is the ACL2-owned conservative payload presented to the persisted
 ; profile gate.  The final publication path separately checks actual bytes.
@@ -39,7 +48,8 @@
          *fn-store-event-max-octets*)
         ((equal kind :statement-verdict) *fn-stxe-max-octets*)
         ((equal kind :keyring-snapshot) *fn-stxk-max-octets*)
-        ((equal kind :accepted-statement) *fn-stxa-max-octets*)
+        ((equal kind :accepted-statement)
+         *fn-store-accepted-statement-publication-figure*)
         ((equal kind :consumer) *fn-cpe-max-octets*)
         ((member-eq kind '(:topic-admin-install :topic-anchor :topic-admit))
          *fn-th-topic-max-octets*)

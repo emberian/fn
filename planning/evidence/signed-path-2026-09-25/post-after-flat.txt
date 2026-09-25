@@ -1,0 +1,55 @@
+
+Number of samples:   578
+Sample interval:     0.001 seconds
+Total sampling time: 0.578 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2764418 "fn-sprof" RUNNING {120F828763}> (144/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2764422 "fn outbound feed" RUNNING {120FC8B303}> (176/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2764511 "fn owner client" FINISHED values: NIL {1210440143}> (175952/1048576 bytes, 571 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2    127  22.0    223  38.6    127  22.0        -  FN-CBOR-OCTET-LISTP
+   4    112  19.4    112  19.4    239  41.3        -  FN-CBOR-OCTETP
+   6     35   6.1     93  16.1    274  47.4        -  FN-RECORD-PAYLOADP
+   8     29   5.0    172  29.8    303  52.4        -  FN-STXA-P
+  10     27   4.7     77  13.3    330  57.1        -  FN-STXE-BOUNDED-OCTETSP
+  12     16   2.8     16   2.8    346  59.9        -  TAKE
+  14     15   2.6     15   2.6    361  62.5        -  FN-SHS-ROUNDS
+  16     12   2.1     12   2.1    373  64.5        -  SB-IMPL::APPEND2
+  18     12   2.1     12   2.1    385  66.6        -  FN-CBOR-AT-MOSTP
+  20     10   1.7     10   1.7    395  68.3        -  FN-ARTICLE-BODY-CRLFP
+  22     10   1.7     10   1.7    405  70.1        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  24      9   1.6      9   1.6    414  71.6        -  APPEND
+  26      7   1.2     28   4.8    421  72.8        -  FN-CBOR-ENCODE-BOUNDED
+  28      7   1.2     21   3.6    428  74.0        -  FN-CBOR-VALUEP-BOUNDED
+  30      7   1.2      7   1.2    435  75.3        -  FN-SHS-EXTEND
+  32      6   1.0     38   6.6    441  76.3        -  FN-SHS-DIGEST-LIST
+  34      6   1.0      6   1.0    447  77.3        -  NTHCDR
+  36      6   1.0      6   1.0    453  78.4        -  foreign function pthread_sigmask
+  38      6   1.0      6   1.0    459  79.4        -  FN-AG-CAR
+  40      6   1.0      6   1.0    465  80.4        -  FN-WIRE-AG-CDR
+  42      5   0.9      5   0.9    470  81.3        -  GENERIC--
+  44      4   0.7     20   3.5    474  82.0        -  FN-WIRE-FEED-BYTE
+  46      4   0.7      6   1.0    478  82.7        -  FN-SHS-LOAD-LIST-WORD
+  48      4   0.7      4   0.7    482  83.4        -  FN-ID-SUBJECT-PREIMAGE
+  50      4   0.7      4   0.7    486  84.1        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-SET/CHECK-BOUNDS
+  52      4   0.7      4   0.7    490  84.8        -  FN-CBOR-AT-LEASTP
+  54      4   0.7      4   0.7    494  85.5        -  FN-AG-CDR
+  56      3   0.5     66  11.4    497  86.0        -  FN-SCAR-FEED-COUNTED
+  58      3   0.5      6   1.0    500  86.5        -  FN-WIRE-LIST-LENGTH
+  60      3   0.5      5   0.9    503  87.0        -  FN-OCTET-LISTP
+  62      3   0.5      3   0.5    506  87.5        -  GENERIC-+
+  64      3   0.5      3   0.5    509  88.1        -  TRUE-LISTP
+  66      3   0.5      3   0.5    512  88.6        -  FN-OCTETP
+  68      3   0.5      3   0.5    515  89.1        -  FN-WIRE-STATE-LINE-LIMIT
+  70      3   0.5      3   0.5    518  89.6        -  FN-WIRE-AG-CAR
+  72      2   0.3     41   7.1    520  90.0        -  FN-SCAR-FEED-BYTE
+  74      2   0.3      4   0.7    522  90.3        -  FN-RECORD-STRING-OCTETS-AUX
+  76      2   0.3      2   0.3    524  90.7        -  foreign function gc_find_freeish_pages
+  78      2   0.3      2   0.3    526  91.0        -  FN-SHS-LIST-BYTE
+  80      2   0.3      2   0.3    528  91.3        -  LENGTH
+------------------------------------------------------------------------
+          1   0.2                                     elsewhere
