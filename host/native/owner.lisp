@@ -803,6 +803,70 @@ follows is justified only by this line."
           detail))
   :refused)
 
+;;; SPIKE (spike/peering): host-kept opaque-carriage usage per boundary.
+;;; Defers to dev: an owner-state counter derived at replay from the carried
+;;; composites' release evidence (`peer-transit:NAME'), with a preservation
+;;; theorem.  Here it is a sidecar file beside the Store, written after each
+;;; carried commit; a crash between the commit and the write undercounts by
+;;; at most the one article in flight.
+(defvar *fnn-carried-usage* nil)
+
+(defun fnn-carried-usage-path (service)
+  (concatenate 'string
+               (string-right-trim "/" (fnn-store-root (fnn-owner-service-store service)))
+               ".carried-usage"))
+
+(defun fnn-carried-usage-load (service)
+  (unless *fnn-carried-usage*
+    (setq *fnn-carried-usage* (list :loaded))
+    (with-open-file (in (fnn-carried-usage-path service) :if-does-not-exist nil)
+      (when in
+        (loop for line = (read-line in nil nil)
+              while line
+              do (let* ((parts (fnn-split-spaces line)))
+                   (when (= (length parts) 3)
+                     (push (list (first parts)
+                                 (parse-integer (second parts) :junk-allowed t)
+                                 (parse-integer (third parts) :junk-allowed t))
+                           *fnn-carried-usage*))))))))
+
+(defun fnn-split-spaces (line)
+  (let ((out nil) (start 0))
+    (loop for i from 0 to (length line)
+          do (when (or (= i (length line)) (char= (char line i) #\Space))
+               (when (< start i) (push (subseq line start i) out))
+               (setq start (1+ i))))
+    (nreverse out)))
+
+(defun fnn-carried-usage-of (service peer)
+  (fnn-carried-usage-load service)
+  (let ((row (find-if (lambda (r) (and (consp r) (equal (first r) peer)))
+                      *fnn-carried-usage*)))
+    (if row (list (or (second row) 0) (or (third row) 0)) (list 0 0))))
+
+(defun fnn-carried-usage-add (service peer charge)
+  (let* ((old (fnn-carried-usage-of service peer))
+         (new (list peer (+ (first old) charge) (+ (second old) 1))))
+    (setq *fnn-carried-usage*
+          (cons new (remove-if (lambda (r) (and (consp r) (equal (first r) peer)))
+                               *fnn-carried-usage*)))
+    (let ((path (fnn-carried-usage-path service)))
+      (with-open-file (out (concatenate 'string path ".tmp") :direction :output
+                                                            :if-exists :supersede)
+        (dolist (r *fnn-carried-usage*)
+          (when (consp r) (format out "~a ~d ~d~%" (first r) (second r) (third r))))
+        (finish-output out))
+      (rename-file (concatenate 'string path ".tmp") path))))
+
+;;; SPIKE (spike/peering): on NNTP transit, a refusal of a present carrier is
+;;; named by ACL2's class (no-local-binding, unsupported-profile,
+;;; signature-failed, malformed); other ingresses keep their words.
+(defun fnn-owner-transit-class (plan payload nntp-transit-p observed)
+  (if (not nntp-transit-p) plan
+    (let ((class (fnn-owner-core 'fn-owner-signed-refusal-class
+                                 (fnn-octet-list payload) t observed)))
+      (if (keywordp class) (list :refused class) plan))))
+
 (defun fnn-owner-attempt-transit (service msgid payload groups evidence
                                   &optional nntp-transit-p)
   "One ingress decision for both NNTP and BP transit under the caller's
@@ -863,6 +927,15 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                                          (fnn-octet-list payload)
                                          (and nntp-transit-p t))))
                (when (and (consp plan) (eq (first plan) :carried))
+                 ;; SPIKE (spike/peering): the boundary's opaque-carriage
+                 ;; budget, decided by ACL2 over the host-kept usage.
+                 (let* ((peer (fnn-owner-core 'fn-owner-transit-peer-name))
+                        (usage (fnn-carried-usage-of service peer))
+                        (decision (fnn-owner-core 'fn-owner-carried-budget-decision
+                                                  usage charge)))
+                   (unless (eq decision :within)
+                     (return-from fnn-owner-attempt-transit
+                       (fnn-owner-transit-refused decision))))
                  (unless (eq (fnn-owner-advance-clock) :observed)
                    (return-from fnn-owner-attempt-transit :clock-unusable))
                  (multiple-value-bind (obligation subject ignored)
@@ -883,8 +956,12 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                      ;; A log detail only (fn-olog-transit-line): the Store
                      ;; record's token, not an input to any decision.
                      (setq *fnn-owner-transit-detail* :carried)
-                     (return-from fnn-owner-attempt-transit
-                       (fnn-owner-identity-commit service event)))))
+                     (let ((word (fnn-owner-identity-commit service event)))
+                       (unless (eq word :refused)
+                         (fnn-carried-usage-add
+                          service (fnn-owner-core 'fn-owner-transit-peer-name)
+                          charge))
+                       (return-from fnn-owner-attempt-transit word)))))
                ;; SPIKE (spike/peering): defers to dev the fifth outcome of
                ;; fn-pa-current-plan.  On NNTP transit only, a refusal with
                ;; :local-enrollment asks ACL2's revoked plan: a carrier under
@@ -934,7 +1011,8 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                              (fnn-owner-identity-commit service event))))))))
                (unless (and (consp plan) (eq (first plan) :ok))
                  (return-from fnn-owner-attempt-transit
-                   (fnn-owner-transit-refused plan)))
+                   (fnn-owner-transit-refused
+                    (fnn-owner-transit-class plan payload nntp-transit-p nil))))
              (unless (eq (fnn-owner-advance-clock) :observed)
                (return-from fnn-owner-attempt-transit :clock-unusable))
              (let* ((source (second plan))
@@ -957,7 +1035,9 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                             (eq (first observations) :verified)
                             (eq (first ml-observation) :verified))
                  (return-from fnn-owner-attempt-transit
-                   (fnn-owner-transit-refused :signature)))
+                   (fnn-owner-transit-refused
+                    (fnn-owner-transit-class (list :refused :signature) payload
+                                             nntp-transit-p :failed))))
                (multiple-value-bind (obligation subject ignored)
                    (fnn-metadata msgid payload)
                  (declare (ignore ignored))
