@@ -53,7 +53,13 @@
 ; not a refusal by itself, section 2.2).
 
 (in-package "ACL2")
-(include-book "node-config")
+; books/node-config.lisp's own includes, not node-config: this book names
+; none of node-config's definitions (audit 2026-09-25, packet 2).
+(include-book "node-invariants")
+(include-book "config-invariants")
+(include-book "config-records")
+(include-book "nntp-syntax")
+(include-book "records-seam")
 (include-book "nntp-post")
 (include-book "nntp-pinned-effects")
 ; fn-charge-for-payload: the retention charge a transit probe offers.

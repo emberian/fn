@@ -6,7 +6,11 @@
 ; canonical contiguous generation plan.  It does not choose a policy from
 ; names or bytes in raw Lisp.
 (in-package "ACL2")
-(include-book "native-admin")
+(include-book "native-admin-shape")
+; The configuration record codec (fn-cfg-decode-exact); reached through
+; books/native-admin.lisp until this book included only its shape (audit
+; 2026-09-25, packet 4).
+(include-book "config")
 
 ; A recovery-time resource limit.  Exceeding it is a fault before the host
 ; retains a larger directory listing or treats a prefix as a usable history.
