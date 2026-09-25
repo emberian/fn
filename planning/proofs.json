@@ -700,15 +700,7 @@
         "fn-pcar-sbud-prepare-is-sbud-prepare",
         "fn-pcar-next-lower-is-next-lower",
         "fn-acar-own-outcome-is-reference-under-ocl-relation",
-        "fn-acar-scar-auth-sessionp-of-rebuilt-session",
-        "fn-rcon-record-p-is-record-p",
-        "fn-rcon-octet-stringp-is-stringp",
-        "fn-rcon-msgidp-is-msgidp",
-        "fn-rcon-metadata-bytes-p-is-metadata-bytes-p",
-        "fn-rcon-sf-record-pair-is-sf-record-pair",
-        "fn-rcon-sn-record-bindsp-is-sn-record-bindsp",
-        "fn-rcon-cpe-projection-step-is-cpe-projection-step",
-        "fn-rcon-th-prefix-step-is-th-prefix-step"
+        "fn-acar-scar-auth-sessionp-of-rebuilt-session"
       ],
       "evidence": [
         "books/cbor.lisp",

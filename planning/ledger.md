@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 761 |
-| Certification roots in the Makefile | 749 |
-| Books inside the root closure | 759 |
-| `defthm` and `defthmd` events | 10137 |
-| `defun` events | 7189 |
-| Functions with verified guards | 2090 |
+| Books read | 763 |
+| Certification roots in the Makefile | 751 |
+| Books inside the root closure | 761 |
+| `defthm` and `defthmd` events | 10162 |
+| `defun` events | 7204 |
+| Functions with verified guards | 2093 |
 | Functions declared `:verify-guards nil` and never verified | 518 |
-| Functions left at the default with an explicit guard | 3565 |
-| Functions left at the default with no guard | 1016 |
-| `assert-event` checks | 11167 |
-| `must-fail` checks | 994 |
+| Functions left at the default with an explicit guard | 3575 |
+| Functions left at the default with no guard | 1018 |
+| `assert-event` checks | 11192 |
+| `must-fail` checks | 995 |
 | `encapsulate` events | 38 |
 | Theorems flagged SUSPECT by shape | 91 |
-| Export-hygiene warnings | 119 |
+| Export-hygiene warnings | 127 |
 | Enabled-projection warnings | 37 |
 | Teeth-form warnings | 66 |
-| Include-hygiene warnings | 745 |
+| Include-hygiene warnings | 746 |
 | Host-names warnings | 860 |
 | Hand-written-record warnings | 18 |
 
@@ -428,6 +428,7 @@ that `make certify` requests.
 | `books/provenance.lisp` | root | 68 | 35 | 12/0/23/0 | 0 | 0 | 1 |
 | `books/records-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-canonicality.lisp` | root | 30 | 0 | 0/0/0/0 | 0 | 0 | 2 |
+| `books/records-concrete.lisp` | root | 25 | 12 | 3/0/9/0 | 0 | 0 | 0 |
 | `books/records-invariants.lisp` | root | 28 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-seam.lisp` | root | 18 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/records-shape.lisp` | root | 46 | 50 | 40/0/10/0 | 0 | 0 | 0 |
@@ -773,6 +774,7 @@ that `make certify` requests.
 | `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 49 | 12 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
+| `tests/acl2/records-concrete-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 25 | 1 | 0 |
 | `tests/acl2/records-shape-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 25 | 7 | 0 |
 | `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 9 | 0 |
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
