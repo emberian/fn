@@ -53,6 +53,9 @@
 ;; (host/owner-host.lisp) call fn-pbb-existing-action.
 (include-book "books/octets-stobj")
 (include-book "books/poster-bytes-buffer")
+;; The subject digest over the buffer (D27 wave C): fn-owner-subject-id-buffer
+;; (host/owner-host.lisp) calls fn-shb-subject-id.
+(include-book "books/sha256-buffer")
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-intent-carried")
 (include-book "books/owner-commit-ocl")
