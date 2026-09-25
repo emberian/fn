@@ -297,6 +297,11 @@
     "tests/acl2/byte-store-k0-cuts-tests",
     "books/byte-store-k0-step-bridge-root",
     "tests/acl2/byte-store-k0-step-bridge-root-tests",
+    "books/byte-store-k0-window",
+    "books/byte-store-k0-recover-program",
+    "tests/acl2/byte-store-k0-recover-program-tests",
+    "books/byte-store-k0-pre-init",
+    "tests/acl2/byte-store-k0-pre-init-tests",
     "books/checkpoint-auxiliary",
     "tests/acl2/checkpoint-auxiliary-tests",
     "books/hybrid-signature-invariants",
@@ -849,25 +854,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 861,
-    "books_in_root_closure": 857,
-    "roots": 845,
-    "theorems": 11824,
-    "functions": 8269,
-    "assert_events": 12605,
-    "must_fails": 1297,
+    "books": 866,
+    "books_in_root_closure": 862,
+    "roots": 850,
+    "theorems": 11889,
+    "functions": 8301,
+    "assert_events": 12649,
+    "must_fails": 1304,
     "encapsulates": 52,
     "guards": {
       "verified": 2167,
-      "declared-off": 621,
+      "declared-off": 633,
       "default-guarded": 4287,
-      "default-unguarded": 1194
+      "default-unguarded": 1214
     },
     "suspect_theorems": 102,
     "export_hygiene_warnings": 146,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 103,
-    "include_hygiene_warnings": 863,
+    "include_hygiene_warnings": 867,
     "host_names_warnings": 919,
     "hand_written_record_warnings": 18
   },
@@ -5120,6 +5125,57 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-k0-pre-init.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 6,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-initializer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-k0-recover-program.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 21,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-k0-recovery",
+        "byte-store-k0-step"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-k0-recovery.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5382,11 +5438,11 @@
       "book": "books/byte-store-k0-step.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
-      "functions": 2,
+      "theorems": 13,
+      "functions": 3,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
+        "declared-off": 3,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -5400,7 +5456,33 @@
         "byte-store-k0-authority-error",
         "byte-store-k0-staging-error",
         "byte-store-k0-step-lemmas",
-        "byte-store-k0-step-root-fence"
+        "byte-store-k0-step-root-fence",
+        "byte-store-k0-window"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-k0-window.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 28,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-k0-authority-error"
       ],
       "system_includes": [],
       "suspects": [],
@@ -17327,6 +17409,61 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/byte-store-k0-pre-init-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 2,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-k0-pre-init"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/byte-store-k0-recover-program-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 15,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 15
+      },
+      "verify_guards_events": 0,
+      "assert_events": 33,
+      "must_fails": 5,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-k0-recover-program",
+        "byte-store-k0-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/byte-store-k0-recovery-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -28116,6 +28253,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/byte-store-k0-pre-init.lisp",
+        "line": 29,
+        "include": "byte-store-initializer",
+        "included": "books/byte-store-initializer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/byte-store-k0-recovery.lisp",
         "line": 55,
         "include": "byte-store-keystones",
@@ -28141,13 +28285,6 @@
         "line": 11,
         "include": "byte-store-k0-step-bridge",
         "included": "books/byte-store-k0-step-bridge.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/byte-store-k0-step-bridge-marker.lisp",
-        "line": 6,
-        "include": "byte-store-k0-step",
-        "included": "books/byte-store-k0-step.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -28209,6 +28346,20 @@
       {
         "book": "books/byte-store-k0-step.lisp",
         "line": 70,
+        "include": "byte-store-k0-authority-error",
+        "included": "books/byte-store-k0-authority-error.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/byte-store-k0-step.lisp",
+        "line": 71,
+        "include": "byte-store-k0-window",
+        "included": "books/byte-store-k0-window.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/byte-store-k0-window.lisp",
+        "line": 36,
         "include": "byte-store-k0-authority-error",
         "included": "books/byte-store-k0-authority-error.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -30860,6 +31011,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-k0-pre-init-tests.lisp",
+        "line": 5,
+        "include": "../../books/byte-store-k0-pre-init",
+        "included": "books/byte-store-k0-pre-init.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-k0-recover-program-tests.lisp",
+        "line": 17,
+        "include": "../../books/byte-store-k0-recover-program",
+        "included": "books/byte-store-k0-recover-program.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-k0-recover-program-tests.lisp",
+        "line": 18,
+        "include": "byte-store-k0-tests",
+        "included": "tests/acl2/byte-store-k0-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-k0-recovery-tests.lisp",
         "line": 9,
         "include": "byte-store-stable-prefix-tests",
@@ -30892,13 +31064,6 @@
         "line": 11,
         "include": "byte-store-k0-step-tests",
         "included": "tests/acl2/byte-store-k0-step-tests.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/byte-store-k0-step-tests.lisp",
-        "line": 10,
-        "include": "../../books/byte-store-k0-step",
-        "included": "books/byte-store-k0-step.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
