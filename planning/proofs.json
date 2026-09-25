@@ -3581,7 +3581,7 @@
     {
       "id": "PRF-089",
       "title": "The running owner's status report is the offline report of the same state, and its pages join to it",
-      "statement": "fn-nls-live-report-is-the-offline-report: for every KIND (status, pins, peers, obligations), profile, configured owner OC and observation, when the carried octet sum CACHE is valid for the records of OC's Store (fn-sbud-octets-cache-validp) and no connection is open (no pin in fn-ocfg-pins), (fn-nls-live-report kind profile oc cache obs) equals (fn-nls-offline-report kind profile (fn-own-store (fn-ocfg-owner oc)) (fn-ocfg-config oc) obs); the owner reaches fn-nls-live-report through fn-native-live-status-host-reply (host/native/control.lisp fnn-control-live-status-answer) and the offline command reaches fn-nls-offline-report through fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report). fn-nls-client-step-of-owner-reply: for every octet REPORT whose length is a uint32 and every client prefix ACC of it (with, past the first page, the report's total and digest), the client's step on the owner's page from (len ACC) is :done REPORT, or :next with the strictly longer prefix of one more chunk; fnn-control-live-status folds pages through fn-nls-client-step. Supporting: fn-nls-reply-decode-of-encode, fn-nls-request-decode-of-encode, fn-nls-open-of-seal.",
+      "statement": "fn-nls-live-report-is-the-offline-report: for every KIND (status, pins, peers, obligations), profile, configured owner OC and observation, when the carried octet sum CACHE is valid for the records of OC's Store (fn-sbud-octets-cache-validp) and no connection is open (no pin in fn-ocfg-pins), (fn-nls-live-report kind profile oc cache obs) equals (fn-nls-offline-report kind profile (fn-own-store (fn-ocfg-owner oc)) (fn-ocfg-config oc) obs); the owner reaches fn-nls-live-report through fn-native-live-status-host-answer (host/native/control.lisp fnn-control-live-status-answer), once per request and the offline command reaches fn-nls-offline-report through fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report). fn-nls-client-step-of-owner-reply: for every octet REPORT whose length is a uint32 and every client prefix ACC of it (with, past the first page, the report's total and digest), the client's step on the owner's page from (len ACC) is :done REPORT, or :next with the strictly longer prefix of one more chunk; fnn-control-live-status folds pages through fn-nls-client-step. fn-nls-page-of-buffer-is-reply: for every REPORT and OFFSET, (fn-nls-page (fn-nls-buffer report) offset) equals (fn-nls-reply report offset), with no hypothesis; fn-nls-buffer is the report as one string with its frame digest and fn-nls-page answers a substring of it (the D27 twin of the page). fn-nls-client-step-of-owner-page: the client-step keystone with the same hypotheses over the page the owner answers, (fn-nls-page (fn-nls-buffer report) (len acc)). fn-nls-cached-buffer-of-put: for a positive offset, the buffer the owner looks up for KIND after storing BUFFER for KIND is BUFFER; fn-native-live-status-host-answer renders anew at offset 0 and otherwise pages from the stored buffer. fn-nls-nat-is-the-decimal-digits: for every natural N, (fn-nls-nat N), which renders every number of the report, is a nonempty run of decimal digits whose value under fn-nntp-decimal-value is N. Supporting: fn-nls-reply-decode-of-encode, fn-nls-request-decode-of-encode, fn-nls-open-of-seal.",
       "milestone": "M4",
       "requirements": [
         "HST-006",
@@ -3596,12 +3596,17 @@
         "books/native-live-status.lisp",
         "tests/acl2/native-live-status-tests.lisp",
         "tests/acl2/native-operator-tests.lisp",
-        "planning/evidence/live-status-2026-09-25.md"
+        "planning/evidence/live-status-2026-09-25.md",
+        "planning/evidence/status-join-2026-09-25.md"
       ],
-      "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. Octet lists only (D27 twin open). The open= line names each process's own open, and the offline orphan listing is the reader's own observation.",
+      "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. The owner pages from a string buffer rendered once per request (fn-nls-page); the renderer and the FNLS frames are still octet lists (their D27 twin is open). The open= line names each process's own open, the offline orphan listing is the reader's own observation, and the checkpoint-file line is each answering process's lstat at the request. The words (the history-marker word, checkpoint-file, open-cost) are tests, not theorems; the live and offline reports share them through fn-nls-report.",
       "events": [
         "fn-nls-live-report-is-the-offline-report",
-        "fn-nls-client-step-of-owner-reply"
+        "fn-nls-client-step-of-owner-reply",
+        "fn-nls-page-of-buffer-is-reply",
+        "fn-nls-client-step-of-owner-page",
+        "fn-nls-cached-buffer-of-put",
+        "fn-nls-nat-is-the-decimal-digits"
       ]
     },
     {
@@ -4305,6 +4310,45 @@
         "fn-pinv-confirm-after-its-consumption-enrols",
         "fn-pinv-confirm-step-never-enrols-twice",
         "fn-pinv-field-is-a-body-line"
+      ]
+    },
+    {
+      "id": "PRF-100",
+      "title": "The NEWNEWS pull feed advances its cursor past a round only when every listed Message-ID drew 235, 435 or 437 from the local node, and a crash mid-round recovers the cursor that round asked with",
+      "statement": "Over the functions host/native/pull-service.lisp calls (fn-pull-begin, fn-pull-step through fn-pull-step-pair, fn-pull-close, fn-pull-replay over fn-pull-journal-scan): closing a round moves the cursor only if the round ran to its end and every Message-ID its NEWNEWS listed has a 235, 435 or 437 answer, the new instant being the peer's DATE less one second (fn-pull-close-advances-only-past-a-fully-answered-round; per id fn-pull-unanswered-id-holds-the-cursor); an answer is recorded only by a local reply and is that reply's own code for the article in hand (fn-pull-step-answers-only-from-the-local-node); no step changes the round's cursor or journals anything (fn-pull-step-keeps-the-cursor-and-journals-nothing) and every NEWNEWS it sends names the round's cursor instant (fn-pull-step-newnews-names-the-cursor); if the FNPL journal replays to the owner's cursor, it replays after the begin, after any events and after the close to that cut's cursor (fn-pull-journal-is-the-cursor-at-every-cut), so the round begun after a crash asks the dead round's instant (fn-pull-recovery-asks-the-dead-rounds-newnews). The schedule starts only a due, idle peer and spaces rounds by the operator's interval (fn-sched-pull-due-is-due-and-idle, fn-sched-pull-started-is-not-due, fn-sched-pull-finished-waits-its-interval). That the peer lists again what it listed for the same instant is RFC 3977 7.4's NEWNEWS semantics, not proved.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-018"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/peer-pull.lisp",
+        "books/scheduler-peers.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "host/native/pull-service.lisp",
+        "planning/evidence/peer-pull-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260925T193953Z-487714.json",
+        "planning/evidence/manifests/certify-20260925T194417Z-527674.json",
+        "planning/evidence/manifests/certify-20260925T194645Z-3666244.json",
+        "tests/test_native_peer_pull.py"
+      ],
+      "progress_note": "Native (hbox, SCN-058): a second fn node, INN 2.7.4 nnrpd and a SIGKILL mid-round then the same NEWNEWS all pass. Open: the pull client has no TLS arm (a TLS transport is not pulled); a remote 430 for a listed id holds the cursor until the peer stops listing it; the cursor lives in <store>/pull/*.fnpl (FNFD envelope and phase machine), not a Store transaction record.",
+      "events": [
+        "fn-pull-close-advances-only-past-a-fully-answered-round",
+        "fn-pull-unanswered-id-holds-the-cursor",
+        "fn-pull-step-answers-only-from-the-local-node",
+        "fn-pull-step-keeps-the-cursor-and-journals-nothing",
+        "fn-pull-step-newnews-names-the-cursor",
+        "fn-pull-journal-is-the-cursor-at-every-cut",
+        "fn-pull-recovery-asks-the-dead-rounds-newnews",
+        "fn-pull-decode-of-encode",
+        "fn-sched-pull-due-is-due-and-idle",
+        "fn-sched-pull-started-is-not-due",
+        "fn-sched-pull-finished-waits-its-interval"
       ]
     }
   ]

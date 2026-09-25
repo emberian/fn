@@ -1,0 +1,8 @@
+built build/fn-host-developer profile=developer (131M core)
+built build/fn-host profile=production (131M core)
+fb10d98e859ed8a3648da3e779f22c038c8e1c8b62c24e8076b276012083c6ee  build/fn-host-developer.core
+8316c90dceeae938b60981afe86bde65f00b7c2677ae5965970ef7f896f60bee  build/fn-host.core
+262a6082c45461692b43cda67fbbcfe8e8e3b5ee949ab6909b5e54c40367327a  build/fn-host
+80ae03166730ade286668afa15aa148cec97f3215127bb499e1d17699b128a66  build/fn-host-developer
+IMAGES-DONE
+exit=0

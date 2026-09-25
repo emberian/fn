@@ -181,12 +181,17 @@ order, and the names it found handed straight back."
               (let* ((*fnn-owner-startup-hooks*
                        (list (fnn-native-auth-startup-hook
                               auth-path auth-required auth-protected)))
+                     ;; The NEWNEWS pull feed (PRF-100) is a sibling lifecycle
+                     ;; extension: host/native/pull-service.lisp.
                      (*fnn-owner-start-hooks*
-                       (cons #'fnn-feed-service-start *fnn-owner-start-hooks*))
+                       (list* #'fnn-feed-service-start #'fnn-pull-service-start
+                              *fnn-owner-start-hooks*))
                      (*fnn-owner-stop-hooks*
-                       (cons #'fnn-feed-service-wake *fnn-owner-stop-hooks*))
+                       (list* #'fnn-feed-service-wake #'fnn-pull-service-wake
+                              *fnn-owner-stop-hooks*))
                      (*fnn-owner-close-hooks*
-                       (cons #'fnn-feed-service-close *fnn-owner-close-hooks*))
+                       (list* #'fnn-feed-service-close #'fnn-pull-service-close
+                              *fnn-owner-close-hooks*))
                      (code
                        (fnn-control-owner-run-normalized
                         (fnn-octets
@@ -466,7 +471,10 @@ configuration usage result."
       (let ((action (fnn-core 'fn-native-operator-host-result-native-action result)))
         (let ((omitted (case action
                          ((:run :post) :nntp-service)
-                         (:principal :credentials))))
+                         (:principal :credentials)
+                         ;; peer genesis|invite|accept|confirm reach the owner
+                         ;; as control requests 9 to 11 (host/native/peer-invite.lisp).
+                         (:peering :control))))
           (when (and (eq action :compact) (null *fnn-compact-callback*))
             (fnn-operator-emit-status
              :usage "action" "compact needs the checkpoint surface, which this image omits")

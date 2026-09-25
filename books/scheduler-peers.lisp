@@ -309,12 +309,179 @@
                  (:instance fn-sched-statep-of-table-find)))))
 
 ; -----------------------------------------------------------------------------
+; The pull schedule (PRF-100; books/peer-pull.lisp).
+;
+; A peer this node PULLS from (a NEWNEWS feed, for a peer behind NAT or a
+; server that only answers readers) has no queue: its work is one round at
+; a time, every INTERVAL milliseconds of the owner's monotonic clock.  The
+; table is an alist of (peer next interval busy): NEXT the monotonic instant
+; the next round is due, INTERVAL the operator's `pull-interval' row in
+; milliseconds (0: not pulled), BUSY whether a round is in flight.  It is a
+; table of its own because a pull peer need not be a feed peer: the feed
+; table's keys are the peers with an outbound record.
+
+(defun fn-sched-pull-entry (next interval busy)
+  (declare (xargs :guard t))
+  (list next interval busy))
+
+(defun fn-sched-pull-next (e) (declare (xargs :guard t))
+  (nfix (if (consp e) (car e) nil)))
+(defun fn-sched-pull-interval (e) (declare (xargs :guard t))
+  (nfix (if (and (consp e) (consp (cdr e))) (cadr e) nil)))
+(defun fn-sched-pull-busy (e) (declare (xargs :guard t))
+  (if (and (consp e) (consp (cdr e)) (consp (cddr e))) (and (caddr e) t) nil))
+
+(defun fn-sched-pull-find (peer tbl)
+  (declare (xargs :guard t))
+  (if (consp tbl)
+      (if (and (consp (car tbl)) (equal (car (car tbl)) peer))
+          (cdr (car tbl))
+        (fn-sched-pull-find peer (cdr tbl)))
+    nil))
+
+(defun fn-sched-pull-put (peer e tbl)
+  (declare (xargs :guard t))
+  (if (consp tbl)
+      (if (and (consp (car tbl)) (equal (car (car tbl)) peer))
+          (cons (cons peer e) (cdr tbl))
+        (cons (car tbl) (fn-sched-pull-put peer e (cdr tbl))))
+    (list (cons peer e))))
+
+; The operator's interval for PEER, in milliseconds.  A new peer is due at
+; once; a known peer keeps its NEXT and its BUSY flag, so a reconfiguration
+; never starts a second round beside one in flight.
+(defun fn-sched-pull-configure (peer interval-ms now tbl)
+  (declare (xargs :guard t))
+  (let ((e (fn-sched-pull-find peer tbl)))
+    (fn-sched-pull-put peer
+                       (if e
+                           (fn-sched-pull-entry (fn-sched-pull-next e)
+                                                (nfix interval-ms)
+                                                (fn-sched-pull-busy e))
+                         (fn-sched-pull-entry (nfix now) (nfix interval-ms) nil))
+                       tbl)))
+
+(defun fn-sched-pull-duep (e now)
+  (declare (xargs :guard t))
+  (and (not (fn-sched-pull-busy e))
+       (posp (fn-sched-pull-interval e))
+       (<= (fn-sched-pull-next e) (nfix now))))
+
+; KEYSTONE SUBJECT.  The peer whose round the owner starts now, or nil: the
+; first due entry in table order (host/native/pull-service.lisp
+; `fnn-pull-worker').
+; Each key is judged by the entry `fn-sched-pull-find' answers for it, so a
+; table with a repeated key still has one meaning per peer.
+(defun fn-sched-pull-due-aux (keys tbl now)
+  (declare (xargs :guard t))
+  (if (consp keys)
+      (if (and (consp (car keys))
+               (car (car keys))
+               (fn-sched-pull-duep (fn-sched-pull-find (car (car keys)) tbl) now))
+          (car (car keys))
+        (fn-sched-pull-due-aux (cdr keys) tbl now))
+    nil))
+
+(defun fn-sched-pull-due (tbl now)
+  (declare (xargs :guard t))
+  (fn-sched-pull-due-aux tbl tbl now))
+
+(defun fn-sched-pull-start (peer tbl)
+  (declare (xargs :guard t))
+  (let ((e (fn-sched-pull-find peer tbl)))
+    (if (null e) tbl
+      (fn-sched-pull-put peer (fn-sched-pull-entry (fn-sched-pull-next e)
+                                                   (fn-sched-pull-interval e) t)
+                         tbl))))
+
+(defun fn-sched-pull-finish (peer now tbl)
+  (declare (xargs :guard t))
+  (let ((e (fn-sched-pull-find peer tbl)))
+    (if (null e) tbl
+      (fn-sched-pull-put peer
+                         (fn-sched-pull-entry (+ (nfix now)
+                                                 (fn-sched-pull-interval e))
+                                              (fn-sched-pull-interval e) nil)
+                         tbl))))
+
+(defthm fn-sched-pull-find-of-put
+  (equal (fn-sched-pull-find other (fn-sched-pull-put peer e tbl))
+         (if (equal other peer) e (fn-sched-pull-find other tbl))))
+
+(defthm fn-sched-pull-due-aux-finds-a-due-entry
+  (implies (fn-sched-pull-due-aux keys tbl now)
+           (fn-sched-pull-duep (fn-sched-pull-find (fn-sched-pull-due-aux keys tbl now)
+                                                   tbl)
+                               now))
+  :hints (("Goal" :in-theory (disable fn-sched-pull-duep))))
+
+(defthm fn-sched-pull-due-finds-a-due-entry
+  (implies (fn-sched-pull-due tbl now)
+           (fn-sched-pull-duep (fn-sched-pull-find (fn-sched-pull-due tbl now) tbl)
+                               now))
+  :hints (("Goal" :in-theory (disable fn-sched-pull-duep))))
+
+; KEYSTONE.  The owner starts a round only for a peer that is due: no round
+; in flight for it, a positive interval, and its instant reached.  With
+; `fn-sched-pull-start' marking it busy, one peer never has two rounds.
+(defthm fn-sched-pull-due-is-due-and-idle
+  (implies (fn-sched-pull-due tbl now)
+           (let ((e (fn-sched-pull-find (fn-sched-pull-due tbl now) tbl)))
+             (and (not (fn-sched-pull-busy e))
+                  (posp (fn-sched-pull-interval e))
+                  (<= (fn-sched-pull-next e) (nfix now)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-sched-pull-duep)
+                           (fn-sched-pull-due fn-sched-pull-find
+                            fn-sched-pull-busy fn-sched-pull-interval
+                            fn-sched-pull-next fn-sched-pull-due-finds-a-due-entry
+                            fn-sched-pull-due-aux-finds-a-due-entry))
+           :use ((:instance fn-sched-pull-due-finds-a-due-entry)))))
+
+(local (defthm fn-sched-pull-due-not-when-find-not-due
+  (implies (and peer
+                (not (fn-sched-pull-duep (fn-sched-pull-find peer tbl) now)))
+           (not (equal (fn-sched-pull-due tbl now) peer)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-sched-pull-duep fn-sched-pull-due
+                               fn-sched-pull-find
+                               fn-sched-pull-due-finds-a-due-entry
+                               fn-sched-pull-due-aux-finds-a-due-entry)
+           :use ((:instance fn-sched-pull-due-finds-a-due-entry))))))
+
+; KEYSTONE.  A started peer is not due again until it finishes.
+(defthm fn-sched-pull-started-is-not-due
+  (implies (stringp peer)
+           (not (equal (fn-sched-pull-due (fn-sched-pull-start peer tbl) now)
+                       peer)))
+  :hints (("Goal" :in-theory (disable fn-sched-pull-due)
+           :use ((:instance fn-sched-pull-due-not-when-find-not-due
+                            (tbl (fn-sched-pull-start peer tbl)))))))
+
+; KEYSTONE.  After a round finishes at NOW, the peer is not due again before
+; NOW plus its interval: the operator's interval spaces the rounds.
+(defthm fn-sched-pull-finished-waits-its-interval
+  (implies (and (stringp peer)
+                (< (nfix later) (+ (nfix now) (fn-sched-pull-interval
+                                               (fn-sched-pull-find peer tbl)))))
+           (not (equal (fn-sched-pull-due (fn-sched-pull-finish peer now tbl)
+                                          later)
+                       peer)))
+  :hints (("Goal" :in-theory (disable fn-sched-pull-due)
+           :use ((:instance fn-sched-pull-due-not-when-find-not-due
+                            (tbl (fn-sched-pull-finish peer now tbl))
+                            (now later))))))
+
+; -----------------------------------------------------------------------------
 ; Export policy: the table's own vocabulary is withdrawn on include; the
 ; lookup facts and the three keystones above stay.
 
 (deftheory fn-sched-table-vocabulary
   '(fn-sched-table-find fn-sched-table-boundp fn-sched-tablep
     fn-sched-table-put fn-sched-table-peers fn-sched-table-install
-    fn-sched-table-forget fn-sched-table-step fn-sched-table-tick))
+    fn-sched-table-forget fn-sched-table-step fn-sched-table-tick
+    fn-sched-pull-find fn-sched-pull-put fn-sched-pull-configure
+    fn-sched-pull-duep fn-sched-pull-due-aux fn-sched-pull-due fn-sched-pull-start
+    fn-sched-pull-finish))
 
 (in-theory (disable fn-sched-table-vocabulary))
