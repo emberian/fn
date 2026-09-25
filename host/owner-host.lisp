@@ -248,6 +248,16 @@
       (f-get-global 'fn-owner-store-profile state)
     nil))
 
+; The carried profile's article bound A and group bound G, for the control
+; socket's read bound (host/native/control.lisp `fnn-control-start').  Both
+; are 0 before a profile is installed, and the read bound is then the
+; command-frame bound: no article is accepted without a profile anyway.
+(defun fn-owner-control-profile-bounds (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((profile (fn-owner-store-profile state)))
+    (value (list (nfix (fn-sbud-payload-bound profile))
+                 (nfix (fn-sbud-group-bound profile))))))
+
 (defun fn-owner-served-post-bound (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((bound (fn-sbud-payload-bound (fn-owner-store-profile state))))
