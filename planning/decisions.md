@@ -1146,3 +1146,39 @@ it), and an assumption that the observation is unpredictable (`A-*`, an
 `encapsulate` in `books/assumptions.lisp`). Alternative: rely on the
 Message-ID check above and add nothing. The lane's recommendation is the
 alternative until a client that keeps marks without a Message-ID exists.
+
+### 2026-09-25: D27 — bound work, never data; concrete representations at runtime (~02:40 UTC)
+
+ember: "Using octet lists continues to be unacceptable at runtime. We need to
+have fewer bullshit restrictions. Each of those is a branch that someday
+will fail during operation for no meaningful reason except during
+development we were fearful and installed a footgun. Octet lists are an
+absurd amount of overhead. Let's endeavor to have efficient
+representations; otherwise the software is not useful as a system."
+
+Two rules follow, and they supersede the habit that produced today's
+inventory of caps (`planning/design-2026-09-25-bounds.md` when it lands):
+
+- **A constant that bounds data is a defect.** Work per request stays
+  bounded (a parser still refuses input it cannot finish in bounded steps;
+  a served command still does bounded work), but the size of an article,
+  the number of groups it names, the number of transactions a store holds,
+  the bytes a store may reach, and every similar quantity are the
+  operator's to set, in the store profile, with defaults the hardware can
+  honour and refusal only when the operator's own bound is reached. Codec
+  widths are chosen so the codec never caps below any profile the operator
+  can write. Every `*fn-*-max-*` that limits data moves into the profile or
+  goes; the ones that limit work stay and say so.
+- **The logical model stays octet lists; the executable path does not.**
+  Record bodies, frames, headers, the Message-ID index and the in-memory
+  history get concrete representations (stobj byte arrays, strings, arrays)
+  with a correspondence theorem to the list definition at every boundary
+  the host calls, guard-verified, and measured before and after on the same
+  image. No statement of an existing theorem moves. This is the
+  "explicit correspondence arguments" clause of AGENTS.md made mandatory
+  rather than optional.
+
+Order: the representation boundaries by measured share, and the profile
+fields with the codec widths, run in parallel; whole-history replay at open
+(the checkpoint slice) follows, because a large transaction bound without
+it only makes open slow.

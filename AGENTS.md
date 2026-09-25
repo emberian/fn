@@ -34,6 +34,14 @@ substantial changes. Then read the specification for the affected subsystem.
   back or continue mutating after an uncertain commit.
 - Parsing external data must not invoke the Lisp reader or evaluator. Bound
   lengths, nesting, work, and allocations before consuming untrusted inputs.
+- Bound work, never data (D27, 2026-09-25). A constant that limits the size or
+  number of the data a store holds is a defect: such bounds are the operator's,
+  set in the store profile, with codec widths that never cap below any profile.
+  Constants that bound work per request stay and say so.
+- The executable path uses concrete representations (D27). Octet lists are the
+  logical model only; every boundary the host calls has a concrete twin (stobj
+  byte array, string, array) with a guard-verified correspondence theorem to
+  the list definition, measured on the same image before and after.
 - Preserve conflicting evidence and explicit provenance. Do not introduce
   last-writer-wins based on wall-clock time or merge local NNTP numbers globally.
 - Do not use `skip-proofs`, `defaxiom`, or trust tags to report proof completion.
