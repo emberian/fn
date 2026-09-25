@@ -1,0 +1,460 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:13:23.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>
+Note: Writing .port file, /home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/store-
+open-bridge-tests.port.
+
+CERTIFICATION ATTEMPT FOR 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/store-open-bridge-tests.lisp"
+
+ACL2 Version 8.7
+
+* Step 1: Read 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/store-open-bridge-tests.lisp"
+and compute its book-hash.
+
+* Step 2:  There were 21 forms in the file.  We now attempt to establish
+that each form, whether local or non-local, is indeed an admissible
+embedded event form in the context of the previously admitted ones.
+
+
+ACL2 !>>>(INCLUDE-BOOK "../../books/store-open-bridge")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "byte-store-k0-recovery"
+...):  Unable to load compiled file for book
+  /home/ember/fn-gates/k4-bridges-b5724fce/books/byte-store-k0-recovery.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+Here is the sequence of books with loads of compiled or expansion files
+that have led down to the printing of this message, where the load
+for each is halted during the load for the next:
+
+  /home/ember/fn-gates/k4-bridges-b5724fce/books/store-open-bridge.lisp
+
+
+Summary
+Form:  ( INCLUDE-BOOK "../../books/store-open-bridge" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  4.23 seconds (prove: 0.00, print: 0.01, other: 4.22)
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/store-open-bridge.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "byte-store-stable-prefix-tests")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK 
+"byte-store-stable-prefix-tests" ...):  Unable to load compiled file
+for book
+  /home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/byte-store-stable-
+prefix-tests.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+No load was in progress for any parent book.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "byte-store-stable-prefix-tests" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.11 seconds (prove: 0.00, print: 0.00, other: 0.11)
+"/home/ember/fn-gates/stale-comments-454868a2/tests/acl2/byte-store-stable-prefix-tests.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "std/testing/must-fail"
+                       :DIR :SYSTEM)
+
+The event ( INCLUDE-BOOK "std/testing/must-fail" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "std/testing/must-fail" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+:REDUNDANT
+
+
+ACL2 !>>>(DEFCONST *SOBT-CONFIGS*
+           (LIST *FN-CFG-DEFAULT-RECORD*))
+
+Summary
+Form:  ( DEFCONST *SOBT-CONFIGS* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*SOBT-CONFIGS*
+
+
+ACL2 !>>>(DEFCONST *SOBT-FAULT-CONFIGS*
+           (LIST *FN-CFG-DEFAULT-RECORD*
+                 *FN-CFG-DEFAULT-RECORD*))
+
+Summary
+Form:  ( DEFCONST *SOBT-FAULT-CONFIGS* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*SOBT-FAULT-CONFIGS*
+
+
+ACL2 !>>>(DEFUN SOBT-IMAGE NIL
+           (LET ((PAIR (BSK5-LINKED-2)))
+             (FN-BS-CRASH (CAR PAIR)
+                          (FN-BS-VIEW-CHOICES (FN-BS-PENDING (CAR PAIR))
+                                              (FN-BS-UNIT (CAR PAIR))))))
+
+Since SOBT-IMAGE is non-recursive, its admission is trivial.  We observe
+that the type of SOBT-IMAGE is described by the theorem 
+(AND (CONSP (SOBT-IMAGE)) (TRUE-LISTP (SOBT-IMAGE))).  We used the
+:type-prescription rule FN-BS-CRASH.
+
+Summary
+Form:  ( DEFUN SOBT-IMAGE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BS-CRASH))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SOBT-IMAGE
+
+
+ACL2 !>>>(DEFUN SOBT-F NIL
+           (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE (SOBT-IMAGE))))
+
+Since SOBT-F is non-recursive, its admission is trivial.  We could
+deduce no constraints on the type of SOBT-F.
+
+Summary
+Form:  ( DEFUN SOBT-F ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SOBT-F
+
+
+ACL2 !>>>(DEFUN SOBT-R NIL
+           (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE (SOBT-IMAGE))))
+
+Since SOBT-R is non-recursive, its admission is trivial.  We could
+deduce no constraints on the type of SOBT-R.
+
+Summary
+Form:  ( DEFUN SOBT-R ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SOBT-R
+
+
+ACL2 !>>>(DEFUN SOBT-HOST (CONFIGS)
+           (FN-CPO-OPEN-OBSERVED CONFIGS (SOBT-F)
+                                 (SOBT-R)))
+
+Since SOBT-HOST is non-recursive, its admission is trivial.  We observe
+that the type of SOBT-HOST is described by the theorem 
+(AND (CONSP (SOBT-HOST CONFIGS)) (TRUE-LISTP (SOBT-HOST CONFIGS))).
+We used the :type-prescription rule FN-CPO-OPEN-OBSERVED.
+
+Summary
+Form:  ( DEFUN SOBT-HOST ...)
+Rules: ((:TYPE-PRESCRIPTION FN-CPO-OPEN-OBSERVED))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SOBT-HOST
+
+
+ACL2 !>>>(DEFUN SOBT-MODEL (GROUPS CAPACITY)
+           (FN-SN-OPEN-OBSERVED GROUPS CAPACITY (SOBT-F)
+                                (SOBT-R)))
+
+Since SOBT-MODEL is non-recursive, its admission is trivial.  We observe
+that the type of SOBT-MODEL is described by the theorem 
+(AND (CONSP (SOBT-MODEL GROUPS CAPACITY))
+     (TRUE-LISTP (SOBT-MODEL GROUPS CAPACITY))).
+We used the :type-prescription rule FN-SN-OPEN-OBSERVED.
+
+Summary
+Form:  ( DEFUN SOBT-MODEL ...)
+Rules: ((:TYPE-PRESCRIPTION FN-SN-OPEN-OBSERVED))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SOBT-MODEL
+
+
+ACL2 !>>>(DEFUN SOBT-FILES (OPENED)
+           (FN-SN-FILES (FN-SN-OPEN-STATE OPENED)))
+
+Since SOBT-FILES is non-recursive, its admission is trivial.  We could
+deduce no constraints on the type of SOBT-FILES.
+
+Summary
+Form:  ( DEFUN SOBT-FILES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+SOBT-FILES
+
+
+ACL2 !>>>(ASSERT-EVENT (AND (EQUAL (LEN (SOBT-R)) 2)
+                            (EQUAL (SOBT-F) 2)))
+:PASSED
+
+
+ACL2 !>>>(ASSERT-EVENT
+          (AND
+              (FN-SN-OPEN-OKP (SOBT-MODEL *BSK5-GROUPS* *BSK5-CAPACITY*))
+              (FN-SOB-CONFIGURED-OPENP *SOBT-CONFIGS* (SOBT-F)
+                                       (SOBT-R))
+              (FN-SN-OPEN-OKP (SOBT-HOST *SOBT-CONFIGS*))
+              (EQUAL (SOBT-FILES (SOBT-HOST *SOBT-CONFIGS*))
+                     (SOBT-FILES (SOBT-MODEL *BSK5-GROUPS* *BSK5-CAPACITY*)))
+              (EQUAL (SOBT-FILES (SOBT-HOST *SOBT-CONFIGS*))
+                     (FN-BS-RECOVERED-KERNEL (SOBT-F)
+                                             (SOBT-R)
+                                             0))))
+:PASSED
+
+
+ACL2 !>>>(ASSERT-EVENT (AND (FN-SN-OBSERVED-HISTORYP (SOBT-F)
+                                                     (SOBT-R))
+                            (FN-SN-OBSERVED-IDENTITY-OKP (SOBT-R))
+                            (FN-SN-OBSERVED-CONSUMER-OKP (SOBT-R))
+                            (FN-SN-OBSERVED-TOPIC-OKP (SOBT-R))
+                            (FN-SOB-IDENTITY-TYPEDP (SOBT-R))))
+:PASSED
+
+
+ACL2 !>>>(ASSERT-EVENT
+          (LET ((ST (FN-SN-OPEN-STATE (SOBT-HOST *SOBT-CONFIGS*))))
+           (AND
+             (EQUAL (FN-SF-RECORDS (FN-SN-FILES ST))
+                    (SOBT-R))
+             (EQUAL
+                  (FN-SF-PHASE (FN-SN-FILES (FN-SN-OBSERVED-REBARRIER ST 4)))
+                  :RECOVERING)
+             (EQUAL
+                  (FN-SF-PHASE (FN-SN-FILES (FN-SN-OBSERVED-REBARRIER ST 5)))
+                  :READY)
+             (FN-CPO-HISTORY-RELATION ST))))
+:PASSED
+
+
+ACL2 !>>>(ASSERT-EVENT
+           (AND (EQUAL (FN-REPLAY-RESULT-KIND
+                            (FN-CPR-REPLAY *SOBT-FAULT-CONFIGS* (SOBT-R)))
+                       :FAULT)
+                (NOT (FN-SOB-CONFIGURED-OPENP *SOBT-FAULT-CONFIGS* (SOBT-F)
+                                              (SOBT-R)))
+                (FN-SN-OPEN-OKP (SOBT-MODEL *BSK5-GROUPS* *BSK5-CAPACITY*))))
+:PASSED
+
+
+ACL2 !>>>(MUST-FAIL
+            (ASSERT-EVENT (FN-SN-OPEN-OKP (SOBT-HOST *SOBT-FAULT-CONFIGS*))))
+
+Summary
+Form:  ( MAKE-EVENT (QUOTE ...) ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+T
+
+
+ACL2 !>>>(ASSERT-EVENT
+              (AND (NOT (FN-SN-OPEN-OKP (SOBT-MODEL NIL *BSK5-CAPACITY*)))
+                   (FN-SN-OPEN-OKP (SOBT-HOST *SOBT-CONFIGS*))))
+:PASSED
+
+
+ACL2 !>>>(MUST-FAIL
+              (ASSERT-EVENT
+                   (EQUAL (SOBT-FILES (SOBT-HOST *SOBT-CONFIGS*))
+                          (SOBT-FILES (SOBT-MODEL NIL *BSK5-CAPACITY*)))))
+
+Summary
+Form:  ( MAKE-EVENT (QUOTE ...) ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+T
+
+
+ACL2 !>>>(ASSERT-EVENT
+          (LET*
+           ((CN
+             (FN-REPLAY-RESULT-NODE (FN-CPR-REPLAY *SOBT-CONFIGS* (SOBT-R))))
+            (M (SOBT-MODEL
+                    (FN-CNODE-DOMAIN-OF (FN-CNODE-CONFIG CN))
+                    (FN-CFG-CAPACITY (FN-CFG-VALUE (FN-CNODE-CONFIG CN))))))
+           (AND (FN-SN-OPEN-OKP M)
+                (EQUAL (FN-CPO-INSTALL (FN-SN-OPEN-STATE M)
+                                       CN *SOBT-CONFIGS*)
+                       (FN-SN-OPEN-STATE (SOBT-HOST *SOBT-CONFIGS*)))
+                (FN-SNT-RELATION
+                     (FN-SN-OPEN-STATE (SOBT-HOST *SOBT-CONFIGS*))))))
+:PASSED
+
+* Step 3:  That completes the admissibility check.  Each form read
+was an embedded event form and was admissible.  No LOCAL or SET-GUARD-
+CHECKING forms make it necessary to check for local incompatibilities,
+so we skip that check.
+
+ACL2 Warning [Guards] in (CERTIFY-BOOK "tests/acl2/store-open-bridge-tests"
+...):  The book 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/store-open-bridge-tests.lisp"
+defines the functions SOBT-F, SOBT-FILES, SOBT-HOST, SOBT-IMAGE, SOBT-MODEL
+and SOBT-R, which have not had their guards verified.  Moreover, this
+book's included sub-books define functions BSK5-FINISHED, BSK5-FRAME,
+BSK5-FRAME-2, BSK5-FRONTIER-2, BSK5-FRONTIER-RUN, BSK5-INITIAL, BSK5-LINKED,
+BSK5-LINKED-2, BSK5-RECORD-2-RUN, BSK5-RECORD-RUN, BSK5-TWO-PENDING,
+DEFUN-THEORY-FN, DEFUN-THEORY-FN-REC, DEFUN-TYPE/EXEC-THEORY-FN, 
+DEFUN-TYPE/EXEC-THEORY-FN-REC, ELEMENT-EQUIV, ELEMENT-LIST-EQUIV, 
+ELEMENT-LIST-FIX, ELEMENT-LIST-NONEMPTY-P, ELEMENT-LIST-P, 
+ELEMENTLIST-MAPAPPEND, ELEMENTLIST-PROJECTION, ERROR-FROM-EVAL-FN,
+FN-AUTH-EFFECTP, FN-AUTH-EFFECTSP, FN-AUTH-SESSION-CONSISTENTP, 
+FN-BPR-ACCEPT-PROJECTED-REQUEST, FN-BPR-ACCEPT-REQUEST, 
+FN-BPR-BIND-REQUEST-CONTEXT, FN-BPR-COMMIT-RECEIPT, 
+FN-BPR-CONFIG-DESTINATION, FN-BPR-CONFIG-ISSUER, FN-BPR-CONFIG-POLICY-ID,
+FN-BPR-CONFIGP, FN-BPR-CONTEXT-ARCHIVE-ID, FN-BPR-CONTEXT-AUTH-CONTEXT,
+FN-BPR-CONTEXT-FROM-REQUEST, FN-BPR-CONTEXT-INCARNATION, 
+FN-BPR-CONTEXT-LISTP, FN-BPR-CONTEXT-MSGID, FN-BPR-CONTEXT-PEER-EID,
+FN-BPR-CONTEXT-POLICY-ID, FN-BPR-CONTEXT-REQUEST, FN-BPR-CONTEXT-SUBJECT,
+FN-BPR-CONTEXT-TERMS-ID, FN-BPR-CONTEXT-WORK-ID, FN-BPR-CONTEXTP, 
+FN-BPR-FIND-CONTEXT, FN-BPR-FIND-CONTEXT-MSGID, FN-BPR-FIND-RECEIPT,
+FN-BPR-INITIAL-STATE, FN-BPR-LIVE-INSTALL, FN-BPR-LIVE-JOURNAL, 
+FN-BPR-LIVE-RUN, FN-BPR-LIVE-STATE, FN-BPR-LIVE-STEP, FN-BPR-LIVE-STORE,
+FN-BPR-MAKE-CONFIG, FN-BPR-MAKE-CONTEXT, FN-BPR-MAKE-RECEIPT-ENTRY,
+FN-BPR-MAKE-STATE, FN-BPR-PREPARE-RECEIPT, 
+FN-BPR-PROJECTED-REQUEST-ACCEPTABLEP, FN-BPR-RECEIPT-ADU, 
+FN-BPR-RECEIPT-ENTRY-CONTEXT, FN-BPR-RECEIPT-ENTRY-RECEIPT, 
+FN-BPR-RECEIPT-ENTRYP, FN-BPR-RECEIPT-FOR, FN-BPR-RECEIPT-LISTP, 
+FN-BPR-REQUEST-ACCEPTABLEP, FN-BPR-STATE-CONFIG, FN-BPR-STATE-CONTEXTS,
+FN-BPR-STATE-PENDING, FN-BPR-STATE-RECEIPTS, FN-BPR-STATEP, 
+FN-BPR-STORE-RECORD-ACCEPTEDP, FN-BPRR-APPLY-RECORD, FN-BPRR-CONFIG,
+FN-BPRR-CONFIGP, FN-BPRR-DECODE-VALUE, FN-BPRR-OCTETSP, FN-BPRR-RECORDP,
+FN-BPRR-REPLAY, FN-BPRR-REPLAY-REST, FN-BPRR-TEXTP, FN-BPRV-CONTEXT-BACKEDP,
+FN-BPRV-CONTEXT-GROUNDEDP, FN-BPRV-CONTEXTS-BACKEDP, 
+FN-BPRV-CONTEXTS-GROUNDEDP, FN-BPRV-DECISION-FOR-ENTRYP, 
+FN-BPRV-ENTRIES-DECIDEDP, FN-BPRV-ENTRIES-LINKEDP, FN-BPRV-ENTRY-DECIDEDP,
+FN-BPRV-ENTRY-LINKEDP, FN-BPRV-EVOLVING-INVARIANTP, FN-BPRV-EXTENDSP,
+FN-BPRV-FIND-GROUNDING-RECORD, FN-BPRV-FIND-RECORD, FN-BPRV-HISTORY,
+FN-BPRV-HISTORY-RELATIONALP, FN-BPRV-INVARIANTP, FN-BPRV-JOURNAL-SUBSETP,
+FN-BPRV-NO-COMMITTED-DECISIONSP, FN-BPRV-NODE-IDLEP, FN-BPRV-PENDING-LINKEDP,
+FN-BPRV-PHASE, FN-BPRV-RECORD-BINDS, FN-BPRV-RECORD-GROUNDS, 
+FN-BPRV-RELATIONALP, FN-BPRV-SYSTEM-EVENTS-JOURNALEDP, 
+FN-BPRV-SYSTEM-INVARIANTP, FN-BPRV-SYSTEM-RUN, FN-BPRV-SYSTEM-STEP,
+FN-BS-ALL-FENCEDP, FN-BS-ALL-NEW, FN-BS-APPLY-ENTRIES, FN-BS-APPLY-OP,
+FN-BS-APPLY-OPS, FN-BS-APPLY-WRITES, FN-BS-AUTHORITY-FENCEDP, 
+FN-BS-AUTHORITY-INODE-LIST, FN-BS-AUTHORITY-KNOWNP, 
+FN-BS-CHECKPOINT-PUBLISH-PROGRAM, FN-BS-CHECKPOINT-SELECT-PROGRAM,
+FN-BS-CONTENT, FN-BS-CONTIGUOUS-NAMESP, FN-BS-CRASH, FN-BS-CRASH-CHOICEP,
+FN-BS-CRASH-CHOICESP, FN-BS-CRASH-SELECT, FN-BS-CREATE, FN-BS-DIR-QUIETP,
+FN-BS-DIR-TABLEP, FN-BS-DURABLE, FN-BS-DURABLE-CONTENT, FN-BS-DURABLE-ENTRY,
+FN-BS-DURABLE-FRONTIER, FN-BS-DURABLE-NAMES, FN-BS-DURABLE-OBSERVATIONP,
+FN-BS-DURABLE-RECORDS, FN-BS-ENTRIESP, FN-BS-ENTRY-AFTER, 
+FN-BS-ENTRY-OUTCOMES, FN-BS-FENCE-DIR, FN-BS-FENCE-FILE, FN-BS-FENCEDP,
+FN-BS-FENCES-AUTHORITY-DIRS-AUX, FN-BS-FENCES-AUTHORITY-DIRSP, 
+FN-BS-FINISH-INPUTP, FN-BS-FINISH-PROGRAM, 
+FN-BS-FRONTIER-DIRECTORY-COMMITTEDP, FN-BS-FRONTIER-INPUTP, 
+FN-BS-FRONTIER-NONCOMMIT-OBSERVATIONP, FN-BS-FRONTIER-PROGRAM, 
+FN-BS-FSYNC-DIR, FN-BS-FSYNC-FILE, FN-BS-INBOX-PROGRAM, 
+FN-BS-INBOX-RECONCILE-PROGRAM, FN-BS-INIT-FILE-STEPS, FN-BS-INIT-PROGRAM,
+FN-BS-INITIAL-CONFIG-OCTETS, FN-BS-INITIAL-FRONTIER-OCTETS, 
+FN-BS-INITIAL-IMAGE, FN-BS-INITIAL-INPUTP, FN-BS-INODE-LIST-KNOWNP,
+FN-BS-INODE-TABLEP, FN-BS-K0-ROOT-ERROR-OUTCOMES, FN-BS-K0-WRITES-AVOID,
+FN-BS-K0C-IND, FN-BS-LINK, FN-BS-LINKS-ONLY-FENCED-AUX, 
+FN-BS-LINKS-ONLY-FENCEDP, FN-BS-LOOKUP, FN-BS-MKDIR, FN-BS-NAME-OP-COUNT,
+FN-BS-NAME-STEP, FN-BS-NAMES, FN-BS-NAMES-AFTER, FN-BS-NAMES-OUTCOMES,
+FN-BS-NEVER-OVERWRITES-AUTHORITYP, FN-BS-OPS-FOR-DIR, FN-BS-OPS-FOR-INO,
+FN-BS-OPS-FOR-NAME, FN-BS-OPS-NOT-FOR-DIR, FN-BS-OPS-NOT-FOR-INO, 
+FN-BS-PENDING-DISJOINT-AUX, FN-BS-PENDING-DISJOINTP, 
+FN-BS-PENDING-ENTRY-TARGETS, FN-BS-PENDING-MATCHES-PHASE, 
+FN-BS-PENDING-SHAPE-OKP, FN-BS-READ, FN-BS-READ-RECORDS, 
+FN-BS-RECEIPT-PROGRAM, FN-BS-RECORD-DIRECTORY-COMMITTEDP, 
+FN-BS-RECORD-INPUTP, FN-BS-RECORD-OF, FN-BS-RECORD-OF-OCTETS, 
+FN-BS-RECORD-PROGRAM, FN-BS-RECOVER-PROGRAM, 
+FN-BS-RECOVER-STAGE-CLEANUP-PROGRAM, FN-BS-RECOVER-SWEEP-PROGRAM, 
+FN-BS-RECOVERED-KERNEL, FN-BS-RECOVERY-ENTRY-KERNEL, FN-BS-RENAME,
+FN-BS-REPLAY-MATCHES-SCAN, FN-BS-REPLAY-VISIBLEP, FN-BS-RUN, 
+FN-BS-RUN-PENDING-DISJOINTP, FN-BS-RUN-RELATEDP, FN-BS-RUN-STATEP,
+FN-BS-SCAN-FRONTIER, FN-BS-SCAN-OKP, FN-BS-SCAN-RECORDS, FN-BS-SCAN-STORE,
+FN-BS-SPLICE, FN-BS-STAGING-CLEANUP-STEPSP, FN-BS-STAGING-DEL, FN-BS-STATEP,
+FN-BS-STEP, FN-BS-STEP-LISTP, FN-BS-STEPP, FN-BS-STORE-RELATION, 
+FN-BS-SWEEP-RUN-OKP, FN-BS-TAKE, FN-BS-TEAR-WRITE, FN-BS-TXN-NAMES,
+FN-BS-TXN-PREFIX-AGREESP, FN-BS-UNIT-COUNT, FN-BS-UNLINK, FN-BS-VIEW,
+FN-BS-VIEW-CHOICES, FN-BS-WORKFLOW-PROGRAM, FN-BS-WRITE, 
+FN-BS-WRITE-OVERLAPS-ANYP, FN-BS-WRITE-OVERLAPSP, FN-BS-WRITES-KNOWNP,
+FN-BS-WRITES-NONEMPTYP, FN-BS-ZEROS, FN-CEI-CORRESPONDENCEP, 
+FN-CSI-COMPLETED-PREFIXP, FN-CSI-COMPLETION-LASTP, FN-CSI-FULL-RELATIONP,
+FN-CSI-LIVEP, FN-CSI-NO-CRASH-EVENTSP, FN-GIDX-PIN-CORRESPONDENCEP,
+FN-NNTP-BLOCK-SCAN, FN-NNTP-BLOCK-TEXTP, FN-NNTP-CURSOR-VALIDP, 
+FN-NNTP-EFFECTP, FN-NNTP-EFFECTSP, FN-NNTP-GROUP-NONEMPTYP, 
+FN-NNTP-INITIAL-LINE-TAIL, FN-NNTP-INITIAL-STATUS-LINEP, 
+FN-NNTP-OCTET-LINESP, FN-NNTP-REPLYP, FN-NNTP-RESPONSE-OCTETP, 
+FN-NNTP-RESPONSE-TEXTP, FN-NNTP-RUN-SESSION, FN-NNTP-SESSION-CONSISTENTP,
+FN-NNTP-STATUS-PREFIXP, FN-NRT-NODE-WITH-RETENTION, FN-OCFG-COMPLETE,
+FN-OCFG-CR-INDUCT, FN-OCFG-PASS, FN-OCFG-REPLAY-CNODE-OKP, FN-OCFG-RUN,
+FN-OCFG-STEP, FN-OWN-BP-TRANSIT-SUBMIT, FN-OWN-BP-TRANSIT-SUBMIT-RESULT,
+FN-OWN-CONNS-BOUNDEDP, FN-OWN-RUN, FN-OWN-STEP, FN-OWN-STORE-STEP,
+FN-OWN-TAKE-PREFIX-INDUCT, FN-PEER-DECIDE-TRANSFER, 
+FN-PEER-INJECTION-ARGUMENTS, FN-PEER-SESSION-CONSISTENTP, FN-PEER-TRANSFER,
+FN-POST-SESSION-CONSISTENTP, FN-RECORD-SCHEMA0-ENCODE, FN-SERVED-CONNP,
+FN-SERVED-EFFECTP, FN-SERVED-EFFECTSP, FN-SERVED-SUBMIT-EFFECTP, 
+FN-SF-DISPATCH, FN-SF-EVENT-LISTP, FN-SF-EVENTP, FN-SF-GHOST-COVERS-EMITTEDP,
+FN-SF-IMAGE-CRASH, FN-SF-IMAGE-FRONTIER-CHOICE, FN-SF-IMAGE-RECORD-CHOICE,
+FN-SF-PREFIXP, FN-SF-RUN-EVENTS, FN-SF-RUN-TRACE, FN-SF-TRACE-CAPACITY,
+FN-SF-TRACE-EVENTS, FN-SF-TRACE-GROUPS, FN-SF-TRACE-MAKE, FN-SF-TRACEP,
+FN-SN-COMMITTED-RECORDP, FN-SN-PREPARE-CONSUMER, FN-SN-PREPARE-IDENTITY,
+FN-SNRT-RUN, FN-SNRT-STEP, FN-SNT-RUN, FN-SNT-STEP, FN-SOB-CONFIGURED-OPENP,
+FN-SOB-IDENTITY-TYPEDP, FN-STMT-ITEMS-FUEL-INDUCT, 
+FN-STORE-EVENT-DECODE-EXACT, FN-STORE-EVENT-ENCODE, FN-STORE-EVENT-ITEM-TAGP,
+FN-STORE-EVENT-ITEM-VALUE, FN-STORE-EVENT-KIND-CODE, 
+FN-STORE-RETENTION-EVENT-DECODE-EXACT, FN-STORE-RETENTION-EVENT-ENCODE,
+FN-STORE-RETENTION-EVENT-FROM-VALUES, FN-STORE-RETENTION-EVENT-MAKE,
+FN-WIRE-CLEAN-LINE-BYTE-INDUCTION, FN-WIRE-LINE-CONTENTP, FN-WIRE-SUFFIXP,
+U::FORCE-TERM-LIST, U::IMPORT-AS-MACROS-FN, XDOC::MAKE-XDOC-FRAGMENTS,
+OUTELEMENT-LIST-P, U::REASON-FOR-NOT-KEYWORD-OPTION-LISTP, 
+RULETABLE-DELETE-TAGS and RULETABLE-KEEP-TAGS, which have not had their
+guards verified.  See :DOC guards.
+
+
+* Step 4:  Write the certificate for 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/store-open-bridge-tests.lisp"
+in 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/store-open-bridge-tests.cert".
+
+
+* Step 5:  Compile the functions defined in 
+"/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/store-open-bridge-tests.lisp".
+
+
+Note: Writing book expansion file, /home/ember/fn-gates/k4-bridges-
+b5724fce/tests/acl2/store-open-bridge-tests@expansion.lsp.
+
+
+Note: Deleting expansion file for the book, /home/ember/fn-gates/k4-
+bridges-b5724fce/tests/acl2/store-open-bridge-tests.lisp.
+
+Summary
+Form:  (CERTIFY-BOOK "tests/acl2/store-open-bridge-tests" ...)
+Rules: NIL
+Warnings:  Guards and Compiled file
+Time:  4.69 seconds (prove: 0.00, print: 0.01, other: 4.68)
+ "/home/ember/fn-gates/k4-bridges-b5724fce/tests/acl2/store-open-bridge-tests.lisp"
+ACL2 !>>
+FN_CERTIFY_SUCCESS 2ea4bf5d7588afa9f3032935e88f197a 745b33504877
+ NIL
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>

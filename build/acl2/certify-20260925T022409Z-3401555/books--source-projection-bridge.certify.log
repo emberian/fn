@@ -1,0 +1,2548 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:13:23.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>
+Note: Writing .port file, /home/ember/fn-gates/k4-bridges-b5724fce/books/source-
+projection-bridge.port.
+
+CERTIFICATION ATTEMPT FOR 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/source-projection-bridge.lisp"
+
+ACL2 Version 8.7
+
+* Step 1: Read 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/source-projection-bridge.lisp"
+and compute its book-hash.
+
+* Step 2:  There were 29 forms in the file.  We now attempt to establish
+that each form, whether local or non-local, is indeed an admissible
+embedded event form in the context of the previously admitted ones.
+
+
+ACL2 !>>>(INCLUDE-BOOK "hybrid-carrier")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "hybrid-carrier" ...):
+Unable to load compiled file for book
+  /home/ember/fn-gates/k4-bridges-b5724fce/books/hybrid-carrier.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+No load was in progress for any parent book.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "hybrid-carrier" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  1.06 seconds (prove: 0.00, print: 0.00, other: 1.06)
+"/home/ember/fn-gates/stale-comments-454868a2/books/hybrid-carrier.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "injection-invariants")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "injection-invariants"
+...):  Unable to load compiled file for book
+  /home/ember/fn-gates/k4-bridges-b5724fce/books/injection-invariants.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+No load was in progress for any parent book.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "injection-invariants" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.03 seconds (prove: 0.00, print: 0.00, other: 0.03)
+"/home/ember/fn-gates/d25b-eee4f54a/books/injection-invariants.lisp"
+
+
+ACL2 !>>>(LOCAL (DEFTHM FN-SPJ-LEN-OF-APPEND
+                  (EQUAL (LEN (APPEND A B))
+                         (+ (LEN A) (LEN B)))))
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  These merge into two derived induction
+schemes.  However, one of these is flawed and so we are left with one
+viable candidate.  
+
+We will induct according to a scheme suggested by (LEN A), while ac-
+commodating (APPEND A B).
+
+These suggestions were produced using the :induction rules BINARY-APPEND
+and LEN.  If we let (:P A B) denote *1 above then the induction scheme
+we'll use is
+(AND (IMPLIES (NOT (CONSP A)) (:P A B))
+     (IMPLIES (AND (CONSP A) (:P (CDR A) B))
+              (:P A B))).
+This induction is justified by the same argument used to admit LEN.
+When applied to the goal at hand the above induction scheme produces
+two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-LEN-OF-APPEND ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION FIX)
+        (:DEFINITION LEN)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION BINARY-APPEND)
+        (:INDUCTION LEN)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-2-OF-+)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:REWRITE UNICITY-OF-0)
+        (:TYPE-PRESCRIPTION LEN))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  382
+FN-SPJ-LEN-OF-APPEND
+
+
+ACL2 !>>>(LOCAL (DEFTHM FN-SPJ-APPEND-ASSOC
+                  (EQUAL (APPEND (APPEND A B) C)
+                         (APPEND A (APPEND B C)))))
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  Subsumption reduces that number to two.
+However, one of these is flawed and so we are left with one viable
+candidate.  
+
+We will induct according to a scheme suggested by (APPEND A B), while
+accommodating (APPEND A B C).
+
+These suggestions were produced using the :induction rule BINARY-APPEND.
+If we let (:P A B C) denote *1 above then the induction scheme we'll
+use is
+(AND (IMPLIES (AND (NOT (ENDP A)) (:P (CDR A) B C))
+              (:P A B C))
+     (IMPLIES (ENDP A) (:P A B C))).
+This induction is justified by the same argument used to admit BINARY-APPEND.
+When applied to the goal at hand the above induction scheme produces
+two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-APPEND-ASSOC ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION ENDP)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION BINARY-APPEND)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  447
+FN-SPJ-APPEND-ASSOC
+
+
+ACL2 !>>>(LOCAL
+          (DEFUN FN-SPJ-IND (X L L2 B B2 FR CUR HR HR2)
+           (DECLARE (XARGS :MEASURE (NFIX L)))
+           (IF (ZP L)
+               (LIST X L2 B B2 FR CUR HR HR2)
+            (LET ((NEXT (FN-ARTICLE-NEXT-LINE X)))
+             (IF (NOT (FN-ARTICLE-LINE-OKP NEXT))
+                 NIL
+               (LET ((LINE (FN-ARTICLE-LINE-VALUE NEXT))
+                     (REST (FN-ARTICLE-LINE-REST NEXT)))
+                 (IF (NULL LINE)
+                     NIL
+                   (IF (FN-ARTICLE-WSPP (CAR LINE))
+                       (FN-SPJ-IND REST (1- L)
+                                   (1- L2)
+                                   (+ B (LEN LINE) 2)
+                                   (+ B2 (LEN LINE) 2)
+                                   FR (FN-ARTICLE-ADD-FOLD CUR LINE)
+                                   (FN-ARTICLE-HEADER-REV-ADD-LINE HR LINE)
+                                   (FN-ARTICLE-HEADER-REV-ADD-LINE HR2 LINE))
+                     (FN-SPJ-IND
+                          REST (1- L)
+                          (1- L2)
+                          (+ B (LEN LINE) 2)
+                          (+ B2 (LEN LINE) 2)
+                          (IF CUR (CONS CUR FR) FR)
+                          (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD LINE))
+                          (FN-ARTICLE-HEADER-REV-ADD-LINE HR LINE)
+                          (FN-ARTICLE-HEADER-REV-ADD-LINE HR2 LINE))))))))))
+
+For the admission of FN-SPJ-IND we will use the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (NFIX L).  The non-trivial part of the measure conjecture is
+
+Goal
+(AND
+ (O-P (NFIX L))
+ (IMPLIES (AND (NOT (ZP L))
+               (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+               (NOT (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))))
+          (O< (NFIX (+ -1 L)) (NFIX L)))).
+Subgoal 2
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+That completes the proof of the measure theorem for FN-SPJ-IND.  Thus,
+we admit this function under the principle of definition.  We observe
+that the type of FN-SPJ-IND is described by the theorem 
+(TRUE-LISTP (FN-SPJ-IND X L L2 B B2 FR CUR HR HR2)).  We used primitive
+type reasoning.
+
+Summary
+Form:  ( DEFUN FN-SPJ-IND ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-ARTICLE-LINE-OKP)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-NEXT-LINE)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:DEFINITION NULL)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-NEXT-LINE-AUX))
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  419
+FN-SPJ-IND
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+           (IMPLIES
+            (AND (FN-ARTICLE-RESULT-OKP
+                      (FN-ARTICLE-PARSE-LINES X L B (APPEND FR TL)
+                                              CUR HR))
+                 (TRUE-LISTP FR)
+                 (TRUE-LISTP TL)
+                 (NATP L)
+                 (NATP L2)
+                 (<= L L2)
+                 (NATP B)
+                 (NATP B2)
+                 (<= B2 B))
+            (LET ((A (FN-ARTICLE-PARSE-LINES X L B (APPEND FR TL)
+                                             CUR HR))
+                  (S (FN-ARTICLE-PARSE-LINES X L2 B2 FR CUR HR2)))
+             (AND
+              (FN-ARTICLE-RESULT-OKP S)
+              (EQUAL
+                  (FN-ARTICLE-FIELDS (FN-ARTICLE-RESULT-ARTICLE A))
+                  (APPEND (REVERSE TL)
+                          (FN-ARTICLE-FIELDS (FN-ARTICLE-RESULT-ARTICLE S))))
+              (EQUAL (FN-ARTICLE-BODY (FN-ARTICLE-RESULT-ARTICLE A))
+                     (FN-ARTICLE-BODY (FN-ARTICLE-RESULT-ARTICLE S))))))
+           :HINTS
+           (("Goal"
+             :INDUCT (FN-SPJ-IND X L L2 B B2 FR CUR HR HR2)
+             :IN-THEORY
+             (E/D
+               (FN-ARTICLE-PARSE-LINES FN-ARTICLE-FINISH-FIELDS)
+               (FN-ARTICLE-NEXT-LINE FN-ARTICLE-NEW-FIELD FN-ARTICLE-ADD-FOLD
+                                     FN-ARTICLE-HEADER-REV-ADD-LINE
+                                     FN-ARTICLE-BODY-CRLFP
+                                     FN-ARTICLE-FOLD-LINEP
+                                     FN-ARTICLE-WSPP))))))
+
+ACL2 Warning [Double-rewrite] in ( DEFTHM 
+FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS ...):  In a :REWRITE rule generated
+from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS, equivalence relation LIST-EQUIV
+is maintained at one problematic occurrence of variable FR in the first
+hypothesis, but not at any binding occurrence of FR.  Consider replacing
+that occurrence of FR in the first hypothesis with (DOUBLE-REWRITE FR).
+See :doc double-rewrite for more information on this issue.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+will be triggered only by terms containing the function symbol 
+FN-ARTICLE-RESULT-OKP, which has a non-recursive definition.  Unless
+this definition is disabled, this rule is unlikely ever to be used.
+
+
+ACL2 Warning [Free] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+contains the free variables HR, TL, B and L.  These variables will
+be chosen by searching for an instance of 
+(FN-ARTICLE-RESULT-OKP (FN-ARTICLE-PARSE-LINES X L B (APPEND FR TL) CUR HR))
+in the context of the term being rewritten.  This is generally a severe
+restriction on the applicability of a :REWRITE rule.  See :DOC free-
+variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  As noted, we will instantiate the free variables, HR, TL, B
+and L, of a :REWRITE rule generated from 
+FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS, by searching for the hypothesis
+shown above.  However, this hypothesis mentions the function symbol
+FN-ARTICLE-RESULT-OKP, which has a non-recursive definition.  Unless
+this definition is disabled, that function symbol is unlikely to occur
+in the conjecture being proved and hence the search for the required
+hypothesis will likely fail.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+will be triggered only by terms containing the function symbols 
+FN-ARTICLE-FIELDS and FN-ARTICLE-RESULT-ARTICLE, which have non-recursive
+definitions.  Unless these definitions are disabled, this rule is unlikely
+ever to be used.
+
+
+ACL2 Warning [Free] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+contains the free variables L2 and B2.  These variables will be chosen
+by searching for instances of (NATP L2) and (NATP B2) in the context
+of the term being rewritten.  This is generally a severe restriction
+on the applicability of a :REWRITE rule.  See :DOC free-variables.
+
+
+ACL2 Warning [Free] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+contains the free variable HR2 on the right-hand side of the rule,
+which is not bound on the left-hand side or in any hypothesis.  This
+can cause new variables to be introduced into the proof, which may
+surprise you.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  As noted, we will instantiate the free variables, L2 and B2,
+of a :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS,
+by searching for the set of hypotheses shown above.  However, these
+hypotheses mention the function symbol NATP, which has a non-recursive
+definition.  Unless this definition is disabled, that function symbol
+is unlikely to occur in the conjecture being proved and hence the search
+for the required hypotheses will likely fail.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  The previously added rule FN-ARTICLE-FIELDS subsumes a newly
+proposed :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS,
+in the sense that the old rule rewrites a more general target.  Because
+the new rule will be tried first, it may nonetheless find application.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+will be triggered only by terms containing the function symbols 
+FN-ARTICLE-BODY and FN-ARTICLE-RESULT-ARTICLE, which have non-recursive
+definitions.  Unless these definitions are disabled, this rule is unlikely
+ever to be used.
+
+
+ACL2 Warning [Free] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+contains the free variables L2 and B2.  These variables will be chosen
+by searching for instances of (NATP L2) and (NATP B2) in the context
+of the term being rewritten.  This is generally a severe restriction
+on the applicability of a :REWRITE rule.  See :DOC free-variables.
+
+
+ACL2 Warning [Free] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+contains the free variable HR2 on the right-hand side of the rule,
+which is not bound on the left-hand side or in any hypothesis.  This
+can cause new variables to be introduced into the proof, which may
+surprise you.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  As noted, we will instantiate the free variables, L2 and B2,
+of a :REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS,
+by searching for the set of hypotheses shown above.  However, these
+hypotheses mention the function symbol NATP, which has a non-recursive
+definition.  Unless this definition is disabled, that function symbol
+is unlikely to occur in the conjecture being proved and hence the search
+for the required hypotheses will likely fail.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+...):  The previously added rule FN-ARTICLE-BODY subsumes a newly proposed
+:REWRITE rule generated from FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS,
+in the sense that the old rule rewrites a more general target.  Because
+the new rule will be tried first, it may nonetheless find application.
+
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by 
+(FN-SPJ-IND X L L2 B B2 FR CUR HR HR2).
+
+This suggestion was produced using the :induction rule FN-SPJ-IND.
+If we let (:P B B2 CUR FR HR HR2 L L2 TL X) denote *1 above then the
+induction scheme we'll use is
+(AND
+ (IMPLIES
+  (AND
+   (NOT (ZP L))
+   (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+   (NOT (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+   (NOT
+    (FN-ARTICLE-WSPP (CAR (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))))
+   (:P
+    (+ B
+       (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+       2)
+    (+ B2
+       (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+       2)
+    (FN-ARTICLE-LINE-VALUE
+     (FN-ARTICLE-NEW-FIELD (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+    (IF CUR (CONS CUR FR) FR)
+    (FN-ARTICLE-HEADER-REV-ADD-LINE
+         HR
+         (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+    (FN-ARTICLE-HEADER-REV-ADD-LINE
+         HR2
+         (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+    (+ -1 L)
+    (+ -1 L2)
+    TL
+    (FN-ARTICLE-LINE-REST (FN-ARTICLE-NEXT-LINE X))))
+  (:P B B2 CUR FR HR HR2 L L2 TL X))
+ (IMPLIES
+  (AND
+   (NOT (ZP L))
+   (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+   (NOT (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+   (FN-ARTICLE-WSPP (CAR (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+   (:P (+ B
+          (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+          2)
+       (+ B2
+          (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+          2)
+       (FN-ARTICLE-ADD-FOLD CUR
+                            (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+       FR
+       (FN-ARTICLE-HEADER-REV-ADD-LINE
+            HR
+            (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+       (FN-ARTICLE-HEADER-REV-ADD-LINE
+            HR2
+            (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+       (+ -1 L)
+       (+ -1 L2)
+       TL
+       (FN-ARTICLE-LINE-REST (FN-ARTICLE-NEXT-LINE X))))
+  (:P B B2 CUR FR HR HR2 L L2 TL X))
+ (IMPLIES (AND (NOT (ZP L))
+               (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+               (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+          (:P B B2 CUR FR HR HR2 L L2 TL X))
+ (IMPLIES (AND (NOT (ZP L))
+               (NOT (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))))
+          (:P B B2 CUR FR HR HR2 L L2 TL X))
+ (IMPLIES (ZP L)
+          (:P B B2 CUR FR HR HR2 L L2 TL X))).
+This induction is justified by the same argument used to admit FN-SPJ-IND.
+Note, however, that the unmeasured variables X, L2, B, B2, FR, CUR,
+HR and HR2 are being instantiated.  When applied to the goal at hand
+the above induction scheme produces five nontautological subgoals.
+Subgoal *1/5
+Subgoal *1/5'
+
+Splitter note (see :DOC splitter) for Subgoal *1/5' (12 subgoals).
+  if-intro: ((:DEFINITION FN-ARTICLE-RESULT-OKP)
+             (:DEFINITION NOT))
+
+Subgoal *1/5.12
+Subgoal *1/5.12'
+Subgoal *1/5.11
+Subgoal *1/5.11'
+Subgoal *1/5.10
+Subgoal *1/5.10'
+Subgoal *1/5.9
+Subgoal *1/5.8
+Subgoal *1/5.7
+Subgoal *1/5.6
+Subgoal *1/5.6'
+
+Splitter note (see :DOC splitter) for Subgoal *1/5.6' (3 subgoals).
+  if-intro: ((:DEFINITION FN-ARTICLE-PARSE-LINES))
+
+Subgoal *1/5.6.3
+Subgoal *1/5.6.3'
+Subgoal *1/5.6.2
+Subgoal *1/5.6.2'
+Subgoal *1/5.6.1
+Subgoal *1/5.5
+Subgoal *1/5.5'
+
+Splitter note (see :DOC splitter) for Subgoal *1/5.5' (4 subgoals).
+  if-intro: ((:DEFINITION FN-ARTICLE-PARSE-LINES))
+
+Subgoal *1/5.5.4
+Subgoal *1/5.5.4'
+Subgoal *1/5.5.4''
+Subgoal *1/5.5.3
+Subgoal *1/5.5.2
+Subgoal *1/5.5.1
+Subgoal *1/5.5.1'
+Subgoal *1/5.5.1''
+Subgoal *1/5.4
+Subgoal *1/5.4'
+
+Splitter note (see :DOC splitter) for Subgoal *1/5.4' (4 subgoals).
+  if-intro: ((:DEFINITION FN-ARTICLE-PARSE-LINES))
+
+Subgoal *1/5.4.4
+Subgoal *1/5.4.4'
+Subgoal *1/5.4.4''
+Subgoal *1/5.4.3
+Subgoal *1/5.4.2
+Subgoal *1/5.4.1
+Subgoal *1/5.4.1'
+Subgoal *1/5.4.1''
+Subgoal *1/5.3
+Subgoal *1/5.3'
+Subgoal *1/5.3''
+Subgoal *1/5.2
+Subgoal *1/5.2'
+Subgoal *1/5.2''
+Subgoal *1/5.2'''
+Subgoal *1/5.1
+Subgoal *1/5.1'
+Subgoal *1/5.1''
+Subgoal *1/5.1'''
+Subgoal *1/4
+Subgoal *1/4'
+
+Splitter note (see :DOC splitter) for Subgoal *1/4' (6 subgoals).
+  if-intro: ((:DEFINITION NOT))
+
+Subgoal *1/4.6
+Subgoal *1/4.5
+Subgoal *1/4.4
+Subgoal *1/4.3
+Subgoal *1/4.3'
+Subgoal *1/4.2
+Subgoal *1/4.2'
+Subgoal *1/4.2''
+Subgoal *1/4.1
+Subgoal *1/4.1'
+Subgoal *1/4.1''
+Subgoal *1/3
+Subgoal *1/3'
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+Subgoal *1/1''
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+The storage of FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS depends upon the
+:type-prescription rule FN-ARTICLE-RESULT-OKP.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-ARTICLE-BODY)
+        (:DEFINITION FN-ARTICLE-FIELDS)
+        (:DEFINITION FN-ARTICLE-FINISH-FIELDS)
+        (:DEFINITION FN-ARTICLE-LINE-OKP)
+        (:DEFINITION FN-ARTICLE-LINE-REST)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-MAKE)
+        (:DEFINITION FN-ARTICLE-OK)
+        (:DEFINITION FN-ARTICLE-PARSE-LINES)
+        (:DEFINITION FN-ARTICLE-RESULT-ARTICLE)
+        (:DEFINITION FN-ARTICLE-RESULT-OKP)
+        (:DEFINITION NATP)
+        (:DEFINITION NOT)
+        (:DEFINITION NULL)
+        (:DEFINITION REVERSE)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-LINEAR NIL)
+        (:FAKE-RUNE-FOR-LINEAR-EQUALITIES NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-SPJ-IND)
+        (:REWRITE APPEND-TO-NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-2-OF-+)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:REWRITE FN-SPJ-APPEND-ASSOC)
+        (:REWRITE FN-SPJ-LEN-OF-APPEND)
+        (:REWRITE REV-OF-APPEND)
+        (:REWRITE REV-OF-CONS)
+        (:REWRITE REVAPPEND-REMOVAL)
+        (:REWRITE REVERSE-REMOVAL)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-BODY-CRLFP)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-FOLD-LINEP)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-NEW-FIELD)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-NEXT-LINE)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-PARSE-LINES)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-RESULT-OKP)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-WSPP)
+        (:TYPE-PRESCRIPTION LEN)
+        (:TYPE-PRESCRIPTION REV)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-ARTICLE-PARSE-LINES)
+             (:DEFINITION FN-ARTICLE-RESULT-OKP)
+             (:DEFINITION NOT))
+Warnings:  Subsume, Free, Non-rec and Double-rewrite
+Time:  0.33 seconds (prove: 0.32, print: 0.00, other: 0.01)
+Prover steps counted:  180062
+FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+
+
+ACL2 !>>>(DEFUN FN-SPJ-LINE-FREEP (X)
+           (DECLARE (XARGS :GUARD T))
+           (IF (CONSP X)
+               (AND (NOT (EQUAL (CAR X) 13))
+                    (NOT (EQUAL (CAR X) 10))
+                    (FN-SPJ-LINE-FREEP (CDR X)))
+             T))
+
+The admission of FN-SPJ-LINE-FREEP is trivial, using the relation O<
+(which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT X).  We observe that the type of 
+FN-SPJ-LINE-FREEP is described by the theorem 
+(OR (EQUAL (FN-SPJ-LINE-FREEP X) T) (EQUAL (FN-SPJ-LINE-FREEP X) NIL)).
+
+Computing the guard conjecture for FN-SPJ-LINE-FREEP....
+
+The guard conjecture for FN-SPJ-LINE-FREEP is trivial to prove.  
+FN-SPJ-LINE-FREEP is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-SPJ-LINE-FREEP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-SPJ-LINE-FREEP
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SPJ-NEXT-LINE-AUX-OF-A-LINE
+           (IMPLIES
+               (AND (FN-SPJ-LINE-FREEP L)
+                    (TRUE-LISTP L)
+                    (NATP LEFT))
+               (EQUAL (FN-ARTICLE-NEXT-LINE-AUX (APPEND L (LIST* 13 10 REST))
+                                                LINE-REV LEFT)
+                      (IF (<= (LEN L) LEFT)
+                          (LIST :OK (REVERSE (REVAPPEND L LINE-REV))
+                                REST)
+                        (FN-ARTICLE-ERROR :LIMIT))))
+           :HINTS (("Goal" :INDUCT (FN-ARTICLE-NEXT-LINE-AUX L LINE-REV LEFT)
+                           :IN-THEORY (ENABLE FN-ARTICLE-NEXT-LINE-AUX)))))
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by 
+(FN-ARTICLE-NEXT-LINE-AUX L LINE-REV LEFT).
+
+This suggestion was produced using the :induction rule 
+FN-ARTICLE-NEXT-LINE-AUX.  If we let (:P L LEFT LINE-REV REST) denote
+*1 above then the induction scheme we'll use is
+(AND (IMPLIES (NOT (CONSP L))
+              (:P L LEFT LINE-REV REST))
+     (IMPLIES (AND (CONSP L)
+                   (NOT (EQUAL (CAR L) 13))
+                   (NOT (EQUAL (CAR L) 10))
+                   (NOT (ZP LEFT))
+                   (:P (CDR L)
+                       (+ -1 LEFT)
+                       (CONS (CAR L) LINE-REV)
+                       REST))
+              (:P L LEFT LINE-REV REST))
+     (IMPLIES (AND (CONSP L)
+                   (NOT (EQUAL (CAR L) 13))
+                   (NOT (EQUAL (CAR L) 10))
+                   (ZP LEFT))
+              (:P L LEFT LINE-REV REST))
+     (IMPLIES (AND (CONSP L) (EQUAL (CAR L) 10))
+              (:P L LEFT LINE-REV REST))
+     (IMPLIES (AND (CONSP L)
+                   (EQUAL (CAR L) 13)
+                   (NOT (AND (CONSP (CDR L))
+                             (EQUAL (CADR L) 10))))
+              (:P L LEFT LINE-REV REST))
+     (IMPLIES (AND (CONSP L)
+                   (EQUAL (CAR L) 13)
+                   (AND (CONSP (CDR L))
+                        (EQUAL (CADR L) 10)))
+              (:P L LEFT LINE-REV REST))).
+This induction is justified by the same argument used to admit 
+FN-ARTICLE-NEXT-LINE-AUX.  Note, however, that the unmeasured variables
+LINE-REV and LEFT are being instantiated.  When applied to the goal
+at hand the above induction scheme produces six nontautological subgoals.
+Subgoal *1/6
+Subgoal *1/6'
+Subgoal *1/5
+Subgoal *1/5'
+
+Splitter note (see :DOC splitter) for Subgoal *1/5' (4 subgoals).
+  if-intro: ((:DEFINITION NOT)
+             (:DEFINITION REVERSE))
+
+Subgoal *1/5.4
+Subgoal *1/5.3
+Subgoal *1/5.3'
+Subgoal *1/5.3''
+Subgoal *1/5.3'''
+Subgoal *1/5.2
+Subgoal *1/5.1
+Subgoal *1/4
+Subgoal *1/4'
+Subgoal *1/4''
+
+Splitter note (see :DOC splitter) for Subgoal *1/4'' (17 subgoals).
+  if-intro: ((:DEFINITION FN-ARTICLE-NEXT-LINE-AUX)
+             (:DEFINITION NOT)
+             (:DEFINITION REVERSE))
+
+Subgoal *1/4.17
+Subgoal *1/4.17'
+Subgoal *1/4.17''
+Subgoal *1/4.17'''
+Subgoal *1/4.17'4'
+Subgoal *1/4.16
+Subgoal *1/4.16'
+Subgoal *1/4.16''
+Subgoal *1/4.16'''
+Subgoal *1/4.16'4'
+Subgoal *1/4.15
+Subgoal *1/4.15'
+Subgoal *1/4.14
+Subgoal *1/4.14'
+Subgoal *1/4.14''
+Subgoal *1/4.14'''
+Subgoal *1/4.13
+Subgoal *1/4.13'
+Subgoal *1/4.13''
+Subgoal *1/4.13'''
+Subgoal *1/4.12
+Subgoal *1/4.12'
+
+Splitter note (see :DOC splitter) for Subgoal *1/4.12' (2 subgoals).
+  if-intro: ((:REWRITE CONS-EQUAL))
+
+Subgoal *1/4.12.2
+Subgoal *1/4.12.2'
+Subgoal *1/4.12.2''
+Subgoal *1/4.12.1
+Subgoal *1/4.12.1'
+Subgoal *1/4.12.1''
+Subgoal *1/4.11
+Subgoal *1/4.11'
+Subgoal *1/4.11''
+Subgoal *1/4.11'''
+Subgoal *1/4.11'4'
+Subgoal *1/4.10
+Subgoal *1/4.10'
+
+Splitter note (see :DOC splitter) for Subgoal *1/4.10' (2 subgoals).
+  if-intro: ((:REWRITE CONS-EQUAL))
+
+Subgoal *1/4.10.2
+Subgoal *1/4.10.2'
+Subgoal *1/4.10.2''
+Subgoal *1/4.10.1
+Subgoal *1/4.10.1'
+Subgoal *1/4.10.1''
+Subgoal *1/4.9
+Subgoal *1/4.8
+Subgoal *1/4.8'
+Subgoal *1/4.7
+Subgoal *1/4.7'
+Subgoal *1/4.7''
+Subgoal *1/4.7'''
+Subgoal *1/4.6
+Subgoal *1/4.6'
+Subgoal *1/4.6''
+Subgoal *1/4.6'''
+Subgoal *1/4.5
+Subgoal *1/4.5'
+Subgoal *1/4.4
+Subgoal *1/4.4'
+Subgoal *1/4.4''
+Subgoal *1/4.4'''
+Subgoal *1/4.3
+Subgoal *1/4.3'
+Subgoal *1/4.3''
+Subgoal *1/4.3'''
+Subgoal *1/4.2
+Subgoal *1/4.2'
+Subgoal *1/4.2''
+Subgoal *1/4.1
+Subgoal *1/4.1'
+Subgoal *1/4.1''
+Subgoal *1/3
+Subgoal *1/3'
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-NEXT-LINE-AUX-OF-A-LINE ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:CONGRUENCE LIST-EQUIV-IMPLIES-LIST-EQUIV-APPEND-2)
+        (:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-ARTICLE-NEXT-LINE-AUX)
+        (:DEFINITION FN-SPJ-LINE-FREEP)
+        (:DEFINITION LEN)
+        (:DEFINITION NATP)
+        (:DEFINITION NOT)
+        (:DEFINITION REVERSE)
+        (:DEFINITION TRUE-LISTP)
+        (:ELIM CAR-CDR-ELIM)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-SPJ-LINE-FREEP)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART LEN)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART REV)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-LINEAR-EQUALITIES NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-ARTICLE-NEXT-LINE-AUX)
+        (:REWRITE APPEND-TO-NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE CONS-CAR-CDR)
+        (:REWRITE CONS-EQUAL)
+        (:REWRITE FN-SPJ-APPEND-ASSOC)
+        (:REWRITE LIST-FIX-UNDER-LIST-EQUIV)
+        (:REWRITE REV-OF-APPEND)
+        (:REWRITE REV-OF-CONS)
+        (:REWRITE REV-OF-REV)
+        (:REWRITE REV-WHEN-NOT-CONSP)
+        (:REWRITE REVAPPEND-REMOVAL)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION FN-SPJ-LINE-FREEP)
+        (:TYPE-PRESCRIPTION LEN)
+        (:TYPE-PRESCRIPTION REV))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-ARTICLE-NEXT-LINE-AUX)
+             (:DEFINITION NOT)
+             (:DEFINITION REVERSE)
+             (:REWRITE CONS-EQUAL))
+Time:  0.05 seconds (prove: 0.05, print: 0.00, other: 0.00)
+Prover steps counted:  24808
+FN-SPJ-NEXT-LINE-AUX-OF-A-LINE
+
+
+ACL2 !>>>(LOCAL
+           (DEFTHM FN-SPJ-NEXT-LINE-OF-A-LINE
+             (IMPLIES
+                  (AND (FN-SPJ-LINE-FREEP L)
+                       (TRUE-LISTP L))
+                  (EQUAL (FN-ARTICLE-NEXT-LINE (APPEND L (LIST* 13 10 REST)))
+                         (IF (<= (LEN L)
+                                 *FN-ARTICLE-MAX-LINE-OCTETS*)
+                             (LIST :OK L REST)
+                           (FN-ARTICLE-ERROR :LIMIT))))
+             :HINTS (("Goal" :IN-THEORY (ENABLE FN-ARTICLE-NEXT-LINE)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-NEXT-LINE-OF-A-LINE ...):
+A :REWRITE rule generated from FN-SPJ-NEXT-LINE-OF-A-LINE will be triggered
+only by terms containing the function symbol FN-ARTICLE-NEXT-LINE,
+which has a non-recursive definition.  Unless this definition is disabled,
+this rule is unlikely ever to be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SPJ-NEXT-LINE-OF-A-LINE ...):
+The previously added rule FN-ARTICLE-NEXT-LINE subsumes a newly proposed
+:REWRITE rule generated from FN-SPJ-NEXT-LINE-OF-A-LINE, in the sense
+that the old rule rewrites a more general target.  Because the new
+rule will be tried first, it may nonetheless find application.
+
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-NEXT-LINE-OF-A-LINE ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-ARTICLE-NEXT-LINE)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE APPEND-TO-NIL)
+        (:REWRITE FN-SPJ-NEXT-LINE-AUX-OF-A-LINE)
+        (:REWRITE LIST-FIX-WHEN-TRUE-LISTP)
+        (:REWRITE REV-OF-REV)
+        (:REWRITE REVAPPEND-REMOVAL)
+        (:REWRITE REVERSE-REMOVAL)
+        (:TYPE-PRESCRIPTION FN-SPJ-LINE-FREEP)
+        (:TYPE-PRESCRIPTION REV))
+Warnings:  Subsume and Non-rec
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  218
+FN-SPJ-NEXT-LINE-OF-A-LINE
+
+
+ACL2 !>>>(DEFUN FN-SPJ-RESERVED-FIELD-LINEP (L)
+           (DECLARE (XARGS :GUARD T :VERIFY-GUARDS NIL))
+           (LET ((R (FN-ARTICLE-NEW-FIELD L)))
+             (IMPLIES
+                  (FN-ARTICLE-LINE-OKP R)
+                  (FN-HC-RESERVED-NAMEP
+                       (FN-ARTICLE-FIELD-NAME (FN-ARTICLE-LINE-VALUE R))))))
+
+Since FN-SPJ-RESERVED-FIELD-LINEP is non-recursive, its admission is
+trivial.  We observe that the type of FN-SPJ-RESERVED-FIELD-LINEP is
+described by the theorem 
+(OR (EQUAL (FN-SPJ-RESERVED-FIELD-LINEP L)
+           T)
+    (EQUAL (FN-SPJ-RESERVED-FIELD-LINEP L)
+           NIL)).
+We used the :type-prescription rule FN-HC-RESERVED-NAMEP.
+
+Summary
+Form:  ( DEFUN FN-SPJ-RESERVED-FIELD-LINEP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-HC-RESERVED-NAMEP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-SPJ-RESERVED-FIELD-LINEP
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+           (IMPLIES
+            (AND
+               (FN-ARTICLE-RESULT-OKP (FN-ARTICLE-PARSE-LINES X L B (LIST F1)
+                                                              F2 HR))
+               (FN-ARTICLE-RESULT-OKP
+                    (FN-ARTICLE-PARSE-LINES X L2 B2 NIL NIL HR2))
+               F2 (NATP L)
+               (NATP L2)
+               (<= L L2)
+               (NATP B)
+               (NATP B2)
+               (<= B2 B))
+            (LET ((A (FN-ARTICLE-PARSE-LINES X L B (LIST F1)
+                                             F2 HR))
+                  (S (FN-ARTICLE-PARSE-LINES X L2 B2 NIL NIL HR2)))
+             (AND
+              (EQUAL
+                   (FN-ARTICLE-FIELDS (FN-ARTICLE-RESULT-ARTICLE A))
+                   (LIST* F1 F2
+                          (FN-ARTICLE-FIELDS (FN-ARTICLE-RESULT-ARTICLE S))))
+              (EQUAL (FN-ARTICLE-BODY (FN-ARTICLE-RESULT-ARTICLE A))
+                     (FN-ARTICLE-BODY (FN-ARTICLE-RESULT-ARTICLE S))))))
+           :HINTS
+           (("Goal"
+             :EXPAND ((FN-ARTICLE-PARSE-LINES X L B (LIST F1)
+                                              F2 HR)
+                      (FN-ARTICLE-PARSE-LINES X L2 B2 NIL NIL HR2))
+             :USE
+             ((:INSTANCE
+               FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+               (X (FN-ARTICLE-LINE-REST (FN-ARTICLE-NEXT-LINE X)))
+               (L (1- L))
+               (L2 (1- L2))
+               (B (+ B
+                     (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+                     2))
+               (B2 (+ B2
+                      (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+                      2))
+               (FR NIL)
+               (TL (LIST F2 F1))
+               (CUR
+                (FN-ARTICLE-LINE-VALUE
+                     (FN-ARTICLE-NEW-FIELD
+                          (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))))
+               (HR (FN-ARTICLE-HEADER-REV-ADD-LINE
+                        HR
+                        (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+               (HR2 (FN-ARTICLE-HEADER-REV-ADD-LINE
+                         HR2
+                         (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))))
+             :IN-THEORY (E/D (FN-ARTICLE-FINISH-FIELDS)
+                             (FN-ARTICLE-PARSE-LINES
+                                  FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS
+                                  FN-ARTICLE-NEXT-LINE
+                                  FN-ARTICLE-NEW-FIELD FN-ARTICLE-ADD-FOLD
+                                  FN-ARTICLE-HEADER-REV-ADD-LINE
+                                  FN-ARTICLE-BODY-CRLFP
+                                  FN-ARTICLE-FOLD-LINEP
+                                  FN-ARTICLE-WSPP))))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+will be triggered only by terms containing the function symbols 
+FN-ARTICLE-FIELDS and FN-ARTICLE-RESULT-ARTICLE, which have non-recursive
+definitions.  Unless these definitions are disabled, this rule is unlikely
+ever to be used.
+
+
+ACL2 Warning [Free] in ( DEFTHM FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+contains the free variables HR2, B2 and L2.  These variables will be
+chosen by searching for an instance of 
+(FN-ARTICLE-RESULT-OKP (FN-ARTICLE-PARSE-LINES X L2 B2 NIL NIL HR2))
+in the context of the term being rewritten.  This is generally a severe
+restriction on the applicability of a :REWRITE rule.  See :DOC free-
+variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+...):  As noted, we will instantiate the free variables, HR2, B2 and
+L2, of a :REWRITE rule generated from FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS,
+by searching for the hypothesis shown above.  However, this hypothesis
+mentions the function symbol FN-ARTICLE-RESULT-OKP, which has a non-
+recursive definition.  Unless this definition is disabled, that function
+symbol is unlikely to occur in the conjecture being proved and hence
+the search for the required hypothesis will likely fail.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+...):  The previously added rule FN-ARTICLE-FIELDS subsumes a newly
+proposed :REWRITE rule generated from FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS,
+in the sense that the old rule rewrites a more general target.  Because
+the new rule will be tried first, it may nonetheless find application.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+will be triggered only by terms containing the function symbols 
+FN-ARTICLE-BODY and FN-ARTICLE-RESULT-ARTICLE, which have non-recursive
+definitions.  Unless these definitions are disabled, this rule is unlikely
+ever to be used.
+
+
+ACL2 Warning [Free] in ( DEFTHM FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+...):  A :REWRITE rule generated from FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+contains the free variables HR2, B2 and L2.  These variables will be
+chosen by searching for an instance of 
+(FN-ARTICLE-RESULT-OKP (FN-ARTICLE-PARSE-LINES X L2 B2 NIL NIL HR2))
+in the context of the term being rewritten.  This is generally a severe
+restriction on the applicability of a :REWRITE rule.  See :DOC free-
+variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+...):  As noted, we will instantiate the free variables, HR2, B2 and
+L2, of a :REWRITE rule generated from FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS,
+by searching for the hypothesis shown above.  However, this hypothesis
+mentions the function symbol FN-ARTICLE-RESULT-OKP, which has a non-
+recursive definition.  Unless this definition is disabled, that function
+symbol is unlikely to occur in the conjecture being proved and hence
+the search for the required hypothesis will likely fail.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+...):  The previously added rule FN-ARTICLE-BODY subsumes a newly proposed
+:REWRITE rule generated from FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS, in
+the sense that the old rule rewrites a more general target.  Because
+the new rule will be tried first, it may nonetheless find application.
+
+Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-ARTICLE-BODY)
+        (:DEFINITION FN-ARTICLE-FIELDS)
+        (:DEFINITION FN-ARTICLE-FINISH-FIELDS)
+        (:DEFINITION FN-ARTICLE-LINE-OKP)
+        (:DEFINITION FN-ARTICLE-LINE-REST)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-MAKE)
+        (:DEFINITION FN-ARTICLE-OK)
+        (:DEFINITION FN-ARTICLE-PARSE-LINES)
+        (:DEFINITION FN-ARTICLE-RESULT-ARTICLE)
+        (:DEFINITION FN-ARTICLE-RESULT-OKP)
+        (:DEFINITION LEN)
+        (:DEFINITION NATP)
+        (:DEFINITION NOT)
+        (:DEFINITION REVERSE)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-FINISH-FIELDS)
+        (:EXECUTABLE-COUNTERPART LEN)
+        (:EXECUTABLE-COUNTERPART REV)
+        (:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE APPEND-TO-NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-2-OF-+)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:REWRITE REV-OF-CONS)
+        (:REWRITE REVAPPEND-REMOVAL)
+        (:REWRITE REVERSE-REMOVAL)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-BODY-CRLFP)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-NEW-FIELD)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-NEXT-LINE)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-PARSE-LINES)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-WSPP)
+        (:TYPE-PRESCRIPTION LEN)
+        (:TYPE-PRESCRIPTION REV))
+Hint-events: ((:USE FN-SPJ-PARSE-LINES-WITH-OLDER-FIELDS))
+Warnings:  Subsume, Free and Non-rec
+Time:  0.03 seconds (prove: 0.02, print: 0.00, other: 0.00)
+Prover steps counted:  8313
+FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SPJ-PARSE-LINES-OF-A-FIELD-LINE
+           (IMPLIES
+              (AND (FN-SPJ-LINE-FREEP L)
+                   (TRUE-LISTP L)
+                   (CONSP L)
+                   (NOT (FN-ARTICLE-WSPP (CAR L)))
+                   (FN-ARTICLE-RESULT-OKP
+                        (FN-ARTICLE-PARSE-LINES (APPEND L (LIST* 13 10 REST))
+                                                N B FR CUR HR)))
+              (EQUAL (FN-ARTICLE-PARSE-LINES (APPEND L (LIST* 13 10 REST))
+                                             N B FR CUR HR)
+                     (FN-ARTICLE-PARSE-LINES
+                          REST (1- N)
+                          (+ B (LEN L) 2)
+                          (IF CUR (CONS CUR FR) FR)
+                          (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L))
+                          (FN-ARTICLE-HEADER-REV-ADD-LINE HR L))))
+           :RULE-CLASSES NIL
+           :HINTS
+           (("Goal"
+               :EXPAND ((FN-ARTICLE-PARSE-LINES (APPEND L (LIST* 13 10 REST))
+                                                N B FR CUR HR))
+               :IN-THEORY
+               (E/D NIL
+                    (FN-ARTICLE-PARSE-LINES FN-ARTICLE-NEW-FIELD
+                                            FN-ARTICLE-HEADER-REV-ADD-LINE
+                                            FN-ARTICLE-WSPP))))))
+Goal'
+
+Splitter note (see :DOC splitter) for Goal' (7 subgoals).
+  if-intro: ((:DEFINITION FN-ARTICLE-PARSE-LINES)
+             (:DEFINITION NOT)
+             (:REWRITE FN-SPJ-NEXT-LINE-OF-A-LINE))
+
+Subgoal 7
+Subgoal 7'
+Subgoal 6
+Subgoal 6'
+Subgoal 5
+Subgoal 5'
+Subgoal 4
+Subgoal 4'
+Subgoal 3
+Subgoal 3'
+Subgoal 2
+Subgoal 2'
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-PARSE-LINES-OF-A-FIELD-LINE ...)
+Rules: ((:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-ARTICLE-LINE-OKP)
+        (:DEFINITION FN-ARTICLE-LINE-REST)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-MAKE)
+        (:DEFINITION FN-ARTICLE-OK)
+        (:DEFINITION FN-ARTICLE-PARSE-LINES)
+        (:DEFINITION FN-ARTICLE-RESULT-OKP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-LINE-OKP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-2-OF-+)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:REWRITE FN-SPJ-NEXT-LINE-OF-A-LINE)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-ERROR)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-NEW-FIELD)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-OK)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-PARSE-LINES)
+        (:TYPE-PRESCRIPTION FN-SPJ-LINE-FREEP))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-ARTICLE-PARSE-LINES)
+             (:DEFINITION NOT)
+             (:REWRITE FN-SPJ-NEXT-LINE-OF-A-LINE))
+Time:  0.02 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  7531
+FN-SPJ-PARSE-LINES-OF-A-FIELD-LINE
+
+
+ACL2 !>>>(LOCAL
+              (DEFTHM FN-SPJ-SPLIT-COLON-ERROR-IS-NON-NIL
+                (IMPLIES (NOT (EQUAL (CAR (FN-ARTICLE-SPLIT-COLON-AUX L R))
+                                     :OK))
+                         (CADR (FN-ARTICLE-SPLIT-COLON-AUX L R)))
+                :HINTS (("Goal" :IN-THEORY (ENABLE FN-ARTICLE-SPLIT-COLON-AUX
+                                                   FN-ARTICLE-ERROR)))))
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Two induction schemes are suggested
+by this conjecture.  Subsumption reduces that number to one.  
+
+We will induct according to a scheme suggested by 
+(FN-ARTICLE-SPLIT-COLON-AUX L R), while accommodating 
+(FN-ARTICLE-SPLIT-COLON-AUX L R).
+
+These suggestions were produced using the :induction rule 
+FN-ARTICLE-SPLIT-COLON-AUX.  If we let (:P L R) denote *1 above then
+the induction scheme we'll use is
+(AND (IMPLIES (NOT (CONSP L)) (:P L R))
+     (IMPLIES (AND (CONSP L)
+                   (NOT (EQUAL (CAR L) 58))
+                   (:P (CDR L) (CONS (CAR L) R)))
+              (:P L R))
+     (IMPLIES (AND (CONSP L) (EQUAL (CAR L) 58))
+              (:P L R))).
+This induction is justified by the same argument used to admit 
+FN-ARTICLE-SPLIT-COLON-AUX.  Note, however, that the unmeasured variable
+R is being instantiated.  When applied to the goal at hand the above
+induction scheme produces four nontautological subgoals.
+Subgoal *1/4
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-SPLIT-COLON-ERROR-IS-NON-NIL ...)
+Rules: ((:DEFINITION FN-ARTICLE-SPLIT-COLON-AUX)
+        (:DEFINITION NOT)
+        (:DEFINITION REVERSE)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:INDUCTION FN-ARTICLE-SPLIT-COLON-AUX)
+        (:REWRITE APPEND-TO-NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE REVAPPEND-REMOVAL)
+        (:TYPE-PRESCRIPTION REV))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  692
+FN-SPJ-SPLIT-COLON-ERROR-IS-NON-NIL
+
+
+ACL2 !>>>(LOCAL
+              (DEFTHM FN-SPJ-NEW-FIELD-VALUE-IS-NON-NIL
+                (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L))
+                :HINTS (("Goal" :IN-THEORY (ENABLE FN-ARTICLE-NEW-FIELD
+                                                   FN-ARTICLE-MAKE-FIELD)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-NEW-FIELD-VALUE-IS-NON-NIL
+...):  A :REWRITE rule generated from FN-SPJ-NEW-FIELD-VALUE-IS-NON-NIL
+will be triggered only by terms containing the function symbols 
+FN-ARTICLE-LINE-VALUE and FN-ARTICLE-NEW-FIELD, which have non-recursive
+definitions.  Unless these definitions are disabled, this rule is unlikely
+ever to be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SPJ-NEW-FIELD-VALUE-IS-NON-NIL
+...):  The previously added rule FN-ARTICLE-LINE-VALUE subsumes a newly
+proposed :REWRITE rule generated from FN-SPJ-NEW-FIELD-VALUE-IS-NON-NIL,
+in the sense that the old rule rewrites a more general target.  Because
+the new rule will be tried first, it may nonetheless find application.
+
+Goal'
+
+Splitter note (see :DOC splitter) for Goal' (3 subgoals).
+  if-intro: ((:DEFINITION FN-ARTICLE-NAMEP)
+             (:DEFINITION FN-ARTICLE-NEW-FIELD)
+             (:DEFINITION FN-ARTICLE-WSPP))
+
+Subgoal 3
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-NEW-FIELD-VALUE-IS-NON-NIL ...)
+Rules: ((:DEFINITION FN-ARTICLE-LINE-OKP)
+        (:DEFINITION FN-ARTICLE-LINE-REST)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-MAKE-FIELD)
+        (:DEFINITION FN-ARTICLE-NAMEP)
+        (:DEFINITION FN-ARTICLE-NEW-FIELD)
+        (:DEFINITION FN-ARTICLE-WSPP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE FN-SPJ-SPLIT-COLON-ERROR-IS-NON-NIL)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-SPLIT-COLON-AUX))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-ARTICLE-NAMEP)
+             (:DEFINITION FN-ARTICLE-NEW-FIELD)
+             (:DEFINITION FN-ARTICLE-WSPP))
+Warnings:  Subsume and Non-rec
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+Prover steps counted:  656
+FN-SPJ-NEW-FIELD-VALUE-IS-NON-NIL
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SPJ-PARSED-ARTICLE-IS-A-TRUE-LIST
+           (IMPLIES
+             (FN-ARTICLE-RESULT-OKP (FN-ARTICLE-PARSE-LINES X L B FR CUR HR))
+             (TRUE-LISTP (FN-ARTICLE-RESULT-ARTICLE
+                              (FN-ARTICLE-PARSE-LINES X L B FR CUR HR))))
+           :HINTS
+           (("Goal"
+             :INDUCT (FN-ARTICLE-PARSE-LINES X L B FR CUR HR)
+             :IN-THEORY
+             (E/D
+               (FN-ARTICLE-PARSE-LINES)
+               (FN-ARTICLE-NEXT-LINE FN-ARTICLE-NEW-FIELD FN-ARTICLE-ADD-FOLD
+                                     FN-ARTICLE-HEADER-REV-ADD-LINE
+                                     FN-ARTICLE-BODY-CRLFP
+                                     FN-ARTICLE-FOLD-LINEP))))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PARSED-ARTICLE-IS-A-TRUE-LIST
+...):  A :REWRITE rule generated from FN-SPJ-PARSED-ARTICLE-IS-A-TRUE-LIST
+will be triggered only by terms containing the function symbol 
+FN-ARTICLE-RESULT-ARTICLE, which has a non-recursive definition.  Unless
+this definition is disabled, this rule is unlikely ever to be used.
+
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by 
+(FN-ARTICLE-PARSE-LINES X L B FR CUR HR).
+
+This suggestion was produced using the :induction rule FN-ARTICLE-PARSE-LINES.
+If we let (:P B CUR FR HR L X) denote *1 above then the induction scheme
+we'll use is
+(AND
+ (IMPLIES
+  (AND
+   (NOT (ZP L))
+   (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+   (NOT (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+   (<= (+ B
+          (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+          2)
+       16384)
+   (NOT
+    (FN-ARTICLE-WSPP (CAR (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))))
+   (FN-ARTICLE-LINE-OKP
+     (FN-ARTICLE-NEW-FIELD (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+   (NOT (AND CUR (<= 63 (LEN FR))))
+   (:P
+    (+ B
+       (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+       2)
+    (FN-ARTICLE-LINE-VALUE
+     (FN-ARTICLE-NEW-FIELD (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+    (IF CUR (CONS CUR FR) FR)
+    (FN-ARTICLE-HEADER-REV-ADD-LINE
+         HR
+         (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+    (+ -1 L)
+    (FN-ARTICLE-LINE-REST (FN-ARTICLE-NEXT-LINE X))))
+  (:P B CUR FR HR L X))
+ (IMPLIES
+  (AND
+   (NOT (ZP L))
+   (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+   (NOT (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+   (<= (+ B
+          (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+          2)
+       16384)
+   (NOT
+    (FN-ARTICLE-WSPP (CAR (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))))
+   (FN-ARTICLE-LINE-OKP
+     (FN-ARTICLE-NEW-FIELD (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+   (AND CUR (<= 63 (LEN FR))))
+  (:P B CUR FR HR L X))
+ (IMPLIES
+  (AND
+   (NOT (ZP L))
+   (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+   (NOT (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+   (<= (+ B
+          (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+          2)
+       16384)
+   (NOT
+    (FN-ARTICLE-WSPP (CAR (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))))
+   (NOT (FN-ARTICLE-LINE-OKP
+             (FN-ARTICLE-NEW-FIELD
+                  (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))))
+  (:P B CUR FR HR L X))
+ (IMPLIES
+  (AND
+   (NOT (ZP L))
+   (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+   (NOT (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+   (<= (+ B
+          (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+          2)
+       16384)
+   (FN-ARTICLE-WSPP (CAR (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+   CUR
+   (FN-ARTICLE-FOLD-LINEP (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+   (:P (+ B
+          (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+          2)
+       (FN-ARTICLE-ADD-FOLD CUR
+                            (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+       FR
+       (FN-ARTICLE-HEADER-REV-ADD-LINE
+            HR
+            (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+       (+ -1 L)
+       (FN-ARTICLE-LINE-REST (FN-ARTICLE-NEXT-LINE X))))
+  (:P B CUR FR HR L X))
+ (IMPLIES
+  (AND
+     (NOT (ZP L))
+     (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+     (NOT (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+     (<= (+ B
+            (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+            2)
+         16384)
+     (FN-ARTICLE-WSPP (CAR (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+     CUR
+     (NOT (FN-ARTICLE-FOLD-LINEP
+               (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))))
+  (:P B CUR FR HR L X))
+ (IMPLIES
+  (AND
+     (NOT (ZP L))
+     (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+     (NOT (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+     (<= (+ B
+            (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+            2)
+         16384)
+     (FN-ARTICLE-WSPP (CAR (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+     (NOT CUR))
+  (:P B CUR FR HR L X))
+ (IMPLIES (AND (NOT (ZP L))
+               (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+               (NOT (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X))))
+               (< 16384
+                  (+ B
+                     (LEN (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+                     2)))
+          (:P B CUR FR HR L X))
+ (IMPLIES
+  (AND
+     (NOT (ZP L))
+     (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+     (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+     (FN-ARTICLE-BODY-CRLFP (FN-ARTICLE-LINE-REST (FN-ARTICLE-NEXT-LINE X))))
+  (:P B CUR FR HR L X))
+ (IMPLIES
+  (AND
+   (NOT (ZP L))
+   (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))
+   (NULL (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEXT-LINE X)))
+   (NOT
+    (FN-ARTICLE-BODY-CRLFP (FN-ARTICLE-LINE-REST (FN-ARTICLE-NEXT-LINE X)))))
+  (:P B CUR FR HR L X))
+ (IMPLIES (AND (NOT (ZP L))
+               (NOT (FN-ARTICLE-LINE-OKP (FN-ARTICLE-NEXT-LINE X))))
+          (:P B CUR FR HR L X))
+ (IMPLIES (ZP L) (:P B CUR FR HR L X))).
+This induction is justified by the same argument used to admit 
+FN-ARTICLE-PARSE-LINES.  Note, however, that the unmeasured variables
+X, B, FR, CUR and HR are being instantiated.  When applied to the goal
+at hand the above induction scheme produces eleven nontautological
+subgoals.
+Subgoal *1/11
+Subgoal *1/11'
+Subgoal *1/10
+Subgoal *1/10'
+Subgoal *1/9
+Subgoal *1/9'
+Subgoal *1/8
+Subgoal *1/8'
+Subgoal *1/7
+Subgoal *1/7'
+Subgoal *1/6
+Subgoal *1/6'
+Subgoal *1/5
+Subgoal *1/5'
+Subgoal *1/4
+Subgoal *1/4'
+Subgoal *1/3
+Subgoal *1/3'
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+The storage of FN-SPJ-PARSED-ARTICLE-IS-A-TRUE-LIST depends upon the
+:type-prescription rule TRUE-LISTP.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-PARSED-ARTICLE-IS-A-TRUE-LIST ...)
+Rules: ((:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-ARTICLE-FINISH-FIELDS)
+        (:DEFINITION FN-ARTICLE-LINE-OKP)
+        (:DEFINITION FN-ARTICLE-LINE-REST)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-MAKE)
+        (:DEFINITION FN-ARTICLE-OK)
+        (:DEFINITION FN-ARTICLE-PARSE-LINES)
+        (:DEFINITION FN-ARTICLE-RESULT-ARTICLE)
+        (:DEFINITION FN-ARTICLE-RESULT-OKP)
+        (:DEFINITION FN-ARTICLE-WSPP)
+        (:DEFINITION NOT)
+        (:DEFINITION NULL)
+        (:DEFINITION REVERSE)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-WSPP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-ARTICLE-PARSE-LINES)
+        (:REWRITE APPEND-TO-NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-2-OF-+)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:REWRITE FN-SPJ-APPEND-ASSOC)
+        (:REWRITE REV-OF-CONS)
+        (:REWRITE REVAPPEND-REMOVAL)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-BODY-CRLFP)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-FOLD-LINEP)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-NEW-FIELD)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-NEXT-LINE)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-PARSE-LINES)
+        (:TYPE-PRESCRIPTION REV)
+        (:TYPE-PRESCRIPTION TRUE-LISTP))
+Warnings:  Non-rec
+Time:  0.05 seconds (prove: 0.05, print: 0.00, other: 0.00)
+Prover steps counted:  35180
+FN-SPJ-PARSED-ARTICLE-IS-A-TRUE-LIST
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SPJ-PARSED-ARTICLE-OF-PARSE-IS-A-TRUE-LIST
+           (IMPLIES
+               (FN-ARTICLE-RESULT-OKP (FN-ARTICLE-PARSE X))
+               (TRUE-LISTP (FN-ARTICLE-RESULT-ARTICLE (FN-ARTICLE-PARSE X))))
+           :HINTS
+           (("Goal"
+              :USE ((:INSTANCE FN-SPJ-PARSED-ARTICLE-IS-A-TRUE-LIST
+                               (L (1+ *FN-ARTICLE-MAX-HEADER-LINES*))
+                               (B 0)
+                               (FR NIL)
+                               (CUR NIL)
+                               (HR NIL)))
+              :IN-THEORY (E/D (FN-ARTICLE-PARSE)
+                              (FN-ARTICLE-PARSE-LINES
+                                   FN-SPJ-PARSED-ARTICLE-IS-A-TRUE-LIST))))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-SPJ-PARSED-ARTICLE-OF-PARSE-IS-A-TRUE-LIST ...):  A :REWRITE rule
+generated from FN-SPJ-PARSED-ARTICLE-OF-PARSE-IS-A-TRUE-LIST will be
+triggered only by terms containing the function symbols 
+FN-ARTICLE-RESULT-ARTICLE and FN-ARTICLE-PARSE, which have non-recursive
+definitions.  Unless these definitions are disabled, this rule is unlikely
+ever to be used.
+
+Goal'
+Goal''
+
+Q.E.D.
+
+The storage of FN-SPJ-PARSED-ARTICLE-OF-PARSE-IS-A-TRUE-LIST depends
+upon the :type-prescription rule TRUE-LISTP.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-PARSED-ARTICLE-OF-PARSE-IS-A-TRUE-LIST ...)
+Rules: ((:DEFINITION FN-ARTICLE-PARSE)
+        (:DEFINITION FN-ARTICLE-RESULT-ARTICLE)
+        (:DEFINITION FN-ARTICLE-RESULT-OKP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-PARSE-LINES)
+        (:TYPE-PRESCRIPTION FN-CBOR-AT-MOSTP)
+        (:TYPE-PRESCRIPTION FN-CBOR-OCTET-LISTP)
+        (:TYPE-PRESCRIPTION TRUE-LISTP))
+Hint-events: ((:USE FN-SPJ-PARSED-ARTICLE-IS-A-TRUE-LIST))
+Warnings:  Non-rec
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  532
+FN-SPJ-PARSED-ARTICLE-OF-PARSE-IS-A-TRUE-LIST
+
+
+ACL2 !>>>(DEFTHM FN-SPJ-TWO-LINES-THEN-THE-SOURCE
+          (IMPLIES
+           (AND
+             (FN-SPJ-LINE-FREEP L1)
+             (TRUE-LISTP L1)
+             (CONSP L1)
+             (NOT (FN-ARTICLE-WSPP (CAR L1)))
+             (FN-SPJ-LINE-FREEP L2)
+             (TRUE-LISTP L2)
+             (CONSP L2)
+             (NOT (FN-ARTICLE-WSPP (CAR L2)))
+             (FN-ARTICLE-RESULT-OKP
+                  (FN-ARTICLE-PARSE
+                       (APPEND L1
+                               (LIST* 13 10 (APPEND L2 (LIST* 13 10 SRC))))))
+             (FN-ARTICLE-RESULT-OKP (FN-ARTICLE-PARSE SRC)))
+           (LET
+            ((A
+              (FN-ARTICLE-RESULT-ARTICLE
+                 (FN-ARTICLE-PARSE
+                      (APPEND L1
+                              (LIST* 13 10 (APPEND L2 (LIST* 13 10 SRC)))))))
+             (S (FN-ARTICLE-RESULT-ARTICLE (FN-ARTICLE-PARSE SRC))))
+            (AND
+              (EQUAL (FN-ARTICLE-FIELDS A)
+                     (LIST* (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L1))
+                            (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L2))
+                            (FN-ARTICLE-FIELDS S)))
+              (EQUAL (FN-ARTICLE-BODY A)
+                     (FN-ARTICLE-BODY S)))))
+          :RULE-CLASSES NIL
+          :HINTS
+          (("Goal"
+              :USE
+              ((:INSTANCE FN-SPJ-PARSE-LINES-OF-A-FIELD-LINE
+                          (L L1)
+                          (REST (APPEND L2 (LIST* 13 10 SRC)))
+                          (N (1+ *FN-ARTICLE-MAX-HEADER-LINES*))
+                          (B 0)
+                          (FR NIL)
+                          (CUR NIL)
+                          (HR NIL))
+               (:INSTANCE
+                    FN-SPJ-PARSE-LINES-OF-A-FIELD-LINE
+                    (L L2)
+                    (REST SRC)
+                    (N *FN-ARTICLE-MAX-HEADER-LINES*)
+                    (B (+ (LEN L1) 2))
+                    (FR NIL)
+                    (CUR (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L1)))
+                    (HR (FN-ARTICLE-HEADER-REV-ADD-LINE NIL L1)))
+               (:INSTANCE
+                    FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS
+                    (X SRC)
+                    (L (1- *FN-ARTICLE-MAX-HEADER-LINES*))
+                    (B (+ (LEN L1) 2 (LEN L2) 2))
+                    (F1 (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L1)))
+                    (F2 (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L2)))
+                    (HR (FN-ARTICLE-HEADER-REV-ADD-LINE
+                             (FN-ARTICLE-HEADER-REV-ADD-LINE NIL L1)
+                             L2))
+                    (L2 (1+ *FN-ARTICLE-MAX-HEADER-LINES*))
+                    (B2 0)
+                    (HR2 NIL)))
+              :IN-THEORY
+              (E/D (FN-ARTICLE-PARSE)
+                   (FN-ARTICLE-PARSE-LINES FN-ARTICLE-NEW-FIELD BINARY-APPEND
+                                           FN-ARTICLE-HEADER-REV-ADD-LINE
+                                           FN-ARTICLE-WSPP)))))
+
+ACL2 Warning [Use] in ( DEFTHM FN-SPJ-TWO-LINES-THEN-THE-SOURCE ...):
+It is unusual to :USE the formula of an enabled :REWRITE or :DEFINITION
+rule, so you may want to consider disabling 
+(:REWRITE FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS) in the hint provided
+for Goal.  See :DOC using-enabled-rules.
+
+Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-TWO-LINES-THEN-THE-SOURCE ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FIX)
+        (:DEFINITION FN-ARTICLE-BODY)
+        (:DEFINITION FN-ARTICLE-FIELDS)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-PARSE)
+        (:DEFINITION FN-ARTICLE-RESULT-ARTICLE)
+        (:DEFINITION FN-ARTICLE-RESULT-OKP)
+        (:DEFINITION NOT)
+        (:DEFINITION SYNP)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:EXECUTABLE-COUNTERPART NATP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE ASSOCIATIVITY-OF-+)
+        (:REWRITE COMMUTATIVITY-2-OF-+)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:REWRITE FN-SPJ-NEW-FIELD-VALUE-IS-NON-NIL)
+        (:REWRITE FOLD-CONSTS-IN-+)
+        (:REWRITE UNICITY-OF-0)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-PARSE-LINES)
+        (:TYPE-PRESCRIPTION FN-CBOR-AT-MOSTP)
+        (:TYPE-PRESCRIPTION FN-CBOR-OCTET-LISTP)
+        (:TYPE-PRESCRIPTION FN-SPJ-LINE-FREEP)
+        (:TYPE-PRESCRIPTION LEN))
+Hint-events: ((:USE FN-SPJ-PARSE-LINES-AFTER-TWO-FIELDS)
+              (:USE FN-SPJ-PARSE-LINES-OF-A-FIELD-LINE))
+Warnings:  Use
+Time:  0.02 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  6762
+FN-SPJ-TWO-LINES-THEN-THE-SOURCE
+
+
+ACL2 !>>>(LOCAL
+              (DEFTHM FN-SPJ-SPLIT-COLON-ERROR-CODE
+                (IMPLIES (NOT (EQUAL (CAR (FN-ARTICLE-SPLIT-COLON-AUX L R))
+                                     :OK))
+                         (EQUAL (CADR (FN-ARTICLE-SPLIT-COLON-AUX L R))
+                                :INVALID-HEADER))
+                :HINTS (("Goal" :IN-THEORY (ENABLE FN-ARTICLE-SPLIT-COLON-AUX
+                                                   FN-ARTICLE-ERROR)))))
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SPJ-SPLIT-COLON-ERROR-CODE ...):
+A newly proposed :REWRITE rule generated from FN-SPJ-SPLIT-COLON-ERROR-CODE
+probably subsumes the previously added :REWRITE rule 
+FN-SPJ-SPLIT-COLON-ERROR-IS-NON-NIL, in the sense that the new rule
+will now probably be applied whenever the old rule would have been.
+
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Two induction schemes are suggested
+by this conjecture.  Subsumption reduces that number to one.  
+
+We will induct according to a scheme suggested by 
+(FN-ARTICLE-SPLIT-COLON-AUX L R), while accommodating 
+(FN-ARTICLE-SPLIT-COLON-AUX L R).
+
+These suggestions were produced using the :induction rule 
+FN-ARTICLE-SPLIT-COLON-AUX.  If we let (:P L R) denote *1 above then
+the induction scheme we'll use is
+(AND (IMPLIES (NOT (CONSP L)) (:P L R))
+     (IMPLIES (AND (CONSP L)
+                   (NOT (EQUAL (CAR L) 58))
+                   (:P (CDR L) (CONS (CAR L) R)))
+              (:P L R))
+     (IMPLIES (AND (CONSP L) (EQUAL (CAR L) 58))
+              (:P L R))).
+This induction is justified by the same argument used to admit 
+FN-ARTICLE-SPLIT-COLON-AUX.  Note, however, that the unmeasured variable
+R is being instantiated.  When applied to the goal at hand the above
+induction scheme produces four nontautological subgoals.
+Subgoal *1/4
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-SPLIT-COLON-ERROR-CODE ...)
+Rules: ((:DEFINITION FN-ARTICLE-SPLIT-COLON-AUX)
+        (:DEFINITION NOT)
+        (:DEFINITION REVERSE)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:INDUCTION FN-ARTICLE-SPLIT-COLON-AUX)
+        (:REWRITE APPEND-TO-NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE REVAPPEND-REMOVAL)
+        (:TYPE-PRESCRIPTION REV))
+Warnings:  Subsume
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  722
+FN-SPJ-SPLIT-COLON-ERROR-CODE
+
+
+ACL2 !>>>(LOCAL
+             (DEFTHM FN-SPJ-SOURCE-HEADER-SKIPS-AN-UNPROJECTED-FIELD
+               (IMPLIES (OR (NOT (TRUE-LISTP X))
+                            (FN-HC-RESERVED-NAMEP (FN-ARTICLE-FIELD-NAME X)))
+                        (EQUAL (FN-HC-SOURCE-HEADER (CONS X FS))
+                               (FN-HC-SOURCE-HEADER FS)))
+               :HINTS (("Goal" :IN-THEORY (E/D (FN-HC-SOURCE-HEADER)
+                                               (FN-HC-RESERVED-NAMEP))))))
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-SOURCE-HEADER-SKIPS-AN-UNPROJECTED-FIELD ...)
+Rules: ((:DEFINITION FN-ARTICLE-FIELD-NAME)
+        (:DEFINITION FN-HC-SOURCE-HEADER)
+        (:DEFINITION NOT)
+        (:DEFINITION TRUE-LISTP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION FN-HC-RESERVED-NAMEP))
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  624
+FN-SPJ-SOURCE-HEADER-SKIPS-AN-UNPROJECTED-FIELD
+
+
+ACL2 !>>>(LOCAL
+           (DEFTHM FN-SPJ-RESERVED-LINE-IS-UNPROJECTED
+             (IMPLIES
+                  (FN-SPJ-RESERVED-FIELD-LINEP L)
+                  (LET ((V (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L))))
+                    (OR (NOT (TRUE-LISTP V))
+                        (FN-HC-RESERVED-NAMEP (FN-ARTICLE-FIELD-NAME V)))))
+             :RULE-CLASSES NIL
+             :HINTS
+             (("Goal" :IN-THEORY
+                      (E/D (FN-SPJ-RESERVED-FIELD-LINEP
+                                FN-ARTICLE-NEW-FIELD
+                                FN-ARTICLE-ERROR FN-ARTICLE-LINE-OKP
+                                FN-ARTICLE-LINE-VALUE)
+                           (FN-HC-RESERVED-NAMEP FN-ARTICLE-FIELD-NAME))))))
+Goal'
+
+Splitter note (see :DOC splitter) for Goal' (2 subgoals).
+  if-intro: ((:DEFINITION FN-ARTICLE-NAMEP)
+             (:DEFINITION FN-ARTICLE-NEW-FIELD)
+             (:DEFINITION FN-ARTICLE-WSPP))
+
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-RESERVED-LINE-IS-UNPROJECTED ...)
+Rules: ((:DEFINITION FN-ARTICLE-LINE-OKP)
+        (:DEFINITION FN-ARTICLE-LINE-REST)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-MAKE-FIELD)
+        (:DEFINITION FN-ARTICLE-NAMEP)
+        (:DEFINITION FN-ARTICLE-NEW-FIELD)
+        (:DEFINITION FN-ARTICLE-WSPP)
+        (:DEFINITION FN-SPJ-RESERVED-FIELD-LINEP)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-WSPP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE FN-SPJ-SPLIT-COLON-ERROR-CODE)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-FTEXT-LISTP)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-HAS-VCHARP)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-HEADER-BYTES-P)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-SPLIT-COLON-AUX))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-ARTICLE-NAMEP)
+             (:DEFINITION FN-ARTICLE-NEW-FIELD)
+             (:DEFINITION FN-ARTICLE-WSPP))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  3160
+FN-SPJ-RESERVED-LINE-IS-UNPROJECTED
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SPJ-SOURCE-HEADER-SKIPS-A-RESERVED-LINE
+           (IMPLIES
+             (FN-SPJ-RESERVED-FIELD-LINEP L)
+             (EQUAL
+                  (FN-HC-SOURCE-HEADER
+                       (CONS (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L))
+                             FS))
+                  (FN-HC-SOURCE-HEADER FS)))
+           :HINTS
+           (("Goal"
+             :USE
+             (FN-SPJ-RESERVED-LINE-IS-UNPROJECTED
+                  (:INSTANCE
+                       FN-SPJ-SOURCE-HEADER-SKIPS-AN-UNPROJECTED-FIELD
+                       (X (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L)))))
+             :IN-THEORY (THEORY 'MINIMAL-THEORY)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-SOURCE-HEADER-SKIPS-A-RESERVED-LINE
+...):  A :REWRITE rule generated from 
+FN-SPJ-SOURCE-HEADER-SKIPS-A-RESERVED-LINE will be triggered only by
+terms containing the function symbols FN-ARTICLE-LINE-VALUE and 
+FN-ARTICLE-NEW-FIELD, which have non-recursive definitions.  Unless
+these definitions are disabled, this rule is unlikely ever to be used.
+
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-SOURCE-HEADER-SKIPS-A-RESERVED-LINE ...)
+Rules: NIL
+Hint-events: ((:USE FN-SPJ-RESERVED-LINE-IS-UNPROJECTED)
+              (:USE FN-SPJ-SOURCE-HEADER-SKIPS-AN-UNPROJECTED-FIELD))
+Warnings:  Non-rec
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-SPJ-SOURCE-HEADER-SKIPS-A-RESERVED-LINE
+
+
+ACL2 !>>>(DEFTHM FN-HC-AUTHORED-SOURCE-IGNORES-TWO-RESERVED-LINES
+          (IMPLIES
+           (AND
+             (FN-SPJ-LINE-FREEP L1)
+             (TRUE-LISTP L1)
+             (CONSP L1)
+             (NOT (FN-ARTICLE-WSPP (CAR L1)))
+             (FN-SPJ-RESERVED-FIELD-LINEP L1)
+             (FN-SPJ-LINE-FREEP L2)
+             (TRUE-LISTP L2)
+             (CONSP L2)
+             (NOT (FN-ARTICLE-WSPP (CAR L2)))
+             (FN-SPJ-RESERVED-FIELD-LINEP L2)
+             (FN-ARTICLE-RESULT-OKP
+                  (FN-ARTICLE-PARSE
+                       (APPEND L1
+                               (LIST* 13 10 (APPEND L2 (LIST* 13 10 SRC))))))
+             (FN-ARTICLE-RESULT-OKP (FN-ARTICLE-PARSE SRC)))
+           (EQUAL
+            (FN-HC-AUTHORED-SOURCE
+             (FN-ARTICLE-RESULT-ARTICLE
+                 (FN-ARTICLE-PARSE
+                      (APPEND L1
+                              (LIST* 13 10 (APPEND L2 (LIST* 13 10 SRC)))))))
+            (FN-HC-AUTHORED-SOURCE
+                 (FN-ARTICLE-RESULT-ARTICLE (FN-ARTICLE-PARSE SRC)))))
+          :RULE-CLASSES NIL
+          :HINTS
+          (("Goal"
+            :USE
+            (FN-SPJ-TWO-LINES-THEN-THE-SOURCE
+             (:INSTANCE FN-SPJ-PARSED-ARTICLE-OF-PARSE-IS-A-TRUE-LIST
+                        (X SRC))
+             (:INSTANCE
+                  FN-SPJ-PARSED-ARTICLE-OF-PARSE-IS-A-TRUE-LIST
+                  (X (APPEND L1
+                             (LIST* 13 10 (APPEND L2 (LIST* 13 10 SRC))))))
+             (:INSTANCE
+               FN-SPJ-SOURCE-HEADER-SKIPS-A-RESERVED-LINE
+               (L L2)
+               (FS (FN-ARTICLE-FIELDS
+                        (FN-ARTICLE-RESULT-ARTICLE (FN-ARTICLE-PARSE SRC)))))
+             (:INSTANCE
+              FN-SPJ-SOURCE-HEADER-SKIPS-A-RESERVED-LINE
+              (L L1)
+              (FS
+               (CONS
+                 (FN-ARTICLE-LINE-VALUE (FN-ARTICLE-NEW-FIELD L2))
+                 (FN-ARTICLE-FIELDS
+                      (FN-ARTICLE-RESULT-ARTICLE (FN-ARTICLE-PARSE SRC)))))))
+            :IN-THEORY
+            (E/D (FN-HC-AUTHORED-SOURCE FN-ARTICLE-FIELDS FN-ARTICLE-BODY)
+                 (FN-ARTICLE-PARSE
+                      FN-HC-SOURCE-HEADER BINARY-APPEND
+                      FN-SPJ-SOURCE-HEADER-SKIPS-A-RESERVED-LINE
+                      FN-SPJ-RESERVED-FIELD-LINEP
+                      FN-ARTICLE-NEW-FIELD
+                      FN-SPJ-PARSED-ARTICLE-OF-PARSE-IS-A-TRUE-LIST)))))
+Goal'
+Goal''
+
+Splitter note (see :DOC splitter) for Goal'' (2 subgoals).
+  if-intro: ((:DEFINITION FN-HC-AUTHORED-SOURCE)
+             (:DEFINITION TRUE-LISTP))
+
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-HC-AUTHORED-SOURCE-IGNORES-TWO-RESERVED-LINES ...)
+Rules: ((:DEFINITION FN-ARTICLE-BODY)
+        (:DEFINITION FN-ARTICLE-FIELDS)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-RESULT-ARTICLE)
+        (:DEFINITION FN-ARTICLE-RESULT-OKP)
+        (:DEFINITION FN-ARTICLE-WSPP)
+        (:DEFINITION FN-HC-AUTHORED-SOURCE)
+        (:DEFINITION NOT)
+        (:DEFINITION TRUE-LISTP)
+        (:EXECUTABLE-COUNTERPART BINARY-APPEND)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-HC-AUTHORED-SOURCE)
+        (:EXECUTABLE-COUNTERPART FN-HC-SOURCE-HEADER)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-PARSE)
+        (:TYPE-PRESCRIPTION FN-SPJ-LINE-FREEP)
+        (:TYPE-PRESCRIPTION FN-SPJ-RESERVED-FIELD-LINEP))
+Hint-events: ((:USE FN-SPJ-PARSED-ARTICLE-OF-PARSE-IS-A-TRUE-LIST)
+              (:USE FN-SPJ-SOURCE-HEADER-SKIPS-A-RESERVED-LINE)
+              (:USE FN-SPJ-TWO-LINES-THEN-THE-SOURCE))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-HC-AUTHORED-SOURCE)
+             (:DEFINITION TRUE-LISTP))
+Time:  0.02 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  5090
+FN-HC-AUTHORED-SOURCE-IGNORES-TWO-RESERVED-LINES
+
+
+ACL2 !>>>(LOCAL (DEFTHM FN-SPJ-LINE-FREEP-OF-APPEND
+                  (EQUAL (FN-SPJ-LINE-FREEP (APPEND A B))
+                         (AND (FN-SPJ-LINE-FREEP A)
+                              (FN-SPJ-LINE-FREEP B)))))
+Subgoal 2
+
+([ A key checkpoint:
+
+Subgoal 2
+(IMPLIES (FN-SPJ-LINE-FREEP A)
+         (EQUAL (FN-SPJ-LINE-FREEP (APPEND A B))
+                (FN-SPJ-LINE-FREEP B)))
+
+*1 (Subgoal 2) is pushed for proof by induction.
+
+])
+Subgoal 1
+Subgoal 1'
+
+([ A key checkpoint:
+
+Subgoal 1'
+(IMPLIES (NOT (FN-SPJ-LINE-FREEP A))
+         (NOT (FN-SPJ-LINE-FREEP (APPEND A B))))
+
+Normally we would attempt to prove Subgoal 1' by induction.  However,
+we prefer in this instance to focus on the original input conjecture
+rather than this simplified special case.  We therefore abandon our
+previous work on this conjecture and reassign the name *1 to the original
+conjecture.  (See :DOC otf-flg.)
+
+])
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  These merge into two derived induction
+schemes.  However, one of these is flawed and so we are left with one
+viable candidate.  
+
+We will induct according to a scheme suggested by (FN-SPJ-LINE-FREEP A),
+while accommodating (APPEND A B).
+
+These suggestions were produced using the :induction rules BINARY-APPEND
+and FN-SPJ-LINE-FREEP.  If we let (:P A B) denote *1 above then the
+induction scheme we'll use is
+(AND (IMPLIES (NOT (CONSP A)) (:P A B))
+     (IMPLIES (AND (CONSP A) (EQUAL (CAR A) 13))
+              (:P A B))
+     (IMPLIES (AND (CONSP A) (EQUAL (CAR A) 10))
+              (:P A B))
+     (IMPLIES (AND (CONSP A)
+                   (NOT (EQUAL (CAR A) 13))
+                   (NOT (EQUAL (CAR A) 10))
+                   (:P (CDR A) B))
+              (:P A B))).
+This induction is justified by the same argument used to admit 
+FN-SPJ-LINE-FREEP.  When applied to the goal at hand the above induction
+scheme produces four nontautological subgoals.
+Subgoal *1/4
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-LINE-FREEP-OF-APPEND ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-SPJ-LINE-FREEP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION BINARY-APPEND)
+        (:INDUCTION FN-SPJ-LINE-FREEP)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION FN-SPJ-LINE-FREEP))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  997
+FN-SPJ-LINE-FREEP-OF-APPEND
+
+
+ACL2 !>>>(LOCAL (DEFTHM FN-SPJ-INJ-APPEND-IS-APPEND
+                  (EQUAL (FN-INJ-APPEND A B) (APPEND A B))
+                  :HINTS (("Goal" :IN-THEORY (ENABLE FN-INJ-APPEND)))))
+
+ACL2 Warning [Double-rewrite] in ( DEFTHM FN-SPJ-INJ-APPEND-IS-APPEND
+...):  In a :REWRITE rule generated from FN-SPJ-INJ-APPEND-IS-APPEND,
+equivalence relation LIST-EQUIV is maintained at one problematic occurrence
+of variable A in the right-hand side, but not at any binding occurrence
+of A.  Consider replacing that occurrence of A in the right-hand side
+with (DOUBLE-REWRITE A).  See :doc double-rewrite for more information
+on this issue.
+
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Two induction schemes are suggested
+by this conjecture.  These merge into one derived induction scheme.
+
+We will induct according to a scheme suggested by (APPEND A B), while
+accommodating (FN-INJ-APPEND A B).
+
+These suggestions were produced using the :induction rules BINARY-APPEND
+and FN-INJ-APPEND.  If we let (:P A B) denote *1 above then the induction
+scheme we'll use is
+(AND (IMPLIES (AND (NOT (ENDP A)) (:P (CDR A) B))
+              (:P A B))
+     (IMPLIES (ENDP A) (:P A B))).
+This induction is justified by the same argument used to admit BINARY-APPEND.
+When applied to the goal at hand the above induction scheme produces
+two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-INJ-APPEND-IS-APPEND ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION ENDP)
+        (:DEFINITION FN-INJ-APPEND)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION BINARY-APPEND)
+        (:INDUCTION FN-INJ-APPEND))
+Warnings:  Double-rewrite
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  229
+FN-SPJ-INJ-APPEND-IS-APPEND
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SPJ-INJECTION-BLOCK-LINES
+           (EQUAL
+             (APPEND (FN-INJ-PREFIX DATE MSGID AGENT NIL NIL)
+                     SRC)
+             (APPEND
+                  (APPEND *FN-INJ-PATH-FIELD*
+                          AGENT *FN-INJ-PATH-TAIL*)
+                  (LIST* 13 10
+                         (APPEND (APPEND *FN-INJ-INJECTION-INFO-FIELD* AGENT)
+                                 (LIST* 13 10 SRC)))))
+           :RULE-CLASSES NIL
+           :HINTS (("Goal" :IN-THEORY (ENABLE FN-INJ-PREFIX FN-INJ-PATH-LINE
+                                              FN-INJ-INJECTION-INFO-LINE)))))
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-INJECTION-BLOCK-LINES ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-INJ-INJECTION-INFO-LINE)
+        (:DEFINITION FN-INJ-PATH-LINE)
+        (:DEFINITION FN-INJ-PREFIX)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART FN-INJ-APPEND)
+        (:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE FN-SPJ-APPEND-ASSOC)
+        (:REWRITE FN-SPJ-INJ-APPEND-IS-APPEND)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  8521
+FN-SPJ-INJECTION-BLOCK-LINES
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SPJ-PATH-LINE-IS-RESERVED
+           (FN-SPJ-RESERVED-FIELD-LINEP (APPEND *FN-INJ-PATH-FIELD*
+                                                AGENT *FN-INJ-PATH-TAIL*))
+           :HINTS (("Goal" :IN-THEORY (ENABLE FN-SPJ-RESERVED-FIELD-LINEP
+                                              FN-ARTICLE-NEW-FIELD
+                                              FN-ARTICLE-SPLIT-COLON-AUX)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-PATH-LINE-IS-RESERVED ...):
+A :REWRITE rule generated from FN-SPJ-PATH-LINE-IS-RESERVED will be
+triggered only by terms containing the function symbol 
+FN-SPJ-RESERVED-FIELD-LINEP, which has a non-recursive definition.
+Unless this definition is disabled, this rule is unlikely ever to be
+used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SPJ-PATH-LINE-IS-RESERVED ...):
+The previously added rule FN-SPJ-RESERVED-FIELD-LINEP subsumes a newly
+proposed :REWRITE rule generated from FN-SPJ-PATH-LINE-IS-RESERVED,
+in the sense that the old rule rewrites a more general target.  Because
+the new rule will be tried first, it may nonetheless find application.
+
+Goal'
+
+Q.E.D.
+
+The storage of FN-SPJ-PATH-LINE-IS-RESERVED depends upon the :type-
+prescription rule FN-SPJ-RESERVED-FIELD-LINEP.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-PATH-LINE-IS-RESERVED ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-ARTICLE-FIELD-NAME)
+        (:DEFINITION FN-ARTICLE-HAS-VCHARP)
+        (:DEFINITION FN-ARTICLE-HEADER-BYTES-P)
+        (:DEFINITION FN-ARTICLE-LINE-OKP)
+        (:DEFINITION FN-ARTICLE-LINE-REST)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-MAKE-FIELD)
+        (:DEFINITION FN-ARTICLE-NEW-FIELD)
+        (:DEFINITION FN-ARTICLE-SPLIT-COLON-AUX)
+        (:DEFINITION FN-SPJ-RESERVED-FIELD-LINEP)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ASCII-DOWNCASE)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-HEADER-BYTEP)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-NAMEP)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-VCHARP)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-WSPP)
+        (:EXECUTABLE-COUNTERPART FN-HC-RESERVED-NAMEP)
+        (:EXECUTABLE-COUNTERPART REVERSE)
+        (:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-HAS-VCHARP)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-HEADER-BYTES-P)
+        (:TYPE-PRESCRIPTION FN-SPJ-RESERVED-FIELD-LINEP)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Warnings:  Subsume and Non-rec
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  1796
+FN-SPJ-PATH-LINE-IS-RESERVED
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SPJ-INJECTION-INFO-LINE-IS-RESERVED
+           (FN-SPJ-RESERVED-FIELD-LINEP
+                (APPEND *FN-INJ-INJECTION-INFO-FIELD* AGENT))
+           :HINTS (("Goal" :IN-THEORY (ENABLE FN-SPJ-RESERVED-FIELD-LINEP
+                                              FN-ARTICLE-NEW-FIELD
+                                              FN-ARTICLE-SPLIT-COLON-AUX)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SPJ-INJECTION-INFO-LINE-IS-RESERVED
+...):  A :REWRITE rule generated from FN-SPJ-INJECTION-INFO-LINE-IS-RESERVED
+will be triggered only by terms containing the function symbol 
+FN-SPJ-RESERVED-FIELD-LINEP, which has a non-recursive definition.
+Unless this definition is disabled, this rule is unlikely ever to be
+used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SPJ-INJECTION-INFO-LINE-IS-RESERVED
+...):  The previously added rule FN-SPJ-RESERVED-FIELD-LINEP subsumes
+a newly proposed :REWRITE rule generated from 
+FN-SPJ-INJECTION-INFO-LINE-IS-RESERVED, in the sense that the old rule
+rewrites a more general target.  Because the new rule will be tried
+first, it may nonetheless find application.
+
+Goal'
+
+Q.E.D.
+
+The storage of FN-SPJ-INJECTION-INFO-LINE-IS-RESERVED depends upon
+the :type-prescription rule FN-SPJ-RESERVED-FIELD-LINEP.
+
+Summary
+Form:  ( DEFTHM FN-SPJ-INJECTION-INFO-LINE-IS-RESERVED ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-ARTICLE-FIELD-NAME)
+        (:DEFINITION FN-ARTICLE-HAS-VCHARP)
+        (:DEFINITION FN-ARTICLE-HEADER-BYTES-P)
+        (:DEFINITION FN-ARTICLE-LINE-OKP)
+        (:DEFINITION FN-ARTICLE-LINE-REST)
+        (:DEFINITION FN-ARTICLE-LINE-VALUE)
+        (:DEFINITION FN-ARTICLE-MAKE-FIELD)
+        (:DEFINITION FN-ARTICLE-NEW-FIELD)
+        (:DEFINITION FN-ARTICLE-SPLIT-COLON-AUX)
+        (:DEFINITION FN-SPJ-RESERVED-FIELD-LINEP)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ASCII-DOWNCASE)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-HEADER-BYTEP)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-NAMEP)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-VCHARP)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-WSPP)
+        (:EXECUTABLE-COUNTERPART FN-HC-RESERVED-NAMEP)
+        (:EXECUTABLE-COUNTERPART REVERSE)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-HAS-VCHARP)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-HEADER-BYTES-P)
+        (:TYPE-PRESCRIPTION FN-SPJ-RESERVED-FIELD-LINEP))
+Warnings:  Subsume and Non-rec
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  2941
+FN-SPJ-INJECTION-INFO-LINE-IS-RESERVED
+
+
+ACL2 !>>>(DEFTHM
+              FN-HC-AUTHORED-SOURCE-OF-AN-INJECTION-WITHOUT-GENERATED-FIELDS
+          (IMPLIES
+           (AND (FN-SPJ-LINE-FREEP AGENT)
+                (TRUE-LISTP AGENT)
+                (FN-ARTICLE-RESULT-OKP
+                     (FN-ARTICLE-PARSE
+                          (APPEND (FN-INJ-PREFIX DATE MSGID AGENT NIL NIL)
+                                  SRC)))
+                (FN-ARTICLE-RESULT-OKP (FN-ARTICLE-PARSE SRC)))
+           (EQUAL
+              (FN-HC-AUTHORED-SOURCE
+                   (FN-ARTICLE-RESULT-ARTICLE
+                        (FN-ARTICLE-PARSE
+                             (APPEND (FN-INJ-PREFIX DATE MSGID AGENT NIL NIL)
+                                     SRC))))
+              (FN-HC-AUTHORED-SOURCE
+                   (FN-ARTICLE-RESULT-ARTICLE (FN-ARTICLE-PARSE SRC)))))
+          :HINTS
+          (("Goal"
+            :USE
+            (FN-SPJ-INJECTION-BLOCK-LINES
+               (:INSTANCE FN-HC-AUTHORED-SOURCE-IGNORES-TWO-RESERVED-LINES
+                          (L1 (APPEND *FN-INJ-PATH-FIELD*
+                                      AGENT *FN-INJ-PATH-TAIL*))
+                          (L2 (APPEND *FN-INJ-INJECTION-INFO-FIELD* AGENT))))
+            :IN-THEORY
+            (E/D (FN-ARTICLE-WSPP)
+                 (FN-ARTICLE-PARSE FN-HC-AUTHORED-SOURCE FN-INJ-PREFIX
+                                   FN-SPJ-RESERVED-FIELD-LINEP)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-HC-AUTHORED-SOURCE-OF-AN-INJECTION-WITHOUT-GENERATED-FIELDS ...):
+A :REWRITE rule generated from 
+FN-HC-AUTHORED-SOURCE-OF-AN-INJECTION-WITHOUT-GENERATED-FIELDS will
+be triggered only by terms containing the function symbols 
+FN-ARTICLE-RESULT-ARTICLE and FN-ARTICLE-PARSE, which have non-recursive
+definitions.  Unless these definitions are disabled, this rule is unlikely
+ever to be used.
+
+Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM 
+FN-HC-AUTHORED-SOURCE-OF-AN-INJECTION-WITHOUT-GENERATED-FIELDS ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-ARTICLE-RESULT-ARTICLE)
+        (:DEFINITION FN-ARTICLE-RESULT-OKP)
+        (:DEFINITION FN-SPJ-LINE-FREEP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CDR)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ARTICLE-WSPP)
+        (:EXECUTABLE-COUNTERPART FN-SPJ-LINE-FREEP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE FN-SPJ-APPEND-ASSOC)
+        (:REWRITE FN-SPJ-INJECTION-INFO-LINE-IS-RESERVED)
+        (:REWRITE FN-SPJ-LINE-FREEP-OF-APPEND)
+        (:REWRITE FN-SPJ-PATH-LINE-IS-RESERVED)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION FN-ARTICLE-PARSE)
+        (:TYPE-PRESCRIPTION FN-SPJ-LINE-FREEP)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Hint-events: ((:USE FN-HC-AUTHORED-SOURCE-IGNORES-TWO-RESERVED-LINES)
+              (:USE FN-SPJ-INJECTION-BLOCK-LINES))
+Warnings:  Non-rec
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  10263
+FN-HC-AUTHORED-SOURCE-OF-AN-INJECTION-WITHOUT-GENERATED-FIELDS
+
+* Step 3:  That completes the admissibility check.  Each form read
+was an embedded event form and was admissible.  We now retract back
+to the world created by the first two events after the initial IN-
+PACKAGE form and try to include the remainder of the book; see :DOC
+local-incompatibility.
+
+Summary
+Form:  ( INCLUDE-BOOK "books/source-projection-bridge" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+
+ACL2 Warning [Guards] in (CERTIFY-BOOK "books/source-projection-bridge"
+...):  The book 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/source-projection-bridge.lisp"
+defines the function FN-SPJ-RESERVED-FIELD-LINEP, which has not had
+its guards verified.  Moreover, this book's included sub-books define
+functions DEFUN-THEORY-FN, DEFUN-THEORY-FN-REC, DEFUN-TYPE/EXEC-THEORY-FN,
+DEFUN-TYPE/EXEC-THEORY-FN-REC, ELEMENT-EQUIV, ELEMENT-LIST-EQUIV, 
+ELEMENT-LIST-FIX, ELEMENT-LIST-NONEMPTY-P, ELEMENT-LIST-P, 
+ELEMENTLIST-MAPAPPEND, ELEMENTLIST-PROJECTION, FN-RECORD-SCHEMA0-ENCODE,
+FN-STMT-ITEMS-FUEL-INDUCT, U::FORCE-TERM-LIST, U::IMPORT-AS-MACROS-FN,
+XDOC::MAKE-XDOC-FRAGMENTS, OUTELEMENT-LIST-P, 
+U::REASON-FOR-NOT-KEYWORD-OPTION-LISTP, RULETABLE-DELETE-TAGS and 
+RULETABLE-KEEP-TAGS, which have not had their guards verified.  See
+:DOC guards.
+
+
+* Step 4:  Write the certificate for 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/source-projection-bridge.lisp"
+in 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/source-projection-bridge.cert".
+
+
+* Step 5:  Compile the functions defined in 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/source-projection-bridge.lisp".
+
+
+Note: Writing book expansion file, /home/ember/fn-gates/k4-bridges-
+b5724fce/books/source-projection-bridge@expansion.lsp.
+
+
+Note: Deleting expansion file for the book, /home/ember/fn-gates/k4-
+bridges-b5724fce/books/source-projection-bridge.lisp.
+
+Summary
+Form:  (CERTIFY-BOOK "books/source-projection-bridge" ...)
+Rules: NIL
+Warnings:  Guards, Use, Subsume, Free, Non-rec, Double-rewrite and
+Compiled file
+Time:  1.77 seconds (prove: 0.57, print: 0.01, other: 1.20)
+Prover steps counted:  300345
+ "/home/ember/fn-gates/k4-bridges-b5724fce/books/source-projection-bridge.lisp"
+ACL2 !>>
+FN_CERTIFY_SUCCESS 2ea4bf5d7588afa9f3032935e88f197a c5c66bf61464
+ NIL
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>

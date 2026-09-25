@@ -1,0 +1,12 @@
+{
+  "book": "tests/acl2/store-open-bridge-tests",
+  "elapsed_seconds": 4.773,
+  "executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "exit_code": 0,
+  "log": "tests--acl2--store-open-bridge-tests.certify.log",
+  "pid": 3403771,
+  "started_monotonic": 6639517.802488796,
+  "started_utc": "2026-09-25T02:24:22+00:00",
+  "status": "exited",
+  "wave": null
+}

@@ -1,0 +1,12 @@
+{
+  "book": "tests/acl2/source-projection-bridge-tests",
+  "elapsed_seconds": 1.52,
+  "executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "exit_code": 0,
+  "log": "tests--acl2--source-projection-bridge-tests.certify.log",
+  "pid": 3402770,
+  "started_monotonic": 6639513.141790903,
+  "started_utc": "2026-09-25T02:24:18+00:00",
+  "status": "exited",
+  "wave": null
+}

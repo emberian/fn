@@ -1,0 +1,2638 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:13:23.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>
+Note: Writing .port file, /home/ember/fn-gates/k4-bridges-b5724fce/books/store-
+open-bridge.port.
+
+CERTIFICATION ATTEMPT FOR 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/store-open-bridge.lisp"
+ACL2 Version 8.7
+
+* Step 1: Read 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/store-open-bridge.lisp"
+and compute its book-hash.
+
+* Step 2:  There were 31 forms in the file.  We now attempt to establish
+that each form, whether local or non-local, is indeed an admissible
+embedded event form in the context of the previously admitted ones.
+
+
+ACL2 !>>>(INCLUDE-BOOK "byte-store-k0-recovery")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "byte-store-k0-recovery"
+...):  Unable to load compiled file for book
+  /home/ember/fn-gates/k4-bridges-b5724fce/books/byte-store-k0-recovery.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+No load was in progress for any parent book.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "byte-store-k0-recovery" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  4.17 seconds (prove: 0.00, print: 0.01, other: 4.16)
+"/home/ember/fn-gates/stale-comments-454868a2/books/byte-store-k0-recovery.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "bp-receiver-evolving-store-invariants")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK 
+"bp-receiver-evolving-store-invariants" ...):  Unable to load compiled
+file for book
+  /home/ember/fn-gates/k4-bridges-b5724fce/books/bp-receiver-evolving-
+store-invariants.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+No load was in progress for any parent book.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "bp-receiver-evolving-store-invariants" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.20 seconds (prove: 0.00, print: 0.00, other: 0.20)
+"/home/ember/fn-gates/stale-comments-454868a2/books/bp-receiver-evolving-store-invariants.lisp"
+
+
+ACL2 !>>>(DEFUN FN-SOB-CONFIGURED-OPENP (CONFIGS FRONTIER EVENTS)
+           (DECLARE (XARGS :GUARD T :VERIFY-GUARDS NIL))
+           (LET* ((REPLAYED (FN-CPR-REPLAY CONFIGS EVENTS))
+                  (CN (FN-REPLAY-RESULT-NODE REPLAYED)))
+             (AND (NOT (NULL CONFIGS))
+                  (EQUAL (FN-REPLAY-RESULT-KIND REPLAYED)
+                         :OK)
+                  (FN-CNODE-STATEP CN)
+                  (FN-REPLAY-ADVANCE-OKP (FN-CNODE-NODE CN)
+                                         FRONTIER))))
+
+Since FN-SOB-CONFIGURED-OPENP is non-recursive, its admission is trivial.
+We observe that the type of FN-SOB-CONFIGURED-OPENP is described by
+the theorem 
+(OR (EQUAL (FN-SOB-CONFIGURED-OPENP CONFIGS FRONTIER EVENTS)
+           T)
+    (EQUAL (FN-SOB-CONFIGURED-OPENP CONFIGS FRONTIER EVENTS)
+           NIL)).
+We used the :type-prescription rule FN-REPLAY-ADVANCE-OKP.
+
+Summary
+Form:  ( DEFUN FN-SOB-CONFIGURED-OPENP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-REPLAY-ADVANCE-OKP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-SOB-CONFIGURED-OPENP
+
+
+ACL2 !>>>(DEFTHM FN-SOB-SN-OPEN-OK-FACTS
+          (IMPLIES
+           (FN-SN-OPEN-OKP
+                (FN-SN-OPEN-OBSERVED GROUPS CAPACITY FRONTIER EVENTS))
+           (AND
+            (FN-SN-OBSERVED-HISTORYP FRONTIER EVENTS)
+            (FN-SN-OBSERVED-IDENTITY-OKP EVENTS)
+            (FN-SN-OBSERVED-CONSUMER-OKP EVENTS)
+            (FN-SN-OBSERVED-TOPIC-OKP EVENTS)
+            (EQUAL
+             (FN-SN-FILES
+                 (FN-SN-OPEN-STATE
+                      (FN-SN-OPEN-OBSERVED GROUPS CAPACITY FRONTIER EVENTS)))
+             (FN-BS-RECOVERED-KERNEL FRONTIER EVENTS 0))))
+          :RULE-CLASSES NIL
+          :HINTS
+          (("Goal"
+                :USE (FN-SN-OBSERVED-SEED-IS-STATE)
+                :IN-THEORY
+                (E/D (FN-SN-OPEN-OBSERVED FN-SN-OPEN-OKP FN-SN-OBSERVED-SEED
+                                          FN-SN-RECOVER FN-SF-RECOVER
+                                          FN-SN-UPDATE FN-SN-UPDATE-REPLAYED
+                                          FN-BS-RECOVERED-KERNEL
+                                          FN-SN-OBSERVED-HISTORYP
+                                          FN-SN-OBSERVED-IDENTITY-OKP
+                                          FN-SN-OBSERVED-CONSUMER-OKP
+                                          FN-SN-OBSERVED-TOPIC-OKP)
+                     (FN-SN-STATEP FN-SF-STATEP FN-SF-HISTORY-RECOVERABLEP
+                                   FN-SF-REPLAY-NODE FN-REPLAY-IDENTITY
+                                   FN-CPE-PROJECTION-REPLAY
+                                   FN-TH-PREFIX-PROJECT
+                                   FN-STX-INDEX-OF-STORE FN-CEI-BUILD
+                                   FN-SN-OBSERVED-SEED-IS-STATE)))))
+Goal'
+Goal''
+
+Splitter note (see :DOC splitter) for Goal'' (4 subgoals).
+  if-intro: ((:DEFINITION FN-SF-RECOVER)
+             (:DEFINITION FN-SN-OBSERVED-HISTORYP)
+             (:DEFINITION FN-SN-OPEN-OBSERVED)
+             (:DEFINITION FN-SN-RECOVER)
+             (:DEFINITION FN-TH-AT)
+             (:REWRITE FN-SN-OPEN-OBSERVED-INVALID-FRONTIER-REFUSES))
+
+Subgoal 4
+Subgoal 3
+Subgoal 3'
+Subgoal 2
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SOB-SN-OPEN-OK-FACTS ...)
+Rules: ((:DEFINITION FN-BS-RECOVERED-KERNEL)
+        (:DEFINITION FN-SF-RECOVER)
+        (:DEFINITION FN-SN-EVENT-INDEX)
+        (:DEFINITION FN-SN-OBSERVED-CONSUMER-OKP)
+        (:DEFINITION FN-SN-OBSERVED-HISTORYP)
+        (:DEFINITION FN-SN-OBSERVED-IDENTITY-OKP)
+        (:DEFINITION FN-SN-OBSERVED-SEED)
+        (:DEFINITION FN-SN-OBSERVED-TOPIC-OKP)
+        (:DEFINITION FN-SN-OPEN-OBSERVED)
+        (:DEFINITION FN-SN-OPEN-OKP)
+        (:DEFINITION FN-SN-RECOVER)
+        (:DEFINITION FN-SN-UPDATE)
+        (:DEFINITION FN-SN-UPDATE-REPLAYED)
+        (:DEFINITION FN-STX-STORE)
+        (:DEFINITION FN-STXK-CONTEXT-KIND)
+        (:DEFINITION FN-STXK-CONTEXT-NEXT)
+        (:DEFINITION FN-STXK-CONTEXT-SNAPSHOTS)
+        (:DEFINITION FN-STXK-CONTEXT-VERDICTS)
+        (:DEFINITION FN-TH-AT)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-SN-FILES)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-KIND)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-SHAPEP)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-STATE)
+        (:EXECUTABLE-COUNTERPART FN-SN-STATEP)
+        (:EXECUTABLE-COUNTERPART FN-STX-INDEX-EMPTY)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-CSI-FILES-OF-WITH-CONSUMER)
+        (:REWRITE FN-CSI-FILES-OF-WITH-TOPIC)
+        (:REWRITE FN-SF-FRONTIER-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-PHASE-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-RECORDS-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-SUCCESSES-OF-FN-SF-MAKE)
+        (:REWRITE FN-SN-CAPACITY-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-CONFIG-HISTORY-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-FIELDS-OF-FN-SN-MAKE-V6)
+        (:REWRITE FN-SN-FILES-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-FILES-OF-FN-SN-WITH-EVENT-INDEX)
+        (:REWRITE FN-SN-GROUPS-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-IDENTITY-NEXT-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-INDEX-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-KEYRING-GENERATION-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-KEYRING-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-KEYRING-SNAPSHOTS-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-NODE-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-OPEN-OBSERVED-INVALID-FRONTIER-REFUSES)
+        (:REWRITE FN-SN-OPEN-OBSERVED-INVALID-HISTORY-REFUSES)
+        (:REWRITE FN-SN-OPEN-STATE-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SN-VERDICTS-OF-FN-SN-MAKE)
+        (:TYPE-PRESCRIPTION FN-RECORD-UINT32P)
+        (:TYPE-PRESCRIPTION FN-SF-HISTORY-RECOVERABLEP)
+        (:TYPE-PRESCRIPTION FN-SF-MAKE)
+        (:TYPE-PRESCRIPTION FN-SF-RECORD-LISTP)
+        (:TYPE-PRESCRIPTION FN-SF-STATEP)
+        (:TYPE-PRESCRIPTION FN-SN-OBSERVED-CONFIGURATIONP)
+        (:TYPE-PRESCRIPTION FN-SN-STATEP))
+Hint-events: ((:USE FN-SN-OBSERVED-SEED-IS-STATE))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-SF-RECOVER)
+             (:DEFINITION FN-SN-OBSERVED-HISTORYP)
+             (:DEFINITION FN-SN-OPEN-OBSERVED)
+             (:DEFINITION FN-SN-RECOVER)
+             (:DEFINITION FN-TH-AT)
+             (:REWRITE FN-SN-OPEN-OBSERVED-INVALID-FRONTIER-REFUSES))
+Time:  0.05 seconds (prove: 0.04, print: 0.00, other: 0.01)
+Prover steps counted:  24409
+FN-SOB-SN-OPEN-OK-FACTS
+
+
+ACL2 !>>>(DEFTHM FN-SOB-CPO-OPEN-OK-FACTS
+          (IMPLIES
+           (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))
+           (AND
+            (FN-SOB-CONFIGURED-OPENP CONFIGS FRONTIER EVENTS)
+            (FN-SN-OBSERVED-HISTORYP FRONTIER EVENTS)
+            (FN-SN-OBSERVED-IDENTITY-OKP EVENTS)
+            (FN-SN-OBSERVED-CONSUMER-OKP EVENTS)
+            (FN-SN-OBSERVED-TOPIC-OKP EVENTS)
+            (FN-SN-STATEP
+                 (FN-SN-OPEN-STATE
+                      (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS)))
+            (EQUAL (FN-SN-FILES
+                        (FN-SN-OPEN-STATE
+                             (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS)))
+                   (FN-BS-RECOVERED-KERNEL FRONTIER EVENTS 0))))
+          :RULE-CLASSES NIL
+          :HINTS
+          (("Goal"
+            :USE (FN-BS-HOST-REOPENED-KERNEL-IS-THE-RECOVERED-KERNEL)
+            :IN-THEORY
+            (E/D (FN-CPO-OPEN-OBSERVED FN-SN-OPEN-OKP FN-SOB-CONFIGURED-OPENP
+                                       FN-SN-OBSERVED-IDENTITY-OKP
+                                       FN-SN-OBSERVED-CONSUMER-OKP
+                                       FN-SN-OBSERVED-TOPIC-OKP)
+                 (FN-CPR-REPLAY FN-CPR-LOOP FN-REPLAY-IDENTITY
+                                FN-REPLAY-IDENTITY-LOOP
+                                FN-STX-INDEX-OF-STORE FN-SN-STATEP
+                                FN-CNODE-STATEP FN-SN-OBSERVED-SEED
+                                FN-REPLAY-ADVANCE-TXID
+                                FN-SN-WITH-CONFIGURATION
+                                FN-SN-OBSERVED-HISTORYP
+                                FN-CPE-PROJECTION-REPLAY
+                                FN-TH-PREFIX-PROJECT FN-CEI-BUILD
+                                FN-CPO-INSTALL FN-SN-UPDATE-REPLAYED
+                                FN-BS-RECOVERED-KERNEL)))))
+Goal'
+Goal''
+
+Splitter note (see :DOC splitter) for Goal'' (4 subgoals).
+  if-intro: ((:DEFINITION FN-CPO-OPEN-OBSERVED)
+             (:DEFINITION FN-TH-AT))
+
+Subgoal 4
+Subgoal 3
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SOB-CPO-OPEN-OK-FACTS ...)
+Rules: ((:DEFINITION FN-CPO-OPEN-OBSERVED)
+        (:DEFINITION FN-SN-OBSERVED-CONSUMER-OKP)
+        (:DEFINITION FN-SN-OBSERVED-IDENTITY-OKP)
+        (:DEFINITION FN-SN-OBSERVED-TOPIC-OKP)
+        (:DEFINITION FN-SN-OPEN-OKP)
+        (:DEFINITION FN-SOB-CONFIGURED-OPENP)
+        (:DEFINITION FN-STX-STORE)
+        (:DEFINITION FN-STXK-CONTEXT-KIND)
+        (:DEFINITION FN-TH-AT)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-SN-FILES)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-KIND)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-OKP)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-SHAPEP)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-STATE)
+        (:EXECUTABLE-COUNTERPART FN-SN-STATEP)
+        (:EXECUTABLE-COUNTERPART IF)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-CPR-REPLAY-OK-IS-CONFIGURED)
+        (:REWRITE FN-CSI-FILES-OF-WITH-CONSUMER)
+        (:REWRITE FN-CSI-FILES-OF-WITH-TOPIC)
+        (:REWRITE FN-REPLAY-ADVANCE-KEEPS-COMMITTED-ARTICLES)
+        (:REWRITE FN-SN-FILES-OF-FN-SN-WITH-EVENT-INDEX)
+        (:REWRITE FN-SN-OPEN-KIND-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SN-OPEN-SHAPEP-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SN-OPEN-STATE-OF-FN-SN-OPEN-OK)
+        (:TYPE-PRESCRIPTION FN-REPLAY-ADVANCE-OKP)
+        (:TYPE-PRESCRIPTION FN-SN-OBSERVED-HISTORYP)
+        (:TYPE-PRESCRIPTION FN-SN-STATEP))
+Hint-events: ((:USE FN-BS-HOST-REOPENED-KERNEL-IS-THE-RECOVERED-KERNEL))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-CPO-OPEN-OBSERVED)
+             (:DEFINITION FN-TH-AT))
+Time:  0.03 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  10201
+FN-SOB-CPO-OPEN-OK-FACTS
+
+
+ACL2 !>>>(LOCAL
+              (DEFTHM FN-SOB-GROUP-LISTP-NAMES-ARE-STRINGS
+                (IMPLIES (FN-CFG-GROUP-LISTP ES)
+                         (FN-STRING-LISTP (FN-CFG-GROUP-ALL-NAMES ES)))
+                :HINTS (("Goal" :IN-THEORY (ENABLE FN-CFG-GROUP-LISTP
+                                                   FN-CFG-GROUP-ALL-NAMES
+                                                   FN-CFG-GROUP-ENTRYP
+                                                   FN-RECORD-GROUP-NAMEP)))))
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Two induction schemes are suggested
+by this conjecture.  Subsumption reduces that number to one.  
+
+We will induct according to a scheme suggested by (FN-CFG-GROUP-LISTP ES),
+while accommodating (FN-CFG-GROUP-ALL-NAMES ES).
+
+These suggestions were produced using the :induction rules 
+FN-CFG-GROUP-ALL-NAMES and FN-CFG-GROUP-LISTP.  If we let (:P ES) denote
+*1 above then the induction scheme we'll use is
+(AND (IMPLIES (NOT (CONSP ES)) (:P ES))
+     (IMPLIES (AND (CONSP ES)
+                   (NOT (FN-CFG-GROUP-ENTRYP (CAR ES))))
+              (:P ES))
+     (IMPLIES (AND (CONSP ES)
+                   (FN-CFG-GROUP-ENTRYP (CAR ES))
+                   (:P (CDR ES)))
+              (:P ES))).
+This induction is justified by the same argument used to admit 
+FN-CFG-GROUP-LISTP.  When applied to the goal at hand the above induction
+scheme produces four nontautological subgoals.
+Subgoal *1/4
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+The storage of FN-SOB-GROUP-LISTP-NAMES-ARE-STRINGS depends upon the
+:type-prescription rule FN-STRING-LISTP.
+
+Summary
+Form:  ( DEFTHM FN-SOB-GROUP-LISTP-NAMES-ARE-STRINGS ...)
+Rules: ((:DEFINITION FN-CFG-GROUP-ALL-NAMES)
+        (:DEFINITION FN-CFG-GROUP-ENTRYP)
+        (:DEFINITION FN-CFG-GROUP-LISTP)
+        (:DEFINITION FN-RECORD-GROUP-NAMEP)
+        (:DEFINITION FN-RECORD-STRING-OCTETS)
+        (:DEFINITION FN-STRING-LISTP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-CFG-GROUP-ALL-NAMES)
+        (:EXECUTABLE-COUNTERPART FN-RECORD-GROUP-NAME-OCTETSP)
+        (:EXECUTABLE-COUNTERPART FN-RECORD-NONEMPTY-AT-MOSTP)
+        (:EXECUTABLE-COUNTERPART FN-STRING-LISTP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-CFG-GROUP-ALL-NAMES)
+        (:INDUCTION FN-CFG-GROUP-LISTP)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION FN-CFG-GROUP-ALL-NAMES)
+        (:TYPE-PRESCRIPTION FN-CFG-GROUP-SHAPEP)
+        (:TYPE-PRESCRIPTION FN-CFG-LABELP)
+        (:TYPE-PRESCRIPTION FN-CFG-STAMPP)
+        (:TYPE-PRESCRIPTION FN-RECORD-ASCII-STRINGP)
+        (:TYPE-PRESCRIPTION FN-RECORD-GROUP-NAME-OCTETSP)
+        (:TYPE-PRESCRIPTION FN-RECORD-NONEMPTY-AT-MOSTP)
+        (:TYPE-PRESCRIPTION FN-RECORD-UINT32P)
+        (:TYPE-PRESCRIPTION FN-STRING-LISTP))
+Time:  0.06 seconds (prove: 0.05, print: 0.00, other: 0.01)
+Prover steps counted:  3084
+FN-SOB-GROUP-LISTP-NAMES-ARE-STRINGS
+
+
+ACL2 !>>>(LOCAL (DEFTHM FN-SOB-MEMBER-NAMEP-IS-MEMBER
+                  (IFF (FN-CFG-MEMBER-NAMEP NAME NAMES)
+                       (MEMBER-EQUAL NAME NAMES))
+                  :HINTS (("Goal" :IN-THEORY (ENABLE FN-CFG-MEMBER-NAMEP)))))
+
+ACL2 Warning [Double-rewrite] in ( DEFTHM FN-SOB-MEMBER-NAMEP-IS-MEMBER
+...):  In a :REWRITE rule generated from FN-SOB-MEMBER-NAMEP-IS-MEMBER,
+equivalence relation LIST-EQUIV is maintained at one problematic occurrence
+of variable NAMES in the right-hand side, but not at any binding occurrence
+of NAMES.  Consider replacing that occurrence of NAMES in the right-
+hand side with (DOUBLE-REWRITE NAMES).  See :doc double-rewrite for
+more information on this issue.
+
+Goal'
+Subgoal 2
+
+([ A key checkpoint:
+
+Subgoal 2
+(IMPLIES (NOT (FN-CFG-MEMBER-NAMEP NAME NAMES))
+         (NOT (MEMBER-EQUAL NAME NAMES)))
+
+*1 (Subgoal 2) is pushed for proof by induction.
+
+])
+Subgoal 1
+
+([ A key checkpoint:
+
+Subgoal 1
+(IMPLIES (FN-CFG-MEMBER-NAMEP NAME NAMES)
+         (MEMBER-EQUAL NAME NAMES))
+
+Normally we would attempt to prove Subgoal 1 by induction.  However,
+we prefer in this instance to focus on the original input conjecture
+rather than this simplified special case.  We therefore abandon our
+previous work on this conjecture and reassign the name *1 to the original
+conjecture.  (See :DOC otf-flg.)
+
+])
+
+Perhaps we can prove *1 by induction.  Two induction schemes are suggested
+by this conjecture.  These merge into one derived induction scheme.
+
+We will induct according to a scheme suggested by (MEMBER-EQUAL NAME NAMES),
+while accommodating (FN-CFG-MEMBER-NAMEP NAME NAMES).
+
+These suggestions were produced using the :induction rules 
+FN-CFG-MEMBER-NAMEP and MEMBER-EQUAL.  If we let (:P NAME NAMES) denote
+*1 above then the induction scheme we'll use is
+(AND (IMPLIES (AND (NOT (ENDP NAMES))
+                   (NOT (EQUAL NAME (CAR NAMES)))
+                   (:P NAME (CDR NAMES)))
+              (:P NAME NAMES))
+     (IMPLIES (AND (NOT (ENDP NAMES))
+                   (EQUAL NAME (CAR NAMES)))
+              (:P NAME NAMES))
+     (IMPLIES (ENDP NAMES) (:P NAME NAMES))).
+This induction is justified by the same argument used to admit MEMBER-EQUAL.
+When applied to the goal at hand the above induction scheme produces
+three nontautological subgoals.
+Subgoal *1/3
+Subgoal *1/3'
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SOB-MEMBER-NAMEP-IS-MEMBER ...)
+Rules: ((:DEFINITION ENDP)
+        (:DEFINITION FN-CFG-MEMBER-NAMEP)
+        (:DEFINITION IFF)
+        (:DEFINITION MEMBER-EQUAL)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-CFG-MEMBER-NAMEP)
+        (:INDUCTION MEMBER-EQUAL)
+        (:TYPE-PRESCRIPTION FN-CFG-MEMBER-NAMEP)
+        (:TYPE-PRESCRIPTION MEMBER-EQUAL))
+Warnings:  Double-rewrite
+Time:  0.03 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  691
+FN-SOB-MEMBER-NAMEP-IS-MEMBER
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SOB-NO-DUPLICATE-NAMESP-IS-NO-DUPLICATESP
+           (IMPLIES (FN-CFG-NO-DUPLICATE-NAMESP NAMES)
+                    (FN-NO-DUPLICATESP NAMES))
+           :HINTS (("Goal" :IN-THEORY (ENABLE FN-CFG-NO-DUPLICATE-NAMESP)))))
+
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Two induction schemes are suggested
+by this conjecture.  These merge into one derived induction scheme.
+
+We will induct according to a scheme suggested by (FN-NO-DUPLICATESP NAMES),
+while accommodating (FN-CFG-NO-DUPLICATE-NAMESP NAMES).
+
+These suggestions were produced using the :induction rules 
+FN-CFG-NO-DUPLICATE-NAMESP and FN-NO-DUPLICATESP.  If we let (:P NAMES)
+denote *1 above then the induction scheme we'll use is
+(AND (IMPLIES (NOT (CONSP NAMES)) (:P NAMES))
+     (IMPLIES (AND (CONSP NAMES)
+                   (MEMBER-EQUAL (CAR NAMES) (CDR NAMES)))
+              (:P NAMES))
+     (IMPLIES (AND (CONSP NAMES)
+                   (NOT (MEMBER-EQUAL (CAR NAMES) (CDR NAMES)))
+                   (:P (CDR NAMES)))
+              (:P NAMES))).
+This induction is justified by the same argument used to admit 
+FN-NO-DUPLICATESP.  When applied to the goal at hand the above induction
+scheme produces four nontautological subgoals.
+Subgoal *1/4
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+The storage of FN-SOB-NO-DUPLICATE-NAMESP-IS-NO-DUPLICATESP depends
+upon the :type-prescription rule FN-NO-DUPLICATESP.
+
+Summary
+Form:  ( DEFTHM FN-SOB-NO-DUPLICATE-NAMESP-IS-NO-DUPLICATESP ...)
+Rules: ((:DEFINITION FN-CFG-NO-DUPLICATE-NAMESP)
+        (:DEFINITION FN-NO-DUPLICATESP)
+        (:INDUCTION FN-CFG-NO-DUPLICATE-NAMESP)
+        (:INDUCTION FN-NO-DUPLICATESP)
+        (:REWRITE FN-SOB-MEMBER-NAMEP-IS-MEMBER)
+        (:TYPE-PRESCRIPTION FN-NO-DUPLICATESP)
+        (:TYPE-PRESCRIPTION MEMBER-EQUAL))
+Time:  0.03 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  518
+FN-SOB-NO-DUPLICATE-NAMESP-IS-NO-DUPLICATESP
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SOB-CNODE-STATEP-CONFIGURATION-FACTS
+           (IMPLIES
+            (FN-CNODE-STATEP CN)
+            (AND
+                (FN-STRING-LISTP (FN-CNODE-DOMAIN-OF (FN-CNODE-CONFIG CN)))
+                (FN-NO-DUPLICATESP (FN-CNODE-DOMAIN-OF (FN-CNODE-CONFIG CN)))
+                (NATP (FN-CFG-CAPACITY (FN-CFG-VALUE (FN-CNODE-CONFIG CN))))
+                (FN-NODE-STATEP (FN-CNODE-NODE CN))))
+           :HINTS
+           (("Goal" :IN-THEORY (ENABLE FN-CNODE-STATEP FN-CFGP
+                                       FN-CFG-VALUEP FN-CNODE-DOMAIN-OF)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SOB-CNODE-STATEP-CONFIGURATION-FACTS
+...):  A :REWRITE rule generated from FN-SOB-CNODE-STATEP-CONFIGURATION-FACTS
+will be triggered only by terms containing the function symbol NATP,
+which has a non-recursive definition.  Unless this definition is disabled,
+this rule is unlikely ever to be used.
+
+
+Q.E.D.
+
+The storage of FN-SOB-CNODE-STATEP-CONFIGURATION-FACTS depends upon
+the :compound-recognizer rule NATP-COMPOUND-RECOGNIZER and the :type-
+prescription rules FN-NO-DUPLICATESP, FN-NODE-STATEP, FN-STRING-LISTP
+and NATP.
+
+Summary
+Form:  ( DEFTHM FN-SOB-CNODE-STATEP-CONFIGURATION-FACTS ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-CFG-VALUEP)
+        (:DEFINITION FN-CFGP)
+        (:DEFINITION FN-CNODE-DOMAIN-OF)
+        (:DEFINITION FN-CNODE-STATEP)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:TYPE-PRESCRIPTION FN-NO-DUPLICATESP)
+        (:TYPE-PRESCRIPTION FN-NODE-STATEP)
+        (:TYPE-PRESCRIPTION FN-STRING-LISTP)
+        (:TYPE-PRESCRIPTION NATP))
+Warnings:  Non-rec
+Time:  0.02 seconds (prove: 0.01, print: 0.00, other: 0.01)
+Prover steps counted:  152
+FN-SOB-CNODE-STATEP-CONFIGURATION-FACTS
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SOB-RECOVERING-KERNEL-IS-STATE
+           (IMPLIES
+               (AND (FN-RECORD-UINT32P F)
+                    (FN-SF-RECORD-LISTP R 0 0 F))
+               (FN-SF-STATEP (FN-SF-MAKE :RECOVERING F NIL R NIL NIL NIL 0)))
+           :HINTS
+           (("Goal" :IN-THEORY (ENABLE FN-SF-STATEP FN-SF-PHASE-SHAPEP)))))
+
+Q.E.D.
+
+The storage of FN-SOB-RECOVERING-KERNEL-IS-STATE depends upon the :type-
+prescription rule FN-SF-STATEP.
+
+Summary
+Form:  ( DEFTHM FN-SOB-RECOVERING-KERNEL-IS-STATE ...)
+Rules: ((:DEFINITION FN-SF-PHASE-SHAPEP)
+        (:DEFINITION FN-SF-STATEP)
+        (:DEFINITION FN-SF-SUCCESS-LISTP)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-SF-COMPLETION-PHASEP)
+        (:EXECUTABLE-COUNTERPART FN-SF-FRONTIER-PHASEP)
+        (:EXECUTABLE-COUNTERPART FN-SF-PHASEP)
+        (:EXECUTABLE-COUNTERPART FN-SF-RECORD-PHASEP)
+        (:EXECUTABLE-COUNTERPART NATP)
+        (:REWRITE FN-SF-BARRIERS-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-COMPLETION-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-FRONTIER-CANDIDATE-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-FRONTIER-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-PHASE-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-RECORD-CANDIDATE-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-RECORDS-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-SHAPEP-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-SUCCESSES-OF-FN-SF-MAKE)
+        (:TYPE-PRESCRIPTION FN-RECORD-UINT32P)
+        (:TYPE-PRESCRIPTION FN-SF-RECORD-LISTP)
+        (:TYPE-PRESCRIPTION FN-SF-STATEP))
+Time:  0.02 seconds (prove: 0.01, print: 0.00, other: 0.01)
+Prover steps counted:  301
+FN-SOB-RECOVERING-KERNEL-IS-STATE
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SOB-WITH-CONFIGURATION-OF-MAKE-V6
+            (EQUAL
+                 (FN-SN-WITH-CONFIGURATION
+                      (FN-SN-MAKE-V6 G C FILES NODE
+                                     KEYRING INDEX KGEN VERDICTS SNAPSHOTS
+                                     NEXT HISTORY CONSUMER TOPIC EVENT-INDEX)
+                      G2 C2 NODE2 HISTORY2)
+                 (FN-SN-MAKE-V6 G2 C2 FILES NODE2 KEYRING
+                                INDEX KGEN VERDICTS SNAPSHOTS NEXT
+                                HISTORY2 CONSUMER TOPIC EVENT-INDEX))
+            :HINTS (("Goal" :IN-THEORY (ENABLE FN-SN-WITH-CONFIGURATION
+                                               FN-SN-MAKE-V6)))))
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SOB-WITH-CONFIGURATION-OF-MAKE-V6 ...)
+Rules: ((:DEFINITION FN-SN-MAKE-V6)
+        (:DEFINITION FN-SN-WITH-CONFIGURATION)
+        (:DEFINITION UPDATE-NTH)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS))
+Time:  0.02 seconds (prove: 0.01, print: 0.00, other: 0.01)
+Prover steps counted:  843
+FN-SOB-WITH-CONFIGURATION-OF-MAKE-V6
+
+
+ACL2 !>>>(LOCAL
+           (DEFTHM FN-SOB-STATEP-OF-V6-FIELDS
+             (IMPLIES
+                  (AND (FN-STRING-LISTP GROUPS)
+                       (FN-NO-DUPLICATESP GROUPS)
+                       (NATP CAPACITY)
+                       (FN-SF-STATEP FILES)
+                       (FN-NODE-STATEP NODE)
+                       (FN-PRIN-KEYRINGP KEYRING)
+                       (NATP KEYRING-GENERATION)
+                       (FN-SN-VERDICT-LISTP VERDICTS)
+                       (FN-SN-KEYRING-SNAPSHOT-LISTP SNAPSHOTS)
+                       (NATP IDENTITY-NEXT))
+                  (FN-SN-STATEP
+                       (FN-SN-MAKE-V6 GROUPS CAPACITY FILES NODE KEYRING
+                                      INDEX KEYRING-GENERATION VERDICTS
+                                      SNAPSHOTS IDENTITY-NEXT CONFIG-HISTORY
+                                      CONSUMER TOPIC EVENT-INDEX)))
+             :HINTS
+             (("Goal"
+                   :IN-THEORY (ENABLE FN-SN-STATEP
+                                      FN-SN-SHAPEP FN-SN-MAKE-V6 FN-SN-GROUPS
+                                      FN-SN-CAPACITY FN-SN-FILES FN-SN-NODE
+                                      FN-SN-KEYRING FN-SN-KEYRING-GENERATION
+                                      FN-SN-VERDICTS FN-SN-KEYRING-SNAPSHOTS
+                                      FN-SN-IDENTITY-NEXT)))))
+Goal'
+
+Q.E.D.
+
+The storage of FN-SOB-STATEP-OF-V6-FIELDS depends upon the :type-prescription
+rule FN-SN-STATEP.
+
+Summary
+Form:  ( DEFTHM FN-SOB-STATEP-OF-V6-FIELDS ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-SN-CAPACITY)
+        (:DEFINITION FN-SN-FILES)
+        (:DEFINITION FN-SN-GROUPS)
+        (:DEFINITION FN-SN-IDENTITY-NEXT)
+        (:DEFINITION FN-SN-KEYRING)
+        (:DEFINITION FN-SN-KEYRING-GENERATION)
+        (:DEFINITION FN-SN-KEYRING-SNAPSHOTS)
+        (:DEFINITION FN-SN-MAKE-V6)
+        (:DEFINITION FN-SN-NODE)
+        (:DEFINITION FN-SN-SHAPEP)
+        (:DEFINITION FN-SN-STATEP)
+        (:DEFINITION FN-SN-VERDICTS)
+        (:DEFINITION LEN)
+        (:DEFINITION NATP)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART LEN)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION FN-NO-DUPLICATESP)
+        (:TYPE-PRESCRIPTION FN-NODE-STATEP)
+        (:TYPE-PRESCRIPTION FN-PRIN-KEYRINGP)
+        (:TYPE-PRESCRIPTION FN-SF-STATEP)
+        (:TYPE-PRESCRIPTION FN-SN-KEYRING-SNAPSHOT-LISTP)
+        (:TYPE-PRESCRIPTION FN-SN-STATEP)
+        (:TYPE-PRESCRIPTION FN-SN-VERDICT-LISTP)
+        (:TYPE-PRESCRIPTION FN-STRING-LISTP))
+Time:  0.02 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  1537
+FN-SOB-STATEP-OF-V6-FIELDS
+
+
+ACL2 !>>>(DEFUN FN-SOB-IDENTITY-TYPEDP (EVENTS)
+          (DECLARE (XARGS :GUARD T :VERIFY-GUARDS NIL))
+          (LET ((CTX (FN-REPLAY-IDENTITY EVENTS)))
+           (AND
+               (FN-SN-VERDICT-LISTP
+                    (FN-REPLAY-VERDICT-PAIRS (FN-STXK-CONTEXT-VERDICTS CTX)))
+               (FN-SN-KEYRING-SNAPSHOT-LISTP (FN-STXK-CONTEXT-SNAPSHOTS CTX))
+               (NATP (FN-STXK-CONTEXT-NEXT CTX)))))
+
+Since FN-SOB-IDENTITY-TYPEDP is non-recursive, its admission is trivial.
+We observe that the type of FN-SOB-IDENTITY-TYPEDP is described by
+the theorem 
+(OR (EQUAL (FN-SOB-IDENTITY-TYPEDP EVENTS)
+           T)
+    (EQUAL (FN-SOB-IDENTITY-TYPEDP EVENTS)
+           NIL)).
+We used the :compound-recognizer rule NATP-COMPOUND-RECOGNIZER.
+
+Summary
+Form:  ( DEFUN FN-SOB-IDENTITY-TYPEDP ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-SOB-IDENTITY-TYPEDP
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SOB-SN-OPEN-OK-IDENTITY-TYPED
+           (IMPLIES
+                (FN-SN-OPEN-OKP
+                     (FN-SN-OPEN-OBSERVED GROUPS CAPACITY FRONTIER EVENTS))
+                (FN-SOB-IDENTITY-TYPEDP EVENTS))
+           :HINTS
+           (("Goal"
+              :USE (FN-SN-OPEN-OBSERVED-SUCCESS-IS-STATE)
+              :IN-THEORY
+              (E/D (FN-SN-OPEN-OBSERVED FN-SN-OPEN-OKP FN-SN-OBSERVED-SEED
+                                        FN-SN-RECOVER FN-SF-RECOVER
+                                        FN-SN-UPDATE FN-SN-UPDATE-REPLAYED
+                                        FN-SOB-IDENTITY-TYPEDP
+                                        FN-SN-STATEP FN-SN-WITH-EVENT-INDEX
+                                        FN-SN-WITH-TOPIC FN-SN-WITH-CONSUMER)
+                   (FN-SF-STATEP FN-SF-HISTORY-RECOVERABLEP
+                                 FN-NODE-STATEP
+                                 FN-SF-REPLAY-NODE FN-REPLAY-IDENTITY
+                                 FN-CPE-PROJECTION-REPLAY
+                                 FN-TH-PREFIX-PROJECT
+                                 FN-STX-INDEX-OF-STORE
+                                 FN-CEI-BUILD FN-SN-VERDICT-LISTP
+                                 FN-SN-KEYRING-SNAPSHOT-LISTP
+                                 FN-REPLAY-VERDICT-PAIRS
+                                 FN-SN-OPEN-OBSERVED-SUCCESS-IS-STATE))))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SOB-SN-OPEN-OK-IDENTITY-TYPED
+...):  A :REWRITE rule generated from FN-SOB-SN-OPEN-OK-IDENTITY-TYPED
+will be triggered only by terms containing the function symbol 
+FN-SOB-IDENTITY-TYPEDP, which has a non-recursive definition.  Unless
+this definition is disabled, this rule is unlikely ever to be used.
+
+
+ACL2 Warning [Free] in ( DEFTHM FN-SOB-SN-OPEN-OK-IDENTITY-TYPED ...):
+A :REWRITE rule generated from FN-SOB-SN-OPEN-OK-IDENTITY-TYPED contains
+the free variables FRONTIER, CAPACITY and GROUPS.  These variables
+will be chosen by searching for an instance of 
+(FN-SN-OPEN-OKP (FN-SN-OPEN-OBSERVED GROUPS CAPACITY FRONTIER EVENTS))
+in the context of the term being rewritten.  This is generally a severe
+restriction on the applicability of a :REWRITE rule.  See :DOC free-
+variables.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SOB-SN-OPEN-OK-IDENTITY-TYPED
+...):  The previously added rule FN-SOB-IDENTITY-TYPEDP subsumes a
+newly proposed :REWRITE rule generated from FN-SOB-SN-OPEN-OK-IDENTITY-TYPED,
+in the sense that the old rule rewrites a more general target.  Because
+the new rule will be tried first, it may nonetheless find application.
+
+Goal'
+Goal''
+
+Splitter note (see :DOC splitter) for Goal'' (32 subgoals).
+  if-intro: ((:DEFINITION FN-SF-RECOVER)
+             (:DEFINITION FN-SN-OPEN-OBSERVED)
+             (:DEFINITION FN-SN-RECOVER)
+             (:DEFINITION FN-SN-STATEP)
+             (:DEFINITION FN-TH-AT)
+             (:DEFINITION NATP))
+
+Subgoal 32
+Subgoal 32'
+Subgoal 31
+Subgoal 31'
+Subgoal 30
+Subgoal 30'
+Subgoal 29
+Subgoal 29'
+Subgoal 28
+Subgoal 27
+Subgoal 26
+Subgoal 25
+Subgoal 24
+Subgoal 24'
+Subgoal 23
+Subgoal 23'
+Subgoal 22
+Subgoal 22'
+Subgoal 21
+Subgoal 21'
+Subgoal 20
+Subgoal 19
+Subgoal 18
+Subgoal 17
+Subgoal 16
+Subgoal 16'
+Subgoal 15
+Subgoal 15'
+Subgoal 14
+Subgoal 14'
+Subgoal 13
+Subgoal 13'
+Subgoal 12
+Subgoal 12'
+Subgoal 11
+Subgoal 11'
+Subgoal 10
+Subgoal 10'
+Subgoal 9
+Subgoal 9'
+Subgoal 8
+Subgoal 8'
+Subgoal 7
+Subgoal 7'
+Subgoal 6
+Subgoal 6'
+Subgoal 5
+Subgoal 5'
+Subgoal 4
+Subgoal 4'
+Subgoal 3
+Subgoal 3'
+Subgoal 2
+Subgoal 2'
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+The storage of FN-SOB-SN-OPEN-OK-IDENTITY-TYPED depends upon the :type-
+prescription rule FN-SOB-IDENTITY-TYPEDP.
+
+Summary
+Form:  ( DEFTHM FN-SOB-SN-OPEN-OK-IDENTITY-TYPED ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-SF-RECOVER)
+        (:DEFINITION FN-SN-EVENT-INDEX)
+        (:DEFINITION FN-SN-OBSERVED-SEED)
+        (:DEFINITION FN-SN-OPEN-OBSERVED)
+        (:DEFINITION FN-SN-OPEN-OKP)
+        (:DEFINITION FN-SN-RECOVER)
+        (:DEFINITION FN-SN-STATEP)
+        (:DEFINITION FN-SN-UPDATE)
+        (:DEFINITION FN-SN-UPDATE-REPLAYED)
+        (:DEFINITION FN-SN-WITH-CONSUMER)
+        (:DEFINITION FN-SN-WITH-EVENT-INDEX)
+        (:DEFINITION FN-SN-WITH-TOPIC)
+        (:DEFINITION FN-SOB-IDENTITY-TYPEDP)
+        (:DEFINITION FN-STX-STORE)
+        (:DEFINITION FN-STXK-CONTEXT-KIND)
+        (:DEFINITION FN-STXK-CONTEXT-NEXT)
+        (:DEFINITION FN-STXK-CONTEXT-SNAPSHOTS)
+        (:DEFINITION FN-STXK-CONTEXT-VERDICTS)
+        (:DEFINITION FN-TH-AT)
+        (:DEFINITION NATP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-NO-DUPLICATESP)
+        (:EXECUTABLE-COUNTERPART FN-PRIN-KEYRINGP)
+        (:EXECUTABLE-COUNTERPART FN-SN-CAPACITY)
+        (:EXECUTABLE-COUNTERPART FN-SN-GROUPS)
+        (:EXECUTABLE-COUNTERPART FN-SN-KEYRING-SNAPSHOT-LISTP)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-KIND)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-OKP)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-SHAPEP)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-STATE)
+        (:EXECUTABLE-COUNTERPART FN-SN-SHAPEP)
+        (:EXECUTABLE-COUNTERPART FN-SN-STATEP)
+        (:EXECUTABLE-COUNTERPART FN-SN-VERDICT-LISTP)
+        (:EXECUTABLE-COUNTERPART FN-STRING-LISTP)
+        (:EXECUTABLE-COUNTERPART FN-STX-INDEX-EMPTY)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART NATP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:REWRITE FN-NODE-INITIAL-STATE-IS-STATE)
+        (:REWRITE FN-SF-FRONTIER-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-PHASE-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-RECORDS-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-SUCCESSES-OF-FN-SF-MAKE)
+        (:REWRITE FN-SN-CAPACITY-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-CONFIG-HISTORY-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-FIELDS-OF-FN-SN-MAKE-V6)
+        (:REWRITE FN-SN-FILES-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-GROUPS-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-IDENTITY-NEXT-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-INDEX-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-KEYRING-GENERATION-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-KEYRING-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-KEYRING-SNAPSHOTS-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-NODE-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-OPEN-OBSERVED-INVALID-FRONTIER-REFUSES)
+        (:REWRITE FN-SN-OPEN-OBSERVED-INVALID-HISTORY-REFUSES)
+        (:REWRITE FN-SN-OPEN-STATE-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SN-SHAPEP-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-SUCCESSFUL-REPLAY-NODE-IS-STATE)
+        (:REWRITE FN-SN-VERDICTS-OF-FN-SN-MAKE)
+        (:REWRITE FN-SOB-RECOVERING-KERNEL-IS-STATE)
+        (:REWRITE FN-SOB-STATEP-OF-V6-FIELDS)
+        (:TYPE-PRESCRIPTION FN-NO-DUPLICATESP)
+        (:TYPE-PRESCRIPTION FN-RECORD-UINT32P)
+        (:TYPE-PRESCRIPTION FN-SF-HISTORY-RECOVERABLEP)
+        (:TYPE-PRESCRIPTION FN-SF-RECORD-LISTP)
+        (:TYPE-PRESCRIPTION FN-SF-STATEP)
+        (:TYPE-PRESCRIPTION FN-SN-KEYRING-SNAPSHOT-LISTP)
+        (:TYPE-PRESCRIPTION FN-SN-OBSERVED-CONFIGURATIONP)
+        (:TYPE-PRESCRIPTION FN-SN-VERDICT-LISTP)
+        (:TYPE-PRESCRIPTION FN-SOB-IDENTITY-TYPEDP)
+        (:TYPE-PRESCRIPTION FN-STRING-LISTP))
+Hint-events: ((:USE FN-SN-OPEN-OBSERVED-SUCCESS-IS-STATE))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-SF-RECOVER)
+             (:DEFINITION FN-SN-OPEN-OBSERVED)
+             (:DEFINITION FN-SN-RECOVER)
+             (:DEFINITION FN-SN-STATEP)
+             (:DEFINITION FN-TH-AT)
+             (:DEFINITION NATP))
+Warnings:  Subsume, Free and Non-rec
+Time:  1.49 seconds (prove: 1.48, print: 0.00, other: 0.01)
+Prover steps counted:  952102
+FN-SOB-SN-OPEN-OK-IDENTITY-TYPED
+
+
+ACL2 !>>>(DEFTHM FN-SOB-CPO-OPENS-ON-CONFIGURED-IMAGE
+          (IMPLIES
+             (AND (FN-SOB-CONFIGURED-OPENP CONFIGS FRONTIER EVENTS)
+                  (FN-SN-OBSERVED-HISTORYP FRONTIER EVENTS)
+                  (FN-SN-OBSERVED-IDENTITY-OKP EVENTS)
+                  (FN-SN-OBSERVED-CONSUMER-OKP EVENTS)
+                  (FN-SN-OBSERVED-TOPIC-OKP EVENTS)
+                  (FN-SOB-IDENTITY-TYPEDP EVENTS))
+             (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS)))
+          :HINTS
+          (("Goal"
+            :USE (FN-CPR-REPLAY-OK-IS-CONFIGURED)
+            :IN-THEORY
+            (E/D (FN-CPO-OPEN-OBSERVED FN-SN-OPEN-OKP FN-SOB-CONFIGURED-OPENP
+                                       FN-SN-OBSERVED-IDENTITY-OKP
+                                       FN-SN-OBSERVED-CONSUMER-OKP
+                                       FN-SN-OBSERVED-TOPIC-OKP
+                                       FN-CPO-INSTALL FN-SOB-IDENTITY-TYPEDP
+                                       FN-SN-WITH-EVENT-INDEX
+                                       FN-SN-WITH-TOPIC FN-SN-WITH-CONSUMER
+                                       FN-SN-UPDATE-REPLAYED
+                                       FN-SN-OBSERVED-SEED
+                                       FN-SN-OBSERVED-HISTORYP)
+                 (FN-CPR-REPLAY FN-CPR-LOOP FN-REPLAY-IDENTITY
+                                FN-REPLAY-IDENTITY-LOOP
+                                FN-STX-INDEX-OF-STORE FN-CNODE-STATEP
+                                FN-SN-STATEP FN-SN-WITH-CONFIGURATION
+                                FN-SN-MAKE-V6 FN-SN-MAKE
+                                FN-SN-MAKE-V2 FN-REPLAY-ADVANCE-TXID
+                                FN-CPE-PROJECTION-REPLAY
+                                FN-CPR-REPLAY-OK-IS-CONFIGURED
+                                FN-TH-PREFIX-PROJECT FN-CEI-BUILD)))))
+Goal'
+Goal''
+
+Q.E.D.
+
+The storage of FN-SOB-CPO-OPENS-ON-CONFIGURED-IMAGE depends upon the
+:type-prescription rule FN-SN-OPEN-OKP.
+
+Summary
+Form:  ( DEFTHM FN-SOB-CPO-OPENS-ON-CONFIGURED-IMAGE ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-CPO-INSTALL)
+        (:DEFINITION FN-CPO-OPEN-OBSERVED)
+        (:DEFINITION FN-SN-EVENT-INDEX)
+        (:DEFINITION FN-SN-OBSERVED-CONSUMER-OKP)
+        (:DEFINITION FN-SN-OBSERVED-HISTORYP)
+        (:DEFINITION FN-SN-OBSERVED-IDENTITY-OKP)
+        (:DEFINITION FN-SN-OBSERVED-SEED)
+        (:DEFINITION FN-SN-OBSERVED-TOPIC-OKP)
+        (:DEFINITION FN-SN-OPEN-OKP)
+        (:DEFINITION FN-SN-UPDATE-REPLAYED)
+        (:DEFINITION FN-SN-WITH-CONSUMER)
+        (:DEFINITION FN-SN-WITH-EVENT-INDEX)
+        (:DEFINITION FN-SN-WITH-TOPIC)
+        (:DEFINITION FN-SOB-CONFIGURED-OPENP)
+        (:DEFINITION FN-SOB-IDENTITY-TYPEDP)
+        (:DEFINITION FN-STX-STORE)
+        (:DEFINITION FN-STXK-CONTEXT-KIND)
+        (:DEFINITION FN-STXK-CONTEXT-NEXT)
+        (:DEFINITION FN-STXK-CONTEXT-SNAPSHOTS)
+        (:DEFINITION FN-STXK-CONTEXT-VERDICTS)
+        (:DEFINITION FN-TH-AT)
+        (:DEFINITION NATP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-PRIN-KEYRINGP)
+        (:EXECUTABLE-COUNTERPART FN-STX-INDEX-EMPTY)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-CNODE-CONFIG-OF-FN-CNODE-MAKE)
+        (:REWRITE FN-CNODE-NODE-OF-FN-CNODE-MAKE)
+        (:REWRITE FN-REPLAY-ADVANCE-KEEPS-COMMITTED-ARTICLES)
+        (:REWRITE FN-REPLAY-ADVANCE-PRESERVES-NODE-STATEP)
+        (:REWRITE FN-SN-CAPACITY-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-CONFIG-HISTORY-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-FIELDS-OF-FN-SN-MAKE-V6)
+        (:REWRITE FN-SN-GROUPS-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-KEYRING-GENERATION-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-KEYRING-OF-FN-SN-MAKE)
+        (:REWRITE FN-SN-OPEN-KIND-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SN-OPEN-SHAPEP-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SN-OPEN-STATE-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SOB-CNODE-STATEP-CONFIGURATION-FACTS)
+        (:REWRITE FN-SOB-RECOVERING-KERNEL-IS-STATE)
+        (:REWRITE FN-SOB-STATEP-OF-V6-FIELDS)
+        (:REWRITE FN-SOB-WITH-CONFIGURATION-OF-MAKE-V6)
+        (:TYPE-PRESCRIPTION FN-CNODE-STATEP)
+        (:TYPE-PRESCRIPTION FN-RECORD-UINT32P)
+        (:TYPE-PRESCRIPTION FN-REPLAY-ADVANCE-OKP)
+        (:TYPE-PRESCRIPTION FN-SF-RECORD-LISTP)
+        (:TYPE-PRESCRIPTION FN-SN-KEYRING-SNAPSHOT-LISTP)
+        (:TYPE-PRESCRIPTION FN-SN-OPEN-OKP)
+        (:TYPE-PRESCRIPTION FN-SN-VERDICT-LISTP))
+Hint-events: ((:USE FN-CPR-REPLAY-OK-IS-CONFIGURED))
+Time:  0.03 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  2741
+FN-SOB-CPO-OPENS-ON-CONFIGURED-IMAGE
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED
+           (IMPLIES
+              (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))
+              (FN-SOB-IDENTITY-TYPEDP EVENTS))
+           :HINTS
+           (("Goal"
+             :IN-THEORY
+             (E/D (FN-CPO-OPEN-OBSERVED FN-SN-OPEN-OKP
+                                        FN-CPO-INSTALL FN-SN-UPDATE-REPLAYED
+                                        FN-SOB-IDENTITY-TYPEDP
+                                        FN-SN-STATEP FN-SN-WITH-EVENT-INDEX
+                                        FN-SN-WITH-TOPIC FN-SN-WITH-CONSUMER)
+                  (FN-CPR-REPLAY FN-CPR-LOOP FN-REPLAY-IDENTITY
+                                 FN-REPLAY-IDENTITY-LOOP
+                                 FN-STX-INDEX-OF-STORE
+                                 FN-CNODE-STATEP FN-SN-OBSERVED-SEED
+                                 FN-REPLAY-ADVANCE-TXID
+                                 FN-SN-WITH-CONFIGURATION FN-SF-STATEP
+                                 FN-NODE-STATEP FN-CPE-PROJECTION-REPLAY
+                                 FN-TH-PREFIX-PROJECT
+                                 FN-CEI-BUILD FN-SN-VERDICT-LISTP
+                                 FN-SN-KEYRING-SNAPSHOT-LISTP
+                                 FN-REPLAY-VERDICT-PAIRS
+                                 FN-SN-OBSERVED-HISTORYP))))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED
+...):  A :REWRITE rule generated from FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED
+will be triggered only by terms containing the function symbol 
+FN-SOB-IDENTITY-TYPEDP, which has a non-recursive definition.  Unless
+this definition is disabled, this rule is unlikely ever to be used.
+
+
+ACL2 Warning [Free] in ( DEFTHM FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED ...):
+A :REWRITE rule generated from FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED contains
+the free variables FRONTIER and CONFIGS.  These variables will be chosen
+by searching for an instance of 
+(FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS)) in
+the context of the term being rewritten.  This is generally a severe
+restriction on the applicability of a :REWRITE rule.  See :DOC free-
+variables.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED
+...):  The previously added rule FN-SOB-IDENTITY-TYPEDP subsumes a
+newly proposed :REWRITE rule generated from 
+FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED, in the sense that the old rule rewrites
+a more general target.  Because the new rule will be tried first, it
+may nonetheless find application.
+
+Goal'
+
+Splitter note (see :DOC splitter) for Goal' (4 subgoals).
+  if-intro: ((:DEFINITION FN-CPO-OPEN-OBSERVED)
+             (:DEFINITION FN-SN-STATEP)
+             (:DEFINITION FN-TH-AT)
+             (:DEFINITION NATP))
+
+Subgoal 4
+Subgoal 3
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+The storage of FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED depends upon the :type-
+prescription rule FN-SOB-IDENTITY-TYPEDP.
+
+Summary
+Form:  ( DEFTHM FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-CPO-INSTALL)
+        (:DEFINITION FN-CPO-OPEN-OBSERVED)
+        (:DEFINITION FN-SN-EVENT-INDEX)
+        (:DEFINITION FN-SN-OPEN-OKP)
+        (:DEFINITION FN-SN-STATEP)
+        (:DEFINITION FN-SN-UPDATE-REPLAYED)
+        (:DEFINITION FN-SN-WITH-CONSUMER)
+        (:DEFINITION FN-SN-WITH-EVENT-INDEX)
+        (:DEFINITION FN-SN-WITH-TOPIC)
+        (:DEFINITION FN-SOB-IDENTITY-TYPEDP)
+        (:DEFINITION FN-STX-STORE)
+        (:DEFINITION FN-STXK-CONTEXT-KIND)
+        (:DEFINITION FN-STXK-CONTEXT-NEXT)
+        (:DEFINITION FN-STXK-CONTEXT-SNAPSHOTS)
+        (:DEFINITION FN-STXK-CONTEXT-VERDICTS)
+        (:DEFINITION FN-TH-AT)
+        (:DEFINITION NATP)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-NO-DUPLICATESP)
+        (:EXECUTABLE-COUNTERPART FN-NODE-STATEP)
+        (:EXECUTABLE-COUNTERPART FN-PRIN-KEYRINGP)
+        (:EXECUTABLE-COUNTERPART FN-SF-STATEP)
+        (:EXECUTABLE-COUNTERPART FN-SN-CAPACITY)
+        (:EXECUTABLE-COUNTERPART FN-SN-FILES)
+        (:EXECUTABLE-COUNTERPART FN-SN-GROUPS)
+        (:EXECUTABLE-COUNTERPART FN-SN-IDENTITY-NEXT)
+        (:EXECUTABLE-COUNTERPART FN-SN-KEYRING)
+        (:EXECUTABLE-COUNTERPART FN-SN-KEYRING-GENERATION)
+        (:EXECUTABLE-COUNTERPART FN-SN-KEYRING-SNAPSHOT-LISTP)
+        (:EXECUTABLE-COUNTERPART FN-SN-KEYRING-SNAPSHOTS)
+        (:EXECUTABLE-COUNTERPART FN-SN-NODE)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-KIND)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-SHAPEP)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-STATE)
+        (:EXECUTABLE-COUNTERPART FN-SN-SHAPEP)
+        (:EXECUTABLE-COUNTERPART FN-SN-VERDICT-LISTP)
+        (:EXECUTABLE-COUNTERPART FN-SN-VERDICTS)
+        (:EXECUTABLE-COUNTERPART FN-STRING-LISTP)
+        (:EXECUTABLE-COUNTERPART IF)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-CNODE-CONFIG-OF-FN-CNODE-MAKE)
+        (:REWRITE FN-CNODE-NODE-OF-FN-CNODE-MAKE)
+        (:REWRITE FN-CPR-REPLAY-OK-IS-CONFIGURED)
+        (:REWRITE FN-REPLAY-ADVANCE-KEEPS-COMMITTED-ARTICLES)
+        (:REWRITE FN-REPLAY-ADVANCE-PRESERVES-NODE-STATEP)
+        (:REWRITE FN-SN-FIELDS-OF-FN-SN-MAKE-V6)
+        (:REWRITE FN-SN-OPEN-KIND-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SN-OPEN-STATE-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SOB-CNODE-STATEP-CONFIGURATION-FACTS)
+        (:REWRITE FN-SOB-STATEP-OF-V6-FIELDS)
+        (:REWRITE FN-SOB-WITH-CONFIGURATION-OF-MAKE-V6)
+        (:TYPE-PRESCRIPTION FN-PRIN-KEYRINGP)
+        (:TYPE-PRESCRIPTION FN-REPLAY-ADVANCE-OKP)
+        (:TYPE-PRESCRIPTION FN-SF-STATEP)
+        (:TYPE-PRESCRIPTION FN-SN-KEYRING-SNAPSHOT-LISTP)
+        (:TYPE-PRESCRIPTION FN-SN-OBSERVED-HISTORYP)
+        (:TYPE-PRESCRIPTION FN-SN-VERDICT-LISTP)
+        (:TYPE-PRESCRIPTION FN-SOB-IDENTITY-TYPEDP))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-CPO-OPEN-OBSERVED)
+             (:DEFINITION FN-SN-STATEP)
+             (:DEFINITION FN-TH-AT)
+             (:DEFINITION NATP))
+Warnings:  Subsume, Free and Non-rec
+Time:  0.08 seconds (prove: 0.07, print: 0.00, other: 0.01)
+Prover steps counted:  41916
+FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED
+
+
+ACL2 !>>>(DEFTHM FN-CPO-OPEN-OBSERVED-SUCCEEDS-EXACTLY
+          (IFF
+              (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))
+              (AND (FN-SOB-CONFIGURED-OPENP CONFIGS FRONTIER EVENTS)
+                   (FN-SN-OBSERVED-HISTORYP FRONTIER EVENTS)
+                   (FN-SN-OBSERVED-IDENTITY-OKP EVENTS)
+                   (FN-SN-OBSERVED-CONSUMER-OKP EVENTS)
+                   (FN-SN-OBSERVED-TOPIC-OKP EVENTS)
+                   (FN-SOB-IDENTITY-TYPEDP EVENTS)))
+          :RULE-CLASSES NIL
+          :HINTS
+          (("Goal"
+              :USE
+              (FN-SOB-CPO-OPEN-OK-FACTS FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED
+                                        FN-SOB-CPO-OPENS-ON-CONFIGURED-IMAGE)
+              :IN-THEORY NIL)))
+
+ACL2 Warning [Theory] in ( DEFTHM FN-CPO-OPEN-OBSERVED-SUCCEEDS-EXACTLY
+...):  The :DEFINITION rules for the built-in functions DOUBLE-REWRITE,
+THE-CHECK, MV-NTH, CONS-WITH-HINT, IFF, FROM-DF, WORMHOLE-EVAL, MV-LIST,
+MINUSP, PLUSP, ZEROP, LISTP, SYNP, CASE-SPLIT, FORCE, /=, =, RETURN-LAST,
+NULL, ENDP, ATOM, EQL, NOT, IMPLIES and EQ are disabled by the theory
+expression NIL, but some expansions of their calls may still occur.
+See :DOC theories-and-primitives.
+
+
+ACL2 Warning [Theory] in ( DEFTHM FN-CPO-OPEN-OBSERVED-SUCCEEDS-EXACTLY
+...):  The :EXECUTABLE-COUNTERPART rules for the built-in functions
+NOT, SYMBOLP, SYMBOL-PACKAGE-NAME, SYMBOL-NAME, STRINGP, REALPART,
+RATIONALP, PKG-WITNESS, PKG-IMPORTS, NUMERATOR, INTERN-IN-PACKAGE-OF-SYMBOL,
+INTEGERP, IMAGPART, IF, EQUAL, DENOMINATOR, CONSP, CONS, COERCE, 
+COMPLEX-RATIONALP, COMPLEX, CODE-CHAR, CHARACTERP, CHAR-CODE, CDR,
+CAR, <, UNARY-/, UNARY--, BINARY-+, BINARY-* and ACL2-NUMBERP are disabled
+by the theory expression NIL, but some evaluations of their calls may
+still occur.  See :DOC theories-and-primitives.
+
+
+ACL2 Warning [Disable] in ( DEFTHM FN-CPO-OPEN-OBSERVED-SUCCEEDS-EXACTLY
+...):  Forcing has transitioned from enabled to disabled.
+See :DOC force.
+
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-CPO-OPEN-OBSERVED-SUCCEEDS-EXACTLY ...)
+Rules: NIL
+Hint-events: ((:USE FN-SOB-CPO-OPEN-OK-FACTS)
+              (:USE FN-SOB-CPO-OPEN-OK-IDENTITY-TYPED)
+              (:USE FN-SOB-CPO-OPENS-ON-CONFIGURED-IMAGE))
+Warnings:  Disable and Theory
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-CPO-OPEN-OBSERVED-SUCCEEDS-EXACTLY
+
+
+ACL2 !>>>(DEFTHM FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL
+          (IMPLIES
+           (AND (FN-SN-OPEN-OKP
+                     (FN-SN-OPEN-OBSERVED GROUPS CAPACITY FRONTIER EVENTS))
+                (FN-SOB-CONFIGURED-OPENP CONFIGS FRONTIER EVENTS))
+           (AND
+            (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))
+            (EQUAL
+             (FN-SN-FILES
+                  (FN-SN-OPEN-STATE
+                       (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS)))
+             (FN-SN-FILES
+              (FN-SN-OPEN-STATE
+                   (FN-SN-OPEN-OBSERVED GROUPS CAPACITY FRONTIER EVENTS))))))
+          :RULE-CLASSES NIL
+          :HINTS
+          (("Goal"
+                :USE
+                (FN-SOB-SN-OPEN-OK-FACTS FN-SOB-SN-OPEN-OK-IDENTITY-TYPED
+                                         FN-SOB-CPO-OPENS-ON-CONFIGURED-IMAGE
+                                         FN-SOB-CPO-OPEN-OK-FACTS)
+                :IN-THEORY NIL)))
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL ...):  The :DEFINITION
+rules for the built-in functions DOUBLE-REWRITE, THE-CHECK, MV-NTH,
+CONS-WITH-HINT, IFF, FROM-DF, WORMHOLE-EVAL, MV-LIST, MINUSP, PLUSP,
+ZEROP, LISTP, SYNP, CASE-SPLIT, FORCE, /=, =, RETURN-LAST, NULL, ENDP,
+ATOM, EQL, NOT, IMPLIES and EQ are disabled by the theory expression
+NIL, but some expansions of their calls may still occur.  See :DOC
+theories-and-primitives.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL ...):  The :EXECUTABLE-
+COUNTERPART rules for the built-in functions NOT, SYMBOLP, 
+SYMBOL-PACKAGE-NAME, SYMBOL-NAME, STRINGP, REALPART, RATIONALP, PKG-WITNESS,
+PKG-IMPORTS, NUMERATOR, INTERN-IN-PACKAGE-OF-SYMBOL, INTEGERP, IMAGPART,
+IF, EQUAL, DENOMINATOR, CONSP, CONS, COERCE, COMPLEX-RATIONALP, COMPLEX,
+CODE-CHAR, CHARACTERP, CHAR-CODE, CDR, CAR, <, UNARY-/, UNARY--, BINARY-+,
+BINARY-* and ACL2-NUMBERP are disabled by the theory expression NIL,
+but some evaluations of their calls may still occur.  See :DOC theories-
+and-primitives.
+
+
+ACL2 Warning [Disable] in ( DEFTHM 
+FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL ...):  Forcing
+has transitioned from enabled to disabled.
+See :DOC force.
+
+Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL
+...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Hint-events: ((:USE FN-SOB-CPO-OPEN-OK-FACTS)
+              (:USE FN-SOB-CPO-OPENS-ON-CONFIGURED-IMAGE)
+              (:USE FN-SOB-SN-OPEN-OK-FACTS)
+              (:USE FN-SOB-SN-OPEN-OK-IDENTITY-TYPED))
+Warnings:  Disable and Theory
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  418
+FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL
+
+
+ACL2 !>>>(DEFTHM FN-SN-OPEN-OBSERVED-SUCCESS-EXACT-HISTORY-OF-HOST-OPEN
+          (IMPLIES
+           (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))
+           (LET
+            ((FILES
+                 (FN-SN-FILES
+                      (FN-SN-OPEN-STATE
+                           (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS)))))
+            (AND (EQUAL (FN-SF-RECORDS FILES) EVENTS)
+                 (EQUAL (FN-SF-FRONTIER FILES) FRONTIER)
+                 (EQUAL (FN-SF-SUCCESSES FILES) NIL))))
+          :HINTS (("Goal" :USE (FN-SOB-CPO-OPEN-OK-FACTS)
+                          :IN-THEORY (E/D (FN-BS-RECOVERED-KERNEL)
+                                          (FN-CPO-OPEN-OBSERVED)))))
+Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SN-OPEN-OBSERVED-SUCCESS-EXACT-HISTORY-OF-HOST-OPEN
+...)
+Rules: ((:DEFINITION FN-BS-RECOVERED-KERNEL)
+        (:DEFINITION FN-REPLAY-IDENTITY)
+        (:DEFINITION FN-SN-OBSERVED-CONSUMER-OKP)
+        (:DEFINITION FN-SN-OBSERVED-IDENTITY-OKP)
+        (:DEFINITION FN-SN-OBSERVED-TOPIC-OKP)
+        (:DEFINITION FN-SOB-CONFIGURED-OPENP)
+        (:DEFINITION FN-STXK-CONTEXT-KIND)
+        (:DEFINITION FN-TH-AT)
+        (:DEFINITION FN-TH-PREFIX-PROJECT)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-STXK-INITIAL-CONTEXT)
+        (:EXECUTABLE-COUNTERPART FN-TH-PREFIX-STATE)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-CPR-REPLAY-OK-IS-CONFIGURED)
+        (:REWRITE FN-SF-FRONTIER-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-RECORDS-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-SUCCESSES-OF-FN-SF-MAKE)
+        (:TYPE-PRESCRIPTION FN-SN-OPEN-OKP))
+Hint-events: ((:USE FN-SOB-CPO-OPEN-OK-FACTS))
+Time:  0.03 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  6972
+FN-SN-OPEN-OBSERVED-SUCCESS-EXACT-HISTORY-OF-HOST-OPEN
+
+
+ACL2 !>>>(LOCAL
+          (DEFTHM FN-SOB-HOST-OPEN-RECOVERING-STATE
+           (IMPLIES
+             (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))
+             (LET ((ST (FN-SN-OPEN-STATE
+                            (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))))
+               (AND (FN-SN-STATEP ST)
+                    (EQUAL (FN-SF-PHASE (FN-SN-FILES ST))
+                           :RECOVERING)
+                    (EQUAL (FN-SF-BARRIERS (FN-SN-FILES ST))
+                           0))))
+           :HINTS
+           (("Goal" :USE (FN-SOB-CPO-OPEN-OK-FACTS)
+                    :IN-THEORY (E/D (FN-BS-RECOVERED-KERNEL)
+                                    (FN-CPO-OPEN-OBSERVED FN-SN-STATEP))))))
+Goal'
+Goal''
+
+Q.E.D.
+
+The storage of FN-SOB-HOST-OPEN-RECOVERING-STATE depends upon the :type-
+prescription rule FN-SN-STATEP.
+
+Summary
+Form:  ( DEFTHM FN-SOB-HOST-OPEN-RECOVERING-STATE ...)
+Rules: ((:DEFINITION FN-BS-RECOVERED-KERNEL)
+        (:DEFINITION FN-REPLAY-IDENTITY)
+        (:DEFINITION FN-SN-OBSERVED-CONSUMER-OKP)
+        (:DEFINITION FN-SN-OBSERVED-IDENTITY-OKP)
+        (:DEFINITION FN-SN-OBSERVED-TOPIC-OKP)
+        (:DEFINITION FN-SOB-CONFIGURED-OPENP)
+        (:DEFINITION FN-STXK-CONTEXT-KIND)
+        (:DEFINITION FN-TH-AT)
+        (:DEFINITION FN-TH-PREFIX-PROJECT)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-STXK-INITIAL-CONTEXT)
+        (:EXECUTABLE-COUNTERPART FN-TH-PREFIX-STATE)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-CPR-REPLAY-OK-IS-CONFIGURED)
+        (:REWRITE FN-SF-BARRIERS-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-PHASE-OF-FN-SF-MAKE)
+        (:TYPE-PRESCRIPTION FN-SN-OPEN-OKP)
+        (:TYPE-PRESCRIPTION FN-SN-STATEP))
+Hint-events: ((:USE FN-SOB-CPO-OPEN-OK-FACTS))
+Time:  0.03 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  6964
+FN-SOB-HOST-OPEN-RECOVERING-STATE
+
+
+ACL2 !>>>(DEFTHM
+             FN-SN-OPEN-OBSERVED-NOT-READY-BEFORE-FIVE-BARRIERS-OF-HOST-OPEN
+          (IMPLIES
+           (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))
+           (LET ((ST (FN-SN-OPEN-STATE
+                          (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))))
+            (AND
+             (EQUAL
+                  (FN-SF-PHASE (FN-SN-FILES (FN-SN-OBSERVED-REBARRIER ST 0)))
+                  :RECOVERING)
+             (EQUAL
+                  (FN-SF-PHASE (FN-SN-FILES (FN-SN-OBSERVED-REBARRIER ST 1)))
+                  :RECOVERING)
+             (EQUAL
+                  (FN-SF-PHASE (FN-SN-FILES (FN-SN-OBSERVED-REBARRIER ST 2)))
+                  :RECOVERING)
+             (EQUAL
+                  (FN-SF-PHASE (FN-SN-FILES (FN-SN-OBSERVED-REBARRIER ST 3)))
+                  :RECOVERING)
+             (EQUAL
+                  (FN-SF-PHASE (FN-SN-FILES (FN-SN-OBSERVED-REBARRIER ST 4)))
+                  :RECOVERING))))
+          :HINTS
+          (("Goal"
+            :USE
+            (FN-SOB-HOST-OPEN-RECOVERING-STATE
+             (:INSTANCE
+                  FN-SN-OBSERVED-FOUR-OK-BARRIERS-REMAIN-RECOVERING
+                  (ST (FN-SN-OPEN-STATE
+                           (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS)))))
+            :IN-THEORY
+            (DISABLE FN-SOB-HOST-OPEN-RECOVERING-STATE
+                     FN-SN-OBSERVED-FOUR-OK-BARRIERS-REMAIN-RECOVERING
+                     FN-CPO-OPEN-OBSERVED
+                     FN-SN-OPEN-OKP FN-SN-OBSERVED-REBARRIER
+                     FN-SN-STATEP))))
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM 
+FN-SN-OPEN-OBSERVED-NOT-READY-BEFORE-FIVE-BARRIERS-OF-HOST-OPEN ...)
+Rules: NIL
+Hint-events: ((:USE FN-SN-OBSERVED-FOUR-OK-BARRIERS-REMAIN-RECOVERING)
+              (:USE FN-SOB-HOST-OPEN-RECOVERING-STATE))
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+FN-SN-OPEN-OBSERVED-NOT-READY-BEFORE-FIVE-BARRIERS-OF-HOST-OPEN
+
+
+ACL2 !>>>(DEFTHM FN-SN-OPEN-OBSERVED-FIVE-BARRIERS-OPEN-READY-OF-HOST-OPEN
+          (IMPLIES
+           (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))
+           (EQUAL
+            (FN-SF-PHASE
+               (FN-SN-FILES
+                    (FN-SN-OBSERVED-REBARRIER
+                         (FN-SN-OPEN-STATE
+                              (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))
+                         5)))
+            :READY))
+          :HINTS
+          (("Goal"
+            :USE
+            (FN-SOB-HOST-OPEN-RECOVERING-STATE
+             (:INSTANCE
+                  FN-SN-OBSERVED-FIVE-OK-BARRIERS-IS-READY
+                  (ST (FN-SN-OPEN-STATE
+                           (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS)))))
+            :IN-THEORY (DISABLE FN-SOB-HOST-OPEN-RECOVERING-STATE
+                                FN-SN-OBSERVED-FIVE-OK-BARRIERS-IS-READY
+                                FN-CPO-OPEN-OBSERVED
+                                FN-SN-OPEN-OKP FN-SN-OBSERVED-REBARRIER
+                                FN-SN-STATEP))))
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SN-OPEN-OBSERVED-FIVE-BARRIERS-OPEN-READY-OF-HOST-OPEN
+...)
+Rules: NIL
+Hint-events: ((:USE FN-SN-OBSERVED-FIVE-OK-BARRIERS-IS-READY)
+              (:USE FN-SOB-HOST-OPEN-RECOVERING-STATE))
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+FN-SN-OPEN-OBSERVED-FIVE-BARRIERS-OPEN-READY-OF-HOST-OPEN
+
+
+ACL2 !>>>(DEFTHM FN-CPO-OPEN-OBSERVED-SUCCESS-HAS-HISTORY-RELATION
+          (IMPLIES
+              (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))
+              (FN-CPO-HISTORY-RELATION
+                   (FN-SN-OPEN-STATE
+                        (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER EVENTS))))
+          :HINTS
+          (("Goal"
+            :USE (FN-SOB-CPO-OPEN-OK-FACTS)
+            :IN-THEORY
+            (E/D (FN-CPO-OPEN-OBSERVED FN-SN-OPEN-OKP FN-CPO-HISTORY-RELATION
+                                       FN-CPO-INSTALL FN-SOB-CONFIGURED-OPENP
+                                       FN-BS-RECOVERED-KERNEL
+                                       FN-SN-UPDATE-REPLAYED
+                                       FN-SN-WITH-EVENT-INDEX
+                                       FN-SN-WITH-TOPIC FN-SN-WITH-CONSUMER)
+                 (FN-CPR-REPLAY FN-CPR-LOOP FN-REPLAY-IDENTITY
+                                FN-REPLAY-IDENTITY-LOOP
+                                FN-STX-INDEX-OF-STORE
+                                FN-CNODE-STATEP FN-SN-OBSERVED-SEED
+                                FN-REPLAY-ADVANCE-TXID
+                                FN-SN-WITH-CONFIGURATION
+                                FN-SN-STATEP FN-SN-MAKE-V6 FN-SN-MAKE
+                                FN-SN-MAKE-V2 FN-CPE-PROJECTION-REPLAY
+                                FN-TH-PREFIX-PROJECT FN-CEI-BUILD
+                                FN-SN-OBSERVED-HISTORYP)))))
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-CPO-OPEN-OBSERVED-SUCCESS-HAS-HISTORY-RELATION ...):  A newly proposed
+:REWRITE rule generated from 
+FN-CPO-OPEN-OBSERVED-SUCCESS-HAS-HISTORY-RELATION probably subsumes
+the previously added :REWRITE rule 
+FN-CPO-OPEN-SUCCESS-HAS-HISTORICAL-RELATION, in the sense that the
+new rule will now probably be applied whenever the old rule would have
+been.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-CPO-OPEN-OBSERVED-SUCCESS-HAS-HISTORY-RELATION ...):  The previously
+added rule FN-CPO-OPEN-SUCCESS-HAS-HISTORICAL-RELATION subsumes a newly
+proposed :REWRITE rule generated from 
+FN-CPO-OPEN-OBSERVED-SUCCESS-HAS-HISTORY-RELATION, in the sense that
+the old rule rewrites a more general target.  Because the new rule
+will be tried first, it may nonetheless find application.
+
+Goal'
+Goal''
+
+Splitter note (see :DOC splitter) for Goal'' (7 subgoals).
+  if-intro: ((:DEFINITION FN-CPO-HISTORY-RELATION)
+             (:DEFINITION FN-CPO-OPEN-OBSERVED)
+             (:DEFINITION FN-SOB-CONFIGURED-OPENP)
+             (:DEFINITION FN-TH-AT))
+
+Subgoal 7
+Subgoal 6
+Subgoal 5
+Subgoal 4
+Subgoal 3
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+The storage of FN-CPO-OPEN-OBSERVED-SUCCESS-HAS-HISTORY-RELATION depends
+upon the :type-prescription rule FN-CPO-HISTORY-RELATION.
+
+Summary
+Form:  ( DEFTHM FN-CPO-OPEN-OBSERVED-SUCCESS-HAS-HISTORY-RELATION ...)
+Rules: ((:DEFINITION FN-BS-RECOVERED-KERNEL)
+        (:DEFINITION FN-CPO-HISTORY-RELATION)
+        (:DEFINITION FN-CPO-INSTALL)
+        (:DEFINITION FN-CPO-OPEN-OBSERVED)
+        (:DEFINITION FN-SN-EVENT-INDEX)
+        (:DEFINITION FN-SN-OBSERVED-CONSUMER-OKP)
+        (:DEFINITION FN-SN-OBSERVED-IDENTITY-OKP)
+        (:DEFINITION FN-SN-OBSERVED-TOPIC-OKP)
+        (:DEFINITION FN-SN-OPEN-OKP)
+        (:DEFINITION FN-SN-UPDATE-REPLAYED)
+        (:DEFINITION FN-SN-WITH-CONSUMER)
+        (:DEFINITION FN-SN-WITH-EVENT-INDEX)
+        (:DEFINITION FN-SN-WITH-TOPIC)
+        (:DEFINITION FN-SOB-CONFIGURED-OPENP)
+        (:DEFINITION FN-STX-STORE)
+        (:DEFINITION FN-STXK-CONTEXT-KIND)
+        (:DEFINITION FN-STXK-CONTEXT-NEXT)
+        (:DEFINITION FN-STXK-CONTEXT-SNAPSHOTS)
+        (:DEFINITION FN-STXK-CONTEXT-VERDICTS)
+        (:DEFINITION FN-TH-AT)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-CPO-HISTORY-RELATION)
+        (:EXECUTABLE-COUNTERPART FN-SF-FRONTIER)
+        (:EXECUTABLE-COUNTERPART FN-SF-RECORDS)
+        (:EXECUTABLE-COUNTERPART FN-SN-FILES)
+        (:EXECUTABLE-COUNTERPART FN-SN-OBSERVED-HISTORYP)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-KIND)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-OKP)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-SHAPEP)
+        (:EXECUTABLE-COUNTERPART FN-SN-OPEN-STATE)
+        (:EXECUTABLE-COUNTERPART FN-SN-STATEP)
+        (:EXECUTABLE-COUNTERPART IF)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-CNODE-CONFIG-OF-FN-CNODE-MAKE)
+        (:REWRITE FN-CNODE-NODE-OF-FN-CNODE-MAKE)
+        (:REWRITE FN-CPR-REPLAY-OK-IS-CONFIGURED)
+        (:REWRITE FN-REPLAY-ADVANCE-KEEPS-COMMITTED-ARTICLES)
+        (:REWRITE FN-SF-FRONTIER-OF-FN-SF-MAKE)
+        (:REWRITE FN-SF-RECORDS-OF-FN-SF-MAKE)
+        (:REWRITE FN-SN-FIELDS-OF-FN-SN-MAKE-V6)
+        (:REWRITE FN-SN-OPEN-KIND-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SN-OPEN-SHAPEP-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SN-OPEN-STATE-OF-FN-SN-OPEN-OK)
+        (:REWRITE FN-SOB-WITH-CONFIGURATION-OF-MAKE-V6)
+        (:TYPE-PRESCRIPTION FN-CPO-HISTORY-RELATION)
+        (:TYPE-PRESCRIPTION FN-REPLAY-ADVANCE-OKP)
+        (:TYPE-PRESCRIPTION FN-SN-OBSERVED-HISTORYP)
+        (:TYPE-PRESCRIPTION FN-SN-STATEP))
+Hint-events: ((:USE FN-SOB-CPO-OPEN-OK-FACTS))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-CPO-HISTORY-RELATION)
+             (:DEFINITION FN-CPO-OPEN-OBSERVED)
+             (:DEFINITION FN-SOB-CONFIGURED-OPENP)
+             (:DEFINITION FN-TH-AT))
+Warnings:  Subsume
+Time:  0.06 seconds (prove: 0.05, print: 0.00, other: 0.01)
+Prover steps counted:  30218
+FN-CPO-OPEN-OBSERVED-SUCCESS-HAS-HISTORY-RELATION
+
+
+ACL2 !>>>(DEFTHM
+             FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN
+          (IMPLIES
+           (AND (FN-SNT-RELATION S)
+                (FN-SF-CRASH-IMAGEP (FN-SN-FILES S)
+                                    FRONTIER RECORDS)
+                (FN-SN-OBSERVED-IDENTITY-OKP RECORDS)
+                (FN-SN-OBSERVED-CONSUMER-OKP RECORDS)
+                (FN-SN-OBSERVED-TOPIC-OKP RECORDS)
+                (MEMBER-EQUAL PAIR (FN-SF-SUCCESSES (FN-SN-FILES S)))
+                (FN-SOB-CONFIGURED-OPENP CONFIGS FRONTIER RECORDS))
+           (AND
+            (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER RECORDS))
+            (FN-SF-RECORD-HAS-PAIRP
+             PAIR
+             (FN-SF-RECORDS
+              (FN-SN-FILES
+                   (FN-SN-OPEN-STATE
+                        (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER RECORDS)))))))
+          :HINTS
+          (("Goal"
+             :USE
+             (FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN
+                  (:INSTANCE
+                       FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL
+                       (GROUPS (FN-SN-GROUPS S))
+                       (CAPACITY (FN-SN-CAPACITY S))
+                       (EVENTS RECORDS)))
+             :IN-THEORY NIL)))
+
+ACL2 Warning [Free] in ( DEFTHM 
+FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+A :REWRITE rule generated from 
+FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN contains
+the free variables S and PAIR.  These variables will be chosen by searching
+for instances of (FN-SNT-RELATION S) and 
+(MEMBER-EQUAL PAIR (FN-SF-SUCCESSES (FN-SN-FILES S))) in the context
+of the term being rewritten.  This is generally a severe restriction
+on the applicability of a :REWRITE rule.  See :DOC free-variables.
+
+
+ACL2 Warning [Free] in ( DEFTHM 
+FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+A :REWRITE rule generated from 
+FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN contains
+the free variable S.  This variable will be chosen by searching for
+an instance of (FN-SNT-RELATION S) in the context of the term being
+rewritten.  This is generally a severe restriction on the applicability
+of a :REWRITE rule.  See :DOC free-variables.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+The :DEFINITION rules for the built-in functions DOUBLE-REWRITE, THE-CHECK,
+MV-NTH, CONS-WITH-HINT, IFF, FROM-DF, WORMHOLE-EVAL, MV-LIST, MINUSP,
+PLUSP, ZEROP, LISTP, SYNP, CASE-SPLIT, FORCE, /=, =, RETURN-LAST, NULL,
+ENDP, ATOM, EQL, NOT, IMPLIES and EQ are disabled by the theory expression
+NIL, but some expansions of their calls may still occur.  See :DOC
+theories-and-primitives.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+The :EXECUTABLE-COUNTERPART rules for the built-in functions NOT, SYMBOLP,
+SYMBOL-PACKAGE-NAME, SYMBOL-NAME, STRINGP, REALPART, RATIONALP, PKG-WITNESS,
+PKG-IMPORTS, NUMERATOR, INTERN-IN-PACKAGE-OF-SYMBOL, INTEGERP, IMAGPART,
+IF, EQUAL, DENOMINATOR, CONSP, CONS, COERCE, COMPLEX-RATIONALP, COMPLEX,
+CODE-CHAR, CHARACTERP, CHAR-CODE, CDR, CAR, <, UNARY-/, UNARY--, BINARY-+,
+BINARY-* and ACL2-NUMBERP are disabled by the theory expression NIL,
+but some evaluations of their calls may still occur.  See :DOC theories-
+and-primitives.
+
+
+ACL2 Warning [Disable] in ( DEFTHM 
+FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+Forcing has transitioned from enabled to disabled.
+See :DOC force.
+
+Goal'
+Goal''
+Goal'''
+
+Q.E.D.
+
+The storage of 
+FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN depends
+upon the :type-prescription rules FN-SF-RECORD-HAS-PAIRP and FN-SN-OPEN-OKP.
+
+Summary
+Form:  ( DEFTHM 
+FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-SF-RECORD-HAS-PAIRP)
+        (:TYPE-PRESCRIPTION FN-SN-OPEN-OKP))
+Hint-events: ((:USE FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL)
+              (:USE FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN))
+Warnings:  Disable, Theory and Free
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  549
+FN-SN-ACKNOWLEDGED-RECORD-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN
+
+
+ACL2 !>>>(DEFTHM FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS-OF-HOST-OPEN
+          (IMPLIES
+            (AND (FN-SNT-RELATION S)
+                 (FN-SF-RECOVERY-CRASH-IMAGEP (FN-SN-FILES S)
+                                              FRONTIER RECORDS)
+                 (FN-SN-OBSERVED-IDENTITY-OKP RECORDS)
+                 (FN-SN-OBSERVED-CONSUMER-OKP RECORDS)
+                 (FN-SN-OBSERVED-TOPIC-OKP RECORDS)
+                 (FN-SOB-CONFIGURED-OPENP CONFIGS FRONTIER RECORDS))
+            (FN-SN-OPEN-OKP (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER RECORDS)))
+          :HINTS
+          (("Goal"
+             :USE
+             (FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS
+                  (:INSTANCE
+                       FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL
+                       (GROUPS (FN-SN-GROUPS S))
+                       (CAPACITY (FN-SN-CAPACITY S))
+                       (EVENTS RECORDS)))
+             :IN-THEORY NIL)))
+
+ACL2 Warning [Free] in ( DEFTHM 
+FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS-OF-HOST-OPEN ...):  A :REWRITE
+rule generated from FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS-OF-HOST-OPEN
+contains the free variable S.  This variable will be chosen by searching
+for an instance of (FN-SNT-RELATION S) in the context of the term being
+rewritten.  This is generally a severe restriction on the applicability
+of a :REWRITE rule.  See :DOC free-variables.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS-OF-HOST-OPEN ...):  The :DEFINITION
+rules for the built-in functions DOUBLE-REWRITE, THE-CHECK, MV-NTH,
+CONS-WITH-HINT, IFF, FROM-DF, WORMHOLE-EVAL, MV-LIST, MINUSP, PLUSP,
+ZEROP, LISTP, SYNP, CASE-SPLIT, FORCE, /=, =, RETURN-LAST, NULL, ENDP,
+ATOM, EQL, NOT, IMPLIES and EQ are disabled by the theory expression
+NIL, but some expansions of their calls may still occur.  See :DOC
+theories-and-primitives.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS-OF-HOST-OPEN ...):  The :EXECUTABLE-
+COUNTERPART rules for the built-in functions NOT, SYMBOLP, 
+SYMBOL-PACKAGE-NAME, SYMBOL-NAME, STRINGP, REALPART, RATIONALP, PKG-WITNESS,
+PKG-IMPORTS, NUMERATOR, INTERN-IN-PACKAGE-OF-SYMBOL, INTEGERP, IMAGPART,
+IF, EQUAL, DENOMINATOR, CONSP, CONS, COERCE, COMPLEX-RATIONALP, COMPLEX,
+CODE-CHAR, CHARACTERP, CHAR-CODE, CDR, CAR, <, UNARY-/, UNARY--, BINARY-+,
+BINARY-* and ACL2-NUMBERP are disabled by the theory expression NIL,
+but some evaluations of their calls may still occur.  See :DOC theories-
+and-primitives.
+
+
+ACL2 Warning [Disable] in ( DEFTHM 
+FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS-OF-HOST-OPEN ...):  Forcing
+has transitioned from enabled to disabled.
+See :DOC force.
+
+Goal'
+
+Q.E.D.
+
+The storage of FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS-OF-HOST-OPEN
+depends upon the :type-prescription rule FN-SN-OPEN-OKP.
+
+Summary
+Form:  ( DEFTHM FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS-OF-HOST-OPEN
+...)
+Rules: ((:TYPE-PRESCRIPTION FN-SN-OPEN-OKP))
+Hint-events: ((:USE FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL)
+              (:USE FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS))
+Warnings:  Disable, Theory and Free
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-SN-RECOVERY-ADMISSIBLE-IMAGE-REOPENS-OF-HOST-OPEN
+
+
+ACL2 !>>>(LOCAL
+             (DEFTHM FN-SOB-EVOLVING-INVARIANT-READS-THE-JOURNAL
+               (IMPLIES (EQUAL (FN-SN-FILES A) (FN-SN-FILES B))
+                        (EQUAL (FN-BPRV-EVOLVING-INVARIANTP A ST JOURNAL)
+                               (FN-BPRV-EVOLVING-INVARIANTP B ST JOURNAL)))
+               :RULE-CLASSES NIL
+               :HINTS (("Goal" :IN-THEORY (ENABLE FN-BPRV-EVOLVING-INVARIANTP
+                                                  FN-BPRV-HISTORY)))))
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-SOB-EVOLVING-INVARIANT-READS-THE-JOURNAL ...)
+Rules: ((:DEFINITION FN-BPA-RECEIPT-ID)
+        (:DEFINITION FN-BPRV-ENTRY-LINKEDP)
+        (:DEFINITION FN-BPRV-EVOLVING-INVARIANTP)
+        (:DEFINITION FN-BPRV-HISTORY)
+        (:DEFINITION FN-BPRV-HISTORY-RELATIONALP)
+        (:DEFINITION FN-BPRV-PENDING-LINKEDP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-BPA-NTH-ONE))
+Time:  0.02 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  5134
+FN-SOB-EVOLVING-INVARIANT-READS-THE-JOURNAL
+
+
+ACL2 !>>>(DEFTHM
+            FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN
+          (IMPLIES
+              (AND (FN-BPRV-SYSTEM-INVARIANTP STORE ST JOURNAL)
+                   (FN-CSI-FULL-RELATIONP STORE)
+                   (FN-SF-CRASH-IMAGEP (FN-SN-FILES STORE)
+                                       FRONTIER RECORDS)
+                   (FN-SN-OBSERVED-IDENTITY-OKP RECORDS)
+                   (FN-SN-OBSERVED-TOPIC-OKP RECORDS)
+                   (FN-SOB-CONFIGURED-OPENP CONFIGS FRONTIER RECORDS))
+              (LET ((OPENED (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER RECORDS)))
+                (AND (FN-SN-OPEN-OKP OPENED)
+                     (FN-BPRV-EVOLVING-INVARIANTP (FN-SN-OPEN-STATE OPENED)
+                                                  ST JOURNAL))))
+          :HINTS
+          (("Goal"
+            :USE
+            (FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN
+             (:INSTANCE
+                  FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL
+                  (GROUPS (FN-SN-GROUPS STORE))
+                  (CAPACITY (FN-SN-CAPACITY STORE))
+                  (EVENTS RECORDS))
+             (:INSTANCE
+              FN-SOB-EVOLVING-INVARIANT-READS-THE-JOURNAL
+              (A (FN-SN-OPEN-STATE
+                      (FN-CPO-OPEN-OBSERVED CONFIGS FRONTIER RECORDS)))
+              (B
+                (FN-SN-OPEN-STATE (FN-SN-OPEN-OBSERVED (FN-SN-GROUPS STORE)
+                                                       (FN-SN-CAPACITY STORE)
+                                                       FRONTIER RECORDS)))))
+            :IN-THEORY '(FN-BPRV-SYSTEM-INVARIANTP))))
+
+ACL2 Warning [Free] in ( DEFTHM 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+A :REWRITE rule generated from 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN contains
+the free variables JOURNAL, ST and STORE.  These variables will be
+chosen by searching for an instance of 
+(FN-BPRV-SYSTEM-INVARIANTP STORE ST JOURNAL) in the context of the
+term being rewritten.  This is generally a severe restriction on the
+applicability of a :REWRITE rule.  See :DOC free-variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+As noted, we will instantiate the free variables, JOURNAL, ST and STORE,
+of a :REWRITE rule generated from 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN, by
+searching for the hypothesis shown above.  However, this hypothesis
+mentions the function symbol FN-BPRV-SYSTEM-INVARIANTP, which has a
+non-recursive definition.  Unless this definition is disabled, that
+function symbol is unlikely to occur in the conjecture being proved
+and hence the search for the required hypothesis will likely fail.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+A :REWRITE rule generated from 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN will
+be triggered only by terms containing the function symbol 
+FN-BPRV-EVOLVING-INVARIANTP, which has a non-recursive definition.
+Unless this definition is disabled, this rule is unlikely ever to be
+used.
+
+
+ACL2 Warning [Free] in ( DEFTHM 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+A :REWRITE rule generated from 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN contains
+the free variable STORE.  This variable will be chosen by searching
+for an instance of (FN-BPRV-SYSTEM-INVARIANTP STORE ST JOURNAL) in
+the context of the term being rewritten.  This is generally a severe
+restriction on the applicability of a :REWRITE rule.  See :DOC free-
+variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+As noted, we will instantiate the free variable, STORE, of a :REWRITE
+rule generated from 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN, by
+searching for the hypothesis shown above.  However, this hypothesis
+mentions the function symbol FN-BPRV-SYSTEM-INVARIANTP, which has a
+non-recursive definition.  Unless this definition is disabled, that
+function symbol is unlikely to occur in the conjecture being proved
+and hence the search for the required hypothesis will likely fail.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+The :DEFINITION rules for the built-in functions DOUBLE-REWRITE, THE-CHECK,
+MV-NTH, CONS-WITH-HINT, IFF, FROM-DF, WORMHOLE-EVAL, MV-LIST, MINUSP,
+PLUSP, ZEROP, LISTP, SYNP, CASE-SPLIT, FORCE, /=, =, RETURN-LAST, NULL,
+ENDP, ATOM, EQL, NOT, IMPLIES and EQ are disabled by the theory expression
+'(FN-BPRV-SYSTEM-INVARIANTP), but some expansions of their calls may
+still occur.  See :DOC theories-and-primitives.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+The :EXECUTABLE-COUNTERPART rules for the built-in functions NOT, SYMBOLP,
+SYMBOL-PACKAGE-NAME, SYMBOL-NAME, STRINGP, REALPART, RATIONALP, PKG-WITNESS,
+PKG-IMPORTS, NUMERATOR, INTERN-IN-PACKAGE-OF-SYMBOL, INTEGERP, IMAGPART,
+IF, EQUAL, DENOMINATOR, CONSP, CONS, COERCE, COMPLEX-RATIONALP, COMPLEX,
+CODE-CHAR, CHARACTERP, CHAR-CODE, CDR, CAR, <, UNARY-/, UNARY--, BINARY-+,
+BINARY-* and ACL2-NUMBERP are disabled by the theory expression 
+'(FN-BPRV-SYSTEM-INVARIANTP), but some evaluations of their calls may
+still occur.  See :DOC theories-and-primitives.
+
+
+ACL2 Warning [Disable] in ( DEFTHM 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...):
+Forcing has transitioned from enabled to disabled.
+See :DOC force.
+
+Goal'
+Goal''
+
+Q.E.D.
+
+The storage of 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN depends
+upon the :type-prescription rules FN-BPRV-EVOLVING-INVARIANTP and 
+FN-SN-OPEN-OKP.
+
+Summary
+Form:  ( DEFTHM 
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN ...)
+Rules: ((:DEFINITION FN-BPRV-SYSTEM-INVARIANTP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-BPRV-EVOLVING-INVARIANTP)
+        (:TYPE-PRESCRIPTION FN-SN-OPEN-OKP))
+Hint-events: ((:USE FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN)
+              (:USE FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL)
+              (:USE FN-SOB-EVOLVING-INVARIANT-READS-THE-JOURNAL))
+Warnings:  Disable, Theory, Non-rec and Free
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  534
+FN-BPRV-EVOLVING-INVARIANT-SURVIVES-OBSERVED-REOPEN-OF-HOST-OPEN
+
+
+ACL2 !>>>(DEFTHM FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN
+          (IMPLIES (AND (FN-CSI-FULL-RELATIONP S)
+                        (FN-BS-STORE-RELATION BS (FN-SN-FILES S))
+                        (FN-BS-CRASH-IMAGEP BS IMAGE)
+                        (FN-SN-OBSERVED-IDENTITY-OKP
+                             (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))
+                        (FN-SN-OBSERVED-TOPIC-OKP
+                             (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))
+                        (FN-SOB-CONFIGURED-OPENP
+                             CONFIGS
+                             (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE))
+                             (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE))))
+                   (FN-SN-OPEN-OKP
+                        (FN-CPO-OPEN-OBSERVED
+                             CONFIGS
+                             (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE))
+                             (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))))
+          :HINTS
+          (("Goal"
+            :USE
+            (FN-BS-CRASH-IMAGE-REOPENS
+               (:INSTANCE
+                    FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL
+                    (GROUPS (FN-SN-GROUPS S))
+                    (CAPACITY (FN-SN-CAPACITY S))
+                    (FRONTIER (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE)))
+                    (EVENTS (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))))
+            :IN-THEORY NIL)))
+
+ACL2 Warning [Free] in ( DEFTHM FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN
+...):  A :REWRITE rule generated from FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN
+contains the free variables S and BS.  These variables will be chosen
+by searching for instances of (FN-CSI-FULL-RELATIONP S) and 
+(FN-BS-STORE-RELATION BS (FN-SN-FILES S)) in the context of the term
+being rewritten.  This is generally a severe restriction on the applicability
+of a :REWRITE rule.  See :DOC free-variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN
+...):  As noted, we will instantiate the free variables, S and BS,
+of a :REWRITE rule generated from FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN,
+by searching for the set of hypotheses shown above.  However, these
+hypotheses mention the function symbol FN-CSI-FULL-RELATIONP, which
+has a non-recursive definition.  Unless this definition is disabled,
+that function symbol is unlikely to occur in the conjecture being proved
+and hence the search for the required hypotheses will likely fail.
+
+
+ACL2 Warning [Theory] in ( DEFTHM FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN
+...):  The :DEFINITION rules for the built-in functions DOUBLE-REWRITE,
+THE-CHECK, MV-NTH, CONS-WITH-HINT, IFF, FROM-DF, WORMHOLE-EVAL, MV-LIST,
+MINUSP, PLUSP, ZEROP, LISTP, SYNP, CASE-SPLIT, FORCE, /=, =, RETURN-LAST,
+NULL, ENDP, ATOM, EQL, NOT, IMPLIES and EQ are disabled by the theory
+expression NIL, but some expansions of their calls may still occur.
+See :DOC theories-and-primitives.
+
+
+ACL2 Warning [Theory] in ( DEFTHM FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN
+...):  The :EXECUTABLE-COUNTERPART rules for the built-in functions
+NOT, SYMBOLP, SYMBOL-PACKAGE-NAME, SYMBOL-NAME, STRINGP, REALPART,
+RATIONALP, PKG-WITNESS, PKG-IMPORTS, NUMERATOR, INTERN-IN-PACKAGE-OF-SYMBOL,
+INTEGERP, IMAGPART, IF, EQUAL, DENOMINATOR, CONSP, CONS, COERCE, 
+COMPLEX-RATIONALP, COMPLEX, CODE-CHAR, CHARACTERP, CHAR-CODE, CDR,
+CAR, <, UNARY-/, UNARY--, BINARY-+, BINARY-* and ACL2-NUMBERP are disabled
+by the theory expression NIL, but some evaluations of their calls may
+still occur.  See :DOC theories-and-primitives.
+
+
+ACL2 Warning [Disable] in ( DEFTHM FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN
+...):  Forcing has transitioned from enabled to disabled.
+See :DOC force.
+
+Goal'
+
+Q.E.D.
+
+The storage of FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN depends upon
+the :type-prescription rule FN-SN-OPEN-OKP.
+
+Summary
+Form:  ( DEFTHM FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN ...)
+Rules: ((:TYPE-PRESCRIPTION FN-SN-OPEN-OKP))
+Hint-events: ((:USE FN-BS-CRASH-IMAGE-REOPENS)
+              (:USE FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL))
+Warnings:  Disable, Theory, Non-rec and Free
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN
+
+
+ACL2 !>>>(DEFTHM FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN
+          (IMPLIES
+           (AND (FN-CSI-FULL-RELATIONP S)
+                (FN-BS-STORE-RELATION BS (FN-SN-FILES S))
+                (FN-BS-CRASH-IMAGEP BS IMAGE)
+                (FN-SN-OBSERVED-IDENTITY-OKP
+                     (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))
+                (FN-SN-OBSERVED-TOPIC-OKP
+                     (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))
+                (MEMBER-EQUAL PAIR (FN-SF-SUCCESSES (FN-SN-FILES S)))
+                (FN-SOB-CONFIGURED-OPENP
+                     CONFIGS
+                     (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE))
+                     (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE))))
+           (LET
+              ((OPENED (FN-CPO-OPEN-OBSERVED
+                            CONFIGS
+                            (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE))
+                            (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))))
+            (AND
+             (FN-SN-OPEN-OKP OPENED)
+             (FN-SF-RECORD-HAS-PAIRP
+                  PAIR
+                  (FN-SF-RECORDS (FN-SN-FILES (FN-SN-OPEN-STATE OPENED)))))))
+          :HINTS
+          (("Goal"
+            :USE
+            (FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH
+               (:INSTANCE
+                    FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL
+                    (GROUPS (FN-SN-GROUPS S))
+                    (CAPACITY (FN-SN-CAPACITY S))
+                    (FRONTIER (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE)))
+                    (EVENTS (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))))
+            :IN-THEORY NIL)))
+
+ACL2 Warning [Free] in ( DEFTHM 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN ...):  A
+:REWRITE rule generated from 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN contains
+the free variables S, BS and PAIR.  These variables will be chosen
+by searching for instances of (FN-CSI-FULL-RELATIONP S), 
+(FN-BS-STORE-RELATION BS (FN-SN-FILES S)) and 
+(MEMBER-EQUAL PAIR (FN-SF-SUCCESSES (FN-SN-FILES S))) in the context
+of the term being rewritten.  This is generally a severe restriction
+on the applicability of a :REWRITE rule.  See :DOC free-variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN ...):  As
+noted, we will instantiate the free variables, S, BS and PAIR, of a
+:REWRITE rule generated from 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN, by searching
+for the set of hypotheses shown above.  However, these hypotheses mention
+the function symbol FN-CSI-FULL-RELATIONP, which has a non-recursive
+definition.  Unless this definition is disabled, that function symbol
+is unlikely to occur in the conjecture being proved and hence the search
+for the required hypotheses will likely fail.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN ...):  The
+previously added rule FN-BS-CRASH-IMAGE-REOPENS-OF-HOST-OPEN subsumes
+a newly proposed :REWRITE rule generated from 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN, in the
+sense that the old rule rewrites a more general target.  Because the
+new rule will be tried first, it may nonetheless find application.
+
+
+ACL2 Warning [Free] in ( DEFTHM 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN ...):  A
+:REWRITE rule generated from 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN contains
+the free variables S and BS.  These variables will be chosen by searching
+for instances of (FN-CSI-FULL-RELATIONP S) and 
+(FN-BS-STORE-RELATION BS (FN-SN-FILES S)) in the context of the term
+being rewritten.  This is generally a severe restriction on the applicability
+of a :REWRITE rule.  See :DOC free-variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN ...):  As
+noted, we will instantiate the free variables, S and BS, of a :REWRITE
+rule generated from 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN, by searching
+for the set of hypotheses shown above.  However, these hypotheses mention
+the function symbol FN-CSI-FULL-RELATIONP, which has a non-recursive
+definition.  Unless this definition is disabled, that function symbol
+is unlikely to occur in the conjecture being proved and hence the search
+for the required hypotheses will likely fail.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN ...):  The
+:DEFINITION rules for the built-in functions DOUBLE-REWRITE, THE-CHECK,
+MV-NTH, CONS-WITH-HINT, IFF, FROM-DF, WORMHOLE-EVAL, MV-LIST, MINUSP,
+PLUSP, ZEROP, LISTP, SYNP, CASE-SPLIT, FORCE, /=, =, RETURN-LAST, NULL,
+ENDP, ATOM, EQL, NOT, IMPLIES and EQ are disabled by the theory expression
+NIL, but some expansions of their calls may still occur.  See :DOC
+theories-and-primitives.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN ...):  The
+:EXECUTABLE-COUNTERPART rules for the built-in functions NOT, SYMBOLP,
+SYMBOL-PACKAGE-NAME, SYMBOL-NAME, STRINGP, REALPART, RATIONALP, PKG-WITNESS,
+PKG-IMPORTS, NUMERATOR, INTERN-IN-PACKAGE-OF-SYMBOL, INTEGERP, IMAGPART,
+IF, EQUAL, DENOMINATOR, CONSP, CONS, COERCE, COMPLEX-RATIONALP, COMPLEX,
+CODE-CHAR, CHARACTERP, CHAR-CODE, CDR, CAR, <, UNARY-/, UNARY--, BINARY-+,
+BINARY-* and ACL2-NUMBERP are disabled by the theory expression NIL,
+but some evaluations of their calls may still occur.  See :DOC theories-
+and-primitives.
+
+
+ACL2 Warning [Disable] in ( DEFTHM 
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN ...):  Forcing
+has transitioned from enabled to disabled.
+See :DOC force.
+
+Goal'
+Goal''
+Goal'''
+
+Q.E.D.
+
+The storage of FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN
+depends upon the :type-prescription rules FN-SF-RECORD-HAS-PAIRP and
+FN-SN-OPEN-OKP.
+
+Summary
+Form:  ( DEFTHM FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN
+...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-SF-RECORD-HAS-PAIRP)
+        (:TYPE-PRESCRIPTION FN-SN-OPEN-OKP))
+Hint-events: ((:USE FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH)
+              (:USE FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL))
+Warnings:  Disable, Theory, Subsume, Non-rec and Free
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  700
+FN-BS-ACKNOWLEDGED-RECORD-SURVIVES-BYTE-CRASH-OF-HOST-OPEN
+
+
+ACL2 !>>>(DEFTHM FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN
+          (IMPLIES
+           (AND
+             (FN-CSI-FULL-RELATIONP S)
+             (FN-BS-STORE-RELATION BS (FN-SN-FILES S))
+             (MEMBER-EQUAL
+                  PAIR
+                  (FN-BS-RUN
+                       BS (FN-SN-FILES S)
+                       (FN-BS-RECOVER-SWEEP-PROGRAM
+                            (CADR (FN-SN-SWEEP-ROUND S OBSERVED OVERP HELD)))
+                       OUTCOMES GROUPS CAPACITY))
+             (FN-BS-CRASH-IMAGEP (CAR PAIR) IMAGE)
+             (FN-SN-OBSERVED-IDENTITY-OKP
+                  (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))
+             (FN-SN-OBSERVED-TOPIC-OKP
+                  (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))
+             (FN-SOB-CONFIGURED-OPENP
+                  CONFIGS
+                  (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE))
+                  (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE))))
+           (AND (EQUAL (CDR PAIR) (FN-SN-FILES S))
+                (EQUAL (FN-BS-SCAN-STORE (CAR PAIR))
+                       (FN-BS-SCAN-STORE BS))
+                (FN-SN-OPEN-OKP
+                     (FN-CPO-OPEN-OBSERVED
+                          CONFIGS
+                          (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE))
+                          (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE))))))
+          :HINTS
+          (("Goal"
+            :USE
+            (FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE
+               (:INSTANCE
+                    FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL
+                    (GROUPS (FN-SN-GROUPS S))
+                    (CAPACITY (FN-SN-CAPACITY S))
+                    (FRONTIER (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE)))
+                    (EVENTS (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))))
+            :IN-THEORY NIL)))
+
+ACL2 Warning [Double-rewrite] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  In
+a :REWRITE rule generated from 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN, equivalence
+relation LIST-EQUIV is maintained at one problematic occurrence of
+variable PAIR in the fourth hypothesis, but not at any binding occurrence
+of PAIR.  Consider replacing that occurrence of PAIR in the fourth
+hypothesis with (DOUBLE-REWRITE PAIR).  See :doc double-rewrite for
+more information on this issue.
+
+
+ACL2 Warning [Free] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  A
+:REWRITE rule generated from 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN contains
+the free variables S, BS, CAPACITY, GROUPS, OUTCOMES, HELD, OVERP,
+OBSERVED, IMAGE and CONFIGS.  These variables will be chosen by searching
+for instances of (FN-CSI-FULL-RELATIONP S), 
+(FN-BS-STORE-RELATION BS (FN-SN-FILES S)), 
+(MEMBER-EQUAL
+     PAIR
+     (FN-BS-RUN BS (FN-SN-FILES S)
+                (FN-BS-RECOVER-SWEEP-PROGRAM
+                     (CADR (FN-SN-SWEEP-ROUND S OBSERVED OVERP HELD)))
+                OUTCOMES GROUPS CAPACITY)),
+(FN-BS-CRASH-IMAGEP (CAR PAIR) IMAGE) and 
+(FN-SOB-CONFIGURED-OPENP CONFIGS
+                         (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE))
+                         (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))
+ in the context of the term being rewritten.  This is generally a severe
+restriction on the applicability of a :REWRITE rule.  See :DOC free-
+variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  As
+noted, we will instantiate the free variables, S, BS, CAPACITY, GROUPS,
+OUTCOMES, HELD, OVERP, OBSERVED, IMAGE and CONFIGS, of a :REWRITE rule
+generated from FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN,
+by searching for the set of hypotheses shown above.  However, these
+hypotheses mention the function symbols FN-CSI-FULL-RELATIONP and 
+FN-SOB-CONFIGURED-OPENP, which have non-recursive definitions.  Unless
+these definitions are disabled, those function symbols are unlikely
+to occur in the conjecture being proved and hence the search for the
+required hypotheses will likely fail.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  The
+previously added rule FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE
+subsumes a newly proposed :REWRITE rule generated from 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN, in the sense
+that the old rule rewrites a more general target.  Because the new
+rule will be tried first, it may nonetheless find application.
+
+
+ACL2 Warning [Free] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  A
+:REWRITE rule generated from 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN contains
+the free variables S, BS, CAPACITY, GROUPS, OUTCOMES, HELD, OVERP,
+OBSERVED, IMAGE and CONFIGS.  These variables will be chosen by searching
+for instances of (FN-CSI-FULL-RELATIONP S), 
+(FN-BS-STORE-RELATION BS (FN-SN-FILES S)), 
+(MEMBER-EQUAL
+     PAIR
+     (FN-BS-RUN BS (FN-SN-FILES S)
+                (FN-BS-RECOVER-SWEEP-PROGRAM
+                     (CADR (FN-SN-SWEEP-ROUND S OBSERVED OVERP HELD)))
+                OUTCOMES GROUPS CAPACITY)),
+(FN-BS-CRASH-IMAGEP (CAR PAIR) IMAGE) and 
+(FN-SOB-CONFIGURED-OPENP CONFIGS
+                         (FN-BS-SCAN-FRONTIER (FN-BS-SCAN-STORE IMAGE))
+                         (FN-BS-SCAN-RECORDS (FN-BS-SCAN-STORE IMAGE)))
+ in the context of the term being rewritten.  This is generally a severe
+restriction on the applicability of a :REWRITE rule.  See :DOC free-
+variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  As
+noted, we will instantiate the free variables, S, BS, CAPACITY, GROUPS,
+OUTCOMES, HELD, OVERP, OBSERVED, IMAGE and CONFIGS, of a :REWRITE rule
+generated from FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN,
+by searching for the set of hypotheses shown above.  However, these
+hypotheses mention the function symbols FN-CSI-FULL-RELATIONP and 
+FN-SOB-CONFIGURED-OPENP, which have non-recursive definitions.  Unless
+these definitions are disabled, those function symbols are unlikely
+to occur in the conjecture being proved and hence the search for the
+required hypotheses will likely fail.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  The
+previously added rule FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE
+subsumes a newly proposed :REWRITE rule generated from 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN, in the sense
+that the old rule rewrites a more general target.  Because the new
+rule will be tried first, it may nonetheless find application.
+
+
+ACL2 Warning [Double-rewrite] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  In
+a :REWRITE rule generated from 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN, equivalence
+relation LIST-EQUIV is maintained at one problematic occurrence of
+variable PAIR in the fourth hypothesis, but not at any binding occurrence
+of PAIR.  Consider replacing that occurrence of PAIR in the fourth
+hypothesis with (DOUBLE-REWRITE PAIR).  See :doc double-rewrite for
+more information on this issue.
+
+
+ACL2 Warning [Free] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  A
+:REWRITE rule generated from 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN contains
+the free variables S, BS, CAPACITY, GROUPS, OUTCOMES, HELD, OVERP,
+OBSERVED and PAIR.  These variables will be chosen by searching for
+instances of (FN-CSI-FULL-RELATIONP S), 
+(FN-BS-STORE-RELATION BS (FN-SN-FILES S)) and 
+(MEMBER-EQUAL
+     PAIR
+     (FN-BS-RUN BS (FN-SN-FILES S)
+                (FN-BS-RECOVER-SWEEP-PROGRAM
+                     (CADR (FN-SN-SWEEP-ROUND S OBSERVED OVERP HELD)))
+                OUTCOMES GROUPS CAPACITY))
+ in the context of the term being rewritten.  This is generally a severe
+restriction on the applicability of a :REWRITE rule.  See :DOC free-
+variables.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  As
+noted, we will instantiate the free variables, S, BS, CAPACITY, GROUPS,
+OUTCOMES, HELD, OVERP, OBSERVED and PAIR, of a :REWRITE rule generated
+from FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN, by
+searching for the set of hypotheses shown above.  However, these hypotheses
+mention the function symbol FN-CSI-FULL-RELATIONP, which has a non-
+recursive definition.  Unless this definition is disabled, that function
+symbol is unlikely to occur in the conjecture being proved and hence
+the search for the required hypotheses will likely fail.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  The
+:DEFINITION rules for the built-in functions DOUBLE-REWRITE, THE-CHECK,
+MV-NTH, CONS-WITH-HINT, IFF, FROM-DF, WORMHOLE-EVAL, MV-LIST, MINUSP,
+PLUSP, ZEROP, LISTP, SYNP, CASE-SPLIT, FORCE, /=, =, RETURN-LAST, NULL,
+ENDP, ATOM, EQL, NOT, IMPLIES and EQ are disabled by the theory expression
+NIL, but some expansions of their calls may still occur.  See :DOC
+theories-and-primitives.
+
+
+ACL2 Warning [Theory] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  The
+:EXECUTABLE-COUNTERPART rules for the built-in functions NOT, SYMBOLP,
+SYMBOL-PACKAGE-NAME, SYMBOL-NAME, STRINGP, REALPART, RATIONALP, PKG-WITNESS,
+PKG-IMPORTS, NUMERATOR, INTERN-IN-PACKAGE-OF-SYMBOL, INTEGERP, IMAGPART,
+IF, EQUAL, DENOMINATOR, CONSP, CONS, COERCE, COMPLEX-RATIONALP, COMPLEX,
+CODE-CHAR, CHARACTERP, CHAR-CODE, CDR, CAR, <, UNARY-/, UNARY--, BINARY-+,
+BINARY-* and ACL2-NUMBERP are disabled by the theory expression NIL,
+but some evaluations of their calls may still occur.  See :DOC theories-
+and-primitives.
+
+
+ACL2 Warning [Disable] in ( DEFTHM 
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN ...):  Forcing
+has transitioned from enabled to disabled.
+See :DOC force.
+
+Goal'
+
+Q.E.D.
+
+The storage of FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN
+depends upon the :type-prescription rule FN-SN-OPEN-OKP.
+
+Summary
+Form:  ( DEFTHM FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN
+...)
+Rules: ((:TYPE-PRESCRIPTION FN-SN-OPEN-OKP))
+Hint-events: ((:USE FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE)
+              (:USE FN-CPO-OPEN-OBSERVED-IS-SN-OPEN-OBSERVED-ON-THE-KERNEL))
+Warnings:  Disable, Theory, Subsume, Non-rec, Free and Double-rewrite
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-BS-SWEEP-ROUND-KEEPS-EVERY-CUT-REOPENABLE-OF-HOST-OPEN
+
+* Step 3:  That completes the admissibility check.  Each form read
+was an embedded event form and was admissible.  We now retract back
+to the world created by the first five events after the initial IN-
+PACKAGE form and try to include the remainder of the book; see :DOC
+local-incompatibility.
+
+Summary
+Form:  ( INCLUDE-BOOK "books/store-open-bridge" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+
+ACL2 Warning [Guards] in (CERTIFY-BOOK "books/store-open-bridge" ...):
+The book 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/store-open-bridge.lisp"
+defines the functions FN-SOB-CONFIGURED-OPENP and FN-SOB-IDENTITY-TYPEDP,
+which have not had their guards verified.  Moreover, this book's included
+sub-books define functions DEFUN-THEORY-FN, DEFUN-THEORY-FN-REC, 
+DEFUN-TYPE/EXEC-THEORY-FN, DEFUN-TYPE/EXEC-THEORY-FN-REC, ELEMENT-EQUIV,
+ELEMENT-LIST-EQUIV, ELEMENT-LIST-FIX, ELEMENT-LIST-NONEMPTY-P, 
+ELEMENT-LIST-P, ELEMENTLIST-MAPAPPEND, ELEMENTLIST-PROJECTION, 
+FN-AUTH-EFFECTP, FN-AUTH-EFFECTSP, FN-AUTH-SESSION-CONSISTENTP, 
+FN-BPR-ACCEPT-PROJECTED-REQUEST, FN-BPR-ACCEPT-REQUEST, 
+FN-BPR-BIND-REQUEST-CONTEXT, FN-BPR-COMMIT-RECEIPT, 
+FN-BPR-CONFIG-DESTINATION, FN-BPR-CONFIG-ISSUER, FN-BPR-CONFIG-POLICY-ID,
+FN-BPR-CONFIGP, FN-BPR-CONTEXT-ARCHIVE-ID, FN-BPR-CONTEXT-AUTH-CONTEXT,
+FN-BPR-CONTEXT-FROM-REQUEST, FN-BPR-CONTEXT-INCARNATION, 
+FN-BPR-CONTEXT-LISTP, FN-BPR-CONTEXT-MSGID, FN-BPR-CONTEXT-PEER-EID,
+FN-BPR-CONTEXT-POLICY-ID, FN-BPR-CONTEXT-REQUEST, FN-BPR-CONTEXT-SUBJECT,
+FN-BPR-CONTEXT-TERMS-ID, FN-BPR-CONTEXT-WORK-ID, FN-BPR-CONTEXTP, 
+FN-BPR-FIND-CONTEXT, FN-BPR-FIND-CONTEXT-MSGID, FN-BPR-FIND-RECEIPT,
+FN-BPR-INITIAL-STATE, FN-BPR-LIVE-INSTALL, FN-BPR-LIVE-JOURNAL, 
+FN-BPR-LIVE-RUN, FN-BPR-LIVE-STATE, FN-BPR-LIVE-STEP, FN-BPR-LIVE-STORE,
+FN-BPR-MAKE-CONFIG, FN-BPR-MAKE-CONTEXT, FN-BPR-MAKE-RECEIPT-ENTRY,
+FN-BPR-MAKE-STATE, FN-BPR-PREPARE-RECEIPT, 
+FN-BPR-PROJECTED-REQUEST-ACCEPTABLEP, FN-BPR-RECEIPT-ADU, 
+FN-BPR-RECEIPT-ENTRY-CONTEXT, FN-BPR-RECEIPT-ENTRY-RECEIPT, 
+FN-BPR-RECEIPT-ENTRYP, FN-BPR-RECEIPT-FOR, FN-BPR-RECEIPT-LISTP, 
+FN-BPR-REQUEST-ACCEPTABLEP, FN-BPR-STATE-CONFIG, FN-BPR-STATE-CONTEXTS,
+FN-BPR-STATE-PENDING, FN-BPR-STATE-RECEIPTS, FN-BPR-STATEP, 
+FN-BPR-STORE-RECORD-ACCEPTEDP, FN-BPRR-APPLY-RECORD, FN-BPRR-CONFIG,
+FN-BPRR-CONFIGP, FN-BPRR-DECODE-VALUE, FN-BPRR-OCTETSP, FN-BPRR-RECORDP,
+FN-BPRR-REPLAY, FN-BPRR-REPLAY-REST, FN-BPRR-TEXTP, FN-BPRV-CONTEXT-BACKEDP,
+FN-BPRV-CONTEXT-GROUNDEDP, FN-BPRV-CONTEXTS-BACKEDP, 
+FN-BPRV-CONTEXTS-GROUNDEDP, FN-BPRV-DECISION-FOR-ENTRYP, 
+FN-BPRV-ENTRIES-DECIDEDP, FN-BPRV-ENTRIES-LINKEDP, FN-BPRV-ENTRY-DECIDEDP,
+FN-BPRV-ENTRY-LINKEDP, FN-BPRV-EVOLVING-INVARIANTP, FN-BPRV-EXTENDSP,
+FN-BPRV-FIND-GROUNDING-RECORD, FN-BPRV-FIND-RECORD, FN-BPRV-HISTORY,
+FN-BPRV-HISTORY-RELATIONALP, FN-BPRV-INVARIANTP, FN-BPRV-JOURNAL-SUBSETP,
+FN-BPRV-NO-COMMITTED-DECISIONSP, FN-BPRV-NODE-IDLEP, FN-BPRV-PENDING-LINKEDP,
+FN-BPRV-PHASE, FN-BPRV-RECORD-BINDS, FN-BPRV-RECORD-GROUNDS, 
+FN-BPRV-RELATIONALP, FN-BPRV-SYSTEM-EVENTS-JOURNALEDP, 
+FN-BPRV-SYSTEM-INVARIANTP, FN-BPRV-SYSTEM-RUN, FN-BPRV-SYSTEM-STEP,
+FN-BS-ALL-FENCEDP, FN-BS-ALL-NEW, FN-BS-APPLY-ENTRIES, FN-BS-APPLY-OP,
+FN-BS-APPLY-OPS, FN-BS-APPLY-WRITES, FN-BS-AUTHORITY-FENCEDP, 
+FN-BS-AUTHORITY-INODE-LIST, FN-BS-AUTHORITY-KNOWNP, 
+FN-BS-CHECKPOINT-PUBLISH-PROGRAM, FN-BS-CHECKPOINT-SELECT-PROGRAM,
+FN-BS-CONTENT, FN-BS-CONTIGUOUS-NAMESP, FN-BS-CRASH, FN-BS-CRASH-CHOICEP,
+FN-BS-CRASH-CHOICESP, FN-BS-CRASH-SELECT, FN-BS-CREATE, FN-BS-DIR-QUIETP,
+FN-BS-DIR-TABLEP, FN-BS-DURABLE, FN-BS-DURABLE-CONTENT, FN-BS-DURABLE-ENTRY,
+FN-BS-DURABLE-FRONTIER, FN-BS-DURABLE-NAMES, FN-BS-DURABLE-OBSERVATIONP,
+FN-BS-DURABLE-RECORDS, FN-BS-ENTRIESP, FN-BS-ENTRY-AFTER, 
+FN-BS-ENTRY-OUTCOMES, FN-BS-FENCE-DIR, FN-BS-FENCE-FILE, FN-BS-FENCEDP,
+FN-BS-FENCES-AUTHORITY-DIRS-AUX, FN-BS-FENCES-AUTHORITY-DIRSP, 
+FN-BS-FINISH-INPUTP, FN-BS-FINISH-PROGRAM, 
+FN-BS-FRONTIER-DIRECTORY-COMMITTEDP, FN-BS-FRONTIER-INPUTP, 
+FN-BS-FRONTIER-NONCOMMIT-OBSERVATIONP, FN-BS-FRONTIER-PROGRAM, 
+FN-BS-FSYNC-DIR, FN-BS-FSYNC-FILE, FN-BS-INBOX-PROGRAM, 
+FN-BS-INBOX-RECONCILE-PROGRAM, FN-BS-INIT-FILE-STEPS, FN-BS-INIT-PROGRAM,
+FN-BS-INITIAL-CONFIG-OCTETS, FN-BS-INITIAL-FRONTIER-OCTETS, 
+FN-BS-INITIAL-IMAGE, FN-BS-INITIAL-INPUTP, FN-BS-INODE-LIST-KNOWNP,
+FN-BS-INODE-TABLEP, FN-BS-K0-ROOT-ERROR-OUTCOMES, FN-BS-K0-WRITES-AVOID,
+FN-BS-K0C-IND, FN-BS-LINK, FN-BS-LINKS-ONLY-FENCED-AUX, 
+FN-BS-LINKS-ONLY-FENCEDP, FN-BS-LOOKUP, FN-BS-MKDIR, FN-BS-NAME-OP-COUNT,
+FN-BS-NAME-STEP, FN-BS-NAMES, FN-BS-NAMES-AFTER, FN-BS-NAMES-OUTCOMES,
+FN-BS-NEVER-OVERWRITES-AUTHORITYP, FN-BS-OPS-FOR-DIR, FN-BS-OPS-FOR-INO,
+FN-BS-OPS-FOR-NAME, FN-BS-OPS-NOT-FOR-DIR, FN-BS-OPS-NOT-FOR-INO, 
+FN-BS-PENDING-DISJOINT-AUX, FN-BS-PENDING-DISJOINTP, 
+FN-BS-PENDING-ENTRY-TARGETS, FN-BS-PENDING-MATCHES-PHASE, 
+FN-BS-PENDING-SHAPE-OKP, FN-BS-READ, FN-BS-READ-RECORDS, 
+FN-BS-RECEIPT-PROGRAM, FN-BS-RECORD-DIRECTORY-COMMITTEDP, 
+FN-BS-RECORD-INPUTP, FN-BS-RECORD-OF, FN-BS-RECORD-OF-OCTETS, 
+FN-BS-RECORD-PROGRAM, FN-BS-RECOVER-PROGRAM, 
+FN-BS-RECOVER-STAGE-CLEANUP-PROGRAM, FN-BS-RECOVER-SWEEP-PROGRAM, 
+FN-BS-RECOVERED-KERNEL, FN-BS-RECOVERY-ENTRY-KERNEL, FN-BS-RENAME,
+FN-BS-REPLAY-MATCHES-SCAN, FN-BS-REPLAY-VISIBLEP, FN-BS-RUN, 
+FN-BS-RUN-PENDING-DISJOINTP, FN-BS-RUN-RELATEDP, FN-BS-RUN-STATEP,
+FN-BS-SCAN-FRONTIER, FN-BS-SCAN-OKP, FN-BS-SCAN-RECORDS, FN-BS-SCAN-STORE,
+FN-BS-SPLICE, FN-BS-STAGING-CLEANUP-STEPSP, FN-BS-STAGING-DEL, FN-BS-STATEP,
+FN-BS-STEP, FN-BS-STEP-LISTP, FN-BS-STEPP, FN-BS-STORE-RELATION, 
+FN-BS-SWEEP-RUN-OKP, FN-BS-TAKE, FN-BS-TEAR-WRITE, FN-BS-TXN-NAMES,
+FN-BS-TXN-PREFIX-AGREESP, FN-BS-UNIT-COUNT, FN-BS-UNLINK, FN-BS-VIEW,
+FN-BS-VIEW-CHOICES, FN-BS-WORKFLOW-PROGRAM, FN-BS-WRITE, 
+FN-BS-WRITE-OVERLAPS-ANYP, FN-BS-WRITE-OVERLAPSP, FN-BS-WRITES-KNOWNP,
+FN-BS-WRITES-NONEMPTYP, FN-BS-ZEROS, FN-CEI-CORRESPONDENCEP, 
+FN-CSI-COMPLETED-PREFIXP, FN-CSI-COMPLETION-LASTP, FN-CSI-FULL-RELATIONP,
+FN-CSI-LIVEP, FN-CSI-NO-CRASH-EVENTSP, FN-GIDX-PIN-CORRESPONDENCEP,
+FN-NNTP-BLOCK-SCAN, FN-NNTP-BLOCK-TEXTP, FN-NNTP-CURSOR-VALIDP, 
+FN-NNTP-EFFECTP, FN-NNTP-EFFECTSP, FN-NNTP-GROUP-NONEMPTYP, 
+FN-NNTP-INITIAL-LINE-TAIL, FN-NNTP-INITIAL-STATUS-LINEP, 
+FN-NNTP-OCTET-LINESP, FN-NNTP-REPLYP, FN-NNTP-RESPONSE-OCTETP, 
+FN-NNTP-RESPONSE-TEXTP, FN-NNTP-RUN-SESSION, FN-NNTP-SESSION-CONSISTENTP,
+FN-NNTP-STATUS-PREFIXP, FN-NRT-NODE-WITH-RETENTION, FN-OCFG-COMPLETE,
+FN-OCFG-CR-INDUCT, FN-OCFG-PASS, FN-OCFG-REPLAY-CNODE-OKP, FN-OCFG-RUN,
+FN-OCFG-STEP, FN-OWN-BP-TRANSIT-SUBMIT, FN-OWN-BP-TRANSIT-SUBMIT-RESULT,
+FN-OWN-CONNS-BOUNDEDP, FN-OWN-RUN, FN-OWN-STEP, FN-OWN-STORE-STEP,
+FN-OWN-TAKE-PREFIX-INDUCT, FN-PEER-DECIDE-TRANSFER, 
+FN-PEER-INJECTION-ARGUMENTS, FN-PEER-SESSION-CONSISTENTP, FN-PEER-TRANSFER,
+FN-POST-SESSION-CONSISTENTP, FN-RECORD-SCHEMA0-ENCODE, FN-SERVED-CONNP,
+FN-SERVED-EFFECTP, FN-SERVED-EFFECTSP, FN-SERVED-SUBMIT-EFFECTP, 
+FN-SF-DISPATCH, FN-SF-EVENT-LISTP, FN-SF-EVENTP, FN-SF-GHOST-COVERS-EMITTEDP,
+FN-SF-IMAGE-CRASH, FN-SF-IMAGE-FRONTIER-CHOICE, FN-SF-IMAGE-RECORD-CHOICE,
+FN-SF-PREFIXP, FN-SF-RUN-EVENTS, FN-SF-RUN-TRACE, FN-SF-TRACE-CAPACITY,
+FN-SF-TRACE-EVENTS, FN-SF-TRACE-GROUPS, FN-SF-TRACE-MAKE, FN-SF-TRACEP,
+FN-SN-COMMITTED-RECORDP, FN-SN-PREPARE-CONSUMER, FN-SN-PREPARE-IDENTITY,
+FN-SNRT-RUN, FN-SNRT-STEP, FN-SNT-RUN, FN-SNT-STEP, 
+FN-STMT-ITEMS-FUEL-INDUCT, FN-STORE-EVENT-DECODE-EXACT, 
+FN-STORE-EVENT-ENCODE, FN-STORE-EVENT-ITEM-TAGP, FN-STORE-EVENT-ITEM-VALUE,
+FN-STORE-EVENT-KIND-CODE, FN-STORE-RETENTION-EVENT-DECODE-EXACT, 
+FN-STORE-RETENTION-EVENT-ENCODE, FN-STORE-RETENTION-EVENT-FROM-VALUES,
+FN-STORE-RETENTION-EVENT-MAKE, FN-WIRE-CLEAN-LINE-BYTE-INDUCTION, 
+FN-WIRE-LINE-CONTENTP, FN-WIRE-SUFFIXP, U::FORCE-TERM-LIST, 
+U::IMPORT-AS-MACROS-FN, XDOC::MAKE-XDOC-FRAGMENTS, OUTELEMENT-LIST-P,
+U::REASON-FOR-NOT-KEYWORD-OPTION-LISTP, RULETABLE-DELETE-TAGS and 
+RULETABLE-KEEP-TAGS, which have not had their guards verified.  See
+:DOC guards.
+
+
+* Step 4:  Write the certificate for 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/store-open-bridge.lisp"
+in "/home/ember/fn-gates/k4-bridges-b5724fce/books/store-open-bridge.cert".
+
+* Step 5:  Compile the functions defined in 
+"/home/ember/fn-gates/k4-bridges-b5724fce/books/store-open-bridge.lisp".
+
+Note: Writing book expansion file, /home/ember/fn-gates/k4-bridges-
+b5724fce/books/store-open-bridge@expansion.lsp.
+
+
+Note: Deleting expansion file for the book, /home/ember/fn-gates/k4-
+bridges-b5724fce/books/store-open-bridge.lisp.
+
+Summary
+Form:  (CERTIFY-BOOK "books/store-open-bridge" ...)
+Rules: NIL
+Warnings:  Guards, Disable, Theory, Subsume, Free, Non-rec, Double-
+rewrite and Compiled file
+Time:  6.44 seconds (prove: 1.88, print: 0.01, other: 4.55)
+Prover steps counted:  1089984
+ "/home/ember/fn-gates/k4-bridges-b5724fce/books/store-open-bridge.lisp"
+ACL2 !>>
+FN_CERTIFY_SUCCESS 2ea4bf5d7588afa9f3032935e88f197a a403435b7605
+ NIL
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
