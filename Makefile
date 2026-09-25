@@ -771,6 +771,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
+	books/key-statements \
+	tests/acl2/key-statements-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
 	books/login-binding \
