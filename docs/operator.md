@@ -225,9 +225,9 @@ headroom transactions-used=0 transactions-budget=128 charge-reserved=0 charge-ca
 
 `charge-reserved`/`charge-capacity` is the retention ledger in its abstract
 units (one per record plus one per 4096-octet page of payload,
-`fn-charge-for-payload`). `status` opens the store, so it answers only while
-no owner holds it (see below); a running owner's headroom over the control
-channel is not implemented.
+`fn-charge-for-payload`). With an owner running, `status` asks it (see
+[Status while the owner runs](#status-while-the-owner-runs)); with none it
+opens the store read-only.
 
 `peer list` prints the peer records the durable configuration holds, one line
 per peer, in the order `peer add` takes its arguments:
@@ -238,10 +238,54 @@ far path-identity=far.example address=192.0.2.44 port=1119 security=starttls inb
 
 A half the record does not carry is `-`. The line is rendered by ACL2
 (`fn-native-admin-peer-report`, books/native-admin.lisp) from the replayed
-configuration's own peer rows. `peer list` is a read: it opens the store
-without the exclusive writer lock and never reaches the live owner, so while
-an owner is running it refuses (1) exactly as `status` does, and it can neither
+configuration's own peer rows. `peer list` is a read, answered like
+`status`: by the running owner from the configuration it carries, or, with no
+owner, from the store opened without the exclusive writer lock. It can neither
 publish a configuration record nor take the lock away from the owner.
+
+### Status while the owner runs
+
+`operator CONFIG status`, `pins`, `obligations` and `peer list` print one
+report, rendered by one ACL2 function (`fn-nls-report`,
+books/native-live-status.lisp) whoever answers:
+
+```
+$ fn-native operator fn.toml status
+transactions=12 articles=12 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=4294967295 ...
+headroom transactions-used=12 transactions-budget=4294967295 bytes-used=5321 history-bound=1099511627776 charge-reserved=24 charge-capacity=...
+open=full-replay reason=no-checkpoint
+pins=12 reserved=24 connections=1
+connection id=3 config-generation=4
+accepted operator status
+$ fn-native operator fn.toml obligations
+obligations=12 reserved=24
+obligation id=... kind=archive charge=2 subject=...
+$ fn-native operator fn.toml pins
+pins=12 reserved=24 connections=1
+connection id=3 config-generation=4
+```
+
+`pins` is the retention ledger's count and reserved charge, then each open
+connection's configuration pin (the generation it reads under);
+`obligations` lists the ledger's held obligations. The BP node's forwarding
+obligations are not in this report: they belong to the DTN image's
+`bp-obligation status`.
+
+When the configuration's control socket is live, the command asks the owner
+over it (FNLS frames, pages of at most 128 KiB, joined by the client) and the
+owner renders the report from the Store, configuration and connection pins it
+carries, under its mutex, changing nothing
+(`fn-nls-live-report-is-the-offline-report`: with no connection open, those
+are the offline words of the same state). With no socket, or a socket nothing
+accepts on, the store is opened read-only, which refuses (1) while any owner
+holds it. A failure after the request was sent is uncertain (3); an owner
+that is stopping refuses (1). The `open=` line names how the answering
+process opened the store, so it can differ between the owner and a later
+offline read.
+
+`status --watch SECONDS` (1 to 86400) prints the report again every
+SECONDS until interrupted, one tagged result line after each.
 
 `policy set path-identity` gives the node its own RFC 5537 section 3.2
 `<path-identity>`. Until it is set, the owner cannot recognise its own name in
@@ -1143,8 +1187,9 @@ stop and work out which image you are holding, not to retry.
 transaction and article counts, the last recorded anchor, and whether an
 owner is live. While an owner holds the store no other process can take the
 lock, so with the service running `fn status` reports what the control
-channel answers (liveness, committed version, open connections) and names
-the store-side fields `owner-held`.
+channel answers; since 2026-09-25 that is the owner's own status report
+(see [Status while the owner runs](#status-while-the-owner-runs)), not
+`owner-held`.
 
 ## Experimental offline ION/LTP submission
 

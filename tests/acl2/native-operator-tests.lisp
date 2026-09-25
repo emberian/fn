@@ -258,7 +258,7 @@
 (assert-event (equal (fn-native-operator-command-preflight
                       (fn-nop-test-argv '("help" "status")))
                      '(:accepted :plan "help" nil
-                       (:help "status" "usage: fn operator CONFIG status"))))
+                       (:help "status" "usage: fn operator CONFIG status [--watch SECONDS] (asks the running owner over its control socket; offline, reads the store)"))))
 (assert-event (fn-native-operator-preflight-needs-config-p
                (fn-native-operator-command-preflight
                 (fn-nop-test-argv '("status")))))

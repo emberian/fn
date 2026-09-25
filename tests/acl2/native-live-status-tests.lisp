@@ -103,7 +103,14 @@ obli")))
    (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-stale) *nlst-obs*)
           (fn-nls-offline-report :status *nlst-profile* *nlst-s*
                                  (fn-ocfg-config *nlst-oc*) *nlst-obs*))
-   :rule-classes nil))
+   :rule-classes nil
+   ;; The keystone's own hints: the ground values go through the record
+   ;; encoder's attachment, which a proof cannot evaluate; the assertion
+   ;; above evaluates them and shows the two reports differ.
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-sbud-bytes-used-is-kernel-sum
+                             (s *nlst-s*) (cache (nlst-cache))))
+            :in-theory '(fn-nls-live-report fn-nls-offline-report)))))
 
 ; With a connection open the owner's pins report names it; offline has none.
 (defconst *nlst-connected*
@@ -118,7 +125,14 @@ obli")))
    (equal (fn-nls-live-report :pins *nlst-profile* *nlst-connected* (nlst-cache) *nlst-obs*)
           (fn-nls-offline-report :pins *nlst-profile* *nlst-s*
                                  (fn-ocfg-config *nlst-oc*) *nlst-obs*))
-   :rule-classes nil))
+   :rule-classes nil
+   ;; The keystone's own hints: the ground values go through the record
+   ;; encoder's attachment, which a proof cannot evaluate; the assertion
+   ;; above evaluates them and shows the two reports differ.
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-sbud-bytes-used-is-kernel-sum
+                             (s *nlst-s*) (cache (nlst-cache))))
+            :in-theory '(fn-nls-live-report fn-nls-offline-report)))))
 
 ; ---------------------------------------------------------------------------
 ; The exchange
