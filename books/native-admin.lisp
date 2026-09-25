@@ -130,13 +130,30 @@
 
 ; The principal spelling is native-admin-peer's fn-native-admin-principal-hexp.
 
+(defun fn-native-admin-string-memberp (x xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (or (equal x (car xs)) (fn-native-admin-string-memberp x (cdr xs)))
+    nil))
+
+(defun fn-native-admin-drop-star-suffix (cs)
+  (declare (xargs :guard t))
+  (cond ((atom cs) nil)
+        ((and (equal (car cs) #\.) (consp (cdr cs))
+              (equal (cadr cs) #\*) (atom (cddr cs)))
+         nil)
+        (t (cons (car cs) (fn-native-admin-drop-star-suffix (cdr cs))))))
+
+(defthm character-listp-of-fn-native-admin-drop-star-suffix
+  (implies (character-listp cs)
+           (character-listp (fn-native-admin-drop-star-suffix cs))))
+
 ; A namespace is a creatable group name, or one followed by ".*".
 (defun fn-native-admin-namespace-base (text)
   (declare (xargs :guard t))
-  (if (and (stringp text) (<= 2 (length text))
-           (equal (subseq text (- (length text) 2) (length text)) ".*"))
-      (subseq text 0 (- (length text) 2))
-    text))
+  (if (stringp text)
+      (coerce (fn-native-admin-drop-star-suffix (coerce text 'list)) 'string)
+    ""))
 
 (defun fn-native-admin-namespacep (text)
   (declare (xargs :guard t))
@@ -147,8 +164,8 @@
 (defun fn-native-admin-grant-verbsp (words)
   (declare (xargs :guard t))
   (if (consp words)
-      (and (member-equal (car words) *fn-ctl-grant-verbs*)
-           (not (member-equal (car words) (cdr words)))
+      (and (fn-native-admin-string-memberp (car words) *fn-ctl-grant-verbs*)
+           (not (fn-native-admin-string-memberp (car words) (cdr words)))
            (fn-native-admin-grant-verbsp (cdr words)))
     t))
 
@@ -162,8 +179,9 @@
     ""))
 
 (defun fn-native-admin-grant-slot (namespace principal)
-  (declare (xargs :guard (and (stringp namespace) (stringp principal))))
-  (concatenate 'string "ctl-grant " namespace " " principal))
+  (declare (xargs :guard t))
+  (concatenate 'string "ctl-grant " (if (stringp namespace) namespace "") " "
+               (if (stringp principal) principal "")))
 
 ; words = ("control" VERB ...).  Accepted plans are `:set-policy' with the
 ; slot label in NAME and the id in VALUE (both octets, as `policy set'), or
