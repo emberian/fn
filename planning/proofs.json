@@ -3170,7 +3170,11 @@
         "fn-hm-open-refuses-a-lost-acknowledged-record",
         "fn-hm-decode-of-encode",
         "fn-bs-marker-crash-is-the-history-table",
-        "fn-bs-marker-crash-open-stays-admitted"
+        "fn-bs-marker-crash-open-stays-admitted",
+        "fn-hmr-open-refuses-below-every-answered-record",
+        "fn-hmr-required-store-never-admits-an-absent-marker",
+        "fn-hmr-requirement-follows-a-covering-marker",
+        "fn-hmr-legacy-store-migrates-by-the-two-step"
       ]
     },
     {
