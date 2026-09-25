@@ -676,11 +676,14 @@
 ;; acceptance reads (fn-hsig-keyring-snapshot-value), to exactly the
 ;; principal and key set it was built from, so an enrollment (in particular a
 ;; succession's) enrolls what it names.
-(defthm fn-hsig-stxe-encode-items-is-stmt-encode-items
-  (equal (fn-stxe-encode-items items) (fn-stmt-encode-items items))
-  :hints (("Goal" :in-theory (enable fn-stxe-encode-items))))
 
+; The two item encoders agree; local, since a global rule would open every
+; kind's encoder into the statement codec's cons rule (it cost
+; books/topic-history-store-events 254 s in run-20260925T101109Z-e004).
 (encapsulate ()
+(local (defthm fn-hsig-stxe-encode-items-is-stmt-encode-items
+  (equal (fn-stxe-encode-items items) (fn-stmt-encode-items items))
+  :hints (("Goal" :in-theory (enable fn-stxe-encode-items)))))
 (local (defthm fn-hsig-keyring-items-are-items
   (implies (and (fn-hsig-exact-octets-p principal 32) (fn-hsig-keyset-p keys))
            (fn-stmt-item-listp

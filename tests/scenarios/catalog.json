@@ -1436,6 +1436,31 @@
       "evidence": [
         "planning/evidence/live-status-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-050",
+      "title": "A principal's key succession and revocation reach two peering nodes as signed statements and act only where verified",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "NNT-012"
+      ],
+      "steps": [
+        "Enrol P at nodes A and B; grant P the verb keys over fn.keys at both.",
+        "P posts a succession statement signed by the old key with a PoP by the new key; it reaches B by transit.",
+        "P posts an article under the old key; then one under the new key.",
+        "A carried copy of a succession for another principal reaches B.",
+        "P posts a revocation; an article P signed before it is delivered to B by IHAVE after it."
+      ],
+      "expected": [
+        "Each node enrols the new keys at its next generation (fn-ks-execute) and logs key-statement enrol-successor committed.",
+        "The old-key article is refused 437/441 local-enrollment; the new-key article is verified at the new generation.",
+        "The carried statement declines (key-statement declined carried) and changes no keyring.",
+        "The late article is stored as revoked HEX keyring G at B; a served POST of it is refused 441 local-enrollment; articles stored before stay verified."
+      ],
+      "evidence": [
+        "planning/evidence/peer-keys-2026-09-25.md"
+      ]
     }
   ]
 }

@@ -11,19 +11,18 @@
   (declare (xargs :mode :program))
   (fn-record-octets-string (fn-stx-hex-octets octets)))
 
-; Folded at 64 hex characters so no line passes RFC 5322's 998 octets.
-(defun kst-fold (chars)
+; A long value is split over lines of the same name, 64 hex characters each.
+(defun kst-chunks (name chars)
   (declare (xargs :mode :program))
   (if (<= (len chars) 64)
-      (coerce chars 'string)
-    (concatenate 'string (coerce (take 64 chars) 'string)
-                 (coerce '(#\Return #\Newline #\Space) 'string)
-                 (kst-fold (nthcdr 64 chars)))))
+      (tha-line (concatenate 'string name ": " (coerce chars 'string)))
+    (append (tha-line (concatenate 'string name ": "
+                                   (coerce (take 64 chars) 'string)))
+            (kst-chunks name (nthcdr 64 chars)))))
 
 (defun kst-field (name octets)
   (declare (xargs :mode :program))
-  (tha-line (concatenate 'string name ": "
-                         (kst-fold (coerce (kst-hex octets) 'list)))))
+  (kst-chunks name (coerce (kst-hex octets) 'list)))
 
 (defconst *kst-new-keys* *tha-other-keys*)
 (defconst *kst-pop-sigs*
@@ -38,14 +37,14 @@
           (tha-line "Newsgroups: fn.keys")
           (tha-line "Subject: fn-key-statement")
           (tha-line (concatenate 'string "Message-ID: " msgid))
+          '(13 10)
           (tha-line (concatenate 'string "FN-Key-Statement: " kind))
           (kst-field "FN-Key-Principal" *tha-principal*)
           (kst-field "FN-Key-Old-Ed25519" old-ed)
           (kst-field "FN-Key-New-Ed25519" (cdr (first *kst-new-keys*)))
           (kst-field "FN-Key-New-ML-DSA-65" (cdr (second *kst-new-keys*)))
           (kst-field "FN-Key-PoP-Ed25519" (cdr (first *kst-pop-sigs*)))
-          (kst-field "FN-Key-PoP-ML-DSA-65" (cdr (second *kst-pop-sigs*)))
-          '(13 10 98 111 100 121 13 10)))
+          (kst-field "FN-Key-PoP-ML-DSA-65" (cdr (second *kst-pop-sigs*)))))
 
 (make-event `(defconst *kst-source*
                ',(kst-source "succession-v1" *kst-msgid* *tha-ed-key*)))
