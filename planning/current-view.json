@@ -245,8 +245,8 @@
         "profile": "developer twin for the cuts, production refuses selectors"
       },
       "profile": "default",
-      "latest": "the committed-history marker is fn-bs-marker-program in the byte crash model between the record and the finish (lane p10-marker-model); the cut table is 30; the differential and the served differential pass at every cut on a branch developer image ([p10-marker-model](evidence/p10-marker-model-2026-09-25.md)).",
-      "obstruction": "at marker-replaced K0 is stated on the two resolutions of the pending rename; that every crash image there is a crash image of one of them (a commutation of the root entry with the pending list) is open, though the marker in every such image is proved old or new.",
+      "latest": "the committed-history marker is fn-bs-marker-program in the byte crash model between the record and the finish (lane p10-marker-model); the cut table is 30; the differential and the served differential pass at every cut on a branch developer image ([p10-marker-model](evidence/p10-marker-model-2026-09-25.md)). At marker-replaced every crash image of the pending-rename state is a crash image of the rename dropped or landed, both related (fn-bs-k0-marker-replaced-cut-relation, lane k0-marker-replaced).",
+      "obstruction": "none at the five marker cuts; the marker program's error arms (every OS error in fnn-mark-committed is uncertain) are named open in books/byte-store-k0-marker.lisp.",
       "next": "`fn-bs-program-step-preserves-relation`, the general per-step K0, certified."
     },
     {
