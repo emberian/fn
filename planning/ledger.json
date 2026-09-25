@@ -551,6 +551,7 @@
     "books/owner-offer-indexed",
     "books/owner-commit-carried",
     "books/owner-prepare-carried",
+    "books/records-concrete",
     "books/owner-advance-carried",
     "books/owner-commit-ocl",
     "books/owner-recover-ocl",
@@ -583,6 +584,7 @@
     "tests/acl2/peer-guard-carried-tests",
     "tests/acl2/owner-commit-carried-tests",
     "tests/acl2/owner-prepare-carried-tests",
+    "tests/acl2/records-concrete-tests",
     "tests/acl2/owner-advance-carried-tests",
     "tests/acl2/owner-recover-ocl-tests",
     "books/config-owner-publish",
@@ -753,25 +755,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 761,
-    "books_in_root_closure": 759,
-    "roots": 749,
-    "theorems": 10137,
-    "functions": 7189,
-    "assert_events": 11167,
-    "must_fails": 994,
+    "books": 763,
+    "books_in_root_closure": 761,
+    "roots": 751,
+    "theorems": 10162,
+    "functions": 7204,
+    "assert_events": 11192,
+    "must_fails": 995,
     "encapsulates": 38,
     "guards": {
-      "verified": 2090,
+      "verified": 2093,
       "declared-off": 518,
-      "default-guarded": 3565,
-      "default-unguarded": 1016
+      "default-guarded": 3575,
+      "default-unguarded": 1018
     },
     "suspect_theorems": 91,
-    "export_hygiene_warnings": 119,
+    "export_hygiene_warnings": 127,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 66,
-    "include_hygiene_warnings": 745,
+    "include_hygiene_warnings": 746,
     "host_names_warnings": 860,
     "hand_written_record_warnings": 18
   },
@@ -8687,7 +8689,8 @@
       "includes": [
         "config-owner-live",
         "owner-invariants",
-        "owner-served-invariants"
+        "owner-served-invariants",
+        "records-concrete"
       ],
       "system_includes": [],
       "suspects": [],
@@ -9040,7 +9043,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "owner-store-budget"
+        "owner-store-budget",
+        "records-concrete"
       ],
       "system_includes": [],
       "suspects": [],
@@ -9885,6 +9889,35 @@
         "fn-record-impl-encode-domain",
         "fn-record-result-okp-is-parse-okp"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/records-concrete.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 25,
+      "functions": 12,
+      "guards": {
+        "verified": 3,
+        "declared-off": 0,
+        "default-guarded": 9,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-store-projection",
+        "store-node",
+        "topic-history-prefix"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -19236,6 +19269,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/records-concrete-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 1,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/records-concrete",
+        "owner-served-invariants-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/records-shape-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -22327,31 +22388,31 @@
       {
         "theorem": "fn-ccar-completion-record-is-completion-record",
         "book": "books/owner-commit-carried.lisp",
-        "line": 73,
+        "line": 74,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-completion-core-enabledp-is-reference",
         "book": "books/owner-commit-carried.lisp",
-        "line": 105,
+        "line": 106,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-completion-enabledp-is-reference",
         "book": "books/owner-commit-carried.lisp",
-        "line": 134,
+        "line": 135,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-sn-finish-is-sn-finish",
         "book": "books/owner-commit-carried.lisp",
-        "line": 198,
+        "line": 199,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-own-complete-is-own-complete",
         "book": "books/owner-commit-carried.lisp",
-        "line": 242,
+        "line": 247,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -22376,6 +22437,54 @@
         "theorem": "fn-pb-path-agent-of-an-injection",
         "book": "books/poster-bytes-invariants.lisp",
         "line": 92,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-metadata-bytes-p-is-metadata-bytes-p",
+        "book": "books/records-concrete.lisp",
+        "line": 101,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-msgidp-is-msgidp",
+        "book": "books/records-concrete.lisp",
+        "line": 156,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-record-p-is-record-p",
+        "book": "books/records-concrete.lisp",
+        "line": 164,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-store-event-p-is-store-event-p",
+        "book": "books/records-concrete.lisp",
+        "line": 184,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-store-event-sequence-is-store-event-sequence",
+        "book": "books/records-concrete.lisp",
+        "line": 202,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-store-event-txid-is-store-event-txid",
+        "book": "books/records-concrete.lisp",
+        "line": 220,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-store-event-generation-is-store-event-generation",
+        "book": "books/records-concrete.lisp",
+        "line": 238,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-sf-record-pair-is-sf-record-pair",
+        "book": "books/records-concrete.lisp",
+        "line": 252,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -28064,6 +28173,13 @@
         "line": 5,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/records-concrete-tests.lisp",
+        "line": 5,
+        "include": "owner-served-invariants-tests",
+        "included": "tests/acl2/owner-served-invariants-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -34657,14 +34773,14 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 990,
+        "line": 994,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1540,
+        "line": 1544,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
