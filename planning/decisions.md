@@ -1199,3 +1199,36 @@ what works. Everything else stands: box safety, the laptop rule, no touching
 the live node, native results with log SHAs. The deliverable is an
 integrated system running on hbox with a demo, and the list of what `dev`
 must prove to own it.
+
+### 2026-09-25: D29, D30, D31 — the three open decisions, on gpt-6's advice (~08:40 UTC)
+
+Source: `planning/review-2026-09-25-gpt6-decisions.md`, forwarded by ember.
+
+- **D29, control messages.** C2 (authority rows and the decision) and C3
+  (cancel as a withdrawal record hidden from newly published reader views)
+  proceed on `dev`; C4 (group control by article) is deferred until group
+  authority and succession are decided, and C2 carries only the authority
+  C3 needs. A cancel arriving before its target: the target is accepted
+  only under ordinary admission, kept as evidence, and never published
+  visibly (its first published view already excludes it); the durable
+  decision is bound to its cause, target, scope and policy generation, and
+  visible(T then C) = visible(C then T) is the test. A namespace authority
+  may withdraw unsigned targets; every served target group must be covered
+  by the grant; declared target groups never widen a canceller's power.
+  Pinned readers keep their pre-withdrawal archive until they advance;
+  already-enqueued targets may still be forwarded; feed suppression is a
+  later transition. The spike may build C4 to learn its shape; dev does not.
+- **D30, the rules.** The audit's shorter AGENTS.md and how-we-work.md are
+  adopted with the four repairs (D27 as capacity versus scheduling quantum
+  with streaming and resumable operations; representation as a named
+  abstraction or refinement theorem at each boundary rather than a twin of
+  every helper; the precise teeth rule restored; a failed qualification
+  never carried across changed bytes, incremental runs coalesced) and the
+  three small edits (the heap cap with the pool and its launcher; the
+  proof-cost tolerance as an operating rule; no "ask first" gate for a
+  described signature).
+- **D31, the committed-history marker.** Unconditional across profiles; the
+  guarantee A <= M <= D is what is frozen, not the syscall sequence. Next:
+  a durable marker-required state after migration so that absence is damage,
+  and the recovered-success-without-a-later-commit sequence tested and
+  protected; then a cheaper publication program against the same invariant.
