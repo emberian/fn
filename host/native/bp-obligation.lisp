@@ -111,8 +111,11 @@
      (let ((plan (fnn-core-state 'fn-workflow-request-plan work-id attempt-id)))
        (unless (and (consp plan) (eq (first plan) :request)
                     (= (length plan) 7))
-         (fnn-refuse "ACL2 refused a request for work ~a attempt ~a"
-                     work-id attempt-id))
+         (if (eq (fnn-core-state 'fn-workflow-fencedp) t)
+             (fnn-refuse "ACL2 refused a request for work ~a attempt ~a: the workflow image is fenced on an uncertain publication (bp-obligation recover)"
+                         work-id attempt-id)
+           (fnn-refuse "ACL2 refused a request for work ~a attempt ~a"
+                       work-id attempt-id)))
        (destructuring-bind (tag attempt outcome key adu destination retry) plan
          (declare (ignore tag))
          (unless (and (fnn-octet-list-p adu) (<= 1 (length adu) 65538)
@@ -182,6 +185,43 @@
              (fnn-bps-exit-code service))
         (fnn-bps-release service)))))
 
+;;; `bp-obligation recover STORE WORKFLOW WORK ATTEMPT OUTCOME': the recovery
+;;; outcome of an attempt fenced by a process death between its durable
+;;; record and its outcome.  OUTCOME (committed | absent) is the operator's
+;;; out-of-band finding; ACL2 decides whether it names the fenced pending
+;;; (fn-workflow-recovery-plan -> fn-bprq-recovery-plan) and returns the exact
+;;; record, which the host publishes; a refusal carries ACL2's reason.
+
+(defun fnn-bpo-recovery-outcome (text)
+  (cond ((string= text "committed") :committed)
+        ((string= text "absent") :absent)
+        (t text)))
+
+(defun fnn-command-bpo-owner-recover (store journal work-id attempt-id outcome)
+  (fnn-bpo-call-with-owner-journal
+   store journal t
+   (lambda (opened service)
+     (declare (ignore service))
+     (let ((plan (fnn-core-state 'fn-workflow-recovery-plan work-id attempt-id
+                                 (fnn-bpo-recovery-outcome outcome))))
+       (case (and (consp plan) (first plan))
+         (:refused
+          (fnn-refuse "ACL2 refused recovery work=~a attempt=~a outcome=~a reason=~(~a~)"
+                      work-id attempt-id outcome (second plan)))
+         (:recover
+          (let ((record (second plan)))
+            (fnn-app-publish opened record)
+            (fnn-out "BP obligation recovery durable work=~a attempt=~a outcome=~(~a~) txid=~d generation=~d"
+                     work-id attempt-id (fifth record) (second record)
+                     (third record))
+            (fnn-out "BP obligation owner work=~a status=~(~a~) pinned=~a"
+                     work-id (fnn-core-state 'fn-workflow-work-status work-id)
+                     (if (eq (fnn-owner-core
+                              'fn-owner-workflow-forward-pinnedp work-id) t)
+                         "yes" "no"))
+            +fnn-exit-ok+))
+         (t (fnn-fault "ACL2 returned an invalid recovery plan")))))))
+
 (defun fnn-dispatch-bp-obligation (command args)
   (flet ((need (n)
            (when (< (length args) n)
@@ -208,6 +248,11 @@
           (number 10 +fnn-bp-hop-limit+) (number 11 +fnn-tcl-transfer-mru+)
           (let ((text (fnn-tcl-arg args 12))) (and text (parse-integer text)))
           (number 13 0))))
+      ((string= command "recover")
+       ;; STORE WORKFLOW WORK ATTEMPT OUTCOME
+       (need 5)
+       (fnn-command-bpo-owner-recover
+        (first args) (second args) (third args) (fourth args) (fifth args)))
       ((string= command "receipt")
        (need 6)
        (fnn-command-bpo-owner-receipt

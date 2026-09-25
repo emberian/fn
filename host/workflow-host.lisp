@@ -161,6 +161,23 @@
   (value (fn-bprq-plan (f-get-global 'fn-workflow-state state)
                        work-id attempt-id)))
 
+; `bp-obligation recover': ACL2's decision for a fenced attempt, (:recover
+; RECORD) or (:refused REASON) (books/bp-request-plan.lisp; keystone
+; fn-bprq-recovery-plan-unfences-and-reopens-as-live, books/bp-request-recovery.lisp).
+(defun fn-workflow-recovery-plan (work-id attempt-id outcome state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bprq-recovery-plan (f-get-global 'fn-workflow-state state)
+                                work-id attempt-id outcome)))
+
+; The ION sender's (RETRY ATTEMPT): the journaled retry request first when a
+; reopen marked the last attempt :restart-observed, so replay agrees.
+(defun fn-workflow-ion-attempt-plan
+    (txid tx-generation work-id attempt-id state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bprq-ion-attempt-plan
+          (f-get-global 'fn-workflow-state state)
+          txid tx-generation work-id attempt-id)))
+
 ; Native ION sender calls these exact ACL2 constructors. Raw Lisp only
 ; publishes their returned records and executes their returned ADU bytes.
 ; ION is an adapter of the generic attempt: fn-bpiw-attempt-record is

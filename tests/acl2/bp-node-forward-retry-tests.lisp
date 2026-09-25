@@ -341,7 +341,8 @@
 (must-fail
  (assert-event (equal (fn-bpnp-tcpcl-outcome :refused nil) (list :refused nil))))
 (assert-event (equal (fn-bpnp-tcpcl-outcome :accepted nil) :sent))
-(assert-event (equal (fn-bpnp-tcpcl-outcome :uncertain nil) :fence))
+(assert-event (equal (fn-bpnp-tcpcl-outcome :uncertain nil) :uncertain))
+(assert-event (equal (fn-bpnp-tcpcl-outcome :connection-failed nil) :uncertain))
 
 (defun bpfr-result (st outcome session)
   (declare (xargs :guard t :verify-guards nil))

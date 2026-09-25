@@ -154,13 +154,19 @@
 ; exactly as :sent; every other reason is a distinct non-terminal result.  A
 ; refusal with no peer reason (the session machine declined to start the
 ; transfer) is :failed.  Neither is the application's retention receipt.
+; Any other reading (the connection failed or closed after the durable
+; kind 8, before an XFER_ACK or XFER_REFUSE) is :uncertain: the peer may or
+; may not hold the bundle.  It is a connection-local fault: its kind 9 keeps
+; the attempt slot (fn-bpnp-forward-result-slot) and the row is retried by
+; the same identity on a later session under the retry bound, without
+; stopping the node.  Only an uncertain publication fences the machine.
 (defun fn-bpnp-tcpcl-outcome (observed reason)
   (declare (xargs :guard t))
   (cond ((equal observed :accepted) :sent)
         ((and (equal observed :refused) (fn-frame-natp reason))
          (list :refused reason))
         ((and (equal observed :refused) (null reason)) :failed)
-        (t :fence)))
+        (t :uncertain)))
 
 (defun fn-bpnp-wait-for (key waits)
   (declare (xargs :guard t :measure (acl2-count waits)))
@@ -851,7 +857,7 @@
                           h (fn-bpn-nth 2 applied) node))))
         (if (not (and (null (fn-bpnf-issued st))
                       (null (fn-bpnf-waits st))
-                      (fn-bpnp-forward-outcomep outcome)
+                      (fn-bpnp-transfer-outcomep outcome)
                       (fn-frame-natp (fn-bpnf-epoch st))
                       (fn-frame-natp (fn-bpnf-next-op st))
                       (< (fn-bpnf-next-op st) *fn-frame-max-nat*)
@@ -929,6 +935,93 @@
             st (fn-bpnf-operation
                 epoch op :forward-result record :uncertain))
            (list (list :forward-answer :uncertain))))))))
+
+;; ---------------------------------------------------------------------
+;; The operator's resume of a stranded row (spec bp-node-machine 4.3.1).
+;;
+;; `bp-node resume JOURNAL NODE-ID ARRIVAL' steps (:operator-resume ARRIVAL).
+;; A row whose uncertain attempt reached the retry bound is re-armed by a
+;; durable kind 9 with outcome :resumed naming that attempt: applying it
+;; (fn-bpnp-forward-result-apply, which the :persist-result arm and ordered
+;; replay both call) clears the slot, so the next session to the row's next
+;; hop offers the unchanged held bundle again and the next kind 8 counts from
+;; 0.  The kind-8 rows that exhausted the budget and the :resumed row stay in
+;; FNBS: the history keeps the exhaustion and says an operator re-armed it.
+;; Anything else is refused with its reason and nothing is written.
+(defun fn-bpnp-resume-refusal (st arrival)
+  (declare (xargs :guard t))
+  (let* ((held (fn-bpnf-held-list st))
+         (h (fn-bpnf-find-arrival arrival held))
+         (slot (fn-bpn-nth 13 h)))
+    (cond ((fn-bpn-machine-state-fenced (fn-bpnf-base st)) :fenced)
+          ((not (and (null (fn-bpnf-issued st))
+                     (null (fn-bpnf-waits st))))
+           :busy)
+          ((not (and (natp arrival)
+                     (equal (fn-bpnf-arrival-count arrival held) 1)
+                     (equal (fn-bpn-nth 0 h) :bpnf-held)))
+           :no-row)
+          ((not (and (equal (fn-bpn-nth 12 h) '(:forward-pending))
+                     (null (fn-bpn-nth 14 h))))
+           :not-forward-pending)
+          ((null slot) :not-attempted)
+          ((not (fn-bpnp-stranded-slotp slot (fn-bpnf-epoch st)
+                                        (fn-bpn-nth 11 h)))
+           :not-stranded)
+          (t nil))))
+
+(defun fn-bpnp-resume-record (st arrival)
+  (declare (xargs :guard t))
+  (let* ((h (fn-bpnf-find-arrival arrival (fn-bpnf-held-list st)))
+         (slot (fn-bpn-nth 13 h)))
+    (fn-bpnp-forward-result-record
+     (fn-bpnf-epoch st) (fn-bpnf-next-op st) arrival
+     (fn-bpah-held-primary-identity h)
+     (fn-bpn-nth 1 slot) (fn-bpn-nth 2 slot) (fn-bpn-nth 4 slot)
+     :resumed)))
+
+(defun fn-bpnp-operator-resume-step (st arrival)
+  (declare (xargs :guard t))
+  (let ((reason (fn-bpnp-resume-refusal st arrival)))
+    (if reason
+        (fn-bpnf-answer st (list (list :resume-refused arrival reason)))
+      (let* ((h (fn-bpnf-find-arrival arrival (fn-bpnf-held-list st)))
+             (record (fn-bpnp-resume-record st arrival))
+             (applied (fn-bpnp-forward-result-apply
+                       record (fn-bpnf-held-list st)))
+             (node (fn-bpn-config-node-id
+                    (fn-bpn-machine-state-config (fn-bpnf-base st))))
+             (delta (and (equal (car applied) :ready)
+                         (fn-bpnd-held-delta h (fn-bpn-nth 2 applied) node))))
+        (if (not (and (fn-frame-natp (fn-bpnf-epoch st))
+                      (fn-frame-natp (fn-bpnf-next-op st))
+                      (< (fn-bpnf-next-op st) *fn-frame-max-nat*)
+                      (equal (car applied) :ready)
+                      (integerp delta)
+                      (not (equal (fn-bpnp-result-frame record) :bad))
+                      (fn-bpnd-admitp
+                       (fn-bpnp-used st) (fn-bpnp-debt st)
+                       *fn-bpnp-control-margin* delta
+                       (if (< delta 0) :pay :control))))
+            (fn-bpnf-answer
+             st (list (list :resume-refused arrival :no-capacity)))
+          (fn-bpnf-answer
+           (fn-bpnp-with-runtime
+            (fn-bpnp-with-credit
+             (fn-bpnf-state-with-arrival
+              (fn-bpnf-base st) (fn-bpnf-held-list st)
+              (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+              (fn-bpnf-correlation st)
+              (fn-bpnf-operation
+               (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+               :forward-result record :pending)
+              (fn-bpnf-waits st) (fn-bpnf-epoch st)
+              (1+ (fn-bpnf-next-op st)) (fn-bpnf-next-arrival st))
+             (fn-bpnp-used st) (fn-bpnp-debt st))
+            (fn-bpnp-sessions st) nil)
+           (list (list :persist-forward-result
+                       (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                       record))))))))
 
 ;; ---------------------------------------------------------------------
 ;; The boot-domain gate on recovery (spec bp-node-machine 8, N07).
@@ -1106,8 +1199,11 @@
           (fn-frame-natp (fn-bpn-nth 1 event))
           (fn-frame-natp (fn-bpn-nth 2 event))
           (fn-bpnp-session-idp (fn-bpn-nth 3 event))
-          (fn-bpnp-forward-outcomep (fn-bpn-nth 4 event))
+          (fn-bpnp-transfer-outcomep (fn-bpn-nth 4 event))
           (fn-clock-observationp (fn-bpn-nth 5 event))))
+    (:operator-resume
+     (and (true-listp event) (equal (len event) 2)
+          (fn-frame-natp (fn-bpn-nth 1 event))))
     (:recover-fnbs
      (or (fn-bpnf-host-eventp event)
          (and (true-listp event) (equal (len event) 7)
@@ -1247,6 +1343,8 @@
             (fn-bpnp-start-one
              st peer session (fn-bpn-nth 3 current) observation)
           (fn-bpnf-answer st nil)))))
+   ((equal (fn-cbor-ag-car event) :operator-resume)
+    (fn-bpnp-operator-resume-step st (fn-bpn-nth 1 event)))
    ((equal (fn-cbor-ag-car event) :forward-result)
     (fn-bpnp-forward-result-propose-step
      st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)

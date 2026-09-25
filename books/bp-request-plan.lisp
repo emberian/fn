@@ -315,3 +315,66 @@
                                    s (fn-bprq-retry-record s work-id)))
                                  0 work-id attempt-id)))))
            :in-theory (theory 'minimal-theory))))
+
+;; ---------------------------------------------------------------------
+;; Recovery of a fenced attempt (`bp-obligation recover WORK ATTEMPT
+;; OUTCOME').  A process death between an attempt's durable record and its
+;; outcome leaves the reopened image fenced on that pending attempt: every
+;; later request, and every other receipt on the journal, is refused.  The
+;; operator, having established out of band whether the attempt's
+;; publication committed, names the attempt and the outcome; ACL2 decides
+;; whether that names the fenced pending and writes the recovery outcome
+;; record the replay fence (fn-bpiw-replay-fence) already replays.  The
+;; answer is (:recover RECORD) or (:refused REASON); a refusal writes nothing.
+;;   :outcome              OUTCOME is neither :committed nor :absent
+;;   :not-fenced           the image holds no fenced pending
+;;   :pending-not-attempt  the fenced pending is not an attempt
+;;   :attempt-unknown      the fenced attempt is not WORK-ID's ATTEMPT-ID
+;;   :not-admitted         the image does not accept the record
+(defun fn-bprq-recovery-refusal (s work-id attempt-id outcome)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((pending (fn-bp-state-pending s))
+         (work (fn-bp-pending-work pending)))
+    (cond ((not (member-equal outcome '(:committed :absent))) :outcome)
+          ((not (and (fn-bp-statep s)
+                     (consp pending)
+                     (equal (fn-bp-state-fenced s) t)))
+           :not-fenced)
+          ((not (equal (fn-bp-pending-kind pending) :attempt))
+           :pending-not-attempt)
+          ((not (and (equal (fn-bp-work-id work) work-id)
+                     (equal (fn-bp-attempt-id (fn-bp-work-attempt work))
+                            attempt-id)))
+           :attempt-unknown)
+          (t nil))))
+
+(defun fn-bprq-recovery-record (s outcome)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((pending (fn-bp-state-pending s)))
+    (list :outcome (fn-bp-pending-txid pending)
+          (fn-bp-pending-generation pending) :recovery outcome)))
+
+(defun fn-bprq-recovery-plan (s work-id attempt-id outcome)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((reason (fn-bprq-recovery-refusal s work-id attempt-id outcome)))
+    (if reason
+        (list :refused reason)
+      (let ((record (fn-bprq-recovery-record s outcome)))
+        (if (and (fn-bp-journal-recordp record)
+                 (car (fn-bprl-apply-journal-record s record)))
+            (list :recover record)
+          (list :refused :not-admitted))))))
+
+;; The ION sender's attempt (`app-journal workflow-ion-submit').  It is the
+;; request plan's attempt constructor, and it takes the same journaled
+;; :retry-request first when a reopen marked the work's last attempt
+;; :restart-observed, so its live image and the next open's replay agree
+;; (the defect finding 1 of the native-request lane fixed for requests).
+;; Answer: (RETRY ATTEMPT), RETRY nil when none is needed, or nil.
+(defun fn-bprq-ion-attempt-plan (s txid tx-generation work-id attempt-id)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((retry (fn-bprq-retry-record s work-id))
+         (attempt (fn-bprq-attempt-record (fn-bprq-pre-state s retry)
+                                          txid tx-generation
+                                          work-id attempt-id)))
+    (if attempt (list retry attempt) nil)))
