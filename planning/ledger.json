@@ -199,6 +199,10 @@
     "books/byte-store-k0-recovery",
     "tests/acl2/byte-store-k0-tests",
     "tests/acl2/byte-store-k0-recovery-tests",
+    "books/store-open-bridge",
+    "tests/acl2/store-open-bridge-tests",
+    "books/source-projection-bridge",
+    "tests/acl2/source-projection-bridge-tests",
     "books/byte-store-retention-publication",
     "tests/acl2/byte-store-retention-publication-tests",
     "books/byte-store-keystones",
@@ -755,25 +759,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 763,
-    "books_in_root_closure": 761,
-    "roots": 751,
-    "theorems": 10162,
-    "functions": 7204,
-    "assert_events": 11192,
-    "must_fails": 995,
+    "books": 767,
+    "books_in_root_closure": 765,
+    "roots": 755,
+    "theorems": 10211,
+    "functions": 7221,
+    "assert_events": 11204,
+    "must_fails": 1000,
     "encapsulates": 38,
     "guards": {
       "verified": 2093,
-      "declared-off": 518,
-      "default-guarded": 3575,
-      "default-unguarded": 1018
+      "declared-off": 521,
+      "default-guarded": 3576,
+      "default-unguarded": 1031
     },
     "suspect_theorems": 91,
     "export_hygiene_warnings": 127,
     "enabled_projection_warnings": 37,
     "teeth_form_warnings": 66,
-    "include_hygiene_warnings": 746,
+    "include_hygiene_warnings": 751,
     "host_names_warnings": 860,
     "hand_written_record_warnings": 18
   },
@@ -10422,6 +10426,32 @@
       "read_error": null
     },
     {
+      "book": "books/source-projection-bridge.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 23,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 1,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "hybrid-carrier",
+        "injection-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/statement-attach.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11078,6 +11108,32 @@
       "suspects": [
         "fn-sn-open-observed-invalid-history-refuses"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-open-bridge.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 26,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-receiver-evolving-store-invariants",
+        "byte-store-k0-recovery"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -19588,6 +19644,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/source-projection-bridge-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 3,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/source-projection-bridge"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/statement-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -20283,6 +20366,34 @@
         "../../books/store-observed"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-open-bridge-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 7,
+      "must_fails": 2,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-open-bridge",
+        "byte-store-stable-prefix-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -22818,9 +22929,10 @@
         "book": "books/article.lisp",
         "line": 94,
         "stated_in": [
-          "books/article-properties.lisp"
+          "books/article-properties.lisp",
+          "books/source-projection-bridge.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-fields",
@@ -22829,9 +22941,10 @@
         "stated_in": [
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
+          "books/source-projection-bridge.lisp",
           "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-field-raw-lines",
@@ -22847,9 +22960,10 @@
         "book": "books/article.lisp",
         "line": 115,
         "stated_in": [
+          "books/source-projection-bridge.lisp",
           "books/stx-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-field-unfolded-value",
@@ -22873,9 +22987,10 @@
           "books/nntp-legacy.lisp",
           "books/nntp-post.lisp",
           "books/peer-inbound-invariants.lisp",
+          "books/source-projection-bridge.lisp",
           "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-value",
@@ -22886,9 +23001,10 @@
           "books/article-properties.lisp",
           "books/article-public-bound.lisp",
           "books/article-public-work.lisp",
-          "books/article-work-scanners.lisp"
+          "books/article-work-scanners.lisp",
+          "books/source-projection-bridge.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-rest",
@@ -25362,6 +25478,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/source-projection-bridge.lisp",
+        "line": 12,
+        "include": "injection-invariants",
+        "included": "books/injection-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/statement-attach.lisp",
         "line": 16,
         "include": "statement-codec",
@@ -25499,6 +25622,13 @@
         "line": 24,
         "include": "records-seam",
         "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-open-bridge.lisp",
+        "line": 37,
+        "include": "bp-receiver-evolving-store-invariants",
+        "included": "books/bp-receiver-evolving-store-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -28239,6 +28369,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/source-projection-bridge-tests.lisp",
+        "line": 7,
+        "include": "../../books/source-projection-bridge",
+        "included": "books/source-projection-bridge.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/statement-tests.lisp",
         "line": 3,
         "include": "crypto-seam-tests",
@@ -28432,6 +28569,20 @@
         "line": 7,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-open-bridge-tests.lisp",
+        "line": 6,
+        "include": "../../books/store-open-bridge",
+        "included": "books/store-open-bridge.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-open-bridge-tests.lisp",
+        "line": 7,
+        "include": "byte-store-stable-prefix-tests",
+        "included": "tests/acl2/byte-store-stable-prefix-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
