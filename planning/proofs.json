@@ -3422,7 +3422,10 @@
         "fn-bpnr-recover-from-checkpoint-equals-full-recover",
         "fn-bpnr-rotation-crash-recovers-old-or-new",
         "fn-bpnr-checkpoint-decode-of-octets",
-        "fn-bpnr-family-replay-aux-append"
+        "fn-bpnr-family-replay-aux-append",
+        "fn-bpnp-rotate-step-proposes-only-own-projection",
+        "fn-bpnr-retirement-cut-keeps-open-view",
+        "fn-bpnr-retired-names-never-the-selected-directory"
       ]
     },
     {
