@@ -159,14 +159,27 @@
                             fn-cbor-u32-bytes fn-cbor-u32-from
                             fn-cbor-at-mostp take nthcdr)))))
 
-; The two readers over an encoded field, with no whole-input bound.
+; The two readers over an encoded field, with no whole-input bound.  The
+; uint reader is the wide one (packet P6): any u64 round-trips.
 (defthm fn-record-read-uint-of-encoding
-  (implies (and (fn-record-uint32p n)
+  (implies (and (fn-record-uint64p n)
                 (fn-cbor-octet-listp rest))
            (equal (fn-record-read-uint
-                   (append (fn-cbor-encode (cons :uint n)) rest))
+                   (append (fn-record-uint-encode n) rest))
                   (fn-record-parse-ok n rest)))
-  :hints (("Goal" :in-theory (disable fn-record-item-decode fn-cbor-encode))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cbor-decode-prechecked-wide-of-uint
+                         (budget *fn-record-max-octets*))
+                 (:instance fn-cbor-encode-uint-wide-octets)
+                 (:instance fn-cbor-octet-listp-append
+                  (xs (fn-cbor-encode-uint-wide n)) (ys rest)))
+           :in-theory (e/d (fn-record-read-uint fn-record-uint-decode
+                            fn-record-uint-encode fn-record-uint64p)
+                           (fn-cbor-decode-prechecked-wide-of-uint
+                            fn-cbor-encode-uint-wide-octets
+                            fn-cbor-octet-listp-append
+                            fn-cbor-decode-prechecked-wide
+                            fn-cbor-encode-uint-wide)))))
 
 (defthm fn-record-read-bytes-of-item-encoding
   (implies (and (fn-cbor-octet-listp xs)
@@ -178,17 +191,37 @@
   :hints (("Goal" :in-theory (disable fn-record-item-decode
                                       fn-record-item-encode))))
 
+(defthm fn-record-uint-encode-octets
+  (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
+           (fn-cbor-octet-listp (fn-record-uint-encode n)))
+  :hints (("Goal" :use fn-cbor-encode-uint-wide-octets
+           :in-theory (e/d (fn-record-uint-encode)
+                           (fn-cbor-encode-uint-wide-octets
+                            fn-cbor-encode-uint-wide)))))
+
+(defthm fn-record-uint-encode-true-list
+  (true-listp (fn-record-uint-encode n))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-record-uint-encode fn-cbor-encode-uint-wide
+                                     fn-cbor-u64-bytes))))
+
+(defthm fn-record-uint-encode-length-bound
+  (<= (len (fn-record-uint-encode n)) 9)
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-record-uint-encode fn-cbor-encode-uint-wide
+                                   fn-cbor-encode-argument fn-cbor-u16-bytes
+                                   fn-cbor-u32-bytes)
+                                  (fn-cbor-u64-bytes floor mod)))))
+
 (defthm fn-record-read-uint-encoded
-  (implies (and (fn-record-uint32p n)
-                (fn-cbor-octet-listp rest)
-                (<= (+ (len (fn-cbor-encode (cons :uint n))) (len rest))
-                    *fn-cbor-max-input*))
+  (implies (and (fn-record-uint64p n)
+                (fn-cbor-octet-listp rest))
            (equal (fn-record-read-uint
-                   (append (fn-cbor-encode (cons :uint n)) rest))
+                   (append (fn-record-uint-encode n) rest))
                   (fn-record-parse-ok n rest)))
   :hints (("Goal" :use fn-record-read-uint-of-encoding
            :in-theory (disable fn-record-read-uint-of-encoding
-                               fn-record-read-uint fn-cbor-encode))))
+                               fn-record-read-uint fn-record-uint-encode))))
 
 (defthm fn-record-read-bytes-encoded
   (implies (and (fn-cbor-octet-listp xs)
@@ -273,13 +306,22 @@
            :in-theory (disable fn-record-read-uint
                                fn-record-read-uint-of-encoding))))
 
+(defthm fn-record-read-version2-prefix
+  (implies (fn-cbor-octet-listp rest)
+           (equal (fn-record-read-uint (cons 2 rest))
+                  (fn-record-parse-ok 2 rest)))
+  :hints (("Goal"
+           :use ((:instance fn-record-read-uint-of-encoding (n 2)))
+           :in-theory (disable fn-record-read-uint
+                               fn-record-read-uint-of-encoding))))
+
 (defthm fn-record-read-last-uint
-  (implies (fn-record-uint32p n)
-           (equal (fn-record-read-uint (fn-cbor-encode (cons :uint n)))
+  (implies (fn-record-uint64p n)
+           (equal (fn-record-read-uint (fn-record-uint-encode n))
                   (fn-record-parse-ok n nil)))
   :hints (("Goal"
            :use ((:instance fn-record-read-uint-encoded (rest nil)))
-           :in-theory (disable fn-record-read-uint fn-cbor-encode))))
+           :in-theory (disable fn-record-read-uint fn-record-uint-encode))))
 
 (defthm fn-record-impl-round-trip
   (implies (fn-record-p record)
@@ -288,7 +330,7 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-record-reconstruct))
            :in-theory (disable fn-cbor-encode fn-record-item-encode
-                               fn-record-item-decode
+                               fn-record-item-decode fn-record-uint-encode
                                fn-record-item-encode-is-cbor-encode
                                fn-record-read-bytes-encoded
                                fn-record-read-uint-encoded
@@ -347,7 +389,9 @@
     fn-record-group-encoding-bound fn-record-groups-prefix-round-trip
     fn-record-reconstruct fn-record-read-magic-prefix
     fn-record-read-version-prefix fn-record-read-version1-prefix
-    fn-record-read-last-uint
+    fn-record-read-version2-prefix
+    fn-record-read-last-uint fn-record-uint-encode-octets
+    fn-record-uint-encode-true-list fn-record-uint-encode-length-bound
     fn-record-item-encode-is-cbor-encode fn-record-item-encode-octets
     fn-record-item-encode-of-uint fn-record-item-byte-encoding-bound
     fn-record-item-stream-uint-round-trip
@@ -371,7 +415,9 @@
              fn-record-groups-prefix-round-trip fn-record-reconstruct
              fn-record-read-magic-prefix fn-record-read-version-prefix
              fn-record-read-version1-prefix
-             fn-record-read-last-uint
+             fn-record-read-version2-prefix
+             fn-record-read-last-uint fn-record-uint-encode-octets
+    fn-record-uint-encode-true-list fn-record-uint-encode-length-bound
              fn-record-item-encode-is-cbor-encode fn-record-item-encode-octets
              fn-record-item-encode-of-uint fn-record-item-byte-encoding-bound
              fn-record-item-stream-uint-round-trip
