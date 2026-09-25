@@ -202,6 +202,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-k0-recovery \
 	tests/acl2/byte-store-k0-tests \
 	tests/acl2/byte-store-k0-recovery-tests \
+	books/store-open-bridge \
+	tests/acl2/store-open-bridge-tests \
+	books/source-projection-bridge \
+	tests/acl2/source-projection-bridge-tests \
 	books/byte-store-retention-publication \
 	tests/acl2/byte-store-retention-publication-tests \
 	books/byte-store-keystones \
