@@ -251,13 +251,22 @@ class FrameSession:
 
     # -- durable store metadata --------------------------------------------
 
-    def metadata_config_frame(self, profile: str) -> bytes:
-        """ACL2's complete FNSM configuration frame for one named profile."""
-        if profile not in {"development", "scale"}:
-            raise BridgeError("unknown metadata profile")
-        value = self.call("(fn-store-metadata-config-frame :{})".format(profile))
-        if not isinstance(value, list):
-            raise BridgeError("ACL2 refused metadata profile")
+    def metadata_config_frame(self, profile: str | None = None) -> bytes:
+        """ACL2's FNSM configuration frame for the operator's preset word.
+
+        The word's octets go to ACL2, which reads them with the native
+        operator's parser (`fn-nop-profile-preset-word`); None is the frame
+        `init` writes when no preset is named (`fn-bs-initial-config-octets`).
+        Python keeps no list of profile names."""
+        if profile is None:
+            value = self.call("(fn-store-metadata-initial-config-frame)")
+        else:
+            if not isinstance(profile, str):
+                raise BridgeError("profile word is not text")
+            value = self.call("(fn-store-metadata-config-frame-for-word {})".format(
+                _octets(profile.encode("utf-8", "surrogateescape"))))
+        if not isinstance(value, list) or not value:
+            raise BridgeError("ACL2 names no store profile {!r}".format(profile))
         return _as_bytes(value)
 
     def metadata_config_decode(self, framed: bytes):
@@ -269,14 +278,26 @@ class FrameSession:
             raise BridgeError("ACL2 rejected durable configuration")
         return value
 
+    def profile_admitted(self, values) -> bool:
+        """`fn-bs-profile-admittedp`: a store may be opened and served under
+        VALUES (a valid format-8 profile, or a format-7 tuple whose
+        translation is one), as the native owner asks at install."""
+        return self.call("(fn-store-profile-admittedp '{})".format(
+            _lisp_literal(values))) is True
+
+    def replay_within_bound(self, values, aggregate: int) -> bool:
+        """`fn-profile-replay-within-boundp`: AGGREGATE record octets replayed
+        so far are within the history bound of the profile VALUES."""
+        return self.call("(fn-store-profile-replay-within-bound '{} {})".format(
+            _lisp_literal(values), _lisp_literal(int(aggregate)))) is True
+
     def profile_summary(self, values):
         """(format, T, H, R, A) of the profile a store runs under, ACL2's."""
         summary = self.call("(fn-store-profile-summary '{})".format(
             _lisp_literal(values)))
         if (not isinstance(summary, list) or len(summary) != 5
                 or not all(isinstance(n, int) and not isinstance(n, bool)
-                           for n in summary)
-                or summary[0] not in (7, 8)):
+                           for n in summary)):
             raise BridgeError("ACL2 returned a malformed profile summary")
         return tuple(summary)
 
@@ -523,9 +544,6 @@ class FrameSession:
         if isinstance(value, Keyword):
             raise BridgeError("ACL2 refused the initial group table")
         return _as_bytes(value)
-
-    def format_id(self) -> str:
-        return _as_bytes(self.call("(fn-store-format-id)")).decode("utf-8")
 
     def group_codes(self, names, domain) -> list[int]:
         """Codes of `names` in `domain`, the allocation domain ACL2 handed the
