@@ -654,8 +654,13 @@ its outcome, which is the refusal to the offering ingress."
        ;; BP-R17 at the configured retry budget: still held, never refused.
        ;; The count is durable (kind 20): a restart does not re-arm it; ACL2
        ;; reports it on every progress event that selects nothing else.
-       (fnn-out "BP node delivery stranded busy=~d (held; bp-node resume re-arms it)"
-                (third effect)))
+       ;; The arrival an operator names to `bp-node resume' is the held
+       ;; row's own (ACL2's lookup of the effect's key).
+       (let ((row (fnn-core 'fn-bpnf-find-held (second effect)
+                            (fnn-core 'fn-bpnf-held-list
+                                      (fnn-bps-state service)))))
+         (fnn-out "BP node delivery stranded busy=~d arrival=~a (held; bp-node resume re-arms it)"
+                  (third effect) (fnn-core 'fn-bpn-nth 3 row))))
       (:delivery-resumed
        (fnn-out "BP node delivery resumed (busy count cleared)"))
       (:deferral-answer

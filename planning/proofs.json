@@ -3305,6 +3305,31 @@
         "fn-bpnr-checkpoint-decode-of-octets",
         "fn-bpnr-family-replay-aux-append"
       ]
+    },
+    {
+      "id": "PRF-082",
+      "title": "Owed receipts leave from bp-node serve: the contact offers exactly the queued receipt job on its route",
+      "statement": "fn-bpnp-receipt-contact-offers-the-queued-job: over the called fn-bpnp-step on (:base E), where E is fn-bpnp-receipt-contact-event of the node state and the peer (the event host/native/bp-node.lisp fnn-bpnode-send-receipts asks for after each fnn-bpnode-queue-outboxes in bp-node serve), for a well-formed base, a non-nil event and a journal token below *fn-bpn-machine-max-records*, the one effect persists the :attempting record of the first :queued job for that peer and the pending success effect is that job's :cl-send with its route, peer, key and wire. fn-bpnp-receipt-contact-event-needs-a-queued-job: the event is non-nil exactly when the peer is an EID, nothing is issued, no delivery is uncertain, the base is neither fenced nor pending and a :queued job for the peer exists. Covered scope: the decision and the offer; the transfer is the lower machine's and a connect that produces no socket reads :failed and requeues. Open: 'offered once per contact' is not an ACL2 statement over the host loop (fnn-bpc-drive-contact stops at the first outcome that is not :accepted and the durable :attempting record takes the job out of :queued; the latter is witnessed in the test book, not proved over a driver).",
+      "milestone": "M4",
+      "requirements": [
+        "RET-003",
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-046"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-node-receipt-send.lisp",
+        "tests/acl2/bp-node-receipt-send-tests.lisp",
+        "host/native/bp-node.lisp",
+        "tests/bp-dtn7/run_fn_dtn7_app_receipt.py",
+        "planning/evidence/bp-budgets-receipts-2026-09-25.md"
+      ]
     }
   ]
 }
