@@ -28,6 +28,11 @@ ROOT = Path(os.environ.get(
 IMAGE = Path(os.environ.get(
     "FN_NATIVE_BP_NODE_HOST",
     os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer")))
+# The DTN image omits the NNTP surface; a Store's groups are read back through
+# the reader port of an image that has it (the default developer image).
+READER_IMAGE = Path(os.environ.get(
+    "FN_NATIVE_READER_HOST",
+    os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer")))
 
 
 def environment():
@@ -1023,16 +1028,35 @@ class NativeBpNodeTests(unittest.TestCase):
             bridge.close()
             store.close()
 
-    def receiver_group_next(self, *groups):
-        """The next article number ACL2's replayed Store holds per group."""
-        store, bridge, _records = run_bp_ingress.open_live_bp_store(
-            self.receiver_store, False)
+    def receiver_listgroups(self, *groups):
+        """GROUP replies of the receiver's Store, read through a reader port
+        of `operator run' (ACL2's served GROUP) on READER_IMAGE, one line
+        per group."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            port = reservation.getsockname()[1]
+        config = self.tmp / "receiver-reader.toml"
+        config.write_text(
+            f'[store]\npath = "{self.receiver_store}"\n'
+            f'[listener]\nhost = "127.0.0.1"\nport = {port}\n'
+            f'[control]\npath = "{self.tmp / "reader-control.sock"}"\n',
+            encoding="ascii")
+        process = subprocess.Popen(
+            [str(READER_IMAGE), "--fn", "operator", str(config), "run"], cwd=ROOT,
+            env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0)
         try:
-            codes = run_store.group_codes(list(groups), store, bridge)
-            return [bridge.group_next(code) for code in codes]
+            wait_for_announcement(process, b"LISTENING ", timeout=60)
+            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+                stream = client.makefile("rwb", buffering=0)
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                replies = []
+                for group in groups:
+                    stream.write(b"GROUP " + group.encode() + b"\r\n")
+                    replies.append(stream.readline())
+                return replies
         finally:
-            bridge.close()
-            store.close()
+            self.stop_process(process)
 
     def test_control_article_through_bp_transit_is_filed_not_executed(self):
         """PKT-070 (control-c1 finding 5).  A control article carried in a BP
@@ -1047,7 +1071,6 @@ class NativeBpNodeTests(unittest.TestCase):
         created = self.invoke("operator", config, "group", "create",
                               "control.cancel")
         self.assertEqual(created.returncode, 0, created.stderr)
-        before = self.receiver_group_next("control.cancel", "fn.test")
         self.msgid = b"<bp-node-control@example.invalid>"
         self.article = (
             b"Path: sender.bp.gate.invalid!not-for-mail\r\n"
@@ -1066,10 +1089,10 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(receiver.returncode, 0, err)
         self.assertEqual(sent.returncode, 0, sent.stderr)
         self.assertIn(b"BP node delivery request-accepted", out)
-        after = self.receiver_group_next("control.cancel", "fn.test")
-        # Filed once in control.cancel; fn.test (its Newsgroups) unchanged.
-        self.assertEqual(after[0], before[0] + 1, (before, after))
-        self.assertEqual(after[1], before[1], (before, after))
+        control, fn_test = self.receiver_listgroups("control.cancel", "fn.test")
+        # Filed once in control.cancel; never in fn.test (its Newsgroups).
+        self.assertTrue(control.startswith(b"211 1 "), control)
+        self.assertTrue(fn_test.startswith(b"211 0 "), fn_test)
         self.assertEqual(self.receiver_counts()[1], 1)
 
     def test_request_retry_queues_distinct_receipt_carriers_and_releases_pin(self):
