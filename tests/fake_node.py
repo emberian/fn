@@ -38,6 +38,7 @@ list follows`, `205 closing connection` and `423 no article with that
 number` where this fake says something shorter; the wording is left alone so
 nothing here can be mistaken for the node's own voice.
 """
+import fnmatch
 import socket
 import ssl
 import subprocess
@@ -73,6 +74,9 @@ class FakeNode(threading.Thread):
         # Optional literal HDR :fn-verified values used by reader-client tests.
         self.verdicts = {}
         self.numbers = {name: {} for name in groups}
+        # Message-IDs the node answers as withdrawn (C3: `423 withdrawn` by
+        # number, `430 withdrawn` by Message-ID; OVER and XPAT omit them).
+        self.withdrawn = set()
         self.summary_overrides = {}
         self.host = host
         family = socket.AF_INET6 if ":" in host else socket.AF_INET
@@ -267,6 +271,9 @@ class FakeNode(threading.Thread):
                     if number is not None and number == self.fail_article:
                         send("403 internal fault")
                         continue
+                    if msgid in self.withdrawn:
+                        send("430 withdrawn" if token.startswith("<") else "423 withdrawn")
+                        continue
                     if msgid is None or msgid not in self.articles:
                         send("430 no article with that message-id" if token.startswith("<")
                              else "423 no article with that number")
@@ -288,8 +295,9 @@ class FakeNode(threading.Thread):
                     if selected is None:
                         send("412 no newsgroup selected")
                         continue
-                    wanted = in_range(sorted(self.numbers[selected]),
-                                      words[1] if len(words) > 1 else "")
+                    wanted = [n for n in in_range(sorted(self.numbers[selected]),
+                                                  words[1] if len(words) > 1 else "")
+                              if self.numbers[selected][n] not in self.withdrawn]
                     if not wanted:
                         send("423 no articles in that range")
                         continue
@@ -307,6 +315,24 @@ class FakeNode(threading.Thread):
                     send("225 headers follow")
                     block([str(number) + " " +
                            self.verdicts.get(msgid, "absent no-field")])
+                elif verb == "XPAT" and len(words) >= 4 and "-" in words[2]:
+                    # A fake: fnmatchcase stands in for the node's wildmat
+                    # (books/wildmat.lisp); a test against it says what the
+                    # client does with lines, never what the node matches.
+                    if selected is None:
+                        send("412 no newsgroup selected")
+                        continue
+                    pattern = " ".join(words[3:])
+                    lines = []
+                    for number in in_range(sorted(self.numbers[selected]), words[2]):
+                        msgid = self.numbers[selected][number]
+                        value = header(self.articles[msgid], words[1].lower())
+                        if msgid in self.withdrawn or value is None:
+                            continue
+                        if any(fnmatch.fnmatchcase(value, one) for one in pattern.split(",")):
+                            lines.append("%d %s" % (number, value))
+                    send("221 header follows")
+                    block(lines)
                 elif verb == "POST":
                     if not self.accept_post:
                         send("440 posting not permitted for this principal")
@@ -322,6 +348,15 @@ class FakeNode(threading.Thread):
                         continue
                     if self.uncertain_post:
                         send("441 posting failed; the outcome is uncertain, do not repost")
+                        continue
+                    posted = header(lines, "message-id")
+                    if posted in self.articles:
+                        # The node's two duplicate lines (books/nntp-post.lisp;
+                        # planning/evidence/path-and-login-2026-09-25.md P2, P3).
+                        send("441 posting failed; this article is already stored here"
+                             if self.articles[posted] == lines else
+                             "441 posting failed; a different article with this "
+                             "Message-ID is stored here")
                         continue
                     groups = (header(lines, "newsgroups") or "").split(",")
                     for name in [g.strip() for g in groups if g.strip()] or ["fn.agents"]:
