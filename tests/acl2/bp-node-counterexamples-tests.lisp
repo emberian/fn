@@ -823,6 +823,10 @@
 ;; every tick, and a restart that replays the journal's bytes keeps the
 ;; count (no fresh tries).  The operator's resume (kind 20, count 0)
 ;; re-arms it.
+;; The frame digest is an attachment: constants that step the machine are
+;; computed by make-event, as bp-node-forward-retry-tests does.
+(defmacro bpcx-defc (name form)
+  `(make-event (list 'defconst ',name (list 'quote ,form))))
 (defun bpcx-obs-at (m) (fn-clock-observation m 0 0 nil))
 (defun bpcx-busy-event (deliver-answer m budgets)
   (let ((effect (car (fn-bpnf-answer-effects deliver-answer))))
@@ -851,35 +855,35 @@
   (fn-bpn-nth 1 (fn-bpnf-family-replay-rows rows (fn-bpnf-base *bpcx-raw-s0*))))
 (defun bpcx-row-slot (st) (fn-bpn-nth 13 (car (fn-bpnf-held-list st))))
 
-(defconst *bpcx-r17-d1* (fn-bpnf-answer-state *bpcx-deliver*))
-(defconst *bpcx-r17-busy1-event* (bpcx-busy-event *bpcx-deliver* 1000 nil))
-(defconst *bpcx-r17-key* (fn-bpn-nth 3 *bpcx-r17-busy1-event*))
-(defconst *bpcx-r17-busy1* (bpcx-busy *bpcx-deliver* 1000 nil))
-(defconst *bpcx-r17-p1* (bpcx-durable *bpcx-r17-busy1*))
-(defconst *bpcx-r17-b1* (fn-bpnf-answer-state *bpcx-r17-p1*))
-(defconst *bpcx-r17-early* (bpcx-tick *bpcx-r17-b1* 3000))
-(defconst *bpcx-r17-redeliver2* (bpcx-tick *bpcx-r17-b1* 6000))
-(defconst *bpcx-r17-busy2* (bpcx-busy *bpcx-r17-redeliver2* 6000 nil))
-(defconst *bpcx-r17-p2* (bpcx-durable *bpcx-r17-busy2*))
-(defconst *bpcx-r17-redeliver3*
+(bpcx-defc *bpcx-r17-d1* (fn-bpnf-answer-state *bpcx-deliver*))
+(bpcx-defc *bpcx-r17-busy1-event* (bpcx-busy-event *bpcx-deliver* 1000 nil))
+(bpcx-defc *bpcx-r17-key* (fn-bpn-nth 3 *bpcx-r17-busy1-event*))
+(bpcx-defc *bpcx-r17-busy1* (bpcx-busy *bpcx-deliver* 1000 nil))
+(bpcx-defc *bpcx-r17-p1* (bpcx-durable *bpcx-r17-busy1*))
+(bpcx-defc *bpcx-r17-b1* (fn-bpnf-answer-state *bpcx-r17-p1*))
+(bpcx-defc *bpcx-r17-early* (bpcx-tick *bpcx-r17-b1* 3000))
+(bpcx-defc *bpcx-r17-redeliver2* (bpcx-tick *bpcx-r17-b1* 6000))
+(bpcx-defc *bpcx-r17-busy2* (bpcx-busy *bpcx-r17-redeliver2* 6000 nil))
+(bpcx-defc *bpcx-r17-p2* (bpcx-durable *bpcx-r17-busy2*))
+(bpcx-defc *bpcx-r17-redeliver3*
   (bpcx-tick (fn-bpnf-answer-state *bpcx-r17-p2*) 11000))
-(defconst *bpcx-r17-busy3* (bpcx-busy *bpcx-r17-redeliver3* 11000 nil))
-(defconst *bpcx-r17-p3* (bpcx-durable *bpcx-r17-busy3*))
-(defconst *bpcx-r17-b3* (fn-bpnf-answer-state *bpcx-r17-p3*))
-(defconst *bpcx-r17-late* (bpcx-tick *bpcx-r17-b3* 60000))
-(defconst *bpcx-r17-later*
+(bpcx-defc *bpcx-r17-busy3* (bpcx-busy *bpcx-r17-redeliver3* 11000 nil))
+(bpcx-defc *bpcx-r17-p3* (bpcx-durable *bpcx-r17-busy3*))
+(bpcx-defc *bpcx-r17-b3* (fn-bpnf-answer-state *bpcx-r17-p3*))
+(bpcx-defc *bpcx-r17-late* (bpcx-tick *bpcx-r17-b3* 60000))
+(bpcx-defc *bpcx-r17-later*
   (bpcx-tick (fn-bpnf-answer-state *bpcx-r17-late*) 90000))
-(defconst *bpcx-r17-k5*
+(bpcx-defc *bpcx-r17-k5*
   (bpcx-row (car (fn-bpnf-answer-effects
                   (fn-bpnp-step *bpcx-s0* (bpcx-receive-event
                                            (fn-bpb-encode *bpcx-req*)))))))
-(defconst *bpcx-r17-rows*
+(bpcx-defc *bpcx-r17-rows*
   (list *bpcx-r17-k5*
         (bpcx-row (car (fn-bpnf-answer-effects *bpcx-r17-busy1*)))
         (bpcx-row (car (fn-bpnf-answer-effects *bpcx-r17-busy2*)))
         (bpcx-row (car (fn-bpnf-answer-effects *bpcx-r17-busy3*)))))
-(defconst *bpcx-r17-restarted* (bpcx-restart *bpcx-r17-rows*))
-(defconst *bpcx-r17-stranded-report*
+(bpcx-defc *bpcx-r17-restarted* (bpcx-restart *bpcx-r17-rows*))
+(bpcx-defc *bpcx-r17-stranded-report*
   (list (list :delivery-stranded *bpcx-r17-key* *fn-bpnp-max-forward-retries*)))
 
 (defun bpcx-proposes-count-p (st event n)
@@ -985,8 +989,8 @@
 
 ;; The operator's resume of the stranded row: a kind 20 with count 0, then
 ;; the row is delivered on the next tick.
-(defconst *bpcx-r17-resume* (fn-bpnp-step *bpcx-r17-b3* (list :operator-resume 0)))
-(defconst *bpcx-r17-resumed* (bpcx-durable *bpcx-r17-resume*))
+(bpcx-defc *bpcx-r17-resume* (fn-bpnp-step *bpcx-r17-b3* (list :operator-resume 0)))
+(bpcx-defc *bpcx-r17-resumed* (bpcx-durable *bpcx-r17-resume*))
 (assert-event
  (and (equal (car (car (fn-bpnf-answer-effects *bpcx-r17-resume*))) :persist-deferral)
       (equal (fn-bpn-nth 5 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *bpcx-r17-resume*))))
@@ -1005,8 +1009,8 @@
 ;; The operator's budgets (D27): a retry budget of 2 strands at the second
 ;; busy answer; one of 5 still defers the third; a backoff of 100 dates the
 ;; deferral 100 after the reading.  An invalid budget row is refused.
-(defconst *bpcx-b2* (fn-bpnp-budgets 5000 2))
-(defconst *bpcx-b5* (fn-bpnp-budgets 5000 5))
+(bpcx-defc *bpcx-b2* (fn-bpnp-budgets 5000 2))
+(bpcx-defc *bpcx-b5* (fn-bpnp-budgets 5000 5))
 (assert-event
  (and (equal (fn-bpnf-answer-effects
               (bpcx-durable (bpcx-busy *bpcx-r17-redeliver2* 6000 *bpcx-b2*)))
