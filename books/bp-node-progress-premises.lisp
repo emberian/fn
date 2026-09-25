@@ -377,6 +377,29 @@
                              fn-cp-idp))))
    :rule-classes nil))
 
+;; BP-R17's deferral writes only the marker (slot 7) and the waits (11).
+(local
+ (defthm fn-bpnpp-nth-is-nth
+   (implies (natp n)
+            (equal (fn-bpn-nth n xs) (nth n xs)))
+   :hints (("Goal" :induct (fn-bpn-nth n xs)
+            :in-theory (enable fn-bpn-nth nth fn-cbor-ag-car)))))
+
+(local
+ (defthm fn-bpnpp-premises-of-busy-slots
+   (equal (fn-bpnp-step-guard-premisesp
+           (update-nth 11 w (update-nth 7 nil st)))
+          (fn-bpnp-step-guard-premisesp st))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnp-step-guard-premisesp
+                                 fn-bpnf-base fn-bpnp-sessions
+                                 fn-bpnf-held-list fn-bpnpp-nth-is-nth
+                                 nth-update-nth (:e natp) (:e nfix)
+                                 (:e equal))
+                               (theory 'minimal-theory))))))
+
+(local (in-theory (disable fn-bpnpp-nth-is-nth)))
+
 (local (in-theory (disable fn-bpnp-step-guard-premisesp)))
 
 (local
@@ -541,6 +564,10 @@
   (fn-bpnp-conflict-propose-step fn-bpnp-with-next-issued
    fn-bpnp-conflict-refusal))
 
+(fn-bpnpp-defkeep fn-bpnpp-busy-delivery-step
+  (fn-bpnp-busy-delivery-step st epoch op key observation)
+  (fn-bpnp-busy-delivery-step fn-bpnpp-premises-of-busy-slots))
+
 (fn-bpnpp-defkeep fn-bpnpp-conflict-persist-step
   (fn-bpnp-conflict-persist-step st epoch op result)
   (fn-bpnp-conflict-persist-step fn-bpnp-conflict-refusal))
@@ -585,6 +612,7 @@
                          fn-bpnpp-clock-domain-fence
                          fn-bpnpp-conflict-propose-step
                          fn-bpnpp-conflict-persist-step
+                         fn-bpnpp-busy-delivery-step
                          fn-bpnpp-delegate-with-credit
                          fn-bpnpp-preserve-runtime-answer)
                        (theory 'fn-bpnpp-theory)))))

@@ -406,6 +406,61 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP FNBS recovered held=2", restarted.stdout)
         self.assertEqual(self.conflict_records(self.receiver_journal), records)
 
+    def test_busy_application_defers_and_redelivers_after_backoff(self):
+        """BP-R17 on the image: the owner answers the first delivery :busy.
+        The node neither refuses nor fences: the row stays held, and the
+        first dispatch after the 5000 ms backoff delivers it."""
+        receiver, port = self.start_node(
+            True, once=False, extra_env={"FN_BP_NODE_TEST_APP_BUSY": "1"})
+        sent = self.send_request(port, "busy-request")
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        out = self.wait_for_output(
+            receiver, b"BP node delivery deferred busy=1", timeout=120)
+        self.assertNotIn(b"request-refused", out)
+        self.assertNotIn(b"uncertain", out)
+        time.sleep(5.5)
+        # Any later connection runs the dispatch loop; an unrouted transit
+        # consumes no application answer.
+        self.send_transit(port, self.unrouted_transit_bundle(), "busy-ping")
+        delivered = self.wait_for_output(
+            receiver, b"BP node delivery request-accepted", timeout=120)
+        self.assertIn(b"BP application handoff durable", delivered)
+        self.assertNotIn(b"request-refused", delivered)
+        self.stop_process(receiver)
+        self.assertEqual(self.receiver_counts()[1], 1)
+
+    def test_permanently_busy_application_strands_row_until_recovery(self):
+        """BP-R17 at the kind-8 retry bound: three :busy answers strand the
+        row, visibly and still held; nothing is refused or stored; a cold
+        recovery clears the volatile wait and delivers it."""
+        receiver, port = self.start_node(
+            True, once=False, extra_env={"FN_BP_NODE_TEST_APP_BUSY": "100"})
+        sent = self.send_request(port, "stranded-request")
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        seen = self.wait_for_output(
+            receiver, b"BP node delivery deferred busy=1", timeout=120)
+        transit = self.unrouted_transit_bundle()
+        for spool, marker in (("p1", b"BP node delivery deferred busy=2"),
+                              ("p2", b"BP node delivery stranded busy=3")):
+            time.sleep(5.5)
+            self.send_transit(port, transit, spool)
+            seen += self.wait_for_output(receiver, marker, timeout=120)
+        # A stranded row is not offered again: a later dispatch is silent.
+        time.sleep(5.5)
+        self.send_transit(port, transit, "p3")
+        time.sleep(2)
+        receiver.terminate()
+        receiver.wait(timeout=15)
+        seen += receiver.stdout.read()
+        self.assertNotIn(b"busy=4", seen)
+        self.assertNotIn(b"request-refused", seen)
+        self.assertNotIn(b"request-accepted", seen)
+        self.assertEqual(self.receiver_counts()[1], 0)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertIn(b"BP node delivery request-accepted", restarted.stdout)
+        self.assertEqual(self.receiver_counts()[1], 1)
+
     def other_boot_domain_frame(self):
         """ACL2's clock-domain frame for a boot ID that is not this boot's."""
         boot = Path("/proc/sys/kernel/random/boot_id").read_text("ascii").strip()
