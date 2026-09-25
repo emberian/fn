@@ -23,8 +23,6 @@
 (include-book "../books/store-profile-upgrade")
 (include-book "../books/article-fields")
 
-(defconst *fn-store-capacity* 1048576)
-
 (defconst *fn-store-max-text* 512)
 
 (defun fn-store-text-octetsp-tail (xs)

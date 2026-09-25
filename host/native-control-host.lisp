@@ -38,6 +38,18 @@
   (declare (xargs :mode :program))
   *fn-frame-max-blob*)
 
+; The control reply vocabulary, ACL2's (`*fn-nctrl-statuses*'): a client
+; accepts exactly these words and treats any other reply as no reply.
+(defun fn-native-control-host-statuses ()
+  (declare (xargs :mode :program))
+  *fn-nctrl-statuses*)
+
+; The control word for a refused operator submission, from the owner's
+; injection decision reason (`fn-native-control-refusal-status').
+(defun fn-native-control-host-refusal-status (reason)
+  (declare (xargs :mode :program))
+  (fn-native-control-refusal-status reason))
+
 (defun fn-native-control-host-max-active-clients ()
   (declare (xargs :mode :program))
   (fn-native-control-max-active-clients))

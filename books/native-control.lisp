@@ -18,8 +18,13 @@
 (defconst *fn-nctrl-reply-kind* 2)
 (defconst *fn-nctrl-admin-kind* 3)
 (defconst *fn-nctrl-request-spec* '(:blob :text :blob))
+; `:article-exceeds-profile-bound' is a refusal that names its reason: the
+; owner's injection decision refused the operator's article `:oversize', past
+; the carried profile's article field A (`fn-native-control-refusal-status').
+; It is last, so every earlier status keeps its enumeration octet.
 (defconst *fn-nctrl-statuses*
-  '(:accepted :duplicate :refused :clock-unusable :busy :uncertain :fault))
+  '(:accepted :duplicate :refused :clock-unusable :busy :uncertain :fault
+    :article-exceeds-profile-bound))
 (defconst *fn-nctrl-reply-spec* (list (cons :enum *fn-nctrl-statuses*)))
 
 ; The FNCT request payload at its field widths (`*fn-nctrl-request-spec*'):
@@ -304,9 +309,27 @@
 (defun fn-native-control-status-class (status)
   (declare (xargs :guard t))
   (cond ((member-equal status '(:accepted :duplicate)) :accepted)
-        ((member-equal status '(:refused :clock-unusable :busy)) :refused)
+        ((member-equal status '(:refused :clock-unusable :busy
+                                :article-exceeds-profile-bound))
+         :refused)
         ((equal status :uncertain) :uncertain)
         (t :fault)))
+
+; The control status of a refused operator submission, from the owner's
+; injection decision reason (books/owner.lisp `fn-own-operator-decision-of';
+; host/owner-host.lisp `fn-owner-operator-refusal-reason').  An article past
+; the profile's bound is named; every other reason stays the plain refusal.
+(defun fn-native-control-refusal-status (reason)
+  (declare (xargs :guard t))
+  (if (equal reason :oversize) :article-exceeds-profile-bound :refused))
+
+(defthm fn-native-control-refusal-status-is-a-refusal
+  (and (member-equal (fn-native-control-refusal-status reason)
+                     *fn-nctrl-statuses*)
+       (equal (fn-native-control-status-class
+               (fn-native-control-refusal-status reason))
+              :refused))
+  :rule-classes nil)
 
 (defun fn-native-control-status-exit-code (status)
   (declare (xargs :guard t))

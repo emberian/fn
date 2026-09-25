@@ -547,7 +547,11 @@ class NativeVerifyTests(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory(prefix="fn-verify-native-")
         root = cls.root = Path(cls.temp.name)
         store, control, auth = root / "store", root / "control.sock", root / "auth.toml"
-        cls.invoke("store", store, "init", "fn.test")
+        # D27: the store's profile is the operator's.  FN_VERIFY_INIT_FLAGS
+        # (e.g. "--max-article-octets 4194304") gives the large cases an
+        # article bound that admits them.
+        cls.invoke("store", store, "init",
+                   *os.environ.get("FN_VERIFY_INIT_FLAGS", "").split(), "fn.test")
         cls.cert, key = root / "node-cert.pem", root / "node-key.pem"
         subprocess.run([OPENSSL, "req", "-x509", "-newkey", "rsa:2048", "-keyout", str(key),
                         "-out", str(cls.cert), "-sha256", "-days", "1", "-nodes",
@@ -643,7 +647,9 @@ class NativeVerifyTests(unittest.TestCase):
             if tamper:
                 octets = octets.replace(b"exact post source", b"Exact post source", 1)
                 octets = octets.replace(b"line 00100 ", b"LINE 00100 ", 1)
+            print("POST", stem, len(octets), flush=True)
             cls.replies[stem] = cls.post(octets)
+            print("  ->", cls.replies[stem][:80], flush=True)
 
     @classmethod
     def sign(cls, stem, source_octets, image=IMAGE):

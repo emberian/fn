@@ -1469,14 +1469,27 @@ refused, not injected under a stale time (D10-a)."
               (if (and (eq (fnn-owner-advance-clock) :observed)
                        (eq (fnn-owner-action 'fn-owner-stamp-status)
                            :usable))
-                  (fnn-owner-complete-bound-submission
-                   service
-                   (lambda ()
-                     (fnn-owner-action 'fn-owner-operator-submit
-                                       (fnn-octet-list msgid)
-                                       (mapcar #'fnn-octet-list groups)
-                                       (fnn-octet-list payload)))
-                   msgid :injected groups evidence generation txid)
+                  (let ((status
+                          (fnn-owner-complete-bound-submission
+                           service
+                           (lambda ()
+                             (fnn-owner-action 'fn-owner-operator-submit
+                                               (fnn-octet-list msgid)
+                                               (mapcar #'fnn-octet-list groups)
+                                               (fnn-octet-list payload)))
+                           msgid :injected groups evidence generation txid)))
+                    ;; A refusal carries ACL2's reason to the operator: the
+                    ;; injection decision's reason, mapped to the control
+                    ;; word by books/native-control.lisp
+                    ;; fn-native-control-refusal-status (an article past
+                    ;; the profile's A is article-exceeds-profile-bound).
+                    (if (eq status :refused)
+                        (fnn-core 'fn-native-control-host-refusal-status
+                                  (fnn-owner-core 'fn-owner-operator-refusal-reason
+                                                  (fnn-octet-list msgid)
+                                                  (mapcar #'fnn-octet-list groups)
+                                                  (fnn-octet-list payload)))
+                      status))
                 :clock-unusable))
          (when armed (fnn-owner-control-disarm-fault store armed)))))))
 

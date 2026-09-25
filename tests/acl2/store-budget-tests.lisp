@@ -53,9 +53,11 @@
 ; a profile whose H equals its R admits one more article record exactly
 ; while the committed octets plus the article ceiling stay within H, with the
 ; count far below T.
-(defconst *sbudt-tight* (fn-bs-profile-set-fields *sbudt-dev* '((3 . 196608))))
+(defconst *sbudt-r* (fn-bs-profile-max-record-octets *sbudt-dev*))
+(defconst *sbudt-tight*
+  (fn-bs-profile-set-fields *sbudt-dev* (list (cons 3 *sbudt-r*))))
 (assert-event (fn-bs-profile-validp *sbudt-tight*))
-(defconst *sbudt-room* (- 196608 (fn-store-publication-ceiling :article)))
+(defconst *sbudt-room* (- *sbudt-r* (fn-store-publication-ceiling :article)))
 (assert-event (equal (fn-sbud-verdict-at *sbudt-tight* :article 5 *sbudt-room*)
                      :admissible))
 (assert-event (equal (fn-sbud-verdict-at *sbudt-tight* :article 5 (1+ *sbudt-room*))

@@ -76,6 +76,29 @@
 (assert-event (equal (fn-native-control-status-exit-code :busy) 1))
 (assert-event (equal (fn-native-control-status-class :clock-unusable) :refused))
 
+; A refusal that names its reason.  The owner's injection decision `:oversize'
+; (an operator article past the profile's A) is carried as its own word, a
+; refusal (exit 1) that survives the sealed reply; every other reason stays
+; the plain refusal.  Teeth for fn-native-control-refusal-status-is-a-refusal:
+; the status is a refusal only because the map sends every reason to one of
+; the two refusal words; `:uncertain' and `:fault' are in the vocabulary and
+; are not refusals.
+(assert-event (equal (fn-native-control-refusal-status :oversize)
+                     :article-exceeds-profile-bound))
+(assert-event (equal (fn-native-control-refusal-status :unparsable) :refused))
+(assert-event (equal (fn-native-control-status-exit-code
+                      :article-exceeds-profile-bound)
+                     1))
+(assert-event
+ (equal (fn-native-control-reply-decode
+         (fn-native-control-reply-encode :article-exceeds-profile-bound))
+        :article-exceeds-profile-bound))
+(assert-event (equal (fn-native-control-reply-decode
+                      (fn-native-control-reply-encode :refused))
+                     :refused))
+(assert-event (not (equal (fn-native-control-status-class :uncertain) :refused)))
+(assert-event (not (equal (fn-native-control-status-class :fault) :refused)))
+
 ; The word has to survive the sealed reply or the operator cannot print it.
 (assert-event
  (equal (fn-native-control-reply-decode

@@ -317,6 +317,9 @@ def judge_cut(row) -> list:
     return failures
 
 
+OVERSIZE_441 = "441 posting failed; the article exceeds the configured size"
+
+
 def judge_control(row) -> list:
     failures = []
     reply = (row.get("post") or {}).get("reply")
@@ -329,9 +332,9 @@ def judge_control(row) -> list:
             failures.append("half-sent article is present")
     elif name.startswith("dev-size-") and not row.get("within_bound"):
         # D27: a POST past the operator's profile bound is refused at the wire
-        # with a 441, and nothing is stored.
-        if not (reply or "").startswith("441"):
-            failures.append("oversize reply {!r} is not a 441".format(reply))
+        # with the 441 that names the size, and nothing is stored.
+        if (reply or "").rstrip("\r\n") != OVERSIZE_441:
+            failures.append("oversize reply {!r} != {!r}".format(reply, OVERSIZE_441))
         if _present(row):
             failures.append("oversize article is present")
     else:
@@ -407,6 +410,9 @@ def main(argv=None) -> int:
     parser.add_argument("--profile-bound", type=int, default=32768,
                         help="the store profile's payload bound the size controls "
                         "are judged against (fn-sbud-payload-bound)")
+    parser.add_argument("--init-flags", default="",
+                        help="operator fields for every seeded store's init, e.g. "
+                        "'--max-article-octets 4194304' (D27)")
     parser.add_argument("--judge", type=Path,
                         help="re-judge a recorded result (.json or .json.gz) and exit")
     args = parser.parse_args(argv)
@@ -422,6 +428,8 @@ def main(argv=None) -> int:
         parser.error("--images, --work and --out are required to run the probe")
     native_cuts.verify_native_cut_map()
     verify_post_arms()
+    import tests.campaign.native_operator_campaign as campaign
+    campaign.INIT_FLAGS[:] = args.init_flags.split()
     dev, prod = args.images / "fn-host-developer", args.images / "fn-host"
     if args.work.exists():
         shutil.rmtree(args.work)
@@ -433,7 +441,8 @@ def main(argv=None) -> int:
                       else "candidate content")
     (args.work / "candidate.art").write_bytes(payload)
     refused = payload.replace(b"From: campaign@campaign.invalid\r\n", b"")
-    result = {"images": str(args.images), "cuts": [], "controls": []}
+    result = {"images": str(args.images), "init_flags": args.init_flags,
+              "profile_bound": args.profile_bound, "cuts": [], "controls": []}
     for cut in native_cuts.POST_CUTS:
         for action in ("kill", "eio"):
             print("cut", cut.name, action, flush=True)

@@ -776,6 +776,21 @@
                                state)))
     (value result)))
 
+; Why the owner refused the operator's article: the injection decision's
+; reason under the owner's current configuration and clock (the decision
+; `fn-owner-operator-submit' just refused), NIL when that decision injects.
+; The native control path maps it to the control word
+; (`fn-native-control-refusal-status'), so an article past the profile's A
+; reaches the operator as `article-exceeds-profile-bound', not a bare refusal.
+(defun fn-owner-operator-refusal-reason (msgid-octets group-octets payload state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((decision (fn-own-operator-decision-of (fn-owner-core state)
+                                               msgid-octets group-octets
+                                               payload)))
+    (value (if (fn-inj-injectedp decision)
+               nil
+             (fn-inj-decision-reason decision)))))
+
 ; -----------------------------------------------------------------------------
 ; The AUTHINFO policy (RFC 4643), set once at start-up and pinned per
 ; connection.
