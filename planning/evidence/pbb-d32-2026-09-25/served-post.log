@@ -1,0 +1,43 @@
+test_condition_handlers_and_cleanup_enclose_the_served_body (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_condition_handlers_and_cleanup_enclose_the_served_body) ... ok
+test_developer_selectors_gate_arm_the_owner_and_stop_synchronously (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_developer_selectors_gate_arm_the_owner_and_stop_synchronously) ... ok
+test_no_os_error_after_publication_is_classified_as_a_refusal (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_no_os_error_after_publication_is_classified_as_a_refusal) ... ok
+test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step) ... ok
+test_the_served_listener_passes_a_documented_accept_queue (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_the_served_listener_passes_a_documented_accept_queue) ... ok
+test_transit_take_uses_transfer_decision_and_store_outcome (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_transit_take_uses_transfer_decision_and_store_outcome) ... ok
+test_article_over_the_body_limit_is_refused_and_the_owner_survives (tests.test_native_owner.NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives) ... ok
+test_client_disconnect_is_not_a_global_owner_fault (tests.test_native_owner.NativeOwnerTests.test_client_disconnect_is_not_a_global_owner_fault) ... ok
+test_configured_source_address_opens_native_transit_session (tests.test_native_owner.NativeOwnerTests.test_configured_source_address_opens_native_transit_session) ... ok
+test_each_submission_and_each_connection_take_a_fresh_reading (tests.test_native_owner.NativeOwnerTests.test_each_submission_and_each_connection_take_a_fresh_reading) ... ok
+test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence (tests.test_native_owner.NativeOwnerTests.test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence) ... ok
+test_invalid_complete_feed_evidence_is_process_fault (tests.test_native_owner.NativeOwnerTests.test_invalid_complete_feed_evidence_is_process_fault) ... ok
+test_local_handler_fault_uses_core_fault_and_preserves_other_clients (tests.test_native_owner.NativeOwnerTests.test_local_handler_fault_uses_core_fault_and_preserves_other_clients) ... ok
+test_once_sigterm_closes_client_with_incomplete_post (tests.test_native_owner.NativeOwnerTests.test_once_sigterm_closes_client_with_incomplete_post) ... ok
+test_post_is_committed_and_readable_after_owner_exit (tests.test_native_owner.NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit) ... ok
+test_reset_peer_does_not_stop_concurrent_writer_or_reader (tests.test_native_owner.NativeOwnerTests.test_reset_peer_does_not_stop_concurrent_writer_or_reader) ... ok
+test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation) ... FAIL
+test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart (tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart) ... ok
+test_developer_init_reads_profile_flags_and_refuses_flag_groups (tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_developer_init_reads_profile_flags_and_refuses_flag_groups) ... skipped 'set FN_NATIVE_HOST to a native launcher'
+test_needs_upgrade_and_rollback_check (tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_needs_upgrade_and_rollback_check)
+PKT-099: `store needs-upgrade' is the no-argument upgrade's own ... skipped 'set FN_NATIVE_HOST to a native launcher'
+test_refused_posts_are_logged_on_both_paths (tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_refused_posts_are_logged_on_both_paths) ... skipped 'set FN_NATIVE_HOST to a native launcher'
+test_set_password_answers_from_the_owner (tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_set_password_answers_from_the_owner) ... skipped 'set FN_NATIVE_HOST to a native launcher'
+test_bytewise_partition_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_bytewise_partition_agrees) ... ok
+test_cut_after_a_reply_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_cut_after_a_reply_agrees) ... ok
+test_cut_inside_a_command_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_cut_inside_a_command_agrees) ... ok
+test_framing_rejection_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_framing_rejection_agrees) ... ok
+test_input_after_quit_is_ignored_identically (tests.test_native_served_differential.NativeServedDifferentialTests.test_input_after_quit_is_ignored_identically) ... ok
+test_split_utf8_wildmat_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_split_utf8_wildmat_agrees) ... ok
+test_whole_transcript_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_whole_transcript_agrees) ... ok
+
+======================================================================
+FAIL: test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/pbb-d32/tree/tests/test_native_owner.py", line 404, in test_two_client_uncertainty_fences_before_later_mutation
+    self.assertEqual(
+AssertionError: b'' != b'441 posting failed; the outcome is uncertain, do not repost\r\n'
+
+----------------------------------------------------------------------
+Ran 29 tests in 39.101s
+
+FAILED (failures=1, skipped=4)

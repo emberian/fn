@@ -24,7 +24,7 @@
 (include-book "defrecord")
 
 (defconst *fn-record-magic* '(102 110 45 114))
-(defconst *fn-record-schema-version* 1)
+(defconst *fn-record-schema-version* 2)
 ; Bounds (D27, planning/decisions.md; design 2026-09-25-bounds §2.3).  None
 ; of these is a policy on the data a store holds: the operator's bounds are
 ; the store profile's, and every served path applies the profile's bound
@@ -57,14 +57,24 @@
 ; by the node (books/provenance-codec.lisp), bounded by construction.
 (defconst *fn-record-max-metadata* 256)
 ; Codec ceiling: the record width less 2^25 octets reserved for every other
-; field at its own ceiling (1 083 fixed octets and 261 per group).  The
+; field at its own ceiling (1 111 fixed octets at the wide heads and 261 per group).  The
 ; profile's article bound sits below it.
 (defconst *fn-record-max-payload* 4261412864)
 ; The encoded octets every field other than the payload and the groups can
-; take at their ceilings: magic 5, schema, sequence, txid, generation, group
-; count, charge and stamp 5 each (a CBOR uint head is at most 5 octets),
-; Message-ID 5 + 250, payload head 5, three metadata strings 3 * (5 + 256).
+; take at their ceilings, for a record whose integer fields fit u32 (not
+; `fn-record-widep', below): magic 5, schema, sequence, txid, generation,
+; group count, charge and stamp 5 each (a narrow CBOR uint head is at most 5
+; octets), Message-ID 5 + 250, payload head 5, three metadata strings
+; 3 * (5 + 256).  This is the overhead of every record the runtime can
+; produce while the frontier (the profile's T) and the charge are u32, and
+; the one a saved profile's R was checked against: `fn-record-encoded-
+; octets-ceiling' below, which the profile relation reads.
 (defconst *fn-record-fixed-overhead-octets* 1083)
+; The same for any record, wide or not (packet P6): every uint head at 9
+; octets, the wide CBOR uint's longest.  Loose by 8 (the schema octet and the
+; group count are never wide).  Only the unconditional length bound reads it;
+; a profile's R is not required to hold it.
+(defconst *fn-record-wide-overhead-octets* 1111)
 ;
 ; The five octets every accepted record begins with: the CBOR byte-string
 ; head of length 4 (h'44') and "fn-r".  The sixth octet is the schema
@@ -128,18 +138,36 @@
                                     *fn-record-max-msgid*)))
 
 ; The worst-case encoded length of a record with PAYLOAD-OCTETS of payload
-; and GROUP-COUNT groups: what a profile's per-record bound must admit for an
-; article of that size (`fn-record-encode-length-bound', records-seam).
+; and GROUP-COUNT groups whose integer fields fit u32: what a profile's
+; per-record bound must admit for an article of that size
+; (`fn-record-encode-narrow-length-bound', records-seam).  Computed at the
+; widths the runtime can produce, so a profile saved before packet P6 keeps
+; its validity (tests/acl2/byte-store-frame-tests).
 (defun fn-record-encoded-octets-ceiling (payload-octets group-count)
   (declare (xargs :guard (and (natp payload-octets) (natp group-count))))
   (+ payload-octets
      (* (+ 5 *fn-record-max-group-name*) group-count)
      *fn-record-fixed-overhead-octets*))
 
+; The worst-case encoded length of ANY record (wide or narrow) with those
+; fields: `fn-record-encode-length-bound' (records-seam).  A record the
+; runtime produces is within the narrower ceiling above
+; (`fn-record-encode-narrow-length-bound').
+(defun fn-record-wide-encoded-octets-ceiling (payload-octets group-count)
+  (declare (xargs :guard (and (natp payload-octets) (natp group-count))))
+  (+ payload-octets
+     (* (+ 5 *fn-record-max-group-name*) group-count)
+     *fn-record-wide-overhead-octets*))
+
+(defthm fn-record-encoded-octets-ceiling-below-wide
+  (<= (fn-record-encoded-octets-ceiling payload-octets group-count)
+      (fn-record-wide-encoded-octets-ceiling payload-octets group-count))
+  :rule-classes :linear)
+
 (defthm fn-record-encoded-octets-ceiling-within-record-width
   (implies (and (natp payload-octets) (<= payload-octets *fn-record-max-payload*)
                 (natp group-count) (<= group-count *fn-record-max-groups*))
-           (<= (fn-record-encoded-octets-ceiling payload-octets group-count)
+           (<= (fn-record-wide-encoded-octets-ceiling payload-octets group-count)
                *fn-record-max-octets*))
   :rule-classes :linear)
 
@@ -365,9 +393,18 @@
   (and (natp n) (<= n *fn-cbor-max-uint*)))
 (verify-guards fn-record-uint32p)
 
+; The record's integer fields -- sequence, transaction ID, generation,
+; charge and a natural stamp -- are u64 (D27, packet P6): the CBOR uint's
+; eight-octet argument (`fn-cbor-encode-uint-wide', cbor.lisp).  A total of
+; any kind is u64; `fn-record-uint32p' stays for the group count and for the
+; books that name it for their own u32 fields.
+(defun fn-record-uint64p (n)
+  (declare (xargs :guard t))
+  (and (natp n) (<= n *fn-cbor-max-uint64*)))
+
 (defun fn-record-stampp (stamp)
   (declare (xargs :guard t))
-  (or (equal stamp :legacy) (fn-record-uint32p stamp)))
+  (or (equal stamp :legacy) (fn-record-uint64p stamp)))
 
 ; The schema octet a record's encoding carries.  At schema 0 every record
 ; needs version 0.  The acceptance stamp (specs/acceptance-stamp.md §1.4)
@@ -397,25 +434,41 @@
   :constructor (fn-record-make sequence txid generation msgid payload groups
                                obligation-id content-subject release-evidence
                                charge stamp)
-  :fields ((fn-record-sequence fn-record-uint32p)
-           (fn-record-txid fn-record-uint32p)
-           (fn-record-generation fn-record-uint32p)
+  :fields ((fn-record-sequence fn-record-uint64p)
+           (fn-record-txid fn-record-uint64p)
+           (fn-record-generation fn-record-uint64p)
            (fn-record-msgid fn-record-msgidp)
            (fn-record-payload fn-record-payloadp)
            (fn-record-groups fn-record-groups-validp)
            (fn-record-obligation-id fn-record-metadata-bytes-p)
            (fn-record-content-subject fn-record-metadata-bytes-p)
            (fn-record-release-evidence fn-record-metadata-bytes-p)
-           (fn-record-charge fn-record-uint32p)
+           (fn-record-charge fn-record-uint64p)
            (fn-record-stamp fn-record-stampp))
   :recognizer fn-record-p
   :recognizer-verify-guards nil
   :car-fn fn-cbor-ag-car
   :cdr-fn fn-cbor-ag-cdr)
 
+; Schema 2 (packet P6) is a stamped record with an integer field above
+; 2^32 - 1: its encoding carries an eight-octet uint head, which an image
+; that knows only schemas 0 and 1 refuses by the version octet.  Every record
+; whose integer fields fit u32 keeps its schema-0 or schema-1 octet and its
+; bytes (records-invariants `fn-record-encode-narrow-record-is-schema-1-bytes').
+(defun fn-record-widep (record)
+  (declare (xargs :guard t))
+  (not (and (fn-record-uint32p (fn-record-sequence record))
+            (fn-record-uint32p (fn-record-txid record))
+            (fn-record-uint32p (fn-record-generation record))
+            (fn-record-uint32p (fn-record-charge record))
+            (or (equal (fn-record-stamp record) :legacy)
+                (fn-record-uint32p (fn-record-stamp record))))))
+
 (defun fn-record-schema-octet (record)
   (declare (xargs :guard t))
-  (if (equal (fn-record-stamp record) :legacy) 0 1))
+  (if (equal (fn-record-stamp record) :legacy)
+      0
+    (if (fn-record-widep record) 2 1)))
 
 (defun fn-record-with-stamp (record stamp)
   (declare (xargs :guard t))
@@ -628,7 +681,8 @@
     (:d fn-record-groups-validp) (:d fn-record-metadata-bytes-p)
     (:d fn-record-uint32p) (:d fn-record-ascii-stringp)
     (:d fn-record-octet-stringp) (:d fn-record-nonempty-at-mostp)
-    (:d fn-record-schema-octet) (:d fn-record-stampp)))
+    (:d fn-record-schema-octet) (:d fn-record-stampp)
+    (:d fn-record-uint64p) (:d fn-record-widep)))
 
 (in-theory (disable (:d fn-record-p) (:d fn-record-msgidp)
                     (:d fn-record-payloadp) (:d fn-record-group-namep)
@@ -637,6 +691,7 @@
                     (:d fn-record-ascii-stringp) (:d fn-record-octet-stringp)
                     (:d fn-record-nonempty-at-mostp)
                     (:d fn-record-schema-octet) (:d fn-record-stampp)
+                    (:d fn-record-uint64p) (:d fn-record-widep)
                     (:d fn-record-group-name-octetsp)
                     (:d fn-record-group-name-grammarp)
                     fn-record-cbor-octet-list-true-listp

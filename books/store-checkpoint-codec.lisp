@@ -562,10 +562,14 @@
       (append (true-list-fix (car segments)) (fn-scc-concat (cdr segments)))
     nil))
 
-; The record count a checkpoint value covers: its second element's length.
+; The record count a checkpoint value covers: its second element, which is
+; the count itself when the file carries the count instead of the record
+; list (fn-sco-freeze, books/store-checkpoint-open.lisp), else the list's
+; length.
 (defun fn-scc-value-sequence (c)
   (declare (xargs :guard t))
-  (len (and (consp c) (consp (cdr c)) (cadr c))))
+  (let ((slot (and (consp c) (consp (cdr c)) (cadr c))))
+    (if (natp slot) slot (len slot))))
 
 (defun fn-scc-segments (c segment-octets)
   (declare (xargs :guard (natp segment-octets) :verify-guards nil))

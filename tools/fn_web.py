@@ -49,6 +49,13 @@ MAX_REFERENCES = 800
 LOOPBACK = ("127.0.0.1", "::1")
 
 
+# Work per search request: the numbers the node is asked to scan in one XPAT,
+# and the hits one page shows.  Bounds on work, not on the group, which the
+# next page continues past.
+SEARCH_SPAN = 2000
+MAX_SEARCH_HITS = 200
+
+
 class BoundedSession(Session):
     """The existing NNTP wire client with finite reader allocation."""
 
@@ -238,6 +245,53 @@ class Backend:
                                     {"group": group, "rows": rows, "low": low,
                                      "high": high, "window_start": window_start,
                                      "window_end": window_end}, "")
+        return self.using(query)
+
+    def search(self, group: str, field: str, pattern: str, before: Optional[int] = None):
+        """Articles in one bounded number window whose field the node matches.
+
+        The pattern is the reader's wildmat, sent to the node verbatim as
+        `XPAT <field> <low>-<high> <pattern>` (RFC 2980 section 2.9): the node
+        parses it (books/wildmat.lisp, the header-value profile) and matches
+        it, case-sensitively (RFC 3977 section 4.2); arguments separated by
+        spaces are joined by the node into one pattern, and the comma is the
+        alternative.  This client builds no pattern and keeps no index.  The
+        window is SEARCH_SPAN numbers ending at `before` (default the
+        high-water mark), a bound on work per request; the page links the
+        next older window.
+        """
+        if field not in ("subject", "from"):
+            raise ValueError("search field is subject or from")
+        pattern = pattern.strip()
+        if not pattern or len(pattern.encode("utf-8")) > 400 or \
+                any(ord(c) < 32 or ord(c) == 127 for c in pattern):
+            raise ValueError("a search pattern is 1 to 400 octets of printable text")
+
+        def query(client):
+            status, _ = client.cmd("GROUP " + group)
+            if not status.startswith("211"):
+                return fn_client.Result(fn_client.REFUSED, status, {}, "")
+            fields = status.split()
+            low, high = fn_client.number(fields[2]), fn_client.number(fields[3])
+            if low is None or high is None:
+                raise fn_client.Stop(fn_client.UNCERTAIN, "invalid GROUP range: " + status)
+            end = min(high, before) if before is not None else high
+            start = max(low, end - SEARCH_SPAN + 1)
+            hits, command = [], ""
+            if end >= start and high >= low:
+                command = "XPAT %s %d-%d %s" % (field.title(), start, end, pattern)
+                answer, lines = client.cmd(command, multiline=True)
+                if not answer.startswith("221"):
+                    return fn_client.Result(fn_client.REFUSED, answer,
+                                            {"command": command}, "")
+                for line in lines[:MAX_SEARCH_HITS]:
+                    number, _, value = line.partition(" ")
+                    one = fn_client.number(number)
+                    if one is not None and start <= one <= end:
+                        hits.append({"number": one, "value": value})
+            return fn_client.Result(fn_client.DONE, status,
+                                    {"hits": hits, "start": start, "end": end, "low": low,
+                                     "high": high, "command": command}, "")
         return self.using(query)
 
     def article(self, group: str, number: int):
@@ -1121,6 +1175,55 @@ class Handler(BaseHTTPRequestHandler):
                 provenance + "<pre>" + e("\n".join(one["body"])) + "</pre>" + resume +
                 "</article>")
 
+    def search_form(self, group, field="subject", pattern="") -> str:
+        return ("<form method='get' action='/search'>"
+                "<input type='hidden' name='group' value='" + e(group) + "'>"
+                "<label>Search " + e(group) + " (a wildmat the node matches: * any text, "
+                "? one character, a,b either; case-sensitive)<input name='q' maxlength='400' "
+                "value='" + e(pattern) + "' placeholder='*probe*'></label>"
+                "<select name='field' aria-label='field'>" +
+                "".join("<option value='%s'%s>%s</option>" % (value, " selected"
+                                                              if value == field else "", label)
+                        for value, label in (("subject", "Subject"), ("from", "Author"))) +
+                "</select><button type='submit'>Search</button></form>")
+
+    def search_page(self, values):
+        group, field = values.get("group", ""), values.get("field", "subject")
+        pattern = values.get("q", "")
+        if not group_token(group):
+            raise ValueError("invalid group name")
+        before = None
+        if "before" in values:
+            raw = values["before"]
+            if not raw.isascii() or not raw.isdecimal() or len(raw) > 10 or int(raw) < 1:
+                raise ValueError("invalid search window")
+            before = int(raw)
+        result = self.run_backend(lambda: self.server.backend.search(
+            group, field, pattern, before))
+        if result is None:
+            return
+        if result.word != fn_client.DONE:
+            self.outcome(result.word, result.detail + (
+                " (" + result.data["command"] + ")" if result.data.get("command") else ""))
+            return
+        data, marks = result.data, self.server.marks
+        rows = "".join(
+            "<article><h2" + ("" if marks.is_read(group, hit["number"]) else " class='unread'") +
+            "><a href='" + e(href("/a", group=group, number=hit["number"])) + "'>" +
+            e(hit["value"]) + "</a></h2><p class='meta'>local #" + e(hit["number"]) +
+            "</p></article>" for hit in sorted(data["hits"], key=lambda h: -h["number"]))
+        older = ("<a rel='prev' href='" + e(href("/search", group=group, field=field,
+                                                  q=pattern, before=data["start"] - 1)) +
+                 "'>Search older articles</a>" if data["start"] > data["low"] else "")
+        self.page("Search " + group, "<nav><a href='" + e(href("/g", name=group)) + "'>" +
+                  e(group) + "</a></nav>" + self.search_form(group, field, pattern) +
+                  "<p class='muted'>The node answered <code>" +
+                  e(data["command"] or "nothing: the window is empty") +
+                  "</code> over local numbers " + e("%d–%d" % (data["start"], data["end"])) +
+                  " (at most %d numbers per page). The match is the node's; this page "
+                  "keeps no index.</p>" % SEARCH_SPAN +
+                  (rows or "<p>No matches in this window.</p>") + "<nav>" + older + "</nav>")
+
     def marks_note(self) -> str:
         error = self.server.marks.error
         return "<p class='hint'>" + e(error) + ".</p>" if error else ""
@@ -1281,13 +1384,16 @@ class Handler(BaseHTTPRequestHandler):
                 self.page(group, "<nav><a href='/'>Groups</a><a href='" +
                           e(href("/compose", group=group)) + "'>Write a post</a></nav>"
                           "<h2>" + e(group) + "</h2><p class='muted'>" +
-                          e(page_window + frontier) + " · viewing does not acknowledge processing</p>"
+                          e(page_window + frontier) + " · viewing does not acknowledge processing</p>" +
+                          self.search_form(group) +
                           "<p class='muted'>Threaded by References within this window. "
                           "Unread marks are this client's, not the node's.</p>" +
                           self.marks_note() +
                           "<nav aria-label='Article number windows'>" + older + " " + newer +
                           " " + mark_all + "</nav>" +
                           (cards or "<p>No articles in this number window.</p>"))
+            elif path == "/search":
+                self.search_page(values)
             elif path == "/a":
                 group, raw = values.get("group", ""), values.get("number", "")
                 if not group_token(group) or not raw.isascii() or not raw.isdecimal() or len(raw) > 10:

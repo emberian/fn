@@ -31,12 +31,14 @@ from tools import frame_bridge  # noqa: E402
 
 PROMPT = b"ACL2 !>"
 MAX_ACL2_OUTPUT = 4 * 1024 * 1024
-# Every profile value (format, capacity, payload bound, aggregate replay
-# bound, transaction bound, frontier format) is ACL2's: `fn-bs-config-for-profile`
-# names the two profiles, the FNSM frame carries them, and an open store's
-# `Store.config` is `fn-bs-config-decode`'s reading of its own frame.
-# `profile_config` asks ACL2 for a named profile's values; this module keeps
-# no copy of any of them.
+# Every profile value (format, payload bound, aggregate replay bound,
+# transaction bound, frontier format) and every preset name is ACL2's: the
+# native operator's `fn-nop-profile-preset-word` reads `init --profile WORD`,
+# `fn-bs-config-for-profile` gives the preset, the FNSM frame carries it, and
+# an open store's `Store.config` is `fn-bs-config-decode`'s reading of its own
+# frame, admitted by `fn-bs-profile-admittedp` (format 8, D27).
+# `profile_config` asks ACL2 for a preset's values; this module keeps no copy
+# of any of them.
 # The CLI's default `init --group` list: the two experimental groups every
 # existing test posts into.  A default argument for an operator command, not
 # a group table; the table a store serves is decided by the configuration
@@ -832,14 +834,16 @@ class Acl2Store:
 
 
 class Store:
-    def __init__(self, root, writable=False, faults=NO_FAULTS, profile="development"):
+    def __init__(self, root, writable=False, faults=NO_FAULTS, profile=None):
         self.root = Path(root).absolute()
         self.writable = writable
         self.faults = faults
-        # `init` names the ACL2-owned profile explicitly.  Opening an existing
-        # store decodes its durable frame and does not consult this input.
-        if profile not in {"development", "scale"}:
-            raise StoreError("unknown ACL2 metadata profile")
+        # `init` may name a preset word (`--profile development|scale|default`,
+        # read by ACL2 at `initialize`); None is the frame ACL2 writes when no
+        # preset is named.  Opening an existing store decodes its durable
+        # frame and does not consult this input.
+        if profile is not None and not isinstance(profile, str):
+            raise StoreError("store profile word is not text")
         self.profile = profile
         self.lock_fd = None
         self.config = None
@@ -1017,7 +1021,10 @@ class Store:
             self.faults.at("init-staging-created")
             self._safe_directory(self.config_dir, create=True)
             session = frame_bridge.session(bridge)
-            config = session.metadata_config_frame(self.profile)
+            try:
+                config = session.metadata_config_frame(self.profile)
+            except frame_bridge.BridgeError as error:
+                raise StoreError(str(error)) from error
             if self._publish_initial_file(self.config_path, config):
                 self.config = self._config_from_metadata(session.metadata_config_decode(config), session)
             else:
@@ -1057,14 +1064,18 @@ class Store:
     @staticmethod
     def _config_from_metadata(values, bridge=None):
         """The decoded profile, kept opaque as `profile`, and ACL2's reading
-        of its fields (`fn-store-profile-summary`): no position is read here."""
-        fmt, max_transactions, max_history, max_record, max_article = (
-            frame_bridge.session(bridge).profile_summary(values))
+        of its fields (`fn-store-profile-summary`): no position is read here.
+        `format` is the number ACL2 reports (8, or 7 for a store opened under
+        its translation); Python compares it with nothing."""
+        session = frame_bridge.session(bridge)
+        if not session.profile_admitted(values):
+            raise StoreFault("store was written under a profile ACL2 does not admit")
+        fmt, max_transactions, _history, max_record, max_article = (
+            session.profile_summary(values))
         return {"profile": values,
-                "format": "fn-store-8" if fmt == 8 else "fn-store-experiment-7",
+                "format": fmt,
                 "max_payload_bytes": max_article,
                 "max_record_octets": max_record,
-                "max_recovery_record_bytes": max_history,
                 "max_transactions": max_transactions}
 
     def _load_config(self, bridge=None):
@@ -1208,14 +1219,17 @@ class Store:
         aggregate = 0
         # The bounded read is sized from the model's record bound, not from a
         # host copy of it.
-        constants = frame_bridge.session().constants
+        session = frame_bridge.session()
+        constants = session.constants
         bound = constants["overhead"] + constants["max_store"]
         for sequence, path in self.transaction_files():
             check_regular(path)
             raw = read_regular_bounded(path, bound)
             record = unframe(raw)
             aggregate += len(record)
-            if aggregate > self.config["max_recovery_record_bytes"]:
+            # The replay bound every open checks per record, ACL2's
+            # (`fn-profile-replay-within-boundp`, as the native open asks).
+            if not session.replay_within_bound(self.config["profile"], aggregate):
                 raise StoreFault("transaction recovery input exceeds configured bound")
             if acl2.record_sequence(record) != sequence:
                 raise StoreFault("record sequence does not match immutable filename")
@@ -1588,8 +1602,6 @@ def metadata(msgid, payload, bridge=None):
 def group_codes(groups, store, bridge=None):
     """Codes in the allocation domain the core handed `store` at recover."""
     session = frame_bridge.session(bridge)
-    if store.config.get("format") != session.format_id():
-        raise StoreFault("store was written under a different store format")
     if not groups:
         raise StoreError("provide one or more distinct configured groups")
     try:
@@ -1603,11 +1615,13 @@ def conservative_charge(payload, bridge=None):
     return frame_bridge.session(bridge).charge(len(payload))
 
 
-def profile_config(profile="development", bridge=None):
-    """A named profile's values, as ACL2 frames and decodes them."""
+def profile_config(profile=None, bridge=None):
+    """A preset's values (None: the profile `init` writes by default), as
+    ACL2 frames and decodes them."""
     session = frame_bridge.session(bridge)
     return Store._config_from_metadata(
-        session.metadata_config_decode(session.metadata_config_frame(profile)))
+        session.metadata_config_decode(session.metadata_config_frame(profile)),
+        session)
 
 
 def validate_post_boundary(msgid, payload, groups, charge, config, bridge=None):
@@ -1633,7 +1647,7 @@ def publication_admissible(store, bridge=None, kind="article"):
 
 
 def command_init(args):
-    store = Store(args.store, writable=True)
+    store = Store(args.store, writable=True, profile=args.profile)
     try:
         store.initialize(groups=tuple(args.group) if args.group else DEFAULT_GROUPS)
         store.acquire()
@@ -2214,6 +2228,9 @@ def main(argv=None):
     parser.add_argument("--store", required=True, help="local store root")
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init")
+    init.add_argument("--profile", metavar="WORD",
+                      help="a preset ACL2 names (development, scale or default, "
+                           "as the native init); default: ACL2's initial profile")
     init.add_argument("--group", action="append",
                       help="a group the new store serves (default: the two experimental groups)")
     group = sub.add_parser("group")

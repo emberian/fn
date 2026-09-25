@@ -102,6 +102,27 @@ than as a second implementation:
   one, and advertising it is a promise about `LIST HEADERS` too (§3.3.2),
   which is why `LIST HEADERS` stopped answering 503 in the same change.
 
+NNT-016: XPAT is listed in the capability block and answers RFC 2980 section 2.9 on the served reader step
+
+- `XPAT` is RFC 2980 §2.9 and has no RFC 3977 spelling a client could
+  discover instead, so fn lists it as a private-extension label (RFC 3977
+  §3.3.3: such a label begins with "X"). `XOVER` and `XHDR` stay unlisted.
+  `fn-auth-capability-lines-advertise-xpat` (`books/nntp-xpat.lisp`) is over
+  the block the served CAPABILITIES arm renders.
+- The pattern rule is §2.9's: "If there are additional arguments the are
+  joined together separated by a single space to form one complete pattern."
+  A second argument is therefore part of one pattern, not an alternative,
+  as in INN's nnrpd. The alternative is the wildmat comma (RFC 3977 §4.2):
+  `fn-nntp-xpat-alternation-is-or` shows non-negated alternatives OR at the
+  matcher the XPAT arm calls. Matching is case-sensitive: RFC 3977 §4.2, "A
+  <wildmat-exact> matches the same character".
+- The subject is the served step: `fn-nntp-step-pinned-xpat-is-the-xpat-
+  response` equates the XPAT arm of `fn-nntp-step-pinned` (reached from
+  `fn-served-step` through `fn-auth-step-pinned` and
+  `fn-nntp-post-step-pinned`) with `fn-nntp-xpat-response`.
+- The web reader (`tools/fn_web.py` `/search`) sends the reader's own
+  wildmat in one bounded `XPAT` window; it builds no pattern.
+
 `LIST ACTIVE.TIMES` reads the same persisted creation facts `NEWGROUPS`
 reads, so §7.6.4's "the results SHOULD be consistent" is true by construction.
 Its third field is the plain text `unattributed`: a configuration record

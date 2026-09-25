@@ -2,7 +2,7 @@
 ;
 ; Every book above the record codec calls `fn-record-encode' and
 ; `fn-record-decode-exact', and every proof above the codec reasons about them
-; through the six constraints of the `encapsulate' below and nothing else.
+; through the eight constraints of the `encapsulate' below and nothing else.
 ; They are constrained functions: no book can open them, so a goal that only
 ; dispatches on a record kind cannot carry the codec, which is the growth
 ; that stopped proofs returning on 2026-09-21 (review 2026-09-22, F3; plan
@@ -30,9 +30,13 @@
 ;                                            its record needs (`fn-record-schema-octet',
 ;                                            records-shape: 0 at schema 0)
 ;   fn-record-encode-length-bound            a record encodes to at most
-;                                            `fn-record-encoded-octets-ceiling' of its payload
-;                                            length and group count (records-shape)
-; Every other exported theorem in this book is derived from those seven
+;                                            `fn-record-wide-encoded-octets-ceiling' of its
+;                                            payload length and group count (records-shape)
+;   fn-record-encode-narrow-length-bound     a record whose integer fields fit u32 (not
+;                                            `fn-record-widep') encodes to at most
+;                                            `fn-record-encoded-octets-ceiling', the ceiling a
+;                                            store profile's R is checked against
+; Every other exported theorem in this book is derived from those eight
 ; below the `encapsulate'.  The header is two constraints, not one six-octet
 ; constraint, so that the acceptance stamp (specs/acceptance-stamp.md §2.1)
 ; widens the grammar behind the seam -- schema 1, whose version octet is 1
@@ -99,10 +103,19 @@
 
   (defthm fn-record-encode-length-bound
     (<= (len (fn-record-encode record))
-        (fn-record-encoded-octets-ceiling
+        (fn-record-wide-encoded-octets-ceiling
          (len (fn-record-payload record))
          (len (fn-record-groups record))))
     :hints (("Goal" :use fn-record-impl-encode-length-bound))
+    :rule-classes :linear)
+
+  (defthm fn-record-encode-narrow-length-bound
+    (implies (not (fn-record-widep record))
+             (<= (len (fn-record-encode record))
+                 (fn-record-encoded-octets-ceiling
+                  (len (fn-record-payload record))
+                  (len (fn-record-groups record)))))
+    :hints (("Goal" :use fn-record-impl-encode-narrow-length-bound))
     :rule-classes :linear)
 
   (defthm fn-record-accepted-schema-is-the-stamp-kind
@@ -115,7 +128,7 @@
     :rule-classes nil))
 
 ; -----------------------------------------------------------------------------
-; Derived facts.  Each is a consequence of the six constraints alone.
+; Derived facts.  Each is a consequence of the eight constraints alone.
 
 ; The result shapes of the round trip, in the accessor vocabulary a caller
 ; uses (`fn-record-result-okp', `fn-record-result-record').

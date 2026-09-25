@@ -83,7 +83,7 @@
                  (equal (fn-record-txid x) (fn-store-event-nth 1 x))
                  (equal (fn-record-generation x) (fn-store-event-nth 2 x))))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory '(fn-record-p fn-record-shapep fn-record-uint32p
+   :hints (("Goal" :in-theory '(fn-record-p fn-record-shapep fn-record-uint32p fn-record-uint64p
                                 fn-record-sequence fn-record-txid
                                 fn-record-generation fn-store-event-nth
                                 zp natp len nfix fix
