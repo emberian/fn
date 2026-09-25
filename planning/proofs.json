@@ -113,7 +113,8 @@
         "fn-durable-completion-installs-exact-pending-article",
         "fn-own-pinned-view-survives-other-post",
         "fn-own-served-watermarks-never-decrease",
-        "fn-own-served-local-number-is-never-reassigned"
+        "fn-own-served-local-number-is-never-reassigned",
+        "fn-own-raw-local-number-is-never-reassigned"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -3496,7 +3497,9 @@
         "fn-hsig-signed-control-record-lists-its-filing-group",
         "fn-hsig-malformed-control-binds-no-record",
         "fn-ctl-visible-add-is-visible",
-        "fn-ctl-visible-extend-is-visible"
+        "fn-ctl-visible-extend-is-visible",
+        "fn-ctl-refresh-visible-is-visible",
+        "fn-ctl-visible-state-statep"
       ]
     },
     {
