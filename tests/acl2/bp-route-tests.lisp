@@ -65,11 +65,27 @@
         (fn-bpnp-step *rt-s2* (rt-routed-event hop announced table)))))
 (defconst *rt-relay-octets* (fn-record-string-octets *rt-relay-eid*))
 (assert-event (fn-bpnp-host-eventp (rt-routed-event "relay" *rt-relay-octets* *rt-table*)))
+;; The operator's budgets ride after VIA (fnn-bpnode-budgeted): the routed
+;; event with them is a host event, and the keystone's EXTRA tail is that
+;; field.  Without VIA the budgets stand at slot 6 and are not read as a route.
+(defconst *rt-budgets* (fn-bpnp-budgets 5000 3))
+(defconst *rt-routed-budgeted*
+  (append (rt-routed-event "relay" *rt-relay-octets* *rt-table*) (list *rt-budgets*)))
+(assert-event (fn-bpnp-host-eventp *rt-routed-budgeted*))
+(assert-event (equal (fn-bpnp-session-via *rt-routed-budgeted*)
+                     (list :via "relay" *rt-relay-octets* *rt-table*)))
+(assert-event (fn-bpnp-host-eventp (append *rt-session-event* (list *rt-budgets*))))
+(assert-event (null (fn-bpnp-session-via (append *rt-session-event* (list *rt-budgets*)))))
+(assert-event (not (fn-bpnp-host-eventp (append *rt-session-event* (list nil)))))
 
 ;; Teeth of fn-bpnp-step-offers-only-the-routed-hop.  Witness: the table
 ;; routes dtn://bp-dest/ to "relay", the session is to "relay" and the
 ;; contact announced dtn://relay/: the step proposes the attempt.
 (assert-event (equal (car (rt-first-effect "relay" *rt-relay-octets* *rt-table*))
+                     :persist-attempt))
+;; The routed event with the budgets offers the same row.
+(assert-event (equal (car (car (fn-bpnf-answer-effects
+                                (fn-bpnp-step *rt-s2* *rt-routed-budgeted*))))
                      :persist-attempt))
 ;; The unrouted 6-field form (never sent open by the host) offers the same row.
 (assert-event (equal (car (car (fn-bpnf-answer-effects (fn-bpnp-step *rt-s2* *rt-session-event*))))

@@ -424,7 +424,25 @@
                                  (:e equal))
                                (theory 'minimal-theory))))))
 
+(local
+ (defthm fn-bpnpp-premises-kept-by-held-write
+   (implies (and (fn-bpnp-step-guard-premisesp st) (true-listp h))
+            (fn-bpnp-step-guard-premisesp (update-nth 2 h st)))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpnpp-premises-of-held-write
+                                 fn-bpnpp-premises-components)
+                               (theory 'minimal-theory))))))
+
 (local (in-theory (disable fn-bpnpp-nth-is-nth)))
+
+; The kind-20 apply answers (:ready HELD ROW); the arm reads HELD.
+(local
+ (defthm fn-bpnpp-nth-1-of-ready
+   (equal (fn-bpn-nth 1 (cons a (cons b c))) b)
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
+                                 (:e natp) (:e zp) (:e binary-+) (:e unary--))
+                               (theory 'minimal-theory))))))
 
 (local (in-theory (disable fn-bpnp-step-guard-premisesp)))
 
@@ -631,7 +649,8 @@
 (fn-bpnpp-defkeep fn-bpnpp-deferral-persist-step
   (fn-bpnp-deferral-persist-step st epoch op result)
   (fn-bpnp-deferral-persist-step fn-bpnp-deferral-apply
-   fn-bpnpp-premises-of-held-write fn-bpnpp-true-listp-of-deferral-replace))
+   fn-bpnpp-premises-kept-by-held-write fn-bpnpp-true-listp-of-deferral-replace
+   fn-bpnpp-nth-1-of-ready car-cons))
 
 (fn-bpnpp-defkeep fn-bpnpp-busy-resume-step
   (fn-bpnp-busy-resume-step st arrival budget)

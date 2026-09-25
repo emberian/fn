@@ -177,6 +177,7 @@
                                  (fn-bpnp-pending-image st)))))
            :in-theory (union-theories
                        '(fn-bpnp-step fn-bpnp-with-runtime-keeps-selection-inputs
+                         fn-bpnp-session-via fn-bpnp-session-base-length
                          fn-bpnp-event-budgets fn-bpnp-budgetsp len true-listp
                          (:e fn-bpnp-default-budgets) (:e fn-bpnp-budget-retries)
                          (:e nfix) (:e binary-+) (:e len) (:e true-listp)
@@ -305,6 +306,14 @@
                           (:induction fn-bpnp-attempt-replace))
                         (theory 'minimal-theory))))))
 
+(local
+ (defthm fn-bpnp-attempt-matched-row-is-a-true-list
+   (implies (fn-bpnp-attempt-matches-heldp record h)
+            (true-listp h))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (union-theories '(fn-bpnp-attempt-matches-heldp)
+                                              (theory 'minimal-theory))))))
+
 (defthm fn-bpnp-attempt-apply-bounds-retries
   (let ((applied (fn-bpnp-attempt-apply record held)))
     (implies (and (equal (car applied) :ready)
@@ -318,6 +327,7 @@
                               '(fn-bpnp-attempt-apply
                                 fn-bpnp-attempt-replace-within-bound
                                 fn-bpnp-attempted-held-retries-within-bound
+                                fn-bpnp-attempt-matched-row-is-a-true-list
                                 fn-bpn-nth natp fn-cbor-ag-car car-cons cdr-cons
                                 (:executable-counterpart equal)
                                 (:executable-counterpart natp)
