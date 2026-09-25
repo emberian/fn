@@ -1438,6 +1438,31 @@
       "evidence": [
         "planning/evidence/live-status-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-048",
+      "title": "Reclaim under released-by-all-holders removes exactly the unheld payloads, and a reclaimed Message-ID stays a duplicate",
+      "milestone": "M5",
+      "status": "planned",
+      "requirements": [
+        "STO-014"
+      ],
+      "steps": [
+        "On a store of N=5,000 articles in one group, run `admin retention set released-by-all-holders`; hold article 100 by a reader pin, articles above 2,000 by a consumer cursor at 2,000, and articles 3,000 to 3,100 by an undelivered feed to a live peer.",
+        "Run `store reclaim --dry-run`, then `store reclaim`; record the disk use of the store before and after.",
+        "Re-post the Message-ID of a reclaimed article with its original bytes, and with changed bytes; ARTICLE it by Message-ID and by number; STAT and ARTICLE a held one.",
+        "Kill `store reclaim` at each cut of its program (SIGKILL and EIO) and reopen after each."
+      ],
+      "expected": [
+        "The dry run names every article with its verdict; exactly articles 1 to 2,000 except 100 are reclaimable, and 100 is held-reader-pin, 2,001 to 5,000 held-consumer-cursor.",
+        "After the run the same numbers are tombstones (verified by number), the others are byte-identical, and disk use falls by the reclaimed payload octets less the tombstones.",
+        "The original bytes are refused as a duplicate, the changed bytes as a conflict; ARTICLE answers 430 and 423 article reclaimed; the held article is served unchanged.",
+        "Every reopen replays to a state whose Message-IDs, numbers and group bindings equal the state before; each article is either its original payload or its tombstone."
+      ],
+      "evidence": [
+        "tests/acl2/store-reclaim-tests.lisp",
+        "planning/evidence/reclaim-d13-2026-09-25.md"
+      ]
     }
   ]
 }

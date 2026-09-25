@@ -3637,6 +3637,55 @@
           "name": "fn-nhctrl-read-bound-covers-both"
         }
       ]
+    },
+    {
+      "id": "PRF-088",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaimable-is-no-obligation-names-it"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaim-never-touches-a-held-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaim-keeps-the-duplicate-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaim-keeps-every-binding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaim-keeps-the-numbering"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-reclaim-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-prepare-commutes-with-reclaim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-existing-action-after-reclaim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-config-rule-after-retention-set"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-msgid-retrieval-answers-reclaimed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-number-retrieval-answers-reclaimed"
+        }
+      ]
     }
   ]
 }
