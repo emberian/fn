@@ -158,8 +158,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **bundles across an outage.** After a contact is lost the node re-offers the same held bundle within the retry budget and then holds it stranded, never releasing it without a receipt.
 
-- Host-called subject: `fn-bpnp-step` at host/native/bp-service.lisp:183.
-- Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:150; PRF-046 (in-progress)); no archived manifest certifies the current closure; `certify-20260925T070406Z-2708294` passed this source of `books/bp-node-forward-retry.lisp`, and since then `books/acceptance-alloc.lisp`, `books/byte-store-frame.lisp`, `books/config-invariants.lisp` and 16 more changed.
+- Host-called subject: `fn-bpnp-step` at host/native/bp-service.lisp:190.
+- Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:153; PRF-046 (in-progress), PRF-103 (in-progress)); no archived manifest certifies the current closure; `certify-20260925T100537Z-3113587` passed this source of `books/bp-node-forward-retry.lisp`, and since then `books/config-invariants.lisp`, `books/config.lisp`, `books/control-classify.lisp` and 12 more changed.
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile dtn developer and production images, frozen; changed since it: `books/bp-node-forward-retry.lisp`, `host/native/bp-service.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: on the frozen DTN images: bp_node 19/19 (N07, N08, N11), bp_service 16/16, receive_integrity 4/4, bp_app 5/5 and bp_obligation 4/4 on `fn-host-dtn-developer`; on `fn-host-dtn` every failure is a refused developer selector; through dtn7-rs a first hop SIGKILLed mid-transfer leaves A uncertain, resume is accepted, and the carrier-killed interrupted contact delivers once on both DTN images ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).
