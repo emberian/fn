@@ -921,6 +921,281 @@
                                    fn-ncfg-parse-lines fn-ncfg-lines fn-ncfg-show-join))
            :use (fn-ncfg-show-lines-parse fn-ncfg-normalize-of-show-pairs))))
 
+;; -----------------------------------------------------------------------------
+;; Every configuration the loader accepts is renderable.  The parser's values
+;; are parsed-shaped (a boolean, a printable string, a natural); each field's
+;; normalization keeps its bound; so the loaded configuration satisfies
+;; `fn-native-config-show-wfp' and `show' needs no run-time check.
+
+(encapsulate ()
+  (local
+   (defun fn-ncfg-parsed-valuep (v)
+     (declare (xargs :guard t))
+     (and (true-listp v) (equal (len v) 2)
+          (cond ((equal (car v) :bool) (booleanp (cadr v)))
+                ((equal (car v) :string)
+                 (and (stringp (cadr v))
+                      (fn-ncfg-printablep (fn-record-string-octets (cadr v)))))
+                ((equal (car v) :nat) (natp (cadr v)))
+                (t nil)))))
+
+  (local
+   (defun fn-ncfg-parsed-pairsp (pairs)
+     (declare (xargs :guard t))
+     (if (consp pairs)
+         (and (fn-ncfg-parsed-valuep (fn-ncfg-third (car pairs)))
+              (fn-ncfg-parsed-pairsp (cdr pairs)))
+       t)))
+
+  (local
+   (defthm fn-ncfg-printable-octet-listp
+     (implies (fn-ncfg-printablep xs)
+              (fn-cbor-octet-listp (list-fix xs)))
+     :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp)))))
+
+  (local
+   (defthm fn-ncfg-decimal-aux-natp-unless-bad
+     (implies (not (equal (fn-ncfg-decimal-aux xs v) :bad))
+              (natp (fn-ncfg-decimal-aux xs v)))
+     :hints (("Goal" :in-theory (enable fn-ncfg-decimal-aux)))))
+
+  (local
+   (defthm fn-ncfg-decimal-natp
+     (implies (not (equal (fn-ncfg-decimal xs) :bad))
+              (natp (fn-ncfg-decimal xs)))
+     :hints (("Goal" :in-theory (enable fn-ncfg-decimal)))))
+
+  (local
+   (defthm fn-ncfg-parse-value-parsed
+     (implies (not (equal (fn-ncfg-parse-value xs) :bad))
+              (fn-ncfg-parsed-valuep (fn-ncfg-parse-value xs)))
+     :hints (("Goal" :in-theory (e/d (fn-ncfg-parse-value fn-ncfg-quoted-value)
+                                     (fn-ncfg-decimal fn-ncfg-printable-octet-listp
+                                      fn-record-octets-string fn-record-string-octets))
+              :use ((:instance fn-ncfg-string-octets-of-printable
+                     (xs (fn-ncfg-reverse (fn-ncfg-rest (fn-ncfg-reverse (cdr xs)))))))))))
+
+  (local
+   (defthm fn-ncfg-octets-chars-character-listp
+     (character-listp (fn-record-octets-chars xs))
+     :hints (("Goal" :in-theory (enable fn-record-octets-chars)))))
+
+  (local
+   (defthm fn-ncfg-string-octets-aux-of-octets-chars
+     (implies (fn-cbor-octet-listp xs)
+              (equal (fn-record-string-octets-aux (fn-record-octets-chars xs))
+                     (list-fix xs)))
+     :hints (("Goal" :in-theory (enable fn-record-octets-chars fn-record-string-octets-aux
+                                        fn-cbor-octet-listp fn-cbor-octetp)))))
+
+  (local
+   (defthm fn-ncfg-string-octets-of-printable
+     (implies (fn-ncfg-printablep xs)
+              (equal (fn-record-string-octets (fn-record-octets-string (list-fix xs)))
+                     (list-fix xs)))
+     :hints (("Goal" :in-theory (enable fn-record-string-octets fn-record-octets-string)))))
+
+  (local
+   (defthm fn-ncfg-printablep-of-list-fix
+     (equal (fn-ncfg-printablep (list-fix xs)) (fn-ncfg-printablep xs))))
+
+  (local
+   (defthm fn-ncfg-parse-lines-parsed
+     (implies (and (fn-ncfg-parsed-pairsp pairs)
+                   (not (equal (fn-ncfg-parse-lines lines current tables pairs) :bad)))
+              (fn-ncfg-parsed-pairsp (fn-ncfg-parse-lines lines current tables pairs)))
+     :hints (("Goal" :in-theory (e/d (fn-ncfg-parse-lines)
+                                     (fn-ncfg-parse-value fn-ncfg-trim fn-ncfg-split-equals
+                                      fn-ncfg-identp fn-ncfg-key-allowedp fn-ncfg-pair-seenp
+                                      fn-ncfg-tablep fn-ncfg-table-seenp fn-record-octets-string
+                                      fn-ncfg-reverse))))))
+
+  (local
+   (defthm fn-ncfg-value-parsed
+     (implies (and (fn-ncfg-parsed-pairsp pairs) (fn-ncfg-value pairs table key))
+              (fn-ncfg-parsed-valuep (fn-ncfg-value pairs table key)))
+     :hints (("Goal" :in-theory (e/d (fn-ncfg-value) (fn-ncfg-parsed-valuep))))))
+
+  (local
+   (defthm fn-ncfg-string-value-textp
+     (implies (and (or (null v) (fn-ncfg-parsed-valuep v))
+                   (or (null d) (fn-ncfg-printablep (fn-record-string-octets d)))
+                   (not (equal (fn-ncfg-string-value v d b r) :bad)))
+              (fn-ncfg-show-opt-textp (fn-ncfg-string-value v d b r) b))
+     :hints (("Goal" :in-theory (enable fn-ncfg-string-value fn-ncfg-show-opt-textp
+                                        fn-ncfg-show-textp)))))
+
+  (local
+   (defthm fn-ncfg-string-value-present
+     (implies (and (or (null v) (fn-ncfg-parsed-valuep v))
+                   (not (equal (fn-ncfg-string-value v d b r) :bad))
+                   (or r d v))
+              (fn-ncfg-string-value v d b r))
+     :hints (("Goal" :in-theory (enable fn-ncfg-string-value fn-ncfg-string-okp)))))
+
+  (local
+   (defthm fn-ncfg-bool-value-booleanp
+     (implies (and (or (null v) (fn-ncfg-parsed-valuep v))
+                   (booleanp d)
+                   (not (equal (fn-ncfg-bool-value v d) :bad)))
+              (booleanp (fn-ncfg-bool-value v d)))
+     :hints (("Goal" :in-theory (enable fn-ncfg-bool-value)))))
+
+  (local
+   (defthm fn-ncfg-nat-value-natp
+     (implies (and (or (null d) (and (natp d) (<= d c)))
+                   (not (equal (fn-ncfg-nat-value v d c) :bad)))
+              (fn-ncfg-show-opt-natp (fn-ncfg-nat-value v d c) c))
+     :hints (("Goal" :in-theory (enable fn-ncfg-nat-value fn-ncfg-show-opt-natp)))))
+
+  (local
+   (defthm fn-ncfg-string-octets-aux-of-append
+     (equal (fn-record-string-octets-aux (append a b))
+            (append (fn-record-string-octets-aux a) (fn-record-string-octets-aux b)))
+     :hints (("Goal" :in-theory (enable fn-record-string-octets-aux)))))
+
+  (local
+   (defthm fn-ncfg-printablep-of-append
+     (equal (fn-ncfg-printablep (append a b))
+            (and (fn-ncfg-printablep a) (fn-ncfg-printablep b)))))
+
+  (local
+   (defthm fn-ncfg-under-store-printable
+     (implies (and (stringp store) (fn-ncfg-printablep (fn-record-string-octets store))
+                   (stringp suffix) (fn-ncfg-printablep (fn-record-string-octets suffix)))
+              (fn-ncfg-printablep (fn-record-string-octets (fn-ncfg-under-store store suffix))))
+     :hints (("Goal" :in-theory (enable fn-ncfg-under-store fn-record-string-octets)))))
+
+  (local
+   (defthm fn-ncfg-string-value-textp-present
+     (implies (and (or (null v) (fn-ncfg-parsed-valuep v))
+                   (or (null d) (fn-ncfg-printablep (fn-record-string-octets d)))
+                   (not (equal (fn-ncfg-string-value v d b r) :bad))
+                   (or r d v))
+              (fn-ncfg-show-textp (fn-ncfg-string-value v d b r) b))
+     :hints (("Goal" :use (fn-ncfg-string-value-textp fn-ncfg-string-value-present)
+              :in-theory (e/d (fn-ncfg-show-opt-textp)
+                              (fn-ncfg-string-value-textp fn-ncfg-string-value-present
+                               fn-ncfg-show-textp fn-ncfg-string-value))))))
+
+  (local
+   (defthm fn-ncfg-show-textp-printable
+     (implies (fn-ncfg-show-textp x b)
+              (and (stringp x) (fn-ncfg-printablep (fn-record-string-octets x))))
+     :rule-classes :forward-chaining))
+
+  (local
+   (defthm fn-ncfg-nat-value-natp-present
+     (implies (and (natp d) (<= d c)
+                   (not (equal (fn-ncfg-nat-value v d c) :bad)))
+              (fn-ncfg-show-natp (fn-ncfg-nat-value v d c) c))
+     :hints (("Goal" :in-theory (enable fn-ncfg-nat-value fn-ncfg-show-natp)))))
+
+  (local
+   (defthm fn-ncfg-under-store-of-required-printable
+     (implies (and (or (null v) (fn-ncfg-parsed-valuep v))
+                   (not (equal (fn-ncfg-string-value v nil b t) :bad))
+                   (stringp suffix)
+                   (fn-ncfg-printablep (fn-record-string-octets suffix)))
+              (fn-ncfg-printablep
+               (fn-record-string-octets
+                (fn-ncfg-under-store (fn-ncfg-string-value v nil b t) suffix))))
+     :hints (("Goal" :use ((:instance fn-ncfg-string-value-textp-present (d nil) (r t))
+                           (:instance fn-ncfg-under-store-printable
+                                      (store (fn-ncfg-string-value v nil b t))))
+              :in-theory (e/d (fn-ncfg-show-textp)
+                              (fn-ncfg-string-value-textp-present fn-ncfg-string-value
+                               fn-ncfg-under-store-printable
+                               fn-ncfg-under-store fn-ncfg-parsed-valuep))))))
+
+  (defthm fn-ncfg-show-wfp-of-make
+    (implies (and (fn-ncfg-show-textp store *fn-ncfg-max-path*)
+                  (fn-ncfg-show-textp host *fn-ncfg-max-text*)
+                  (fn-native-config-listener-hostp host)
+                  (fn-ncfg-show-natp port 65535)
+                  (not (equal port 0))
+                  (fn-ncfg-show-opt-textp tls-cert *fn-ncfg-max-path*)
+                  (fn-ncfg-show-opt-textp tls-key *fn-ncfg-max-path*)
+                  (fn-ncfg-pairedp tls-cert tls-key)
+                  (booleanp auth-required)
+                  (booleanp auth-protected)
+                  (fn-ncfg-show-textp auth-path *fn-ncfg-max-path*)
+                  (booleanp posting-enabled)
+                  (fn-ncfg-show-opt-textp agent *fn-ncfg-max-text*)
+                  (fn-ncfg-show-opt-textp anchor *fn-ncfg-max-server*)
+                  (fn-ncfg-show-opt-textp log *fn-ncfg-max-path*)
+                  (fn-ncfg-show-textp control *fn-ncfg-max-path*)
+                  (fn-ncfg-show-opt-textp acl2-path *fn-ncfg-max-path*)
+                  (fn-ncfg-show-opt-natp acl2-slots 65535)
+                  (fn-ncfg-show-opt-textp alert-command *fn-ncfg-max-path*)
+                  (fn-ncfg-optional-absolutep alert-command)
+                  (fn-ncfg-show-natp headroom 100)
+                  (fn-ncfg-show-natp refusal-rate *fn-ncfg-max-u64*)
+                  (fn-ncfg-show-natp cooldown *fn-ncfg-max-u64*)
+                  (fn-ncfg-show-opt-textp mission *fn-ncfg-max-text*)
+                  (fn-ncfg-optional-memberp mission *fn-ncfg-mission-names*)
+                  (fn-ncfg-show-opt-textp unit *fn-ncfg-max-text*)
+                  (fn-ncfg-show-textp scope *fn-ncfg-max-text*)
+                  (fn-ncfg-memberp scope *fn-ncfg-ops-scopes*)
+                  (fn-ncfg-show-natp keep-releases *fn-ncfg-max-u64*)
+                  (not (equal keep-releases 0))
+                  (fn-ncfg-show-natp log-max-bytes *fn-ncfg-max-u64*)
+                  (not (equal log-max-bytes 0))
+                  (fn-ncfg-show-natp log-keep *fn-ncfg-max-u64*)
+                  (fn-ncfg-show-opt-textp memory-max *fn-ncfg-max-text*))
+             (fn-native-config-show-wfp
+              (fn-native-config-make store host port tls-cert tls-key auth-required
+                                     auth-protected auth-path posting-enabled
+                                     agent anchor log control acl2-path acl2-slots
+                                     alert-command headroom refusal-rate cooldown
+                                     mission unit scope keep-releases log-max-bytes
+                                     log-keep memory-max)))
+    :hints (("Goal" :in-theory (e/d (fn-native-config-show-wfp fn-ncfg-show-shapep)
+                                    (fn-ncfg-show-textp fn-ncfg-show-natp fn-ncfg-show-opt-textp
+                                     fn-ncfg-show-opt-natp fn-native-config-listener-hostp
+                                     fn-ncfg-pairedp fn-ncfg-optional-absolutep
+                                     fn-ncfg-optional-memberp fn-ncfg-memberp)))))
+
+  (local
+   (defthm fn-ncfg-normalize-renderable
+     (implies (and (fn-ncfg-parsed-pairsp pairs)
+                   (not (equal (fn-ncfg-normalize pairs) :bad)))
+              (fn-native-config-show-wfp (fn-ncfg-normalize pairs)))
+     :hints (("Goal" :in-theory (e/d (fn-ncfg-normalize)
+                                     (fn-native-config-show-wfp fn-native-config-make
+                                      fn-ncfg-string-value fn-ncfg-bool-value fn-ncfg-nat-value
+                                      fn-ncfg-show-textp fn-ncfg-show-natp fn-ncfg-show-opt-textp
+                                      fn-ncfg-show-opt-natp fn-ncfg-parsed-valuep
+                                      fn-ncfg-parsed-pairsp fn-ncfg-under-store
+                                      fn-native-config-listener-hostp fn-ncfg-pairedp
+                                      fn-ncfg-optional-absolutep fn-ncfg-optional-memberp
+                                      fn-ncfg-memberp fn-record-string-octets fn-ncfg-printablep))))))
+
+  ; KEYSTONE (PRF-094).  The subject is `fn-native-config-load', which
+  ; `fn-native-operator-run' (host/native-operator-host.lisp:19) reads fn.toml
+  ; through before `show' renders it: what the loader accepts, show renders.
+  (defthm fn-native-config-load-renderable
+    (implies (equal (car (fn-native-config-load octets)) :accepted)
+             (fn-native-config-show-wfp (cadr (fn-native-config-load octets))))
+    :hints (("Goal" :in-theory (e/d (fn-native-config-load)
+                                    (fn-native-config-show-wfp fn-ncfg-normalize
+                                     fn-ncfg-parse-lines fn-ncfg-lines fn-ncfg-ascii-octetsp
+                                     fn-ncfg-parsed-pairsp))))))
+
+; With the round trip: every loaded configuration's rendering loads back as
+; itself.
+(defthm fn-native-config-loaded-show-round-trip
+  (implies (equal (car (fn-native-config-load octets)) :accepted)
+           (equal (fn-native-config-load
+                   (fn-native-config-show-octets (cadr (fn-native-config-load octets))))
+                  (list :accepted (cadr (fn-native-config-load octets)))))
+  :hints (("Goal" :use (fn-native-config-load-renderable
+                        (:instance fn-native-config-show-round-trip
+                                   (c (cadr (fn-native-config-load octets)))))
+           :in-theory (disable fn-native-config-load-renderable
+                               fn-native-config-show-round-trip
+                               fn-native-config-show-wfp fn-native-config-show-octets))))
+
 ; -----------------------------------------------------------------------------
 ; `operator CONFIG show [TABLE KEY]': the whole rendering, or one key's value
 ; as a word (a string unquoted, a natural in decimal, true or false).
@@ -932,11 +1207,11 @@
     (fn-ncfg-show-value pv)))
 
 ;   (:shown OCTETS)          what `show' prints
-;   (:refused :not-renderable | :unset | :unknown-key)
+;   (:refused :unset | :unknown-key)
+; C is a loaded configuration: fn-native-config-load-renderable.
 (defun fn-native-config-show (c table key)
   (declare (xargs :guard t))
-  (cond ((not (fn-native-config-show-wfp c)) (list :refused :not-renderable))
-        ((and (null table) (null key)) (list :shown (fn-native-config-show-octets c)))
+  (cond ((and (null table) (null key)) (list :shown (fn-native-config-show-octets c)))
         ((not (and (stringp table) (stringp key) (fn-ncfg-key-allowedp table key)))
          (list :refused :unknown-key))
         (t (let ((pv (fn-ncfg-value (fn-ncfg-show-pairs c) table key)))
