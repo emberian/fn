@@ -700,7 +700,14 @@
         "fn-pcar-sbud-prepare-is-sbud-prepare",
         "fn-pcar-next-lower-is-next-lower",
         "fn-acar-own-outcome-is-reference-under-ocl-relation",
-        "fn-acar-scar-auth-sessionp-of-rebuilt-session"
+        "fn-acar-scar-auth-sessionp-of-rebuilt-session",
+        "fn-rcon-store-event-encode-is-store-event-encode",
+        "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
+        "fn-rcon-sf-record-dir-result-is-sf-record-dir-result",
+        "fn-rcon-sn-io-is-sn-io",
+        "fn-rcon-ocfg-io-is-ocfg-step",
+        "fn-midx-concrete-lookup-is-lookup",
+        "fn-pix-peer-delegate-pinned-is-peer-delegate-pinned"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -764,9 +771,13 @@
         "books/records-concrete.lisp",
         "tests/acl2/records-concrete-tests.lisp",
         "planning/design-2026-09-25-representation.md",
-        "planning/evidence/representation-2026-09-25.md"
+        "planning/evidence/representation-2026-09-25.md",
+        "books/records-concrete-owner.lisp",
+        "books/msgid-index-concrete.lisp",
+        "tests/acl2/msgid-index-concrete-tests.lisp",
+        "planning/evidence/rep-records-2-2026-09-25.md"
       ],
-      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next)."
+      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next). Representation, boundaries 4 and 5 (2026-09-25, lane/rep-records-2): the staged record's encoder (fn-rcon-store-event-encode, called by host/owner-host.lisp fn-owner-pending-octets and host/store-node-host.lisp fn-store-sn-pending-octets), its sequence (fn-rcon-sbud-pending-sequence, fn-owner-pending-sequence and fn-store-sn-pending-sequence), the transaction observation (fn-rcon-sn-io, fn-store-sn-io; fn-rcon-ocfg-io, equal to fn-ocfg-step of (:store (:io operation result)), fn-owner-io) and the store bridge's record wrappers (host/store-host.lisp) dispatch through the concrete record recognizer; each twin equals its reference on every input with no hypothesis and is guard-verified at the reference's guard. The Message-ID trie is walked by string index (fn-midx-concrete-lookup-is-lookup: fn-mxc-lookup equals fn-midx-lookup for every Message-ID and trie), reached by the IHAVE/CHECK history test (fn-pix-history-hasp) and by the reader retrieval chain fn-pix-peer-delegate-pinned, which books/served-carried.lisp fn-scar-peer-step-pinned calls. The codec behind the seam (fn-record-encode-impl) still recognises with fn-record-p. Certified on persvati run-20260925T025444Z-a5d9, manifest certify-20260925T025505Z-3707333."
     },
     {
       "id": "PRF-015",
@@ -2607,7 +2618,10 @@
         "planning/evidence/manifests/certify-20260923T234734Z-527933.json",
         "planning/evidence/manifests/certify-20260923T234909Z-532439.json",
         "planning/evidence/manifests/certify-20260923T221217Z-297353.json",
-        "planning/evidence/manifests/certify-20260923T221548Z-309869.json"
+        "planning/evidence/manifests/certify-20260923T221548Z-309869.json",
+        "books/msgid-index-concrete.lisp",
+        "tests/acl2/msgid-index-concrete-tests.lisp",
+        "planning/evidence/rep-records-2-2026-09-25.md"
       ],
       "events": [
         "fn-gidx-bucket-of-build",
@@ -2618,9 +2632,12 @@
         "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan",
         "fn-pix-history-hasp-is-peer-history-hasp",
         "fn-pgc-peer-arm-is-peer-step-pinned",
-        "fn-oix-ocfg-step-keeps-view-indexed"
+        "fn-oix-ocfg-step-keeps-view-indexed",
+        "fn-midx-concrete-lookup-is-lookup",
+        "fn-pix-msgid-retrieval-indexed-is-msgid-retrieval-indexed",
+        "fn-pix-peer-delegate-pinned-is-peer-delegate-pinned"
       ],
-      "progress_note": "Scoped ACL2 certification and called-owner sparse/historical LISTGROUP witnesses are recorded in the group-bucket evidence. Indexed OVER/XOVER resolve selected-group bucket entries through the pinned trie; the called pinned dispatcher equality has direct reachable and malformed-state premise teeth, with redundant range, tag, bound and session assumptions removed. HDR remains on the archive fold. The native OVER/XOVER socket driver is prepared but has not run on a source-matched image; combined-image qualification and full dependent closure at integrated source remain open."
+      "progress_note": "Scoped ACL2 certification and called-owner sparse/historical LISTGROUP witnesses are recorded in the group-bucket evidence. Indexed OVER/XOVER resolve selected-group bucket entries through the pinned trie; the called pinned dispatcher equality has direct reachable and malformed-state premise teeth, with redundant range, tag, bound and session assumptions removed. HDR remains on the archive fold. The native OVER/XOVER socket driver is prepared but has not run on a source-matched image; combined-image qualification and full dependent closure at integrated source remain open. Trie by index (2026-09-25, lane/rep-records-2): the reader's ARTICLE/HEAD/BODY/STAT by Message-ID and the IHAVE/CHECK history test look the Message-ID up with fn-mxc-lookup, which walks the unchanged trie by string index (fn-midx-concrete-lookup-is-lookup, no hypothesis); the retrieval chain twins fn-pix-msgid-retrieval-indexed through fn-pix-peer-delegate-pinned each equal their reference with no hypothesis, so fn-nntp-msgid-retrieval-indexed-refines-scan and fn-midx-correspondencep are unchanged in statement and apply. The OVER/XOVER bucket resolution (books/group-bucket-article.lisp) and the owner's refresh (fn-own-refresh calls fn-midx-refresh) still walk the character list. Certified on persvati run-20260925T025444Z-a5d9, manifest certify-20260925T025505Z-3707333."
     },
     {
       "id": "PRF-066",
