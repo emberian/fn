@@ -161,6 +161,21 @@
   (implies (and (fn-cfg-row-listp a) (fn-cfg-row-listp b))
            (fn-cfg-row-listp (append a b)))))
 
+;; C2: the authorities slot stays a row list under a grant and a revoke.
+(local (defthm fn-cfg-rows-without-pair-is-row-listp
+  (implies (fn-cfg-row-listp rows)
+           (fn-cfg-row-listp (fn-cfg-rows-without-pair rows a b)))
+  :hints (("Goal" :in-theory (enable fn-cfg-rows-without-pair)))))
+(local (defthm fn-cfg-grant-verb-is-a-label
+  (implies (and (fn-cfg-row-listp rows) (consp rows))
+           (fn-cfg-labelp (fn-cfg-grant-verb rows)))
+  :hints (("Goal" :in-theory (enable fn-cfg-grant-verb fn-cfg-ag-car)))))
+(local (defthm fn-cfg-grant-verb-of-nil-is-nil
+  (implies (not (consp rows))
+           (equal (fn-cfg-grant-verb rows) nil))
+  :hints (("Goal" :in-theory (enable fn-cfg-grant-verb fn-cfg-ag-car
+                                     fn-cfg-row-c)))))
+
 (defthm fn-cfg-apply-delta-preserves-valuep
   ; `fn-record-uint32p' is opened for the `:set-limit' arm (`nfix' of a
   ; uint32 is itself); `fn-record-string-octets' is kept closed so a label

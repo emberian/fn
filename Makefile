@@ -720,6 +720,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-authored-accept \
 	tests/acl2/peer-authored-accept-tests \
 	tests/acl2/control-tests \
+	books/control-authority \
+	tests/acl2/control-authority-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
 	books/topic-history-authorship \
