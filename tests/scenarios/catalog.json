@@ -1557,6 +1557,30 @@
       ]
     },
     {
+      "id": "SCN-055",
+      "title": "XPAT is listed, joins its pattern arguments, ORs comma alternatives and matches case-sensitively on the served node",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-016"
+      ],
+      "steps": [
+        "CAPABILITIES on a served connection.",
+        "In a group holding an article with Subject `probe root`: XPAT Subject 1-9 *root*, *Root*, *zzz*,*root*, *zzz* *root*, probe root.",
+        "Search the group from the web reader with the wildmat *root*."
+      ],
+      "expected": [
+        "The capability block lists XPAT.",
+        "221 with the article's line for *root*, *zzz*,*root* and probe root; 221 with an empty list for *Root* and *zzz* *root*.",
+        "The web page names the XPAT command it sent, carrying the wildmat as typed, and lists the article."
+      ],
+      "evidence": [
+        "tests/acl2/nntp-xpat-tests.lisp",
+        "tests/test_fn_web.py",
+        "planning/evidence/reader-surface-2026-09-25.md"
+      ]
+    },
+    {
       "id": "SCN-046",
       "title": "A scale store above one pack's quantum compacts into a chain; reads and the next number are unchanged; every chain publication cut from both entries reopens whole and resumes",
       "milestone": "M5",

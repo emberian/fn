@@ -3907,6 +3907,31 @@
       ]
     },
     {
+      "id": "PRF-110",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-step-pinned-xpat-is-the-xpat-response"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-xpat-alternation-is-or"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-capability-lines-advertise-xpat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-post-boundary-refusal-is-nil-exactly-when-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-post-boundary-refusals-are-distinct"
+        }
+      ]
+    },
+    {
       "id": "PRF-085",
       "events": [
         {
