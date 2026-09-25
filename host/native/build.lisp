@@ -43,6 +43,7 @@
 (include-book "books/owner-commit-carried")
 (include-book "books/owner-prepare-carried")
 (include-book "books/owner-advance-carried")
+(include-book "books/owner-intent-carried")
 (include-book "books/owner-commit-ocl")
 (include-book "books/owner-served-invariants")
 (include-book "books/owner-agent")
