@@ -76,3 +76,42 @@ refused history-marker-required-dropped`, exit 1.
   marker refusal precedes an over-bound record; `must-fail` without the
   current requirement (the kept format-7 tuple over an unmarked store is
   sound and unmarked) and without the `:sound` verdict.
+
+## Certification
+
+| run | box | books | result | manifest |
+|---|---|---|---|---|
+| run-20260925T205559Z-2502 | persvati, 2 jobs, w25 | 32 (`--affected-by` the four changed books) | passed; `tests/acl2/store-profile-upgrade-tests` 18.3 s (a new must-fail opened the sound-iff rule into 1,098 subgoals) | `manifests/certify-20260925T205626Z-1190099.json` |
+| run-20260925T205859Z-e8bb | persvati, 2 jobs | the test book after narrowing that must-fail's theory | passed, 1.27 s | `manifests/certify-20260925T205921Z-1217435.json` |
+| run-20260925T210013Z-7328 | hbox, 2 jobs, w28 | the same 32, at commit `ba958541` | passed; slowest `books/native-admin` 9.2 s | `manifests/certify-20260925T210036Z-3850666.json` |
+
+Every changed book is under 10 s at two jobs.
+
+## Native cases (hbox)
+
+The tree is `git archive ba958541` at `/tank/fn/scratch/deploy-fixes/tree`.
+The developer and production images were built with `swarm-build`, using
+`FN_OPENSSL_PREFIX` and `LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib`
+([`dfx-build.sh`](deploy-fixes/dfx-build.sh)). Neither build log contains
+`invariant-risk`. Image digests are in
+[`images.sha256`](deploy-fixes/images.sha256): `fn-host.core` `6cccdf74…`,
+`fn-host-developer.core` `606863ed…`. Tests ran under
+`systemd-run --user -p MemoryMax=24G`.
+
+| case | result | log SHA-256 |
+|---|---|---|
+| A3 `tests.test_native_control_authority` (failed on e747dbcc) | 1/1 ok; lists both grants, then one after revoke | `adcef266a288d61251ff1ac7777371969e1dac1b0b0917722ce0ca62cd719e8e` |
+| A4 `test_native_control` `test_two_clients_sigterm_cleanup_and_restart`, `test_lost_reply_after_submission_is_uncertain_and_recovers` (the two the warning broke) | 2/2 ok; no log has `invariant-risk` | `12047a6506265bdef0b457d2d3914e28e9f1a2541d1d17bbcf07dfcf05fe27f1` |
+| U1 `test_native_history_required` `MigrationTests.test_migrate_then_absence_and_loss_are_damage` (new assertions: the kept unmarked config is sound before `required` and refused by name after) | 1/1 ok | `72a0d8ec3a851084f78f00dcf2e9aa8ca522be9b1ebd799a451eec5c0359f2e9` |
+| U1 on a `cp -a` of the qualification's migrated copy of the live store (format 8, `required`), production image | `rollback-check config.json.format-7` answers `rollback refused history-marker-required-dropped`, rc 1 (e747dbcc said `sound`). The store's own required config is `sound transactions=18`. Offline `control list` prints the rehearsal's grant | `763b63af6b0e9cee04c39ff9db380ce2cb18d921ec488b0bd6b0e448de0fa3c7` |
+
+## Not done
+
+- No full module requalification; the next cut's qualification owns that.
+- The DTN images were not rebuilt. They load the same `host/native/io.lisp`
+  and include `books/sha256-buffer`, so the A4 path is the same code.
+- `make check` in this worktree reports only the generated ledger as stale.
+  The deputy regenerates it on merge.
+- The `control list` rows are rendered and not parsed back. The theorem
+  equates the listing with the rendered authority rows. It does not
+  establish a line-per-row reading.

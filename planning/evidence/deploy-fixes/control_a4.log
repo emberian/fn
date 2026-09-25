@@ -1,0 +1,7 @@
+test_two_clients_sigterm_cleanup_and_restart (tests.test_native_control.NativeControlTests.test_two_clients_sigterm_cleanup_and_restart) ... ok
+test_lost_reply_after_submission_is_uncertain_and_recovers (tests.test_native_control.NativeControlTests.test_lost_reply_after_submission_is_uncertain_and_recovers) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 4.997s
+
+OK
