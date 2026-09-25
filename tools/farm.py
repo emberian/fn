@@ -102,6 +102,8 @@ INSTALLED_PARTIAL = re.compile(
     r"install-partial: (\d+) books.*\n\s*toolchain (\S+); installed (\d+), "
     r"kept (\d+), missing (\d+), removed (\d+); roots installed (\d+) of (\d+)"
     r"(?:; origins ([^\s;]+))?")
+# Both lines end with the compiled files the installed pairs carried.
+INSTALLED_FASL = re.compile(r"; fasl (\d+) missing (\d+)$", re.MULTILINE)
 
 # Seams: the tests drive the real command construction through these.
 RUN = subprocess.run
@@ -227,6 +229,15 @@ def parse_origins(words: str) -> dict[str, int]:
 
 def parse_installed(output: str) -> dict[str, object]:
     """The identity/count line `certs.py install-set` or `install-partial` prints."""
+    parsed = parse_installed_counts(output)
+    fasl = INSTALLED_FASL.search(output)
+    if parsed and fasl:
+        parsed["fasl_installed"], parsed["fasl_missing"] = (
+            int(number) for number in fasl.groups())
+    return parsed
+
+
+def parse_installed_counts(output: str) -> dict[str, object]:
     partial = INSTALLED_PARTIAL.search(output)
     if partial:
         books, toolchain, *numbers, origins = partial.groups()

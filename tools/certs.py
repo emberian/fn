@@ -164,6 +164,9 @@ class Certified:
     # the certificate.
     compatibility: dict[str, object] = field(default_factory=dict)
     certification_provenance: dict[str, object] = field(default_factory=dict)
+    # The digest of the compiled file (`.fasl`) this certification wrote, when
+    # the manifest recorded one; None publishes the pair alone.
+    fasl: str | None = None
 
 
 @dataclass
@@ -204,11 +207,19 @@ class Report:
     installed_from: dict[str, str] = field(default_factory=dict)
     roots: list[str] = field(default_factory=list)
     roots_installed: list[str] = field(default_factory=list)
+    # Installed or kept pairs whose entry carried a compiled file, and those
+    # whose entry had none (ACL2 then processes that book's events uncompiled).
+    fasl_installed: int = 0
+    fasl_missing: int = 0
 
     def origin_words(self) -> str:
         """``/a=3,/b=5``: one token, so the identity line stays parseable."""
         return ",".join(f"{origin}={count}" for origin, count
                         in sorted(self.origins.items()))
+
+    def fasl_words(self) -> str:
+        """Last on the line, so the farm's older count patterns still match."""
+        return f"; fasl {self.fasl_installed} missing {self.fasl_missing}"
 
     def lines(self) -> list[str]:
         out = [f"{self.action}: {self.books} books, cache {self.cache}"]
@@ -230,7 +241,8 @@ class Report:
                     self.source_identity or "NONE", self.toolchain_identity or "NONE",
                     self.installed, self.kept, len(self.uncached),
                     self.removed_foreign)
-                + (f"; origins {self.origin_words()}" if self.origins else ""))
+                + (f"; origins {self.origin_words()}" if self.origins else "")
+                + self.fasl_words())
         elif self.action == "install-partial":
             out.append(
                 "  toolchain {}; installed {}, kept {}, missing {}, removed {}; "
@@ -240,7 +252,8 @@ class Report:
                     len(self.roots_installed), len(self.roots))
                 + (f"; origins {self.origin_words()}" if self.origins else "")
                 + (f"; recertify {' '.join(self.recertified)}"
-                   if self.recertified else ""))
+                   if self.recertified else "")
+                + self.fasl_words())
         else:
             out.append(f"  certified here {self.certified_locally}, "
                        f"usable from the cache "
@@ -458,11 +471,25 @@ def entry_matches_meta(directory: Path, meta: dict) -> bool:
         port = directory / "book.port"
         if not port.is_file() or content_hash(port) != meta["port_sha256"]:
             return False
+    if meta.get("fasl_sha256"):
+        fasl = directory / "book.fasl"
+        if not fasl.is_file() or content_hash(fasl) != meta["fasl_sha256"]:
+            return False
     return True
 
 
-def install_entry(directory: Path, selected: dict, cert: Path, port: Path) -> bool:
-    """Copy one selected pair under its reader lock; return whether it moved."""
+def install_entry(directory: Path, selected: dict, cert: Path, port: Path,
+                  report: Report | None = None) -> bool:
+    """Copy one selected pair under its reader lock; return whether it moved.
+
+    The compiled file travels with its pair and only with it: the entry's
+    ``book.fasl`` is placed beside the certificate when the entry has one, and
+    a local ``.fasl`` is removed when it has none, so no compiled file from
+    another certification sits beside this certificate.  ACL2 loads a
+    ``.fasl`` only when its write date is not older than the ``.cert``'s, so
+    the installed one is dated no earlier than the certificate.  A pair
+    without a compiled file still installs; ACL2 then processes its events.
+    """
     with entry_lock(directory, exclusive=False):
         if read_meta(directory) != selected or not entry_matches_meta(directory, selected):
             raise EntryChanged(str(directory))
@@ -479,6 +506,20 @@ def install_entry(directory: Path, selected: dict, cert: Path, port: Path) -> bo
                 place(cached_port, port)
         else:
             port.unlink(missing_ok=True)
+        fasl = cert.with_suffix(".fasl")
+        cached_fasl = directory / "book.fasl"
+        if selected.get("fasl_sha256"):
+            if not (fasl.is_file() and content_hash(fasl) == selected["fasl_sha256"]):
+                place(cached_fasl, fasl)
+            dated = cert.stat().st_mtime
+            if fasl.stat().st_mtime < dated:
+                os.utime(fasl, (dated, dated))
+            if report is not None:
+                report.fasl_installed += 1
+        else:
+            fasl.unlink(missing_ok=True)
+            if report is not None:
+                report.fasl_missing += 1
         return not (cert_same and port_same)
 
 
@@ -766,7 +807,7 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
             # premise explicit and leaves no ambiguous input behind.
             for name in sorted(required):
                 source = root / f"{name}.lisp"
-                for suffix in (".cert", ".port"):
+                for suffix in (".cert", ".port", ".fasl"):
                     artifact = source.with_suffix(suffix)
                     if artifact.is_file():
                         artifact.unlink()
@@ -788,7 +829,7 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
             source = root / f"{name}.lisp"
             directory, meta = chosen.entries[name]
             moved = install_entry(directory, meta, source.with_suffix(".cert"),
-                                  source.with_suffix(".port"))
+                                  source.with_suffix(".port"), report)
             if moved:
                 report.installed += 1
             else:
@@ -951,10 +992,11 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
                 if artifact.is_file():
                     artifact.unlink()
                     report.removed_foreign += 1
+            source.with_suffix(".fasl").unlink(missing_ok=True)
             continue
         directory, meta = chosen
         try:
-            moved = install_entry(directory, meta, cert, port)
+            moved = install_entry(directory, meta, cert, port, report)
         except EntryChanged:
             if _attempt >= 2:
                 raise
@@ -1032,6 +1074,7 @@ def certified_books(manifests: list[dict],
         sources = manifest.get("source_digests_sha256") or {}
         after = manifest.get("source_digests_sha256_after") or {}
         certificates = manifest.get("certificate_digests_sha256") or {}
+        compiled = manifest.get("compiled_digests_sha256") or {}
         exits = manifest.get("acl2_exit_codes") or {}
         evidence = str(manifest.get("evidence", "<in-memory manifest>"))
         origin = manifest_origin(manifest, default_origin)
@@ -1056,7 +1099,8 @@ def certified_books(manifests: list[dict],
                 after=after.get(f"{book}.lisp", None if not after else ""),
                 cert=certificate, evidence=evidence, origin=origin,
                 compatibility=manifest_compatibility(manifest),
-                certification_provenance=manifest_provenance(manifest)))
+                certification_provenance=manifest_provenance(manifest),
+                fasl=compiled.get(book)))
     return found
 
 
@@ -1149,8 +1193,13 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
         directory = entry_directory(cache, key, where)
         port = source.with_suffix(".port")
         port = port if port.is_file() else None
+        # The compiled file is cached only when this certification's manifest
+        # recorded it and it is still those bytes; otherwise the pair alone.
+        fasl = source.with_suffix(".fasl")
+        fasl = (fasl if record.fasl and fasl.is_file()
+                and content_hash(fasl) == record.fasl else None)
         outcome = write_entry(directory, name, key, listing, cert, port, record,
-                              where, origin_host, kind)
+                              where, origin_host, kind, fasl)
         if outcome == "already":
             report.already += 1
         elif outcome == "relabelled":
@@ -1164,8 +1213,10 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
 def write_entry(directory: Path, name: str, key: str, listing: list[str],
                 cert: Path, port: Path | None, record: Certified,
                 origin: str, origin_host: str | None = None,
-                origin_kind: str = LIVE_ORIGIN) -> str:
-    """Commit a matched pair and provenance under one cache-entry lock."""
+                origin_kind: str = LIVE_ORIGIN,
+                fasl: Path | None = None) -> str:
+    """Commit a matched pair, its compiled file when there is one, and
+    provenance under one cache-entry lock."""
     meta = {
         "book": name,
         "closure_key": key,
@@ -1186,6 +1237,7 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
         "toolchain_identity": stable_identity(record.compatibility),
         "certification_provenance": record.certification_provenance,
         "has_port": port is not None,
+        "fasl_sha256": content_hash(fasl) if fasl is not None else None,
         "published_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "published_from": str(cert.parent),
         "host": os.uname().nodename,
@@ -1197,6 +1249,10 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
         same_port = ((port is None and not target_port.is_file()) or
                      (port is not None and target_port.is_file() and
                       content_hash(target_port) == content_hash(port)))
+        target_fasl = directory / "book.fasl"
+        same_fasl = ((fasl is None and not target_fasl.is_file()) or
+                     (fasl is not None and target_fasl.is_file() and
+                      content_hash(target_fasl) == meta["fasl_sha256"]))
         old_meta = read_meta(directory)
         same_provenance = (
             old_meta.get("book") == name
@@ -1210,11 +1266,12 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
             and old_meta.get("cert_sha256") == record.cert
             and old_meta.get("port_sha256") == meta["port_sha256"]
             and old_meta.get("has_port") == meta["has_port"]
+            and old_meta.get("fasl_sha256") == meta["fasl_sha256"]
             and old_meta.get("source_sha256") == record.source
             and old_meta.get("closure_key") == key
             and old_meta.get("origin_root") == origin
             and old_meta.get("published_from") == str(cert.parent))
-        if same_cert and same_port and same_provenance:
+        if same_cert and same_port and same_fasl and same_provenance:
             return "already"
         if not same_cert:
             place(cert, cached)
@@ -1222,6 +1279,10 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
             target_port.unlink(missing_ok=True)
         elif not same_port:
             place(port, target_port)
+        if fasl is None:
+            target_fasl.unlink(missing_ok=True)
+        elif not same_fasl:
+            place(fasl, target_fasl)
         if not entry_matches_meta(directory, meta):
             raise EntryChanged(f"source pair changed while publishing {directory}")
         write_text_atomic(directory / "meta.json",
@@ -1284,6 +1345,7 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
                         for entry, _ in entries):
                     cert.unlink()
                     source.with_suffix(".port").unlink(missing_ok=True)
+                    source.with_suffix(".fasl").unlink(missing_ok=True)
                     report.removed_foreign += 1
             else:
                 report.uncached.append(name)
@@ -1292,7 +1354,7 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
         for attempt in range(3):
             directory, meta = chosen
             try:
-                moved = install_entry(directory, meta, cert, port)
+                moved = install_entry(directory, meta, cert, port, report)
                 break
             except EntryChanged:
                 if attempt == 2:
