@@ -500,4 +500,12 @@
   :hints (("Goal" :use fn-bprt-admin-plan-kind
                   :in-theory (disable fn-bprt-admin-plan))))
 
+(defthm fn-bprt-admin-plan-caddr-is-no-other-kind
+  (and (not (equal (caddr (fn-bprt-admin-plan words)) :create-group))
+       (not (equal (caddr (fn-bprt-admin-plan words)) :remove-group))
+       (not (equal (caddr (fn-bprt-admin-plan words)) :set-bp-boundary)))
+  :hints (("Goal" :use fn-bprt-admin-plan-kind-is-no-other-kind
+                  :in-theory (disable fn-bprt-admin-plan
+                                      fn-bprt-admin-plan-kind-is-no-other-kind))))
+
 (in-theory (disable fn-bprt-admin-plan))

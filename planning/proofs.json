@@ -3132,7 +3132,9 @@
         "books/bp-node-progress.lisp",
         "tests/acl2/bp-route-tests.lisp",
         "planning/evidence/bp-routing-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260925T043045Z-2491547.json"
+        "planning/evidence/manifests/certify-20260925T043045Z-2491547.json",
+        "planning/evidence/manifests/certify-20260925T043302Z-2495464.json",
+        "planning/evidence/manifests/certify-20260925T043708Z-2506982.json"
       ],
       "progress_note": "Lane bp-routing (2026-09-25). Teeth in tests/acl2/bp-route-tests.lisp: a reachable witness (the bp-node-forward-retry fixture's held transit to dtn://bp-dest/, routed to relay, proposes the attempt) and must-fail cases for an unlisted hop, a wrong announced EID, a prefix route to another boundary, the route present (no report), and tables whose matching sets differ.",
       "events": [
