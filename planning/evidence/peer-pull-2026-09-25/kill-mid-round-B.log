@@ -1,0 +1,11 @@
+accepted reader connection=0 time=2026-09-25T20:03:55Z
+accepted peer connection=1 peer=A time=2026-09-25T20:03:55Z
+accepted transit connection=1 message-id=<pull-before-crash@example.invalid> code=235 decision=want reason=none detail=none time=2026-09-25T20:03:55Z
+pull peer=A round=done cursor=advanced
+accepted reader connection=2 time=2026-09-25T20:03:55Z
+accepted peer connection=3 peer=A time=2026-09-25T20:03:57Z
+accepted reader connection=4 time=2026-09-25T20:03:57Z
+accepted peer connection=0 peer=A time=2026-09-25T20:03:57Z
+accepted transit connection=0 message-id=<pull-crash@example.invalid> code=235 decision=want reason=none detail=none time=2026-09-25T20:03:57Z
+accepted reader connection=1 time=2026-09-25T20:03:57Z
+pull peer=A round=done cursor=advanced

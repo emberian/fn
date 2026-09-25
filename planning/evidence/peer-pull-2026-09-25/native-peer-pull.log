@@ -1,0 +1,38 @@
+test_kill_mid_round_recovery_asks_the_same_newnews (tests.test_native_peer_pull.NativePeerPullTests.test_kill_mid_round_recovery_asks_the_same_newnews) ... /tank/fn/scratch/peer-pull/gate-r3/tests/test_native_peer_pull.py:341: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-dxcs79bw/A/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/scratch/peer-pull/gate-r3/tests/test_native_peer_pull.py:381: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-dxcs79bw/B/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/scratch/peer-pull/gate-r3/tests/test_native_peer_pull.py:394: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-dxcs79bw/B/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+NATIVE-PULL-WITNESS {"core_sha256": "cbc0e88c23358c7a7e4142e1ce5ada93cd4d36ebc04f1b7305a8a926232a8a1e", "dead_round_newnews": "NEWNEWS fn.* 20260925 200354 GMT", "fnpl": ["A.fnfd"], "image_sha256": "2d01f56d373b8136c6c6c9bbdae819fc85487db5f4a0800de1c73468f6f08e5a", "kind": "kill-mid-round", "log_sha256_A": "153197ac83c492fc559b1b1855fb918acd51a2fbd4642157b242e4e7f7108d01", "log_sha256_B": "4d01dec7e01411aeb4a3aebd1ee5e100d0d9a2fe56864804a74132e2085ebf81", "newnews_after_restart": ["NEWNEWS fn.* 20260925 200354 GMT"], "pull_lines": ["pull peer=A round=done cursor=advanced", "pull peer=A round=done cursor=advanced"]}
+ok
+test_pull_from_fn_node (tests.test_native_peer_pull.NativePeerPullTests.test_pull_from_fn_node) ... /tank/fn/scratch/peer-pull/gate-r3/tests/test_native_peer_pull.py:341: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-9ed8l0yn/A/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/scratch/peer-pull/gate-r3/tests/test_native_peer_pull.py:354: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-9ed8l0yn/B/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+NATIVE-PULL-WITNESS {"article_commands": ["ARTICLE <pull-two@example.invalid>", "ARTICLE <pull-one@example.invalid>"], "core_sha256": "cbc0e88c23358c7a7e4142e1ce5ada93cd4d36ebc04f1b7305a8a926232a8a1e", "fnpl": ["A.fnfd"], "image_sha256": "2d01f56d373b8136c6c6c9bbdae819fc85487db5f4a0800de1c73468f6f08e5a", "kind": "fn-node", "log_sha256_A": "e84e32f689701f02ba141d9e0a137011bfc30d25082798f9f17aad2e615c468b", "log_sha256_B": "c6acf5631db150571bfad701ac46a64e97da4dc3adc22282502f03f4e5f26ca2", "newnews": ["NEWNEWS fn.* 20260924 200400 GMT", "NEWNEWS fn.* 20260925 200359 GMT"], "proxy_connections": 2, "pull_lines": ["pull peer=A round=done cursor=advanced", "pull peer=A round=done cursor=advanced"]}
+ok
+test_pull_from_inn (tests.test_native_peer_pull.NativePeerPullTests.test_pull_from_inn) ... /tank/fn/scratch/peer-pull/gate-r3/tests/test_native_peer_pull.py:410: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-_kxmrcpj/inn/log/innd-stdout.log'>
+  self.assertTrue(inn.start(), inn.diagnostics())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/scratch/peer-pull/gate-r3/tests/test_native_peer_pull.py:410: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-_kxmrcpj/inn/log/nnrpd-stdout.log'>
+  self.assertTrue(inn.start(), inn.diagnostics())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/scratch/peer-pull/gate-r3/tests/test_native_peer_pull.py:419: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-_kxmrcpj/B/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+NATIVE-PULL-WITNESS {"b_head": "221 0 <pull-from-inn@inn.pull.example.invalid> headers follow", "core_sha256": "cbc0e88c23358c7a7e4142e1ce5ada93cd4d36ebc04f1b7305a8a926232a8a1e", "fnpl": ["INN.fnfd"], "image_sha256": "2d01f56d373b8136c6c6c9bbdae819fc85487db5f4a0800de1c73468f6f08e5a", "inn_ihave": "235 Article transferred OK", "kind": "inn", "log_sha256_B": "2edae8650b36f5d1d0993c38d51bc00b06118c4abd8405899cef6e52f891e565", "newnews": ["NEWNEWS fn.* 20260924 200409 GMT"], "pull_lines": ["pull peer=INN round=done cursor=advanced"]}
+/usr/lib/python3.12/subprocess.py:1127: ResourceWarning: subprocess 3702053 is still running
+  _warn("subprocess %s is still running" % self.pid,
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 45.893s
+
+OK

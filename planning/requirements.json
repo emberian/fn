@@ -2246,7 +2246,7 @@
       "title": "A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node",
       "specification": "specs/peering.md#128-the-newnews-pull-feed",
       "milestone": "M3",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-100"
       ],
@@ -2257,7 +2257,8 @@
       "evidence": [
         "books/peer-pull.lisp",
         "tests/acl2/peer-pull-tests.lisp",
-        "planning/evidence/peer-pull-2026-09-25.md"
+        "planning/evidence/peer-pull-2026-09-25.md",
+        "tests/test_native_peer_pull.py"
       ],
       "implementation_note": "fn guarantee, not an RFC requirement: RFC 3977 7.4 defines NEWNEWS; the ack-bounded cursor and its FNPL journal are fn's. `fn operator CONFIG peer pull NAME SECONDS` sets the interval row; the owner's pull worker (host/native/pull-service.lisp) offers each listed id on a logical transit connection of that peer, so the local answer is the served IHAVE's."
     }

@@ -1658,14 +1658,14 @@
       "id": "SCN-058",
       "title": "a node behind NAT pulls from a second fn node and from INN by NEWNEWS, and a crash mid-round skips no id",
       "milestone": "M3",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-018"
       ],
       "steps": [
-        "B adds peer A (reachable, inbound fn.*) and `peer pull A 30`; A holds two articles in fn.test.",
-        "A third article is held at A; B's round is killed after NEWNEWS and before its answers; B restarts.",
-        "B adds INN's nnrpd as a peer with `peer pull INN 30`; INN holds an article in fn.test."
+        "B (behind NAT: no peer record for B anywhere, only B dials) adds peer A (inbound fn.*, outbound none) and `peer pull A 2`; A holds two articles in fn.test; a recording proxy in front of A logs every command B sends.",
+        "A third article is held at A; the proxy withholds B's ARTICLE for it, so B's round is frozen after NEWNEWS and a local 335; B is killed (SIGKILL) there and restarted.",
+        "B adds INN 2.7.4's nnrpd (a private innd and nnrpd on hbox) as a peer with `peer pull INN 2`; INN holds an article in fn.test, injected into innd by IHAVE."
       ],
       "expected": [
         "B's next round lists both, stores both (235), and its FNPL cursor advances once; the next round answers 435 or lists nothing.",
@@ -1673,7 +1673,9 @@
         "B stores INN's article (235) and its cursor for INN advances."
       ],
       "evidence": [
-        "planning/evidence/peer-pull-2026-09-25.md"
+        "planning/evidence/peer-pull-2026-09-25.md",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peer-pull-2026-09-25/native-peer-pull.log"
       ]
     }
   ]
