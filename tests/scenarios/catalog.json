@@ -1602,6 +1602,27 @@
       "evidence": [
         "planning/evidence/bounds-p6-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-056",
+      "title": "The checkpoint open is cheaper than full replay and an automatic publication does not hold served commands",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-016"
+      ],
+      "steps": [
+        "On scale-profile stores of N = 1000 and N = 4096 records (2 KiB articles), time `status` and the owner's start to LISTENING with no checkpoint and from `operator store checkpoint`'s file, on the image before and after the change.",
+        "Start the owner on the N = 4096 store whose checkpoint is at S = 2048 (due at its first tick) and send STAT in a loop while it publishes S = 4096."
+      ],
+      "expected": [
+        "The open from the checkpoint takes less wall time than the full replay on the same image, the file is smaller than before, and both opens serve the same state (fn-sco-store-open-of-extended-capture).",
+        "No STAT waits for the publication: the largest STAT latency during it stays at the served-command scale, not the publication's seconds."
+      ],
+      "evidence": [
+        "planning/evidence/checkpoint-cost-2026-09-25.md",
+        "tests/acl2/owner-checkpoint-open-tests.lisp"
+      ]
     }
   ]
 }
