@@ -3548,7 +3548,16 @@
         "fn-ctl-number-withdrawn-is-a-withdrawn-holder",
         "fn-ctl-msgid-withdrawn-is-a-withdrawn-article",
         "fn-ctl-executed-status-means-withdrawn",
-        "fn-ctl-owed-status-means-not-held"
+        "fn-ctl-owed-status-means-not-held",
+        "fn-nntp-423-withdrawn-is-a-withdrawn-holder",
+        "fn-nntp-withdrawn-holder-answers-423-withdrawn",
+        "fn-nntp-430-withdrawn-is-a-withdrawn-article",
+        "fn-nntp-withdrawn-article-answers-430-withdrawn",
+        "fn-nntp-hdr-fn-control-is-the-status",
+        "fn-nntp-hdr-fn-control-executed-means-withdrawn",
+        "fn-own-read-archive-command-is-the-pinned-dispatcher",
+        "fn-own-related-conn-control",
+        "fn-ctl-served-status-is-control-status"
       ]
     },
     {
