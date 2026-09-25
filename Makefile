@@ -300,6 +300,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-k0-cuts-tests \
 	books/byte-store-k0-step-bridge-root \
 	tests/acl2/byte-store-k0-step-bridge-root-tests \
+	books/byte-store-k0-window \
+	books/byte-store-k0-recover-program \
+	tests/acl2/byte-store-k0-recover-program-tests \
+	books/byte-store-k0-pre-init \
+	tests/acl2/byte-store-k0-pre-init-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
