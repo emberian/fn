@@ -1,0 +1,7 @@
+PROFILE max-transactions=4294967295 max-history-octets=1099511627776 max-record-octets=240000 max-article-octets=220000 max-groups-per-article=1 max-group-name-octets=64 max-open-suffix=65536 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576
+POST carried-204800.eml octets=215386 wall=0.17s reply=441 posting failed; the signed article with its authored source exceeds the configured record size (signed-record)
+DATE after: 111 20260925073342
+POST carried-65536.eml octets=74203 wall=0.50s reply=240 article received OK
+DATE after: 111 20260925073342
+owner alive: True
+

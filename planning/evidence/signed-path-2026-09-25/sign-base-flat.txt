@@ -1,0 +1,54 @@
+
+Number of samples:   60010
+Sample interval:     0.001 seconds
+Total sampling time: 60.01 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2747164 "main thread" RUNNING {1200068003}> (5752/1048576 bytes, 25 hash buckets)
+   #<THREAD tid=2747166 "fn-sprof" RUNNING {120F811123}> (3744/1048576 bytes, 28 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2  59953  99.9  59953  99.9  59953  99.9        -  ELT
+   4     14   0.0     14   0.0  59967  99.9        -  foreign function clock_nanosleep
+   6      7   0.0      7   0.0  59974  99.9        -  foreign function fstatat
+   8      4   0.0      4   0.0  59978  99.9        -  SB-IMPL::OUTPUT-TO-C-STRING/LATIN-1/LF
+  10      3   0.0  59957  99.9  59981 100.0        -  FNN-CRYPTO-OCTETS
+  12      3   0.0      7   0.0  59984 100.0        -  SB-IMPL::INTERN-PATHNAME
+  14      2   0.0      3   0.0  59986 100.0        -  SB-IMPL::MAYBE-MAKE-PATTERN
+  16      2   0.0      2   0.0  59988 100.0        -  SB-IMPL::HASH-PATHNAME-PIECE
+  18      1   0.0     15   0.0  59989 100.0        -  foreign function sb_nanosleep
+  20      1   0.0     12   0.0  59990 100.0        -  SB-UNIX:UNIX-STAT
+  22      1   0.0      4   0.0  59991 100.0        -  SB-IMPL::PARSE-UNIX-NAMESTRING
+  24      1   0.0      2   0.0  59992 100.0        -  FN-HSIG-SUBJECT-V2-P
+  26      1   0.0      1   0.0  59993 100.0        -  FN-HSIG-SOURCE-VERSION
+  28      1   0.0      1   0.0  59994 100.0        -  foreign function EVP_CIPHER_get_nid
+  30      1   0.0      1   0.0  59995 100.0        -  FN-HSIG-SUBJECT-BODY-V2
+  32      1   0.0      1   0.0  59996 100.0        -  FN-CBOR-OCTET-LISTP
+  34      1   0.0      1   0.0  59997 100.0        -  SB-KERNEL:VECTOR-TO-LIST
+  36      1   0.0      1   0.0  59998 100.0        -  SB-ASSEM:EMIT
+  38      1   0.0      1   0.0  59999 100.0        -  SB-KERNEL:%CONCATENATE-TO-STRING
+  40      1   0.0      1   0.0  60000 100.0        -  MERGE-PATHNAMES
+  42      1   0.0      1   0.0  60001 100.0        -  (LABELS SB-IMPL::TEST :IN WILD-PATHNAME-P)
+  44      1   0.0      1   0.0  60002 100.0        -  foreign function stat
+  46      1   0.0      1   0.0  60003 100.0        -  SB-IMPL::PARSEABLE-LOGICAL-NAMESTRING-P
+  48      1   0.0      1   0.0  60004 100.0        -  SB-KERNEL:%SXHASH-STRING
+  50      1   0.0      1   0.0  60005 100.0        -  SB-KERNEL:STRING=*
+  52      1   0.0      1   0.0  60006 100.0        -  SB-ALIEN::DEFAULT-C-STRING-EXTERNAL-FORMAT
+  54      1   0.0      1   0.0  60007 100.0        -  foreign function stat_wrapper
+  56      1   0.0      1   0.0  60008 100.0        -  SB-KERNEL:VECTOR-SUBSEQ
+  58      0   0.0  60009 100.0  60008 100.0        -  foreign function call_into_lisp_
+  60      0   0.0  59964  99.9  60008 100.0        -  FNN-HSIG-COMMAND-SIGN-MATERIAL
+  62      0   0.0  59964  99.9  60008 100.0        -  FNN-COMMAND-HYBRID-SIGN-CARRIER
+  64      0   0.0  59964  99.9  60008 100.0        -  FNN-MAIN
+  66      0   0.0  59964  99.9  60008 100.0        -  FN-NATIVE-ENTRY
+  68      0   0.0  59964  99.9  60008 100.0        -  RAW-EV-FNCALL
+  70      0   0.0  59964  99.9  60008 100.0        -  EV
+  72      0   0.0  59964  99.9  60008 100.0        -  EV-FOR-TRANS-EVAL
+  74      0   0.0  59964  99.9  60008 100.0        -  LD-READ-EVAL-PRINT
+  76      0   0.0  59964  99.9  60008 100.0        -  LD-LOOP
+  78      0   0.0  59964  99.9  60008 100.0        -  LD-FN-BODY
+  80      0   0.0  59964  99.9  60008 100.0        -  LD-FN0
+------------------------------------------------------------------------
+          2   0.0                                     elsewhere

@@ -1,0 +1,55 @@
+
+Number of samples:   47461
+Sample interval:     0.001 seconds
+Total sampling time: 47.461 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2749779 "fn-sprof" RUNNING {120F810763}> (3064/1048576 bytes, 24 hash buckets)
+   #<THREAD tid=2749781 "fn local control accept" RUNNING {120FD3B433}> (136/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2749854 "fn owner client" FINISHED values: NIL {12118A8143}> (56408/1048576 bytes, 168 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2  47262  99.6  47262  99.6  47262  99.6        -  ELT
+   4     18   0.0     18   0.0  47280  99.6        -  SB-IMPL::APPEND2
+   6     10   0.0     16   0.0  47290  99.6        -  FN-CBOR-OCTET-LISTP
+   8      9   0.0      9   0.0  47299  99.7        -  foreign function clock_nanosleep
+  10      9   0.0      9   0.0  47308  99.7        -  foreign function fstatat
+  12      9   0.0      9   0.0  47317  99.7        -  FN-WIRE-AG-CDR
+  14      8   0.0      8   0.0  47325  99.7        -  FN-AG-CDR
+  16      6   0.0      9   0.0  47331  99.7        -  SB-KERNEL:VECTOR-TO-LIST
+  18      6   0.0      6   0.0  47337  99.7        -  FN-CBOR-OCTETP
+  20      6   0.0      6   0.0  47343  99.8        -  FN-WIRE-AG-CAR
+  22      5   0.0      5   0.0  47348  99.8        -  FN-ARTICLE-BODY-CRLFP
+  24      5   0.0      5   0.0  47353  99.8        -  FN-CBOR-AT-MOSTP
+  26      5   0.0      5   0.0  47358  99.8        -  FN-SHS-ROUNDS
+  28      4   0.0      4   0.0  47362  99.8        -  FN-AG-CAR
+  30      3   0.0     70   0.1  47365  99.8        -  FN-SCAR-FEED-COUNTED
+  32      3   0.0      6   0.0  47368  99.8        -  FN-INJ-NTH
+  34      3   0.0      4   0.0  47371  99.8        -  FN-WIRE-STATE-BODY-LIMIT
+  36      3   0.0      3   0.0  47374  99.8        -  FN-SHS-LIST-BYTE
+  38      3   0.0      3   0.0  47377  99.8        -  foreign function pthread_sigmask
+  40      3   0.0      3   0.0  47380  99.8        -  FN-INJ-CDR
+  42      2   0.0  47263  99.6  47382  99.8        -  FNN-CRYPTO-OCTETS
+  44      2   0.0     40   0.1  47384  99.8        -  (LAMBDA NIL :IN FN-NATIVE-ENTRY)
+  46      2   0.0     24   0.1  47386  99.8        -  FN-WIRE-FEED-BYTE
+  48      2   0.0      6   0.0  47388  99.8        -  FN-WIRE-LIST-LENGTH
+  50      2   0.0      5   0.0  47390  99.9        -  SB-IMPL::INTERN-PATHNAME
+  52      2   0.0      5   0.0  47392  99.9        -  FN-SHS-LOAD-LIST-WORD
+  54      2   0.0      4   0.0  47394  99.9        -  FN-SERVED-CONN-VERDICTS
+  56      2   0.0      4   0.0  47396  99.9        -  FN-SERVED-CONN-OBSERVATION
+  58      2   0.0      2   0.0  47398  99.9        -  SB-IMPL::COMPARE-COMPONENT
+  60      2   0.0      2   0.0  47400  99.9        -  APPEND
+  62      2   0.0      2   0.0  47402  99.9        -  FN-SHS-EXTEND
+  64      2   0.0      2   0.0  47404  99.9        -  SB-IMPL::LIST-REVERSE
+  66      2   0.0      2   0.0  47406  99.9        -  FN-ARTICLE-NEXT-LINE-AUX
+  68      2   0.0      2   0.0  47408  99.9        -  FN-HSIG-SOURCE-VERSION
+  70      2   0.0      2   0.0  47410  99.9        -  SB-KERNEL:VECTOR-HAIRY-DATA-VECTOR-REF/CHECK-BOUNDS
+  72      2   0.0      2   0.0  47412  99.9        -  FN-SERVED-COUNTED-RESULT
+  74      2   0.0      2   0.0  47414  99.9        -  FN-INJ-CAR
+  76      2   0.0      2   0.0  47416  99.9        -  GENERIC-+
+  78      2   0.0      2   0.0  47418  99.9        -  FN-OCTETP
+  80      1   0.0     24   0.1  47419  99.9        -  SB-IMPL::QUERY-FILE-SYSTEM
+------------------------------------------------------------------------
+          4   0.0                                     elsewhere
