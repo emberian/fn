@@ -48,6 +48,10 @@
 (include-book "books/owner-prepare-carried")
 ;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io.
 (include-book "books/records-concrete-owner")
+; The octet buffer and the codecs over it (D27 waves B/C on the megaspike).
+(include-book "books/octets-stobj")
+(include-book "books/frame-stobj")
+(include-book "books/records-stobj")
 (include-book "books/owner-advance-carried")
 (include-book "books/owner-intent-carried")
 (include-book "books/owner-commit-ocl")

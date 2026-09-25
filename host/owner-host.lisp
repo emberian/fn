@@ -204,6 +204,76 @@
                   (value :recovering))
               (value :fault))))))))
 
+;; SPIKE (D28, lane spike-representation): recovery from decoded store events.
+;; The host decodes each transaction file once, in the octet buffer
+;; (host/native/io.lisp fnn-record-value: books/records-stobj
+;; fn-rcs-unframe-record, whose correspondence to fn-frame-store-decode and
+;; fn-record-decode-exact-impl is deferred on the spike), and hands the
+;; values here; this is fn-owner-recover with its fn-store-decode-records
+;; step removed.  The dev version proves
+;; (equal (fn-store-decode-records octets) (the values the buffer decoded)).
+(defun fn-owner-recover-values (records frontier config-octet-records max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal records :bad) (equal config-records :bad)
+            (null config-records) (not (natp max-conns)))
+        (value :fault)
+      (let ((replayed (fn-cpr-replay config-records records)))
+        (if (not (equal (fn-replay-result-kind replayed) :ok))
+            (value :fault)
+          (let* ((cn (fn-replay-result-node replayed))
+                 (cfg (fn-cnode-config cn))
+                 (opened (fn-cpo-open-observed config-records frontier records)))
+            (if (and (equal (fn-sn-open-kind opened) :ok)
+                     (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
+                            :recovering))
+                (let* ((state (fn-owner-install-ocfg
+                               (fn-ocfg-make
+                                (fn-own-configure
+                                 (fn-own-start (fn-sn-open-state opened) max-conns)
+                                 (fn-owner-post-config cfg))
+                                cfg nil nil)
+                               state))
+                       ; Rebuilt exclusively by successful FNFD scans after
+                       ; authoritative store recovery.  It is a carried
+                       ; incremental fold, never a whole-journal rescan on a
+                       ; served event.
+                       (state (f-put-global 'fn-owner-feed-intents nil state))
+                       ; The persisted profile is handed back by
+                       ; fn-owner-install-profile after every recovery; until
+                       ; then the budget is 0 and every publication is
+                       ; :unaffordable (books/store-budget.lisp).
+                       (state (f-put-global 'fn-owner-store-profile nil state))
+                       ; Socket-only reply framers are recreated after
+                       ; authoritative recovery; their durable counterpart is
+                       ; the FNFD replay above, not this retained input.
+                       (state (f-put-global 'fn-owner-feed-inputs
+                                                  (fn-fc-table-initial-state) state)))
+                  (value :recovering))
+              (value :fault))))))))
+
+
+;; SPIKE (D28): the pending article record sealed into the octet buffer as
+;; the store frame the host writes (books/records-stobj
+;; fn-rcs-store-seal-record).  The bytes are fn-frame-encode of
+;; fn-record-encode-impl of the record under its SHA-256 trailer
+;; (fn-rcs-store-seal-record-is-sealed-frame, deferred on the spike), the
+;; octets fn-owner-pending-octets and host/native/io.lisp fnn-frame wrote
+;; before.  A pending record of another kind (retention, identity,
+;; consumer, topic) answers nil and the host takes the list path.
+(defun fn-owner-pending-frame (fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let ((record (fn-sf-record-candidate (fn-sn-files (fn-owner-store state)))))
+    (if (not record)
+        (mv nil fn-octets state)
+      (mv-let (okp fn-octets)
+        (fn-rcs-store-seal-record record fn-octets)
+        ; The record's octet count (the frame less its header and trailer),
+        ; the length fn-store-publication-admissibility judges; nil when the
+        ; pending record is not an article record.
+        (mv (if okp (- (fn-octets-len fn-octets) *fn-frame-overhead-octets*) nil)
+            fn-octets state)))))
+
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-own-store (fn-owner-core state)))

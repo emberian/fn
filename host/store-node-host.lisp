@@ -185,6 +185,32 @@ reopen predicate, writer-lock observation and observed final namespace."
                   (value :recovering))
               (value :fault))))))))
 
+;; SPIKE (D28): fn-store-sn-recover over store events the host decoded once in
+;; the octet buffer (see fn-owner-recover-values, host/owner-host.lisp).
+(defun fn-store-sn-recover-values (records frontier config-octet-records state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal records :bad) (equal config-records :bad)
+            (null config-records))
+        (value :fault)
+      (let ((replayed (fn-cpr-replay config-records records)))
+        (if (not (equal (fn-replay-result-kind replayed) :ok))
+            (value :fault)
+          (let* ((cn (fn-replay-result-node replayed))
+                 (cfg (fn-cnode-config cn))
+                 (opened (fn-cpo-open-observed config-records frontier records)))
+            ; No barrier is fabricated here: Python must report each of five
+            ; real fsync observations via fn-store-sn-io before this state is
+            ; :ready.
+            (if (and (fn-sn-open-okp opened)
+                     (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
+                            :recovering))
+                (let* ((state (f-put-global 'fn-store-sn (fn-sn-open-state opened)
+                                            state))
+                       (state (f-put-global 'fn-store-cfg cfg state)))
+                  (value :recovering))
+              (value :fault))))))))
+
 (defun fn-store-sn-domain (state)
   ; The allocation domain the live node carries: every name ever created.
   (declare (xargs :stobjs state :mode :program))
