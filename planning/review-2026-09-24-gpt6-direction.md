@@ -1,6 +1,8 @@
 # fn: direction, decisions, and the next complete workflows
 
 Review date: 2026-09-24. Reviewer: gpt-6 (forwarded by ember ~23:00 UTC).
+The reviewer's chat assessment and the source ledger are in
+`planning/review-2026-09-24-gpt6-direction-summary.md` (forwarded 2026-09-25).
 
 ## Review boundary
 
