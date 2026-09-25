@@ -3336,7 +3336,20 @@
         "tests/test_native_state_checkpoint.py",
         "planning/evidence/bounds-p3-2026-09-25.md"
       ],
-      "progress_note": "Open items: K0 coverage of the publish program's :root rename and :root fsync (fn-bs-k0-step-inputp admits neither; the profile program has the same gap); the whole-file statement over the host's range loop; the owner's serve path still replays in full (fnn-owner-install); the owner does not yet publish at K/2."
+      "progress_note": "Open items: K0 coverage of the publish program's :root rename and :root fsync (fn-bs-k0-step-inputp admits neither; the profile program has the same gap); the whole-file statement over the host's range loop; the owner's serve path still replays in full (fnn-owner-install); the owner does not yet publish at K/2.",
+      "events": [
+        "fn-sn-recover-from-checkpoint-equals-full-recover",
+        "fn-sco-extend-of-capture",
+        "fn-sco-capture-of-later-configs",
+        "fn-cpr-loop-append",
+        "fn-replay-identity-append",
+        "fn-cpe-projection-replay-append",
+        "fn-th-prefix-project-append",
+        "fn-cei-build-append",
+        "fn-scc-decode-segments-of-segments",
+        "fn-bs-scp-program-crash-is-old-or-new",
+        "fn-bs-read-ranges-concatenate"
+      ]
     }
   ]
 }

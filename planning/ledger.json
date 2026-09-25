@@ -172,6 +172,12 @@
     "books/store-profile-upgrade",
     "books/byte-store-profile-program",
     "tests/acl2/store-profile-upgrade-tests",
+    "books/store-checkpoint-open",
+    "books/store-checkpoint-codec",
+    "tests/acl2/store-checkpoint-open-tests",
+    "books/byte-store-state-checkpoint-program",
+    "books/byte-store-range-read",
+    "tests/acl2/byte-store-state-checkpoint-program-tests",
     "books/store-node-resolution",
     "books/store-identity-sequence-invariants",
     "tests/acl2/store-identity-sequence-invariants-tests",
@@ -786,26 +792,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 798,
-    "books_in_root_closure": 794,
-    "roots": 782,
-    "theorems": 10725,
-    "functions": 7522,
-    "assert_events": 11608,
-    "must_fails": 1064,
-    "encapsulates": 43,
+    "books": 804,
+    "books_in_root_closure": 800,
+    "roots": 788,
+    "theorems": 10848,
+    "functions": 7601,
+    "assert_events": 11651,
+    "must_fails": 1080,
+    "encapsulates": 44,
     "guards": {
-      "verified": 2118,
-      "declared-off": 553,
-      "default-guarded": 3756,
-      "default-unguarded": 1095
+      "verified": 2141,
+      "declared-off": 560,
+      "default-guarded": 3804,
+      "default-unguarded": 1096
     },
     "suspect_theorems": 94,
-    "export_hygiene_warnings": 135,
+    "export_hygiene_warnings": 136,
     "enabled_projection_warnings": 42,
-    "teeth_form_warnings": 86,
-    "include_hygiene_warnings": 799,
-    "host_names_warnings": 873,
+    "teeth_form_warnings": 87,
+    "include_hygiene_warnings": 802,
+    "host_names_warnings": 875,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -1370,20 +1376,20 @@
       "book": "books/assumptions.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
-      "functions": 11,
+      "theorems": 16,
+      "functions": 12,
       "guards": {
         "verified": 0,
         "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 10
+        "default-unguarded": 11
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 9,
+      "encapsulates": 10,
       "includes": [
         "byte-store-invariants"
       ],
@@ -5348,6 +5354,33 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-range-read.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "assumptions"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-record-fence.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5585,6 +5618,32 @@
       "encapsulates": 0,
       "includes": [
         "byte-store-scan"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-state-checkpoint-program.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-invariants",
+        "byte-store-programs"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8301,7 +8360,7 @@
       "book": "books/native-operator.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
+      "theorems": 21,
       "functions": 66,
       "guards": {
         "verified": 0,
@@ -11263,6 +11322,58 @@
         "byte-store-frame",
         "store-events",
         "store-node"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-checkpoint-codec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 67,
+      "functions": 46,
+      "guards": {
+        "verified": 14,
+        "declared-off": 2,
+        "default-guarded": 30,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 14,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 14,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "frame-trailer"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-checkpoint-open.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 32,
+      "functions": 27,
+      "guards": {
+        "verified": 9,
+        "declared-off": 0,
+        "default-guarded": 18,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 9,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-observed"
       ],
       "system_includes": [],
       "suspects": [],
@@ -16564,6 +16675,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/byte-store-state-checkpoint-program-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 2,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-range-read",
+        "../../books/byte-store-state-checkpoint-program"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/byte-store-sweep-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -18777,9 +18916,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 145,
-      "must_fails": 6,
-      "defconsts": 28,
+      "assert_events": 150,
+      "must_fails": 9,
+      "defconsts": 30,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -20646,6 +20785,34 @@
       "includes": [
         "../../books/codec-attach",
         "../../books/store-budget"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-checkpoint-open-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 23,
+      "must_fails": 11,
+      "defconsts": 7,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-checkpoint-codec",
+        "../../books/store-checkpoint-open"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -22670,7 +22837,7 @@
     {
       "theorem": "fn-nop-native-action-of-unaccepted",
       "book": "books/native-operator.lisp",
-      "line": 865,
+      "line": 872,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value"
       ]
@@ -23603,6 +23770,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-scc-encode-is-program",
+        "book": "books/store-checkpoint-codec.lisp",
+        "line": 505,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-store-event-article-encoding-is-legacy-record-encoding",
         "book": "books/store-events.lisp",
         "line": 184,
@@ -24304,6 +24477,12 @@
         "check": "bsft-admissibility-hypothesis-has-teeth",
         "book": "tests/acl2/bp-sequence-fidelity-tests.lisp",
         "line": 182,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "scp-t-ranges-without-exclusive-read",
+        "book": "tests/acl2/byte-store-state-checkpoint-program-tests.lisp",
+        "line": 79,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -28837,6 +29016,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-state-checkpoint-program-tests.lisp",
+        "line": 6,
+        "include": "../../books/byte-store-range-read",
+        "included": "books/byte-store-range-read.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-sweep-tests.lisp",
         "line": 12,
         "include": "../../books/byte-store-keystones",
@@ -29877,6 +30063,20 @@
         "line": 5,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-checkpoint-open-tests.lisp",
+        "line": 10,
+        "include": "../../books/store-checkpoint-open",
+        "included": "books/store-checkpoint-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-checkpoint-open-tests.lisp",
+        "line": 11,
+        "include": "../../books/store-checkpoint-codec",
+        "included": "books/store-checkpoint-codec.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -35049,7 +35249,7 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 1959,
+        "line": 2194,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
@@ -35280,42 +35480,49 @@
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 304,
+        "line": 280,
+        "name": "fnn-command-state-checkpoint",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/operator.lisp",
+        "line": 305,
         "name": "fnn-native-auth-admin-execute",
         "source": "host/native/auth-admin.lisp",
         "reason": "defined in host/native/auth-admin.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 312,
+        "line": 313,
         "name": "fnn-symlink-p",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 312,
+        "line": 313,
         "name": "fnn-regular-p",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 312,
+        "line": 313,
         "name": "fnn-octet-list",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 312,
+        "line": 313,
         "name": "fnn-read-regular-bounded",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/operator.lisp",
-        "line": 372,
+        "line": 373,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -36491,35 +36698,42 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 69,
+        "line": 74,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 372,
-        "name": "subsetp",
+        "line": 241,
+        "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 507,
-        "name": "fn-rcon-sn-io",
-        "source": "books/records-concrete.lisp",
-        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/store-node-host.lisp",
-        "line": 613,
+        "line": 290,
         "name": "fn-rcon-store-event-encode",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 622,
+        "line": 512,
+        "name": "subsetp",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 647,
+        "name": "fn-rcon-sn-io",
+        "source": "books/records-concrete.lisp",
+        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 762,
         "name": "fn-rcon-sbud-pending-sequence",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
