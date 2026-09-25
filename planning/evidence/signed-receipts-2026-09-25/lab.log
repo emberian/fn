@@ -1,0 +1,9 @@
+profile=dtn image=build/fn-host-dtn roots=111 result=loaded
+built build/fn-host-dtn-developer profile=developer (122M core)
+undefined lines: 0
+676622601de93c019e6a923da33914819fc904f00e272472822914f84fa23b7a  build/fn-host-dtn-developer
+069b0dd77478195f66399bfc741f9577720982cc71f07b7705f2c5ad2409b405  build/fn-host-dtn-developer.core
+e12edb0196111a1e0fa6cb94da47e51b2c9521a6057b241de04357c1e0b90320  /tank/fn/scratch/qual-c3420013/tree/build/fn-host-developer
+relay1-signed rc=0
+relay1-flipped rc=0
+ALLDONE

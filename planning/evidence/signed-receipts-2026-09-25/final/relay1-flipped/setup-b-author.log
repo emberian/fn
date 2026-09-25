@@ -1,0 +1,5 @@
+$ fn operator /tank/fn/scratch/signed-receipts/final/relay1-flipped/b.toml bp-boundary add sender-author sender.bp.gate.invalid dtn://sender/ 39011 fn.test 32768 16
+configured generation=4 record=00000004.cfg verification=VERIFIED
+accepted operator bp-boundary
+
+# rc=0

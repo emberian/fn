@@ -93,15 +93,31 @@
                (otherwise (values :uncertain '(0))))))
       (when journal (fnn-app-journal-close journal)))))
 
-(defun fnn-bpnode-release-line (view)
+(defun fnn-bpnode-receipt-observations (view)
+  "Signed receipts: the two primitive observations over ACL2's preimage.
+ACL2 (`fn-bpah-receipt-signature-plan') chooses the preimage, the enrolled
+keys and the signatures; the host only asks libsodium and OpenSSL, exactly
+as the transit path does (`fnn-hsig-observe-raw'), and hands the
+observations back.  Nil when there is nothing to observe."
+  (let ((plan (fnn-owner-core 'fn-owner-bp-receipt-signature-plan view)))
+    (when (and (consp plan) (= (length plan) 4))
+      (destructuring-bind (preimage ed-key ml-key signatures) plan
+        (let* ((observations
+                 (fnn-hsig-observe-raw ed-key ml-key preimage signatures))
+               (ml (second observations)))
+          (list (and (consp ml) (second ml) (coerce (second ml) 'list))
+                (first observations)
+                (if (consp ml) (first ml) ml)))))))
+
+(defun fnn-bpnode-release-line (view obs)
   "Print ACL2's D23 release verdict for a receipt VIEW; the host decides nothing."
-  (let ((line (fnn-owner-core 'fn-owner-bp-release-line view)))
+  (let ((line (fnn-owner-core 'fn-owner-bp-release-line view obs)))
     (when (stringp line)
       (fnn-out "BP node release ~a" line))))
 
-(defun fnn-bpnode-receipt-detail (view)
+(defun fnn-bpnode-receipt-detail (view obs)
   "ACL2's release verdict for VIEW as the kind-7 delivery detail octets."
-  (let ((detail (fnn-owner-core 'fn-owner-bp-receipt-release-detail view)))
+  (let ((detail (fnn-owner-core 'fn-owner-bp-receipt-release-detail view obs)))
     (unless (and (fnn-octet-list-p detail) (consp detail)
                  (<= (length detail) 256))
       (fnn-fault "BP node release detail is not a bounded octet list"))
@@ -111,41 +127,43 @@
     (owner workflow-root view configured-peer)
   ;; D23: a receipt releases an obligation only through ACL2's
   ;; `fn-bpah-receipt-release-record' (books/bp-release-authority.lisp):
-  ;; the delivering neighbour must be authorized for the issuer's release
-  ;; and the receipt must name the exact held obligation.  The kind-7
-  ;; detail is ACL2's verdict, so the FNBS journal keeps it.
+  ;; the delivering neighbour is the issuer or lists it, or the receipt's
+  ;; own signature verifies under the issuer's enrollment here, and the
+  ;; receipt names the exact held obligation.  The kind-7 detail is ACL2's
+  ;; verdict, so the FNBS journal keeps it.
   (declare (ignore configured-peer))
   (fnn-bpnode-source-decision view)
-  (fnn-bpnode-release-line view)
-  (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-trustedp view) t)
-    (return-from fnn-bpnode-receipt-result
-      (values :receipt-refused (fnn-bpnode-receipt-detail view))))
-  (fnn-owner-serialized
-   owner nil
-   (lambda ()
-     (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-trustedp view) t)
-       (return-from fnn-bpnode-receipt-result
-         (values :receipt-refused (fnn-bpnode-receipt-detail view))))
-     (let ((journal nil))
-       (unwind-protect
-            (progn
-              (setq journal
-                    (fnn-app-open (fnn-owner-service-store owner)
-                                  workflow-root :workflow :owner-mode t))
-              (let ((record (fnn-owner-core
-                             'fn-owner-bp-receipt-release-record view))
-                    (detail (fnn-bpnode-receipt-detail view)))
-                (unless record
-                  (fnn-out "BP node release refused detail=~a"
-                           (fnn-octets-string (fnn-octets detail)))
-                  (return-from fnn-bpnode-receipt-result
-                    (values :receipt-refused detail)))
-                (fnn-workflow-commit-receipt-intent
-                 journal record
-                 (lambda (release)
-                   (fnn-bpo-canonical-release owner release)))
-                (values :receipt-accepted detail)))
-         (when journal (fnn-app-journal-close journal)))))))
+  (let ((obs (fnn-bpnode-receipt-observations view)))
+    (fnn-bpnode-release-line view obs)
+    (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)
+      (return-from fnn-bpnode-receipt-result
+        (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
+    (fnn-owner-serialized
+     owner nil
+     (lambda ()
+       (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)
+         (return-from fnn-bpnode-receipt-result
+           (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
+       (let ((journal nil))
+         (unwind-protect
+              (progn
+                (setq journal
+                      (fnn-app-open (fnn-owner-service-store owner)
+                                    workflow-root :workflow :owner-mode t))
+                (let ((record (fnn-owner-core
+                               'fn-owner-bp-receipt-release-record view obs))
+                      (detail (fnn-bpnode-receipt-detail view obs)))
+                  (unless record
+                    (fnn-out "BP node release refused detail=~a"
+                             (fnn-octets-string (fnn-octets detail)))
+                    (return-from fnn-bpnode-receipt-result
+                      (values :receipt-refused detail)))
+                  (fnn-workflow-commit-receipt-intent
+                   journal record
+                   (lambda (release)
+                     (fnn-bpo-canonical-release owner release)))
+                  (values :receipt-accepted detail)))
+           (when journal (fnn-app-journal-close journal))))))))
 
 (defun fnn-bpnode-app-result
     (owner receipt-root workflow-root destination policy issuer view
@@ -381,6 +399,54 @@
             bp (fnn-bps-foundation-step bp (list :operator-resume arrival)))
            (fnn-bps-exit-code bp))
       (fnn-bps-release bp))))
+(defvar *fnn-bpnode-receipt-signer* nil
+  "Directory of B's receipt-signing material, or nil for bare receipts:
+principal (32 octets), ed25519.public (32), ed25519.secret (64),
+ml-dsa-65.public.pem, ml-dsa-65.private.pem.")
+
+(defun fnn-bpnode-signer-file (name width label)
+  (let ((octets (fnn-read-regular-bounded
+                 (concatenate 'string *fnn-bpnode-receipt-signer* "/" name)
+                 width)))
+    (unless (= (length octets) width)
+      (fnn-refuse (format nil "BP node receipt signer ~a is not ~d octets"
+                          label width)))
+    (fnn-octet-list octets)))
+
+(defun fnn-bpnode-signed-receipt (adu requester)
+  "The receipt payload B queues, as an octet list: FNRJ's ADU, signed by
+B's keys when B has them.  ACL2 builds the preimage
+(`fn-bpsr-host-preimage') and the frame (`fn-bpsr-host-encode'); the host
+only runs the two signing primitives, the path `fn hybrid-sign' uses."
+  (let ((bare (fnn-octet-list adu)))
+    (unless *fnn-bpnode-receipt-signer*
+      (return-from fnn-bpnode-signed-receipt bare))
+    (let* ((dir *fnn-bpnode-receipt-signer*)
+           (principal (fnn-bpnode-signer-file "principal" 32 "principal"))
+           (ed-public (fnn-bpnode-signer-file "ed25519.public" 32
+                                              "Ed25519 public key"))
+           (ed-secret (fnn-bpnode-signer-file "ed25519.secret" 64
+                                              "Ed25519 secret key"))
+           (ml-private (concatenate 'string dir "/ml-dsa-65.private.pem"))
+           (ml-public
+             (coerce (fnn-hsig-ml-dsa-65-public-key
+                      (concatenate 'string dir "/ml-dsa-65.public.pem"))
+                     'list))
+           (keys (list (cons :ed25519 ed-public) (cons :ml-dsa-65 ml-public)))
+           (preimage (fnn-core 'fn-bpsr-host-preimage
+                               principal keys requester bare)))
+      (unless (and (consp preimage) (fnn-octet-list-p preimage))
+        (fnn-refuse "BP node receipt is outside the signed-receipt profile"))
+      (let* ((ed (fnn-octet-list
+                  (fnn-hsig-ed25519-sign (fnn-octets ed-secret) preimage)))
+             (ml (fnn-octet-list
+                  (fnn-hsig-ml-dsa-65-sign ml-private preimage)))
+             (signed (fnn-core 'fn-bpsr-host-encode bare principal ed ml)))
+        (unless (and (consp signed) (fnn-octet-list-p signed))
+          (fnn-refuse "ACL2 refused the signed receipt frame"))
+        (fnn-out "BP node receipt signed principal=~a octets=~d"
+                 (subseq (fnn-hex principal) 0 16) (length signed))
+        signed))))
 
 (defun fnn-bpnode-queue-outbox
     (bp owner receipt-root destination policy issuer node-id peer-id view
@@ -421,6 +487,10 @@
                         "BP node receipt job key has conflicting durable bytes")))
                    (return-from fnn-bpnode-queue-outbox :already-queued))
                  (let* ((peer (fnn-bp-eid (fifth view)))
+                      ;; Signed receipts: B signs FNRJ's exact ADU when it
+                      ;; has keys; the status checks below still bind the
+                      ;; job to FNRJ's ADU (`fn-bpah-outbox-job-matchp').
+                      (payload (fnn-bpnode-signed-receipt adu (fifth view)))
                       (sequence (fnn-bp-reserve-sequence (fnn-bps-tally bp)))
                       (observation (fnn-bp-observation wall wall-error))
                       (route
@@ -434,7 +504,7 @@
                  (fnn-bps-drive-effects
                   bp (fnn-bps-step
                       bp (list :enqueue work attempt generation sequence
-                               route peer (fnn-octet-list adu) observation)))
+                               route peer payload observation)))
                  (when (eq (fnn-bps-outcome bp) :uncertain)
                    (fnn-indeterminate
                     "BP node receipt queue publication is uncertain"))
@@ -567,7 +637,11 @@
 (defun fnn-command-bp-node
     (listen-port once journal-root store-root receipt-root workflow-root
      node-id peer-id destination policy issuer contact-host contact-port
-     lifetime crc-type hop-limit transfer-mru wall wall-error reports-enabled)
+     lifetime crc-type hop-limit transfer-mru wall wall-error reports-enabled
+     &optional receipt-signer)
+  ;; Signed receipts: the directory of this node's receipt-signing keys, or
+  ;; nil (bare receipts, the delegation profile).
+  (setq *fnn-bpnode-receipt-signer* receipt-signer)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          ;; FNBS (and its clock-domain gate) opens before any Store/FNRJ or
          ;; sequence operation.  There is exactly one BP lifecycle owner.
@@ -703,6 +777,7 @@
        (number 12 +fnn-bp-lifetime+) (number 13 +fnn-bp-crc-type+)
        (number 14 +fnn-bp-hop-limit+) (number 15 +fnn-tcl-transfer-mru+)
        (optional-number 16) (number 17 0)
-       (string= (arg 18 "0") "1")))))
+       (string= (arg 18 "0") "1")
+       (arg 19)))))
 
 (fnn-register-verb "bp-node" #'fnn-dispatch-bp-node)

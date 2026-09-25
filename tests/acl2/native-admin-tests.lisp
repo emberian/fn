@@ -595,6 +595,56 @@
                                (fn-config-replay
                                 0 510 (list *fn-cfg-default-record*)))))))
 
+;; Signed receipts: `receipt-signer HEX' on the issuer's own boundary and
+;; `require-signed-receipts' on a carrier, last and in that order.
+(defconst *fn-na-signer-hex*
+  "0707070707070707070707070707070707070707070707070707070707070707")
+(defconst *fn-na-bp-signer*
+  (fn-native-admin-plan
+   (fn-na-test-argv (list "bp-boundary" "add" "receiver-author"
+                          "receiver.example.invalid" "dtn://receiver/" "4558"
+                          "receipt-signer" *fn-na-signer-hex*))))
+(defconst *fn-na-bp-required*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("bp-boundary" "add" "relay"
+                       "relay.example.invalid" "dtn://relay/" "4557"
+                       "carries" "dtn://receiver/" "require-signed-receipts"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-bp-signer*)
+                     :accepted))
+(assert-event (equal (fn-native-admin-result-status *fn-na-bp-required*)
+                     :accepted))
+(assert-event
+ (and (member-equal (fn-cfg-row-make "receiver-author"
+                                     "bp-boundary-receipt-signer"
+                                     *fn-na-signer-hex* 0)
+                    (fn-na-test-plan-rows *fn-na-bp-signer*))
+      (member-equal (fn-cfg-row-make "relay"
+                                     "bp-boundary-require-signed-receipts"
+                                     "yes" 0)
+                    (fn-na-test-plan-rows *fn-na-bp-required*))
+      (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
+                                     "dtn://receiver/" 0)
+                    (fn-na-test-plan-rows *fn-na-bp-required*))
+      (not (member-equal (fn-cfg-row-make "relay"
+                                          "bp-boundary-require-signed-receipts"
+                                          "yes" 0)
+                         (fn-na-test-plan-rows *fn-na-bp-signer*)))))
+; A signer that is not 64 lowercase hex digits, or options out of order,
+; are refused.
+(assert-event
+ (and (equal (fn-native-admin-result-status
+              (fn-native-admin-plan
+               (fn-na-test-argv (list "bp-boundary" "add" "r" "r.example.invalid"
+                                      "dtn://r/" "4558" "receipt-signer"
+                                      "07070707"))))
+             :refused)
+      (equal (fn-native-admin-result-status
+              (fn-native-admin-plan
+               (fn-na-test-argv (list "bp-boundary" "add" "r" "r.example.invalid"
+                                      "dtn://r/" "4558" "require-signed-receipts"
+                                      "receipt-signer" *fn-na-signer-hex*))))
+             :refused)))
+
 ;; D23: `releases-for EID ...' after the carried list (or alone) names the
 ;; issuers whose receipts the neighbour may relay: a separate row kind.
 (defconst *fn-na-bp-releases*

@@ -162,6 +162,155 @@ class HoldRelay:
         self.listener.close()
 
 
+
+def crc32c(data):
+    crc = 0xFFFFFFFF
+    for byte in data:
+        crc ^= byte
+        for _ in range(8):
+            crc = (crc >> 1) ^ (0x82F63B78 if crc & 1 else 0)
+    return crc ^ 0xFFFFFFFF
+
+
+class FlipProxy:
+    """Signed receipts, the tamper case: forward B's TCPCL stream to the
+    relay, but flip the last octet of a signed receipt's ML-DSA-65 signature
+    (the last item of the FN-BP-SRCPT frame) and recompute the payload
+    block's CRC32C (RFC 9171 4.2.1), so the bundle stays well-formed and only
+    the signature bytes differ.  Replies pass unchanged."""
+
+    MAGIC = b"\x4bFN-BP-SRCPT"
+
+    def __init__(self, target):
+        self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.listener.bind(("127.0.0.1", 0))
+        self.listener.listen(4)
+        self.listener.settimeout(0.2)
+        self.port = self.listener.getsockname()[1]
+        self.target = target
+        self.flipped = []
+        self.stopped = threading.Event()
+        threading.Thread(target=self._accept, daemon=True).start()
+
+    def _accept(self):
+        while not self.stopped.is_set():
+            try:
+                client, _ = self.listener.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            threading.Thread(target=self._exchange, args=(client,), daemon=True).start()
+
+    def _rewrite(self, buf):
+        """(ready, rest): octets safe to forward now, and octets held back."""
+        at = buf.find(self.MAGIC)
+        if at < 0:
+            keep = len(self.MAGIC) + 16
+            return buf[:-keep] if len(buf) > keep else b"", buf[-keep:] if len(buf) > keep else buf
+        # The payload block: 86 01 01 <flags> 02 59 L L <data> 44 <crc4>.
+        start = at - 8
+        if start < 0 or buf[start:start + 2] != b"\x86\x01" or buf[start + 5] != 0x59:
+            return buf, b""
+        length = int.from_bytes(buf[start + 6:start + 8], "big")
+        end = start + 8 + length + 5
+        if len(buf) < end:
+            return b"", buf
+        block = bytearray(buf[start:end])
+        block[8 + length - 1] ^= 0xFF
+        block[-4:] = b"\x00\x00\x00\x00"
+        block[-4:] = crc32c(bytes(block)).to_bytes(4, "big")
+        self.flipped.append(dict(offset=start, data_octets=length))
+        return buf[:start] + bytes(block) + buf[end:], b""
+
+    def _exchange(self, client):
+        with client:
+            try:
+                upstream = socket.create_connection(("127.0.0.1", self.target), 5)
+            except OSError:
+                return
+            with upstream:
+                pending = b""
+                deadline = time.monotonic() + 120
+                while time.monotonic() < deadline and not self.stopped.is_set():
+                    readable, _, _ = select.select((client, upstream), (), (), 0.2)
+                    for source in readable:
+                        try:
+                            data = source.recv(65536)
+                        except OSError:
+                            return
+                        if not data:
+                            if source is client and pending:
+                                try:
+                                    upstream.sendall(pending)
+                                except OSError:
+                                    pass
+                            return
+                        try:
+                            if source is client:
+                                ready, pending = self._rewrite(pending + data)
+                                upstream.sendall(ready)
+                            else:
+                                client.sendall(data)
+                        except OSError:
+                            return
+
+    def close(self):
+        self.stopped.set()
+        self.listener.close()
+
+
+def make_signer(lab, openssl):
+    """B's receipt-signing material (the host reads it by these names)."""
+    d = lab.path("b-signer")
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "principal").write_bytes(bytes([0x42]) * 32)
+    # RFC 8032 section 7.1, test 1.
+    (d / "ed25519.public").write_bytes(bytes.fromhex(
+        "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+    (d / "ed25519.secret").write_bytes(bytes.fromhex(
+        "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+        "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+    subprocess.run([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out",
+                    str(d / "ml-dsa-65.private.pem")], check=True, timeout=60)
+    subprocess.run([openssl, "pkey", "-in", str(d / "ml-dsa-65.private.pem"), "-pubout",
+                    "-out", str(d / "ml-dsa-65.public.pem")], check=True, timeout=60)
+    return d
+
+
+def enroll_signer(lab, enroll_image, store, signer):
+    """Enroll B's principal and keys in A's Store keyring through the default
+    image's control socket (`hybrid-enroll', generation 1): the DTN image has
+    no NNTP owner."""
+    control = lab.path("a-control.sock")
+    config = lab.path("a-owner.toml")
+    config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+                      '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
+                          store, free_port(), control, lab.path("a-owner-service.log")),
+                      encoding="ascii")
+    log = lab.path("setup-a-owner.log")
+    owner = subprocess.Popen([str(enroll_image), "--fn", "operator", str(config), "run"],
+                             stdout=log.open("wb"), stderr=subprocess.STDOUT,
+                             env=lab.env, cwd=str(ROOT))
+    lab.logs["setup-a-owner"] = log
+    try:
+        deadline = time.monotonic() + 120
+        while time.monotonic() < deadline and b"LISTENING " not in log.read_bytes():
+            time.sleep(0.5)
+        out = subprocess.run([str(enroll_image), "--fn", "hybrid-enroll", str(control), "1",
+                              str(signer / "principal"), str(signer / "ed25519.public"),
+                              str(signer / "ml-dsa-65.public.pem")],
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             env=lab.env, cwd=str(ROOT), timeout=120)
+        lab.path("setup-a-enroll.log").write_bytes(out.stdout + b"\n# rc=%d\n" % out.returncode)
+        lab.logs["setup-a-enroll"] = lab.path("setup-a-enroll.log")
+        return out.returncode
+    finally:
+        owner.terminate()
+        owner.wait(timeout=60)
+
+
 def sha16(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
 
@@ -285,6 +434,14 @@ def main(argv=None):
                          "`releases-for' the receiver's EID, so a receipt it "
                          "relays may release the obligation; `none' leaves "
                          "only `carries', and the receipt must release nothing")
+    ap.add_argument("--signed-receipts", type=Path,
+                    help="signed receipts: B signs its receipts with its own keys, "
+                         "A enrolls them (this DEFAULT image's control socket), "
+                         "A's receiver boundary names B's principal as its receipt "
+                         "signer and A's return boundary requires signed receipts")
+    ap.add_argument("--flip-signature", action="store_true",
+                    help="with --signed-receipts: a proxy between B and the relay "
+                         "flips one octet of the receipt's ML-DSA-65 signature")
     args = ap.parse_args(argv)
     if args.relays and not args.dtn7_repo:
         ap.error("--dtn7-repo is required unless --relays 0")
@@ -364,6 +521,12 @@ def main(argv=None):
         a_neighbour = "dtn://dtn7-r1/" if args.relays else RECEIVER
         carried = bool(args.relays) and args.b_trusts == "carried"
         b_scope = ["fn.test", "32768", "16"]
+        signer = None
+        if args.signed_receipts:
+            signer = make_signer(lab, os.environ.get("FN_TEST_OPENSSL", "openssl"))
+            report["signed_receipts"] = dict(
+                principal=(signer / "principal").read_bytes().hex(),
+                flip_signature=args.flip_signature)
         # D23: the neighbour's boundary carries the far fn node's EID; the far
         # node is enrolled under its own EID (on a port nothing listens on),
         # and its request is judged under that enrolment and its scope.
@@ -386,14 +549,20 @@ def main(argv=None):
             releases = (["releases-for", far[2]]
                         if carried and side == "a" and args.a_releases == "listed"
                         else [])
+            signed_a = bool(args.signed_receipts) and side == "a"
+            required = ["require-signed-receipts"] if signed_a else []
+            signer_row = (["receipt-signer", (signer / "principal").read_bytes().hex()]
+                          if signed_a else [])
             setup.append(lab.fn("setup-{}-boundary".format(side), "operator", config,
                                 "bp-boundary", "add", name, remote, eid, port,
-                                *scope, *carries, *releases).returncode)
+                                *scope, *carries, *releases, *required).returncode)
             if carried:
                 setup.append(lab.fn("setup-{}-author".format(side), "operator", config,
                                     "bp-boundary", "add", far[0], far[1], far[2],
-                                    free_port(), *far[3]).returncode)
+                                    free_port(), *far[3], *signer_row).returncode)
         report["b_trusts"]["carried"] = carried
+        if signer is not None:
+            setup.append(enroll_signer(lab, args.signed_receipts, a_store, signer))
         report["a_releases"] = args.a_releases if carried else "direct"
         report["setup_rcs"] = setup
         report["a_pinned_before"] = lab.fn("a-status-0", "bp-obligation", "status",
@@ -428,11 +597,15 @@ def main(argv=None):
         else:
             first_hop, last_hop = b_port, a_port
 
+        flip = FlipProxy(last_hop) if args.flip_signature else None
+        receipt_hop = flip.port if flip else last_hop
+
         def start_b(tag):
             proc, log = lab.spawn(
                 tag, "bp-node", "serve", b_port, b_fnbs, b_store, b_rj, b_wf,
                 RECEIVER, SENDER, RECEIVER, "native-policy", RECEIVER,
-                "127.0.0.1", last_hop, "0", 3600000, 2, 32, 1048576, lab.wall, 60000)
+                "127.0.0.1", receipt_hop, "0", 3600000, 2, 32, 1048576, lab.wall, 60000,
+                *(["0", signer] if signer is not None else []))
             lab.wait_log(log, r"BP NODE LISTENING", 60)
             return proc, log
 
@@ -510,6 +683,8 @@ def main(argv=None):
              a_receipt_lines=[l for l in alines if l.startswith("BP node delivery")],
              a_source_decisions=[l for l in alines if l.startswith("BP node source")],
              a_release_lines=[l for l in alines if l.startswith("BP node release")],
+             b_signed_lines=[l for l in lines_of(b_log) if "receipt signed" in l],
+             flipped=(flip.flipped if flip else None),
              a_inbound_custody=[l for l in alines if l.startswith(
                  ("BP accepted", "BP received carrier"))],
              a_obligation=status.stdout.strip())
