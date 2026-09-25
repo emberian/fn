@@ -171,7 +171,7 @@ class ReceiveFaultTests(unittest.TestCase):
         self.assertEqual(self.receive("bid-prior").outcome, "accepted")
         self.inventory["bid-full"] = self.request("full")
         with mock.patch.object(run_bp_receive.run_store, "conservative_charge",
-                               return_value=run_store.DEFAULT_CONFIG["capacity"] + 1):
+                               return_value=run_store.profile_config()["capacity"] + 1):
             with self.assertRaises(run_bp_receive.BpReceiveError):
                 self.receive("bid-full")
         self.assertIn("bid-full", self.inventory)
@@ -186,7 +186,10 @@ class ReceiveFaultTests(unittest.TestCase):
         The refusal precedes any frontier advance or charge.
         """
         bounded = Path(self.temp.name) / "bounded"
-        with mock.patch.dict(run_store.DEFAULT_CONFIG, {"max_transactions": 1}):
+        # ACL2's verdict (`fn-sbud-verdict`) is replaced by one that refuses
+        # the second publication; the bound itself is certified in ACL2.
+        with mock.patch.object(run_store, "publication_admissible",
+                               side_effect=[True, False]):
             run_store.Store(bounded, True).initialize()
             self.store = bounded
             self.inventory["bid-at-bound"] = self.request("at-bound")

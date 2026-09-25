@@ -12,7 +12,7 @@ import time
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from tools.run_store import (Acl2Store, DEFAULT_CONFIG, Store, conservative_charge,
+from tools.run_store import (Acl2Store, Store, profile_config, conservative_charge,
                              metadata, open_live_store)
 
 
@@ -21,8 +21,8 @@ def main():
     output.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     result = {"command": [sys.executable, "tests/store_capacity_probe.py"],
-              "profile": DEFAULT_CONFIG, "status": "running", "transactions": 0,
-              "payload_bytes": DEFAULT_CONFIG["max_payload_bytes"]}
+              "profile": profile_config(), "status": "running", "transactions": 0,
+              "payload_bytes": profile_config()["max_payload_bytes"]}
     with tempfile.TemporaryDirectory(prefix="fn-resource-probe-") as temporary:
         path = Path(temporary) / "store"
         store, bridge = Store(path, writable=True), None
@@ -32,7 +32,7 @@ def main():
             bridge = Acl2Store()
             store.recover(bridge)
             payload = b"x" * result["payload_bytes"]
-            count = DEFAULT_CONFIG["max_transactions"]
+            count = profile_config()["max_transactions"]
             for sequence in range(count):
                 msgid = ("<capacity-%d@example.invalid>" % sequence).encode("ascii")
                 obligation, subject, evidence = metadata(msgid, payload)

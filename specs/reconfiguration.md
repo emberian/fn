@@ -267,7 +267,7 @@ their call sites:
 | `*fn-store-group-table-id*` | `books/store-config.lisp` | nothing. A store's group table *is* its configuration record history; `fn-cfg-generation` identifies it exactly, and the id had to be hand-bumped |
 | `*fn-store-capacity*` | `host/store-host.lisp` | `fn-cfg-capacity`, via `fn-store-capacity (store)` |
 | `*fn-store-max-text*` | `host/store-host.lisp` | `(fn-cfg-limit v :max-text)`, ceiling `*fn-frame-max-text*` |
-| `*fn-store-max-payload*` | `host/store-host.lisp` | deleted 2026-09-24: the persisted profile's payload field, `fn-sbud-payload-bound` (`books/store-budget-naming.lisp`), ceiling `*fn-record-max-payload*`; `fn-store-post-boundary` takes the profile as an argument. The payload bound is a profile field, fixed at init, not a served configuration limit |
+| `*fn-store-max-payload*` | `host/store-host.lisp` | deleted 2026-09-24: the persisted profile's payload field, `fn-sbud-payload-bound` (`books/store-budget-naming.lisp`), ceiling `*fn-record-max-payload*`; `fn-sbud-post-boundary` takes the profile as an argument. The payload bound is a profile field, fixed at init, not a served configuration limit |
 | `*fn-bpi-host-destination*` | `host/bp-ingress-host.lisp` | `(fn-cfg-policy v :bp-destination)` |
 | `*fn-bpi-host-group-map*` | `host/bp-ingress-host.lisp` | `fn-cfg-bp-group-map`, derived from the live group table — the hand-synchronised octet/name pairs disappear |
 | `*fn-bpi-host-policy-id*`, `*fn-bpi-host-terms-id*`, `*fn-bpi-host-issuer-eid*` | `host/bp-ingress-host.lisp` | `(fn-cfg-policy v :acceptance)`, `:terms`, `:issuer-eid` |

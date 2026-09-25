@@ -136,7 +136,7 @@ class StoreCorruptionTests(unittest.TestCase):
              "config checksum mismatch"),
             ("config-profile", "config", lambda path: path.write_bytes(
                 run_store.canonical_json(run_store.config_with_checksum(
-                    dict(run_store.DEFAULT_CONFIG, capacity=17))) + b"\n"),
+                    dict(run_store.profile_config(), capacity=17))) + b"\n"),
              "unsupported store configuration"),
             ("frontier-behind-history", "frontier", lambda path: path.write_bytes(
                 run_store.canonical_json(Store(path.parent, writable=True)._frontier_with_checksum(1)) + b"\n"),
