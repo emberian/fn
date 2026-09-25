@@ -118,11 +118,21 @@
 ;; admissibility is `fn-cfg-delta-reason' (books/config.lisp).  A reserved
 ;; namespace (RFC 5536 section 3.1.4, the first component of the pattern) is
 ;; refused here by name.
+(defun fn-native-admin-arg (n xs)
+  (declare (xargs :guard t :measure (nfix n)))
+  (if (consp xs)
+      (if (zp (nfix n)) (car xs) (fn-native-admin-arg (1- (nfix n)) (cdr xs)))
+    nil))
+
 (defun fn-native-admin-control-plan (words argv)
   (declare (xargs :guard t))
-  (let ((op (cadr words)) (principal (caddr words))
-        (verb (cadddr words)) (ns (car (cddddr words))))
-    (cond ((not (and (equal (len words) 5)
+  (let ((op (fn-native-admin-arg 1 words))
+        (principal (fn-native-admin-arg 2 words))
+        (verb (fn-native-admin-arg 3 words))
+        (ns (fn-native-admin-arg 4 words)))
+    (cond ((and (equal (len words) 2) (equal op "list"))
+           (fn-native-admin-result :accepted nil :list-control nil 0 nil nil))
+          ((not (and (equal (len words) 5)
                      (member-equal op '("grant" "revoke"))))
            (fn-native-admin-result :refused :syntax nil nil nil nil nil))
           ((fn-native-admin-group-name-reservedp ns)
@@ -136,7 +146,8 @@
           (t (fn-native-admin-result
               :accepted nil
               (if (equal op "grant") :grant-control :revoke-control)
-              (car (cddddr argv)) 0 (caddr argv) (cadddr argv))))))
+              (fn-native-admin-arg 4 argv) 0 (fn-native-admin-arg 2 argv)
+              (fn-native-admin-arg 3 argv))))))
 
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
@@ -348,7 +359,31 @@ serialized reconfiguration.  The host asks this question rather than deciding
 for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
-       (equal (fn-native-admin-result-kind result) :list-peers)))
+       (member-equal (fn-native-admin-result-kind result)
+                     '(:list-peers :list-control))
+       t))
+
+;; `control list': one line per grant row of the replayed configuration,
+;; "grant PRINCIPAL VERB NAMESPACE", in row order.
+(defun fn-native-admin-control-report (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (append (fn-record-string-octets "grant ")
+              (fn-record-string-octets (fn-cfg-row-b (car rows)))
+              (list 32)
+              (fn-record-string-octets (fn-cfg-row-c (car rows)))
+              (list 32)
+              (fn-record-string-octets (fn-cfg-row-a (car rows)))
+              (list 10)
+              (fn-native-admin-control-report (cdr rows)))
+    nil))
+
+;; The report a query plan asks for, over a replayed configuration value.
+(defun fn-native-admin-query-report (plan value)
+  (declare (xargs :guard t))
+  (if (equal (fn-native-admin-result-kind plan) :list-control)
+      (fn-native-admin-control-report (fn-cfg-authorities value))
+    (fn-native-admin-peer-report (fn-cfg-peers value))))
 
 (encapsulate ()
 (local (in-theory (disable fn-bp-eid-shapep)))

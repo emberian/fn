@@ -93,7 +93,7 @@ class NativeOperatorVerbCompositionTests(unittest.TestCase):
         execute = self.admin_host.index("(defun fnn-admin-execute (root plan)", query)
         body = self.admin_host[query:execute]
         self.assertIn("(fnn-open-live-store root nil)", body)
-        self.assertIn("'fn-native-admin-host-peer-report", body)
+        self.assertIn("'fn-native-admin-host-query-report plan", body)
         for forbidden in ("fnn-admin-publish", "fnn-admin-reconfigure", "fnn-control-admin"):
             self.assertNotIn(forbidden, body)
 
