@@ -333,7 +333,7 @@ def judge_control(row) -> list:
     elif name.startswith("dev-size-") and not row.get("within_bound"):
         # D27: a POST past the operator's profile bound is refused at the wire
         # with the 441 that names the size, and nothing is stored.
-        if reply != OVERSIZE_441:
+        if (reply or "").rstrip("\r\n") != OVERSIZE_441:
             failures.append("oversize reply {!r} != {!r}".format(reply, OVERSIZE_441))
         if _present(row):
             failures.append("oversize article is present")
