@@ -733,6 +733,190 @@
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
+; The file carries a count, not the record list (checkpoint-cost, PKT-141)
+;
+; The checkpoint value holds the record list and the event index, and the
+; event index maps each sequence below S to its record (fn-cei-build-aux,
+; fn-cei-get-of-build-is-committed-event).  The file therefore writes S in
+; the record slot when the index yields exactly the record list
+; (`fn-sco-freeze'); the decoder reads the records back out of the index
+; (`fn-sco-thaw').  Otherwise, for example past the index's u32 keys, the
+; list stays in the file: nothing is capped.  `fn-sco-thaw-of-freeze' is the
+; round trip, for every checkpoint value.
+
+; The records at sequences 0 .. N-1 of INDEX, in order, onto ACC.
+(defun fn-sco-index-records (index n acc)
+  (declare (xargs :guard (natp n)))
+  (if (zp n)
+      acc
+    (fn-sco-index-records index (- n 1)
+                          (cons (fn-cei-get (- n 1) index) acc))))
+
+(defun fn-sco-frozenp (f)
+  (declare (xargs :guard t))
+  (and (true-listp f)
+       (equal (len f) 7)
+       (eq (car f) :fn-store-checkpoint)
+       (natp (fn-sco-at 1 f))))
+
+(defun fn-sco-freeze (c)
+  (declare (xargs :guard t))
+  (let ((records (fn-sco-records c)))
+    (if (and (fn-sco-shapep c)
+             (equal (fn-sco-index-records (fn-sco-event-index c) (len records) nil)
+                    records))
+        (fn-sco-make (len records) (fn-sco-cpr c) (fn-sco-identity c)
+                     (fn-sco-consumer c) (fn-sco-topic c) (fn-sco-event-index c))
+      c)))
+
+(defun fn-sco-thaw (f)
+  (declare (xargs :guard t))
+  (if (fn-sco-frozenp f)
+      (fn-sco-make (fn-sco-index-records (fn-sco-event-index f) (fn-sco-at 1 f) nil)
+                   (fn-sco-cpr f) (fn-sco-identity f) (fn-sco-consumer f)
+                   (fn-sco-topic f) (fn-sco-event-index f))
+    f))
+
+(local
+ (defthm fn-sco-len-7-shape
+   (implies (and (true-listp c) (equal (len c) 7))
+            (equal (list (nth 0 c) (nth 1 c) (nth 2 c) (nth 3 c)
+                         (nth 4 c) (nth 5 c) (nth 6 c))
+                   c))
+   :hints (("Goal" :expand ((len c) (len (cdr c)) (len (cddr c)) (len (cdddr c))
+                            (len (cddddr c)) (len (cdr (cddddr c)))
+                            (len (cddr (cddddr c))) (len (cdddr (cddddr c))))))))
+
+; The round trip: thawing the frozen value gives the value back.
+(defthm fn-sco-thaw-of-freeze
+  (implies (fn-sco-shapep c)
+           (equal (fn-sco-thaw (fn-sco-freeze c)) c))
+  :hints (("Goal" :use fn-sco-len-7-shape
+           :in-theory (e/d (fn-sco-make fn-sco-records fn-sco-cpr fn-sco-identity
+                            fn-sco-consumer fn-sco-topic fn-sco-event-index)
+                           (fn-sco-index-records fn-sco-len-7-shape)))))
+
+(local
+(defthm fn-sco-take-snoc
+  (implies (and (natp n) (< n (len x)))
+           (equal (append (take n x) (cons (nth n x) acc))
+                  (append (take (+ 1 n) x) acc)))
+  :hints (("Goal" :induct (nth n x) :in-theory (enable take nth)))))
+
+(local
+(defthm fn-sco-index-records-of-build
+   (implies (and (true-listp events) (natp n) (<= n (len events))
+                 (<= (len events) (1+ *fn-cbor-max-uint*)))
+            (equal (fn-sco-index-records (fn-cei-build-aux events 0 nil) n acc)
+                   (append (take n events) acc)))
+   :hints (("Goal" :induct (fn-sco-index-records (fn-cei-build-aux events 0 nil) n acc)
+            :in-theory (e/d (fn-cei-build fn-cp-uintp) (fn-cei-get fn-cei-build-aux)))
+           ("Subgoal *1/2" :use ((:instance fn-cei-get-of-build-is-committed-event
+                                            (sequence (- n 1)))
+                                 (:instance fn-sco-take-snoc (n (- n 1)) (x events)))
+            :in-theory (e/d (fn-cei-build fn-cp-uintp)
+                            (fn-cei-get fn-cei-build-aux take fn-sco-take-snoc
+                             fn-cei-get-of-build-is-committed-event))))))
+
+; What the file saves: the capture of any history the event index keys
+; (sequences below 2^32) is written with its count, not its record list.
+(defthm fn-sco-freeze-of-capture-carries-the-count
+  (implies (<= (len records) (1+ *fn-cbor-max-uint*))
+           (equal (fn-sco-at 1 (fn-sco-freeze (fn-sco-capture configs records)))
+                  (len records)))
+  :hints (("Goal" :in-theory (e/d (fn-sco-capture fn-sco-make fn-sco-records
+                                   fn-sco-event-index fn-sco-shapep)
+                                  (fn-sco-cpr-prefix fn-replay-identity-loop
+                                   fn-cpe-projection-replay fn-th-prefix-loop
+                                   fn-cei-build-aux fn-sco-index-records)))))
+
+; -----------------------------------------------------------------------------
+; The Store open, once (checkpoint-cost, PKT-141 finding 3)
+;
+; Both host opens extend a checkpoint E over the records after it
+; (`fn-sco-extend': the decoded checkpoint over the suffix, or the empty
+; capture over the whole history) and then call `fn-sco-store-open' on E:
+; the configuration fold's result and the opened Store.  E, the result and
+; the open stay in ACL2's global for the owner, which installs from them
+; without replaying again (books/owner-checkpoint-open.lisp).
+
+; The body of fn-sco-finalize with the configuration fold's result passed
+; in, so the open computes it once.
+(defun fn-sco-finalize-from (replayed c configs frontier)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((events (fn-sco-records c)))
+    (if (or (null configs)
+            (not (fn-sn-observed-historyp frontier events)))
+        (fn-sn-open-error :history)
+      (if (not (equal (fn-replay-result-kind replayed) :ok))
+          (fn-sn-open-error :replay)
+        (let* ((cn (fn-replay-result-node replayed))
+               (node (fn-cnode-node cn)))
+          (if (not (and (fn-cnode-statep cn)
+                        (fn-replay-advance-okp node frontier)))
+              (fn-sn-open-error :frontier)
+            (let* ((advanced (fn-replay-advance-txid node frontier))
+                   (config (fn-cnode-config cn))
+                   (identity (fn-sco-identity c))
+                   (consumer (fn-sco-consumer c))
+                   (topic (fn-sco-topic c))
+                   (files (fn-sf-make :recovering frontier nil events
+                                      nil nil nil 0))
+                   (seed (fn-sn-observed-seed
+                          (fn-cnode-domain-of config)
+                          (fn-cfg-capacity (fn-cfg-value config))
+                          frontier events))
+                   (opened (fn-sn-with-event-index
+                            (fn-sn-with-topic
+                             (fn-sn-with-consumer
+                              (fn-cpo-install
+                               (fn-sn-update-replayed
+                                seed files advanced
+                                (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                                identity)
+                               (fn-cnode-make advanced config) configs)
+                              (fn-cp-nth 1 consumer))
+                             topic)
+                            (fn-sco-event-index c))))
+              (if (and (equal (fn-stxk-context-kind identity) :ok)
+                       (consp consumer) (eq (car consumer) :ok)
+                       (eq (fn-th-at 0 topic) :ok)
+                       (fn-sn-statep opened))
+                  (fn-sn-open-ok opened)
+                (fn-sn-open-error :identity)))))))))
+
+(defthm fn-sco-finalize-from-unfolds
+  (equal (fn-sco-finalize c configs frontier)
+         (fn-sco-finalize-from (fn-sco-cpr-finish (fn-sco-cpr c) configs)
+                               c configs frontier))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-sco-finalize fn-sco-finalize-from)))))
+
+; The Store open from the extended checkpoint E: (REPLAYED OPENED).
+(defun fn-sco-store-open (e configs frontier)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (list (fn-sco-cpr-finish (fn-sco-cpr e) configs)
+                    (fn-sco-finalize e configs frontier))
+       :exec (let ((replayed (fn-sco-cpr-finish (fn-sco-cpr e) configs)))
+               (list replayed (fn-sco-finalize-from replayed e configs frontier)))))
+
+; An :ok open is a Store: the host tests the kind, which fn-sco-finalize set
+; only after its own fn-sn-statep test, instead of running fn-sn-open-okp's
+; whole-state recognizer a second time.
+(defthm fn-sco-finalize-okp-is-kind-ok
+  (equal (fn-sn-open-okp (fn-sco-finalize c configs frontier))
+         (equal (fn-sn-open-kind (fn-sco-finalize c configs frontier)) :ok))
+  :hints (("Goal" :in-theory (e/d (fn-sco-finalize fn-sn-open-okp fn-sn-open-ok
+                                   fn-sn-open-error fn-sn-open-kind fn-sn-open-state
+                                   fn-sn-open-shapep)
+                                  (fn-sn-statep fn-sco-cpr-finish fn-cnode-statep
+                                   fn-replay-advance-okp fn-sn-observed-historyp
+                                   fn-sn-with-event-index fn-sn-with-topic
+                                   fn-sn-with-consumer fn-cpo-install
+                                   fn-sn-update-replayed fn-sn-observed-seed
+                                   fn-stx-index-of-store fn-replay-advance-txid)))))
+
+; -----------------------------------------------------------------------------
 ; Guards: the host runs these compiled.
 
 (local
@@ -767,3 +951,12 @@
                             fn-sco-cpr-finish fn-sco-cpr-prefix)))))
 (verify-guards fn-sco-open)
 (verify-guards fn-sco-replay-result)
+(verify-guards fn-sco-finalize-from
+  :hints (("Goal"
+           :in-theory (e/d (fn-cnode-statep)
+                           (fn-cpr-replay fn-cpr-loop fn-sn-statep
+                            fn-sco-cpr-finish fn-sco-cpr-prefix)))))
+(verify-guards fn-sco-store-open
+  :hints (("Goal" :use ((:instance fn-sco-finalize-from-unfolds (c e)))
+           :in-theory (disable fn-sco-finalize fn-sco-finalize-from
+                               fn-sco-cpr-finish fn-sco-finalize-from-unfolds))))

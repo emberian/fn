@@ -73,3 +73,22 @@
  (defthm stxe-keyring-profile-identity-without-off-v2
    (equal (fn-stxe-keyring-profile profile) profile)
    :hints (("Goal" :in-theory (enable fn-stxe-keyring-profile)))))
+
+; PRF-098: the fifth token.  Code 5 round-trips through the codec; the token
+; codec is a bijection on the five tokens with code 0 decoding to none.
+(defconst *stxe-revoked-evidence*
+  (fn-stxe-make 5 9 13 "<revoked@example.invalid>" :revoked
+                (make-list 32 :initial-element 7) 5 *fn-hsig-profile-tag*))
+(assert-event (fn-stxe-p *stxe-revoked-evidence*))
+(assert-event (equal (fn-stxe-token-code :revoked) 5))
+(assert-event
+ (equal (fn-stmt-value
+         (fn-stxe-decode-exact (fn-stxe-encode *stxe-revoked-evidence*)))
+        *stxe-revoked-evidence*))
+(assert-event (null (fn-stxe-code-token 6)))
+; Tooth (the token is one of the five): a sixth keyword is no record.
+(must-fail
+ (assert-event
+  (fn-stxe-p (fn-stxe-make 5 9 13 "<revoked@example.invalid>" :withdrawn
+                           (make-list 32 :initial-element 7) 5
+                           *fn-hsig-profile-tag*))))

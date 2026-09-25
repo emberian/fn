@@ -1439,7 +1439,8 @@
         "PRF-014",
         "PRF-092",
         "PRF-087",
-        "PRF-095"
+        "PRF-095",
+        "PRF-106"
       ],
       "verification": [
         "proof",
@@ -1530,7 +1531,8 @@
         "PRF-049",
         "PRF-051",
         "PRF-092",
-        "PRF-087"
+        "PRF-087",
+        "PRF-106"
       ],
       "verification": [
         "proof",
@@ -1965,7 +1967,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-083"
+        "PRF-083",
+        "PRF-104"
       ],
       "verification": [
         "proof",
@@ -2164,6 +2167,79 @@
         "planning/evidence/reader-surface-2026-09-25.md"
       ],
       "implementation_note": "RFC 2980 section 2.9 is the rule: additional pattern arguments are joined by one SP into one pattern (as INN does); the comma is the alternative (RFC 3977 section 4.2); matching is case-sensitive (RFC 3977 section 4.2). The label is a private-extension label (RFC 3977 section 3.3.3). The web reader passes the reader's wildmat verbatim."
+    },
+    {
+      "id": "STO-013",
+      "title": "A record's sequence, transaction ID, generation, charge and stamp are u64; a record that needs a field above 2^32 - 1 carries schema 2, and a store written under schemas 0 and 1 opens to the same records with the same bytes",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-086"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/cbor.lisp",
+        "books/cbor-invariants.lisp",
+        "books/records-shape.lisp",
+        "books/records.lisp",
+        "books/records-schema-v1.lisp",
+        "tests/acl2/records-schema-v1-teeth-tests.lisp",
+        "books/byte-store-profile-v1.lisp",
+        "tests/acl2/byte-store-profile-v1-tests.lisp",
+        "planning/evidence/bounds-p6-2026-09-25.md"
+      ],
+      "implementation_note": "The CBOR profile gains an additive wide uint (RFC 8949 eight-octet argument, canonical only above 2^32 - 1); every narrow encoding and every narrow acceptance is unchanged (fn-cbor-encode-uint-wide-is-narrow, fn-cbor-decode-prechecked-wide-extends-narrow). *fn-cbor-max-uint* keeps 2^32 - 1: its other uses are u32 fields. The record decoder refuses a header whose schema octet is not the record's (fn-record-schema-octet). Open: the frontier file and the profile's T field still cap transaction IDs at 2^32 - 1 (byte-store-frame, shared with packet P5); segmented articles (design 2.4 item 3) are not implemented. A profile's R is checked against the record ceiling at the widths the runtime produces (u32 heads, 1 083 octets), so a format-8 profile saved before P6 is admitted unchanged (fn-bs-profile-v1-valid-stays-valid); a schema-2 record is at most 28 octets past it and is refused at the publish gate."
+    },
+    {
+      "id": "STO-016",
+      "title": "The checkpoint open costs less than the full replay it replaces, and a publication does not hold served commands",
+      "specification": "specs/storage.md#checkpointing-the-store-checkpoint-that-open-reads-p3-2026-09-25",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-104"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-checkpoint-open.lisp",
+        "books/owner-checkpoint-open.lisp",
+        "books/acceptance-alloc.lisp",
+        "tests/acl2/linear-recognizers-tests.lisp",
+        "tests/acl2/owner-checkpoint-open-tests.lisp",
+        "planning/evidence/checkpoint-cost-2026-09-25.md"
+      ],
+      "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list, and fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic (planning/evidence/checkpoint-cost-2026-09-25.md)."
+    },
+    {
+      "id": "NNT-014",
+      "title": "Key succession and revocation are owner-executed signed statements; a revoked principal is never verified again and its later transit is :revoked evidence",
+      "specification": "specs/peering.md#9-key-statements-succession-and-revocation-prf-098",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-098"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/key-statements.lisp",
+        "books/peer-authored-accept.lisp",
+        "books/replay.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "tests/acl2/peer-authored-accept-tests.lisp",
+        "planning/evidence/peer-keys-2026-09-25.md",
+        "tests/test_native_key_statements.py"
+      ],
+      "implementation_note": "A stronger fn guarantee and local policy (no RFC defines key statements). ACL2 decides: fn-ks-plan in C2's fn-ctl-authorize shape (verb keys, grantable beside cancel) with the PoP observations checked in ACL2; the owner executes after every durable kind-4 commit (carried and revoked ones decline); the revoked arm of fn-pa-current-plan on NNTP transit only. The kind-4-then-kind-3 crash cut is a model crash point (fn-ks-cut, fn-ks-recover): the open executes the newest record when it is a statement. A Store refusal of the key change leaves the article accepted and is reported as detail key-change-refused."
     }
   ]
 }

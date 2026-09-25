@@ -638,7 +638,7 @@
 
 ; KEYSTONE (C2).  A grant is admissible exactly when its namespace is a
 ; pattern, its principal is 64 lowercase hex characters and its verb is
-; grantable ("cancel" only: C4 is deferred by D29).  Subject:
+; grantable ("cancel" and "keys": C4 is deferred by D29).  Subject:
 ; `fn-cfg-delta-reason', which `fn-ocfg-step' (:reconfigure) and replay
 ; (`fn-cfg-record-acceptablep') both call.
 (defthm fn-cfg-grant-control-admissible-iff

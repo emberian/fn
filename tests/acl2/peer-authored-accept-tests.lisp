@@ -20,24 +20,24 @@
 (defconst *pat-relayed*
   (append (tha-line "Path: gateway.example!fn") *tha-received*))
 (assert-event (equal (fn-pa-carrier-kind *tha-root-source*) :absent))
-(assert-event (equal (fn-pa-current-plan *tha-root-source* *pat-snapshots* nil)
+(assert-event (equal (fn-pa-current-plan *tha-root-source* *pat-snapshots* nil nil)
                      :absent))
 (assert-event (equal (fn-pa-carrier-kind *pat-relayed*) :present))
 (assert-event
- (equal (fn-pa-current-plan *pat-relayed* *pat-snapshots* nil)
+ (equal (fn-pa-current-plan *pat-relayed* *pat-snapshots* nil nil)
         (list :ok *tha-root-source* *tha-principal* *tha-keys*
               *tha-signatures* *tha-snapshot* 4)))
 
 ; No B-local enrollment, wrong ordered keys, and a later B-local revocation
 ; are three different reasons that valid portable bytes cannot be admitted.
-(assert-event (equal (fn-pa-current-plan *pat-relayed* nil nil)
+(assert-event (equal (fn-pa-current-plan *pat-relayed* nil nil nil)
                      (list :refused :local-enrollment)))
 (assert-event
  (equal (fn-pa-current-plan
          *pat-relayed*
          (list (fn-hsig-keyring-event 1 2 3 4 *tha-principal*
                                       *tha-other-keys*))
-         *pat-carries*)
+         *pat-carries* nil)
         (list :refused :local-enrollment)))
 (make-event `(defconst *pat-revoked*
                ',(fn-hl-revoke-event 2 3 4 5 *tha-principal*
@@ -46,18 +46,18 @@
 (assert-event
  (equal (fn-pa-current-plan *pat-relayed*
                             (cons *pat-revoked* *pat-snapshots*)
-                            *pat-carries*)
+                            *pat-carries* nil)
         (list :refused :local-enrollment)))
 
 ; A present but malformed FN-Authorship cannot downgrade to the legacy path.
 (defconst *pat-malformed*
   (append (tha-line "FN-Authorship: !!!") *tha-root-source*))
 (assert-event (equal (fn-pa-carrier-kind *pat-malformed*) :present))
-(assert-event (equal (fn-pa-current-plan *pat-malformed* *pat-snapshots* nil)
+(assert-event (equal (fn-pa-current-plan *pat-malformed* *pat-snapshots* nil nil)
                      (list :refused :carrier)))
 (must-fail
  (assert-event
-  (equal (fn-pa-current-plan *pat-malformed* *pat-snapshots* nil) :absent)))
+  (equal (fn-pa-current-plan *pat-malformed* *pat-snapshots* nil nil) :absent)))
 
 (make-event `(defconst *pat-subject-id*
                ',(fn-id-subject-of-payload *pat-relayed*)))
@@ -103,35 +103,35 @@
 ; D23, the carried arm.  Witness: a node with no snapshot of the author whose
 ; delivering boundary lists it carries the article.
 (assert-event
- (equal (fn-pa-current-plan *pat-relayed* nil *pat-carries*)
+ (equal (fn-pa-current-plan *pat-relayed* nil *pat-carries* nil)
         (list :carried *tha-root-source* *tha-principal* *tha-keys*
               *tha-signatures*)))
 ; Tooth (the list): the same node without the list refuses, as D02 did.
 (must-fail
  (assert-event
-  (equal (car (fn-pa-current-plan *pat-relayed* nil nil)) :carried)))
+  (equal (car (fn-pa-current-plan *pat-relayed* nil nil nil)) :carried)))
 ; Tooth (the list names this principal): a list naming another principal.
 (defconst *pat-other-carries*
   (list (fn-record-string-octets
          "0808080808080808080808080808080808080808080808080808080808080808")))
-(assert-event (equal (fn-pa-current-plan *pat-relayed* nil *pat-other-carries*)
+(assert-event (equal (fn-pa-current-plan *pat-relayed* nil *pat-other-carries* nil)
                      (list :refused :local-enrollment)))
 (must-fail
  (assert-event
-  (equal (car (fn-pa-current-plan *pat-relayed* nil *pat-other-carries*))
+  (equal (car (fn-pa-current-plan *pat-relayed* nil *pat-other-carries* nil))
          :carried)))
 ; Tooth (no local snapshot): an enrolled receiver verifies as today even
 ; when the boundary lists the author, and a revoked or re-keyed principal is
 ; refused (the two refusals above pass *pat-carries*).
 (assert-event
- (equal (fn-pa-current-plan *pat-relayed* *pat-snapshots* *pat-carries*)
-        (fn-pa-current-plan *pat-relayed* *pat-snapshots* nil)))
+ (equal (fn-pa-current-plan *pat-relayed* *pat-snapshots* *pat-carries* nil)
+        (fn-pa-current-plan *pat-relayed* *pat-snapshots* nil nil)))
 (must-fail
  (assert-event
-  (equal (car (fn-pa-current-plan *pat-relayed* *pat-snapshots* *pat-carries*))
+  (equal (car (fn-pa-current-plan *pat-relayed* *pat-snapshots* *pat-carries* nil))
          :carried)))
 ; A malformed carrier is refused whatever the list.
-(assert-event (equal (fn-pa-current-plan *pat-malformed* nil *pat-carries*)
+(assert-event (equal (fn-pa-current-plan *pat-malformed* nil *pat-carries* nil)
                      (list :refused :carrier)))
 
 (make-event `(defconst *pat-carried-event*
@@ -191,3 +191,132 @@
 (assert-event (not (fn-hsig-article-event-carried-bindsp *pat-forged-verified*)))
 (assert-event (not (fn-hsig-article-event-snapshot-bindsp
                     *pat-forged-verified* *tha-snapshot*)))
+
+; ---------------------------------------------------------------------------
+; PRF-098, the revoked arm.  *pat-revoked* is the principal's tombstone at
+; generation 5 over its enrollment at 4 (*pat-snapshots*).
+(defconst *pat-after-revocation* (cons *pat-revoked* *pat-snapshots*))
+; Witness: on NNTP transit the once-enrolled keys give :revoked at 5.
+(assert-event
+ (equal (fn-pa-current-plan *pat-relayed* *pat-after-revocation* nil t)
+        (list :revoked *tha-root-source* *tha-principal* *tha-keys*
+              *tha-signatures* *pat-revoked* 5)))
+; Tooth (transit): every other path refuses :local-enrollment.
+(must-fail
+ (assert-event
+  (equal (car (fn-pa-current-plan *pat-relayed* *pat-after-revocation* nil nil))
+         :revoked)))
+; Tooth (the tombstone): before the revocation the same carrier is :ok.
+(must-fail
+ (assert-event
+  (equal (car (fn-pa-current-plan *pat-relayed* *pat-snapshots* nil t))
+         :revoked)))
+; Tooth (keys once enrolled): the principal enrolled under OTHER keys and
+; then revoked; the carrier's keys were never enrolled here, so it is refused.
+(make-event `(defconst *pat-other-enrolled*
+               ',(fn-hsig-keyring-event 1 2 3 4 *tha-principal* *tha-other-keys*)))
+(make-event `(defconst *pat-other-revoked*
+               ',(fn-hl-revoke-event 2 3 4 5 *tha-principal*
+                                     (list *pat-other-enrolled*))))
+(assert-event (fn-stxk-p *pat-other-revoked*))
+(assert-event
+ (equal (fn-pa-current-plan *pat-relayed*
+                            (list *pat-other-revoked* *pat-other-enrolled*) nil t)
+        (list :refused :local-enrollment)))
+(must-fail
+ (assert-event
+  (equal (car (fn-pa-current-plan *pat-relayed*
+                                  (list *pat-other-revoked* *pat-other-enrolled*)
+                                  nil t))
+         :revoked)))
+
+; fn-pa-no-ok-plan-for-a-revoked-principal.  Tooth (the principal is the
+; carrier's): another principal (8s) enrolled and revoked leaves this
+; carrier's plan :ok.
+(make-event `(defconst *pat-q-enrolled*
+               ',(fn-hl-enroll-event 3 4 5 5 *tha-other-principal* *tha-other-keys*
+                                     *pat-snapshots*)))
+(make-event `(defconst *pat-q-revoked*
+               ',(fn-hl-revoke-event 4 5 6 6 *tha-other-principal*
+                                     (cons *pat-q-enrolled* *pat-snapshots*))))
+(defconst *pat-q-history* (list* *pat-q-revoked* *pat-q-enrolled* *pat-snapshots*))
+(assert-event (fn-stxk-p *pat-q-revoked*))
+(assert-event
+ (equal (fn-stxk-profile (fn-hl-current-for-principal *tha-other-principal*
+                                                      *pat-q-history*))
+        *fn-hl-revoked-profile*))
+(must-fail
+ (assert-event
+  (not (equal (car (fn-pa-current-plan *pat-relayed* *pat-q-history* nil t))
+              :ok))))
+
+; The revoked event: both observations verified give the composite replay's
+; revoked branch admits; either refused gives nothing.
+(make-event `(defconst *pat-revoked-event*
+               ',(fn-pa-revoked-event
+                  2 3 4 "<topic-binding@example.invalid>" *pat-relayed*
+                  '("fn.test") *pat-obligation* *pat-subject*
+                  "gateway-peer-evidence"
+                  (fn-charge-for-payload (len *pat-relayed*))
+                  *pat-after-revocation* *tha-ml-key* :verified :verified
+                  (fn-clock-observation 1 841000000000 0 t))))
+(assert-event (fn-stxa-p *pat-revoked-event*))
+(assert-event (fn-hsig-article-event-revoked-bindsp *pat-revoked-event*))
+(assert-event (equal (fn-stxa-keyring-generation *pat-revoked-event*) 5))
+(assert-event
+ (equal (fn-stxe-token (fn-stmt-value (fn-stxe-decode-exact
+                                        (fn-stxa-verdict-event *pat-revoked-event*))))
+        :revoked))
+(assert-event
+ (fn-hsig-revoked-tombstone-bindsp
+  (fn-stmt-value (fn-stxe-decode-exact (fn-stxa-verdict-event *pat-revoked-event*)))
+  (fn-hsig-article-event-carrier-keys *pat-revoked-event*)
+  *pat-after-revocation*))
+; Replay's revoked binding needs a tombstone of exactly this principal at
+; that generation: at the snapshots without the tombstone it fails.
+(must-fail
+ (assert-event
+  (fn-hsig-revoked-tombstone-bindsp
+   (fn-stmt-value (fn-stxe-decode-exact (fn-stxa-verdict-event *pat-revoked-event*)))
+   (fn-hsig-article-event-carrier-keys *pat-revoked-event*)
+   *pat-snapshots*)))
+; ...and at another principal's tombstone at 5 it fails too.
+(make-event `(defconst *pat-q-at-5*
+               ',(fn-hl-revoke-event 2 3 4 5 *tha-other-principal*
+                                     (list (fn-hsig-keyring-event
+                                            1 2 3 4 *tha-other-principal*
+                                            *tha-keys*)))))
+(must-fail
+ (assert-event
+  (fn-hsig-revoked-tombstone-bindsp
+   (fn-stmt-value (fn-stxe-decode-exact (fn-stxa-verdict-event *pat-revoked-event*)))
+   (fn-hsig-article-event-carrier-keys *pat-revoked-event*)
+   (list *pat-q-at-5* (fn-hsig-keyring-event 1 2 3 4 *tha-other-principal*
+                                             *tha-keys*)))))
+; Tooth (both observations): either refused gives no composite.
+(must-fail
+ (assert-event
+  (fn-pa-revoked-event
+   2 3 4 "<topic-binding@example.invalid>" *pat-relayed*
+   '("fn.test") *pat-obligation* *pat-subject* "gateway-peer-evidence"
+   (fn-charge-for-payload (len *pat-relayed*))
+   *pat-after-revocation* *tha-ml-key* :refused :verified
+   (fn-clock-observation 1 841000000000 0 t))))
+(must-fail
+ (assert-event
+  (fn-pa-revoked-event
+   2 3 4 "<topic-binding@example.invalid>" *pat-relayed*
+   '("fn.test") *pat-obligation* *pat-subject* "gateway-peer-evidence"
+   (fn-charge-for-payload (len *pat-relayed*))
+   *pat-after-revocation* *tha-ml-key* :verified :refused
+   (fn-clock-observation 1 841000000000 0 t))))
+; The reader never sees `verified' for it: the item begins `revoked'.
+(assert-event
+ (equal (take 7 (fn-stx-verified-item
+                 (fn-stx-make-verdict :revoked *tha-principal* 5)))
+        (fn-record-string-octets "revoked")))
+(must-fail
+ (assert-event
+  (equal (car (fn-stx-verified-item
+               (fn-stx-make-verdict :revoked *tha-principal* 5)))
+         118)))
