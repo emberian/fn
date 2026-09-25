@@ -4,24 +4,38 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
-    "books/byte-store-scan": {
-      "seconds": 11.038,
-      "run": "certify-20260925T060646Z-2636887",
-      "host": "hbox",
+    "books/bp-node-forward-lower-guards": {
+      "seconds": 11.434,
+      "run": "certify-20260925T082521Z-2581698",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/bp-report-guards": {
+      "seconds": 10.132,
+      "run": "certify-20260925T082521Z-2581698",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/config-owner-live": {
+      "seconds": 10.283,
+      "run": "certify-20260925T082521Z-2581698",
+      "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/owner-invariants": {
-      "seconds": 10.182,
-      "run": "certify-20260925T054927Z-1178625",
+      "seconds": 12.245,
+      "run": "certify-20260925T082521Z-2581698",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/store-node-invariants": {
-      "seconds": 13.648,
-      "run": "certify-20260925T060646Z-2636887",
-      "host": "hbox",
+      "seconds": 11.704,
+      "run": "certify-20260925T073426Z-2114563",
+      "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     }
