@@ -623,6 +623,82 @@
 (in-theory (disable fn-ccar-ocfg-complete))
 
 ; -----------------------------------------------------------------------------
+; The prepare of an identity event (a keyring snapshot or a signed POST's
+; composite) host/owner-host.lisp fn-owner-prepare-identity installs: the
+; configured owner's (:store (:prepare-identity e)), guard-verified.  The
+; host issued it through fn-ocfg-step, fn-own-step and fn-snrt-step, none of
+; them guard-verified, so every prepare evaluated fn-sn-statep over the
+; whole store and ran the executable counterparts.  The body is
+; fn-sn-prepare-identity's with the projection step carried (the event is a
+; Store event once one of the three recognizers holds).  What it still does
+; per prepare: fn-sf-prepare-record's fn-sf-history-recoverablep replays the
+; appended history; the article prepare has the correspondence that omits it
+; (books/store-prepare-correspondence.lisp) and the identity prepare has not.
+
+(defun fn-ccar-sn-prepare-identity (s event)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sn-statep s) :exec t)
+           (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+           (or (fn-stxe-p event) (fn-stxk-p event) (fn-stxa-p event))
+           (eq (car (fn-ccar-cpe-projection-step
+                     (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
+           (or (not (fn-evc-stxap event))
+               (not (equal (fn-record-stamp (fn-replay-composite-record event))
+                           :legacy)))
+           (consp (fn-replay-apply-record (fn-sn-node s) event))
+           (equal (fn-stxk-context-kind
+                   (fn-replay-identity-step (fn-sn-identity-context s) event))
+                  :ok))
+      (let ((files (fn-sf-prepare-record (fn-sn-files s) event
+                                         (fn-sn-groups s) (fn-sn-capacity s))))
+        (if (equal (fn-sf-phase files) :record-staged)
+            (fn-sn-update s files (fn-sn-node s))
+          s))
+    s))
+(local
+ (defthm fn-ccar-identity-event-is-a-store-event
+   (implies (or (fn-stxe-p event) (fn-stxk-p event) (fn-stxa-p event))
+            (and (fn-store-event-p event) (true-listp event)))
+   :hints (("Goal" :in-theory '(fn-store-event-p fn-stxe-p-forward-shape
+                                fn-stxk-p-forward-shape fn-stxa-p-forward-shape)))))
+(defthm fn-ccar-sn-prepare-identity-is-sn-prepare-identity
+  (equal (fn-ccar-sn-prepare-identity s event) (fn-sn-prepare-identity s event))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-ccar-sn-prepare-identity fn-sn-prepare-identity
+                                fn-evc-carried-definitions
+                                fn-ccar-cpe-projection-step-is-cpe-projection-step
+                                fn-ccar-identity-event-is-a-store-event)
+                              (theory 'minimal-theory)))))
+(verify-guards fn-ccar-sn-prepare-identity
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep fn-ccar-identity-event-is-a-store-event)
+                                  (fn-sf-statep fn-node-statep fn-store-event-p
+                                   fn-stxe-p fn-stxk-p fn-stxa-p
+                                   fn-replay-apply-record fn-replay-identity-step
+                                   fn-replay-composite-record fn-sf-prepare-record)))))
+(in-theory (disable fn-ccar-sn-prepare-identity))
+(defun fn-ccar-ocfg-prepare-identity (oc event)
+  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
+  (let ((o (fn-ocfg-owner oc)))
+    (fn-ocfg-with-owner
+     oc
+     (fn-own-refresh
+      (fn-own-make (fn-ccar-sn-prepare-identity (fn-own-store o) event)
+                   (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+                   (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))))))
+(defthm fn-ccar-ocfg-prepare-identity-is-ocfg-step
+  (equal (fn-ccar-ocfg-prepare-identity oc event)
+         (fn-ocfg-step oc (list :store (list :prepare-identity event))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-ccar-ocfg-prepare-identity fn-ocfg-step
+                                fn-ocfg-pass fn-own-step fn-own-store-step
+                                fn-snrt-step
+                                fn-ccar-sn-prepare-identity-is-sn-prepare-identity)
+                              (theory 'ground-zero)))))
+(in-theory (disable fn-ccar-ocfg-prepare-identity))
+
+; -----------------------------------------------------------------------------
 ; The premise is carried, not evaluated.
 
 ; Both owner relations conjoin it: fn-own-relation through fn-snt-relation,

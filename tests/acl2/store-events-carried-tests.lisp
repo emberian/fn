@@ -75,52 +75,52 @@
 (assert-event (not (let ((x *evct-junk-stxa*)) (equal (fn-evc-field-by-shape 0 x) (fn-store-event-sequence x)))))
 (must-fail
  (defthm evct-field-by-shape-is-store-event-sequence-without-hypothesis
-   (equal (fn-evc-field-by-shape 0 x) (fn-store-event-sequence x))))
+   (equal (fn-evc-field-by-shape 0 *evct-junk-stxa*) (fn-store-event-sequence *evct-junk-stxa*))))
 ; fn-evc-field-by-shape-is-store-event-txid without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-stxa*)) (equal (fn-evc-field-by-shape 1 x) (fn-store-event-txid x)))))
 (must-fail
  (defthm evct-field-by-shape-is-store-event-txid-without-hypothesis
-   (equal (fn-evc-field-by-shape 1 x) (fn-store-event-txid x))))
+   (equal (fn-evc-field-by-shape 1 *evct-junk-stxa*) (fn-store-event-txid *evct-junk-stxa*))))
 ; fn-evc-field-by-shape-is-store-event-generation without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-stxa*)) (equal (fn-evc-field-by-shape 2 x) (fn-store-event-generation x)))))
 (must-fail
  (defthm evct-field-by-shape-is-store-event-generation-without-hypothesis
-   (equal (fn-evc-field-by-shape 2 x) (fn-store-event-generation x))))
+   (equal (fn-evc-field-by-shape 2 *evct-junk-stxa*) (fn-store-event-generation *evct-junk-stxa*))))
 ; fn-evc-class-by-shape-is-fn-record-p without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-record*)) (iff (fn-record-p x) (equal (fn-evc-class-by-shape x) :record)))))
 (must-fail
  (defthm evct-class-by-shape-is-fn-record-p-without-hypothesis
-   (iff (fn-record-p x) (equal (fn-evc-class-by-shape x) :record))))
+   (iff (fn-record-p *evct-junk-record*) (equal (fn-evc-class-by-shape *evct-junk-record*) :record))))
 ; fn-evc-class-by-shape-is-fn-store-retention-event-p without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-retention*)) (iff (fn-store-retention-event-p x) (equal (fn-evc-class-by-shape x) :retention)))))
 (must-fail
  (defthm evct-class-by-shape-is-fn-store-retention-event-p-without-hypothesis
-   (iff (fn-store-retention-event-p x) (equal (fn-evc-class-by-shape x) :retention))))
+   (iff (fn-store-retention-event-p *evct-junk-retention*) (equal (fn-evc-class-by-shape *evct-junk-retention*) :retention))))
 ; fn-evc-class-by-shape-is-fn-stxe-p without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-stxe*)) (iff (fn-stxe-p x) (equal (fn-evc-class-by-shape x) :stxe)))))
 (must-fail
  (defthm evct-class-by-shape-is-fn-stxe-p-without-hypothesis
-   (iff (fn-stxe-p x) (equal (fn-evc-class-by-shape x) :stxe))))
+   (iff (fn-stxe-p *evct-junk-stxe*) (equal (fn-evc-class-by-shape *evct-junk-stxe*) :stxe))))
 ; fn-evc-class-by-shape-is-fn-stxk-p without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-stxk*)) (iff (fn-stxk-p x) (equal (fn-evc-class-by-shape x) :stxk)))))
 (must-fail
  (defthm evct-class-by-shape-is-fn-stxk-p-without-hypothesis
-   (iff (fn-stxk-p x) (equal (fn-evc-class-by-shape x) :stxk))))
+   (iff (fn-stxk-p *evct-junk-stxk*) (equal (fn-evc-class-by-shape *evct-junk-stxk*) :stxk))))
 ; fn-evc-class-by-shape-is-fn-stxa-p without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-stxa*)) (iff (fn-stxa-p x) (equal (fn-evc-class-by-shape x) :stxa)))))
 (must-fail
  (defthm evct-class-by-shape-is-fn-stxa-p-without-hypothesis
-   (iff (fn-stxa-p x) (equal (fn-evc-class-by-shape x) :stxa))))
+   (iff (fn-stxa-p *evct-junk-stxa*) (equal (fn-evc-class-by-shape *evct-junk-stxa*) :stxa))))
 ; fn-evc-class-by-shape-is-fn-cpe-eventp without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-consumer*)) (iff (fn-cpe-eventp x) (equal (fn-evc-class-by-shape x) :consumer)))))
 (must-fail
  (defthm evct-class-by-shape-is-fn-cpe-eventp-without-hypothesis
-   (iff (fn-cpe-eventp x) (equal (fn-evc-class-by-shape x) :consumer))))
+   (iff (fn-cpe-eventp *evct-junk-consumer*) (equal (fn-evc-class-by-shape *evct-junk-consumer*) :consumer))))
 ; fn-evc-class-by-shape-is-fn-th-topic-eventp without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-topic*)) (iff (fn-th-topic-eventp x) (equal (fn-evc-class-by-shape x) :topic)))))
 (must-fail
  (defthm evct-class-by-shape-is-fn-th-topic-eventp-without-hypothesis
-   (iff (fn-th-topic-eventp x) (equal (fn-evc-class-by-shape x) :topic))))
+   (iff (fn-th-topic-eventp *evct-junk-topic*) (equal (fn-evc-class-by-shape *evct-junk-topic*) :topic))))
 
 ; -----------------------------------------------------------------------------
 ; The carried commit on the reachable witness.  The owner's completion
@@ -144,3 +144,26 @@
       (eq (symbol-class 'fn-evc-sequence (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-evc-stxap (w state)) :common-lisp-compliant)
       (equal (guard 'fn-evc-sequence nil (w state)) '(fn-store-event-p x))))
+
+; The identity prepare the host installs, on the same trace one step
+; earlier: the owner after the four frontier observations, before the
+; composite is prepared.  The carried prepare is fn-ocfg-step of the event,
+; and it stages the composite (the store moves to :record-staged).
+(make-event
+ `(defconst *evct-reserved*
+    ',(fn-own-run *ospt-taken* (take 4 (ospt-store-events *ospt-event*)))))
+(defconst *evct-reserved-oc* (fn-ocfg-make *evct-reserved* nil nil nil))
+(assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store *evct-reserved*)))
+                     :reserved))
+(assert-event (equal (fn-ccar-ocfg-prepare-identity *evct-reserved-oc* *ospt-event*)
+                     (fn-ocfg-step *evct-reserved-oc*
+                                   (list :store (list :prepare-identity *ospt-event*)))))
+(assert-event (equal (fn-sf-phase
+                      (fn-sn-files
+                       (fn-own-store
+                        (fn-ocfg-owner
+                         (fn-ccar-ocfg-prepare-identity *evct-reserved-oc*
+                                                        *ospt-event*)))))
+                     :record-staged))
+(assert-event (eq (symbol-class 'fn-ccar-ocfg-prepare-identity (w state))
+                  :common-lisp-compliant))
