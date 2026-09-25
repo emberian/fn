@@ -717,6 +717,8 @@
     "books/peer-authored-accept",
     "tests/acl2/peer-authored-accept-tests",
     "tests/acl2/control-tests",
+    "books/control-authority",
+    "tests/acl2/control-authority-tests",
     "books/topic-history-metadata",
     "books/topic-history-metadata-invariants",
     "books/topic-history-authorship",
@@ -792,25 +794,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 804,
-    "books_in_root_closure": 800,
-    "roots": 788,
-    "theorems": 10854,
-    "functions": 7602,
-    "assert_events": 11678,
+    "books": 806,
+    "books_in_root_closure": 802,
+    "roots": 790,
+    "theorems": 10884,
+    "functions": 7659,
+    "assert_events": 11717,
     "must_fails": 1086,
     "encapsulates": 44,
     "guards": {
       "verified": 2141,
       "declared-off": 560,
-      "default-guarded": 3805,
-      "default-unguarded": 1096
+      "default-guarded": 3859,
+      "default-unguarded": 1099
     },
     "suspect_theorems": 94,
     "export_hygiene_warnings": 137,
     "enabled_projection_warnings": 42,
     "teeth_form_warnings": 88,
-    "include_hygiene_warnings": 802,
+    "include_hygiene_warnings": 804,
     "host_names_warnings": 875,
     "hand_written_record_warnings": 18
   },
@@ -6052,7 +6054,7 @@
       "book": "books/config-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 34,
+      "theorems": 37,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -6335,18 +6337,18 @@
       "book": "books/config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 43,
-      "functions": 133,
+      "theorems": 44,
+      "functions": 144,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 132,
+        "default-guarded": 143,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 12,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -6698,6 +6700,34 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/control-authority.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 26,
+      "functions": 39,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 39,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance",
+        "config",
+        "control-classify",
+        "stx-verify"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -8164,11 +8194,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 19,
-      "functions": 24,
+      "functions": 28,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 24,
+        "default-guarded": 28,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -17758,6 +17788,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/control-authority-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 39,
+      "must_fails": 0,
+      "defconsts": 26,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/control-authority",
+        "../../books/native-admin"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/control-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -22837,7 +22895,7 @@
     {
       "theorem": "fn-nop-native-action-of-unaccepted",
       "book": "books/native-operator.lisp",
-      "line": 872,
+      "line": 881,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value"
       ]
@@ -23550,7 +23608,7 @@
       {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
-        "line": 571,
+        "line": 644,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -29333,6 +29391,20 @@
         "line": 7,
         "include": "topic-history-store-node-tests",
         "included": "tests/acl2/topic-history-store-node-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/control-authority-tests.lisp",
+        "line": 9,
+        "include": "../../books/control-authority",
+        "included": "books/control-authority.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/control-authority-tests.lisp",
+        "line": 10,
+        "include": "../../books/native-admin",
+        "included": "books/native-admin.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
