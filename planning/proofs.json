@@ -3160,7 +3160,7 @@
       ]
     },
     {
-      "id": "PRF-080",
+      "id": "PRF-083",
       "title": "Open from an exact-state Store checkpoint equals the full open",
       "statement": "fn-sn-recover-from-checkpoint-equals-full-recover: for every configuration history, frontier, record prefix P and suffix Q, (fn-sco-open (fn-sco-capture configs P) configs frontier Q) equals (fn-cpo-open-observed configs frontier (append P Q)), with no hypothesis; fn-sco-open is what the host calls at open when a checkpoint verified (host/store-node-host.lisp fn-store-sn-recover-from-checkpoint) and fn-cpo-open-observed is the full open (fn-store-sn-recover). Built from one append lemma per fold of fn-cpo-open-observed: fn-cpr-loop-append (configuration and node fold, paused at the prefix end), fn-replay-identity-append, fn-cpe-projection-replay-append, fn-th-prefix-project-append, fn-cei-build-append; the history recognizer runs over the carried record list. fn-sco-extend-of-capture: the next checkpoint is the extension. fn-sco-capture-of-later-configs: a configuration whose txid is above every covered record does not change the capture. fn-scc-decode-segments-of-segments: the FNSC segments decode to the value, for every tree whose program and record count fit the u64 header fields. fn-bs-scp-program-crash-is-old-or-new: at every cut of the publish program the checkpoint name is the old file, absent, or the new octets. fn-bs-read-ranges-concatenate: consecutive range reads concatenate under A-HOST-EXCLUSIVE-READ.",
       "milestone": "M5",
