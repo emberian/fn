@@ -150,7 +150,7 @@ class NativeBpNodeTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
 
     def start_node(self, receiver, *, once=True, extra_env=None, trust=True,
-                   inbound=True):
+                   inbound=True, transfer_mru=1048576):
         node = "dtn://receiver/" if receiver else "dtn://sender/"
         peer = "dtn://sender/" if receiver else "dtn://receiver/"
         journal = self.receiver_journal if receiver else self.sender_journal
@@ -191,7 +191,7 @@ class NativeBpNodeTests(unittest.TestCase):
              str(journal), str(store), str(receipts), str(workflow),
              node, peer, node, "native-policy", node,
              "127.0.0.1", str(self.relay.port),
-             "1" if once else "0", "3600000", "2", "32", "1048576",
+             "1" if once else "0", "3600000", "2", "32", str(transfer_mru),
              "0", "0"],
             cwd=ROOT, env=env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, bufsize=0,
@@ -1111,6 +1111,35 @@ class NativeBpNodeTests(unittest.TestCase):
         # Filed once in control.cancel; never in fn.test (its Newsgroups).
         self.assertTrue(control.startswith(b"211 1 "), control)
         self.assertTrue(fn_test.startswith(b"211 0 "), fn_test)
+        self.assertEqual(self.receiver_counts()[1], 1)
+
+    def test_request_above_peer_mru_is_fragmented_and_reassembled(self):
+        """PKT-061: a bundle longer than the peer's Transfer MRU is cut.
+
+        The receiver serves with a Transfer MRU below the request's bundle.
+        The sender's `bp-service run` asks ACL2's fn-bpfs-plan after
+        SESS_INIT and sends RFC 9171 5.8 fragments, each at most that MRU
+        (fn-bpfs-plan-fragments-fit-mru), one session each.  The receiver
+        holds each fragment, publishes the family once the ADU is complete,
+        and hands the reassembled request to the application once.
+        """
+        size = self.request_path.stat().st_size
+        mru = 160 + size // 3
+        receiver, port = self.start_node(True, once=False, transfer_mru=mru)
+        sent = self.send_request(port, "fragmented")
+        self.assertEqual(sent.returncode, 0, sent.stdout + sent.stderr)
+        self.assertIn(b"BP fragmenting length=", sent.stdout)
+        planned = [line for line in sent.stdout.splitlines()
+                   if line.startswith(b"BP fragmenting")][0]
+        self.assertIn(b"peer-mru=%d " % mru, planned + b" ")
+        pieces = int(planned.rsplit(b"fragments=", 1)[1])
+        self.assertGreater(pieces, 1)
+        for index in range(2, pieces + 1):
+            self.assertIn(b"BP fragment %d transfer accepted" % index, sent.stdout)
+        out = self.wait_for_output(
+            receiver, b"BP application handoff durable", timeout=120)
+        self.stop_process(receiver)
+        self.assertIn(b"BP fragment family durable", out)
         self.assertEqual(self.receiver_counts()[1], 1)
 
     def test_request_retry_queues_distinct_receipt_carriers_and_releases_pin(self):
