@@ -17,18 +17,18 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | capability | keystone | implemented | proved | qualified | deployed |
 | --- | --- | --- | --- | --- | --- |
 | [P1](#p1) protected channel | `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: dev source not on the node |
-| [P2](#p2) 240 after a consumed completion | `fn-own-240-follows-consumed-completion` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: dev source not on the node |
-| [P3](#p3) reading resumes | `fn-own-pinned-view-survives-other-post` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: dev source not on the node |
+| [P2](#p2) 240 after a consumed completion | `fn-own-240-follows-consumed-completion` | yes | yes: `certify-20260925T072827Z-2756548` | no: source changed since c3420013 | no: dev source not on the node |
+| [P3](#p3) reading resumes | `fn-own-pinned-view-survives-other-post` | yes | yes: `certify-20260925T072827Z-2756548` | no: source changed since c3420013 | no: dev source not on the node |
 | [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-article-is-answered-already-stored` | yes | yes: `certify-20260925T073426Z-2114563` | lab only: `9cb82454` | no: dev source not on the node |
-| [P5](#p5) a connection-local fault costs one connection | `fn-ocfg-fault-keeps-every-other-connection` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: dev source not on the node |
-| [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: dev source not on the node |
+| [P5](#p5) a connection-local fault costs one connection | `fn-ocfg-fault-keeps-every-other-connection` | yes | yes: `certify-20260925T072827Z-2756548` | no: source changed since c3420013 | no: dev source not on the node |
+| [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20260925T072827Z-2756548` | no: source changed since c3420013 | no: dev source not on the node |
 | [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: dev source not on the node |
 | [P8](#p8) signature verdict visible | `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: dev source not on the node |
-| [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: dev source not on the node |
+| [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20260925T072827Z-2756548` | no: source changed since c3420013 | no: dev source not on the node |
 | [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: dev source not on the node |
 | [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: profile not deployed |
-| [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | yes: `certify-20260925T073426Z-2114563` | no: source changed since c3420013 | no: profile not deployed |
-| [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-profile-budget` | yes | yes: `certify-20260925T073426Z-2114563` | lab only: `5181e0ea` | no: dev source not on the node |
+| [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | yes: `certify-20260925T072827Z-2756548` | no: source changed since c3420013 | no: profile not deployed |
+| [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-profile-budget` | yes | yes: `certify-20260925T072827Z-2756548` | lab only: `5181e0ea` | no: dev source not on the node |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | yes: `certify-20260925T073426Z-2114563` | lab only: `lane/m6-list-counts` | no: dev source not on the node |
 | [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260925T062846Z-1530323` | no: source changed since c3420013 | no: dev source not on the node |
 
@@ -51,7 +51,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **240 after a consumed completion.** After the owner consumes an article's completion the POST reply is 240 or uncertain, never a refusal, and each refusal kind stays distinct.
 
 - Host-called subject: `fn-ccar-own-finish` at host/owner-host.lisp:659, equated by `fn-ccar-own-finish-is-own-finish` (books/owner-commit-carried.lisp:303).
-- Keystone: `fn-own-240-follows-consumed-completion` (books/owner-served-invariants.lisp:135; PRF-015 (in-progress)); certified at the current source and closure by `certify-20260925T073426Z-2114563` (earliest archived).
+- Keystone: `fn-own-240-follows-consumed-completion` (books/owner-served-invariants.lisp:135; PRF-015 (in-progress)); certified at the current source and closure by `certify-20260925T072827Z-2756548` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile developer twin for the cuts, production for the kill run; changed since it: `books/owner-commit-carried.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `books/owner-commit-carried.lisp`, `host/owner-host.lisp`.
 - Latest positive result: 50/50 cut observations, probe 40/40, served_crash_model 3/3 over 18 cuts, 90 production SIGKILLs with 0 torn, 0 lost 240, 0 reused numbers ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -63,7 +63,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **reading resumes.** A reader's pinned view answers the same across other connections' posts, and a local number naming an article is never reassigned.
 
 - Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:1530, equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:219).
-- Keystone: `fn-own-pinned-view-survives-other-post` (books/owner-served-invariants.lisp:279; PRF-002 (in-progress)); certified at the current source and closure by `certify-20260925T073426Z-2114563` (earliest archived).
+- Keystone: `fn-own-pinned-view-survives-other-post` (books/owner-served-invariants.lisp:279; PRF-002 (in-progress)); certified at the current source and closure by `certify-20260925T072827Z-2756548` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native-operator matrix and native modules; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: reader_index 4/4, served_differential 7/7, the matrix reader rows with 0 disagreed ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -87,7 +87,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **a connection-local fault costs one connection.** A connection-local fault closes that connection and keeps every other, and an open at `max-conns` answers nothing and leaves the owner unchanged; a fault in a shared owner action fail-stops.
 
 - Host-called subject: `fn-ocfg-fault` at host/owner-host.lisp:1563.
-- Keystone: `fn-ocfg-fault-keeps-every-other-connection` (books/owner-served-invariants.lisp:327; PRF-040 (in-progress)); certified at the current source and closure by `certify-20260925T073426Z-2114563` (earliest archived).
+- Keystone: `fn-ocfg-fault-keeps-every-other-connection` (books/owner-served-invariants.lisp:327; PRF-040 (in-progress)); certified at the current source and closure by `certify-20260925T072827Z-2756548` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native modules, image's own tests; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: owner 18/18 (local fault, disconnect, reset), control 14/14 with the busy ceiling, POST-CONCURRENT accepted ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -99,7 +99,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **live reconfiguration.** No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.
 
 - Host-called subject: `fn-ocl-publish` at host/owner-host.lisp:365.
-- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (in-progress)); certified at the current source and closure by `certify-20260925T073426Z-2114563` (earliest archived).
+- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (in-progress)); certified at the current source and closure by `certify-20260925T072827Z-2756548` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native-operator matrix and native modules; changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -135,7 +135,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **keep until release, refuse the unaffordable.** An article prepare at the store profile's transaction budget is refused `unaffordable` by name, and below it is exactly the owner's prepare.
 
 - Host-called subject: `fn-pcar-sbud-prepare` at host/owner-host.lisp:440, equated by `fn-pcar-sbud-prepare-is-sbud-prepare` (books/owner-prepare-carried.lisp:223).
-- Keystone: `fn-sbud-prepare-refuses-at-budget` (books/owner-store-budget.lisp:37; PRF-004 (in-progress)); certified at the current source and closure by `certify-20260925T073426Z-2114563` (earliest archived).
+- Keystone: `fn-sbud-prepare-refuses-at-budget` (books/owner-store-budget.lisp:37; PRF-004 (in-progress)); certified at the current source and closure by `certify-20260925T072827Z-2756548` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile native-operator matrix, operator verbs, kill run; changed since it: `books/owner-prepare-carried.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `c3420013`; changed since it: `books/owner-prepare-carried.lisp`, `host/owner-host.lisp`.
 - Latest positive result: CAP-REFUSE-A/B refused, CAP-SET accepted; operator_verbs budget cases, bp_obligation 4/4, app_journal 10/10 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -171,7 +171,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **disconnected exchange.** A request carried by a relay listed on the receiver's boundary is judged as its author's own direct request; an unlisted carrier is refused.
 
 - Host-called subject: `fn-bpah-request-trustedp` at host/bp-native-app-host.lisp:30.
-- Keystone: `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` (books/bp-transit-join.lisp:155; PRF-075 (in-progress)); certified at the current source and closure by `certify-20260925T073426Z-2114563` (earliest archived).
+- Keystone: `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` (books/bp-transit-join.lisp:155; PRF-075 (in-progress)); certified at the current source and closure by `certify-20260925T072827Z-2756548` (earliest archived).
 - Tested: image `c3420013` ([qual-c3420013-2026-09-25](evidence/qual-c3420013-2026-09-25.md), closure `certify-20260925T001652Z-2229194`), profile dtn developer and production images, frozen; changed since it: `host/bp-native-app-host.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: on frozen c3420013 through dtn7-rs with 0, 1 and 2 relays and four nodes, Python-bridge and native `bp-obligation request` authoring: B's application decides once apart from transport; the receipt releases exactly the requested pin when B is the neighbour or listed `releases-for`, `receipt-refused` and pinned without it; an unlisted carrier is refused `source-not-carried` ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).
@@ -183,7 +183,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **maintenance: operator compaction.** `operator CONFIG store compact` is decided in ACL2: the pack it writes fits the profile's temporary-space budget, and a reclaim keeps the reconstructed history.
 
 - Host-called subject: `fn-cverb-decide` at host/checkpoint-host.lisp:187.
-- Keystone: `fn-cverb-pack-fits-the-profile-budget` (books/store-compact-verb.lisp:186; PRF-073 (in-progress)); certified at the current source and closure by `certify-20260925T073426Z-2114563` (earliest archived).
+- Keystone: `fn-cverb-pack-fits-the-profile-budget` (books/store-compact-verb.lisp:186; PRF-073 (in-progress)); certified at the current source and closure by `certify-20260925T072827Z-2756548` (earliest archived).
 - Tested: lane image of `5181e0ea` ([m5-compact-verb-2026-09-24](evidence/m5-compact-verb-2026-09-24.md)), profile developer image, checkpoint cuts through both entries; not a shared qualification.
 - Deployed: no: node image `c3420013`; changed since it: `books/store-compact-verb.lisp`, `host/checkpoint-host.lisp`.
 - Latest positive result: 10 of 10 checkpoint cuts pass through both entries on the developer image ([m5-compact-verb](evidence/m5-compact-verb-2026-09-24.md)).
