@@ -986,7 +986,9 @@
                 (equal (fn-bpp-adu-key fp) (fn-bpp-adu-key p))
                 (or (fn-bpp-fragmentp (fn-bpp-flags p))
                     (equal (fn-bpf-unfragment-block fp) p))
-                (fn-bpfs-restoresp rest parent)))))
+                (fn-bpfs-restoresp rest parent))))
+  :hints (("Goal" :expand ((fn-bpfs-restoresp (cons w rest) parent))
+           :in-theory (theory 'ground-zero))))
 
 (defthm fn-bpfs-cut-restores
   (implies (and (fn-bpb-bundlep b) (fn-bpfs-cuttablep b)

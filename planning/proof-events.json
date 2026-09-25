@@ -4254,6 +4254,43 @@
           "name": "fn-ks-recover-after-an-acting-acceptance-changes-nothing"
         }
       ]
+    },
+    {
+      "id": "PRF-114",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-fit-mru"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-reassemble-exactly"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-restore-parent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-plan-fragments-reassemble-within-caps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-fragment-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-fragment-primary-length-shift"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-canvas-of-extents"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-views-of-cut"
+        }
+      ]
     }
   ]
 }

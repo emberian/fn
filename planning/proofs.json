@@ -4188,6 +4188,39 @@
         "fn-ks-recover-completes-the-cut",
         "fn-ks-recover-after-an-acting-acceptance-changes-nothing"
       ]
+    },
+    {
+      "id": "PRF-114",
+      "title": "BP outbound fragmentation: every fragment the send plan answers fits the peer's Transfer MRU, reassembles exactly to the parent's payload with no data cap, and restores the parent",
+      "statement": "The subject is fn-bpfs-plan WIRE MRU (books/bp-fragment-send.lisp, logic mode, guard-verified), which host/native/bp-service.lisp fnn-bps-send-effect calls after SESS_INIT with the session's negotiated Transfer MTU (fn-tcl-negotiated-transfer-mtu). fn-bpfs-plan-fragments-fit-mru: when the plan answers (:fragments W1 ... Wn), every Wi is at most MRU octets (the chunk is MRU minus 8 minus the encoded length of the empty fragment at the largest offset; fn-bpfs-fragment-length-bound over fn-bpfs-fragment-primary-length-shift and the payload block's exact length). fn-bpfs-plan-fragments-reassemble-exactly: the decoded views of the Wi draw the decoded parent's payload exactly on the reassembly canvas fn-bpf-canvas at the parent's ADU offset (0 for a whole parent, its own offset for a fragment parent) and all carry the parent's total, for every payload length and fragment count (no data cap). fn-bpfs-plan-fragments-restore-parent: every Wi decodes to a bundle with the parent's extension blocks and ADU key and the fragment flag, and a whole parent's fragment primary unfragments to the parent's primary. fn-bpfs-plan-fragments-reassemble-within-caps: for a whole parent of at most *fn-bpf-max-length* (65538) octets cut into at most *fn-bpf-max-fragments* (64) pieces, the receiver's executable reassembler fn-bpf-reassemble answers (:ok payload). Covered scope: the sender's base-job send path (bp-service run and the bp-node send of queued jobs through fnn-bps-send-effect); held-transit forwarding (the :session arm's MRU wait) does not fragment; the receiver's reassembler and held-row recognizers keep the 65538 x 64 caps; one job attempt covers all fragments (no per-fragment custody records); the plan runs on octet lists (no D27 concrete twin).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008",
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-046"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-fragment-send.lisp",
+        "tests/acl2/bp-fragment-send-tests.lisp",
+        "host/native/bp-service.lisp",
+        "tests/test_bp_node_native.py",
+        "planning/evidence/bp-n16-prod-2026-09-25.md"
+      ],
+      "progress_note": "Lane bp-n16-prod-2 (2026-09-25), PKT-061. Productionizes spike/bp's :program fn-bpfs-plan. Teeth in tests/acl2/bp-fragment-send-tests: witnesses at MRU 300 and 400 over a real 1000-octet bundle, a fragment parent at ADU offset 500 of 3000, a 70000-octet ADU (above the receiver cap) and a 100-fragment cut (above the fragment cap); must-fails for dropping the 8-octet head reserve, for each keystone without :fragments, and for each cap hypothesis of the within-caps corollary.",
+      "events": [
+        "fn-bpfs-plan-fragments-fit-mru",
+        "fn-bpfs-plan-fragments-reassemble-exactly",
+        "fn-bpfs-plan-fragments-restore-parent",
+        "fn-bpfs-plan-fragments-reassemble-within-caps",
+        "fn-bpfs-fragment-length-bound",
+        "fn-bpfs-fragment-primary-length-shift",
+        "fn-bpfs-canvas-of-extents",
+        "fn-bpfs-views-of-cut"
+      ]
     }
   ]
 }
