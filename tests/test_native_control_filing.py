@@ -230,6 +230,75 @@ class NativeControlFilingTests(unittest.TestCase):
         self.assertTrue(fn_test[0].startswith(b"211 1 "), fn_test)
         self.assertTrue(absent.startswith(b"430"), absent)
 
+    @unittest.skipUnless(os.environ.get("FN_RUN_HYBRID_E2E") == "1",
+                         "set FN_RUN_HYBRID_E2E=1 (OpenSSL 3.5 with ML-DSA-65)")
+    def test_signed_author(self):
+        """The local signed-author ingress (host/native/hybrid-control.lisp
+        fnn-hybrid-control-author) takes the same filing step: a signed
+        control article is refused (:control-signed) even with its control
+        group created, and nothing is stored; a signed ordinary article from
+        the same key is accepted into fn.test."""
+        openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
+        node = self.initialize("author", ["fn.test", "control.cancel"])
+        root = node["root"]
+        principal, ed_public, ed_secret = (root / "principal.bin",
+                                           root / "ed-public.bin", root / "ed-secret.bin")
+        principal.write_bytes(bytes([85]) * 32)
+        ed_public.write_bytes(bytes.fromhex(
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        ed_secret.write_bytes(bytes.fromhex(
+            "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        ml_private, ml_public = root / "ml-private.pem", root / "ml-public.pem"
+        self.command([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private])
+        self.command([openssl, "pkey", "-in", ml_private, "-pubout", "-out", ml_public])
+        control = root / "control.sock"
+        self.start(node)
+
+        def author(stem, message_id, control_field):
+            source = root / (stem + ".eml")
+            source.write_bytes(article(message_id, "signed " + stem,
+                                       control=control_field))
+            signed = self.command([IMAGE, "--fn", "hybrid-sign", principal, ed_public,
+                                   ed_secret, ml_public, ml_private, source])
+            parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+            ed_sig, ml_sig = root / (stem + ".ed"), root / (stem + ".ml")
+            ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+            ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+            return subprocess.run(
+                [str(IMAGE), "--fn", "hybrid-author", str(control), "1", str(source),
+                 str(ed_sig), str(ml_sig), str(ml_public)], cwd=ROOT, env=self.env,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180, check=False)
+
+        self.command([IMAGE, "--fn", "hybrid-enroll", control, "1", principal,
+                      ed_public, ml_public])
+        cancel = "<c1-signed-cancel@example.invalid>"
+        refused = author("cancel", cancel, "cancel <t@example.invalid>")
+        ordinary = "<c1-signed-ordinary@example.invalid>"
+        accepted = author("ordinary", ordinary, None)
+        in_control = self.listgroup(node, b"control.cancel")
+        fn_test = self.listgroup(node, b"fn.test")
+        absent = self.article_reply(node, cancel)
+        self.stop(node)
+        witness = {
+            "hybrid-author-signed-cancel": [refused.returncode,
+                                            refused.stdout.decode().strip(),
+                                            refused.stderr.decode().strip()[-200:]],
+            "hybrid-author-signed-ordinary": [accepted.returncode,
+                                              accepted.stdout.decode().strip()],
+            "listgroup-control.cancel": [x.decode() if isinstance(x, bytes) else
+                                         [y.decode() for y in x] for x in in_control],
+            "listgroup-fn.test": [x.decode() if isinstance(x, bytes) else
+                                  [y.decode() for y in x] for x in fn_test],
+            "article-signed-cancel": absent.decode().strip(),
+        }
+        print("NATIVE-CONTROL-WITNESS " + json.dumps(witness, sort_keys=True))
+        self.assertEqual(refused.returncode, 1, refused)
+        self.assertEqual(accepted.returncode, 0, accepted)
+        self.assertTrue(in_control[0].startswith(b"211 0 "), in_control)
+        self.assertTrue(fn_test[0].startswith(b"211 1 "), fn_test)
+        self.assertTrue(absent.startswith(b"430"), absent)
+
 
 if __name__ == "__main__":
     unittest.main()

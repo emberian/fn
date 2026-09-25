@@ -65,6 +65,22 @@
                                     source principal keys signatures
                                     post-config observation)))
            (unless received (return-from fnn-hybrid-control-author :refused))
+           ;; C1: the filing step every ingress takes (fn-pa-filing-plan via
+           ;; fn-owner-control-filing).  This path commits through its own
+           ;; identity callback, not fnn-owner-attempt-transit, so it asks
+           ;; here: a control article is refused (:control-signed while a
+           ;; signed record must list its source's Newsgroups), never stored
+           ;; in the groups it names; an ordinary article keeps its groups.
+           (let ((filing (fnn-owner-core 'fn-owner-control-filing
+                                         (fnn-octet-list received)
+                                         (mapcar #'fnn-octet-list groups))))
+             (unless (and (consp filing) (consp (rest filing))
+                          (member (first filing) '(:file :refused)))
+               (fnn-fault "owner returned malformed control filing ~a" filing))
+             (when (eq (first filing) :refused)
+               (return-from fnn-hybrid-control-author :refused))
+             (unless (equal (second filing) (mapcar #'fnn-octet-list groups))
+               (fnn-fault "owner filed an authored article outside its groups")))
            (let* (
                 (coordinates (fnn-owner-core 'fn-owner-next-store-coordinates))
                 (charge (fnn-charge (length received)))
