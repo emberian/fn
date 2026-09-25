@@ -490,6 +490,11 @@ observations back.  Nil when there is nothing to observe."
                                       names))
                 (ck (fnn-core 'fn-bpnr-checkpoint-of-event
                               (fnn-bps-recovery-event bp) generation)))
+           ;; Finish a retirement a death or a failed step left (the
+           ;; current selection's; fn-bpnr-retirement-cut-keeps-open-view).
+           (let ((selected (fnn-core 'fn-bpnr-plan-generation (fnn-bps-plan bp))))
+             (when (plusp selected)
+               (fnn-bps-retire-generations bp selected)))
            (fnn-out "BP journal rotation generation=~d" generation)
            (fnn-bps-drive-effects
             bp (fnn-bps-foundation-step bp (list :rotate generation ck)))
