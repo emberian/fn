@@ -308,7 +308,20 @@ bytes that does not include here. An installed book over a dependency the run
 certifies is sound because its key fixes that dependency's bytes, and ACL2
 checks the dependency's book-hash, which a fresh certificate of those bytes
 reproduces (the record's case 5). A fully cached closure certifies nothing and
-passes with every root `installed`.
+passes with every root `installed`. **The compiled file travels with the pair**
+([the record](../planning/evidence/fasl-cache-2026-09-25.md)): ACL2 on SBCL
+writes `book.fasl` after the certificate and include-book loads it only when
+it is not older than the `.cert`, so a book installed with a pair alone
+loads uncompiled. The runner records `compiled_digests_sha256` for each
+compiled file not older than its certificate; `publish` caches it in the
+same entry, under the same closure key and toolchain identity, only against
+that record; an install places it only with its pair and dates it no earlier
+than the certificate, installs the pair alone when the entry has none
+(removing any local `.fasl`), and removes it with the pair on every
+uninstall. A fasl is relocatable as the pair is (its embedded source path is
+a debugging name ACL2 never opens) and is specific to the SBCL runtime and
+ACL2 core the toolchain identity names. `cache_install` counts
+`fasl_installed` and `fasl_missing`.
 Farm runs are the reusable case: `farm.py submit --remote-root` runs under a
 path that does not exist here, and `wait` publishes with that path as the
 origin, so those pairs install into any local worktree. `install` computes the

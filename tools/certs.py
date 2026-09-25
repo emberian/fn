@@ -89,6 +89,26 @@ Different closure entries remain independent. The destination worktree still
 requires its existing single-mutator discipline: its local `.cert`/`.port`
 copies are not locked against another installer in that same worktree.
 
+**The compiled file travels with its pair.**  ACL2 on SBCL writes
+``book.fasl`` after the certificate, and include-book loads it only when its
+write date is not older than the ``.cert``'s; without it ACL2 processes the
+book's events, which made every cache-installed book load uncompiled
+(``planning/evidence/ten-second-2-2026-09-25.md``).  The runner records the
+digest of each compiled file that is not older than its certificate
+(``compiled_digests_sha256``), and ``publish`` caches ``book.fasl`` in the
+same entry, under the same closure key and toolchain identity, only when that
+manifest recorded it and the bytes still match; ``fasl_sha256`` in the
+metadata binds it.  A ``.fasl`` is relocatable exactly as the pair is: the
+source path it embeds is a debugging name, ACL2 never opens it, and a fasl
+certified in a deleted directory loads under ``:load-compiled-file t``
+elsewhere (``planning/evidence/fasl-cache-2026-09-25.md``).  It is specific
+to the SBCL runtime and ACL2 core, which the toolchain identity already
+names.  An install places it only with its pair and dates it no earlier than
+the certificate; an entry without one installs the pair alone and removes
+any local ``.fasl``, and every uninstall removes it with the pair.  Reports
+count ``fasl_installed`` and ``fasl_missing``.  The legacy ``install``
+command does not filter by toolchain, for fasls as for pairs.
+
 What this still does not establish: nothing here proves a book certifies.
 ``tools/certify_books.py`` does that, with a fresh success marker per book; the
 cache only moves its result to another worktree, where ACL2 checks it again.
