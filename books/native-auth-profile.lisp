@@ -276,7 +276,12 @@
                   :accepted)
            (fn-auth-configp
             (fn-native-auth-result-config
-             (fn-native-auth-load octets presentp requiredp protected tls max-credentials)))))
+             (fn-native-auth-load octets presentp requiredp protected tls max-credentials))))
+  ; The loader checks fn-auth-configp before it accepts; the parser, the
+  ; line count and the octet bound are not needed (5.6 s -> 0.1 s).
+  :hints (("Goal" :in-theory (disable fn-native-auth-parse-lines fn-native-auth-max-octets
+                                      fn-native-auth-max-lines fn-native-auth-line-count
+                                      fn-ncfg-lines fn-ncfg-ascii-octetsp))))
 
 ; Local projection fact: when the parser accepts, its model result carries the
 ; caller's three normalized policy observations exactly.  Host installation
@@ -293,7 +298,10 @@
      (and (equal (fn-auth-config-requiredp config) (and requiredp t))
           (equal (fn-auth-config-protected-onlyp config) (and protected t))
           (equal (fn-auth-config-tls-availablep config) (and tls t)))))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-native-auth-parse-lines fn-native-auth-max-octets
+                                      fn-native-auth-max-lines fn-native-auth-line-count
+                                      fn-ncfg-lines fn-ncfg-ascii-octetsp fn-auth-configp))))
 
 (local
  (defthm fn-native-auth-len-of-reverse-aux
