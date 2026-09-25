@@ -256,7 +256,7 @@ crash anywhere in a round asks the dead round's NEWNEWS again
 (`fn-pull-recovery-asks-the-dead-rounds-newnews`). The schedule is
 `fn-sched-pull-*` in books/scheduler-peers.lisp.
 
-NNT-017: A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node
+NNT-018: A NEWNEWS pull feed advances past a round only when every listed Message-ID drew 235, 435 or 437 from the local node
 
 #### 1.2.1 Peer changes are not transport-only
 
