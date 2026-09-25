@@ -64,6 +64,8 @@
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
+; PRF-099: the opaque-carriage budget and the refusal classes.
+(include-book "../books/peer-carriage")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -238,7 +240,10 @@
   (declare (xargs :stobjs state :mode :program))
   (if (fn-bs-profile-admittedp values)
       (let* ((state (f-put-global 'fn-owner-store-profile values state))
-             (state (f-put-global 'fn-owner-record-octets nil state)))
+             (state (f-put-global 'fn-owner-record-octets nil state))
+             ; PRF-099: the carried-usage cache restarts from the Store
+             ; this open replayed (fn-pcb-usage-extend walks it once).
+             (state (f-put-global 'fn-owner-carried-usage nil state)))
         (value :installed))
     (value :refused)))
 
@@ -1100,6 +1105,13 @@
                                       (fn-pa-peer-carried-sources
                                        peer (fn-cfg-peers (fn-cfg-value cfg)))
                                       state))
+                 ; PRF-099: the same boundary's opaque-carriage budget
+                 ; (books/peer-carriage-rows.lisp fn-pcb-peer-budget), read
+                 ; from the same configuration as its carried list.
+                 (state (f-put-global 'fn-owner-transit-budget
+                                      (fn-pcb-peer-budget
+                                       peer (fn-cfg-peers (fn-cfg-value cfg)))
+                                      state))
                  ; (nth 2 args) is the payload fn-node-prepare is given:
                  ; fn-peer-relayed-octets of the received octets
                  ; (fn-peer-injection-arguments-stages-the-relayed-octets).
@@ -1458,8 +1470,29 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-served-word word detail)))
 
-; D23: the carried arm's kind-4 event (fn-pa-carried-event), for the NNTP
-; transit attempt only.  No primitive observation is taken or claimed.
+; PRF-099: the carried usage of the boundary whose release evidence is
+; EVIDENCE (a string), from the owner's (K . TALLY) cache over the committed
+; records extended by the records committed since
+; (books/peer-carriage.lisp fn-pcb-usage-extend; equal to the replay
+; projection fn-pcb-usage when the cache is valid,
+; fn-pcb-carried-usage-is-the-projection, and kept valid,
+; fn-pcb-extended-cache-is-valid).  Reset at open (fn-owner-install-profile).
+(defun fn-owner-carried-usage (evidence state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((records (fn-sf-records (fn-sn-files (fn-owner-store state))))
+         (cache (if (boundp-global 'fn-owner-carried-usage state)
+                    (f-get-global 'fn-owner-carried-usage state)
+                  nil))
+         (tally (fn-pcb-usage-extend cache records))
+         (state (f-put-global 'fn-owner-carried-usage
+                              (cons (len records) tally) state)))
+    (mv (fn-pcb-tally-get evidence tally) state)))
+
+; D23 and PRF-099: the carried arm's kind-4 event, for the NNTP transit
+; attempt only, gated by the delivering boundary's opaque-carriage budget
+; over its carried usage (books/peer-carriage.lisp fn-pcb-carried-event):
+; the event, (:refused REASON) naming the exhausted bound, or nil.  No
+; primitive observation is taken or claimed.
 (defun fn-owner-peer-carried-relay-event
     (coordinates msgid received group-codes obligation subject evidence charge
                  state)
@@ -1467,18 +1500,34 @@
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes
-                  (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
-    (value
-     (if (equal groups :bad) nil
-       (fn-pa-carried-event
-        (first coordinates) (second coordinates) (third coordinates)
-        (fn-store-octets->string msgid) received groups
-        (fn-store-octets->string obligation)
-        (fn-store-octets->string subject)
-        (fn-store-octets->string evidence) charge
-        (fn-sn-keyring-snapshots s)
-        (fn-owner-transit-carried-list t state)
-        (fn-own-clock (fn-owner-core state)))))))
+                  (fn-state-groups (fn-node-acceptance (fn-sn-node s)))))
+         (evidence-string (fn-store-octets->string evidence)))
+    (mv-let (usage state) (fn-owner-carried-usage evidence-string state)
+      (value
+       (if (equal groups :bad) nil
+         (fn-pcb-carried-event
+          (first coordinates) (second coordinates) (third coordinates)
+          (fn-store-octets->string msgid) received groups
+          (fn-store-octets->string obligation)
+          (fn-store-octets->string subject)
+          evidence-string charge
+          (fn-sn-keyring-snapshots s)
+          (fn-owner-transit-carried-list t state)
+          (fn-own-clock (fn-owner-core state))
+          (if (boundp-global 'fn-owner-transit-budget state)
+              (f-get-global 'fn-owner-transit-budget state)
+            nil)
+          usage))))))
+
+; PRF-099: the refusal class of a present carrier on transit
+; (books/peer-carriage.lisp fn-pcb-refusal-class): :no-local-binding,
+; :unsupported-profile, :signature-failed or :malformed, or nil.  ED and ML
+; are the host's two primitive outcomes (nil when not observed).
+(defun fn-owner-transit-refusal-class (received transitp ed ml state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pcb-refusal-class
+          received (fn-sn-keyring-snapshots (fn-owner-store state))
+          (fn-owner-transit-carried-list transitp state) ed ml)))
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge

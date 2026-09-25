@@ -1197,3 +1197,63 @@
  (let ((rows (fn-na-test-plan-rows (fn-na-bp-eid-plan "dtn://relay/" "dtn://a b/"))))
    (equal rows nil)))
 
+
+;; PRF-099: `peer budget NAME OCTETS COUNT' and `peer carries NAME HEX ...'
+;; extend an existing boundary over the live table; OCTETS is kept in whole
+;; charge pages, and past a uint32 of pages it is refused.
+(defconst *fn-na-pcb-peers*
+  (list (list "relay" "path-identity" "relay.example" 0)
+        (list "relay" "carried-budget-charge" "" 1)
+        (list "relay" "carried-budget-count" "" 1)))
+(defconst *fn-na-pcb-budget*
+  (fn-native-admin-plan (fn-na-test-argv '("peer" "budget" "relay"
+                                           "1048576" "3"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-pcb-budget*) :accepted))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-pcb-budget*) :extend-peer))
+(assert-event
+ (equal (fn-pcb-peer-budget
+         "relay"
+         (fn-cfg-peers
+          (fn-cfg-apply-delta
+           (fn-cfg-value-make nil 0 nil nil nil *fn-na-pcb-peers* nil nil) 1 nil
+           (car (fn-native-admin-plan-deltas-over *fn-na-pcb-budget*
+                                                  *fn-na-pcb-peers*)))))
+        '(256 3)))
+; No such boundary: no delta.
+(assert-event (null (fn-native-admin-plan-deltas-over *fn-na-pcb-budget* nil)))
+; Past a uint32 of pages (2^32 pages is 2^44 octets), and a malformed word.
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan (fn-na-test-argv '("peer" "budget" "relay"
+                                                  "17592186044416" "3"))))
+        :refused))
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan (fn-na-test-argv '("peer" "budget" "relay"
+                                                  "12x" "3"))))
+        :refused))
+; Past uint32 octets is admitted: the octet word is not capped at 4 GiB.
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan (fn-na-test-argv '("peer" "budget" "relay"
+                                                  "8589934592" "3"))))
+        :accepted))
+(defconst *fn-na-pcb-carries*
+  (fn-native-admin-plan
+   (fn-na-test-argv
+    '("peer" "carries" "relay"
+      "0707070707070707070707070707070707070707070707070707070707070707"))))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-pcb-carries*) :extend-peer))
+(assert-event
+ (equal (fn-cfg-delta-rows
+         (car (fn-native-admin-plan-deltas-over *fn-na-pcb-carries*
+                                                *fn-na-pcb-peers*)))
+        (append *fn-na-pcb-peers*
+                (list (list "relay" "carries-principal"
+                            "0707070707070707070707070707070707070707070707070707070707070707"
+                            0)))))
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan (fn-na-test-argv '("peer" "carries" "relay"
+                                                  "07"))))
+        :refused))
