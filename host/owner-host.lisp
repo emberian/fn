@@ -63,6 +63,7 @@
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
 ; be a book both sessions include.  See books/frame-trailer.lisp.
 (include-book "../books/feed-journal")
+(include-book "../books/peer-pull")
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
@@ -2373,3 +2374,11 @@ existing port only after fn-fc has made this connection ready."
       (fn-owner-feed-install-port-result owner result state)
       (value (if (equal status :refused) :refused
                (len (fn-own-feed-port-records result)))))))
+
+; -----------------------------------------------------------------------------
+; The NEWNEWS pull feed (PRF-100, books/peer-pull.lisp).  The pulled peers of
+; the one live configuration, read by ACL2; host/native/pull-service.lisp
+; drives each round through the pure fn-pull-* functions.
+(defun fn-owner-pull-plans (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-pull-plans (fn-cfg-peers (fn-owner-config state)))))
