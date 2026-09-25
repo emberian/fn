@@ -1117,7 +1117,8 @@
         "PRF-075",
         "PRF-077",
         "PRF-081",
-        "PRF-082"
+        "PRF-082",
+        "PRF-114"
       ],
       "verification": [
         "proof",
@@ -2235,6 +2236,36 @@
         "tests/test_native_key_statements.py"
       ],
       "implementation_note": "A stronger fn guarantee and local policy (no RFC defines key statements). ACL2 decides: fn-ks-plan in C2's fn-ctl-authorize shape (verb keys, grantable beside cancel) with the PoP observations checked in ACL2; the owner executes after every durable kind-4 commit (carried and revoked ones decline); the revoked arm of fn-pa-current-plan on NNTP transit only. The kind-4-then-kind-3 crash cut is a model crash point (fn-ks-cut, fn-ks-recover): the open executes the newest record when it is a statement. A Store refusal of the key change leaves the article accepted and is reported as detail key-change-refused."
+    },
+    {
+      "id": "REP-008",
+      "title": "An outbound bundle never exceeds the peer's TCPCL Transfer MRU: it goes whole, as RFC 9171 5.8 fragments that reassemble exactly to it, or is refused",
+      "specification": "specs/replication.md#scheduling-and-transport",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-114"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9171.txt",
+        "rfc9174.txt",
+        "books/bp-fragment-send.lisp",
+        "tests/acl2/bp-fragment-send-tests.lisp",
+        "host/native/bp-service.lisp",
+        "tests/test_bp_node_native.py",
+        "planning/evidence/bp-n16-prod-2026-09-25.md"
+      ],
+      "implementation_note": "RFC 9174 section 5.4.1 forbids a transfer longer than the peer's Transfer MRU (an RFC requirement); RFC 9171 section 5.8 permits fragmenting a bundle whose no-fragment flag is clear (fn fragments proactively, a local policy choice) and requires the replicate-flagged extension blocks in every fragment (fn replicates every extension block, a stronger fn choice). ACL2's fn-bpfs-plan decides from the session's negotiated Transfer MTU; host/native/bp-service.lisp fnn-bps-send-effect sends the answer and reads each further fragment's transfer through fn-bpfs-fragment-outcome. Not covered: held transit to a small-MRU hop still waits (fn-bpnp-forward-mru-waitp) rather than fragmenting; the receiver's reassembler keeps its 65538-octet and 64-fragment caps.",
+      "keystones": [
+        "fn-bpfs-plan-fragments-fit-mru",
+        "fn-bpfs-plan-fragments-reassemble-exactly",
+        "fn-bpfs-plan-fragments-restore-parent"
+      ],
+      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059."
     }
   ]
 }

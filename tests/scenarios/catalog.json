@@ -1651,6 +1651,28 @@
         "planning/evidence/peer-keys-2026-09-25.md",
         "tests/test_native_key_statements.py"
       ]
+    },
+    {
+      "id": "SCN-059",
+      "title": "A request above the receiving node's Transfer MRU is fragmented, reassembled once and delivered once",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-008"
+      ],
+      "steps": [
+        "Serve the receiver with a Transfer MRU below the request bundle's length.",
+        "Send the request with `bp-service run`."
+      ],
+      "expected": [
+        "The sender logs `BP fragmenting` with more than one fragment, each at most the peer's MRU, and every further fragment's transfer is accepted.",
+        "The receiver publishes the fragment family once and hands the reassembled request to the application once: one article in its Store."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/acl2/bp-fragment-send-tests.lisp",
+        "planning/evidence/bp-n16-prod-2026-09-25.md"
+      ]
     }
   ]
 }
