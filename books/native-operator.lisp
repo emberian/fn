@@ -163,6 +163,16 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             (if (and (natp value) (< value 18446744073709551616)) value nil))
         nil))))
 
+; A flag's value: the history requirement's field (D31) takes a word,
+; `unmarked' (0) or `required' (1); every other field a decimal.
+(defun fn-nop-profile-flag-value (field text)
+  (declare (xargs :guard t))
+  (if (equal field *fn-bs-pf-history-marker*)
+      (cond ((equal text "unmarked") 0)
+            ((equal text "required") 1)
+            (t nil))
+    (fn-nop-profile-decimal text)))
+
 (defun fn-nop-profile-field-namedp (field overrides)
   (declare (xargs :guard t))
   (if (consp overrides)
@@ -176,9 +186,11 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   (declare (xargs :guard t :measure (len words)
                   :hints (("Goal" :in-theory (disable fn-nop-profile-flag-field
                                                       fn-nop-profile-decimal
+                                                      fn-nop-profile-flag-value
                                                       fn-nop-profile-preset-word)))
                   :guard-hints (("Goal" :in-theory (disable fn-nop-profile-flag-field
                                                             fn-nop-profile-decimal
+                                                            fn-nop-profile-flag-value
                                                             fn-nop-profile-preset-word)))))
   (if (or (atom words) (atom (cdr words))
           (not (or (equal (car words) "--profile")
@@ -197,7 +209,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             (fn-nop-parse-profile-flags (cddr words) preset t overrides)))
       (let ((field (fn-nop-profile-flag-field (car words)
                                               *fn-bs-profile-field-names*))
-            (value (fn-nop-profile-decimal (cadr words))))
+            (value (fn-nop-profile-flag-value
+                    (fn-nop-profile-flag-field (car words)
+                                               *fn-bs-profile-field-names*)
+                    (cadr words))))
         (if (or (null value) (fn-nop-profile-field-namedp field overrides))
             :bad
           (fn-nop-parse-profile-flags (cddr words) base named
@@ -272,7 +287,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "status") "usage: fn operator CONFIG status")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] | compact | checkpoint} (offline; refused while an owner runs; no field may shrink)")
+         "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | compact | checkpoint} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "control")

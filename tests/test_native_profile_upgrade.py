@@ -39,8 +39,8 @@ EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs
 # (planning/evidence/bounds-join-2026-09-25.md: the translation carries the
 # codec-ceiling G and R = the article record); the format-7 frames of the same
 # presets are in planning/evidence/m5-capacity-2026-09-24.md.
-DEVELOPMENT_FRAME = "e8ec6e0cdd3aeaf13594ccfe105efe0b73449ea6ceab68d516218cc71e9df407"
-SCALE_FRAME = "27cb85e1397d24018f38bf2b3af7032626f7343bca235f08f685c507d8aa40ce"
+DEVELOPMENT_FRAME = "a725e81ece4aec3d89e996bb4e7eb157fbf3fef1aaa670ad92e72f5ecc752460"
+SCALE_FRAME = "55960f4b130ea01fd0c730b7a1eb5b93f21a15a19c0779b53ff97d7a69a8a598"
 BUDGET = {"old": {128}, "new": {4096}, "either": {128, 4096}}
 FRAME = {128: DEVELOPMENT_FRAME, 4096: SCALE_FRAME}
 
@@ -57,7 +57,8 @@ class ProfileUpgradeSourceTests(unittest.TestCase):
         self.assertIn("(fn-profile-upgrade-verdict current target)", store_host)
         command = native_cuts.host_function(host, "fnn-command-upgrade-profile")
         self.assertIn("(fnn-open-live-store root t (fnn-profile-test-fault))", command)
-        self.assertIn("'fn-store-profile-upgrade-verdict", command)
+        # D31: the verdict gates the history requirement over the marker.
+        self.assertIn("'fn-hmr-upgrade-verdict", command)
         self.assertIn("(fnn-upgrade-profile-write store", command)
         # The replay bound is ACL2's, not a host comparison.
         records = native_cuts.host_function(host, "fnn-durable-records")
@@ -238,7 +239,8 @@ class OperatorFieldsTests(ProfileUpgradeFixture):
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         for line in status.stdout.decode("ascii").splitlines():
             if line.startswith("profile "):
-                return {k: int(v) for k, v in (w.split("=", 1) for w in line.split()[1:])}
+                return {k: int(v) if v.isdigit() else v
+                        for k, v in (w.split("=", 1) for w in line.split()[1:])}
         self.fail(status.stdout.decode())
 
     def article(self, message_id, total):
