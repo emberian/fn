@@ -2082,6 +2082,42 @@
           "name": "fn-bs-k0a-drop-dir-preserves-relation",
           "note": "Dropping every pending entry operation of one directory from a related state outside the recovery window keeps the relation: the durable projections are unchanged, the pending shape loses entries, and the pending authority targets become a sublist. The dropped half of the authority-barrier error keystone.",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0w-step-preserves-relation",
+          "note": "The recovery window as step kinds (P-RECOVER): from a byte state related to a kernel in the recovery window, whose pending list may hold the one un-fenced :root rename or :transactions link a dead process left, :cut, :fsync-file on a fenced target (any outcome), :fsync-dir with :ok on any directory or any outcome on a quiet one, and the (:recover) and (:recovery-barrier ...) observations (leaving the window only with :root and :transactions quiet) keep fn-bs-replay-matches-scan; fn-bs-step-preserves-k0-coverage covers them through its second disjunct. Not covered: a barrier error with an authority entry pending in that directory, and (:recover) from :replaying with one pending.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0w-fence-preserves-relation",
+          "note": "A successful fsync of any directory keeps the recovery-window relation: the fence keeps the view and so the scan, and moves the one pending authority entry into the durable directory. The keystone of the window's barrier steps.",
+          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0v-recover-program-by-step",
+          "note": "From any byte state related to the kernel the host's reopen installs (fn-bs-recovered-kernel f r 0), whatever is pending, every step of fn-bs-recover-program satisfies fn-bs-k0-step-inputp at the pair before it, every pair of the run is related, and the run ends drained (authority quiet) with the kernel :ready. The quiet-image recovery theorems are its special case.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0v-host-rerecovery-keeps-relation-at-every-cut",
+          "note": "Host subject: the in-process re-recovery at host/native/admin.lisp:107 (fnn-admin-verify-under-lock: fnn-bridge-reset, then fnn-recover, which reads the live view and opens through fn-cpo-open-observed via fnn-bridge-recover and fn-store-sn-recover). From a related pair with :root and :transactions quiet, when that open succeeds its kernel is related to the live byte state (not a crash image) and every step and pair of the recovery program run from it is covered and related. The quiet hypothesis is what the admin process has after its own recovery; it is sufficient, not shown necessary. The administrative publication's own syscalls are not modelled.",
+          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0i-step-preserves-pre-init",
+          "note": "Before initialisation: every step kind but :observe, :mkdir and :link-eexist included, with any outcome, keeps fn-bs-k0i-pre-init-relation (initial kernel, no allocation-frontier entry in :root, durable or pending) unless it names that entry; every crash image of such a state scans as no store (fn-bs-k0i-pre-init-crash-image-is-uninitialised). The fresh initializer's pairs before its frontier publication and the existing-config publication's pairs are pre-init (fn-bs-k0i-current-init-prefix-keeps-pre-init, fn-bs-k0i-existing-config-publication-keeps-pre-init); the frontier publication's pairs from its link to the end are not proved.",
+          "pending_subject": "model-only: the subject is fn-bs-step and the byte-model initializer programs (books/byte-store-initializer.lisp) that no host line calls; the native initializer is not tied to them by a theorem."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0i-pre-init-crash-image-is-uninitialised",
+          "note": "Every crash image of a pre-init state has no allocation-frontier entry and its scan faults: a reopen finds no store.",
+          "pending_subject": "model-only: the subject is fn-bs-step and the byte-model initializer programs (books/byte-store-initializer.lisp) that no host line calls; the native initializer is not tied to them by a theorem."
         }
       ]
     },
@@ -3589,6 +3625,42 @@
         {
           "kind": "theorem",
           "name": "fn-oct-suffix-equalp-is-equal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-path-scan-is-inj-path-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-unsplice-at-is-inj-unsplice"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-source-index-is-inj-source-of"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-range-match-is-equal-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-desc-equalp-is-equal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-block-agent-is-pb-block-agent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-path-agent-is-pb-path-agent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-same-articlep-is-pb-same-articlep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pbb-existing-action-is-pb-existing-action"
         }
       ]
     },
@@ -3654,6 +3726,43 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-visible-state-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-plan-record-is-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-articles-withdrawals-is-the-journal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-refresh-withdrawals-is-the-journal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-refresh-withdrawn-is-withdrawn",
+          "pending_subject": "Subject is books/control-served.lisp, which no host path calls yet: the owner does not carry the withdrawn list and the served dispatcher has no 423/430 withdrawn arm and no HDR :fn-control arm (planning/evidence/control-c3d-2026-09-25.md, the wiring owed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-number-withdrawn-is-a-withdrawn-holder",
+          "pending_subject": "Subject is books/control-served.lisp, which no host path calls yet: the owner does not carry the withdrawn list and the served dispatcher has no 423/430 withdrawn arm and no HDR :fn-control arm (planning/evidence/control-c3d-2026-09-25.md, the wiring owed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-msgid-withdrawn-is-a-withdrawn-article",
+          "pending_subject": "Subject is books/control-served.lisp, which no host path calls yet: the owner does not carry the withdrawn list and the served dispatcher has no 423/430 withdrawn arm and no HDR :fn-control arm (planning/evidence/control-c3d-2026-09-25.md, the wiring owed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-executed-status-means-withdrawn",
+          "pending_subject": "Subject is books/control-served.lisp, which no host path calls yet: the owner does not carry the withdrawn list and the served dispatcher has no 423/430 withdrawn arm and no HDR :fn-control arm (planning/evidence/control-c3d-2026-09-25.md, the wiring owed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-owed-status-means-not-held",
+          "pending_subject": "Subject is books/control-served.lisp, which no host path calls yet: the owner does not carry the withdrawn list and the served dispatcher has no 423/430 withdrawn arm and no HDR :fn-control arm (planning/evidence/control-c3d-2026-09-25.md, the wiring owed)."
         }
       ]
     },
@@ -4047,6 +4156,163 @@
         {
           "kind": "theorem",
           "name": "fn-node-binding-listp-is-shape-and-distinct"
+        }
+      ]
+    },
+    {
+      "id": "PRF-098",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verified-item-separates-the-five-tokens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verified-item-first-octet-names-the-token"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verified-item-is-verified-only-for-verified"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verdict-is-never-revoked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stxe-code-token-of-token-code"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stxe-token-code-of-code-token"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-article-event-revoked-bindsp-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-article-event-revoked-is-not-carried"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-article-event-revoked-binds-no-snapshot"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-keyring-snapshot-value-of-keyring-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hl-next-generation-is-the-next-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hl-revoke-event-is-the-principals-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hl-enroll-event-enrolls-its-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-current-plan-outcomes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-current-plan-off-the-transit-arms-is-the-d02-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-current-plan-off-transit-never-revoked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-revoked-arm-needs-transit-a-tombstone-and-once-enrolled-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-no-ok-plan-for-a-revoked-principal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-revocation-leaves-no-ok-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-revoked-principal-on-transit-is-revoked-at-its-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-revoked-event-binds-the-arm-and-both-observations"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-replay-records-a-revoked-composite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-replay-admits-a-revoked-composite-exactly-at-its-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-carried-composite-keeps-the-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-revoked-composite-keeps-the-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-plan-acts-only-on-a-verified-granted-statement"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-carried-or-revoked-statement-never-changes-a-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-plan-old-key-was-the-current-enrollment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-plan-pop-binds-the-new-keys-to-the-statement"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-succession-selects-the-new-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-succession-refuses-other-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-succession-refuses-the-old-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-revocation-leaves-no-ok-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-hybrid-control-enroll-next-event-is-at-the-next-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-hybrid-control-revoke-next-event-is-at-the-next-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-execute-is-idempotent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-recover-completes-the-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-recover-after-an-acting-acceptance-changes-nothing"
         }
       ]
     },

@@ -67,6 +67,7 @@
 (include-book "../books/consumer-owner-local")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
+(include-book "../books/key-statements")
 (include-book "../books/login-binding")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -1588,7 +1589,8 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pa-current-plan
           received (fn-sn-keyring-snapshots (fn-owner-store state))
-          (fn-owner-transit-carried-list transitp state))))
+          (fn-owner-transit-carried-list transitp state)
+          (and transitp t))))
 
 ;; C1 (control messages): the filing step every ingress takes first,
 ;; books/peer-authored-accept.lisp fn-pa-filing-plan over the received
@@ -1690,6 +1692,70 @@
         ;; error triple, and ACL2 refuses it where one value is required
         ;; (the 9c344d1d image build, native-build-production.log:8292).
         (fn-own-clock (fn-owner-core state)))))))
+
+;; PRF-098: the revoked arm's kind-4 event (fn-pa-revoked-event), for the
+;; NNTP transit attempt only, with both primitive observations the host made
+;; over the carrier's keys (the keys this node once enrolled for the
+;; principal).
+(defun fn-owner-peer-revoked-event
+    (coordinates msgid received group-codes obligation subject evidence charge
+                 observed-ml-key ed-observation ml-observation state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes
+                  (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
+    (value
+     (if (equal groups :bad) nil
+       (fn-pa-revoked-event
+        (first coordinates) (second coordinates) (third coordinates)
+        (fn-store-octets->string msgid) received groups
+        (fn-store-octets->string obligation)
+        (fn-store-octets->string subject)
+        (fn-store-octets->string evidence) charge
+        (fn-sn-keyring-snapshots s)
+        observed-ml-key ed-observation ml-observation
+        (fn-own-clock (fn-owner-core state)))))))
+
+;; PRF-098: the key-statement executor (books/key-statements.lisp), run by
+;; the owner after it committed a kind-4 statement composite EVENT.  The
+;; request names the primitive observation the host must make (the PoP's
+;; D09 subject), or nil; the plan and event are ACL2's.  ROWS are the live
+;; configuration's authorities rows (C2).
+(defun fn-owner-key-statement-request (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-pop-request event)))
+
+(defun fn-owner-key-statement-plan
+    (event observed-ml-key ed-observation ml-observation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-plan event (fn-sn-keyring-snapshots (fn-owner-store state))
+                     (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                     observed-ml-key ed-observation ml-observation)))
+
+(defun fn-owner-key-statement-event
+    (event observed-ml-key ed-observation ml-observation coordinates state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-execute event (fn-sn-keyring-snapshots (fn-owner-store state))
+                        (fn-cfg-authorities (fn-cfg-value (fn-owner-config state)))
+                        observed-ml-key ed-observation ml-observation
+                        (first coordinates) (second coordinates)
+                        (third coordinates))))
+
+(defun fn-owner-key-statement-log-line (plan outcome at-open state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-log-line plan outcome at-open)))
+
+;; PRF-098, the crash cut: the open's recovery (books/key-statements.lisp
+;; fn-ks-recover) executes the newest Store record when it is a statement.
+;; OCTETS are that record as the open read it; the answer is the decoded
+;; event for fnn-owner-key-statement, or nil.
+(defun fn-owner-key-statement-pending (octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((records (fn-store-decode-records (list octets))))
+    (value (if (and (consp records) (null (cdr records)))
+               (fn-ks-pending (car records))
+             nil))))
 
 ;; D27: the signed composite against the profile the owner was handed at
 ;; open (books/store-budget-naming.lisp fn-sbud-signed-event-boundary):

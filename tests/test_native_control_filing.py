@@ -425,6 +425,205 @@ class NativeControlFilingTests(unittest.TestCase):
         self.assertTrue(restarted[late].startswith("430"), restarted)
         self.assertTrue(restarted[unsigned].startswith("220"), restarted)
 
+    @unittest.skipUnless(os.environ.get("FN_RUN_HYBRID_E2E") == "1",
+                         "set FN_RUN_HYBRID_E2E=1 (OpenSSL 3.5 with ML-DSA-65)")
+    def test_two_node_withdrawal(self):
+        """C3 across two nodes (control-c3d).  A and B each decide under their
+        own enrolment and grants (design section 3, "the receiver decides
+        again"): articles authored on one node reach the other over IHAVE,
+        relayed by this test (Path prefixed with the peer's name; the carrier
+        excludes Path).  P is enrolled on both; Q on both, granted cancel over
+        fn.mod.* on B only.  Cases: P's cancel of P's T1 (author basis) on
+        both, with a reader on B pinned before it; Q's cancel of an unsigned
+        U (authority basis) executes on B and not on A (no grant); P's cancel
+        of T2 before T2, with B killed between the two arrivals; Q's grant
+        revoked on B and B restarted (the record decided at the cancel's own
+        txid stands); P's S superseding T3."""
+        openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
+        groups = ["fn.test", "fn.mod.a", "control.cancel"]
+        a, b = self.initialize("a", groups), self.initialize("b", groups)
+        for node in (a, b):
+            self.command([IMAGE, "--fn", "operator", node["config"], "peer", "add",
+                          "source", "source.example.invalid", "127.0.0.1",
+                          str(free_port()), "fn.*", "-", "127.0.0.1", "true"])
+            node["control"] = node["root"] / "control.sock"
+
+        def signer(label, principal_byte, ed_public_hex, ed_seed_hex):
+            root = self.base / ("signer-" + label)
+            root.mkdir()
+            keys = {"principal": root / "principal.bin", "ed_public": root / "ed-public.bin",
+                    "ed_secret": root / "ed-secret.bin", "ml_private": root / "ml.pem",
+                    "ml_public": root / "ml-public.pem", "root": root}
+            keys["principal"].write_bytes(bytes([principal_byte]) * 32)
+            keys["ed_public"].write_bytes(bytes.fromhex(ed_public_hex))
+            keys["ed_secret"].write_bytes(bytes.fromhex(ed_seed_hex + ed_public_hex))
+            self.command([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out",
+                          keys["ml_private"]])
+            self.command([openssl, "pkey", "-in", keys["ml_private"], "-pubout", "-out",
+                          keys["ml_public"]])
+            keys["generation"] = "1" if label == "p" else "2"
+            return keys
+
+        # RFC 8032 section 7.1, TEST 1 and TEST 2.
+        p = signer("p", 0x55,
+                   "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+                   "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60")
+        q = signer("q", 0x66,
+                   "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c",
+                   "4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb")
+
+        def source(message_id, newsgroups, extra=None):
+            lines = ["From: poster@example.invalid", "Newsgroups: " + newsgroups,
+                     "Subject: two-node " + message_id,
+                     "Date: Fri, 25 Sep 2026 03:00:00 +0000",
+                     "Message-ID: " + message_id] + ([extra] if extra else [])
+            return ("\r\n".join(lines) + "\r\n\r\nbody\r\n").encode("ascii")
+
+        codes = {}
+
+        def author(node, keys, message_id, newsgroups, extra=None):
+            path = keys["root"] / (message_id.strip("<>").replace("@", "_") + ".eml")
+            path.write_bytes(source(message_id, newsgroups, extra))
+            signed = self.command([IMAGE, "--fn", "hybrid-sign", keys["principal"],
+                                   keys["ed_public"], keys["ed_secret"], keys["ml_public"],
+                                   keys["ml_private"], path])
+            parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+            ed_sig, ml_sig = path.with_suffix(".ed"), path.with_suffix(".ml")
+            ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+            ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+            done = subprocess.run(
+                [str(IMAGE), "--fn", "hybrid-author", str(node["control"]),
+                 keys["generation"], str(path),
+                 str(ed_sig), str(ml_sig), str(keys["ml_public"])], cwd=ROOT, env=self.env,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180, check=False)
+            codes[node["name"] + " " + message_id] = done.returncode
+
+        def fetch(node, message_id):
+            with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as c:
+                stream = c.makefile("rwb", buffering=0)
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
+                status = stream.readline()
+                self.assertTrue(status.startswith(b"220"), (node["name"], message_id, status))
+                lines = []
+                while True:
+                    line = stream.readline()
+                    if line in (b".\r\n", b""):
+                        break
+                    lines.append(line[1:] if line.startswith(b".") else line)
+                return b"".join(lines)
+
+        def relay(origin, destination, message_id):
+            octets = fetch(origin, message_id)
+            head, _, body = octets.partition(b"\r\n\r\n")
+            fields = head.split(b"\r\n")
+            rest = [f for f in fields if not f.lower().startswith(b"path:")]
+            old = [f for f in fields if f.lower().startswith(b"path:")]
+            tail = old[0].split(b":", 1)[1].strip() if old else b"not-for-mail"
+            relayed = b"\r\n".join([b"Path: source.example.invalid!" + tail] + rest) \
+                + b"\r\n\r\n" + body
+            stuffed = b"".join((b"." + line if line.startswith(b".") else line)
+                               for line in relayed.splitlines(keepends=True))
+            first, second = self.session(destination, [
+                b"IHAVE " + message_id.encode() + b"\r\n", stuffed + b".\r\n"])
+            codes["relay {}->{} {}".format(origin["name"], destination["name"],
+                                            message_id)] = (first + second).decode().strip()
+
+        def reply(node, message_id):
+            return self.article_reply(node, message_id).decode().strip()[:3]
+
+        for node in (a, b):
+            self.start(node)
+            for keys in (p, q):
+                self.command([IMAGE, "--fn", "hybrid-enroll", node["control"],
+                              keys["generation"], keys["principal"], keys["ed_public"],
+                              keys["ml_public"]])
+        granted = self.command([IMAGE, "--fn", "operator", b["config"], "control", "grant",
+                                "66" * 32, "cancel", "fn.mod.*"])
+        witness = {"grant-q-on-b": granted.returncode}
+
+        # 1. Author basis, and a reader on B pinned before the cancel.
+        t1, c1 = "<cd-t1@example.invalid>", "<cd-c1@example.invalid>"
+        author(a, p, t1, "fn.test")
+        relay(a, b, t1)
+        with socket.create_connection(("127.0.0.1", b["port"]), timeout=30) as client:
+            pinned = client.makefile("rwb", buffering=0)
+            self.assertTrue(pinned.readline().startswith(b"200 "))
+
+            def pinned_article(message_id):
+                pinned.write(b"ARTICLE " + message_id.encode() + b"\r\n")
+                line = pinned.readline()
+                if line.startswith(b"220"):
+                    while pinned.readline() not in (b".\r\n", b""):
+                        pass
+                return line.decode().strip()[:3]
+            witness["b-pinned-before"] = pinned_article(t1)
+            author(a, p, c1, "fn.test", "Control: cancel " + t1)
+            relay(a, b, c1)
+            witness["a-t1-after-cancel"] = reply(a, t1)
+            witness["b-t1-fresh-after-cancel"] = reply(b, t1)
+            witness["b-pinned-after"] = pinned_article(t1)
+
+        # 2. Authority basis: Q's cancel of an unsigned U, granted on B only.
+        u, cq = "<cd-u@example.invalid>", "<cd-cq@example.invalid>"
+        witness["a-post-u"] = self.post(a, source(u, "fn.mod.a")).decode().strip()[:3]
+        relay(a, b, u)
+        author(b, q, cq, "fn.mod.a", "Control: cancel " + u)
+        relay(b, a, cq)
+        witness["b-u-authority"] = reply(b, u)
+        witness["a-u-no-grant"] = reply(a, u)
+
+        # 3. Cancel before target, B killed between the two arrivals.
+        t2, c2 = "<cd-t2@example.invalid>", "<cd-c2@example.invalid>"
+        author(a, p, c2, "fn.test", "Control: cancel " + t2)
+        relay(a, b, c2)
+        b["process"].kill()
+        b["process"].communicate(timeout=60)
+        self.processes.remove(b.pop("process"))
+        self.start(b)
+        # A withdraws T2 on arrival, so it cannot serve T2 to relay: the
+        # same signed source reaches B through B's own author ingress.
+        author(a, p, t2, "fn.test")
+        author(b, p, t2, "fn.test")
+        witness["a-t2-early-cancel"] = reply(a, t2)
+        witness["b-t2-after-kill-and-recovery"] = reply(b, t2)
+
+        # 4. Supersedes: P's S replaces P's T3.
+        t3, s3 = "<cd-t3@example.invalid>", "<cd-s3@example.invalid>"
+        author(a, p, t3, "fn.test")
+        relay(a, b, t3)
+        author(a, p, s3, "fn.test", "Supersedes: " + t3)
+        relay(a, b, s3)
+        witness["a-t3-superseded"], witness["a-s3"] = reply(a, t3), reply(a, s3)
+        witness["b-t3-superseded"], witness["b-s3"] = reply(b, t3), reply(b, s3)
+
+        # 5. Revoke Q on B, restart B: the decided record stands.
+        revoked = self.command([IMAGE, "--fn", "operator", b["config"], "control", "revoke",
+                                "66" * 32, "cancel", "fn.mod.*"])
+        witness["revoke-q-on-b"] = revoked.returncode
+        self.stop(b)
+        self.start(b)
+        witness["b-after-revoke-and-restart"] = {
+            m: reply(b, m) for m in (t1, u, t2, t3, s3)}
+        witness["b-listgroup-fn.mod.a"] = self.listgroup(b, b"fn.mod.a")[0].decode().strip()
+        self.stop(b)
+        self.stop(a)
+        witness["codes"] = codes
+        print("NATIVE-TWO-NODE-WITHDRAWAL-WITNESS " + json.dumps(witness, sort_keys=True))
+        self.assertTrue(all(v == 0 for k, v in codes.items() if not k.startswith("relay")),
+                        codes)
+        self.assertTrue(all(v.startswith("335") and "235" in v
+                            for k, v in codes.items() if k.startswith("relay")), codes)
+        expect = {"b-pinned-before": "220", "a-t1-after-cancel": "430",
+                  "b-t1-fresh-after-cancel": "430", "b-pinned-after": "220",
+                  "a-post-u": "240", "b-u-authority": "430", "a-u-no-grant": "220",
+                  "a-t2-early-cancel": "430", "b-t2-after-kill-and-recovery": "430",
+                  "a-t3-superseded": "430", "a-s3": "220", "b-t3-superseded": "430",
+                  "b-s3": "220"}
+        self.assertEqual({k: witness[k] for k in expect}, expect)
+        self.assertEqual(witness["b-after-revoke-and-restart"],
+                         {t1: "430", u: "430", t2: "430", t3: "430", s3: "220"})
+
 
 if __name__ == "__main__":
     unittest.main()

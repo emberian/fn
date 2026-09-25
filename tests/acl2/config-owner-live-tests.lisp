@@ -196,7 +196,7 @@
 ; the refresh builds the new view's records and visible list from the old
 ; view's, so the theorem needs the old owner's view history.  Witness: the
 ; owner before the capacity increase and the Store the completion installs
-; (the theorem's one caller, fn-ocl-complete-preserves-relation).  The
+; (the theorem's one caller, fn-ocl-complete-preserves-full-historical-relation).  The
 ; fixture Store holds no article, so the visible list is empty on both sides.
 (defconst *ocl-t-hist-o* (fn-ocfg-owner *ocl-t-before*))
 (defconst *ocl-t-hist-st*
