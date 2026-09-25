@@ -1295,6 +1295,30 @@
         "planning/evidence/m5-history-lifetimes-2026-09-24.md"
       ],
       "execution_scope": "Partial: the first three steps run natively on a developer image (tests/test_native_history_marker.py). The fourth is a contract check: packing's preservation is PRF-073, and history compaction and content reclamation are not implemented."
+    },
+    {
+      "id": "SCN-041",
+      "title": "Control messages are filed under control.<verb> or refused, never in the groups they name",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-010"
+      ],
+      "steps": [
+        "Initialize a store with fn.test only and POST an article with `Control: cancel <t@example.invalid>` and Newsgroups fn.test; then POST an article with Subject `cmsg cancel <t@example.invalid>` and no Control field.",
+        "Create control.cancel and POST a second cancel article naming fn.test; LISTGROUP control.cancel and fn.test.",
+        "Repeat the three offers over IHAVE from a configured peer."
+      ],
+      "expected": [
+        "The first POST is 441 with the control-not-filed line and ARTICLE by its Message-ID is 430; the cmsg article is 240 and listed in fn.test.",
+        "The second cancel is 240, listed in control.cancel, and fn.test's listing is unchanged.",
+        "IHAVE answers 437 for the unfiled cancel with the reason in the service log, and 235 for the other two, with the same placement."
+      ],
+      "evidence": [
+        "tests/acl2/control-tests.lisp",
+        "tests/native_peer_authored_accept_raw.lisp",
+        "tests/test_native_control_filing.py"
+      ]
     }
   ]
 }
