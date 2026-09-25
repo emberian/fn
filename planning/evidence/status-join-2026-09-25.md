@@ -114,7 +114,12 @@ Commits: `ea66da80` (PKT-150, 105, 145, the test fixes), `c2963b6d`
 
 ## Native (hbox)
 
-See the section below (filled when an image builds; it needs pbb-d32).
+NOT RUN. Every image from dev after 09c0af20 fails at
+books/poster-bytes-buffer (D32 join defect; lane pbb-d32, no commit yet
+when this lane stopped). The native runs (offline vs live status
+byte-identical with the checkpoint-file line and the full values; the
+capacity tests; OperatorFieldsTests.test_a_raise) wait for that fix and
+are the continuation's first job.
 
 ## Not done, and why
 
