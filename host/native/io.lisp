@@ -2622,9 +2622,12 @@ retention ledger's reserved charge of its capacity."
 (defun fnn-store-observation (store)
   "What this process observed at its own open, which the status report names:
 the staging orphans, whether their listing stopped at its bound, and how
-the Store was opened (checkpoint or full replay, and why)."
+the Store was opened (checkpoint or full replay, and why), and one clock
+observation, from which ACL2 derives the instant the retention rule is
+measured at (books/native-live-status.lisp `fn-nls-reclaim-words')."
   (list (fnn-store-orphans store) (fnn-store-orphans-more store)
-        (fnn-store-open-mode store)))
+        (fnn-store-open-mode store)
+        (fnn-store-prepare-observation)))
 
 (defun fnn-write-report (report)
   "Write the octets of one ACL2 status report; render nothing."

@@ -126,6 +126,10 @@
 (include-book "books/poster-bytes-buffer")
 ;; fn-owner-subject-id-buffer (host/owner-host.lisp) calls fn-shb-subject-id, as in build.lisp.
 (include-book "books/sha256-buffer")
+;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
+;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
+;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
+(include-book "books/store-reclaim-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose

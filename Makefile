@@ -282,6 +282,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-reclaim \
 	books/nntp-reclaimed \
 	tests/acl2/store-reclaim-tests \
+	books/store-reclaim-buffer \
+	tests/acl2/store-reclaim-buffer-tests \
+	books/store-reclaim-holders \
+	tests/acl2/store-reclaim-holders-tests \
+	books/reclaim-admission \
+	tests/acl2/reclaim-admission-tests \
 	tests/acl2/store-history-marker-tests \
 	books/store-history-required \
 	tests/acl2/store-history-required-tests \

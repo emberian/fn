@@ -549,7 +549,7 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-pb-existing-action msgid payload groups s)))
+             (existing (fn-rcl-existing-action msgid payload groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -627,7 +627,7 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-pbb-existing-action msgid fn-octets groups s)))
+             (existing (fn-rclb-existing-action msgid fn-octets groups s)))
         (if existing
             (value existing)
           (let* ((record (fn-sn-article-record
@@ -1791,7 +1791,7 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-pb-existing-action
+      (let ((action (fn-rcl-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))
@@ -1800,9 +1800,12 @@
 ; (books/octets-stobj.lisp): host/native/owner.lisp fnn-owner-attempt fills
 ; the buffer once from the byte vector the owner handed back and asks this
 ; and fn-owner-prepare-buffer over it, so the payload is not consed into a
-; list for either.  The decision is fn-pbb-existing-action
-; (books/poster-bytes-buffer.lisp), equal to fn-pb-existing-action on the
-; buffer's logical value (fn-pbb-existing-action-is-pb-existing-action);
+; list for either.  The decision is fn-rclb-existing-action
+; (books/store-reclaim-buffer.lisp), equal to the tombstone-aware
+; fn-rcl-existing-action on the buffer's logical value
+; (fn-rclb-existing-action-is-rcl-existing-action), which is
+; fn-pb-existing-action wherever the held payload is not a tombstone
+; (fn-rcl-existing-action-is-pb-without-a-tombstone);
 ; the list entry's fn-octet-listp test is the buffer's recognizer
 ; (fn-pbb-buffer-is-octet-listp).
 (defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets state)
@@ -1813,7 +1816,7 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-pbb-existing-action
+      (let ((action (fn-rclb-existing-action
                      (fn-store-octets->string msgid-octets) fn-octets groups
                      (fn-owner-store state))))
         (value (if action action :absent))))))

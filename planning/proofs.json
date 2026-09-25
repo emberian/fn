@@ -2379,7 +2379,8 @@
         "planning/evidence/manifests/certify-20260925T102606Z-3884875.json",
         "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
         "planning/evidence/manifests/certify-20260925T184459Z-4147314.json",
-        "planning/evidence/manifests/certify-20260925T191657Z-265615.json"
+        "planning/evidence/manifests/certify-20260925T191657Z-265615.json",
+        "planning/evidence/manifests/certify-20260925T192046Z-305043.json"
       ],
       "events": [
         "fn-nntp-newnews-candidate-is-projectable",
@@ -3744,7 +3745,7 @@
     {
       "id": "PRF-088",
       "title": "Content reclamation removes only unheld payload bytes and every history decision reads the same afterwards",
-      "statement": "fn-rcl-reclaimable-is-no-obligation-names-it: (fn-rcl-reclaimable rule now h verdicts article) equals: not a tombstone, rule not keep-forever and a rule, the rule permits the article's stamp at now, no authorship verdict, and no obligation of (fn-rcl-obligations h) -- reader pin, consumer cursor, undelivered feed to a live peer, BP obligation -- names the article; no hypothesis. fn-rcl-reclaim-never-touches-a-held-article: if an obligation names the article or the rule is keep-forever, fn-rcl-reclaim-if-permitted is the identity. fn-rcl-reclaim-keeps-the-duplicate-history: fn-acceptedp of every Message-ID is unchanged, no hypothesis. fn-rcl-reclaim-keeps-every-binding and fn-rcl-reclaim-keeps-the-numbering: groups, memberships, pin, stamp, per-group next numbers, next txid and pending unchanged; every other article unchanged. fn-rcl-reclaim-preserves-statep: under fn-statep. fn-rcl-prepare-commutes-with-reclaim: under fn-statep, fn-accept-prepare after reclaiming equals reclaiming after fn-accept-prepare. fn-rcl-existing-action-after-reclaim: for an article M present and not already a tombstone, the D25 verdict fn-rcl-action-over (host subject fn-rcl-existing-action) for every Message-ID, submission and groups is unchanged, or SHA-256 collides on the compared pair, or the submission names another agent under which the removed payload gives back a source. fn-rcl-config-rule-after-retention-set: under fn-rcl-rulep, the rule read after fn-cfg-apply of fn-rcl-rule-deltas is the rule, on any prior value. fn-nntp-reclaimed-article-answers-reclaimed: fn-nntp-article-response on an article with a usable identifier and a tombstone payload answers 423 (number or current) or 430 (Message-ID) article reclaimed.",
+      "statement": "fn-rcl-reclaimable-is-no-obligation-names-it: (fn-rcl-reclaimable rule now h verdicts article) equals: not a tombstone, rule not keep-forever and a rule, the rule permits the article's stamp at now, no authorship verdict other than :absent (fn-rcl-verdict-heldp), and no obligation of (fn-rcl-obligations h) -- reader pin, consumer cursor, undelivered feed to a live peer, BP obligation -- names the article; no hypothesis. fn-rcl-reclaim-never-touches-a-held-article: if an obligation names the article or the rule is keep-forever, fn-rcl-reclaim-if-permitted is the identity. fn-rcl-reclaim-keeps-the-duplicate-history: fn-acceptedp of every Message-ID is unchanged, no hypothesis. fn-rcl-reclaim-keeps-every-binding and fn-rcl-reclaim-keeps-the-numbering: groups, memberships, pin, stamp, per-group next numbers, next txid and pending unchanged; every other article unchanged. fn-rcl-reclaim-preserves-statep: under fn-statep. fn-rcl-prepare-commutes-with-reclaim: under fn-statep, fn-accept-prepare after reclaiming equals reclaiming after fn-accept-prepare. fn-rcl-existing-action-after-reclaim: for an article M present and not already a tombstone, the D25 verdict fn-rcl-action-over (host subject fn-rcl-existing-action) for every Message-ID, submission and groups is unchanged, or SHA-256 collides on the compared pair, or the submission names another agent under which the removed payload gives back a source. fn-rcl-config-rule-after-retention-set: under fn-rcl-rulep, the rule read after fn-cfg-apply of fn-rcl-rule-deltas is the rule, on any prior value. fn-nntp-reclaimed-article-answers-reclaimed: fn-nntp-article-response on an article with a usable identifier and a tombstone payload answers 423 (number or current) or 430 (Message-ID) article reclaimed. fn-rclb-existing-action-is-rcl-existing-action: under fn-octets-p (the buffer's recognizer), the buffer verdict the native owner calls (host/owner-host.lisp fn-owner-existing-action-buffer, fn-owner-prepare-buffer) equals fn-rcl-existing-action; the list sites call fn-rcl-existing-action directly (host/owner-host.lisp fn-owner-prepare, fn-owner-existing-action; host/store-node-host.lisp prepare and fn-store-sn-existing-action). fn-nntp-over-by-msgid-answers-reclaimed: for a Message-ID token naming a held tombstone, fn-nntp-over-response (called by fn-nntp-archive-command) answers 430 article reclaimed; fn-nntp-over-current-answers-reclaimed: with a selected group and a current article that is a tombstone, 423 article reclaimed. fn-nov-lines-indexed-skip-a-reclaimed-article (subject of fn-nntp-over-range-indexed, the pinned OVER/XOVER range) and fn-nov-lines-skip-a-reclaimed-article (unpinned): the lines over NUMBERS equal the lines over NUMBERS without a tombstoned article's number. fn-nntp-newnews-scan-lists-only-live-articles: every Message-ID fn-nntp-newnews-scan lists is that of an article that is not a tombstone; no other hypothesis. fn-rcl-store-holders-hold-behind-a-lagging-consumer: while a registered consumer's acknowledgement is below the committed frontier, no article numbered (n >= 1) in a served group is reclaimable under fn-rcl-store-holders, for every rule, clock and verdict list. fn-rcl-absent-verdict-contributes-nothing: when fn-stx-verdict-of-octets of a payload under any keyring is :absent, fn-stx-delta of that payload is nil under every keyring, so an :absent verdict holds nothing; with fn-sn-finish-records-the-acceptance-verdict (the recorded verdict is fn-stx-verdict-of-octets of the payload) and fn-rcl-tombstone-contributes-nothing (fn-stx-delta of any payload satisfying fn-rcl-tombstonep is nil under every keyring), reclaiming such an article leaves the statement index every later open derives unchanged. fn-rcl-tombstone-refused-at-carrier-form: every payload satisfying fn-rcl-tombstonep gets (:refused :article) from fn-pa-carrier-form, which the host calls as fn-owner-peer-carrier-form (host/owner-host.lisp) in host/native/owner.lisp fnn-owner-attempt-transit before any Store call, on every served ingress (POST, IHAVE, TAKETHIS, peer and BP transit, bound submissions); no other hypothesis. Its keystone lemma fn-rca-nul-first-octet-is-not-an-article: an octet string whose first octet is 0 does not parse (fn-article-parse), no other hypothesis. Not covered: the developer image's store post (host/native/io.lisp fnn-command-post), which prepares a raw payload file without an article check.",
       "milestone": "M5",
       "requirements": [
         "STO-014"
@@ -3760,9 +3761,19 @@
         "books/store-reclaim.lisp",
         "books/nntp-responses.lisp",
         "tests/acl2/store-reclaim-tests.lisp",
-        "planning/evidence/reclaim-d13-2026-09-25.md"
+        "planning/evidence/reclaim-d13-2026-09-25.md",
+        "books/store-reclaim-buffer.lisp",
+        "books/store-reclaim-holders.lisp",
+        "books/nntp-reclaimed.lisp",
+        "books/nntp-newnews.lisp",
+        "books/native-live-status.lisp",
+        "tests/acl2/store-reclaim-buffer-tests.lisp",
+        "tests/acl2/store-reclaim-holders-tests.lisp",
+        "planning/evidence/reclaim-host-2026-09-25.md",
+        "books/reclaim-admission.lisp",
+        "tests/acl2/reclaim-admission-tests.lisp"
       ],
-      "progress_note": "Open: the reclaimed record's own replay step (replaying M's record with the tombstone reaches the reclaimed state; the direct proof did not return in 60 s); the whole-replay statement over fn-replay-apply-record; the durable byte program of `store reclaim` with its cuts under K0; holders read from their subsystems; the retention charge released with the payload; articles with an authorship verdict are refused (the tombstone does not carry the verdict for replay); OVER by Message-ID and NEWNEWS still list a reclaimed article (OVER answers 503 framing unavailable for it).",
+      "progress_note": "Open: the durable `store reclaim` byte program and its `--dry-run` verb in books/native-operator (design B, reclaim through the compaction pack: planning/evidence/reclaim-host-2026-09-25.md); the reclaimed record's own replay step; holders: the consumer reading is conservative (a lagging consumer holds every article), feed state and FNBS rows are not read, reader pins have no durable form (offline reclaim needs none); the retention charge released with the payload; articles with a verdict other than :absent are held; the buffer's source digest slices the two ranges of the D32 description into one list on the resend-of-a-reclaimed-article path (a two-range buffer digest reader would remove it); native N=5,000 run and cut campaign (SCN-048).",
       "events": [
         "fn-rcl-reclaimable-is-no-obligation-names-it",
         "fn-rcl-reclaim-never-touches-a-held-article",
@@ -3774,7 +3785,18 @@
         "fn-rcl-existing-action-after-reclaim",
         "fn-rcl-config-rule-after-retention-set",
         "fn-nntp-msgid-retrieval-answers-reclaimed",
-        "fn-nntp-number-retrieval-answers-reclaimed"
+        "fn-nntp-number-retrieval-answers-reclaimed",
+        "fn-rclb-existing-action-is-rcl-existing-action",
+        "fn-nntp-over-by-msgid-answers-reclaimed",
+        "fn-nntp-over-current-answers-reclaimed",
+        "fn-nov-lines-indexed-skip-a-reclaimed-article",
+        "fn-nov-lines-skip-a-reclaimed-article",
+        "fn-nntp-newnews-scan-lists-only-live-articles",
+        "fn-rcl-store-holders-hold-behind-a-lagging-consumer",
+        "fn-rcl-absent-verdict-contributes-nothing",
+        "fn-rcl-tombstone-refused-at-carrier-form",
+        "fn-rca-nul-first-octet-is-not-an-article",
+        "fn-rcl-tombstone-contributes-nothing"
       ]
     },
     {

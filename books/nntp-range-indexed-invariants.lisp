@@ -32,8 +32,11 @@
                    (fn-midx-build articles))
                   (fn-nov-lines-for-numbers group numbers articles)))
   :hints (("Goal" :induct (fn-nov-lines-for-numbers group numbers articles)
-           :in-theory (enable fn-nov-lines-for-numbers-indexed
-                              fn-nov-lines-for-numbers))))
+           :in-theory (e/d (fn-nov-lines-for-numbers-indexed
+                            fn-nov-lines-for-numbers)
+                           (fn-gidx-entry-number-article fn-nntp-available-article
+                            fn-midx-build fn-gidx-build fn-gidx-bucket-of-build
+                            fn-rcl-tombstonep)))))
 
 ; A malformed session can carry a non-text selected group.  Valid archived
 ; memberships all name text groups, so both projections select no numbers.
