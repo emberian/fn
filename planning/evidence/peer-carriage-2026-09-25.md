@@ -134,7 +134,45 @@ charge with an "octets" budget; dev states the budget in charge pages.
 
 ## Certification and native runs
 
-(filled below)
+| run | box | what | result |
+| --- | --- | --- | --- |
+| `run-20260925T102736Z-e097` at `4a612f9f` | persvati, w25, 2 jobs, 300 s | `--affected-by` peer-carriage-rows, peer-carriage, native-admin-peer: 13 certified, 158 installed | passed; manifest `planning/evidence/manifests/certify-20260925T102823Z-3910071.json`; slowest books/native-admin 9.4 s, books/peer-carriage 3.4 s, tests 2.3 s |
+| `run-20260925T103417Z-576c` at `8c38c762` | hbox, w28, 2 jobs | same roots: 20 certified | passed; `certify-20260925T103454Z-3166493.json` |
+| `run-20260925T103728Z-cc22` at `8c38c762` | hbox, w28, 2 jobs | the 140 default image roots (not `--closure`): 49 certified, 286 installed | passed; manifest archived under planning/evidence/manifests |
+
+Native, hbox, tree `git archive 8c38c762` in
+`/tank/fn/scratch/peer-carriage/tree`, production image built with
+`proof_artifacts acquire/validate --profile default` (artifact set
+`b8c507b7…`, 335 books, rejected 0) and `tools/build_native_host.sh` under
+`swarm-build`, OpenSSL 3.5.8. `build/fn-host` sha256
+`868abf22f2fceed03e941f795733056d53342ddb3661ccc99c3568aafd788cd6`, core
+`fa64003beb21b5730939c6d50cbea6ff7694a3ee316375794cdf68621e88f583`, build log
+`d6f6187c5364eeab646fbbdf49ae919c8f073f26c749700741bce3acc5388b14`.
+
+`python3 -m unittest` of five cases of tests/test_native_hybrid_author.py
+under `systemd-run --user --scope -p MemoryMax=24G` with
+`FN_RUN_HYBRID_E2E=1`: 5 of 5 ok in 15.5 s, log `build/native/tests2.log`
+sha256 `12f02fc45af3ff8e7842ffaa59d204b5f351d9391eeec478d91dabf9b800df9e`.
+
+- `test_carried_budget_and_refusal_classes`:
+  - The carried list arrives by `peer carries` and the budget by
+    `peer budget author 1048576 1`.
+  - The first signed article is carried (`HDR :fn-verified` = `carried HEX`).
+    The second is refused `detail=carried-count-exhausted`.
+  - An IHAVE from the author's address with the carrier's suite item set to
+    2 draws 437 with `detail=unsupported-profile`. This is the row the spike
+    lacked.
+  - One with a principal byte flipped draws 437 with
+    `detail=no-local-binding`.
+- `test_carrying_boundary_without_budget_carries_nothing`: a listed
+  principal with no budget is refused with `detail=carried-budget-unset`
+  and is not stored.
+- The three existing D23/D02 transit cases pass with the budget added and
+  the class as the detail (`no-local-binding`).
+
+There is no signature-failed row natively. The ACL2 witness covers it; a
+native row needs a relay that enrolled the author and a tampered transit
+body.
 
 ## Not done, and why
 
