@@ -599,12 +599,19 @@ before the mutex can be released, so no queued client can mutate afterward."
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)
       (error condition))))
 
+(defvar *fnn-owner-after-action-hook* nil
+  "spike/control: run under the owner mutex after each semantic action that
+returned normally (host/native/admin.lisp fnn-owner-ctl-after-action).")
+
 (defun fnn-owner-serialized (service cid thunk)
   "Run one semantic action, fencing before its mutex can be released."
   (fnn-with-owner (service)
     (when (fnn-owner-service-stopping service)
       (fnn-refuse "owner service is stopping"))
-    (fnn-owner-shared-action-locked service cid thunk)))
+    (multiple-value-prog1 (fnn-owner-shared-action-locked service cid thunk)
+      (when (and *fnn-owner-after-action-hook*
+                 (not (fnn-owner-service-stopping service)))
+        (funcall *fnn-owner-after-action-hook* service)))))
 
 (defun fnn-owner-consume-connection-fault (service operation)
   "Consume the private injection under the owner mutex, without a core step."

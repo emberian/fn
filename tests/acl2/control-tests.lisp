@@ -144,9 +144,12 @@
                      (list :file (list (fn-record-string-octets "control")))))
 (assert-event (equal (fn-pa-filing-plan *ct-two* *ct-fn-test* *ct-with-cancel*)
                      (list :refused :control-malformed)))
+; SPIKE: defers the signed-filing teeth; a signed control article is filed
+; in its filing group like an unsigned one (spike/control).
 (assert-event (equal (fn-pa-filing-plan *ct-signed* *ct-fn-test*
                                         *ct-with-cancel*)
-                     (list :refused :control-signed)))
+                     (list :file (list (fn-record-string-octets
+                                        "control.cancel")))))
 ; Teeth (the one hypothesis: classified :control).  An ordinary article is
 ; filed in its Newsgroups' group, which is not a control group.
 (must-fail
@@ -163,11 +166,8 @@
   (equal (fn-pa-filing-plan *ct-cancel* *ct-fn-test* *ct-with-cancel*)
          (list :file *ct-fn-test*))))
 
-; fn-ctl-unsigned-control-filing-by-definition: its carrier hypothesis.
-(must-fail
- (assert-event
-  (equal (fn-pa-filing-plan *ct-signed* *ct-fn-test* *ct-with-cancel*)
-         (list :file (list (fn-record-string-octets "control.cancel"))))))
+; fn-ctl-unsigned-control-filing-by-definition: its carrier hypothesis no
+; longer separates on the spike (signed control is filed too).
 
 ; ---------------------------------------------------------------------------
 ; fn-ctl-cmsg-subject-is-ordinary.  Witness: the cmsg Subject article, and
