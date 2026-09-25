@@ -1319,6 +1319,30 @@
         "tests/native_peer_authored_accept_raw.lisp",
         "tests/test_native_control_filing.py"
       ]
+    },
+    {
+      "id": "SCN-042",
+      "title": "A held bundle is forwarded only to the routed hop; with no route it stays held and no-route is reported",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-007"
+      ],
+      "steps": [
+        "Enrol two boundaries with contact rows and a route from the transit destination to the second boundary; hold a transit bundle for that destination and open the outbound session.",
+        "Remove the route and open the session again.",
+        "Add the route back and open the session again."
+      ],
+      "expected": [
+        "The bundle is offered on the routed session to the second boundary and settles status=sent; a session to any other boundary offers nothing.",
+        "The log carries `BP forwarding no-route destination=... decision=no-route`, no forwarding attempt (kind 8) is written and the bundle stays held.",
+        "The same bundle is forwarded through the routed hop and settles status=sent."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/acl2/bp-route-tests.lisp",
+        "planning/evidence/bp-routing-2026-09-25.md"
+      ]
     }
   ]
 }

@@ -1408,6 +1408,9 @@ caller in `fn-bpn-restart-step` and the vector is one kind-5 record.
 
 ### 4.7 The routing decision: `fn-bprt-next-hop` (2026-09-25, lane bp-routing)
 
+REP-007: A held BP bundle is offered only to the neighbour the operator's route
+table names for its destination; with no route it stays held and is reported.
+
 RFC 9171 §4.3 and §5.4 step 1 leave the forwarding strategy to the node: it
 must determine whether forwarding is possible and to which node. fn runs no
 routing protocol; it decides from an operator's table. Before this section

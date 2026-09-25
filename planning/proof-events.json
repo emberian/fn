@@ -3143,6 +3143,23 @@
           "name": "fn-bprt-next-hop-names-a-live-matching-route"
         }
       ]
+    },
+    {
+      "id": "PRF-080",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-admits-every-article-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-labelp-of-record-group-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-refusal-status-is-a-refusal"
+        }
+      ]
     }
   ]
 }
