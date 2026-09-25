@@ -28,6 +28,8 @@
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
+; P3 owner open and publication (fn-ock-).
+(include-book "../books/owner-checkpoint-open")
 ; D25: the duplicate-versus-conflict decision keys on the poster's bytes.
 (include-book "../books/poster-bytes")
 (include-book "../books/config-owner-live")
@@ -153,56 +155,74 @@
                               (if (fn-served-submission effects) t nil) state)))
     state))
 
-; The process root.  A decoded observed image opens through
-; fn-cpo-open-observed exactly as host/store-node-host.lisp does.  The owner
-; installed below satisfies fn-ocl-relation and fn-scar-view-indexedp, the
-; premises of the carried served keystones, whenever max-conns is natural
-; and the open's kind is :ok (fn-orec-recover-installs-ocl-relation,
-; books/owner-recover-ocl.lisp).  The dispatch is on the typed result's kind,
-; never on fn-sn-open-okp, which would run the whole-state recognizer once
-; more per recovery: for fn-cpo-open-observed, kind :ok is fn-sn-open-okp
-; (fn-orec-open-kind-ok-is-okp).  The final configuration and the carried
-; Store history come from the same observed journals.
+;; The process root (P3 owner open, books/owner-checkpoint-open.lisp).  Both
+;; paths extend a checkpoint over the records after it (`fn-sco-extend') and
+;; install from the extended value with `fn-ock-recover-extended'
+;; (fn-owner-recover-extended below).  From a verified checkpoint
+;; (fn-owner-recover-from-checkpoint) the records are the suffix after S; on
+;; a full replay (fn-owner-recover) the checkpoint is the capture of the
+;; empty prefix and the records are the whole history.  The keystone
+;; fn-owner-recover-from-checkpoint-equals-full-recover says both install the
+;; owner of the full open, the composition
+;; fn-orec-recover-installs-ocl-relation is stated over, and
+;; fn-ock-recover-installs-ocl-relation carries its two premises of the
+;; carried served keystones to what is installed here.  The extended value is
+;; the capture of the whole history; the owner keeps it as the base of its
+;; next publication (`fn-owner-sco-base').
+(defun fn-owner-recover-extended (extended config-records frontier max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((oc (fn-ock-recover-extended extended config-records frontier max-conns)))
+    (if (equal oc :fault)
+        (value :fault)
+      (let* ((state (fn-owner-install-ocfg oc state))
+             ; Rebuilt exclusively by successful FNFD scans after
+             ; authoritative store recovery.  It is a carried
+             ; incremental fold, never a whole-journal rescan on a
+             ; served event.
+             (state (f-put-global 'fn-owner-feed-intents nil state))
+             ; The persisted profile is handed back by
+             ; fn-owner-install-profile after every recovery; until
+             ; then the budget is 0 and every publication is
+             ; :unaffordable (books/store-budget.lisp).
+             (state (f-put-global 'fn-owner-store-profile nil state))
+             ; Socket-only reply framers are recreated after
+             ; authoritative recovery; their durable counterpart is
+             ; the FNFD replay above, not this retained input.
+             (state (f-put-global 'fn-owner-feed-inputs
+                                  (fn-fc-table-initial-state) state))
+             ; The owner's checkpoint state: the capture it extends at its
+             ; next publication, the newest durable checkpoint's S (set by
+             ; fn-owner-sco-note-durable), and the count of the last attempt.
+             (state (f-put-global 'fn-owner-sco-base extended state))
+             (state (f-put-global 'fn-owner-sco-durable nil state))
+             (state (f-put-global 'fn-owner-sco-attempted nil state))
+             (state (f-put-global 'fn-owner-sco-pending nil state)))
+        (value :recovering)))))
+
 (defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
   (declare (xargs :stobjs state :mode :program))
   (let ((records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (equal records :bad) (equal config-records :bad)
-            (null config-records) (not (natp max-conns)))
+    (if (or (equal records :bad) (equal config-records :bad))
         (value :fault)
-      (let ((replayed (fn-cpr-replay config-records records)))
-        (if (not (equal (fn-replay-result-kind replayed) :ok))
-            (value :fault)
-          (let* ((cn (fn-replay-result-node replayed))
-                 (cfg (fn-cnode-config cn))
-                 (opened (fn-cpo-open-observed config-records frontier records)))
-            (if (and (equal (fn-sn-open-kind opened) :ok)
-                     (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
-                            :recovering))
-                (let* ((state (fn-owner-install-ocfg
-                               (fn-ocfg-make
-                                (fn-own-configure
-                                 (fn-own-start (fn-sn-open-state opened) max-conns)
-                                 (fn-owner-post-config cfg))
-                                cfg nil nil)
-                               state))
-                       ; Rebuilt exclusively by successful FNFD scans after
-                       ; authoritative store recovery.  It is a carried
-                       ; incremental fold, never a whole-journal rescan on a
-                       ; served event.
-                       (state (f-put-global 'fn-owner-feed-intents nil state))
-                       ; The persisted profile is handed back by
-                       ; fn-owner-install-profile after every recovery; until
-                       ; then the budget is 0 and every publication is
-                       ; :unaffordable (books/store-budget.lisp).
-                       (state (f-put-global 'fn-owner-store-profile nil state))
-                       ; Socket-only reply framers are recreated after
-                       ; authoritative recovery; their durable counterpart is
-                       ; the FNFD replay above, not this retained input.
-                       (state (f-put-global 'fn-owner-feed-inputs
-                                                  (fn-fc-table-initial-state) state)))
-                  (value :recovering))
-              (value :fault))))))))
+      (fn-owner-recover-extended
+       (fn-sco-extend (fn-sco-capture config-records nil) config-records records)
+       config-records frontier max-conns state))))
+
+; The open from the checkpoint the Store open decoded and verified
+; (`fn-store-sco-checkpoint', host/store-node-host.lisp) and the octets of
+; the records after it.
+(defun fn-owner-recover-from-checkpoint (suffix-octet-records frontier config-octet-records
+                                                              max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((checkpoint (fn-store-sco-current state))
+        (records (fn-store-decode-records suffix-octet-records))
+        (config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (null checkpoint) (equal records :bad) (equal config-records :bad))
+        (value :fault)
+      (fn-owner-recover-extended
+       (fn-sco-extend checkpoint config-records records)
+       config-records frontier max-conns state))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -232,6 +252,69 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((bound (fn-sbud-payload-bound (fn-owner-store-profile state))))
     (if (posp bound) bound *fn-record-max-payload*)))
+
+;; The owner's publication (books/owner-checkpoint-open.lisp).  These read
+;; the owner and write only the four fn-owner-sco-* globals: the served
+;; owner `fn-owner' is never written here.
+
+(defun fn-owner-sco-global (name state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global name state) (f-get-global name state) nil))
+
+(defun fn-owner-sco-count (state)
+  (declare (xargs :stobjs state :mode :program))
+  (len (fn-sf-records (fn-sn-files (fn-own-store (fn-owner-core state))))))
+
+; The newest durable checkpoint the Store open verified: its S, or NIL.
+(defun fn-owner-sco-note-durable (sequence state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-sco-durable (and (natp sequence) sequence)
+                             state)))
+    (value :noted)))
+
+; :due or :idle, by fn-ock-publication-duep under the profile's K.
+(defun fn-owner-sco-due (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((profile (fn-owner-store-profile state)))
+    (value (if (and profile
+                    (fn-ock-publication-duep
+                     (fn-owner-sco-global 'fn-owner-sco-durable state)
+                     (fn-owner-sco-count state)
+                     (fn-bs-profile-max-open-suffix profile)
+                     (fn-owner-sco-global 'fn-owner-sco-attempted state)))
+               :due :idle))))
+
+; The next checkpoint's file octets: (OCTETS S SUFFIX) or :unencodable.  The
+; attempt is recorded at this count, and the base becomes the new capture
+; (it is the capture of the owner's history whether or not the write
+; succeeds: fn-ock-next-checkpoint-is-the-capture).
+(defun fn-owner-sco-publish-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((st (fn-own-store (fn-owner-core state)))
+         (records (fn-sf-records (fn-sn-files st)))
+         (configs (fn-sn-config-history st))
+         (count (len records))
+         (durable (fn-owner-sco-global 'fn-owner-sco-durable state))
+         (next (fn-ock-next-checkpoint (fn-owner-sco-global 'fn-owner-sco-base state)
+                                       configs records))
+         (segment (fn-bs-profile-max-record-octets (fn-owner-store-profile state)))
+         (octets (fn-scc-file-octets next segment))
+         (state (f-put-global 'fn-owner-sco-attempted count state))
+         (state (f-put-global 'fn-owner-sco-base next state)))
+    (if (equal octets :unencodable)
+        (value :unencodable)
+      (let ((state (f-put-global 'fn-owner-sco-pending (fn-sco-sequence next) state)))
+        (value (list octets (fn-sco-sequence next)
+                     (- count (if (natp durable) durable 0))))))))
+
+; The host wrote the pending checkpoint durably (fn-bs-scp-program's last
+; cut): it is now the newest durable one.
+(defun fn-owner-sco-published (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((pending (fn-owner-sco-global 'fn-owner-sco-pending state))
+         (state (f-put-global 'fn-owner-sco-durable pending state))
+         (state (f-put-global 'fn-owner-sco-pending nil state)))
+    (value (if (natp pending) :published :none))))
 
 ; The served POST bound (D27): the carried Store profile's payload bound
 ; (`fn-sbud-payload-bound', books/store-budget-naming, which never exceeds the
