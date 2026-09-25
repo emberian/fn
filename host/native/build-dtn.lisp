@@ -103,6 +103,8 @@
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")
+;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io, as in build.lisp.
+(include-book "books/records-concrete-owner")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
