@@ -1423,7 +1423,8 @@
         "planning/evidence/manifests/certify-20260925T101146Z-3714036.json",
         "planning/evidence/manifests/certify-20260925T110203Z-65756.json",
         "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
-        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json"
+        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json",
+        "planning/evidence/manifests/certify-20260925T191657Z-265615.json"
       ]
     },
     {
@@ -2377,7 +2378,8 @@
         "planning/evidence/manifests/certify-20260925T100705Z-3116225.json",
         "planning/evidence/manifests/certify-20260925T102606Z-3884875.json",
         "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
-        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json"
+        "planning/evidence/manifests/certify-20260925T184459Z-4147314.json",
+        "planning/evidence/manifests/certify-20260925T191657Z-265615.json"
       ],
       "events": [
         "fn-nntp-newnews-candidate-is-projectable",
