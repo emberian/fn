@@ -3727,8 +3727,7 @@
         "tests/acl2/poster-bytes-tests.lisp",
         "planning/evidence/path-and-login-2026-09-25.md"
       ],
-      "progress_note": "Certified on persvati at 694935ab (run-20260925T092122Z-f678, manifest certify-20260925T092155Z-3183327, 239 of 239) and again inside the config fan-out at bba8bb15 (certify-20260925T094334Z-3395289); native witnesses in planning/evidence/path-and-login-2026-09-25.md.",
-      "events": []
+      "progress_note": "Certified on persvati at 694935ab (run-20260925T092122Z-f678, manifest certify-20260925T092155Z-3183327, 239 of 239) and again inside the config fan-out at bba8bb15 (certify-20260925T094334Z-3395289); native witnesses in planning/evidence/path-and-login-2026-09-25.md."
     },
     {
       "id": "PRF-109",
@@ -3748,8 +3747,7 @@
         "tests/acl2/config-tests.lisp",
         "planning/evidence/path-and-login-2026-09-25.md"
       ],
-      "progress_note": "Certified on persvati at 694935ab (manifest certify-20260925T092155Z-3183327) and, with the config fold fix, at bba8bb15 (certify-20260925T094334Z-3395289); native rows B1-B5 and O1-O2 in planning/evidence/path-and-login-2026-09-25.md.",
-      "events": []
+      "progress_note": "Certified on persvati at 694935ab (manifest certify-20260925T092155Z-3183327) and, with the config fold fix, at bba8bb15 (certify-20260925T094334Z-3395289); native rows B1-B5 and O1-O2 in planning/evidence/path-and-login-2026-09-25.md."
     }
   ]
 }
