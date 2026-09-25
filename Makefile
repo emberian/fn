@@ -993,6 +993,9 @@ check:
 # Static, under a second, with its teeth test.
 	$(PYTHON) tools/build_lists_check.py
 	$(PYTHON) -m unittest -q tests.test_build_lists_check
+# Every ACL2 a tool or test starts takes the machine's pool and heap cap
+# (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
+	$(PYTHON) -m unittest -q tests.test_acl2_launchers.LauncherRuleTests
 # specs/identity.md "The signed bytes" is what an independent verifier is
 # written from.  On 2026-09-24 tools/fn_verify.py had to read the books for
 # the preimage layout, the dropped fields and the ML-DSA context, because the
@@ -1092,7 +1095,7 @@ tooling-test:
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_bridge_image -v
+	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers -v
 
 # Every test module in its own process under a wall-time budget (PKT-163):
 # the report lists each module's seconds and slowest tests, and a module
