@@ -786,25 +786,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 797,
+    "books": 798,
     "books_in_root_closure": 794,
     "roots": 782,
-    "theorems": 10718,
-    "functions": 7519,
-    "assert_events": 11593,
+    "theorems": 10725,
+    "functions": 7522,
+    "assert_events": 11608,
     "must_fails": 1064,
     "encapsulates": 43,
     "guards": {
-      "verified": 2117,
+      "verified": 2118,
       "declared-off": 553,
-      "default-guarded": 3754,
+      "default-guarded": 3756,
       "default-unguarded": 1095
     },
     "suspect_theorems": 94,
     "export_hygiene_warnings": 135,
     "enabled_projection_warnings": 42,
     "teeth_form_warnings": 86,
-    "include_hygiene_warnings": 798,
+    "include_hygiene_warnings": 799,
     "host_names_warnings": 873,
     "hand_written_record_warnings": 18
   },
@@ -813,12 +813,12 @@
       "book": "books/acceptance-alloc.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
-      "functions": 21,
+      "theorems": 5,
+      "functions": 23,
       "guards": {
         "verified": 16,
         "declared-off": 0,
-        "default-guarded": 5,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
       "verify_guards_events": 16,
@@ -7175,15 +7175,15 @@
       "book": "books/frame-octets.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 27,
-      "functions": 7,
+      "theorems": 29,
+      "functions": 8,
       "guards": {
-        "verified": 2,
+        "verified": 3,
         "declared-off": 0,
         "default-guarded": 4,
         "default-unguarded": 1
       },
-      "verify_guards_events": 2,
+      "verify_guards_events": 3,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 9,
@@ -20544,6 +20544,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/stack-depth-twins-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/acceptance-alloc",
+        "../../books/frame-octets"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/statement-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -22260,7 +22286,7 @@
     {
       "theorem": "fn-ag-less-is-less",
       "book": "books/acceptance-alloc.lisp",
-      "line": 58,
+      "line": 88,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-ag-less",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -29819,6 +29845,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/stack-depth-twins-tests.lisp",
+        "line": 16,
+        "include": "../../books/acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/statement-tests.lisp",
         "line": 3,
         "include": "crypto-seam-tests",
@@ -35779,56 +35812,56 @@
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1812,
+        "line": 1832,
         "name": "*fnn-sigterm-owner-active*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1812,
+        "line": 1832,
         "name": "*fnn-sigterm-requested*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1812,
+        "line": 1832,
         "name": "*fnn-sigterm-wakeup-fd*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1812,
+        "line": 1832,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1812,
+        "line": 1832,
         "name": "fnn-listen",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1894,
+        "line": 1914,
         "name": "fnn-tls-context-p",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1894,
+        "line": 1914,
         "name": "fnn-post-entry-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 1942,
+        "line": 1962,
         "name": "fnn-register-developer-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
