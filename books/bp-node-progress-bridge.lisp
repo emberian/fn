@@ -286,6 +286,20 @@
   (fn-bpnp-busy-delivery-step st epoch op key observation)
   (fn-bpnp-busy-delivery-step)))
 
+;; N16's rotation arms answer only their own publication effects
+;; (:persist-checkpoint, :generation-selected, :rotation-refused,
+;; :rotation-uncertain): a journal generation's selection discharges no
+;; application obligation, so they sit inside the confined set.
+(local
+ (fn-bpnpb-defquiet bpnpb-rotate-step
+  (fn-bpnp-rotate-step st generation ck)
+  (fn-bpnp-rotate-step)))
+
+(local
+ (fn-bpnpb-defquiet bpnpb-rotation-persist-step
+  (fn-bpnp-rotation-persist-step st epoch op result)
+  (fn-bpnp-rotation-persist-step)))
+
 ;; The stranded report of the kind-8 retry policy is neither a release nor
 ;; a receipt preparation.
 (local
@@ -345,6 +359,7 @@
                          bpnpb-forward-result-persist-step
                          bpnpb-clock-domain-fence bpnpb-conflict-propose-step
                          bpnpb-conflict-persist-step bpnpb-busy-delivery-step
+                         bpnpb-rotate-step bpnpb-rotation-persist-step
                          bpnpb-delegate-with-credit bpnpb-preserve-runtime-answer)
                        (theory 'bpnpb-theory))))
   :rule-classes nil))

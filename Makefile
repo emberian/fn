@@ -364,6 +364,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-replay-append \
 	books/bp-node-rotation-codec \
 	books/bp-node-rotation \
+	books/bp-node-rotation-step \
 	tests/acl2/bp-node-counterexamples-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
