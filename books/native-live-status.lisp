@@ -47,19 +47,109 @@
   (declare (xargs :guard t))
   (fn-record-string-octets text))
 
-; Every natural in decimal.  `fn-nntp-decimal-field' is the NNTP response
-; renderer, which answers 0 past ten digits (RFC 3977 section 6 bounds what
-; it renders); a status value is the operator's and has no such bound: a
-; max-history-octets of 2^40 is thirteen digits (PKT-156).
+; Every natural in decimal.  The renderer was `fn-nntp-decimal-field', the
+; NNTP response renderer, which answers 0 past ten digits (RFC 3977 section
+; 6 bounds what it renders); a status value is the operator's and has no
+; such bound, so any value of 2^34 or more (eleven digits), the default
+; max-history-octets 2^40 among them, printed 0 (PKT-156).
+(defun fn-nls-digits (n acc)
+  (declare (xargs :guard (natp n)
+                  :measure (nfix n)
+                  :hints (("Goal" :in-theory (disable floor mod)))))
+  (if (zp n)
+      acc
+    (fn-nls-digits (floor n 10) (cons (+ 48 (mod n 10)) acc))))
+
 (defun fn-nls-nat (n)
   (declare (xargs :guard t))
-  (let ((digits (fn-nntp-decimal (nfix n))))
-    (if (consp digits) digits '(48))))
+  (if (posp n) (fn-nls-digits n nil) '(48)))
+
+(defthm fn-nls-digits-true-listp
+  (implies (true-listp acc) (true-listp (fn-nls-digits n acc)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (disable floor mod))))
+
+(defthm fn-nls-nat-true-listp
+  (true-listp (fn-nls-nat n))
+  :rule-classes :type-prescription)
+
+(encapsulate ()
+(local
+ (defthm fn-nls-digits-of-append
+   (equal (fn-nls-digits n (append x y))
+          (append (fn-nls-digits n x) y))
+   :hints (("Goal" :induct (fn-nls-digits n x) :in-theory (disable floor mod)))))
+(local
+ (defthm fn-nls-digits-is-append
+   (implies (syntaxp (not (equal acc ''nil)))
+            (equal (fn-nls-digits n acc)
+                   (append (fn-nls-digits n nil) acc)))
+   :hints (("Goal" :use ((:instance fn-nls-digits-of-append (x nil) (y acc)))
+            :in-theory (disable fn-nls-digits-of-append floor mod)))))
+(local
+ (defthm fn-nls-value-aux-of-append
+   (equal (fn-nntp-decimal-value-aux (append x y) a)
+          (fn-nntp-decimal-value-aux y (fn-nntp-decimal-value-aux x a)))
+   :hints (("Goal" :induct (fn-nntp-decimal-value-aux x a)
+            :in-theory (enable fn-nntp-decimal-value-aux)))))
+(local
+ (defthm fn-nls-digits-value
+   (implies (natp n)
+            (equal (fn-nntp-decimal-value-aux (fn-nls-digits n nil) 0) n))
+   :hints (("Goal" :induct (fn-nls-digits n nil)
+            :in-theory (e/d (fn-nntp-decimal-value-aux mod) (floor))))))
+(local
+ (encapsulate ()
+   (local (include-book "arithmetic-5/top" :dir :system))
+   (defthm fn-nls-mod-10-is-a-digit
+     (implies (natp n)
+              (and (<= 0 (mod n 10)) (< (mod n 10) 10)))
+     :rule-classes :linear)
+   (defthm fn-nls-mod-10-integer
+     (implies (natp n) (integerp (mod n 10)))
+     :rule-classes :type-prescription)))
+(local
+ (defthm fn-nls-tokenp-of-append
+   (equal (fn-nntp-decimal-tokenp (append x y))
+          (and (fn-nntp-decimal-tokenp x) (fn-nntp-decimal-tokenp y)))
+   :hints (("Goal" :in-theory (enable fn-nntp-decimal-tokenp)))))
+(local
+ (defthm fn-nls-digits-tokenp
+   (implies (natp n)
+            (fn-nntp-decimal-tokenp (fn-nls-digits n nil)))
+   :hints (("Goal" :induct (fn-nls-digits n nil)
+            :in-theory (e/d (fn-nntp-decimal-tokenp fn-nntp-decimal-digitp)
+                            (floor mod))))))
+(local
+ (defthm fn-nls-digits-consp
+   (implies (posp n) (consp (fn-nls-digits n nil)))
+   :hints (("Goal" :expand ((fn-nls-digits n nil)) :in-theory (disable floor mod)))))
+; KEYSTONE (PKT-156).  The words status prints for every natural are its
+; decimal digits: a nonempty run of digits whose value, read by the NNTP
+; decimal reader `fn-nntp-decimal-value', is the natural itself, however
+; many digits it has.  Every number of the report goes through
+; `fn-nls-nat' (`fn-nls-field', `fn-nls-value'), which
+; `fn-native-live-status-host-offline' (host/native/io.lisp
+; `fnn-command-live-report') and `fn-native-live-status-host-answer'
+; (host/native/control.lisp `fnn-control-live-status-answer') reach.
+(defthm fn-nls-nat-is-the-decimal-digits
+  (implies (natp n)
+           (and (consp (fn-nls-nat n))
+                (fn-nntp-decimal-tokenp (fn-nls-nat n))
+                (equal (fn-nntp-decimal-value (fn-nls-nat n)) n)))
+  :hints (("Goal" :in-theory (enable fn-nls-nat fn-nntp-decimal-value fn-nntp-decimal-tokenp
+                                     fn-nntp-decimal-value-aux fn-nntp-decimal-digitp)))))
 
 (defun fn-nls-value (v)
   "A reported value: a word (the profile's `history-marker') or a natural."
   (declare (xargs :guard t))
   (if (stringp v) (fn-nls-text v) (fn-nls-nat v)))
+
+(defthm fn-nls-value-true-listp
+  (true-listp (fn-nls-value v))
+  :rule-classes :type-prescription)
+
+(in-theory (disable fn-nls-nat fn-nls-value))
 
 (defconst *fn-nls-lf* '(10))
 

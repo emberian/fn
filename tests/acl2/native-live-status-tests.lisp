@@ -242,6 +242,16 @@ obli")))
                      (fn-record-string-octets "1099511627776")))
 (assert-event (equal (fn-nntp-decimal-field (expt 2 40)) '(48)))
 (assert-event (equal (fn-nls-nat 0) '(48)))
+(assert-event (equal (fn-nls-nat (1- (expt 2 64)))
+                     (fn-record-string-octets "18446744073709551615")))
+(assert-event (equal (fn-nntp-decimal-value (fn-nls-nat (expt 2 40))) (expt 2 40)))
+; fn-nls-nat-is-the-decimal-digits without its hypothesis: a value that is
+; not a natural renders 0.
+(assert-event (equal (fn-nls-nat -5) '(48)))
+(must-fail
+ (defthm nlst-nat-digits-without-natp
+   (equal (fn-nntp-decimal-value (fn-nls-nat -5)) -5)
+   :rule-classes nil))
 ; The profile's history requirement is a word.
 (assert-event (equal (fn-nls-field "history-marker" "unmarked")
                      (fn-record-string-octets " history-marker=unmarked")))
