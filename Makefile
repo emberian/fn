@@ -214,6 +214,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-k0 \
 	books/byte-store-k0-staging \
 	books/byte-store-k0-staging-error \
+	books/byte-store-k0-authority-error \
 	books/byte-store-k0-recovery \
 	tests/acl2/byte-store-k0-tests \
 	tests/acl2/byte-store-k0-recovery-tests \

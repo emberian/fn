@@ -83,7 +83,8 @@
                             fn-bs-dir-idp fn-bs-inop)
                            (fn-bs-frontier-program nth nthcdr fn-bs-run fn-bs-store-relation fn-sf-statep fn-bs-statep fn-bs-durable-frontier
                             fn-bs-durable-records fn-bs-durable-content fn-bs-lookup fn-bs-fencedp
-                            fn-bs-make fn-bs-rename fn-bs-k0-coveredp fn-bs-k0m-has-root-rename)))))
+                            fn-bs-make fn-bs-rename fn-bs-k0-coveredp fn-bs-k0m-has-root-rename
+                            fn-bs-k0s-root-rename-targetp fn-bs-k0s-root-rename-pendingp fn-bs-crash-choicesp)))))
 (defthm fn-bs-k0b-frontier-attempted-kernel
   (implies (and (fn-bs-store-relation bs ks)
                 (fn-bs-frontier-inputp ks stage octets)
@@ -295,7 +296,8 @@
                  (:instance fn-bs-pending-matches-phase-unfolds (bs (car (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (ks (cdr (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))))
                  (:instance fn-bs-k8-pending-link-fence-durable-records (bs (car (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))) (ks (cdr (nth 10 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))))
            :in-theory (e/d (fn-bs-k0b-record-program-steps fn-bs-record-directory-committedp fn-bs-replay-visiblep)
-                           (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result fn-bs-durable-records fn-bs-apply-ops fn-bs-unlink fn-bs-pending-matches-phase)))))
+                           (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result fn-bs-durable-records fn-bs-apply-ops fn-bs-unlink fn-bs-pending-matches-phase
+                            fn-bs-k0s-root-rename-targetp fn-bs-k0s-root-rename-pendingp fn-bs-crash-choicesp)))))
 (defthm fn-bs-k0-record-completing-cut-relation-by-step
   (implies (and (fn-bs-store-relation bs ks)
                 (fn-bs-record-inputp ks stage name frame)
@@ -355,4 +357,5 @@
            :in-theory (e/d (fn-bs-k0b-record-program-steps fn-bs-k0-step-inputp
                             fn-bs-replay-visiblep fn-bs-k0c-ok-kinds-return-ok fn-bs-k0b-fsync-ok-results
                             fn-bs-k0s-syscall-step-keeps-kernel fn-bs-k0b-cleanup-step-facts)
-                           (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result fn-bs-durable-records fn-bs-apply-ops fn-bs-unlink fn-bs-pending-matches-phase)))))
+                           (fn-bs-run fn-bs-store-relation fn-bs-record-program nth nthcdr fn-bs-record-inputp fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result fn-bs-durable-records fn-bs-apply-ops fn-bs-unlink fn-bs-pending-matches-phase
+                            fn-bs-k0s-root-rename-targetp fn-bs-k0s-root-rename-pendingp fn-bs-crash-choicesp)))))
