@@ -112,14 +112,30 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-bpnf-family-replay-rows)
                            (fn-bpnf-family-replay-rows-aux
-                            fn-bpnr-checkpointp)))))
+                            fn-bpnr-checkpointp
+                            ;; fn-bpn-nth-is-nth-on-true-lists applies to the
+                            ;; checkpoint's own conses; these rules only
+                            ;; backchain its true-listp hypothesis through the
+                            ;; held rows' recognizers (4.3 s -> 0.1 s).
+                            fn-bpf-fragment-listp-is-a-true-list
+                            fn-cp-idp-true-listp
+                            fn-nntp-response-text-true-listp
+                            fn-bpn-report-bounded-append-suffix
+                            fn-bpf-fragment-listp-car-and-cdr
+                            fn-bpf-fragmentp-fields)))))
 
 (defthm fn-bpnr-recover-without-checkpoint-is-family-recover
   (equal (fn-bpnr-recover-auto-event st base-records sequence-ready rows
                                      '(:none))
          (fn-bpnf-family-recover-auto-event st base-records sequence-ready
                                             rows))
-  :hints (("Goal" :in-theory (disable fn-bpnf-family-replay-rows))))
+  :hints (("Goal" :in-theory (disable fn-bpnf-family-replay-rows
+                                      fn-bpf-fragment-listp-is-a-true-list
+                                      fn-cp-idp-true-listp
+                                      fn-nntp-response-text-true-listp
+                                      fn-bpn-report-bounded-append-suffix
+                                      fn-bpf-fragment-listp-car-and-cdr
+                                      fn-bpf-fragmentp-fields))))
 
 (defthm fn-bpnr-checkpoint-octets-names-a-checkpoint
   (implies (fn-bpnr-checkpoint-octets ck budget)
