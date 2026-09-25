@@ -425,6 +425,57 @@ witness written after the commit:
   shared-lock reader may serve a record above the marker until the next
   writable open.
 
+### Content reclamation under D13 (STO-014)
+
+STO-014: Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs.
+
+Status: decision, tombstone and served projection proved (PRF-088); the
+durable `store reclaim` verb is not implemented.
+
+**The rule** is the operator's, set through the ordinary reconfiguration
+record: `admin retention set keep-forever | released-by-all-holders |
+release-after DAYS` stages two `:set-limit` rows, `retention` (0, 1, 2)
+and `retention-days` (`books/reclaim-rule`). No row reads keep-forever,
+D03's default, so a store written before this section behaves as before.
+An unrecognised row is refused by name and reclaims nothing. The rule is
+the authorized release of the article's own archive pin; it releases no
+other obligation.
+
+**The decision** (`fn-rcl-verdict`, `books/store-reclaim`) answers one
+article with `:reclaimable` or the first reason it stays:
+`already-reclaimed`, `rule-keeps`, `rule-refused`, `too-recent`
+(release-after: stamp plus DAYS × 86,400 s after now; a legacy stamp never
+qualifies), `verdict-needs-payload` (an authorship verdict is re-verified
+at recovery, STO-008), `held-reader-pin`, `held-consumer-cursor` (a
+consumer that acknowledged number A in the group holds every number above
+A), `held-feed` (a live peer not yet delivered it; a retired peer holds
+nothing) and `held-bp-obligation`. The keystone says the executable test is
+exactly "no obligation in the flattened list names the article" together
+with the rule.
+
+**The tombstone** replaces the payload octets of the article record and
+nothing else: NUL `FN-RCL1`, a source flag, the payload's SHA-256, the
+SHA-256 of its D25 source under its own agent, the payload length and that
+agent (`books/reclaim-tombstone`). The record keeps its Message-ID,
+sequence, txid, generation, groups, memberships, obligation identity,
+content subject, release evidence, charge and stamp, so the history entry,
+the numbers, the group bindings and the content identity stay.
+Acceptance never reads a stored payload, so replaying the record with the
+tombstone reaches the reclaimed state, and every other record's step
+commutes with reclamation (`fn-rcl-prepare-commutes-with-reclaim`).
+
+**What stays the same** (the decisions this table lists): the duplicate
+history (`fn-acceptedp` for every Message-ID; a reclaimed ID is refused
+again, never resurrected), group numbering (per-group next numbers), each
+article's bindings, and the D25 duplicate-versus-conflict verdict the host
+calls (`fn-rcl-existing-action`) up to a SHA-256 collision on the compared
+pair. Verdict lookup reads the Store's verdict slot, which reclamation does
+not touch, and an article with a verdict is not reclaimed.
+
+**Served**: ARTICLE, HEAD, BODY and STAT of a reclaimed article answer
+`423 article reclaimed` by number and `430 article reclaimed` by
+Message-ID. OVER answers 503 for it and NEWNEWS still lists it (open).
+
 ### Chained packs (not implemented)
 
 The 4 MiB compaction unit is permanent per store today, because each

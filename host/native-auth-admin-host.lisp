@@ -31,6 +31,12 @@
 (defun fn-native-auth-admin-host-list (octets presentp max-credentials)
   (fn-native-auth-admin-list octets presentp max-credentials))
 
+(defun fn-native-auth-admin-host-action-signing-text (result)
+  (fn-native-auth-admin-action-signing-text result))
+(defun fn-native-auth-admin-host-bind (octets presentp name signing-text
+                                             max-credentials)
+  (fn-native-auth-admin-bind octets presentp name signing-text max-credentials))
+
 (defun fn-native-auth-admin-host-set-password
   (octets presentp name secret confirmation salt
           principal-text principal-presentp postingp max-credentials)

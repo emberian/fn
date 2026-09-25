@@ -128,14 +128,14 @@
  (not (equal (fn-auth-cred-secret (fn-naa-test-cred-a))
              (fn-auth-cred-secret (fn-naa-test-cred-b)))))
 (assert-event
- (equal (fn-native-auth-admin-public-report (list (fn-naa-test-cred-a)))
-        (fn-native-auth-admin-public-report (list (fn-naa-test-cred-b)))))
+ (equal (fn-native-auth-admin-public-report (list (fn-naa-test-cred-a)) nil)
+        (fn-native-auth-admin-public-report (list (fn-naa-test-cred-b)) nil)))
 (assert-event
  (equal (fn-native-auth-admin-result-report
          (fn-native-auth-admin-list
           (fn-native-auth-admin-result-octets (fn-naa-test-set)) t 128))
         (fn-native-auth-admin-public-report
-         (list (fn-naa-test-credential)))))
+         (list (fn-naa-test-credential)) nil)))
 
 ; The native writer retains the existing canonical writer's lexical table
 ; order even when the observed input file used another valid order.
@@ -314,3 +314,97 @@
           (fn-naa-test-one) t *fn-naa-test-name* *fn-naa-test-secret*
           *fn-naa-test-secret* *fn-naa-test-salt* nil nil t 1))
         :accepted))
+
+; -----------------------------------------------------------------------------
+; `principal bind' / `unbind' (books/login-binding.lisp's binding table).
+
+(defconst *fn-naa-test-signing-hex*
+  (fn-record-string-octets
+   "0707070707070707070707070707070707070707070707070707070707070707"))
+(assert-event
+ (equal (fn-native-auth-admin-plan-action
+         (fn-native-auth-admin-parse-argv
+          (fn-naa-test-argv
+           '("bind" "native-reader"
+             "0707070707070707070707070707070707070707070707070707070707070707"))))
+        (list :bind *fn-naa-test-name* *fn-naa-test-signing-hex*)))
+(assert-event
+ (equal (fn-native-auth-admin-plan-action
+         (fn-native-auth-admin-parse-argv
+          (fn-naa-test-argv '("unbind" "native-reader"))))
+        (list :bind *fn-naa-test-name* nil)))
+(assert-event
+ (equal (fn-native-auth-admin-plan-reason
+         (fn-native-auth-admin-parse-argv
+          (fn-naa-test-argv '("bind" "native-reader" "07"))))
+        :principal))
+(assert-event
+ (equal (fn-native-auth-admin-plan-reason
+         (fn-native-auth-admin-parse-argv (fn-naa-test-argv '("bind"))))
+        :bind-arguments))
+
+(defmacro fn-naa-test-bound ()
+  '(fn-native-auth-admin-bind
+    (fn-native-auth-admin-result-octets (fn-naa-test-set)) t
+    *fn-naa-test-name* *fn-naa-test-signing-hex* 128))
+(assert-event (equal (fn-native-auth-admin-result-status (fn-naa-test-bound))
+                     :accepted))
+; The written file loads, with the same credential and one binding.
+(assert-event
+ (equal (fn-native-auth-load-bindings
+         (fn-native-auth-admin-result-octets (fn-naa-test-bound)) t 128)
+        (list (cons *fn-naa-test-name* *fn-naa-test-principal*))))
+(assert-event
+ (equal (fn-native-auth-result-status
+         (fn-native-auth-load
+          (fn-native-auth-admin-result-octets (fn-naa-test-bound)) t nil nil nil 128))
+        :accepted))
+(assert-event
+ (null (fn-native-auth-load-bindings
+        (fn-native-auth-admin-result-octets (fn-naa-test-set)) t 128)))
+; A password change keeps the binding; unbind removes it.
+(assert-event
+ (equal (fn-native-auth-load-bindings
+         (fn-native-auth-admin-result-octets
+          (fn-native-auth-admin-set-password
+           (fn-native-auth-admin-result-octets (fn-naa-test-bound)) t
+           *fn-naa-test-name* *fn-naa-test-other-secret*
+           *fn-naa-test-other-secret* *fn-naa-test-other-salt* nil nil t 128))
+         t 128)
+        (list (cons *fn-naa-test-name* *fn-naa-test-principal*))))
+(assert-event
+ (null (fn-native-auth-load-bindings
+        (fn-native-auth-admin-result-octets
+         (fn-native-auth-admin-bind
+          (fn-native-auth-admin-result-octets (fn-naa-test-bound)) t
+          *fn-naa-test-name* nil 128))
+        t 128)))
+; The listing names the binding.
+(assert-event
+ (equal (fn-native-auth-admin-result-report
+         (fn-native-auth-admin-list
+          (fn-native-auth-admin-result-octets (fn-naa-test-bound)) t 128))
+        (fn-native-auth-admin-public-report
+         (list (fn-naa-test-credential))
+         (list (cons *fn-naa-test-name* *fn-naa-test-principal*)))))
+; Refusals: an unenrolled login, a malformed principal.
+(assert-event
+ (equal (fn-native-auth-admin-result-reason
+         (fn-native-auth-admin-bind
+          (fn-native-auth-admin-result-octets (fn-naa-test-set)) t
+          (fn-record-string-octets "nobody") *fn-naa-test-signing-hex* 128))
+        :unknown-login))
+(assert-event
+ (equal (fn-native-auth-admin-result-reason
+         (fn-native-auth-admin-bind
+          (fn-native-auth-admin-result-octets (fn-naa-test-set)) t
+          *fn-naa-test-name* (fn-record-string-octets "07") 128))
+        :principal))
+; A malformed signing field refuses the whole profile, never ignored.
+(assert-event
+ (equal (fn-native-auth-result-reason
+         (fn-native-auth-load
+          (append (fn-native-auth-admin-result-octets (fn-naa-test-set))
+                  (fn-record-string-octets "signing = \"07\""))
+          t nil nil nil 128))
+        :credential-shape))

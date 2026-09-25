@@ -1,0 +1,10 @@
+test_operator_post_carries_up_to_a_and_names_one_octet_past (tests.test_native_bounds_blob.OperatorPostAboveTheOldBlobTests.test_operator_post_carries_up_to_a_and_names_one_octet_past) ... operator post 131073 0  accepted operator post ACCEPTED
+operator post 290000 0  accepted operator post ACCEPTED
+operator post 300001 1  refused operator post ARTICLE-EXCEEDS-PROFILE-BOUND
+reread {131073: True, 290000: True}
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.357s
+
+OK

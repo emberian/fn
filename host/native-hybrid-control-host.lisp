@@ -3,6 +3,11 @@
 (defun fn-native-hybrid-control-host-max-frame ()
   (declare (xargs :mode :program))
   (+ *fn-frame-overhead-octets* *fn-nhctrl-max-payload*))
+; The owner's read bound when hybrid control is loaded: an ordinary request
+; under the profile's A and G, or a hybrid request (`fn-nhctrl-read-bound-for').
+(defun fn-native-hybrid-control-host-read-bound (a g)
+  (declare (xargs :mode :program))
+  (fn-nhctrl-read-bound-for a g))
 (defun fn-native-hybrid-control-host-uint32 (text)
   (declare (xargs :mode :program))
   (fn-native-hybrid-control-uint32 text))

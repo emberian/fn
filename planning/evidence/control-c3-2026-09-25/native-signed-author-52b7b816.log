@@ -1,0 +1,9 @@
+Running as unit: run-r40f61c5fbf24406c90ab8ef208720cd9.scope; invocation ID: 0beb3e91de8348b6a270a8500a0f01d6
+test_signed_author (tests.test_native_control_filing.NativeControlFilingTests.test_signed_author)
+The local signed-author ingress (host/native/hybrid-control.lisp ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.966s
+
+OK
+NATIVE-CONTROL-WITNESS {"article-signed-cancel": "220 0 <c1-signed-cancel@example.invalid> article follows", "hybrid-author-signed-cancel": [0, "", ""], "hybrid-author-signed-ordinary": [0, ""], "listgroup-control.cancel": ["211 1 1 1 control.cancel list follows\r\n", ["1"]], "listgroup-control.cancel-after-restart": ["211 1 1 1 control.cancel list follows\r\n", ["1"]], "listgroup-fn.test": ["211 1 1 1 fn.test list follows\r\n", ["1"]]}
